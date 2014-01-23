@@ -72,12 +72,6 @@ namespace
         return eccAnom;
     }
 
-    //double getTimeScale( int year, int month, int date, double hoursUT )
-    //{
-    //    int a = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
-    //    return (double)a + hoursUT/24.0;
-    //}
-
     double getJulianDate( int year, int month, int date )
     {
         if ( month <= 2 )
@@ -267,38 +261,9 @@ Ephemeris::getMoonPositionECEF(const DateTime& date) const
 
 
 osg::Vec3d
-Ephemeris::getECEFfromRADecl( double ra, double decl, double range )
+Ephemeris::getECEFfromRADecl( double ra, double decl, double range ) const
 {
     return getPositionFromRADecl(ra, decl, range);
-}
-
-
-//------------------------------------------------------------------------
-
-SkyOptions::SkyOptions(const ConfigOptions& options) :
-DriverConfigOptions( options )
-{
-    fromConfig(_conf);
-}
-
-void
-SkyOptions::fromConfig( const Config& conf )
-{
-    //nop
-}
-
-void
-SkyOptions::mergeConfig( const Config& conf )
-{
-    DriverConfigOptions::mergeConfig( conf );
-    fromConfig( conf );
-}
-
-Config
-SkyOptions::getConfig() const
-{
-    Config conf = DriverConfigOptions::getConfig();
-    return conf;
 }
 
 //------------------------------------------------------------------------
@@ -308,13 +273,27 @@ SkyOptions::getConfig() const
 
 SkyNode::SkyNode()
 {
-    _ephemeris = new Ephemeris();
-    _dateTime = DateTime(2011, 06, 01, 0.0);
+    baseInit();
+}
+
+SkyNode::SkyNode(const SkyOptions& options)
+{
+    baseInit();
 }
 
 SkyNode::~SkyNode()
 {
     //nop
+}
+
+void
+SkyNode::baseInit()
+{
+    _ephemeris = new Ephemeris();
+    _dateTime = DateTime(2011, 06, 01, 0.0);
+    _sunVisible = true;
+    _moonVisible = true;
+    _starsVisible = true;
 }
 
 void
@@ -325,7 +304,7 @@ SkyNode::setEphemeris(Ephemeris* ephemeris)
     onSetEphemeris();
 }
 
-Ephemeris*
+const Ephemeris*
 SkyNode::getEphemeris() const
 {
     return _ephemeris.get();
@@ -343,6 +322,27 @@ const DateTime&
 SkyNode::getDateTime() const
 {
     return _dateTime;
+}
+
+void
+SkyNode::setSunVisible(bool value)
+{
+    _sunVisible = value;
+    onSetSunVisible();
+}
+
+void
+SkyNode::setMoonVisible(bool value)
+{
+    _moonVisible = value;
+    onSetMoonVisible();
+}
+
+void
+SkyNode::setStarsVisible(bool value)
+{
+    _starsVisible = value;
+    onSetStarsVisible();
 }
 
 //------------------------------------------------------------------------
@@ -369,14 +369,21 @@ SkyNode::create(const SkyOptions& options,
     result = dynamic_cast<SkyNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
     if ( result )
     {
-        OE_INFO << "Loaded sky driver: \"" << driverName << "\" OK." << std::endl;
+        OE_INFO << LC << "Loaded sky driver \"" << driverName << "\" OK." << std::endl;
     }
     else
     {
-        OE_WARN << "FAIL, unable to load sky driver for \"" << driverName << "\"" << std::endl;
+        OE_WARN << LC << "FAIL, unable to load sky driver for \"" << driverName << "\"" << std::endl;
     }
 
     return result;
+}
+
+SkyNode*
+SkyNode::create(MapNode* mapNode)
+{
+    SkyOptions options;
+    return create(options, mapNode);
 }
 
 //------------------------------------------------------------------------

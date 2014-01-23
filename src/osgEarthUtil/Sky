@@ -62,7 +62,7 @@ namespace osgEarth { namespace Util
          * @param decl  Declination in radians
          * @param range Range in meters
          */
-        osg::Vec3d getECEFfromRADecl(double ra, double decl, double range);
+        osg::Vec3d getECEFfromRADecl(double ra, double decl, double range) const;
     };
 
 
@@ -70,18 +70,29 @@ namespace osgEarth { namespace Util
      * Base Options structure for loading an environment node from
      * a plugin.
      */
-    class OSGEARTHUTIL_EXPORT SkyOptions : public DriverConfigOptions
+    class SkyOptions : public DriverConfigOptions
     {
     public:
-        SkyOptions( const ConfigOptions& options =ConfigOptions() );
+        SkyOptions( const ConfigOptions& options =ConfigOptions() ) : DriverConfigOptions(options) {
+            fromConfig(_conf);
+        }
         virtual ~SkyOptions() { }
-        virtual Config getConfig() const;
+        virtual Config getConfig() const {
+            Config conf = DriverConfigOptions::getConfig();
+            // future adds go here
+            return conf;
+        }
 
     protected:
-        virtual void mergeConfig( const Config& conf );
+        virtual void mergeConfig( const Config& conf ) {
+            DriverConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
         
     private:
-        void fromConfig( const Config& conf );
+        void fromConfig( const Config& conf ) {
+            // future gets go here
+        }
     };
 
 
@@ -92,6 +103,16 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SkyNode : public osg::Group
     {
     public:
+        /**
+         * Creates a new SkyNode with the default built-in sky driver
+         * and default options.
+         */
+        static SkyNode* create(
+            osgEarth::MapNode* mapNode );
+        
+        /**
+         * Creates a new SkyNode with custom options.
+         */
         static SkyNode* create(
             const SkyOptions&  options,
             osgEarth::MapNode* mapNode );
@@ -99,6 +120,7 @@ namespace osgEarth { namespace Util
     protected:
         // CTOR (abstract base class)
         SkyNode();
+        SkyNode(const SkyOptions& options);
 
         // protected DTOR (heap-only)
         virtual ~SkyNode();
@@ -108,45 +130,58 @@ namespace osgEarth { namespace Util
          * Gets/Sets the Ephemeris used to position the sun and the moon
          * based on date/time.
          */
-        Ephemeris* getEphemeris() const;
         void setEphemeris(Ephemeris* ephemeris);
+        const Ephemeris* getEphemeris() const;
        
         /**
          * Gets the date/time for which the enviroment is configured.
          * Pass in an optional View to get the date/time specific to
          * that View.
          */
-        const DateTime& getDateTime() const;
         void setDateTime(const DateTime& dt);
+        const DateTime& getDateTime() const;
 
-        /** Attaches this sky node to a view (placing a sky light). Optional */
-        virtual void attach(osg::View* view, int lightNum) { }
+        /** Whether the sun is visible */
+        void setSunVisible(bool value);
+        bool getSunVisible() const { return _sunVisible; }
 
         /** Whether the moon is visible */
-        void setMoonVisible( bool value, osg::View* view =0L );
-        bool getMoonVisible( osg::View* view =0L ) const;
+        void setMoonVisible(bool value);
+        bool getMoonVisible() const { return _moonVisible; }
 
         /** Whether the stars are visible */
-        void setStarsVisible( bool value, osg::View* view =0L );
-        bool getStarsVisible( osg::View* view =0L ) const;
+        void setStarsVisible(bool value);
+        bool getStarsVisible() const { return _starsVisible; }
+
+    public:
+        
+        /** Attaches this sky node to a view (placing a sky light). Optional */
+        virtual void attach(osg::View* view, int lightNum) { }
+        void attach(osg::View* view) { attach(view, 0); }
 
     protected:
 
-        // called by setEphemeris
+        // impl class can override these events.
         virtual void onSetEphemeris() { }
-
-        // called by setDateTime */
         virtual void onSetDateTime() { }
+        virtual void onSetMoonVisible() { }
+        virtual void onSetStarsVisible() { }
+        virtual void onSetSunVisible() { }
 
     private:
 
         osg::ref_ptr<Ephemeris> _ephemeris;
         DateTime                _dateTime;
+        bool                    _sunVisible;
+        bool                    _moonVisible;
+        bool                    _starsVisible;
+
+        void baseInit();
     };
 
 
     /**
-     * Base class for an environment driver plugin implementation.
+     * Base class for an sky driver plugin implementation.
      */
     class OSGEARTHUTIL_EXPORT SkyDriver : public osgDB::ReaderWriter
     {
@@ -154,19 +189,6 @@ namespace osgEarth { namespace Util
         MapNode* getMapNode(const osgDB::Options* opt) const;
         const SkyOptions& getSkyOptions(const osgDB::Options* opt) const;
     };
-
-#if 0
-    /**
-     * Factory for creating an EnvironmentNode from a plugin driver.
-     */
-    class OSGEARTHUTIL_EXPORT EnvironmentFactory
-    {
-    public:
-        static SkyNode* create(
-            const SkyOptions& options,
-            const MapNode*    map );
-    };
-#endif
 
 } } // namespace osgEarth::Util
 

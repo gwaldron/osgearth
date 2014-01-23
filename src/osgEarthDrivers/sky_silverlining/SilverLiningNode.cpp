@@ -141,5 +141,5 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 			}
         }
     }
-    osgEarth::Util::EnvironmentNode::traverse( nv );
+    osgEarth::Util::SkyNode::traverse( nv );
 }

@@ -27,7 +27,6 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
-//#include <osgEarthUtil/SkyNode>
 
 namespace PackageQt
 {

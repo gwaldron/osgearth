@@ -81,14 +81,12 @@ OceanNode::setSeaLevel(float value)
 
 //------------------------------------------------------------------------
 
-#undef  LC
-#define LC "[OceanFactory] "
 #define MAPNODE_TAG "__osgEarth::MapNode"
 #define OPTIONS_TAG "__osgEarth::Util::OceanOptions"
 
 OceanNode*
-OceanFactory::create(const OceanOptions& options,
-                     MapNode*            mapNode)
+OceanNode::create(const OceanOptions& options,
+                  MapNode*            mapNode)
 {
     OceanNode* result = 0L;
 
@@ -105,14 +103,21 @@ OceanFactory::create(const OceanOptions& options,
     result = dynamic_cast<OceanNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
     if ( result )
     {
-        OE_INFO << "Loaded ocean driver \"" << driver << "\" OK." << std::endl;
+        OE_INFO << LC << "Loaded ocean driver \"" << driver << "\" OK." << std::endl;
     }
     else
     {
-        OE_WARN << "FAIL, unable to load ocean driver \"" << driver << "\"" << std::endl;
+        OE_WARN << LC << "FAIL, unable to load ocean driver \"" << driver << "\"" << std::endl;
     }
 
     return result;
+}
+
+OceanNode*
+OceanNode::create(MapNode* mapNode)
+{
+    OceanOptions options;
+    return create(options, mapNode);
 }
 
 //------------------------------------------------------------------------

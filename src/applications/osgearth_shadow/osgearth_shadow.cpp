@@ -44,7 +44,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/ShadowUtils>
-#include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/Sky>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
@@ -156,12 +156,6 @@ int main(int argc, char** argv)
     {
         root = shadowedScene;
         shadowedScene->addChild( model.get() );
-    }
-
-    // The skynode's ambient brightness will control the "darkness" of shadows.
-    if ( skyNode )
-    {
-        skyNode->setAmbientBrightness( ambientBrightness );
     }
 
     viewer.setSceneData( root );

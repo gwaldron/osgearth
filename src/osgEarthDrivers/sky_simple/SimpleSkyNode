@@ -17,48 +17,122 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include "SilverLiningOptions"
-#include <osgEarthUtil/Environment>
-#include <osgEarth/Map>
-#include <osg/Light>
+#include "SimpleSkyOptions"
+#include <osgEarthUtil/Sky>
+#include <osgEarth/MapNode>
+#include <osg/MatrixTransform>
 
-namespace osgEarth { namespace Drivers { namespace SilverLining
+namespace osg {
+    class EllipsoidModel;
+    class Light;
+}
+
+namespace osgEarth { namespace Drivers { namespace SimpleSky
 {
-    class SilverLiningContext;
-
     using namespace osgEarth;
     using namespace osgEarth::Util;
 
     /**
      * Node that roots the silverlining adapter.
      */
-    class SilverLiningNode : public EnvironmentNode
+    class SimpleSkyNode : public SkyNode
     {
     public:
-        SilverLiningNode(
-            const Map*                 map,
-            const SilverLiningOptions& options );
+        SimpleSkyNode(
+            const Map* map);
 
-    public: // EnvironmentNode
+        SimpleSkyNode(
+            const Map*              map,
+            const SimpleSkyOptions& options);
+
+    public: // SkyNode
 
         void attach(osg::View* view, int lightNum);
 
+        void onSetEphemeris();
         void onSetDateTime();
+        void onSetSunVisible();
+        void onSetMoonVisible();
+        void onSetStarsVisible();
 
     public: // osg::Node
 
         void traverse(osg::NodeVisitor&);
 
-    protected:
-        virtual ~SilverLiningNode();
+        osg::BoundingSphere computeBound() const;
 
-        osg::ref_ptr<SilverLiningContext> _SL;
-		osg::Geode* _geode;
-        osg::Drawable* _skyDrawable;
-		osg::ref_ptr<osg::Drawable> _cloudsDrawable;
-        osg::ref_ptr<osg::Light> _light;
-		double _lastAltitude;
-		const SilverLiningOptions _options;
+    protected:
+        virtual ~SimpleSkyNode() { }
+
+    private:
+        /** Sets the sun's position as a unit vector. */
+        void setSunPosition(const osg::Vec3& pos, osg::View* view);
+
+        /** Sets the moon position as a geocentric coordinate */
+        void setMoonPosition(const osg::Vec3d& pos, osg::View* view);
+
+        /** Sets the sun's position as a latitude and longitude. */
+        void setSunPosition(double lat_degrees, double lon_degrees, osg::View* view);
+
+        struct StarData
+        {
+            std::string name;
+            double right_ascension;
+            double declination;
+            double magnitude;
+            
+            StarData() { }
+            StarData( std::stringstream &ss );
+        };
+
+        struct PerViewData
+        {
+            osg::Vec3f                         _lightPos;
+            osg::ref_ptr<osg::Light>           _light;
+            osg::ref_ptr<osg::Uniform>         _lightPosUniform;
+            osg::Matrixd                       _sunMatrix;
+            osg::Matrixd                       _moonMatrix;
+            osg::Matrixd                       _starsMatrix;
+
+            // only available in per-view structures..not default
+            osg::ref_ptr<osg::Group>           _cullContainer;
+            osg::ref_ptr<osg::MatrixTransform> _sunXform;
+            osg::ref_ptr<osg::MatrixTransform> _moonXform;
+            osg::ref_ptr<osg::MatrixTransform> _starsXform;
+
+            DateTime _date;
+        };
+
+        PerViewData _defaultPerViewData;
+        typedef std::map<osg::View*, PerViewData> PerViewDataMap;
+        PerViewDataMap _perViewData;
+
+        float _innerRadius, _outerRadius, _sunDistance, _starRadius, _minStarMagnitude;
+        osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere, _moon;
+        osg::ref_ptr<osg::Uniform> _starAlpha;
+        osg::ref_ptr<osg::Uniform> _starPointSize;
+
+        osg::Vec3d _moonPosition;
+        bool _autoAmbience;
+
+        osg::ref_ptr<const osg::EllipsoidModel> _ellipsoidModel;
+
+		const SimpleSkyOptions _options;
+
+        void initialize(const Map* map);
+
+        void makeAtmosphere( const osg::EllipsoidModel* );
+        void makeSun();
+        void makeMoon();
+
+        void makeStars();
+        osg::Node* buildStarGeometry(const std::vector<StarData>& stars);
+        void getDefaultStars(std::vector<StarData>& out_stars);
+        bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
+
+        void setAmbientBrightness( PerViewData& data, float value );
+        void setSunPosition( PerViewData& data, const osg::Vec3& pos );
+        void setMoonPosition( PerViewData& data, const osg::Vec3d& pos );
     };
 
-} } } // namespace osgEarth::Drivers::SilverLining
+} } } // namespace osgEarth::Drivers::SimpleSky

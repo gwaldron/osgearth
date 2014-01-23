@@ -67,6 +67,14 @@ namespace osgEarth { namespace Util
     */
     class OSGEARTHUTIL_EXPORT OceanNode : public osg::Group
     {
+    public:
+        static OceanNode* create(
+            MapNode* map);
+
+        static OceanNode* create(
+            const OceanOptions&  options,
+            MapNode*             map );
+
     protected:
         // CTOR (abstract base class)
         OceanNode();
@@ -98,18 +106,6 @@ namespace osgEarth { namespace Util
     protected:
         MapNode* getMapNode(const osgDB::Options* opt) const;
         const OceanOptions& getOceanOptions(const osgDB::Options* opt) const;
-    };
-
-
-    /**
-     * Factory for creating an OceanNode from a plugin driver.
-     */
-    class OSGEARTHUTIL_EXPORT OceanFactory
-    {
-    public:
-        static OceanNode* create(
-            const OceanOptions&  options,
-            MapNode*             map );
     };
 
 } } // namespace osgEarth::Util

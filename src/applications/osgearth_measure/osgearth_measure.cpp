@@ -29,7 +29,6 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthSymbology/Color>

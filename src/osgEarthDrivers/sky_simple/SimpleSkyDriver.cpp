@@ -16,65 +16,47 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "SilverLiningOptions"
-#include "SilverLiningNode"
+#include "SimpleSkyOptions"
+#include "SimpleSkyNode"
 #include <osgDB/FileNameUtils>
+#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 
-#define LC "[SilverLiningDriver] "
+#define LC "[SimpleSkyDriver] "
 
 using namespace osgEarth::Util;
 
-namespace osgEarth { namespace Drivers { namespace SilverLining
+namespace osgEarth { namespace Drivers { namespace SimpleSky
 {
-    class SilverLiningDriver : public EnvironmentDriver
+    class SimpleSkyDriver : public SkyDriver
     {
     public:
-        SilverLiningDriver()
+        SimpleSkyDriver()
         {
             supportsExtension(
-                "osgearth_environment_silverlining",
-                "osgEarth SilverLining Environment plugin" );
+                "osgearth_sky_simple",
+                "osgEarth Simple Sky Plugin" );
         }
 
         const char* className()
         {
-            return "osgEarth SilverLining Environment plugin";
+            return "osgEarth Simple Sky Plugin";
         }
 
-        ReadResult readNode(const std::string& file_name, const Options* options) const
+        ReadResult readNode(const std::string& file_name, const osgDB::Options* options) const
         {
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            SilverLiningOptions slOptions = getEnvironmentOptions(options);
-
-            // if the Resource Path isn't set, attempt to set it from 
-            // the SL environment variable.
-            if ( !slOptions.resourcePath().isSet() )
-            {
-                const char* ev = ::getenv("SILVERLINING_PATH");
-                if ( ev )
-                {
-                    slOptions.resourcePath() = osgDB::concatPaths(
-                        std::string(ev),
-                        "resources" );
-                }
-                else
-                {
-                    OE_WARN << LC
-                        << "No resource path! SilverLining might not initialize properly. "
-                        << "Consider setting the SILVERLINING_PATH environment variable."
-                        << std::endl;
-                }
-            }
-
-            return new SilverLiningNode( getMap(options), slOptions );
+            MapNode* mapNode = getMapNode(options);
+            const Map* map = mapNode ? mapNode->getMap() : 0L;
+            return new SimpleSkyNode( map, getSkyOptions(options) );
         }
 
     protected:
-        virtual ~SilverLiningDriver() { }
+        virtual ~SimpleSkyDriver() { }
     };
 
-    REGISTER_OSGPLUGIN(osgearth_environment_silverlining, SilverLiningDriver)
+    REGISTER_OSGPLUGIN(osgearth_sky_simple, SimpleSkyDriver)
 
-} } } // namespace osgEarth::Drivers::SilverLining
+} } } // namespace osgEarth::Drivers::SimpleSky

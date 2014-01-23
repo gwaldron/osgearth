@@ -22,11 +22,11 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
     osgEarthUtil
 )
 
-SETUP_PLUGIN(osgearth_environment_silverlining)
+SETUP_PLUGIN(osgearth_sky_silverlining)
 
 
 # to install public driver includes:
-SET(LIB_NAME environment_silverlining)
+SET(LIB_NAME sky_silverlining)
 SET(LIB_PUBLIC_HEADERS SilverLiningOptions)
 
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

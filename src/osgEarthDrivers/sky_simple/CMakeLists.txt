@@ -11,7 +11,7 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
     osgEarthUtil
 )
 
-SETUP_PLUGIN(sky_simple)
+SETUP_PLUGIN(osgearth_sky_simple)
 
 
 # to install public driver includes:

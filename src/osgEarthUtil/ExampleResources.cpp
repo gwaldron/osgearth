@@ -24,8 +24,7 @@
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/DataScanner>
-#include <osgEarthUtil/Environment>
-#include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/Sky>
 #include <osgEarthUtil/Ocean>
 
 #include <osgEarthUtil/NormalMap>
@@ -219,9 +218,9 @@ namespace
 {
     struct SkyTimeSliderHandler : public ControlEventHandler
     {
-        SkyTimeSliderHandler(EnvironmentNode* sky) : _sky(sky)  { }
+        SkyTimeSliderHandler(SkyNode* sky) : _sky(sky)  { }
 
-        EnvironmentNode* _sky;
+        SkyNode* _sky;
 
         virtual void onValueChanged( class Control* control, float value )
         {
@@ -249,7 +248,7 @@ namespace
 }
 
 Control*
-SkyControlFactory::create(EnvironmentNode* sky,
+SkyControlFactory::create(SkyNode*         sky,
                           osgViewer::View* view) const
 {
     Grid* grid = new Grid();
@@ -561,8 +560,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Adding a sky model:
     if ( useSky || !skyConf.empty() )
     {
-        EnvironmentOptions options(skyConf);
-        EnvironmentNode* sky = EnvironmentFactory::create(options, mapNode->getMap());
+        SkyOptions options(skyConf);
+        SkyNode* sky = SkyNode::create(options, mapNode);
         if ( sky )
         {
             sky->attach( view, 0 );
@@ -572,40 +571,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
             if ( c )
                 mainContainer->addControl( c );
         }
-
-#if 0
-        if ( skyConf.hasValue("driver") )
-        {
-            EnvironmentOptions options(skyConf);
-            enode = 
-
-            // disable the default view light
-            view->setLightingMode(osg::View::NO_LIGHT);
-        }
-
-        else
-        {
-            SkyNode* sky = new SkyNode( mapNode->getMap() );
-            sky->setAmbientBrightness( ambientBrightness );
-            sky->attach( view );
-            enode = sky;
-        }
-
-        if ( sky )
-        {
-            sky->setDateTime( DateTime() );
-            root->addChild( enode );
-            Control* c = SkyControlFactory().create(enode, view);
-            if ( c )
-                mainContainer->addControl( c );
-        }
-#endif
     }
 
     // Adding an ocean model:
     if ( useOcean || !oceanConf.empty() )
     {
-        OceanNode* ocean = OceanFactory::create(OceanOptions(oceanConf), mapNode);
+        OceanNode* ocean = OceanNode::create(OceanOptions(oceanConf), mapNode);
         if ( ocean )
         {
             root->addChild( ocean );

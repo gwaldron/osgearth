@@ -18,6 +18,8 @@
  */
 #include "SilverLiningOptions"
 #include "SilverLiningNode"
+#include <osgEarth/MapNode>
+#include <osgEarthUtil/Sky>
 #include <osgDB/FileNameUtils>
 
 #define LC "[SilverLiningDriver] "
@@ -26,27 +28,27 @@ using namespace osgEarth::Util;
 
 namespace osgEarth { namespace Drivers { namespace SilverLining
 {
-    class SilverLiningDriver : public EnvironmentDriver
+    class SilverLiningDriver : public SkyDriver
     {
     public:
         SilverLiningDriver()
         {
             supportsExtension(
-                "osgearth_environment_silverlining",
-                "osgEarth SilverLining Environment plugin" );
+                "osgearth_sky_silverlining",
+                "osgEarth SilverLining Plugin" );
         }
 
         const char* className()
         {
-            return "osgEarth SilverLining Environment plugin";
+            return "osgEarth SilverLining Plugin";
         }
 
-        ReadResult readNode(const std::string& file_name, const Options* options) const
+        ReadResult readNode(const std::string& file_name, const osgDB::Options* options) const
         {
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            SilverLiningOptions slOptions = getEnvironmentOptions(options);
+            SilverLiningOptions slOptions = getSkyOptions(options);
 
             // if the Resource Path isn't set, attempt to set it from 
             // the SL environment variable.
@@ -68,13 +70,15 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
                 }
             }
 
-            return new SilverLiningNode( getMap(options), slOptions );
+            MapNode* mapnode = getMapNode(options);
+            const Map* map = mapnode ? mapnode->getMap() : 0L;
+            return new SilverLiningNode( map, slOptions );
         }
 
     protected:
         virtual ~SilverLiningDriver() { }
     };
 
-    REGISTER_OSGPLUGIN(osgearth_environment_silverlining, SilverLiningDriver)
+    REGISTER_OSGPLUGIN(osgearth_sky_silverlining, SilverLiningDriver)
 
 } } } // namespace osgEarth::Drivers::SilverLining

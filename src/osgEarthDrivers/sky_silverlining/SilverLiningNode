@@ -18,7 +18,7 @@
  */
 
 #include "SilverLiningOptions"
-#include <osgEarthUtil/Environment>
+#include <osgEarthUtil/Sky>
 #include <osgEarth/Map>
 #include <osg/Light>
 
@@ -32,14 +32,14 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
     /**
      * Node that roots the silverlining adapter.
      */
-    class SilverLiningNode : public EnvironmentNode
+    class SilverLiningNode : public SkyNode
     {
     public:
         SilverLiningNode(
             const Map*                 map,
             const SilverLiningOptions& options );
 
-    public: // EnvironmentNode
+    public: // SkyNode
 
         void attach(osg::View* view, int lightNum);
 

@@ -1082,41 +1082,7 @@ EarthManipulator::setTetherNode( osg::Node* node )
         _offset_x = 0.0;
         _offset_y = 0.0;
 
-        if ( node )
-        {
-            // pre-compute some tether properties. If the node is an MT, treat it
-            // a little differently.
-
-            // Find the deepest transform that has a single child. That is the one we
-            // will use to calculate the tether location.
-            _tether_xform = 0L;
-            for( osg::Group* c = node->asGroup(); c != 0L; )
-            {
-                osg::Transform* xform = dynamic_cast<osg::Transform*>(c);
-                if ( xform )
-                    _tether_xform = xform;
-                
-                c = c->getNumChildren() == 1 ? c->getChild(0)->asGroup() : 0L;
-            }
-
-            if ( _tether_xform )
-            {
-                osg::BoundingSphere bs;
-
-                for( unsigned i=0; i<_tether_xform->getNumChildren(); ++i )
-                {
-                    bs.expandBy( _tether_xform->getChild(i)->getBound() );
-                }
-
-                _tether_local_center = bs.center();
-            }
-            else
-            {
-                _tether_local_center.set( 0.0, 0.0, 0.0 );
-            }
-        }
-
-        else
+        if ( node == 0L )
         {
             // rekajigger the distance, center, and pitch to legal non-tethered values:
             double pitch;
@@ -1667,30 +1633,15 @@ EarthManipulator::updateTether()
     {
         osg::Matrix localToWorld;
 
-        if ( _tether_xform )
-        {
-            osg::NodePathList nodePaths = _tether_xform->getParentalNodePaths();
-            if ( nodePaths.empty() )
-                return;
+        osg::NodePathList nodePaths = tether_node->getParentalNodePaths();
+        if ( nodePaths.empty() )
+            return;
 
-            localToWorld = osg::computeLocalToWorld( nodePaths[0] );
-            if ( !localToWorld.valid() )
-                return;
+        localToWorld = osg::computeLocalToWorld( nodePaths[0] );
+        if ( !localToWorld.valid() )
+            return;
 
-            setCenter( _tether_local_center * localToWorld );
-        }
-        else
-        {
-            osg::NodePathList nodePaths = tether_node->getParentalNodePaths();
-            if ( nodePaths.empty() )
-                return;
-
-            localToWorld = osg::computeLocalToWorld( nodePaths[0] );
-            if ( !localToWorld.valid() )
-                return;
-
-            setCenter( localToWorld.getTrans() );
-        }
+        setCenter( osg::Vec3d(0,0,0) * localToWorld );
 
         _previousUp = getUpVector( _centerLocalToWorld );
 

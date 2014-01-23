@@ -42,7 +42,7 @@ TritonNode::TritonNode(const Map*           map,
     this->addChild( geode );
     
     // Triton requires an update pass.
-    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+    //ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 TritonNode::~TritonNode()
@@ -60,6 +60,7 @@ TritonNode::onSetSeaLevel()
 void
 TritonNode::traverse(osg::NodeVisitor& nv)
 {
+#if 0
     if ( _TRITON->ready() )
     {
         if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
@@ -67,5 +68,6 @@ TritonNode::traverse(osg::NodeVisitor& nv)
             _TRITON->update( nv.getFrameStamp()->getSimulationTime() );
         }
     }
+#endif
     osgEarth::Util::OceanNode::traverse( nv );
 }

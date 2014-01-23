@@ -20,7 +20,7 @@
 #include "TritonNode"
 #include "TritonContext"
 #include "TritonDrawable"
-#include <osgEarth/ElevationLOD>
+#include <osgEarth/CullingUtils>
 #include <Triton.h>
 
 #define LC "[TritonNode] "
@@ -30,7 +30,8 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Drivers::Triton;
 
 TritonNode::TritonNode(const Map*           map,
-                       const TritonOptions& options)
+                       const TritonOptions& options) :
+_options( options )
 {
     _TRITON = new TritonContext( options );
     _TRITON->setSRS( map->getSRS() );
@@ -60,6 +61,16 @@ TritonNode::onSetSeaLevel()
 void
 TritonNode::traverse(osg::NodeVisitor& nv)
 {
+    if ( nv.getVisitorType() == nv.CULL_VISITOR && _options.maxAltitude().isSet() )
+    {
+        osg::Vec3 eye = nv.getEyePoint();
+        double alt = eye.z();
+        if ( _TRITON->getSRS()->isGeographic() )
+            alt = eye.length() - _TRITON->getSRS()->getEllipsoid()->getRadiusEquator();
+        if ( alt > _options.maxAltitude().get() )
+            return;
+    }
+
 #if 0
     if ( _TRITON->ready() )
     {

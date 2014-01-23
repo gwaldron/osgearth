@@ -52,6 +52,7 @@ namespace osgEarth { namespace Drivers { namespace Triton
         virtual ~TritonNode();
 
         osg::ref_ptr<TritonContext> _TRITON;
+        TritonOptions               _options;
     };
 
 } } } // namespace osgEarth::Drivers::Triton

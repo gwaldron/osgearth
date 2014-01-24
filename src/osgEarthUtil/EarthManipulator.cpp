@@ -192,6 +192,7 @@ Revisioned                      (),
 _single_axis_rotation           ( false ),
 _lock_azim_while_panning        ( true ),
 _mouse_sens                     ( 1.0 ),
+_touch_sens                     ( 0.005 ),
 _keyboard_sens                  ( 1.0 ),
 _scroll_sens                    ( 1.0 ),
 _min_pitch                      ( -89.9 ),
@@ -221,6 +222,7 @@ _bindings( rhs._bindings ),
 _single_axis_rotation( rhs._single_axis_rotation ),
 _lock_azim_while_panning( rhs._lock_azim_while_panning ),
 _mouse_sens( rhs._mouse_sens ),
+_touch_sens( rhs.__touch_sens),
 _keyboard_sens( rhs._keyboard_sens ),
 _scroll_sens( rhs._scroll_sens ),
 _min_pitch( rhs._min_pitch ),
@@ -1825,9 +1827,7 @@ EarthManipulator::addTouchEvents(const osgGA::GUIEventAdapter& ea)
 
 bool
 EarthManipulator::parseTouchEvents( TouchEvents& output )
-{
-    const float sens = 0.005f;    
-        
+{    
     if (_touchPointQueue.size() == 2 )
     {
         if (_touchPointQueue[0].size()   == 2 &&     // two fingers
@@ -1868,8 +1868,8 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                     output.push_back(TouchEvent());
                     TouchEvent& ev = output.back();
                     ev._eventType = EVENT_MULTI_DRAG;
-                    ev._dx = 0.5 * (dx[0]+dx[1]) * sens;
-                    ev._dy = 0.5 * (dy[0]+dy[1]) * sens;
+                    ev._dx = 0.5 * (dx[0]+dx[1]) * _touch_sens;
+                    ev._dy = 0.5 * (dy[0]+dy[1]) * _touch_sens;
                 }                                                
                 else
                 {                                 
@@ -1880,7 +1880,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                         output.push_back(TouchEvent());
                         TouchEvent& ev = output.back();
                         ev._eventType = EVENT_MULTI_PINCH;
-                        ev._dx = 0.0, ev._dy = deltaDistance * -sens;
+                        ev._dx = 0.0, ev._dy = deltaDistance * -_touch_sens;
                     }
 
                     if (fabs(da) > 0.01)
@@ -1890,7 +1890,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                         TouchEvent& ev = output.back();
                         ev._eventType = EVENT_MULTI_TWIST;                    
                         ev._dx = da;
-                        //ev._dy = 0.5 * (dy[0]+dy[1]) * sens;
+                        //ev._dy = 0.5 * (dy[0]+dy[1]) * _touch_sens;
                         ev._dy = 0.0;
                     }
                 }             
@@ -1920,8 +1920,8 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 TouchEvent& ev = output.back();
                 ev._eventType = EVENT_MOUSE_DRAG;
                 ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
-                ev._dx =  (p1[0].x - p0[0].x) * sens;
-                ev._dy = -(p1[0].y - p0[0].y) * sens;
+                ev._dx =  (p1[0].x - p0[0].x) * _touch_sens;
+                ev._dy = -(p1[0].y - p0[0].y) * _touch_sens;
             }
         }
     }

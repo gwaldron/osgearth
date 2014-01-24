@@ -1828,6 +1828,8 @@ EarthManipulator::addTouchEvents(const osgGA::GUIEventAdapter& ea)
 bool
 EarthManipulator::parseTouchEvents( TouchEvents& output )
 {    
+    double sens = this->getSettings()->getTouchSensitivity();
+
     if (_touchPointQueue.size() == 2 )
     {
         if (_touchPointQueue[0].size()   == 2 &&     // two fingers
@@ -1868,8 +1870,8 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                     output.push_back(TouchEvent());
                     TouchEvent& ev = output.back();
                     ev._eventType = EVENT_MULTI_DRAG;
-                    ev._dx = 0.5 * (dx[0]+dx[1]) * _touch_sens;
-                    ev._dy = 0.5 * (dy[0]+dy[1]) * _touch_sens;
+                    ev._dx = 0.5 * (dx[0]+dx[1]) * sens;
+                    ev._dy = 0.5 * (dy[0]+dy[1]) * sens;
                 }                                                
                 else
                 {                                 
@@ -1880,7 +1882,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                         output.push_back(TouchEvent());
                         TouchEvent& ev = output.back();
                         ev._eventType = EVENT_MULTI_PINCH;
-                        ev._dx = 0.0, ev._dy = deltaDistance * -_touch_sens;
+                        ev._dx = 0.0, ev._dy = deltaDistance * -sens;
                     }
 
                     if (fabs(da) > 0.01)
@@ -1920,8 +1922,8 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 TouchEvent& ev = output.back();
                 ev._eventType = EVENT_MOUSE_DRAG;
                 ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
-                ev._dx =  (p1[0].x - p0[0].x) * _touch_sens;
-                ev._dy = -(p1[0].y - p0[0].y) * _touch_sens;
+                ev._dx =  (p1[0].x - p0[0].x) * sens;
+                ev._dy = -(p1[0].y - p0[0].y) * sens;
             }
         }
     }

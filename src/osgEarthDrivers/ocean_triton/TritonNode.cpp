@@ -31,19 +31,22 @@ using namespace osgEarth::Drivers::Triton;
 
 TritonNode::TritonNode(const Map*           map,
                        const TritonOptions& options) :
-_options( options )
+OceanNode( options ),
+_options ( options )
 {
-    _TRITON = new TritonContext( options );
-    _TRITON->setSRS( map->getSRS() );
+    if ( map )
+        setSRS( map->getSRS() );
 
+    _TRITON = new TritonContext( options );
+
+    if ( map )
+        _TRITON->setSRS( map->getSRS() );
+
+    _drawable = new TritonDrawable(_TRITON);
     osg::Geode* geode = new osg::Geode();
-    geode->setCullingActive( false );
-    geode->addDrawable( new TritonDrawable(_TRITON) );
+    geode->addDrawable( _drawable );
 
     this->addChild( geode );
-    
-    // Triton requires an update pass.
-    //ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
 
 TritonNode::~TritonNode()
@@ -55,30 +58,14 @@ void
 TritonNode::onSetSeaLevel()
 {
     if ( _TRITON->ready() )
+    {
         _TRITON->getEnvironment()->SetSeaLevel( getSeaLevel() );
+    }
+    dirtyBound();
 }
 
-void
-TritonNode::traverse(osg::NodeVisitor& nv)
+osg::BoundingSphere
+TritonNode::computeBound() const
 {
-    if ( nv.getVisitorType() == nv.CULL_VISITOR && _options.maxAltitude().isSet() )
-    {
-        osg::Vec3 eye = nv.getEyePoint();
-        double alt = eye.z();
-        if ( _TRITON->getSRS()->isGeographic() )
-            alt = eye.length() - _TRITON->getSRS()->getEllipsoid()->getRadiusEquator();
-        if ( alt > _options.maxAltitude().get() )
-            return;
-    }
-
-#if 0
-    if ( _TRITON->ready() )
-    {
-        if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
-        {
-            _TRITON->update( nv.getFrameStamp()->getSimulationTime() );
-        }
-    }
-#endif
-    osgEarth::Util::OceanNode::traverse( nv );
+    return osg::BoundingSphere();
 }

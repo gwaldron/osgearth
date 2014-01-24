@@ -23,6 +23,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/CullingUtils>
 #include <osgEarthUtil/SimplexNoise>
 #include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
 
@@ -49,8 +50,8 @@ namespace
         image->allocateImage(SIR, SIR, 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
         SimplexNoise noise;
-        noise.setFrequency(SIR/32.0);
-        noise.setOctaves(16);
+        noise.setFrequency(SIR*512.0);
+        noise.setOctaves(10);
         noise.setRange(1.0, 1.8);
 
         ImageUtils::PixelWriter write(image);
@@ -71,7 +72,7 @@ namespace
 
                 double n = noise.getValue(x, y, z, w);
 
-                write( osg::Vec4(0.2*n, 0.3*n, 0.5*n, 0.8), s, t );
+                write( osg::Vec4(0.2*n, 0.3*n, 0.5*n, 0.95), s, t );
             }
         }
 
@@ -84,11 +85,13 @@ namespace
 
 SimpleOceanNode::SimpleOceanNode(const SimpleOceanOptions& options,
                                  MapNode*                  mapNode) :
+OceanNode     ( options ),
 _parentMapNode( mapNode ),
 _options      ( options )
 {
     // set the node mask so that our custom EarthManipulator will NOT find this node.
     setNodeMask( 0xFFFFFFFE );
+    setSRS( mapNode? mapNode->getMapSRS() : 0L );
     rebuild();
 }
 
@@ -118,15 +121,15 @@ SimpleOceanNode::rebuild()
 
         MPTerrainEngineOptions mpoptions;
         mpoptions.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
+
+        // so we can the surface from underwater:
         mpoptions.clusterCulling() = false;       // want to see underwater
+
         mpoptions.enableBlending() = true;        // gotsta blend with the main node
         mno.setTerrainOptions( mpoptions );
 
         // make the ocean's map node:
         MapNode* oceanMapNode = new MapNode( oceanMap, mno );
-        
-        // install a custom compositor. Must do this before adding any image layers.
-        //oceanMapNode->setCompositorTechnique( new OceanCompositor(_options) );
 
         // if the caller requested a mask layer, install that now.
         if ( _options.maskLayer().isSet() )

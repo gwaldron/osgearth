@@ -133,6 +133,13 @@ namespace osgEarth
         osg::BoundingSphere computeBound(const osg::Node&) const { return _bs; }
     };
 
+    // a cull callback that prevents objects from being included in the near/fear clip
+    // plane calculates that OSG does.
+    struct OSGEARTH_EXPORT DoNotComputeNearFarCullCallback : public osg::NodeCallback
+    {
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+    };
+
     /**
      * Simple occlusion culling callback that does a ray interseciton between the eyepoint
      * and a world point and doesn't draw if there are intersections with the node.

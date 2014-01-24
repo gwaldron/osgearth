@@ -40,11 +40,14 @@ namespace osgEarth { namespace Drivers { namespace Triton
         // custom draw (called with an active GC)
         void drawImplementation(osg::RenderInfo& ri) const;
 
+        osg::BoundingBox computeBound() const;
+
     protected:
         virtual ~TritonDrawable() { }
 
         osg::observer_ptr<TritonContext>  _TRITON;
         osg::ref_ptr<osg::TextureCubeMap> _cubeMap;
+        osg::BoundingBox                  _bbox;
         
         TritonDrawable(const TritonDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };

@@ -18,6 +18,8 @@
 */
 #include <osgEarthUtil/Ocean>
 #include <osgEarth/Registry>
+#include <osgEarth/CullingUtils>
+#include <osgEarth/MapNode>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -61,10 +63,11 @@ OceanOptions::getConfig() const
 #undef  LC
 #define LC "[OceanNode] "
 
-OceanNode::OceanNode() :
+OceanNode::OceanNode(const OceanOptions& options) :
+_options ( options ),
 _seaLevel( 0.0f )
 {
-    //nop
+    //NOP
 }
 
 OceanNode::~OceanNode()
@@ -77,6 +80,57 @@ OceanNode::setSeaLevel(float value)
 {
     _seaLevel = value;
     onSetSeaLevel();
+}
+
+void
+OceanNode::traverse(osg::NodeVisitor& nv)
+{
+    if ( nv.getVisitorType() == nv.CULL_VISITOR && _srs.valid() )
+    {
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        if ( cv->getCurrentCamera() )
+        {
+            // find the current altitude:
+            osg::Vec3d eye = osg::Vec3d(0,0,0) * cv->getCurrentCamera()->getInverseViewMatrix();
+            osg::Vec3d local;
+            double altitude;
+            _srs->transformFromWorld(eye, local, &altitude);
+
+            // check against max altitude:
+            if ( _options.maxAltitude().isSet() && altitude > *_options.maxAltitude() )
+                return;
+            
+            // Set the near clip plane to account for an ocean sphere.
+            // First, adjust for the sea level offset:
+            altitude -= (double)getSeaLevel();
+
+            // clamp the absolute value so it will work above or below sea level
+            // and so we don't attempt to set the near clip below 1:
+            altitude = std::max( ::fabs(altitude), 1.0 );
+
+            // we don't want the ocean participating in the N/F calculation:
+            osg::CullSettings::ComputeNearFarMode mode = cv->getComputeNearFarMode();
+            cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+
+            // visit the ocean:
+            osg::Group::traverse( nv );
+
+            cv->setComputeNearFarMode( mode );
+
+            // just use the height above (or below) the ocean as the near clip
+            // plane distance. Close enough and errs on the safe side.
+            double oldNear = cv->getCalculatedNearPlane();
+
+            double newNear = std::min( oldNear, altitude );
+            if ( newNear < oldNear )
+            {
+                cv->setCalculatedNearPlane( newNear );
+            }
+
+            return;
+        }
+    }
+    osg::Group::traverse( nv );
 }
 
 //------------------------------------------------------------------------

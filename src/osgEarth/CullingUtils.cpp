@@ -309,6 +309,25 @@ Culling::asCullVisitor(osg::NodeVisitor* nv)
     return 0L;
 }
 
+//------------------------------------------------------------------------
+
+void
+DoNotComputeNearFarCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osgUtil::CullVisitor* cv = static_cast< osgUtil::CullVisitor*>( nv );
+    osg::CullSettings::ComputeNearFarMode oldMode;
+    if( cv )
+    {
+        oldMode = cv->getComputeNearFarMode();
+        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    }
+    traverse(node, nv);
+    if( cv )
+    {
+        cv->setComputeNearFarMode(oldMode);
+    }
+}
+
 
 //----------------------------------------------------------------------------
 
@@ -333,6 +352,11 @@ SuperClusterCullingCallback::cull(osg::NodeVisitor* nv, osg::Drawable* , osg::St
     float radius = (float)eye_cp.length();
     if (radius < _radius)
         return false;
+
+#if 0 // underwater test.
+    if (radius-_radius < 1000000)
+        return false;
+#endif
 
     // handle perspective and orthographic projections differently.
     const osg::Matrixd& proj = *cv->getProjectionMatrix();

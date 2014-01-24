@@ -50,7 +50,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
             MapNode* mapNode = getMapNode(options);
             const Map* map = mapNode ? mapNode->getMap() : 0L;
-            return new SimpleSkyNode( map, getSkyOptions(options) );
+
+            return new SimpleSkyNode(map, getSkyOptions(options));
         }
 
     protected:

@@ -1242,10 +1242,18 @@ SpatialReference::transformFromWorld(const osg::Vec3d& world,
                                      osg::Vec3d&       output,
                                      double*           out_haeZ ) const
 {
-    if ( (isGeographic() && !isPlateCarre()) || isCube() ) //isGeographic() && !_is_plate_carre )
+    if ( (isGeographic() && !isPlateCarre()) || isCube() )
     {
         //return transformFromECEF(world, output, out_haeZ);
-        return getECEF()->transform(world, this, output);
+        bool ok = getECEF()->transform(world, this, output);
+        if ( ok && out_haeZ )
+        {
+            if ( _vdatum.valid() )
+                *out_haeZ = _vdatum->msl2hae(output.y(), output.x(), output.z());
+            else
+                *out_haeZ = output.z();
+        }
+        return ok;
     }
     else // isProjected || _is_plate_carre
     {

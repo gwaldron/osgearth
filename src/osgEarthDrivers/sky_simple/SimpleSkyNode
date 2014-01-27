@@ -121,6 +121,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
         void initialize(const Map* map);
 
+        void makeLighting();
         void makeAtmosphere( const osg::EllipsoidModel* );
         void makeSun();
         void makeMoon();

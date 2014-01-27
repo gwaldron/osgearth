@@ -5,6 +5,7 @@ SET(TARGET_SRC
 SET(TARGET_H
     SimpleSkyOptions
 	SimpleSkyNode
+    SimpleSkyShaders
 )
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}

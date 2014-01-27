@@ -566,7 +566,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
         {
             sky->attach( view, 0 );
             sky->setDateTime( DateTime() );
-            root->addChild( sky );
+            //root->addChild( sky );
+            osgEarth::insertGroup(sky, mapNode);
             Control* c = SkyControlFactory().create(sky, view);
             if ( c )
                 mainContainer->addControl( c );

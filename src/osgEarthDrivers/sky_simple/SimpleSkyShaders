@@ -208,6 +208,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
     //-- GROUND LIGHTING WITH ATMOSPHERIC SCATTERING --------------------------
     
     static const char* Ground_Scattering_Vertex =
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+
         "uniform mat4 osg_ViewMatrixInverse;   // world camera position in [3].xyz \n"
         "uniform mat4 osg_ViewMatrix;          // GL view matrix \n"
         "uniform vec3 atmos_v3LightDir;        // The direction vector to the light source \n"
@@ -345,6 +347,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
         "void atmos_vertex_main(inout vec4 vertexVIEW) \n"
         "{ \n"
+        "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
+
         "    atmos_fCameraHeight = length(osg_ViewMatrixInverse[3].xyz); \n"
         "    atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; \n"
         "    atmos_lightDir = normalize(gl_LightSource[0].position.xyz); \n" // view space
@@ -363,6 +367,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "} \n";
 
     static const char* Ground_Scattering_Fragment =
+        "uniform bool oe_mode_GL_LIGHTING; \n"
         "uniform float atmos_exposure; \n"
         "varying vec3 atmos_lightDir; \n"
         "varying vec3 oe_Normal; \n"
@@ -373,6 +378,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
         "void atmos_fragment_main(inout vec4 color) \n"
         "{ \n"
+        "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
+
         "    const float low = 0.1; \n"
         "    const float high = 0.9; \n"
 
@@ -400,48 +407,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
     //-- BASIC PHONG GROUND LIGHTING ------------------------------------------
 
-    static const char* Ground_Phong_Vertex =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "varying vec3 atmos_vertexView3; \n"
-
-        "void atmos_vertex_main(inout vec4 VertexVIEW) \n"
-        "{ \n"
-        "    atmos_vertexView3 = VertexVIEW.xyz / VertexVIEW.w; \n"
-        "} \n";
-
-    static const char* Ground_Phong_Fragment =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "varying vec3 atmos_vertexView3; \n"
-        "varying vec3 oe_Normal; \n"
-
-        "void atmos_fragment_main(inout vec4 color) \n"
-        "{ \n"        
-        "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 V = normalize(atmos_vertexView3); \n"
-        "    vec3 N = normalize(oe_Normal); \n"
-        "    vec3 R = normalize(-reflect(L,N)); \n"
-
-        "    float NdotL = max(dot(N,L), 0.0); \n"
-
-        "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
-        "    vec4 diffuse = clamp(gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0); \n"
-        "    vec4 specular= vec4(0); \n"
-
-#if 0
-        "    if (NdotL > 0.0) { \n"
-        "        vec3 HV = normalize(L+V); \n"
-        "        float HVdotN = max(dot(HV,N), 0.0); \n"
-        "        specular = gl_FrontLightProduct[0].specular * pow(HVdotN, 16.0); \n"
-        "    } \n"
-#endif
-
-        "    color.rgb = ambient.rgb + diffuse.rgb*color.rgb + specular.rgb; \n"
-        "} \n";
-
-#if 0
+#ifdef OSG_GLES2_AVAILABLE
     static const char* Ground_Phong_Vertex =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
@@ -494,6 +460,55 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "        color = color * oe_lighting_adjustment + oe_lighting_zero_vec; \n"
         "        color.a = alpha; \n"
         "    } \n"
+        "} \n";
+
+#else
+    static const char* Ground_Phong_Vertex =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+        "varying vec3 atmos_vertexView3; \n"
+
+        "void atmos_vertex_main(inout vec4 VertexVIEW) \n"
+        "{ \n"
+        "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
+
+        "    atmos_vertexView3 = VertexVIEW.xyz / VertexVIEW.w; \n"
+        "} \n";
+
+    static const char* Ground_Phong_Fragment =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+        "varying vec3 atmos_vertexView3; \n"
+        "varying vec3 oe_Normal; \n"
+
+        "void atmos_fragment_main(inout vec4 color) \n"
+        "{ \n"        
+        "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
+
+        "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
+        "    vec3 V = normalize(atmos_vertexView3); \n"
+        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 R = normalize(-reflect(L,N)); \n"
+
+        "    float NdotL = max(dot(N,L), 0.0); \n"
+
+        "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
+        "    vec4 diffuse = clamp(gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0); \n"
+        "    vec4 specular= vec4(0); \n"
+
+#if 0
+        "    if (NdotL > 0.0) { \n"
+        "        vec3 HV = normalize(L+V); \n"
+        "        float HVdotN = max(dot(HV,N), 0.0); \n"
+        "        specular = gl_FrontLightProduct[0].specular * pow(HVdotN, 16.0); \n"
+        "    } \n"
+#endif
+
+        "    color.rgb = ambient.rgb + diffuse.rgb*color.rgb + specular.rgb; \n"
         "} \n";
 #endif
 

@@ -153,6 +153,9 @@ namespace osgEarth { namespace Util
         void setStarsVisible(bool value);
         bool getStarsVisible() const { return _starsVisible; }
 
+        /** Access the osg::Light representing the sun */
+        virtual osg::Light* getSunLight() = 0;
+
     public:
         
         /** Attaches this sky node to a view (placing a sky light). Optional */

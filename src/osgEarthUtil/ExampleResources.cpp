@@ -229,19 +229,19 @@ namespace
         }
     };
 
-#undef USE_AMBIENT_SLIDER
-//#define USE_AMBIENT_SLIDER 1
+//#undef USE_AMBIENT_SLIDER
+#define USE_AMBIENT_SLIDER 1
 
 #ifdef USE_AMBIENT_SLIDER
     struct AmbientBrightnessHandler : public ControlEventHandler
     {
-        AmbientBrightnessHandler(EnvironmentNode* sky) : _sky(sky) { }
+        AmbientBrightnessHandler(SkyNode* sky) : _sky(sky) { }
 
-        EnvironmentNode* _sky;
+        SkyNode* _sky;
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            _sky->setAmbientBrightness( value );
+            _sky->getSunLight()->setAmbient(osg::Vec4(value,value,value,1));
         }
     };
 #endif
@@ -256,19 +256,19 @@ SkyControlFactory::create(SkyNode*         sky,
     grid->setChildSpacing( 10 );
     grid->setHorizFill( true );
 
-    grid->setControl( 0, 0, new LabelControl("Time: ", 16) );
+    grid->setControl( 0, 0, new LabelControl("Time (Hours UTC): ", 16) );
 
     DateTime dt = sky->getDateTime();
 
     HSliderControl* skySlider = grid->setControl(1, 0, new HSliderControl( 0.0f, 24.0f, dt.hours() ));
-    skySlider->setHorizFill( true, 200 );
+    skySlider->setHorizFill( true, 300 );
     skySlider->addEventHandler( new SkyTimeSliderHandler(sky) );
 
     grid->setControl(2, 0, new LabelControl(skySlider) );
 
 #ifdef USE_AMBIENT_SLIDER
-    grid->setControl(0, 1, new LabelControl("Ambient: ", 16) );
-    HSliderControl* ambient = grid->setControl(1, 1, new HSliderControl(0.0f, 1.0f, sky->getAmbientBrightness()));
+    grid->setControl(0, 1, new LabelControl("Min.Ambient: ", 16) );
+    HSliderControl* ambient = grid->setControl(1, 1, new HSliderControl(0.0f, 1.0f, sky->getSunLight()->getAmbient().r()));
     ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
     grid->setControl(2, 1, new LabelControl(ambient) );
 #endif

@@ -25,6 +25,7 @@
 namespace osg {
     class EllipsoidModel;
     class Light;
+    class LightSource;
 }
 
 namespace osgEarth { namespace Drivers { namespace SimpleSky
@@ -46,6 +47,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
             const SimpleSkyOptions& options);
 
     public: // SkyNode
+
+        osg::Light* getSunLight() { return _light.get(); }
 
         void attach(osg::View* view, int lightNum);
 
@@ -91,6 +94,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         osg::Matrixd                       _starsMatrix;
 
         osg::ref_ptr<osg::Group> _cullContainer;
+
+        osg::ref_ptr<osg::LightSource> _lightSource;
 
         float _innerRadius, _outerRadius, _sunDistance, _starRadius, _minStarMagnitude;
         osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere, _moon;

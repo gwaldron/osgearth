@@ -29,6 +29,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/ShaderFactory>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -215,6 +216,14 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     _lightPosUniform->set( lightPos / lightPos.length() );
     this->getOrCreateStateSet()->addUniform( _lightPosUniform.get() );
 
+    // default GL_LIGHTING uniform setting
+    this->getOrCreateStateSet()->addUniform(
+        Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, 1) );
+
+    _lightSource = new osg::LightSource();
+    _lightSource->setLight( _light.get() );
+    _cullContainer->addChild( _lightSource.get() );
+
     // set up the astronomical parameters:
     _ellipsoidModel = srs->getEllipsoid();
     _innerRadius = osg::minimum(
@@ -325,29 +334,6 @@ SimpleSkyNode::attach( osg::View* view, int lightNum )
     onSetDateTime();
 }
 
-#if 0
-float
-SimpleSkyNode::getAmbientBrightness( osg::View* view ) const
-{
-    if ( view )
-    {
-        PerViewDataMap::const_iterator i = _perViewData.find(view);
-        if ( i != _perViewData.end() )
-            return i->second._light->getAmbient().r();
-    }
-    return _defaultPerViewData._light->getAmbient().r();
-}
-
-void 
-SimpleSkyNode::setAmbientBrightness( PerViewData& data, float value )
-{
-    value = osg::clampBetween( value, 0.0f, 1.0f );
-    data._light->setAmbient( osg::Vec4f(value, value, value, 1.0f) );
-    _autoAmbience = false;
-}
-#endif
-
-
 void
 SimpleSkyNode::setSunPosition(const osg::Vec3& pos)
 {
@@ -360,24 +346,6 @@ SimpleSkyNode::setSunPosition(const osg::Vec3& pos)
         _sunDistance * pos.y(),
         _sunDistance * pos.z() ) );
 }
-
-#if 0
-void
-SimpleSkyNode::setSunPosition(double lat_degrees, double long_degrees)
-{
-    if (_ellipsoidModel.valid())
-    {
-        double x, y, z;
-        _ellipsoidModel->convertLatLongHeightToXYZ(
-            osg::RadiansToDegrees(lat_degrees),
-            osg::RadiansToDegrees(long_degrees),
-            0, 
-            x, y, z);
-        osg::Vec3d up  = _ellipsoidModel->computeLocalUpVector(x, y, z);
-        setSunPosition( up );
-    }
-}
-#endif
 
 void
 SimpleSkyNode::setMoonPosition(const osg::Vec3d& pos)

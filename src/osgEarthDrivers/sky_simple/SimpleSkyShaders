@@ -205,9 +205,9 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "} \n";
 
 
-    //-- GROUND ---------------------------------------------------------------
+    //-- GROUND LIGHTING WITH ATMOSPHERIC SCATTERING --------------------------
     
-    static const char* Ground_Vertex =
+    static const char* Ground_Scattering_Vertex =
         "uniform mat4 osg_ViewMatrixInverse;   // world camera position in [3].xyz \n"
         "uniform mat4 osg_ViewMatrix;          // GL view matrix \n"
         "uniform vec3 atmos_v3LightDir;        // The direction vector to the light source \n"
@@ -226,12 +226,16 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "uniform int atmos_nSamples; \n"	
         "uniform float atmos_fSamples; \n"
 
-        "varying vec3 atmos_color_pri; \n"     // primary sky light color
-        "varying vec3 atmos_color_sec; \n"     // sky light attenuation factor
+        "varying vec3 atmos_color; \n"         // primary sky light color
+        "varying vec3 atmos_atten; \n"         // sky light attenuation factor
         "varying vec3 oe_Normal; \n"           // surface normal (from osgEarth)
+        "varying vec3 atmos_lightDir; \n"      // light direction in view space
         
         "float atmos_fCameraHeight;            // The camera's current height \n"		
         "float atmos_fCameraHeight2;           // fCameraHeight^2 \n"
+
+        "varying vec3 atmos_up; \n"
+        "varying float atmos_space; \n"
 
         "float atmos_scale(float fCos) \n"	
         "{ \n"
@@ -249,8 +253,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
                 
         "    vec4 ec4 = osg_ViewMatrix * vec4(0,0,0,1); \n"
         "    vec3 earthCenter = ec4.xyz/ec4.w; \n"
-        "    vec3 lightDir = normalize(gl_NormalMatrix * atmos_v3LightDir); \n"
         "    vec3 normal = normalize(v3Pos-earthCenter); \n"
+        "    atmos_up = normal; \n"
 
         "    // Calculate the closest intersection of the ray with the outer atmosphere \n"
         "    // (which is the near point of the ray passing through the atmosphere) \n"
@@ -264,7 +268,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    fFar -= fNear; \n"
         "    float fDepth = exp((atmos_fInnerRadius - atmos_fOuterRadius) / atmos_fScaleDepth);\n"
         "    float fCameraAngle = dot(-v3Ray, normal); \n"
-        "    float fLightAngle = dot(lightDir, normal); \n"
+        "    float fLightAngle = dot(atmos_lightDir, normal); \n"
         "    float fCameraScale = atmos_scale(fCameraAngle); \n"
         "    float fLightScale = atmos_scale(fLightAngle); \n"
         "    float fCameraOffset = fDepth*fCameraScale; \n"
@@ -290,31 +294,31 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "        v3SamplePoint += v3SampleRay; \n"		
         "    } \n"	
 
-        "    atmos_color_pri = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun + atmos_fKmESun); \n"
-        "    atmos_color_sec = v3Attenuate; \n"
+        "    atmos_color = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun + atmos_fKmESun); \n"
+        "    atmos_atten = v3Attenuate; \n"
         "} \n"		
 
         "void atmos_GroundFromAtmosphere(in vec4 vertexVIEW) \n"		
         "{ \n"
         "    // Get the ray from the camera to the vertex and its length (which is the far point of the ray passing through the atmosphere) \n"
-        "    vec3 v3Pos = vertexVIEW.xyz; \n"
+        "    vec3 v3Pos = vertexVIEW.xyz / vertexVIEW.w; \n"
         "    vec3 v3Ray = v3Pos; \n"
         "    float fFar = length(v3Ray); \n"
         "    v3Ray /= fFar; \n"
         
         "    vec4 ec4 = osg_ViewMatrix * vec4(0,0,0,1); \n"
         "    vec3 earthCenter = ec4.xyz/ec4.w; \n"
-        "    vec3 lightDir = normalize(gl_NormalMatrix * atmos_v3LightDir); \n"
         "    vec3 normal = normalize(v3Pos-earthCenter); \n"
+        "    atmos_up = normal; \n"
 
         "    // Calculate the ray's starting position, then calculate its scattering offset \n"
         "    float fDepth = exp((atmos_fInnerRadius - atmos_fCameraHeight) / atmos_fScaleDepth);\n"
         "    float fCameraAngle = dot(-v3Ray, normal); \n"
-        "    float fLightAngle = dot(lightDir, normal); \n"
+        "    float fLightAngle = dot(atmos_lightDir, normal); \n"
         "    float fCameraScale = atmos_scale(fCameraAngle); \n"
         "    float fLightScale = atmos_scale(fLightAngle); \n"
         "    float fCameraOffset = fDepth*fCameraScale; \n"
-        "    float fTemp = fLightScale * fCameraScale; \n"		
+        "    float fTemp = fLightScale * fCameraScale; \n"
 
         "    // Initialize the scattering loop variables \n"	
         "    float fSampleLength = fFar / atmos_fSamples; \n"		
@@ -335,35 +339,121 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "        v3SamplePoint += v3SampleRay; \n"		
         "    } \n"		
 
-        "    atmos_color_pri = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun + atmos_fKmESun); \n"			
-        "    atmos_color_sec = v3Attenuate; \n"
+        "    atmos_color = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun + atmos_fKmESun); \n"			
+        "    atmos_atten = v3Attenuate; \n"
         "} \n"
 
         "void atmos_vertex_main(inout vec4 vertexVIEW) \n"
         "{ \n"
         "    atmos_fCameraHeight = length(osg_ViewMatrixInverse[3].xyz); \n"
         "    atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; \n"
+        "    atmos_lightDir = normalize(gl_LightSource[0].position.xyz); \n" // view space
 
         "    if(atmos_fCameraHeight >= atmos_fOuterRadius) \n"
         "    { \n"
         "        atmos_GroundFromSpace(vertexVIEW); \n"
+        "        atmos_space = 1.0; \n"
         "    } \n"
         "    else \n"
         "    { \n"
         "        atmos_GroundFromAtmosphere(vertexVIEW); \n"
+        "        atmos_space = 0.0; \n"
         "    } \n"
         "} \n";
 
-    static const char* Ground_Fragment =
-        "const float fExposure = 3.0; \n"  //4.0; \n"
-        "varying vec3 atmos_color_pri; \n" // primary lighting color
-        "varying vec3 atmos_color_sec; \n" // lighting attentuation factor
+    static const char* Ground_Scattering_Fragment =
+        "uniform float atmos_exposure; \n"
+        "varying vec3 atmos_lightDir; \n"
+        "varying vec3 oe_Normal; \n"
+        "varying vec3 atmos_color; \n" // atmospheric lighting color
+        "varying vec3 atmos_atten; \n" // atmospheric lighting attentuation factor
+        "varying vec3 atmos_up; \n"
+        "varying float atmos_space; \n"
 
         "void atmos_fragment_main(inout vec4 color) \n"
         "{ \n"
-        "    vec3 atmosColor = 1.0 - exp(-fExposure * (atmos_color_pri + color.rgb * atmos_color_sec)); \n"
-        "    color.rgb = clamp(atmosColor, 0.0, 1.0); \n"
+        "    const float low = 0.1; \n"
+        "    const float high = 0.9; \n"
+
+        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
+        "    vec3 U = normalize(atmos_up); \n"
+        "    float NdotL = max(dot(N,L), 0.0); \n"
+
+        "    float UdotL = clamp(dot(U,L), low, high); \n"
+        "    float shadeFactor = 1.0 - (UdotL-low)/(high-low); \n"
+
+        "    float normFactor = 1.0; \n"
+        "    if (atmos_space > 0) { \n"
+        "        float UdotN = dot(U,N); \n"
+        "        normFactor = 1.0-step(0.9, UdotN); \n" // UdotN < 0.9 ? 1.0 : 0.0
+        "    } \n"
+
+        "    vec3 sceneColor = mix(color.rgb, color.rgb*NdotL, normFactor*shadeFactor); \n"
+
+        "    vec3 attenuation = max(atmos_atten, gl_LightSource[0].ambient.rgb); \n"
+
+        "    vec3 atmosColor = 1.0 - exp(-atmos_exposure * (atmos_color + sceneColor * attenuation)); \n"
+        "    color.rgb = atmosColor; \n"
         "} \n";
+
+
+    //-- BASIC PHONG GROUND LIGHTING ------------------------------------------
+
+    static const char* Ground_Phong_Vertex =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+        "varying vec4 oe_lighting_adjustment; \n"
+        "varying vec4 oe_lighting_zero_vec; \n"
+        "varying vec3 oe_Normal; \n"
+
+        "void atmos_vertex_main(inout vec4 VertexVIEW) \n"
+        "{ \n"
+        "    oe_lighting_adjustment = vec4(1.0); \n"
+        "    if (oe_mode_GL_LIGHTING) \n"
+        "    { \n"
+        "        vec3 N = oe_Normal; \n"
+        "        float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
+        "        NdotL = max( 0.0, NdotL ); \n"
+
+        // NOTE: See comment in the fragment shader below for an explanation of
+        //       this oe_zero_vec value.
+        "        oe_lighting_zero_vec = vec4(0.0); \n"
+
+        "        vec4 adj = \n"
+        "            gl_FrontLightProduct[0].ambient + \n"
+        "            gl_FrontLightProduct[0].diffuse * NdotL; \n"
+        "        oe_lighting_adjustment = clamp( adj, 0.0, 1.0 ); \n"
+        "    } \n"
+        "} \n";
+
+    static const char* Ground_Phong_Fragment =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+        "varying vec4 oe_lighting_adjustment; \n"
+        "varying vec4 oe_lighting_zero_vec; \n"
+
+        "void atmos_fragment_main(inout vec4 color) \n"
+        "{ \n"
+        //NOTE: The follow was changed from the single line
+        //      "color *= oe_lighting_adjustment" to the current code to fix
+        //      an issue on iOS devices.  Adding a varying vec4 value set to
+        //      (0.0,0.0,0.0,0.0) to the color should not make a difference,
+        //      but it is part of the solution to the issue we were seeing.
+        //      Without it and the additional lines of code, the globe was
+        //      rendering textureless (just a white surface with lighting).
+        "    if ( oe_mode_GL_LIGHTING ) \n"
+        "    { \n"
+        "        float alpha = color.a; \n"
+        "        color = color * oe_lighting_adjustment + oe_lighting_zero_vec; \n"
+        "        color.a = alpha; \n"
+        "    } \n"
+        "} \n";
+
 
     //-- SUN ----------------------------------------------------
 
@@ -420,6 +510,12 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
     static const char* Stars_Vertex_110 =
         "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "uniform vec3 atmos_v3LightDir; \n"
+        "uniform mat4 osg_ViewMatrixInverse; \n"
+        "varying float visibility; \n"
+        "varying vec4 osg_FrontColor; \n"
 
         "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
         "{ \n"
@@ -427,10 +523,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    return r0 + vr * (r1-r0); \n"
         "} \n"
 
-        "uniform vec3 atmos_v3LightDir; \n"
-        "uniform mat4 osg_ViewMatrixInverse; \n"
-        "varying float visibility; \n"
-        "varying vec4 osg_FrontColor; \n"
         "void main() \n"
         "{ \n"
         "    osg_FrontColor = gl_Color; \n"
@@ -446,8 +538,25 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    visibility = clamp(highness + darkness, 0.0, 1.0); \n"
         "} \n";
 
+    static const char* Stars_Fragment_110 =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "varying float visibility; \n"
+        "varying vec4 osg_FrontColor; \n"
+        "void main( void ) \n"
+        "{ \n"
+        "    gl_FragColor = osg_FrontColor * visibility; \n"
+        "} \n";
+
+
     static const char* Stars_Vertex_120 =
         "#version 120\n"
+
+        "uniform vec3 atmos_v3LightDir; \n"
+        "uniform mat4 osg_ViewMatrixInverse; \n"
+        "varying float visibility; \n"
+        "varying vec4 osg_FrontColor; \n"
 
         "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
         "{ \n"
@@ -455,10 +564,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    return r0 + vr * (r1-r0); \n"
         "} \n"
 
-        "uniform vec3 atmos_v3LightDir; \n"
-        "uniform mat4 osg_ViewMatrixInverse; \n"
-        "varying float visibility; \n"
-        "varying vec4 osg_FrontColor; \n"
         "void main() \n"
         "{ \n"
         "    osg_FrontColor = gl_Color; \n"
@@ -472,18 +577,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         // "darkness": visibility increase as the sun goes around the other side of the earth
         "    float darkness = 1.0-remap(dot(eye,atmos_v3LightDir), -0.25, 0.0, 0.0, 1.0); \n"
         "    visibility = clamp(highness + darkness, 0.0, 1.0); \n"
-        "} \n";
-
-    static const char* Stars_Fragment_110 =
-        "#version " GLSL_VERSION_STR "\n"
-#ifdef OSG_GLES2_AVAILABLE
-        "precision highp float;\n"
-#endif  
-        "varying float visibility; \n"
-        "varying vec4 osg_FrontColor; \n"
-        "void main( void ) \n"
-        "{ \n"
-        "    gl_FragColor = osg_FrontColor * visibility; \n"
         "} \n";
 
     static const char* Stars_Fragment_120 =

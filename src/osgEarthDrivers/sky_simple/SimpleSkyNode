@@ -65,14 +65,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         virtual ~SimpleSkyNode() { }
 
     private:
-        /** Sets the sun's position as a unit vector. */
-        void setSunPosition(const osg::Vec3& pos, osg::View* view);
-
-        /** Sets the moon position as a geocentric coordinate */
-        void setMoonPosition(const osg::Vec3d& pos, osg::View* view);
-
         /** Sets the sun's position as a latitude and longitude. */
-        void setSunPosition(double lat_degrees, double lon_degrees, osg::View* view);
+        //void setSunPosition(double lat_degrees, double lon_degrees, osg::View* view);
 
         struct StarData
         {
@@ -85,27 +79,18 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
             StarData( std::stringstream &ss );
         };
 
-        struct PerViewData
-        {
-            osg::Vec3f                         _lightPos;
-            osg::ref_ptr<osg::Light>           _light;
-            osg::ref_ptr<osg::Uniform>         _lightPosUniform;
-            osg::Matrixd                       _sunMatrix;
-            osg::Matrixd                       _moonMatrix;
-            osg::Matrixd                       _starsMatrix;
+        osg::ref_ptr<osg::Light>   _light;
+        osg::ref_ptr<osg::Uniform> _lightPosUniform;
+        
+        osg::ref_ptr<osg::MatrixTransform> _sunXform;
+        osg::ref_ptr<osg::MatrixTransform> _moonXform;
+        osg::ref_ptr<osg::MatrixTransform> _starsXform;
 
-            // only available in per-view structures..not default
-            osg::ref_ptr<osg::Group>           _cullContainer;
-            osg::ref_ptr<osg::MatrixTransform> _sunXform;
-            osg::ref_ptr<osg::MatrixTransform> _moonXform;
-            osg::ref_ptr<osg::MatrixTransform> _starsXform;
+        osg::Matrixd                       _sunMatrix;
+        osg::Matrixd                       _moonMatrix;
+        osg::Matrixd                       _starsMatrix;
 
-            DateTime _date;
-        };
-
-        PerViewData _defaultPerViewData;
-        typedef std::map<osg::View*, PerViewData> PerViewDataMap;
-        PerViewDataMap _perViewData;
+        osg::ref_ptr<osg::Group> _cullContainer;
 
         float _innerRadius, _outerRadius, _sunDistance, _starRadius, _minStarMagnitude;
         osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere, _moon;
@@ -131,9 +116,9 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         void getDefaultStars(std::vector<StarData>& out_stars);
         bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
 
-        void setAmbientBrightness( PerViewData& data, float value );
-        void setSunPosition( PerViewData& data, const osg::Vec3& pos );
-        void setMoonPosition( PerViewData& data, const osg::Vec3d& pos );
+        void setAmbientBrightness(float value);
+        void setSunPosition(const osg::Vec3& pos);
+        void setMoonPosition(const osg::Vec3d& pos);
     };
 
 } } } // namespace osgEarth::Drivers::SimpleSky

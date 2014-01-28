@@ -200,21 +200,26 @@ _options( options )
 void
 SimpleSkyNode::initialize(const SpatialReference* srs)
 {
-    // intialize the default settings:
-    _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
-    _defaultPerViewData._light = new osg::Light( 0 );  
-    _defaultPerViewData._light->setPosition( osg::Vec4( _defaultPerViewData._lightPos, 0 ) );
-    _defaultPerViewData._light->setAmbient( osg::Vec4(0.2f, 0.2f, 0.2f, 2.0) );
-    _defaultPerViewData._light->setDiffuse( osg::Vec4(1,1,1,1) );
-    _defaultPerViewData._light->setSpecular( osg::Vec4(0,0,0,1) );
+    // containers for sky elements.
+    _cullContainer = new osg::Group();
 
-    // set up the uniform that conveys the normalized light position in world space
-    _defaultPerViewData._lightPosUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir" );
-    _defaultPerViewData._lightPosUniform->set( _defaultPerViewData._lightPos / _defaultPerViewData._lightPos.length() );
+    osg::Vec3f lightPos(0.0f, 1.0f, 0.0f);
+
+    _light = new osg::Light( 0 );
+    _light->setPosition( osg::Vec4f(0.0f, 1.0f, 0.0f, 0.0f) );
+    _light->setAmbient ( osg::Vec4f(0.03f, 0.03f, 0.03f, 1.0f) );
+    _light->setDiffuse ( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
+    _light->setSpecular( osg::Vec4f(0.0f, 0.0f, 0.0f, 1.0f) );
+
+    _lightPosUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir");
+    _lightPosUniform->set( lightPos / lightPos.length() );
+    this->getOrCreateStateSet()->addUniform( _lightPosUniform.get() );
 
     // set up the astronomical parameters:
-    _ellipsoidModel = srs->getGeographicSRS()->getEllipsoid();
-    _innerRadius = _ellipsoidModel->getRadiusPolar();
+    _ellipsoidModel = srs->getEllipsoid();
+    _innerRadius = osg::minimum(
+        _ellipsoidModel->getRadiusPolar(),
+        _ellipsoidModel->getRadiusEquator() );
     _outerRadius = _innerRadius * 1.025f;
     _sunDistance = _innerRadius * 12000.0f;
 
@@ -242,6 +247,9 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
 
     // Update everything based on the date/time.
     onSetDateTime();
+
+    // node to traverse the child nodes
+    //data._cullContainer->addChild( new TraverseNode<osg::Group>(this) );
 }
 
 osg::BoundingSphere
@@ -252,56 +260,26 @@ SimpleSkyNode::computeBound() const
 
 void
 SimpleSkyNode::traverse( osg::NodeVisitor& nv )
-{    
-    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-    if ( cv )
+{
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         // If there's a custom projection matrix clamper installed, remove it temporarily.
         // We dont' want it mucking with our sky elements.
-        osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> cb = cv->getClampProjectionMatrixCallback();
+        osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> cb = 
+            cv->getClampProjectionMatrixCallback();
+
         cv->setClampProjectionMatrixCallback( 0L );
 
-        osg::View* view = cv->getCurrentCamera()->getView();
-
-
-        //Try to find the per view data for camera's view if there is one.
-        PerViewDataMap::iterator itr = _perViewData.find( view );
-
-        if ( itr == _perViewData.end() )
-        {
-            // If we don't find any per view data, just use the first one that is stored.
-            // This needs to be reworked to be per camera and also to automatically create a 
-            // new data structure on demand since camera's can be added/removed on the fly.
-            itr = _perViewData.begin();
-        }
-
-
-        if ( _autoAmbience )
-        {
-            const float minAmb = 0.2f;
-            const float maxAmb = 0.92f;
-            const float minDev = -0.2f;
-            const float maxDev = 0.75f;
-            osg::Vec3 eye = cv->getViewPoint(); eye.normalize();
-            osg::Vec3 sun = itr->second._lightPos; sun.normalize();
-            float dev = osg::clampBetween(eye*sun, minDev, maxDev);
-            float r   = (dev-minDev)/(maxDev-minDev);
-            float amb = minAmb + r*(maxAmb-minAmb);
-            itr->second._light->setAmbient( osg::Vec4(amb,amb,amb,1.0) );
-            //OE_INFO << "dev=" << dev << ", amb=" << amb << std::endl;
-        }
-
-        itr->second._cullContainer->accept( nv );
+        _cullContainer->accept( nv );
 
         // restore a custom clamper.
-        if ( cb.valid() ) cv->setClampProjectionMatrixCallback( cb.get() );
+        if ( cb.valid() )
+            cv->setClampProjectionMatrixCallback( cb.get() );
     }
 
-    else
-    {
-        osg::Group::traverse( nv );
-    }
+    SkyNode::traverse( nv );
 }
 
 void
@@ -323,33 +301,14 @@ SimpleSkyNode::onSetDateTime()
         osg::Vec3d moonPos = getEphemeris()->getMoonPositionECEF( dt );
 
         sunPos.normalize();
-        setSunPosition( sunPos, view );
-        setMoonPosition( moonPos, view );
+        setSunPosition( sunPos );
+        setMoonPosition( moonPos );
 
         // position the stars:
         double time_r = dt.hours()/24.0; // 0..1
         double rot_z = -osg::PI + TWO_PI*time_r;
 
-        osg::Matrixd starsMatrix = osg::Matrixd::rotate( -rot_z, 0, 0, 1 );
-        if ( !view )
-        {
-            _defaultPerViewData._starsMatrix = starsMatrix;
-            _defaultPerViewData._date = dt;
-
-            for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-            {
-                i->second._starsMatrix = starsMatrix;
-                i->second._starsXform->setMatrix( starsMatrix );
-                i->second._date = dt;
-            }
-        }
-        else if ( _perViewData.find(view) != _perViewData.end() )
-        {
-            PerViewData& data = _perViewData[view];
-            data._starsMatrix = starsMatrix;
-            data._starsXform->setMatrix( starsMatrix );
-            data._date = dt;
-        }
+        _starsXform->setMatrix( osg::Matrixd::rotate(-rot_z, 0, 0, 1) );
     }
 }
 
@@ -358,74 +317,15 @@ SimpleSkyNode::attach( osg::View* view, int lightNum )
 {
     if ( !view ) return;
 
-    // creates the new per-view if it does not already exist
-    PerViewData& data = _perViewData[view];
-
-    data._light = osg::clone( _defaultPerViewData._light.get() );
-    data._light->setLightNum( lightNum );
-    data._light->setAmbient( _defaultPerViewData._light->getAmbient() );
-    data._lightPos = _defaultPerViewData._lightPos;
-
-    // the cull callback has to be on a parent group-- won't work on the xforms themselves.
-    data._cullContainer = new osg::Group();
-
-    data._sunXform = new osg::MatrixTransform();
-    data._sunMatrix = osg::Matrixd::translate(
-        _sunDistance * data._lightPos.x(),
-        _sunDistance * data._lightPos.y(),
-        _sunDistance * data._lightPos.z() );
-    data._sunXform->setMatrix( data._sunMatrix );
-    data._sunXform->addChild( _sun.get() );
-    data._sunXform->setNodeMask( getSunVisible() ? ~0 : 0 );
-    data._cullContainer->addChild( data._sunXform.get() );
-
-    data._moonXform = new osg::MatrixTransform();
-    data._moonMatrix = _defaultPerViewData._moonMatrix;
-    data._moonXform->setMatrix( data._moonMatrix );
-    data._moonXform->addChild( _moon.get() );
-    data._moonXform->setNodeMask( getMoonVisible() ? ~0 : 0 );
-    data._cullContainer->addChild( data._moonXform.get() );
-
-    data._starsXform = new osg::MatrixTransform();
-    data._starsMatrix = _defaultPerViewData._starsMatrix;
-    data._starsXform->setMatrix( _defaultPerViewData._starsMatrix );
-    data._starsXform->addChild( _stars.get() );
-    data._starsXform->setNodeMask( getStarsVisible() ? ~0 : 0 );
-    data._cullContainer->addChild( data._starsXform.get() );
-
-    data._cullContainer->addChild( _atmosphere.get() );
-    data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
-    data._cullContainer->getOrCreateStateSet()->addUniform( data._lightPosUniform.get() );
-
-    // node to traverse the child nodes
-    data._cullContainer->addChild( new TraverseNode<osg::Group>(this) );
-
+    _light->setLightNum( lightNum );
+    view->setLight( _light.get() );
     view->setLightingMode( osg::View::SKY_LIGHT );
-    view->setLight( data._light.get() );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
-
-    data._date = _defaultPerViewData._date;
 
     onSetDateTime();
 }
 
 #if 0
-void
-SimpleSkyNode::setAmbientBrightness( float value, osg::View* view )
-{
-    if ( !view )
-    {
-        setAmbientBrightness( _defaultPerViewData, value );
-
-        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-            setAmbientBrightness( i->second, value );
-    }
-    else if ( _perViewData.find(view) != _perViewData.end() )
-    {
-        setAmbientBrightness( _perViewData[view], value );
-    }
-}
-
 float
 SimpleSkyNode::getAmbientBrightness( osg::View* view ) const
 {
@@ -438,18 +338,6 @@ SimpleSkyNode::getAmbientBrightness( osg::View* view ) const
     return _defaultPerViewData._light->getAmbient().r();
 }
 
-void
-SimpleSkyNode::setAutoAmbience( bool value )
-{
-    _autoAmbience = value;
-}
-
-bool
-SimpleSkyNode::getAutoAmbience() const
-{
-    return _autoAmbience;
-}
-
 void 
 SimpleSkyNode::setAmbientBrightness( PerViewData& data, float value )
 {
@@ -459,59 +347,23 @@ SimpleSkyNode::setAmbientBrightness( PerViewData& data, float value )
 }
 #endif
 
+
 void
-SimpleSkyNode::setSunPosition( const osg::Vec3& pos, osg::View* view )
+SimpleSkyNode::setSunPosition(const osg::Vec3& pos)
 {
-    if ( !view )
-    {
-        setSunPosition( _defaultPerViewData, pos );
-        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-            setSunPosition( i->second, pos );
-    }
-    else if ( _perViewData.find(view) != _perViewData.end() )
-    {
-        setSunPosition( _perViewData[view], pos );
-    }
+    _light->setPosition( osg::Vec4(pos, 0.0f) );
+
+    _lightPosUniform->set( pos/pos.length() );
+
+    _sunXform->setMatrix( osg::Matrix::translate( 
+        _sunDistance * pos.x(), 
+        _sunDistance * pos.y(),
+        _sunDistance * pos.z() ) );
 }
 
+#if 0
 void
-SimpleSkyNode::setMoonPosition( const osg::Vec3d& pos, osg::View* view )
-{
-    _moonPosition = pos;
-    if ( !view )
-    {
-        setMoonPosition( _defaultPerViewData, pos );
-        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-            setMoonPosition( i->second, pos );
-    }
-    else if ( _perViewData.find(view) != _perViewData.end() )
-    {
-        setMoonPosition( _perViewData[view], pos );
-    }
-}
-
-void
-SimpleSkyNode::setSunPosition( PerViewData& data, const osg::Vec3& pos )
-{
-    data._lightPos = pos;
-
-    if ( data._light.valid() )
-        data._light->setPosition( osg::Vec4( data._lightPos, 0 ) );
-
-    if ( data._lightPosUniform.valid() )
-        data._lightPosUniform->set( data._lightPos / data._lightPos.length() );
-
-    if ( data._sunXform.valid() )
-    {
-        data._sunXform->setMatrix( osg::Matrix::translate( 
-            _sunDistance * data._lightPos.x(), 
-            _sunDistance * data._lightPos.y(),
-            _sunDistance * data._lightPos.z() ) );
-    }
-}
-
-void
-SimpleSkyNode::setSunPosition( double lat_degrees, double long_degrees, osg::View* view )
+SimpleSkyNode::setSunPosition(double lat_degrees, double long_degrees)
 {
     if (_ellipsoidModel.valid())
     {
@@ -522,61 +374,33 @@ SimpleSkyNode::setSunPosition( double lat_degrees, double long_degrees, osg::Vie
             0, 
             x, y, z);
         osg::Vec3d up  = _ellipsoidModel->computeLocalUpVector(x, y, z);
-        setSunPosition( up, view );
+        setSunPosition( up );
     }
 }
+#endif
 
 void
-SimpleSkyNode::setMoonPosition( PerViewData& data, const osg::Vec3d& pos )
+SimpleSkyNode::setMoonPosition(const osg::Vec3d& pos)
 {
-    if ( data._moonXform.valid() )
-    {
-        data._moonMatrix = osg::Matrixd::translate( pos.x(), pos.y(), pos.z() );
-        data._moonXform->setMatrix( data._moonMatrix );
-    }
+    _moonXform->setMatrix( osg::Matrixd::translate(pos.x(), pos.y(), pos.z()) );
 }
-
 
 void
 SimpleSkyNode::onSetStarsVisible()
 {
-    bool visible = getStarsVisible();
-    if ( _defaultPerViewData._starsXform.valid() ) 
-    {
-        _defaultPerViewData._starsXform->setNodeMask( visible ? ~0 : 0 );
-        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-        {
-            i->second._starsXform->setNodeMask( visible ? ~0 : 0 );
-        }
-    }
+    _starsXform->setNodeMask( getStarsVisible() ? ~0 : 0 );
 }
 
 void
 SimpleSkyNode::onSetMoonVisible()
 {
-    bool visible = getMoonVisible();
-    if ( _defaultPerViewData._moonXform.valid() ) 
-    {
-        _defaultPerViewData._moonXform->setNodeMask( visible ? ~0 : 0 );
-        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-        {
-            i->second._moonXform->setNodeMask( visible ? ~0 : 0 );
-        }
-    }
+    _moonXform->setNodeMask( getMoonVisible() ? ~0 : 0 );
 }
 
 void
 SimpleSkyNode::onSetSunVisible()
 {
-    bool visible = getSunVisible();
-    if ( _defaultPerViewData._sunXform.valid() ) 
-    {
-        _defaultPerViewData._sunXform->setNodeMask( visible ? ~0 : 0 );
-        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
-        {
-            i->second._sunXform->setNodeMask( visible ? ~0 : 0 );
-        }
-    }
+    _sunXform->setNodeMask( getSunVisible() ? ~0 : 0 );
 }
 
 void
@@ -588,15 +412,32 @@ SimpleSkyNode::makeSceneLighting()
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
     vp->setName( "SimpleSky Scene Lighting" );
 
-    vp->setFunction(
-        "atmos_vertex_main",
-        Ground_Vertex,
-        ShaderComp::LOCATION_VERTEX_VIEW);
+    if ( _options.atmosphericLighting() == true )
+    {
+        vp->setFunction(
+            "atmos_vertex_main",
+            Ground_Scattering_Vertex,
+            ShaderComp::LOCATION_VERTEX_VIEW);
 
-    vp->setFunction(
-        "atmos_fragment_main", 
-        Ground_Fragment,
-        ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+        vp->setFunction(
+            "atmos_fragment_main", 
+            Ground_Scattering_Fragment,
+            ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+    }
+
+    else
+    {
+        // simple lighting.
+        vp->setFunction(
+            "atmos_vertex_main",
+            Ground_Phong_Vertex,
+            ShaderComp::LOCATION_VERTEX_VIEW);
+
+        vp->setFunction(
+            "atmos_fragment_main", 
+            Ground_Phong_Fragment,
+            ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+    }
 
     // calculate and apply the uniforms:
     // TODO: perhaps we can just hard-code most of these as GLSL consts.
@@ -633,6 +474,7 @@ SimpleSkyNode::makeSceneLighting()
     stateset->getOrCreateUniform( "atmos_nSamples",        osg::Uniform::INT )->set( Samples );
     stateset->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
     stateset->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
+    stateset->getOrCreateUniform( "atmos_exposure",        osg::Uniform::FLOAT )->set( _options.exposure().value() );
 }
 
 void
@@ -679,6 +521,8 @@ SimpleSkyNode::makeAtmosphere(const osg::EllipsoidModel* em)
     cam->addChild( geode );
 
     _atmosphere = cam;
+
+    _cullContainer->addChild( _atmosphere.get() );
 }
 
 void
@@ -714,15 +558,6 @@ SimpleSkyNode::makeSun()
         set->setAttributeAndModes( program, osg::StateAttribute::ON );
     }
 
-    // make the sun's transform:
-    // todo: move this?
-    _defaultPerViewData._sunXform = new osg::MatrixTransform();
-    _defaultPerViewData._sunXform->setMatrix( osg::Matrix::translate( 
-        _sunDistance * _defaultPerViewData._lightPos.x(), 
-        _sunDistance * _defaultPerViewData._lightPos.y(), 
-        _sunDistance * _defaultPerViewData._lightPos.z() ) );
-    _defaultPerViewData._sunXform->addChild( sun );
-
     // A nested camera isolates the projection matrix calculations so the node won't 
     // affect the clip planes in the rest of the scene.
     osg::Camera* cam = new osg::Camera();
@@ -732,6 +567,17 @@ SimpleSkyNode::makeSun()
     cam->addChild( sun );
 
     _sun = cam;
+
+    // make the sun's transform:
+    // todo: move this?
+    _sunXform = new osg::MatrixTransform();
+    _sunXform->setMatrix( osg::Matrix::translate( 
+        _sunDistance * _light->getPosition().x(),
+        _sunDistance * _light->getPosition().y(),
+        _sunDistance * _light->getPosition().z() ) );
+    _sunXform->addChild( _sun.get() );
+
+    _cullContainer->addChild( _sunXform.get() );
 }
 
 void
@@ -780,22 +626,6 @@ SimpleSkyNode::makeMoon()
     }
 #endif
 
-    // make the moon's transform:
-    // todo: move this?
-    _defaultPerViewData._moonXform = new osg::MatrixTransform();    
-
-    osg::Vec3d moonPosECEF = getEphemeris()->getMoonPositionECEF( getDateTime() );
-    _defaultPerViewData._moonXform->setMatrix( osg::Matrix::translate( moonPosECEF ) ); 
-    _defaultPerViewData._moonXform->addChild( moon );
-
-    //If we couldn't load the moon texture, turn the moon off
-    if (!image)
-    {
-        OE_INFO << LC << "Couldn't load moon texture, add osgEarth's data directory your OSG_FILE_PATH" << std::endl;
-        _defaultPerViewData._moonXform->setNodeMask( 0 );
-        setMoonVisible(false);
-    }
-
     // A nested camera isolates the projection matrix calculations so the node won't 
     // affect the clip planes in the rest of the scene.
     osg::Camera* cam = new osg::Camera();
@@ -805,6 +635,22 @@ SimpleSkyNode::makeMoon()
     cam->addChild( moon );
 
     _moon = cam;
+
+    // make the moon's transform:
+    _moonXform = new osg::MatrixTransform();    
+    osg::Vec3d moonPosECEF = getEphemeris()->getMoonPositionECEF( getDateTime() );
+    _moonXform->setMatrix( osg::Matrix::translate( moonPosECEF ) ); 
+    _moonXform->addChild( _moon.get() );
+
+    _cullContainer->addChild( _moonXform.get() );
+
+    //If we couldn't load the moon texture, turn the moon off
+    if (!image)
+    {
+        OE_INFO << LC << "Couldn't load moon texture, add osgEarth's data directory your OSG_FILE_PATH" << std::endl;
+        //_moonXform->setNodeMask( 0 );
+        setMoonVisible(false);
+    }
 }
 
 SimpleSkyNode::StarData::StarData(std::stringstream &ss)
@@ -841,9 +687,13 @@ SimpleSkyNode::makeStars()
         getDefaultStars( stars );
     }
 
-    osg::Node* starNode = buildStarGeometry(stars);
+    _stars = buildStarGeometry(stars);
 
-    _stars = starNode;
+    // make the moon's transform:
+    _starsXform = new osg::MatrixTransform();
+    _starsXform->addChild( _stars.get() );
+
+    _cullContainer->addChild( _starsXform.get() );
 }
 
 osg::Node*
@@ -921,7 +771,6 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
     cam->addChild( starGeode );
 
     return cam;
-    //return starGeode;
 }
 
 void

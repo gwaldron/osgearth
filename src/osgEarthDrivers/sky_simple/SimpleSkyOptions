@@ -33,7 +33,9 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
     {
     public:
         SimpleSkyOptions(const ConfigOptions& options =ConfigOptions()) :
-          SkyOptions(options)
+          SkyOptions(options),
+          _atmosphericLighting(true),
+          _exposure           (3.0f)
         {
             setDriver( "simple" );
             fromConfig( _conf );
@@ -42,6 +44,15 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
     public: // properties
 
+        /** Use advanced atmospheric lighting (instead of simple shading) */
+        optional<bool>& atmosphericLighting() { return _atmosphericLighting; }
+        const optional<bool>& atmosphericLighting() const { return _atmosphericLighting; }
+
+        /** Exposure factor for ground lighting when using advanced lighting. Default is 3.0;
+          * [1..4] is a good range. */
+        optional<float>& exposure() { return _exposure; }
+        const optional<float>& exposure() const { return _exposure; }
+
         /** replacement star definition file */
         optional<std::string>& starFile() { return _starFile; }
         const optional<std::string>& starFile() const { return _starFile; }
@@ -49,6 +60,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
     public:
         Config getConfig() const {
             Config conf = SkyOptions::getConfig();
+            conf.addIfSet("atmospheric_lighting", _atmosphericLighting);
+            conf.addIfSet("exposure", _exposure);
             conf.addIfSet("star_file", _starFile);
             return conf;
         }
@@ -61,9 +74,13 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
     private:
         void fromConfig( const Config& conf ) {
+            conf.getIfSet("atmospheric_lighting", _atmosphericLighting);
+            conf.getIfSet("exposure", _exposure);
             conf.getIfSet("star_file", _starFile);
         }
 
+        optional<bool>        _atmosphericLighting;
+        optional<float>       _exposure;
         optional<std::string> _starFile;
     };
 

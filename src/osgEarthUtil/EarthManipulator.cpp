@@ -1859,7 +1859,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 angle[1] = atan2(p1[0].y - p1[1].y, p1[0].x - p1[1].x);
                 float da = angle[0] - angle[1];
 
-                float dragThres = 2.0f;         
+                float dragThres = 2.0f * 0.0005 / sens;         
 
                 // now see if that corresponds to any touch events:
                 
@@ -1876,7 +1876,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 else
                 {                                 
                     // otherwise it's a pinch and/or a zoom.  You can do them together.
-                    if (fabs(deltaDistance) > 1.0)
+                    if (fabs(deltaDistance) > (1.0 * 0.0005 / sens ) )
                     {
                         // distance between the fingers changed: a pinch.
                         output.push_back(TouchEvent());
@@ -1885,7 +1885,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                         ev._dx = 0.0, ev._dy = deltaDistance * -sens;
                     }
 
-                    if (fabs(da) > 0.01)
+                    if (fabs(da) > (0.01 * 0.0005 / sens) )
                     {
                         // angle between vectors changed: a twist.
                         output.push_back(TouchEvent());

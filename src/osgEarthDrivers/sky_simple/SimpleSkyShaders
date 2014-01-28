@@ -349,15 +349,16 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; \n"
         "    atmos_lightDir = normalize(gl_LightSource[0].position.xyz); \n" // view space
 
+        "    atmos_space = (atmos_fCameraHeight-atmos_fInnerRadius)/(2.0*atmos_fOuterRadius-atmos_fInnerRadius); \n"
+        "    atmos_space = clamp(atmos_space, 0.0, 1.0); \n"
+
         "    if(atmos_fCameraHeight >= atmos_fOuterRadius) \n"
         "    { \n"
         "        atmos_GroundFromSpace(vertexVIEW); \n"
-        "        atmos_space = 1.0; \n"
         "    } \n"
         "    else \n"
         "    { \n"
         "        atmos_GroundFromAtmosphere(vertexVIEW); \n"
-        "        atmos_space = 0.0; \n"
         "    } \n"
         "} \n";
 
@@ -380,17 +381,16 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    vec3 U = normalize(atmos_up); \n"
         "    float NdotL = max(dot(N,L), 0.0); \n"
 
+        // calculate how much normal-based shading should be applied:
         "    float UdotL = clamp(dot(U,L), low, high); \n"
         "    float shadeFactor = 1.0 - (UdotL-low)/(high-low); \n"
 
-        "    float normFactor = 1.0; \n"
-        "    if (atmos_space > 0) { \n"
-        "        float UdotN = dot(U,N); \n"
-        "        normFactor = 1.0-step(0.9, UdotN); \n" // UdotN < 0.9 ? 1.0 : 0.0
-        "    } \n"
+        // only apply normal-based shading when we're inside the atmosphere:
+        "    float normFactor = 1.0-atmos_space; \n"
 
         "    vec3 sceneColor = mix(color.rgb, color.rgb*NdotL, normFactor*shadeFactor); \n"
 
+        // clamp the attentuation to the minimum ambient lighting:
         "    vec3 attenuation = max(atmos_atten, gl_LightSource[0].ambient.rgb); \n"
 
         "    vec3 atmosColor = 1.0 - exp(-atmos_exposure * (atmos_color + sceneColor * attenuation)); \n"
@@ -400,6 +400,48 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
     //-- BASIC PHONG GROUND LIGHTING ------------------------------------------
 
+    static const char* Ground_Phong_Vertex =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "varying vec3 atmos_vertexView3; \n"
+
+        "void atmos_vertex_main(inout vec4 VertexVIEW) \n"
+        "{ \n"
+        "    atmos_vertexView3 = VertexVIEW.xyz / VertexVIEW.w; \n"
+        "} \n";
+
+    static const char* Ground_Phong_Fragment =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "varying vec3 atmos_vertexView3; \n"
+        "varying vec3 oe_Normal; \n"
+
+        "void atmos_fragment_main(inout vec4 color) \n"
+        "{ \n"        
+        "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
+        "    vec3 V = normalize(atmos_vertexView3); \n"
+        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 R = normalize(-reflect(L,N)); \n"
+
+        "    float NdotL = max(dot(N,L), 0.0); \n"
+
+        "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
+        "    vec4 diffuse = clamp(gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0); \n"
+        "    vec4 specular= vec4(0); \n"
+
+#if 0
+        "    if (NdotL > 0.0) { \n"
+        "        vec3 HV = normalize(L+V); \n"
+        "        float HVdotN = max(dot(HV,N), 0.0); \n"
+        "        specular = gl_FrontLightProduct[0].specular * pow(HVdotN, 16.0); \n"
+        "    } \n"
+#endif
+
+        "    color.rgb = ambient.rgb + diffuse.rgb*color.rgb + specular.rgb; \n"
+        "} \n";
+
+#if 0
     static const char* Ground_Phong_Vertex =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
@@ -438,7 +480,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "varying vec4 oe_lighting_zero_vec; \n"
 
         "void atmos_fragment_main(inout vec4 color) \n"
-        "{ \n"
+        "{ \n"        
         //NOTE: The follow was changed from the single line
         //      "color *= oe_lighting_adjustment" to the current code to fix
         //      an issue on iOS devices.  Adding a varying vec4 value set to
@@ -453,6 +495,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "        color.a = alpha; \n"
         "    } \n"
         "} \n";
+#endif
 
 
     //-- SUN ----------------------------------------------------

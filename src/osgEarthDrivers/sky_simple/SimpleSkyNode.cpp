@@ -209,7 +209,7 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     _light->setPosition( osg::Vec4f(0.0f, 1.0f, 0.0f, 0.0f) );
     _light->setAmbient ( osg::Vec4f(0.03f, 0.03f, 0.03f, 1.0f) );
     _light->setDiffuse ( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
-    _light->setSpecular( osg::Vec4f(0.0f, 0.0f, 0.0f, 1.0f) );
+    _light->setSpecular( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
 
     _lightPosUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir");
     _lightPosUniform->set( lightPos / lightPos.length() );

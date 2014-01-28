@@ -181,327 +181,24 @@ namespace
     }
 }
 
-#if 0
 //---------------------------------------------------------------------------
 
-namespace
-{
-    // Atmospheric Scattering and Sun Shaders
-    // Adapted from code that is Copyright (c) 2004 Sean O'Neil
-
-    static char s_versionString[] =
-        "#version " GLSL_VERSION_STR "\n";
-
-    static char s_mathUtils[] =
-        "float fastpow( in float x, in float y ) \n"
-        "{ \n"
-        "    return x/(x+y-y*x); \n"
-        "} \n";
-
-    static char s_atmosphereVertexDeclarations[] =
-        "uniform mat4 osg_ViewMatrixInverse;     // camera position \n"
-        "uniform vec3 atmos_v3LightPos;        // The direction vector to the light source \n"
-        "uniform vec3 atmos_v3InvWavelength;   // 1 / pow(wavelength,4) for the rgb channels \n"
-        "uniform float atmos_fOuterRadius;     // Outer atmosphere radius \n"
-        "uniform float atmos_fOuterRadius2;    // fOuterRadius^2 \n"		
-        "uniform float atmos_fInnerRadius;     // Inner planetary radius \n"
-        "uniform float atmos_fInnerRadius2;    // fInnerRadius^2 \n"
-        "uniform float atmos_fKrESun;          // Kr * ESun \n"	
-        "uniform float atmos_fKmESun;          // Km * ESun \n"		
-        "uniform float atmos_fKr4PI;           // Kr * 4 * PI \n"	
-        "uniform float atmos_fKm4PI;           // Km * 4 * PI \n"		
-        "uniform float atmos_fScale;           // 1 / (fOuterRadius - fInnerRadius) \n"	
-        "uniform float atmos_fScaleDepth;      // The scale depth \n"
-        "uniform float atmos_fScaleOverScaleDepth;     // fScale / fScaleDepth \n"	
-        "uniform int atmos_nSamples; \n"	
-        "uniform float atmos_fSamples; \n"				
-
-        "varying vec3 atmos_v3Direction; \n"
-        "varying vec3 atmos_mieColor; \n"
-        "varying vec3 atmos_rayleighColor; \n"
-
-        "vec3 vVec; \n"
-        "float atmos_fCameraHeight;    // The camera's current height \n"		
-        "float atmos_fCameraHeight2;   // fCameraHeight^2 \n";
-
-    static char s_atmosphereVertexShared[] =
-        "float atmos_scale(float fCos) \n"	
-        "{ \n"
-        "    float x = 1.0 - fCos; \n"
-        "    return atmos_fScaleDepth * exp(-0.00287 + x*(0.459 + x*(3.83 + x*(-6.80 + x*5.25)))); \n"
-        "} \n"
-
-        "void SkyFromSpace(void) \n"
-        "{ \n"
-        "    // Get the ray from the camera to the vertex and its length (which is the far point of the ray passing through the atmosphere) \n"
-        "    vec3 v3Pos = gl_Vertex.xyz; \n"
-        "    vec3 v3Ray = v3Pos - vVec; \n"
-        "    float fFar = length(v3Ray); \n"
-        "    v3Ray /= fFar; \n"
-
-        "    // Calculate the closest intersection of the ray with the outer atmosphere \n"
-        "    // (which is the near point of the ray passing through the atmosphere) \n"
-        "    float B = 2.0 * dot(vVec, v3Ray); \n"
-        "    float C = atmos_fCameraHeight2 - atmos_fOuterRadius2; \n"
-        "    float fDet = max(0.0, B*B - 4.0 * C); \n"	
-        "    float fNear = 0.5 * (-B - sqrt(fDet)); \n"		
-
-        "    // Calculate the ray's starting position, then calculate its atmos_ing offset \n"
-        "    vec3 v3Start = vVec + v3Ray * fNear; \n"			
-        "    fFar -= fNear; \n"	
-        "    float fStartAngle = dot(v3Ray, v3Start) / atmos_fOuterRadius; \n"			
-        "    float fStartDepth = exp(-1.0 / atmos_fScaleDepth); \n"
-        "    float fStartOffset = fStartDepth*atmos_scale(fStartAngle); \n"		
-
-        "    // Initialize the atmos_ing loop variables \n"	
-        "    float fSampleLength = fFar / atmos_fSamples; \n"		
-        "    float fScaledLength = fSampleLength * atmos_fScale; \n"					
-        "    vec3 v3SampleRay = v3Ray * fSampleLength; \n"	
-        "    vec3 v3SamplePoint = v3Start + v3SampleRay * 0.5; \n"	
-
-        "    // Now loop through the sample rays \n"
-        "    vec3 v3FrontColor = vec3(0.0, 0.0, 0.0); \n"
-        "    vec3 v3Attenuate; \n"  
-        "    for(int i=0; i<atmos_nSamples; i++) \n"		
-        "    { \n"
-        "        float fHeight = length(v3SamplePoint); \n"			
-        "        float fDepth = exp(atmos_fScaleOverScaleDepth * (atmos_fInnerRadius - fHeight)); \n"
-        "        float fLightAngle = dot(atmos_v3LightPos, v3SamplePoint) / fHeight; \n"		
-        "        float fCameraAngle = dot(v3Ray, v3SamplePoint) / fHeight; \n"			
-        "        float fscatter = (fStartOffset + fDepth*(atmos_scale(fLightAngle) - atmos_scale(fCameraAngle))); \n"	
-        "        v3Attenuate = exp(-fscatter * (atmos_v3InvWavelength * atmos_fKr4PI + atmos_fKm4PI)); \n"	
-        "        v3FrontColor += v3Attenuate * (fDepth * fScaledLength); \n"					
-        "        v3SamplePoint += v3SampleRay; \n"		
-        "    } \n"		
-
-        "    // Finally, scale the Mie and Rayleigh colors and set up the varying \n"			
-        "    // variables for the pixel shader \n"	
-        "    atmos_mieColor      = v3FrontColor * atmos_fKmESun; \n"				
-        "    atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"						
-        "    atmos_v3Direction = vVec  - v3Pos; \n"			
-        "} \n"		
-
-        "void SkyFromAtmosphere(void) \n"		
-        "{ \n"
-        "  // Get the ray from the camera to the vertex, and its length (which is the far \n"
-        "  // point of the ray passing through the atmosphere) \n"		
-        "  vec3 v3Pos = gl_Vertex.xyz; \n"	
-        "  vec3 v3Ray = v3Pos - vVec; \n"			
-        "  float fFar = length(v3Ray); \n"					
-        "  v3Ray /= fFar; \n"				
-
-        "  // Calculate the ray's starting position, then calculate its atmos_ing offset \n"
-        "  vec3 v3Start = vVec; \n"
-        "  float fHeight = length(v3Start); \n"		
-        "  float fDepth = exp(atmos_fScaleOverScaleDepth * (atmos_fInnerRadius - atmos_fCameraHeight)); \n"
-        "  float fStartAngle = dot(v3Ray, v3Start) / fHeight; \n"	
-        "  float fStartOffset = fDepth*atmos_scale(fStartAngle); \n"
-
-        "  // Initialize the atmos_ing loop variables \n"		
-        "  float fSampleLength = fFar / atmos_fSamples; \n"			
-        "  float fScaledLength = fSampleLength * atmos_fScale; \n"				
-        "  vec3 v3SampleRay = v3Ray * fSampleLength; \n"		
-        "  vec3 v3SamplePoint = v3Start + v3SampleRay * 0.5; \n"
-
-        "  // Now loop through the sample rays \n"		
-        "  vec3 v3FrontColor = vec3(0.0, 0.0, 0.0); \n"		
-        "  vec3 v3Attenuate; \n"  
-        "  for(int i=0; i<atmos_nSamples; i++) \n"			
-        "  { \n"	
-        "    float fHeight = length(v3SamplePoint); \n"	
-        "    float fDepth = exp(atmos_fScaleOverScaleDepth * (atmos_fInnerRadius - fHeight)); \n"
-        "    float fLightAngle = dot(atmos_v3LightPos, v3SamplePoint) / fHeight; \n"
-        "    float fCameraAngle = dot(v3Ray, v3SamplePoint) / fHeight; \n"	
-        "    float fscatter = (fStartOffset + fDepth*(atmos_scale(fLightAngle) - atmos_scale(fCameraAngle))); \n"	
-        "    v3Attenuate = exp(-fscatter * (atmos_v3InvWavelength * atmos_fKr4PI + atmos_fKm4PI)); \n"	
-        "    v3FrontColor += v3Attenuate * (fDepth * fScaledLength); \n"		
-        "    v3SamplePoint += v3SampleRay; \n"		
-        "  } \n"
-
-        "  // Finally, scale the Mie and Rayleigh colors and set up the varying \n"
-        "  // variables for the pixel shader \n"					
-        "  atmos_mieColor      = v3FrontColor * atmos_fKmESun; \n"			
-        "  atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"				
-        "  atmos_v3Direction = vVec - v3Pos; \n"				
-        "} \n";
-
-
-    static char s_atmosphereVertexMain[] =
-        "void main(void) \n"
-        "{ \n"
-        "  // Get camera position and height \n"
-        "  vVec = osg_ViewMatrixInverse[3].xyz; \n"
-        "  atmos_fCameraHeight = length(vVec); \n"
-        "  atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; \n"
-        "  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "  if(atmos_fCameraHeight >= atmos_fOuterRadius) { \n"
-        "      SkyFromSpace(); \n"
-        "  } \n"
-        "  else { \n"
-        "      SkyFromAtmosphere(); \n"
-        "  } \n"
-        "} \n";
-
-    static char s_atmosphereFragmentDeclarations[] =
-        "uniform vec3 atmos_v3LightPos; \n"							
-        "uniform float atmos_g; \n"				
-        "uniform float atmos_g2; \n"
-        "uniform float atmos_fWeather; \n"
-
-        "varying vec3 atmos_v3Direction; \n"	
-        "varying vec3 atmos_mieColor; \n"
-        "varying vec3 atmos_rayleighColor; \n"
-
-        "const float fExposure = 4.0; \n";
-
-    static char s_atmosphereFragmentMain[] =
-        "void main(void) \n"			
-        "{ \n"				
-        "    float fCos = dot(atmos_v3LightPos, atmos_v3Direction) / length(atmos_v3Direction); \n"
-        "    float fRayleighPhase = 1.0; \n" // 0.75 * (1.0 + fCos*fCos); \n"
-        "    float fMiePhase = 1.5 * ((1.0 - atmos_g2) / (2.0 + atmos_g2)) * (1.0 + fCos*fCos) / fastpow(1.0 + atmos_g2 - 2.0*atmos_g*fCos, 1.5); \n"
-        "    vec3 f4Color = fRayleighPhase * atmos_rayleighColor + fMiePhase * atmos_mieColor; \n"
-        "    vec3 color = 1.0 - exp(f4Color * -fExposure); \n"
-        "    gl_FragColor.rgb = color.rgb*atmos_fWeather; \n"
-        "    gl_FragColor.a = (color.r+color.g+color.b) * 2.0; \n"
-        "} \n";
-
-    static char s_sunVertexSource[] = 
-        "varying vec3 atmos_v3Direction; \n"
-
-        "void main() \n"
-        "{ \n"
-        "    vec3 v3Pos = gl_Vertex.xyz; \n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "    atmos_v3Direction = vec3(0.0,0.0,1.0) - v3Pos; \n"
-        "    atmos_v3Direction = atmos_v3Direction/length(atmos_v3Direction); \n"
-        "} \n";
-
-    static char s_sunFragmentSource[] =
-        "uniform float sunAlpha; \n"
-        "varying vec3 atmos_v3Direction; \n"
-
-        "void main( void ) \n"
-        "{ \n"
-        "   float fCos = -atmos_v3Direction[2]; \n"         
-        "   float fMiePhase = 0.050387596899224826 * (1.0 + fCos*fCos) / fastpow(1.9024999999999999 - -1.8999999999999999*fCos, 1.5); \n"
-        "   gl_FragColor.rgb = fMiePhase*vec3(.3,.3,.2); \n"
-        "   gl_FragColor.a = sunAlpha*gl_FragColor.r; \n"
-        "} \n";
-
-    static char s_moonVertexSource[] = 
-        "uniform mat4 osg_ModelViewProjectionMatrix;"
-        "varying vec4 moon_TexCoord;\n"
-        "void main() \n"
-        "{ \n"
-        "    moon_TexCoord = gl_MultiTexCoord0; \n"
-        "    gl_Position = osg_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "} \n";
-
-    static char s_moonFragmentSource[] =
-        "varying vec4 moon_TexCoord;\n"
-        "uniform sampler2D moonTex;\n"
-        "void main( void ) \n"
-        "{ \n"
-        "   gl_FragColor = texture2D(moonTex, moon_TexCoord.st);\n"
-        "} \n";
-}
-
-//---------------------------------------------------------------------------
-
-namespace
-{
-    static std::string s_createStarVertexSource()
-    {
-        float glslVersion = Registry::instance()->getCapabilities().getGLSLVersion();
-
-        return Stringify()
-            << "#version " << (glslVersion < 1.2f ? GLSL_VERSION_STR : "120") << "\n"
-
-            << "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
-            << "{ \n"
-            << "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); \n"
-            << "    return r0 + vr * (r1-r0); \n"
-            << "} \n"
-
-            << "uniform vec3 atmos_v3LightPos; \n"
-            << "uniform mat4 osg_ViewMatrixInverse; \n"
-            << "varying float visibility; \n"
-            << "varying vec4 osg_FrontColor; \n"
-            << "void main() \n"
-            << "{ \n"
-            << "    osg_FrontColor = gl_Color; \n"
-            << "    gl_PointSize = gl_Color.r * " << (glslVersion < 1.2f ? "2.0" : "14.0") << ";\n"
-            << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-
-            << "    vec3 eye = osg_ViewMatrixInverse[3].xyz; \n"
-            << "    float hae = length(eye) - 6378137.0; \n"
-            // "highness": visibility increases with altitude
-            << "    float highness = remap( hae, 25000.0, 150000.0, 0.0, 1.0 ); \n"
-            << "    eye = normalize(eye); \n"
-            // "darkness": visibility increase as the sun goes around the other side of the earth
-            << "    float darkness = 1.0-remap(dot(eye,atmos_v3LightPos), -0.25, 0.0, 0.0, 1.0); \n"
-            << "    visibility = clamp(highness + darkness, 0.0, 1.0); \n"
-            << "} \n";
-    }
-
-    static std::string s_createStarFragmentSource()
-    {
-        float glslVersion = Registry::instance()->getCapabilities().getGLSLVersion();
-
-        if ( glslVersion < 1.2f )
-        {
-            return Stringify()
-                << "#version " << GLSL_VERSION_STR << "\n"
-#ifdef OSG_GLES2_AVAILABLE
-                << "precision highp float;\n"
-#endif  
-                << "varying float visibility; \n"
-                << "varying vec4 osg_FrontColor; \n"
-                << "void main( void ) \n"
-                << "{ \n"
-                << "    gl_FragColor = osg_FrontColor * visibility; \n"
-                << "} \n";
-        }
-        else
-        {
-            return Stringify()
-                << "#version 120 \n"
-#ifdef OSG_GLES2_AVAILABLE
-                << "precision highp float;\n"
-#endif
-                << "varying float visibility; \n"
-                << "varying vec4 osg_FrontColor; \n"
-                << "void main( void ) \n"
-                << "{ \n"
-                << "    float b1 = 1.0-(2.0*abs(gl_PointCoord.s-0.5)); \n"
-                << "    float b2 = 1.0-(2.0*abs(gl_PointCoord.t-0.5)); \n"
-                << "    float i = b1*b1 * b2*b2; \n"
-                << "    gl_FragColor = osg_FrontColor * i * visibility; \n"
-                << "} \n";
-        }
-    }
-}
-#endif
-
-//---------------------------------------------------------------------------
-
-SimpleSkyNode::SimpleSkyNode(const Map* map) :
+SimpleSkyNode::SimpleSkyNode(const SpatialReference* srs) :
 SkyNode()
 {
-    initialize(map);
+    initialize(srs);
 }
 
-SimpleSkyNode::SimpleSkyNode(const Map*              map,
+SimpleSkyNode::SimpleSkyNode(const SpatialReference* srs,
                              const SimpleSkyOptions& options) :
 SkyNode ( options ),
 _options( options )
 {
-    initialize(map);
+    initialize(srs);
 }
 
 void
-SimpleSkyNode::initialize(const Map* map)
+SimpleSkyNode::initialize(const SpatialReference* srs)
 {
     // intialize the default settings:
     _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
@@ -512,17 +209,17 @@ SimpleSkyNode::initialize(const Map* map)
     _defaultPerViewData._light->setSpecular( osg::Vec4(0,0,0,1) );
 
     // set up the uniform that conveys the normalized light position in world space
-    _defaultPerViewData._lightPosUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC3, "atmos_v3LightPos" );
+    _defaultPerViewData._lightPosUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir" );
     _defaultPerViewData._lightPosUniform->set( _defaultPerViewData._lightPos / _defaultPerViewData._lightPos.length() );
 
     // set up the astronomical parameters:
-    _ellipsoidModel = map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
+    _ellipsoidModel = srs->getGeographicSRS()->getEllipsoid();
     _innerRadius = _ellipsoidModel->getRadiusPolar();
     _outerRadius = _innerRadius * 1.025f;
     _sunDistance = _innerRadius * 12000.0f;
 
     // make the uniforms and the terrain lighting shaders.
-    makeLighting();
+    makeSceneLighting();
 
     // make the sky elements (don't change the order here)
     makeAtmosphere( _ellipsoidModel.get() );
@@ -708,6 +405,8 @@ SimpleSkyNode::attach( osg::View* view, int lightNum )
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
 
     data._date = _defaultPerViewData._date;
+
+    onSetDateTime();
 }
 
 #if 0
@@ -881,27 +580,23 @@ SimpleSkyNode::onSetSunVisible()
 }
 
 void
-SimpleSkyNode::makeLighting()
+SimpleSkyNode::makeSceneLighting()
 {
     // installs the main uniforms and the shaders that will light the subgraph (terrain).
     osg::StateSet* stateset = this->getOrCreateStateSet();
 
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
+    vp->setName( "SimpleSky Scene Lighting" );
 
-    std::string vertSource = Stringify()
-        << s_versionString
-        << s_mathUtils
-        << s_atmosphereVertexDeclarations
-        << s_groundVertexShared
-        << s_groundVertex;
+    vp->setFunction(
+        "atmos_vertex_main",
+        Ground_Vertex,
+        ShaderComp::LOCATION_VERTEX_VIEW);
 
-    vp->setFunction("atmos_vertex_main", vertSource, ShaderComp::LOCATION_VERTEX_VIEW);
-
-    std::string fragSource = Stringify()
-        << s_versionString
-        << s_groundFragment;
-
-    vp->setFunction("atmos_fragment_main", fragSource, ShaderComp::LOCATION_FRAGMENT_LIGHTING, 0.0f);
+    vp->setFunction(
+        "atmos_fragment_main", 
+        Ground_Fragment,
+        ShaderComp::LOCATION_FRAGMENT_LIGHTING);
 
     // calculate and apply the uniforms:
     // TODO: perhaps we can just hard-code most of these as GLSL consts.
@@ -961,24 +656,18 @@ SimpleSkyNode::makeAtmosphere(const osg::EllipsoidModel* em)
     if ( Registry::capabilities().supportsGLSL() )
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate( atmosSet );
+        vp->setName( "SimpleSky Atmosphere" );
         vp->setInheritShaders( false );
 
-        std::string vertSource = Stringify()
-            << s_versionString
-            << s_mathUtils
-            << s_atmosphereVertexDeclarations
-            << s_atmosphereVertexShared
-            << s_atmosphereVertex;
+        vp->setFunction(
+            "atmos_vertex_main",
+            Atmosphere_Vertex,
+            ShaderComp::LOCATION_VERTEX_VIEW);
 
-        vp->setFunction("atmos_vertex_main", vertSource, ShaderComp::LOCATION_VERTEX_VIEW);
-
-        std::string fragSource = Stringify()
-            << s_versionString
-            << s_mathUtils
-            << s_atmosphereFragmentDeclarations
-            << s_atmosphereFragment;
-
-        vp->setFunction("atmos_fragment_main", fragSource, ShaderComp::LOCATION_FRAGMENT_LIGHTING, 0.0f);
+        vp->setFunction(
+            "atmos_fragment_main",
+            Atmosphere_Fragment,
+            ShaderComp::LOCATION_FRAGMENT_LIGHTING);
     }
 
     // A nested camera isolates the projection matrix calculations so the node won't 
@@ -1006,7 +695,7 @@ SimpleSkyNode::makeSun()
     osg::StateSet* set = sun->getOrCreateStateSet();
     set->setMode( GL_BLEND, 1 );
 
-    set->getOrCreateUniform( "sunAlpha", osg::Uniform::FLOAT )->set( 1.0f );
+    set->getOrCreateUniform( "atmos_sunAlpha", osg::Uniform::FLOAT )->set( 1.0f );
 
     // configure the stateset
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
@@ -1018,14 +707,9 @@ SimpleSkyNode::makeSun()
     if ( Registry::capabilities().supportsGLSL() )
     {
         osg::Program* program = new osg::Program();
-        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
-            << s_versionString
-            << s_sunVertexSource );
+        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Sun_Vertex );
         program->addShader( vs );
-        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
-            << s_versionString
-            << s_mathUtils
-            << s_sunFragmentSource );
+        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Sun_Fragment );
         program->addShader( fs );
         set->setAttributeAndModes( program, osg::StateAttribute::ON );
     }
@@ -1088,13 +772,9 @@ SimpleSkyNode::makeMoon()
 
         // create shaders
         osg::Program* program = new osg::Program();
-        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
-            << s_versionString
-            << s_moonVertexSource );
+        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Moon_Vertex );
         program->addShader( vs );
-        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
-            << s_versionString
-            << s_moonFragmentSource );
+        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Moon_Fragment );
         program->addShader( fs );
         set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
     }
@@ -1104,7 +784,7 @@ SimpleSkyNode::makeMoon()
     // todo: move this?
     _defaultPerViewData._moonXform = new osg::MatrixTransform();    
 
-    osg::Vec3d moonPosECEF = getEphemeris()->getMoonPositionECEF(DateTime(2011,2,1,0.0));
+    osg::Vec3d moonPosECEF = getEphemeris()->getMoonPositionECEF( getDateTime() );
     _defaultPerViewData._moonXform->setMatrix( osg::Matrix::translate( moonPosECEF ) ); 
     _defaultPerViewData._moonXform->addChild( moon );
 
@@ -1211,13 +891,13 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
         std::string starVertSource, starFragSource;
         if ( Registry::capabilities().getGLSLVersion() < 1.2f )
         {
-            starVertSource = s_starsVertexSource110;
-            starFragSource = s_starsFragmentSource110;
+            starVertSource = Stars_Vertex_110;
+            starFragSource = Stars_Fragment_110;
         }
         else
         {
-            starVertSource = s_starsVertexSource120;
-            starFragSource = s_starsFragmentSource120;
+            starVertSource = Stars_Vertex_120;
+            starFragSource = Stars_Fragment_120;
         }
 
         osg::Program* program = new osg::Program;

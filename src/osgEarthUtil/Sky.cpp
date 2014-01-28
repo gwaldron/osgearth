@@ -290,7 +290,6 @@ void
 SkyNode::baseInit()
 {
     _ephemeris = new Ephemeris();
-    _dateTime = DateTime(2011, 06, 01, 0.0);
     _sunVisible = true;
     _moonVisible = true;
     _starsVisible = true;

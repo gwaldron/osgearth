@@ -18,6 +18,7 @@
 */
 #include <osgEarthUtil/Sky>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderUtils>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -293,6 +294,7 @@ SkyNode::baseInit()
     _sunVisible = true;
     _moonVisible = true;
     _starsVisible = true;
+    _lightingUniformsHelper = new UpdateLightingUniformsHelper();
 }
 
 void
@@ -342,6 +344,20 @@ SkyNode::setStarsVisible(bool value)
 {
     _starsVisible = value;
     onSetStarsVisible();
+}
+
+void
+SkyNode::traverse(osg::NodeVisitor& nv)
+{
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        // update the light model uniforms.
+        if ( _lightingUniformsHelper.valid() )
+        {
+            _lightingUniformsHelper->cullTraverse( this, &nv );
+        }
+    }
+    osg::Group::traverse(nv);
 }
 
 //------------------------------------------------------------------------

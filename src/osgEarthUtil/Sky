@@ -28,6 +28,7 @@
 
 namespace osgEarth {
     class MapNode;
+    class UpdateLightingUniformsHelper;
 }
 namespace osgDB {
     class Options;
@@ -162,6 +163,10 @@ namespace osgEarth { namespace Util
         virtual void attach(osg::View* view, int lightNum) { }
         void attach(osg::View* view) { attach(view, 0); }
 
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor&);
+
     protected:
 
         // impl class can override these events.
@@ -178,6 +183,8 @@ namespace osgEarth { namespace Util
         bool                    _sunVisible;
         bool                    _moonVisible;
         bool                    _starsVisible;
+
+        osg::ref_ptr<UpdateLightingUniformsHelper> _lightingUniformsHelper;
 
         void baseInit();
     };

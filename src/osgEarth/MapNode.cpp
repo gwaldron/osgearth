@@ -657,9 +657,6 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
     else if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        // update the light model uniforms.
-        _updateLightingUniformsHelper.cullTraverse( this, &nv );
-
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         if ( cv )
         {

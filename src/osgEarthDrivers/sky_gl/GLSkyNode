@@ -20,6 +20,7 @@
 #include "GLSkyOptions"
 #include <osgEarthUtil/Sky>
 #include <osgEarth/MapNode>
+#include <osgEarth/PhongLightingEffect>
 #include <osg/MatrixTransform>
 
 namespace osg {
@@ -56,13 +57,14 @@ namespace osgEarth { namespace Drivers { namespace GLSky
         void onSetDateTime();
 
     protected:
-        virtual ~GLSkyNode() { }
+        virtual ~GLSkyNode();
 
     private:
         void initialize(const SpatialReference* srs);
 
-        osg::ref_ptr<osg::Light> _light;
+        osg::ref_ptr<osg::Light>             _light;
         osg::ref_ptr<const SpatialReference> _srs;
+        osg::ref_ptr<PhongLightingEffect>    _lighting;
     };
 
 } } } // namespace osgEarth::Drivers::GLSky

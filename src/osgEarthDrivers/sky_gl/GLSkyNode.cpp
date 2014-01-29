@@ -20,32 +20,10 @@
 #include "GLSkyNode"
 #include "GLSkyShaders"
 
-#include <osgEarthUtil/StarData>
-
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/Map>
-#include <osgEarth/Utils>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/CullingUtils>
-#include <osgEarth/ShaderFactory>
-
-#include <osg/MatrixTransform>
-#include <osg/ShapeDrawable>
-#include <osg/PointSprite>
-#include <osg/BlendFunc>
-#include <osg/FrontFace>
-#include <osg/CullFace>
-#include <osg/Program>
-#include <osg/Camera>
-#include <osg/Point>
-#include <osg/Shape>
-#include <osg/Depth>
-#include <osg/Quat>
-
-#include <sstream>
-#include <time.h>
+#include <osgEarth/SpatialReference>
+#include <osgEarth/GeoData>
+#include <osgEarth/PhongLightingEffect>
 
 #define LC "[GLSkyNode] "
 
@@ -73,25 +51,23 @@ GLSkyNode::initialize(const SpatialReference* srs)
 {
     _srs = srs;
     _light = new osg::Light(0);
+    _light->setAmbient(osg::Vec4(0.1f, 0.1f, 0.1f, 1.0f));
+    _light->setDiffuse(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
+    _light->setSpecular(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
     // installs the main uniforms and the shaders that will light the subgraph (terrain).
     osg::StateSet* stateset = this->getOrCreateStateSet();
 
-    VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
-    vp->setName( "GLSky Scene Lighting" );
-
-    // simple lighting.
-    vp->setFunction(
-        "oe_sky_vertex_main",
-        Phong_Vertex,
-        ShaderComp::LOCATION_VERTEX_VIEW);
-
-    vp->setFunction(
-        "oe_sky_fragment_main", 
-        Phong_Fragment,
-        ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+    _lighting = new PhongLightingEffect();
+    _lighting->attach( stateset );
 
     onSetDateTime();
+}
+
+GLSkyNode::~GLSkyNode()
+{
+    if ( _lighting.valid() )
+        _lighting->detach();
 }
 
 void

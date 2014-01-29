@@ -69,6 +69,13 @@ _lastAltitude(DBL_MAX)
     _cloudsDrawable = new CloudsDrawable( _SL.get() );
     _geode->addDrawable( _cloudsDrawable.get() );
 
+    // scene lighting
+    osg::StateSet* stateset = this->getOrCreateStateSet();
+    _lighting = new PhongLightingEffect(stateset);
+
+    // ensure it's depth sorted and draws after the terrain
+    stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+
     // SL requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
@@ -76,7 +83,8 @@ _lastAltitude(DBL_MAX)
 
 SilverLiningNode::~SilverLiningNode()
 {
-    //nop
+    if ( _lighting.valid() )
+        _lighting->detach();
 }
 
 void

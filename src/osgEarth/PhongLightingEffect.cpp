@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/LightingEffect>
+#include <osgEarth/PhongLightingEffect>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
@@ -37,7 +37,7 @@ namespace
         "varying vec4 oe_lighting_zero_vec; \n"
         "varying vec3 oe_Normal; \n"
 
-        "void atmos_vertex_main(inout vec4 VertexVIEW) \n"
+        "void oe_phong_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
         "    oe_lighting_adjustment = vec4(1.0); \n"
@@ -63,7 +63,7 @@ namespace
         "varying vec4 oe_lighting_adjustment; \n"
         "varying vec4 oe_lighting_zero_vec; \n"
 
-        "void atmos_fragment_main(inout vec4 color) \n"
+        "void oe_phong_fragment(inout vec4 color) \n"
         "{ \n"
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
         //NOTE: The follow was changed from the single line
@@ -85,12 +85,12 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         
         "uniform bool oe_mode_GL_LIGHTING; \n"
-        "varying vec3 oe_lightingeffect_vertexView3; \n"
+        "varying vec3 oe_phong_vertexView3; \n"
 
-        "void oe_lightingeffect_vertex(inout vec4 VertexVIEW) \n"
+        "void oe_phong_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
-        "    oe_lightingeffect_vertexView3 = VertexVIEW.xyz / VertexVIEW.w; \n"
+        "    oe_phong_vertexView3 = VertexVIEW.xyz / VertexVIEW.w; \n"
         "} \n";
 
     static const char* Phong_Fragment =
@@ -98,76 +98,77 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "uniform bool oe_mode_GL_LIGHTING; \n"
-        "varying vec3 oe_lightingeffect_vertexView3; \n"
+        "varying vec3 oe_phong_vertexView3; \n"
         "varying vec3 oe_Normal; \n"
 
-        "void oe_lightingeffect_fragment(inout vec4 color) \n"
+        "void oe_phong_fragment(inout vec4 color) \n"
         "{ \n"        
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
 
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 V = normalize(oe_lightingeffect_vertexView3); \n"
         "    vec3 N = normalize(oe_Normal); \n"
-        "    vec3 R = normalize(-reflect(L,N)); \n"
+        
+        "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
 
         "    float NdotL = max(dot(N,L), 0.0); \n"
 
-        "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
-        "    vec4 diffuse = clamp(gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0); \n"
+        "    vec4 diffuse = gl_FrontLightProduct[0].diffuse * NdotL; \n"
+        
         "    vec4 specular= vec4(0); \n"
-#if 0
-        "    if (NdotL > 0.0) { \n"
-        "        vec3 HV = normalize(L+V); \n"
-        "        float HVdotN = max(dot(HV,N), 0.0); \n"
-        "        specular = gl_FrontLightProduct[0].specular * pow(HVdotN, 16.0); \n"
+        "    if (NdotL > 0.0) \n"
+        "    { \n"
+        "        vec3 V = normalize(oe_phong_vertexView3); \n"
+        "        vec3 H = normalize(L-V); \n"
+        "        float HdotN = max(dot(H,N), 0.0); \n"
+        "        float shine = clamp(gl_FrontMaterial.shininess, 1.0, 128.0); \n"
+        "        specular = gl_FrontLightProduct[0].specular * pow(HdotN, shine); \n"
         "    } \n"
-#endif
 
-        "    color.rgb = ambient.rgb + diffuse.rgb*color.rgb + specular.rgb; \n"
+        "    color.rgb *= ambient.rgb + diffuse.rgb + specular.rgb; \n"
         "} \n";
 #endif
 }
 
-LightingEffect::LightingEffect()
+PhongLightingEffect::PhongLightingEffect()
 {
     init();
 }
 
-LightingEffect::LightingEffect(osg::StateSet* stateset)
+PhongLightingEffect::PhongLightingEffect(osg::StateSet* stateset)
 {
     init();
     attach( stateset );
 }
 
 void
-LightingEffect::init()
+PhongLightingEffect::init()
 {        
     _enabledUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
 
 }
 
-LightingEffect::~LightingEffect()
+PhongLightingEffect::~PhongLightingEffect()
 {
     detach();
 }
 
 void
-LightingEffect::attach(osg::StateSet* stateset)
+PhongLightingEffect::attach(osg::StateSet* stateset)
 {
     if ( stateset )
     {
         _statesets.push_back(stateset);
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setName( "osgEarth.LightingEffect" );
-        vp->setFunction( "oe_lightingeffect_vertex", Phong_Vertex, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_lightingeffect_fragment", Phong_Fragment, ShaderComp::LOCATION_FRAGMENT_LIGHTING );
+        vp->setName( "osgEarth.PhongLightingEffect" );
+        vp->setFunction( "oe_phong_vertex", Phong_Vertex, ShaderComp::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "oe_phong_fragment", Phong_Fragment, ShaderComp::LOCATION_FRAGMENT_LIGHTING );
         _enabledUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
         stateset->addUniform( _enabledUniform.get() );
     }
 }
 
 void
-LightingEffect::detach()
+PhongLightingEffect::detach()
 {
     for (StateSetList::iterator it = _statesets.begin(); it != _statesets.end(); ++it)
     {
@@ -183,7 +184,7 @@ LightingEffect::detach()
 }
 
 void
-LightingEffect::detach(osg::StateSet* stateset)
+PhongLightingEffect::detach(osg::StateSet* stateset)
 {
     if ( stateset )
     {

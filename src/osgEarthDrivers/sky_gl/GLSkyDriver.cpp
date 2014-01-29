@@ -34,13 +34,13 @@ namespace osgEarth { namespace Drivers { namespace GLSky
         GLSkyDriver()
         {
             supportsExtension(
-                "osgearth_sky_simple",
-                "osgEarth Simple Sky Plugin" );
+                "osgearth_sky_gl",
+                "osgEarth GL Sky Plugin" );
         }
 
         const char* className()
         {
-            return "osgEarth Simple Sky Plugin";
+            return "osgEarth GL Sky Plugin";
         }
 
         ReadResult readNode(const std::string& file_name, const osgDB::Options* options) const
@@ -58,6 +58,6 @@ namespace osgEarth { namespace Drivers { namespace GLSky
         virtual ~GLSkyDriver() { }
     };
 
-    REGISTER_OSGPLUGIN(osgearth_sky_simple, GLSkyDriver)
+    REGISTER_OSGPLUGIN(osgearth_sky_gl, GLSkyDriver)
 
 } } } // namespace osgEarth::Drivers::GLSky

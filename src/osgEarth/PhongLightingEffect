@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_LIGHTING_EFFECT_H
-#define OSGEARTH_LIGHTING_EFFECT_H
+#ifndef OSGEARTH_PHONG_LIGHTING_EFFECT_H
+#define OSGEARTH_PHONG_LIGHTING_EFFECT_H
 
 #include <osgEarth/Common>
 #include <osg/StateSet>
@@ -29,14 +29,14 @@ namespace osgEarth
     /**
      * Shader effect that performs simple Phong lighting.
      */
-    class OSGEARTH_EXPORT LightingEffect : public osg::Referenced
+    class OSGEARTH_EXPORT PhongLightingEffect : public osg::Referenced
     {
     public:
         /** constructs a new effect */
-        LightingEffect();
+        PhongLightingEffect();
 
         /** contructs a new effect and attaches it to a stateset. */
-        LightingEffect(osg::StateSet* stateset);
+        PhongLightingEffect(osg::StateSet* stateset);
 
     public:
         /** attach this effect to a stateset. */
@@ -48,7 +48,7 @@ namespace osgEarth
         void detach(osg::StateSet* stateset);
 
     protected:
-        virtual ~LightingEffect();
+        virtual ~PhongLightingEffect();
 
         typedef std::list< osg::observer_ptr<osg::StateSet> > StateSetList;
 
@@ -60,4 +60,4 @@ namespace osgEarth
 
 } // namespace osgEarth::Util
 
-#endif // OSGEARTH_LIGHTING_EFFECT_H
+#endif // OSGEARTH_PHONG_LIGHTING_EFFECT_H

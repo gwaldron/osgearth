@@ -405,7 +405,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         // calculate the base scene color. Skip ambience since we'll be
         // factoring that in later.
         "    vec4 sceneColor = mix(color, color*NdotL, normFactor*shadeFactor); \n"
-#if 0
+
         "    if (NdotL > 0.0 ) { \n"
         "        vec3 V = normalize(atmos_vert); \n"
         "        vec3 H = normalize(L-V); \n"
@@ -413,12 +413,11 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "        float shine = clamp(gl_FrontMaterial.shininess, 1.0, 128.0); \n"
         "        sceneColor += gl_FrontLightProduct[0].specular * pow(HdotN, shine); \n"
         "    } \n"
-#endif
 
         // clamp the attentuation to the minimum ambient lighting:
         "    vec3 attenuation = max(atmos_atten, gl_LightSource[0].ambient.rgb); \n"
 
-        // ramp exposure from ground (higher) to space (lower).
+        // ramp exposure from ground (full) to space (50%).
         "    float exposure = atmos_exposure*clamp(1.0-atmos_space, 0.5, 1.0); \n"
 
         "    vec3 atmosColor = 1.0 - exp(-exposure * (atmos_color + sceneColor.rgb * attenuation)); \n"

@@ -236,8 +236,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "float atmos_fCameraHeight;            // The camera's current height \n"		
         "float atmos_fCameraHeight2;           // fCameraHeight^2 \n"
 
-        "varying vec3 atmos_up; \n"
-        "varying float atmos_space; \n"
+        "varying vec3 atmos_up; \n"            // earth up vector at vertex location (not the normal)
+        "varying float atmos_space; \n"        // [0..1]: camera: 0=inner radius (ground); 1.0=outer radius
 
         "float atmos_scale(float fCos) \n"	
         "{ \n"
@@ -353,7 +353,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; \n"
         "    atmos_lightDir = normalize(gl_LightSource[0].position.xyz); \n" // view space
 
-        "    atmos_space = (atmos_fCameraHeight-atmos_fInnerRadius)/(2.0*atmos_fOuterRadius-atmos_fInnerRadius); \n"
+        "    atmos_space = (atmos_fCameraHeight-atmos_fInnerRadius)/(atmos_fOuterRadius-atmos_fInnerRadius); \n"
         "    atmos_space = clamp(atmos_space, 0.0, 1.0); \n"
 
         "    if(atmos_fCameraHeight >= atmos_fOuterRadius) \n"
@@ -368,32 +368,36 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
     static const char* Ground_Scattering_Fragment =
         "uniform bool oe_mode_GL_LIGHTING; \n"
-        "uniform float atmos_exposure; \n"
-        "varying vec3 atmos_lightDir; \n"
-        "varying vec3 oe_Normal; \n"
-        "varying vec3 atmos_color; \n" // atmospheric lighting color
-        "varying vec3 atmos_atten; \n" // atmospheric lighting attentuation factor
-        "varying vec3 atmos_up; \n"
-        "varying float atmos_space; \n"
+        "uniform float atmos_exposure; \n"  // scene exposure
+        "varying vec3 atmos_lightDir; \n"   // light direction (view coords)
+        "varying vec3 oe_Normal; \n"        // vertex normal (view coords)
+        "varying vec3 atmos_color; \n"      // atmospheric lighting color
+        "varying vec3 atmos_atten; \n"      // atmospheric lighting attentuation factor
+        "varying vec3 atmos_up; \n"         // earth up vector at fragment (in view coords)
+        "varying float atmos_space; \n"     // camera altitude (0=ground, 1=atmos outer radius)
 
         "void atmos_fragment_main(inout vec4 color) \n"
         "{ \n"
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
-
-        "    const float low = 0.1; \n"
-        "    const float high = 0.9; \n"
 
         "    vec3 N = normalize(oe_Normal); \n"
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
         "    vec3 U = normalize(atmos_up); \n"
         "    float NdotL = max(dot(N,L), 0.0); \n"
 
-        // calculate how much normal-based shading should be applied:
+        // Calculate how much normal-based shading should be applied.
+        // Between "low" and "high" (which are NdotL's) we phase out the
+        // normal-based shading (since the atmospheric scattering will
+        // take over at that point). This provides a nice dawn or dusk
+        // "shining" effect on the sides of buildings or terrain.
+        "    const float low = 0.1; \n"
+        "    const float high = 0.9; \n"
         "    float UdotL = clamp(dot(U,L), low, high); \n"
         "    float shadeFactor = 1.0 - (UdotL-low)/(high-low); \n"
 
-        // only apply normal-based shading when we're inside the atmosphere:
-        "    float normFactor = 1.0-atmos_space; \n"
+        // start applying normal-based shading when we're at twice the 
+        // altitude of the atmosphere's outer radius:
+        "    float normFactor = 1.0-(2.0*atmos_space); \n"
 
         "    vec3 sceneColor = mix(color.rgb, color.rgb*NdotL, normFactor*shadeFactor); \n"
 

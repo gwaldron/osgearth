@@ -48,8 +48,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         optional<bool>& atmosphericLighting() { return _atmosphericLighting; }
         const optional<bool>& atmosphericLighting() const { return _atmosphericLighting; }
 
-        /** Exposure factor for ground lighting when using advanced lighting. Default is 3.0;
-          * [1..4] is a good range. */
+        /** Exposure factor for ground lighting when using advanced lighting.
+          * Default is 3.0; [1..4] is a good range. */
         optional<float>& exposure() { return _exposure; }
         const optional<float>& exposure() const { return _exposure; }
 

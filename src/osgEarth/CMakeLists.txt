@@ -67,6 +67,7 @@ SET(LIB_PUBLIC_HEADERS
     IOTypes
     JsonUtils
     Layer
+	LightingEffect
     LineFunctor
     Locators
     LocalTangentPlane
@@ -199,6 +200,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     IOTypes.cpp
     JsonUtils.cpp
     Layer.cpp
+	LightingEffect.cpp
     Locators.cpp
     LocalTangentPlane.cpp
     Map.cpp

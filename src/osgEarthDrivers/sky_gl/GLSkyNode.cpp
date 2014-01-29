@@ -59,6 +59,7 @@ GLSkyNode::initialize(const SpatialReference* srs)
     osg::StateSet* stateset = this->getOrCreateStateSet();
 
     _lighting = new PhongLightingEffect();
+    _lighting->setCreateLightingUniform( false );
     _lighting->attach( stateset );
 
     onSetDateTime();

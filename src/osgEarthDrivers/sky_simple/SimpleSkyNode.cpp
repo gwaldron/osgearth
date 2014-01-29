@@ -385,7 +385,9 @@ SimpleSkyNode::makeSceneLighting()
 
     else
     {
-        _phong = new PhongLightingEffect(stateset);
+        _phong = new PhongLightingEffect();
+        _phong->setCreateLightingUniform( false );
+        _phong->attach( stateset );
     }
 
     // calculate and apply the uniforms:

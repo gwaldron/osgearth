@@ -18,6 +18,7 @@
 */
 #include <osgEarthUtil/Sky>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderUtils>
 #include <osgDB/ReadFile>
 
@@ -294,7 +295,8 @@ SkyNode::baseInit()
     _sunVisible = true;
     _moonVisible = true;
     _starsVisible = true;
-    _lightingUniformsHelper = new UpdateLightingUniformsHelper();
+
+    setLighting( osg::StateAttribute::ON );
 }
 
 void
@@ -319,10 +321,13 @@ SkyNode::setDateTime(const DateTime& dt)
     onSetDateTime();
 }
 
-const DateTime&
-SkyNode::getDateTime() const
+void
+SkyNode::setLighting(osg::StateAttribute::OverrideValue value)
 {
-    return _dateTime;
+    _lightingUniform = Registry::shaderFactory()->createUniformForGLMode(
+        GL_LIGHTING, value );
+
+    this->getOrCreateStateSet()->addUniform( _lightingUniform.get() );
 }
 
 void

@@ -38,6 +38,11 @@ namespace osgEarth
         /** contructs a new effect and attaches it to a stateset. */
         PhongLightingEffect(osg::StateSet* stateset);
 
+        /** whether to create its own lighting mode uniform (default = true).
+          * Set this to false if you are creating the lighting uniform elsewhere.
+          * The lighting uniform is returned by ShaderFactory::createUniformForGLMode(GL_LIGHTING). */
+        void setCreateLightingUniform(bool value);
+
     public:
         /** attach this effect to a stateset. */
         void attach(osg::StateSet* stateset);
@@ -53,7 +58,8 @@ namespace osgEarth
         typedef std::list< osg::observer_ptr<osg::StateSet> > StateSetList;
 
         StateSetList _statesets;
-        osg::ref_ptr<osg::Uniform> _enabledUniform;
+        bool _createLightingUniform;
+        osg::ref_ptr<osg::Uniform> _lightingUniform;
 
         void init();
     };

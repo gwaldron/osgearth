@@ -71,7 +71,9 @@ _lastAltitude(DBL_MAX)
 
     // scene lighting
     osg::StateSet* stateset = this->getOrCreateStateSet();
-    _lighting = new PhongLightingEffect(stateset);
+    _lighting = new PhongLightingEffect();
+    _lighting->setCreateLightingUniform( false );
+    _lighting->attach( stateset );
 
     // ensure it's depth sorted and draws after the terrain
     stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);

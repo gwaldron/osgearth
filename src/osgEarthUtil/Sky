@@ -23,6 +23,7 @@
 #include <osgEarth/DateTime>
 #include <osgEarth/Config>
 #include <osg/Group>
+#include <osg/Uniform>
 #include <osg/View>
 #include <osgDB/ReaderWriter>
 
@@ -135,12 +136,18 @@ namespace osgEarth { namespace Util
         const Ephemeris* getEphemeris() const;
        
         /**
+         * Whether the sky lights its subgraph.
+         */
+        void setLighting(osg::StateAttribute::OverrideValue value);
+        osg::StateAttribute::OverrideValue getLighting() const { return _lightingValue; }
+
+        /**
          * Gets the date/time for which the enviroment is configured.
          * Pass in an optional View to get the date/time specific to
          * that View.
          */
         void setDateTime(const DateTime& dt);
-        const DateTime& getDateTime() const;
+        const DateTime& getDateTime() const { return _dateTime; }
 
         /** Whether the sun is visible */
         void setSunVisible(bool value);
@@ -183,6 +190,9 @@ namespace osgEarth { namespace Util
         bool                    _sunVisible;
         bool                    _moonVisible;
         bool                    _starsVisible;
+
+        osg::StateAttribute::OverrideValue _lightingValue;
+        osg::ref_ptr<osg::Uniform>         _lightingUniform;
 
         osg::ref_ptr<UpdateLightingUniformsHelper> _lightingUniformsHelper;
 

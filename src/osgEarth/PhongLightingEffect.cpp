@@ -142,9 +142,17 @@ PhongLightingEffect::PhongLightingEffect(osg::StateSet* stateset)
 
 void
 PhongLightingEffect::init()
-{        
-    _enabledUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
+{
+    _lightingUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
+}
 
+void
+PhongLightingEffect::setCreateLightingUniform(bool value)
+{
+    if ( !value )
+    {        
+        _lightingUniform = 0L;
+    }
 }
 
 PhongLightingEffect::~PhongLightingEffect()
@@ -162,8 +170,8 @@ PhongLightingEffect::attach(osg::StateSet* stateset)
         vp->setName( "osgEarth.PhongLightingEffect" );
         vp->setFunction( "oe_phong_vertex", Phong_Vertex, ShaderComp::LOCATION_VERTEX_VIEW );
         vp->setFunction( "oe_phong_fragment", Phong_Fragment, ShaderComp::LOCATION_FRAGMENT_LIGHTING );
-        _enabledUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
-        stateset->addUniform( _enabledUniform.get() );
+        if ( _lightingUniform.valid() )
+            stateset->addUniform( _lightingUniform.get() );
     }
 }
 
@@ -188,12 +196,14 @@ PhongLightingEffect::detach(osg::StateSet* stateset)
 {
     if ( stateset )
     {
-        stateset->removeUniform( _enabledUniform.get() );
+        if ( _lightingUniform.valid() )
+            stateset->removeUniform( _lightingUniform.get() );
+
         VirtualProgram* vp = VirtualProgram::get( stateset );
         if ( vp )
         {
-            vp->removeShader( "oe_lightingeffect_vertex" );
-            vp->removeShader( "oe_lightingeffect_fragment" );
+            vp->removeShader( "oe_phong_vertex" );
+            vp->removeShader( "oe_phong_fragment" );
         }
     }
 }

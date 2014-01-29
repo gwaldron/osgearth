@@ -23,34 +23,6 @@ using namespace osgEarth_kml;
 void
 KML_PolyStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {
-#ifdef OLD_WAY
-    if ( !conf.empty() )
-    {
-        bool fill = true;
-        if ( conf.hasValue("fill") ) {
-            fill = as<int>(conf.value("fill"), 1) == 1;
-        }
-
-        bool outline = false;
-        if ( conf.hasValue("outline") ) {
-            outline = as<int>(conf.value("outline"), 0) == 1;
-        }
-
-        Color color(Color::White);
-        if ( conf.hasValue("color") ) {
-            color = Color( Stringify() << "#" << conf.value("color"), Color::ABGR );
-        }
-
-        if ( fill ) {
-            PolygonSymbol* poly = style.getOrCreate<PolygonSymbol>();
-            poly->fill()->color() = color;
-        }
-        else {
-            LineSymbol* line = style.getOrCreate<LineSymbol>();
-            line->stroke()->color() = color;
-        }
-    }
-#else
 	if (!conf.empty())
 	{
 		bool fill = true;	// By default it is true
@@ -87,5 +59,4 @@ KML_PolyStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 			line->stroke()->color() = color;
 		}
 	}
-#endif // OLD_WAY
 }

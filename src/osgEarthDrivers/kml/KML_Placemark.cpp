@@ -37,24 +37,6 @@ using namespace osgEarth::Annotation;
 void 
 KML_Placemark::build( const Config& conf, KMLContext& cx )
 {
-#ifdef OLD_WAY
-    Style masterStyle;
-
-    if ( conf.hasValue("styleurl") )
-    {
-        // process a "stylesheet" style
-        const Style* ref_style = cx._sheet->getStyle( conf.value("styleurl"), false );
-        if ( ref_style )
-            masterStyle = *ref_style;
-    }
-    else if ( conf.hasChild("style") )
-    {
-        // process an "inline" style
-        KML_Style kmlStyle;
-        kmlStyle.scan( conf.child("style"), cx );
-        masterStyle = cx._activeStyle;
-    }
-#else
 	Style masterStyle;
 
 	if (conf.hasValue("styleurl"))
@@ -71,7 +53,6 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
 		kmlStyle.scan(conf.child("style"), cx);
 		masterStyle = masterStyle.combineWith(cx._activeStyle);
 	}
-#endif // OLD_WAY
 
     // parse the geometry. the placemark must have geometry to be valid. The 
     // geometry parse may optionally specify an altitude mode as well.

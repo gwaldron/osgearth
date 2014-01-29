@@ -67,7 +67,6 @@ SET(LIB_PUBLIC_HEADERS
     IOTypes
     JsonUtils
     Layer
-	LightingEffect
     LineFunctor
     Locators
     LocalTangentPlane
@@ -91,6 +90,7 @@ SET(LIB_PUBLIC_HEADERS
     optional
     OverlayDecorator
     OverlayNode
+	PhongLightingEffect
     Pickers
     PrimitiveIntersector
     Profile
@@ -200,7 +200,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     IOTypes.cpp
     JsonUtils.cpp
     Layer.cpp
-	LightingEffect.cpp
     Locators.cpp
     LocalTangentPlane.cpp
     Map.cpp
@@ -221,6 +220,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Notify.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
+	PhongLightingEffect.cpp
     Pickers.cpp
     PrimitiveIntersector.cpp
     Profile.cpp

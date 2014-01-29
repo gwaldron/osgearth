@@ -54,9 +54,6 @@ namespace osgEarth { namespace Drivers { namespace GLSky
 
         void onSetEphemeris();
         void onSetDateTime();
-        void onSetSunVisible();
-        void onSetMoonVisible();
-        void onSetStarsVisible();
 
     protected:
         virtual ~GLSkyNode() { }

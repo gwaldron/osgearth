@@ -23,30 +23,40 @@ using namespace osgEarth_kml;
 void
 KML_PolyStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {
-    if ( !conf.empty() )
-    {
-        bool fill = true;
-        if ( conf.hasValue("fill") ) {
-            fill = as<int>(conf.value("fill"), 1) == 1;
-        }
+	if (!conf.empty())
+	{
+		bool fill = true;	// By default it is true
+		Color color(Color::White);
+		if (conf.hasValue("fill"))
+		{
+			fill = (as<int>(conf.value("fill"), 1) == 1);
+			if (!fill)
+			{
+				color.a() = 0;
+			}
+		}
 
-        bool outline = false;
-        if ( conf.hasValue("outline") ) {
-            outline = as<int>(conf.value("outline"), 0) == 1;
-        }
+		bool colorSpecified = conf.hasValue("color");
+		if (colorSpecified)
+		{
+			color = Color(Stringify() << "#" << conf.value("color"), Color::ABGR);
+		}
+		if (!fill || colorSpecified || !style.has<PolygonSymbol>())
+		{
+			PolygonSymbol* poly = style.getOrCreate<PolygonSymbol>();
+			poly->fill()->color() = color;
+		}
 
-        Color color(Color::White);
-        if ( conf.hasValue("color") ) {
-            color = Color( Stringify() << "#" << conf.value("color"), Color::ABGR );
-        }
-
-        if ( fill ) {
-            PolygonSymbol* poly = style.getOrCreate<PolygonSymbol>();
-            poly->fill()->color() = color;
-        }
-        else {
-            LineSymbol* line = style.getOrCreate<LineSymbol>();
-            line->stroke()->color() = color;
-        }
-    }
+		bool outline = true;	// By default it is true
+		if (conf.hasValue("outline"))
+		{
+			outline = (as<int>(conf.value("outline"), 0) == 1);
+		}
+		if (!outline)
+		{
+			LineSymbol* line = style.getOrCreate<LineSymbol>();
+			color.a() = 0;
+			line->stroke()->color() = color;
+		}
+	}
 }

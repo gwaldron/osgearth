@@ -324,6 +324,7 @@ SkyNode::setDateTime(const DateTime& dt)
 void
 SkyNode::setLighting(osg::StateAttribute::OverrideValue value)
 {
+    _lightingValue = value;
     _lightingUniform = Registry::shaderFactory()->createUniformForGLMode(
         GL_LIGHTING, value );
 

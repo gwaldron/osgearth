@@ -26,4 +26,7 @@ http://readymap.org
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
     
+	<external>
+		<sky driver="simple" atmospheric_lighting="false"/>
+	</external>
 </map>

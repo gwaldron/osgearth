@@ -20,6 +20,7 @@
 #include "SimpleSkyOptions"
 #include <osgEarthUtil/Sky>
 #include <osgEarth/MapNode>
+#include <osgEarth/PhongLightingEffect>
 #include <osg/MatrixTransform>
 
 namespace osg {
@@ -89,10 +90,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         osg::ref_ptr<osg::MatrixTransform> _moonXform;
         osg::ref_ptr<osg::MatrixTransform> _starsXform;
 
-        osg::Matrixd                       _sunMatrix;
-        osg::Matrixd                       _moonMatrix;
-        osg::Matrixd                       _starsMatrix;
-
         osg::ref_ptr<osg::Group> _cullContainer;
 
         osg::ref_ptr<osg::LightSource> _lightSource;
@@ -102,8 +99,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         osg::ref_ptr<osg::Uniform> _starAlpha;
         osg::ref_ptr<osg::Uniform> _starPointSize;
 
-        osg::Vec3d _moonPosition;
-        bool _autoAmbience;
+        osg::ref_ptr<PhongLightingEffect> _phong;
 
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoidModel;
 

@@ -220,10 +220,6 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     this->getOrCreateStateSet()->addUniform(
         Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, 1) );
 
-    _lightSource = new osg::LightSource();
-    _lightSource->setLight( _light.get() );
-    _cullContainer->addChild( _lightSource.get() );
-
     // set up the astronomical parameters:
     _ellipsoidModel = srs->getEllipsoid();
     _innerRadius = osg::minimum(
@@ -251,14 +247,8 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
 
     makeStars();
 
-    // automatically compute ambient lighting based on the eyepoint
-    _autoAmbience = false;
-
     // Update everything based on the date/time.
     onSetDateTime();
-
-    // node to traverse the child nodes
-    //data._cullContainer->addChild( new TraverseNode<osg::Group>(this) );
 }
 
 osg::BoundingSphere
@@ -395,16 +385,7 @@ SimpleSkyNode::makeSceneLighting()
 
     else
     {
-        // simple lighting.
-        vp->setFunction(
-            "atmos_vertex_main",
-            Ground_Phong_Vertex,
-            ShaderComp::LOCATION_VERTEX_VIEW);
-
-        vp->setFunction(
-            "atmos_fragment_main", 
-            Ground_Phong_Fragment,
-            ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+        _phong = new PhongLightingEffect(stateset);
     }
 
     // calculate and apply the uniforms:

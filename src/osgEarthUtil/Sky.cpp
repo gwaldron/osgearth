@@ -43,6 +43,16 @@ namespace
     static const double TWO_PI = (2.0*osg::PI);
     static const double JD2000 = 2451545.0;
 
+    struct CelestialPosition
+    {
+        osg::Vec3d _ecef;
+        double     _rightAscension;
+        double     _declination;
+        double     _localAzimuth;
+        double     _localElevation;
+        double     _localLatitude;
+        double     _localLongitude;
+    };
     
     osg::Vec3d getPositionFromRADecl(double ra, double decl, double range)
     {
@@ -92,7 +102,12 @@ namespace
     struct Sun
     {
         // https://www.cfa.harvard.edu/~wsoon/JuanRamirez09-d/Chang09-OptimalTiltAngleforSolarCollector.pdf
-        osg::Vec3d getPosition(int year, int month, int date, double hoursUTC ) const
+        void getLatLonRaDecl(int year, int month, int date, double hoursUTC,
+                             double& out_lat,
+                             double& out_lon,
+                             double& out_ra,
+                             double& out_decl,
+                             double& out_almanacTime) const
         {
             double JD = getJulianDate(year, month, date);
             double JD1 = (JD - JD2000);                         // julian time since JD2000 epoch
@@ -120,7 +135,8 @@ namespace
             nrad2(sun_lon);
 
             // angle between the ecliptic plane and the equatorial plane
-            double zeta = d2r(23.4392); // zeta
+            double zeta_deg = 23.4392;
+            double zeta = d2r(zeta_deg);
 
             // latitude of the sun on the ecliptic plane:
             double omega = d2r(0.0);
@@ -142,19 +158,57 @@ namespace
             double app_sun_lon = sun_lon - diff_lon + osg::PI;
             nrad2(app_sun_lon);
 
-#if 0
-            OE_INFO
-                << "sun lat = " << r2d(sun_lat) 
-                << ", sun lon = " << r2d(sun_lon)
-                << ", time delta_lon = " << r2d(diff_lon)
-                << ", app sun lon = " << r2d(app_sun_lon)
-                << std::endl;
-#endif
+            out_lat = sun_lat;
+            out_lon = app_sun_lon;
 
-            return osg::Vec3d(
-                cos(sun_lat) * cos(-app_sun_lon),
-                cos(sun_lat) * sin(-app_sun_lon),
-                sin(sun_lat) );
+            // right ascension and declination.
+            double eclong = sun_lon;
+            double oblqec = d2r(zeta_deg - 0.0000004*JD1);
+            double num = cos(oblqec) * sin(eclong);
+            double den = cos(eclong);
+            out_ra = atan(num/den);
+            if ( den < 0.0 ) out_ra += osg::PI;
+            if ( den >= 0 && num < 0 ) out_ra += TWO_PI;
+            out_decl = asin(sin(oblqec)*sin(eclong));
+
+            // almanac time is the difference between the Julian Date and JD2000 epoch
+            out_almanacTime = JD1;
+        }
+
+        void getECEF(int year, int month, int date, double hoursUTC, osg::Vec3d& out_ecef)
+        {
+            double lat, applon, ra, decl, almanacTime;
+            getLatLonRaDecl(year, month, date, hoursUTC, lat, applon, ra, decl, almanacTime);
+            out_ecef.set(
+                cos(lat) * cos(-applon),
+                cos(lat) * sin(-applon),
+                sin(lat) );
+        }
+
+        void getLocalAzEl(int year, int month, int date, double hoursUTC, double lat, double lon, double& out_az, double out_el)
+        {
+            // UNTESTED!
+            // http://stackoverflow.com/questions/257717/position-of-the-sun-given-time-of-day-and-lat-long 
+            double sunLat, sunAppLon, ra, decl, almanacTime;
+            getLatLonRaDecl(year, month, date, hoursUTC, sunLat, sunAppLon, ra, decl, almanacTime);
+            // UTC sidereal time:
+            double gmst = 6.697375 + .0657098242 * almanacTime + hoursUTC;
+            gmst = fmod(gmst, 24.0);
+            if ( gmst < 0.0 ) gmst += 24.0;
+            // Local mean sidereal time:
+            double lmst = gmst + r2d(lon)/15.0;
+            lmst = fmod(lmst, 24.0);
+            if ( lmst < 0.0 ) lmst += 24.0;
+            lmst = d2r(lmst*15.0);
+            // Hour angle:
+            double ha = lmst - ra;
+            nrad2(ha);
+            // Az/el:
+            out_el = asin(sin(decl)*sin(lat)+cos(decl)*cos(lat)*cos(ha));
+            out_az = asin(-cos(decl)*sin(ha)/cos(out_el));
+            double elc = asin(sin(decl)/sin(lat));
+            if ( out_el >= elc ) out_az = osg::PI - out_az;
+            if ( out_el <= elc && ha > 0.0 ) out_az += TWO_PI;
         }
     };
 
@@ -250,9 +304,25 @@ osg::Vec3d
 Ephemeris::getSunPositionECEF(const DateTime& date) const
 {
     Sun sun;
-    return sun.getPosition( date.year(), date.month(), date.day(), date.hours() );
+    osg::Vec3d ecef;
+    sun.getECEF( date.year(), date.month(), date.day(), date.hours(), ecef );
+    return ecef;
 }
 
+#if 0 // untested.
+osg::Vec2d
+Ephemeris::getSunLocalAzimuthElevation(const DateTime& date, double latDeg, double lonDeg) const
+{
+    osg::Vec2d azEl;
+    Sun sun;
+    sun.getLocalAzEl(
+        date.year(), date.month(), date.day(), date.hours(),
+        osg::DegreesToRadians(latDeg),
+        osg::DegreesToRadians(lonDeg),
+        azEl[0], azEl[1]);
+    return azEl;
+}
+#endif
 
 osg::Vec3d
 Ephemeris::getMoonPositionECEF(const DateTime& date) const
@@ -260,7 +330,6 @@ Ephemeris::getMoonPositionECEF(const DateTime& date) const
     Moon moon;
     return moon.getPosition( date.year(), date.month(), date.day(), date.hours() );
 }
-
 
 osg::Vec3d
 Ephemeris::getECEFfromRADecl( double ra, double decl, double range ) const

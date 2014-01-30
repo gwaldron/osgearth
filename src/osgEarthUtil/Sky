@@ -56,6 +56,13 @@ namespace osgEarth { namespace Util
         * Gets the sun position in ECEF coordinates at the given time
         */
         virtual osg::Vec3d getSunPositionECEF(const DateTime& dt) const;
+        
+        /**
+         * Get the sun's azimuth and elevation in the sky relative to the
+         * ground at a given latitude/longitude.
+         */
+        // untested:
+        //virtual osg::Vec2d getSunLocalAzimuthElevation(const DateTime& date, double latDeg, double lonDeg) const;
 
         /**
          * Gets an ECEF position from the right ascension, declination and range

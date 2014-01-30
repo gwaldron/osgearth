@@ -86,6 +86,7 @@ GLSkyNode::onSetDateTime()
 
     const DateTime& dt = getDateTime();
     osg::Vec3d sunPos = getEphemeris()->getSunPositionECEF( dt );
+
     if ( _srs->isGeographic() )
     {
         sunPos.normalize();
@@ -93,11 +94,16 @@ GLSkyNode::onSetDateTime()
     }
     else
     {
+        // this is a temporary setup - it works OK for some situations
+        // but the DateTime will be considered LOCAL (not UTC).
         GeoPoint sunPosECEF( _srs->getECEF(), sunPos, ALTMODE_ABSOLUTE );
         GeoPoint sunPosMap;
         if ( sunPosECEF.transform(_srs.get(), sunPosMap) )
         {
-            getSunLight()->setPosition( osg::Vec4(sunPosMap.vec3d(), 0.0) );
+            sunPosMap.z() = 1e6; // more reasonable number?
+            osg::Vec3d sunPosNorm = sunPosMap.vec3d();
+            sunPosNorm.normalize();
+            getSunLight()->setPosition( osg::Vec4(sunPosNorm, 0.0) );
         }
     }
 }

@@ -20,6 +20,7 @@ SET(HEADERS_ROOT
     DateTime
     DetailTexture
     EarthManipulator
+	Ephemeris
     ExampleResources
     Export
     FeatureManipTool
@@ -76,6 +77,7 @@ SET(SOURCES_ROOT
     DataScanner.cpp    
     DetailTexture.cpp
     EarthManipulator.cpp
+	Ephemeris.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp

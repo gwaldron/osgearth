@@ -20,7 +20,9 @@
 #define OSGEARTHUTIL_SKY
 
 #include <osgEarthUtil/Common>
+#include <osgEarthUtil/Ephemeris>
 #include <osgEarth/DateTime>
+#include <osgEarth/GeoData>
 #include <osgEarth/Config>
 #include <osg/Group>
 #include <osg/Uniform>
@@ -38,41 +40,6 @@ namespace osgDB {
 namespace osgEarth { namespace Util 
 {
     using namespace osgEarth;
-
-    /**
-     * An Ephemeris gives the positions of naturally occurring astronimical
-     * objects; in that case, the sun and the moon. Also includes some
-     * related utility functions.
-     */
-    class OSGEARTHUTIL_EXPORT Ephemeris : public osg::Referenced
-    {
-    public:
-        /**
-        * Gets the moon position in ECEF coordinates at the given time
-        */
-        virtual osg::Vec3d getMoonPositionECEF(const DateTime& dt) const;
-
-        /**
-        * Gets the sun position in ECEF coordinates at the given time
-        */
-        virtual osg::Vec3d getSunPositionECEF(const DateTime& dt) const;
-        
-        /**
-         * Get the sun's azimuth and elevation in the sky relative to the
-         * ground at a given latitude/longitude.
-         */
-        // untested:
-        //virtual osg::Vec2d getSunLocalAzimuthElevation(const DateTime& date, double latDeg, double lonDeg) const;
-
-        /**
-         * Gets an ECEF position from the right ascension, declination and range
-         *
-         * @param ra    Right ascension in radians
-         * @param decl  Declination in radians
-         * @param range Range in meters
-         */
-        osg::Vec3d getECEFfromRADecl(double ra, double decl, double range) const;
-    };
 
 
     /**
@@ -141,6 +108,13 @@ namespace osgEarth { namespace Util
          */
         void setEphemeris(Ephemeris* ephemeris);
         const Ephemeris* getEphemeris() const;
+
+        /**
+         * The ephemeris reference point for projected maps. Not applicable
+         * for geocentric maps.
+         */
+        void setReferencePoint(const GeoPoint& point);
+        const GeoPoint& getReferencePoint() const { return *_refpoint; }
        
         /**
          * Whether the sky lights its subgraph.
@@ -186,6 +160,7 @@ namespace osgEarth { namespace Util
         // impl class can override these events.
         virtual void onSetEphemeris() { }
         virtual void onSetDateTime() { }
+        virtual void onSetReferencePoint() { }
         virtual void onSetMoonVisible() { }
         virtual void onSetStarsVisible() { }
         virtual void onSetSunVisible() { }
@@ -197,6 +172,7 @@ namespace osgEarth { namespace Util
         bool                    _sunVisible;
         bool                    _moonVisible;
         bool                    _starsVisible;
+        optional<GeoPoint>      _refpoint;
 
         osg::StateAttribute::OverrideValue _lightingValue;
         osg::ref_ptr<osg::Uniform>         _lightingUniform;

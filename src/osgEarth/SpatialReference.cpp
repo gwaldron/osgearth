@@ -938,7 +938,8 @@ SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_lo
     }
     else if ( isECEF() )
     {
-        out_local2world = ECEF::createLocalToWorld(xyz);
+        //out_local2world = ECEF::createLocalToWorld(xyz);
+        _ellipsoid->computeLocalToWorldTransformFromXYZ(xyz.x(), xyz.y(), xyz.z(), out_local2world);
     }
     else
     {
@@ -952,7 +953,8 @@ SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_lo
         if ( !transform(geodetic, getGeodeticSRS()->getECEF(), ecef) )
             return false;
 
-        out_local2world = ECEF::createLocalToWorld(ecef);
+        //out_local2world = ECEF::createLocalToWorld(ecef);        
+        _ellipsoid->computeLocalToWorldTransformFromXYZ(ecef.x(), ecef.y(), ecef.z(), out_local2world);
     }
     return true;
 }

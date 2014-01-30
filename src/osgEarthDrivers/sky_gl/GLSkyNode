@@ -41,10 +41,10 @@ namespace osgEarth { namespace Drivers { namespace GLSky
     {
     public:
         GLSkyNode(
-            const SpatialReference* srs);
+            const Profile* profile);
 
         GLSkyNode(
-            const SpatialReference* srs,
+            const Profile*      profile,
             const GLSkyOptions& options);
 
     public: // SkyNode
@@ -55,16 +55,17 @@ namespace osgEarth { namespace Drivers { namespace GLSky
 
         void onSetEphemeris();
         void onSetDateTime();
+        void onSetReferencePoint();
 
     protected:
         virtual ~GLSkyNode();
 
     private:
-        void initialize(const SpatialReference* srs);
+        void initialize(const Profile* profile);
 
-        osg::ref_ptr<osg::Light>             _light;
-        osg::ref_ptr<const SpatialReference> _srs;
-        osg::ref_ptr<PhongLightingEffect>    _lighting;
+        osg::ref_ptr<osg::Light>          _light;
+        osg::ref_ptr<const Profile>       _profile;
+        osg::ref_ptr<PhongLightingEffect> _lighting;
     };
 
 } } } // namespace osgEarth::Drivers::GLSky

@@ -19,6 +19,7 @@
 
 #include "GLSkyNode"
 #include "GLSkyShaders"
+#include <osgEarthUtil/Ephemeris>
 
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/SpatialReference>
@@ -33,23 +34,23 @@ using namespace osgEarth::Drivers::GLSky;
 
 //---------------------------------------------------------------------------
 
-GLSkyNode::GLSkyNode(const SpatialReference* srs) :
+GLSkyNode::GLSkyNode(const Profile* profile) :
 SkyNode()
 {
-    initialize(srs);
+    initialize(profile);
 }
 
-GLSkyNode::GLSkyNode(const SpatialReference* srs,
-                     const GLSkyOptions&     options) :
+GLSkyNode::GLSkyNode(const Profile*      profile,
+                     const GLSkyOptions& options) :
 SkyNode ( options )
 {
-    initialize(srs);
+    initialize(profile);
 }
 
 void
-GLSkyNode::initialize(const SpatialReference* srs)
+GLSkyNode::initialize(const Profile* profile)
 {
-    _srs = srs;
+    _profile = profile;
     _light = new osg::Light(0);
     _light->setAmbient(osg::Vec4(0.1f, 0.1f, 0.1f, 1.0f));
     _light->setDiffuse(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -79,32 +80,49 @@ GLSkyNode::onSetEphemeris()
 }
 
 void
+GLSkyNode::onSetReferencePoint()
+{
+    onSetDateTime();
+}
+
+void
 GLSkyNode::onSetDateTime()
 {
-    if ( !getSunLight() || !_srs.valid() )
+    if ( !getSunLight() || !_profile.valid() )
         return;
 
     const DateTime& dt = getDateTime();
-    osg::Vec3d sunPos = getEphemeris()->getSunPositionECEF( dt );
+    osg::Vec3d sunPosECEF = getEphemeris()->getSunPositionECEF( dt );
 
-    if ( _srs->isGeographic() )
+    if ( _profile->getSRS()->isGeographic() )
     {
-        sunPos.normalize();
-        getSunLight()->setPosition( osg::Vec4(sunPos, 0.0) );
+        sunPosECEF.normalize();
+        getSunLight()->setPosition( osg::Vec4(sunPosECEF, 0.0) );
     }
     else
     {
-        // this is a temporary setup - it works OK for some situations
-        // but the DateTime will be considered LOCAL (not UTC).
-        GeoPoint sunPosECEF( _srs->getECEF(), sunPos, ALTMODE_ABSOLUTE );
-        GeoPoint sunPosMap;
-        if ( sunPosECEF.transform(_srs.get(), sunPosMap) )
+        // pull the ref point:
+        GeoPoint refpoint = getReferencePoint();
+        if ( !refpoint.isValid() )
         {
-            sunPosMap.z() = 1e6; // more reasonable number?
-            osg::Vec3d sunPosNorm = sunPosMap.vec3d();
-            sunPosNorm.normalize();
-            getSunLight()->setPosition( osg::Vec4(sunPosNorm, 0.0) );
+            // not found; use the center of the profile:
+            _profile->getExtent().getCentroid(refpoint);
         }
+
+        // convert to lat/long:
+        GeoPoint refLatLong;
+        refpoint.transform(_profile->getSRS()->getGeographicSRS(), refLatLong);
+
+        // Matrix to convert the ECEF sun position to the local tangent plane
+        // centered on our reference point:
+        osg::Matrixd world2local;
+        refLatLong.createWorldToLocal(world2local);
+
+        // convert the sun position:
+        osg::Vec3d sunPosLocal = sunPosECEF * world2local;
+        sunPosLocal.normalize();
+
+        getSunLight()->setPosition( osg::Vec4(sunPosLocal, 0.0) );
     }
 }
 

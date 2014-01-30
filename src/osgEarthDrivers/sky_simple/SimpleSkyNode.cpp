@@ -21,6 +21,7 @@
 #include "SimpleSkyShaders"
 
 #include <osgEarthUtil/StarData>
+#include <osgEarthUtil/Ephemeris>
 
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/NodeUtils>

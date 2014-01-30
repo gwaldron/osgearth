@@ -49,9 +49,8 @@ namespace osgEarth { namespace Drivers { namespace GLSky
                 return ReadResult::FILE_NOT_HANDLED;
 
             MapNode* mapNode = getMapNode(options);
-            const SpatialReference* srs = mapNode ? mapNode->getMapSRS() : 0L;
-
-            return new GLSkyNode(srs, getSkyOptions(options));
+            const Profile* profile = mapNode ? mapNode->getMap()->getProfile() : 0L;
+            return new GLSkyNode(profile, getSkyOptions(options));
         }
 
     protected:

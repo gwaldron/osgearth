@@ -800,12 +800,12 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->_stream );
 
-    //Take a temporary ref to the callback
-    osg::ref_ptr<ProgressCallback> progressCallback = callback;
+    //Take a temporary ref to the callback (why? dangerous.)
+    //osg::ref_ptr<ProgressCallback> progressCallback = callback;
     curl_easy_setopt( _curl_handle, CURLOPT_URL, url.c_str() );
     if (callback)
     {
-        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, progressCallback.get());
+        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, callback); //progressCallback.get());
     }
 
     CURLcode res;

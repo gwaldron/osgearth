@@ -111,6 +111,7 @@ public:
                     options ? const_cast<ProgressCallback*>(
                     dynamic_cast<const ProgressCallback*>(options->getUserData())) : 0L;
 
+                // must have a ProgressCallback if we're profiling.
                 bool ownProgress = (progress == 0L);
                 if ( !progress && _profiling )
                     progress = new ProgressCallback();

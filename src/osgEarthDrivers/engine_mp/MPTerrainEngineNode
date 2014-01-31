@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_ENGINE_MP_ENGINE_NODE_H
-#define OSGEARTH_ENGINE_MP_ENGINE_NODE_H 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_ENGINE_NODE_H
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_ENGINE_NODE_H 1
 
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
@@ -37,7 +37,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     class MPTerrainEngineNode : public TerrainEngineNode
     {
@@ -119,7 +119,7 @@ namespace osgEarth_engine_mp
         void updateShaders(); 
 
     private:
-        osgEarth::Drivers::MPTerrainEngineOptions _terrainOptions;
+        MPTerrainEngineOptions _terrainOptions;
 
         class TerrainNode* _terrain;
         UID                _uid;
@@ -156,6 +156,6 @@ namespace osgEarth_engine_mp
         MPTerrainEngineNode( const MPTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_ENGINE_NODE_H
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_ENGINE_NODE_H

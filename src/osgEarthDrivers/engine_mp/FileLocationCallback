@@ -24,13 +24,10 @@
 #include <osg/Version>
 #include <osgEarth/Export>
 
-
 #define USE_FILELOCATIONCALLBACK OSG_MIN_VERSION_REQUIRED(2,9,5)
-
-
 #if USE_FILELOCATIONCALLBACK
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
      * A database pager callback that determines if the given filename is cached or not
@@ -80,7 +77,7 @@ namespace osgEarth_engine_mp
         virtual bool useFileCache() const { return false; }
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
 #endif // USE_FILELOCATIONCALLBACK
 

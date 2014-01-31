@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TILE_MODEL_COMPILER
-#define OSGEARTH_ENGINE_MP_TILE_MODEL_COMPILER 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_COMPILER
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_COMPILER 1
 
 #include "Common"
 #include "TileModel"
@@ -32,10 +32,9 @@
 #include <osg/Drawable>
 #include <osg/Array>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
-    using namespace osgEarth::Drivers;
 
     /**
      * Cache used by the TileModelCompiler. This lets us share common data across
@@ -97,6 +96,6 @@ namespace osgEarth_engine_mp
         CompilerCache                             _cache;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_MODEL_COMPILER
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_COMPILER

@@ -41,7 +41,7 @@
 
 #define LC "[MPTerrainEngineNode] "
 
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 
 //------------------------------------------------------------------------

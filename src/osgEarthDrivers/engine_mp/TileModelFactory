@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TILE_MODEL_FACTORY
-#define OSGEARTH_ENGINE_MP_TILE_MODEL_FACTORY 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_FACTORY
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_FACTORY 1
 
 #include "Common"
 #include "TileNode"
@@ -32,7 +32,7 @@
 #include <osgEarth/MapInfo>
 #include <osg/Group>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
 
@@ -153,8 +153,8 @@ namespace osgEarth_engine_mp
     {
     public:
         TileModelFactory(
-            TileNodeRegistry*                      liveTiles,
-            const Drivers::MPTerrainEngineOptions& terrainOptions );
+            TileNodeRegistry*             liveTiles,
+            const MPTerrainEngineOptions& terrainOptions );
 
         HeightFieldCache* getHeightFieldCache() const;
 
@@ -169,12 +169,11 @@ namespace osgEarth_engine_mp
 
     private:        
 
-        //const Map*                             _map;
-        osg::ref_ptr<TileNodeRegistry>         _liveTiles;
-        const Drivers::MPTerrainEngineOptions& _terrainOptions;
-        osg::ref_ptr< HeightFieldCache >       _hfCache;
+        osg::ref_ptr<TileNodeRegistry>   _liveTiles;
+        const MPTerrainEngineOptions&    _terrainOptions;
+        osg::ref_ptr< HeightFieldCache > _hfCache;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_MODEL_FACTORY
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_FACTORY

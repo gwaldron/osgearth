@@ -26,7 +26,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
     * Factory object that can create a scene graph given a TileKey.
@@ -48,6 +48,6 @@ namespace osgEarth_engine_mp
         virtual ~KeyNodeFactory() { }
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
 #endif // OSGEARTH_ENGINE_KEY_NODE_FACTORY

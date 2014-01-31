@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TILE_PAGED_LOD
-#define OSGEARTH_ENGINE_MP_TILE_PAGED_LOD 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_PAGED_LOD
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_PAGED_LOD 1
 
 #include "Common"
 #include "TileNodeRegistry"
@@ -26,7 +26,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
      * TilePagedLOD is an extension to osg::PagedLOD that supports the tile registry.
@@ -63,6 +63,6 @@ namespace osgEarth_engine_mp
         Threading::Mutex               _updateMutex;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_PAGED_LOD
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_PAGED_LOD

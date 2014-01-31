@@ -202,6 +202,14 @@ _options( options )
 void
 SimpleSkyNode::initialize(const SpatialReference* srs)
 {
+    // only supports geocentric for now.
+    if ( srs && !srs->isGeographic() )
+    {
+        OE_WARN << LC << "Sorry, SimpleSky only supports geocentric maps." << std::endl;
+        setNodeMask(0);
+        return;
+    }
+
     // containers for sky elements.
     _cullContainer = new osg::Group();
 
@@ -261,7 +269,7 @@ SimpleSkyNode::computeBound() const
 void
 SimpleSkyNode::traverse( osg::NodeVisitor& nv )
 {
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    if ( nv.getVisitorType() == nv.CULL_VISITOR && _cullContainer.valid() )
     {
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
@@ -315,7 +323,8 @@ SimpleSkyNode::onSetDateTime()
 void
 SimpleSkyNode::attach( osg::View* view, int lightNum )
 {
-    if ( !view ) return;
+    if ( !view || !_light.valid() )
+        return;
 
     _light->setLightNum( lightNum );
     view->setLight( _light.get() );

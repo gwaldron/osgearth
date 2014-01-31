@@ -186,7 +186,17 @@ namespace osgEarth
         virtual std::string rewrite( const std::string& url ) = 0;
     };
 
-    /**
+	/**
+	 *
+	 * A CURL configuration handler to apply CURL settings. It can be used for setting client certificates
+	 */
+	struct OSGEARTH_EXPORT CurlConfigHandler : public osg::Referenced
+	{
+		virtual void onInitialize(void* curl_handle) = 0;
+		virtual void onGet(void* curl_handle) = 0;
+	};
+	
+	/**
      * Utility class for making HTTP requests.
      *
      * TODO: This class will actually read data from disk as well, and therefore should
@@ -249,7 +259,14 @@ namespace osgEarth
          */
         static void setURLRewriter( URLRewriter* rewriter );
 
-        /**
+		static CurlConfigHandler* getCurlConfigHandler();
+
+		/**
+		* Sets the CurlConfigHandler to configurate the CURL library. It can be used for apply client certificates
+		*/
+		static void setCurlConfighandler(CurlConfigHandler* handler);
+		
+		/**
          * One time thread safe initialization. In osgEarth, you don't need
          * to call this directly; osgEarth::Registry will call it at
          * startup.

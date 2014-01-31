@@ -9,14 +9,7 @@ to extruded buildings.
     
     <options elevation_tile_size="15">
         <terrain lighting="true"/>
-    </options>    
-    
-    <image name="mapquest_open_aerial" driver="xyz" enabled="false">
-        <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
-        <profile>spherical-mercator</profile>
-        <cache_policy usage="no_cache"/>
-        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
-    </image>
+    </options>   
     
     <image name="readymap_imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>

@@ -316,6 +316,8 @@ namespace
     static double                      s_HTTP_DEBUG_total_duration;
 
     static osg::ref_ptr< URLRewriter > s_rewriter;
+
+    static osg::ref_ptr< CurlConfigHandler > s_curlConfigHandler;
 }
 
 HTTPClient&
@@ -380,6 +382,11 @@ HTTPClient::initializeImpl()
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
     curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);
     curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
+
+    osg::ref_ptr< CurlConfigHandler > curlConfigHandler = getCurlConfigHandler();
+    if (curlConfigHandler.valid()) {
+        curlConfigHandler->onInitialize(_curl_handle);
+    }
 
     long timeout = s_timeout;
     const char* timeoutEnv = getenv("OSGEARTH_HTTP_TIMEOUT");
@@ -450,6 +457,16 @@ URLRewriter* HTTPClient::getURLRewriter()
 void HTTPClient::setURLRewriter( URLRewriter* rewriter )
 {
     s_rewriter = rewriter;
+}
+
+CurlConfigHandler* HTTPClient::getCurlConfigHandler()
+{
+    return s_curlConfigHandler.get();
+}
+
+void HTTPClient::setCurlConfighandler(CurlConfigHandler* handler)
+{
+    s_curlConfigHandler = handler;
 }
 
 void
@@ -818,9 +835,14 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         char errorBuf[CURL_ERROR_SIZE];
         errorBuf[0] = 0;
         curl_easy_setopt( _curl_handle, CURLOPT_ERRORBUFFER, (void*)errorBuf );
-
         curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)&sp);
-        res = curl_easy_perform( _curl_handle );
+        
+        osg::ref_ptr< CurlConfigHandler > curlConfigHandler = getCurlConfigHandler();
+        if (curlConfigHandler.valid()) {
+            curlConfigHandler->onGet(_curl_handle);
+        }
+
+        res = curl_easy_perform(_curl_handle);
         curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)0 );
         curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
 

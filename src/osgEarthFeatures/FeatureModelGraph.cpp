@@ -54,18 +54,10 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
-    /**
-     * A database pager callback that determines if the given filename is cached or not
-     */
-    class FileLocationCallback : public osgDB::FileLocationCallback
+    // callback to force features onto the high-latency queue.
+    struct FileLocationCallback : public osgDB::FileLocationCallback
     {
-    public:
-        FileLocationCallback() { }
-
-        /** dtor */
-        virtual ~FileLocationCallback() { }
-
-        virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        Location fileLocation(const std::string& filename, const osgDB::Options* options)
         {
             return REMOTE_FILE;
         }
@@ -110,17 +102,18 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        //p->setRadius(std::max((float)bs.radius(),maxRange));
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
         p->setPriorityOffset( 0, priOffset );
         p->setPriorityScale( 0, priScale );
 #endif
-        
+
+#if 1 // think about this.
         osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
         options->setFileLocationCallback( new FileLocationCallback() );
         p->setDatabaseOptions( options );
+#endif
 
         return p;
     }

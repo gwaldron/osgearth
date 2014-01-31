@@ -129,8 +129,10 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
         plod->setRange   ( 0, minRange, FLT_MAX );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engineUID << ".osgearth_engine_mp_tile" );
         plod->setRange   ( 1, 0, minRange );
+#if 0
         plod->setPriorityScale( 1, 1000.0f );
         plod->setPriorityOffset( 1, 10000.0f );
+#endif
 
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();

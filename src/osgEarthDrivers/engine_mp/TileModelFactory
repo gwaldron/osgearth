@@ -24,6 +24,7 @@
 #include "TileNodeRegistry"
 #include "MPTerrainEngineOptions"
 #include <osgEarth/Map>
+#include <osgEarth/Progress>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Containers>
 #include <osgEarth/HeightFieldUtils>
@@ -84,6 +85,9 @@ namespace osgEarth_engine_mp
             cachekey._convertToHAE = convertToHAE;
             cachekey._samplePolicy = samplePolicy;
 
+            if (progress)
+                progress->stats()["hfcache_try_count"] += 1;
+
             bool hit = false;
             LRUCache<HFKey,HFValue>::Record rec;
             if ( _cache.get(cachekey, rec) )
@@ -92,7 +96,12 @@ namespace osgEarth_engine_mp
                 if ( out_isFallback )
                     *out_isFallback = rec.value()._isFallback;
 
-                //OE_NOTICE << "Found HF " << key.str() << " in HF cache." << std::endl;
+                if (progress)
+                {
+                    progress->stats()["hfcache_hit_count"] += 1;
+                    progress->stats()["hfcache_hit_rate"] = progress->stats()["hfcache_hits"]/progress->stats()["hfcache_accesses"];
+                }
+
                 return true;
             }
 
@@ -155,8 +164,8 @@ namespace osgEarth_engine_mp
         void createTileModel(
             const TileKey&           key,
             const MapFrame&          frame,
-            osg::ref_ptr<TileModel>& out_model);//,
-            //bool&                    out_hasRealData);
+            osg::ref_ptr<TileModel>& out_model,
+            ProgressCallback*        progress);
 
     private:        
 

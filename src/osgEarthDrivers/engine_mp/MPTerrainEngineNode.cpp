@@ -202,7 +202,6 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     }
     
     // initialize the model factory:
-    //_tileModelFactory = new TileModelFactory(getMap(), _liveTiles.get(), _terrainOptions );
     _tileModelFactory = new TileModelFactory(_liveTiles.get(), _terrainOptions );
 
     // handle an already-established map profile:
@@ -251,6 +250,8 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
 
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
+
+    OE_INFO << LC << "Edge normalization is " << (_terrainOptions.normalizeEdges() == true? "ON" : "OFF") << std::endl;
 }
 
 

@@ -86,15 +86,21 @@ TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
     osg::Vec3d hf_ndc;
     GeoLocator::convertLocalCoordBetween( *ndcLocator, ndc, *_locator.get(), hf_ndc );
 
+    float centerHeight = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), hf_ndc.x(), hf_ndc.y(), interp);
+
     osg::Vec3d west ( hf_ndc.x()-xres, hf_ndc.y(), 0.0 );
     osg::Vec3d east ( hf_ndc.x()+xres, hf_ndc.y(), 0.0 );
     osg::Vec3d south( hf_ndc.x(), hf_ndc.y()-yres, 0.0 );
     osg::Vec3d north( hf_ndc.x(), hf_ndc.y()+yres, 0.0 );
 
-    west.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  interp);
-    east.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  interp);
-    south.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), interp);
-    north.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), interp);
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  west.z(), interp))
+        west.z() = centerHeight;
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  east.z(), interp))
+        east.z() = centerHeight;
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), south.z(), interp))
+        south.z() = centerHeight;
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), north.z(), interp))
+        north.z() = centerHeight;
 
     osg::Vec3d westWorld, eastWorld, southWorld, northWorld;
     _locator->unitToModel(west,  westWorld);

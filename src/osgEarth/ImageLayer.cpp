@@ -595,10 +595,6 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
             ImageUtils::normalizeImage( r.getImage() );
             return GeoImage( r.releaseImage(), key.getExtent() );
         }
-        //else if ( r.code() == ReadResult::RESULT_EXPIRED )
-        //{
-        //    OE_INFO << LC << getName() << " : " << key.str() << " record expired!" << std::endl;
-        //}
     }
     
     // The data was not in the cache. If we are cache-only, fail sliently
@@ -716,6 +712,8 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
             {
                 finalKey = finalKey.createParentKey();
                 out_isFallback = true;
+                if (progress)
+                    progress->stats()["imagelayer_fallback_count"] += 1;
             }
         }
 

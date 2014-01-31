@@ -52,6 +52,28 @@ using namespace osgEarth::Symbology;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 
+namespace
+{
+    /**
+     * A database pager callback that determines if the given filename is cached or not
+     */
+    class FileLocationCallback : public osgDB::FileLocationCallback
+    {
+    public:
+        FileLocationCallback() { }
+
+        /** dtor */
+        virtual ~FileLocationCallback() { }
+
+        virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        {
+            return REMOTE_FILE;
+        }
+
+        virtual bool useFileCache() const { return false; }
+    };
+}
+
 //---------------------------------------------------------------------------
 
 // pseudo-loader for paging in feature tiles for a FeatureModelGraph.
@@ -95,6 +117,10 @@ namespace
         p->setPriorityOffset( 0, priOffset );
         p->setPriorityScale( 0, priScale );
 #endif
+        
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
+        options->setFileLocationCallback( new FileLocationCallback() );
+        p->setDatabaseOptions( options );
 
         return p;
     }

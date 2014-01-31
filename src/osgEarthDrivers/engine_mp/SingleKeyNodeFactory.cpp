@@ -129,6 +129,8 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
         plod->setRange   ( 0, minRange, FLT_MAX );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engineUID << ".osgearth_engine_mp_tile" );
         plod->setRange   ( 1, 0, minRange );
+        plod->setPriorityScale( 1, 1000.0f );
+        plod->setPriorityOffset( 1, 10000.0f );
 
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
@@ -169,12 +171,17 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
 
     _frame.sync();
     
+    OE_START_TIMER(create_model);
+
     osg::ref_ptr<TileModel> model[4];
     for(unsigned q=0; q<4; ++q)
     {
         TileKey child = key.createChildKey(q);
-        _modelFactory->createTileModel( child, _frame, model[q] );
+        _modelFactory->createTileModel( child, _frame, model[q], progress );
     }
+
+    if (progress)
+        progress->stats()["create_tilemodel_time"] += OE_STOP_TIMER(create_model);
 
     bool subdivide =
         _options.minLOD().isSet() && 
@@ -191,6 +198,8 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
             }
         }
     }
+
+    OE_START_TIMER(compile_tile);
 
     osg::ref_ptr<osg::Group> quad;
 
@@ -210,6 +219,9 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
             quad->addChild( createTile(model[q].get(), setupChildren) );
         }
     }
+
+    if (progress)
+        progress->stats()["compile_tilemodel_time"] += OE_STOP_TIMER(compile_tile);
 
     return quad.release();
 }

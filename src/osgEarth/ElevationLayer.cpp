@@ -589,6 +589,9 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
 
                 while ( hf_key.valid() && !geoHF.valid() )
                 {
+                    if (progress)
+                        progress->stats()["elevationLayer_fallback_count"] += 1;
+
                     geoHF = layer->createHeightField( hf_key, progress );
                     if ( !geoHF.valid() )
                         hf_key = hf_key.createParentKey();

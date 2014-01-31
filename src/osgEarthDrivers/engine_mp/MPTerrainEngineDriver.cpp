@@ -21,6 +21,7 @@
 #include "TileNode"
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
+#include <osgEarth/Utils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -38,7 +39,12 @@ using namespace osgEarth_engine_mp;
 class osgEarth_MPTerrainEngineDriver : public osgDB::ReaderWriter
 {
 public:
-    osgEarth_MPTerrainEngineDriver() { }
+    bool _profiling;
+
+    osgEarth_MPTerrainEngineDriver()
+    {
+        _profiling = (::getenv("OSGEARTH_MP_PROFILE") != 0L);
+    }
 
     virtual const char* className()
     {
@@ -98,12 +104,16 @@ public:
             MPTerrainEngineNode::getEngineByUID( (UID)engineID, engineNode );
             if ( engineNode.valid() )
             {
-                osg::Timer_t start = osg::Timer::instance()->tick();
+                OE_START_TIMER(tileLoadTime);
 
                 // see if we have a progress tracker
                 ProgressCallback* progress = 
                     options ? const_cast<ProgressCallback*>(
                     dynamic_cast<const ProgressCallback*>(options->getUserData())) : 0L;
+
+                bool ownProgress = (progress == 0L);
+                if ( !progress && _profiling )
+                    progress = new ProgressCallback();
 
                 // assemble the key and create the node:
                 const Profile* profile = engineNode->getMap()->getProfile();
@@ -120,27 +130,31 @@ public:
                     node = engineNode->createStandaloneNode(key, progress);
                 }
 
+                double tileLoadTime = OE_STOP_TIMER(tileLoadTime);
+                if ( progress )
+                    progress->stats()["tile_load_time"] = tileLoadTime;
 
-#if 0
-                osg::Timer_t end = osg::Timer::instance()->tick();
-
-                //if ( osgEarth::getNotifyLevel() >= osg::DEBUG_INFO )
+                if ( _profiling )
                 {
-                    static Threading::Mutex s_statsMutex;
-                    static std::vector<double> s_times;
-                    Threading::ScopedMutexLock lock(s_statsMutex);
-                    s_times.push_back( osg::Timer::instance()->delta_s(start, end) );
-                    if ( s_times.size() % 50 == 0 )
+                    OE_NOTICE << "tile: " << tileDef << std::endl;
+                    for(std::map<std::string,double>::iterator i = progress->stats().begin();
+                        i != progress->stats().end();
+                        ++i)
                     {
-                        double t = 0.0;
-                        for(unsigned i=0; i<s_times.size(); ++i)
-                            t += s_times[i];
-                        OE_NOTICE << LC << "Average time = " << (t/s_times.size()) << " s." << std::endl;
+                        OE_NOTICE << "   " << i->first << " = " << std::setprecision(4) 
+                            << i->second << " ("
+                            << (int)((i->second/tileLoadTime)*100)
+                            << "%)" 
+                            << std::endl;
+                    }
+
+                    if ( ownProgress )
+                    {
+                        delete progress;
+                        progress = 0L;
                     }
                 }
-#endif
 
-                
                 // Deal with failed loads.
                 if ( !node.valid() )
                 {

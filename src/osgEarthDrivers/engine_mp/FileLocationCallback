@@ -72,6 +72,8 @@ namespace osgEarth_engine_mp
                 }
             }
 
+            //OE_NOTICE << (result?"REMOTE":"LOCAL") << " - " << filename << std::endl;
+
             return result;
         }
 

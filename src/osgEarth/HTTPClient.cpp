@@ -24,6 +24,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/Notify>
+#include <osg/Timer>
 #include <string.h>
 #include <sstream>
 #include <fstream>
@@ -310,6 +311,9 @@ namespace
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
+    static Threading::Mutex            s_HTTP_DEBUG_mutex;
+    static int                         s_HTTP_DEBUG_request_count;
+    static double                      s_HTTP_DEBUG_total_duration;
 
     static osg::ref_ptr< URLRewriter > s_rewriter;
 }
@@ -594,49 +598,49 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
 HTTPResponse
 HTTPClient::get( const HTTPRequest&    request,
                  const osgDB::Options* options,
-                 ProgressCallback*     callback)
+                 ProgressCallback*     progress)
 {
-    return getClient().doGet( request, options, callback );
+    return getClient().doGet( request, options, progress );
 }
 
 HTTPResponse 
 HTTPClient::get( const std::string&    url,
                  const osgDB::Options* options,
-                 ProgressCallback*     callback)
+                 ProgressCallback*     progress)
 {
-    return getClient().doGet( url, options, callback);
+    return getClient().doGet( url, options, progress);
 }
 
 ReadResult
 HTTPClient::readImage(const std::string&    location,
                       const osgDB::Options* options,
-                      ProgressCallback*     callback)
+                      ProgressCallback*     progress)
 {
-    return getClient().doReadImage( location, options, callback );
+    return getClient().doReadImage( location, options, progress );
 }
 
 ReadResult
 HTTPClient::readNode(const std::string&    location,
                      const osgDB::Options* options,
-                     ProgressCallback*     callback)
+                     ProgressCallback*     progress)
 {
-    return getClient().doReadNode( location, options, callback );
+    return getClient().doReadNode( location, options, progress );
 }
 
 ReadResult
 HTTPClient::readObject(const std::string&    location,
                        const osgDB::Options* options,
-                       ProgressCallback*     callback)
+                       ProgressCallback*     progress)
 {
-    return getClient().doReadObject( location, options, callback );
+    return getClient().doReadObject( location, options, progress );
 }
 
 ReadResult
 HTTPClient::readString(const std::string&    location,
                        const osgDB::Options* options,
-                       ProgressCallback*     callback)
+                       ProgressCallback*     progress)
 {
-    return getClient().doReadString( location, options, callback );
+    return getClient().doReadString( location, options, progress );
 }
 
 bool
@@ -650,6 +654,8 @@ HTTPResponse
 HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, ProgressCallback* callback) const
 {
     initialize();
+
+    OE_START_TIMER(http_get);
 
     const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
             options->getAuthenticationMap() :
@@ -805,6 +811,8 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     CURLcode res;
     long response_code = 0L;
 
+    OE_START_TIMER(get_duration);
+
     if ( _simResponseCode < 0 )
     {
         char errorBuf[CURL_ERROR_SIZE];
@@ -849,18 +857,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     if ( content_type_cp != NULL )
     {
         response._mimeType = content_type_cp;    
-    }            
-
-    if ( s_HTTP_DEBUG )
-    {
-        TimeStamp filetime = 0;
-        if (CURLE_OK != curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime))
-            filetime = 0;
-
-        OE_NOTICE << LC 
-            << "GET(" << response_code << ", " << response._mimeType << ") : \"" 
-            << url << "\" (" << DateTime(filetime).asRFC1123() << ")"<< std::endl;
-    }
+    } 
 
     // upon success, parse the data:
     if ( res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
@@ -885,6 +882,38 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     {        
         //If we were aborted by a callback, then it was cancelled by a user
         response._cancelled = true;
+    }
+
+    response._duration_s = OE_STOP_TIMER(get_duration);
+
+    if ( callback )
+    {
+        callback->stats()["http_get_time"] += OE_STOP_TIMER(http_get);
+        callback->stats()["http_get_count"] += 1;
+    }
+
+    if ( s_HTTP_DEBUG )
+    {
+        TimeStamp filetime = 0;
+        if (CURLE_OK != curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime))
+            filetime = 0;
+
+        OE_NOTICE << LC 
+            << "GET(" << response_code << ", " << response._mimeType << ") : \"" 
+            << url << "\" (" << DateTime(filetime).asRFC1123() << ") t="
+            << std::setprecision(4) << response.getDuration() << "s" << std::endl;
+
+        {
+            Threading::ScopedMutexLock lock(s_HTTP_DEBUG_mutex);
+            s_HTTP_DEBUG_request_count++;
+            s_HTTP_DEBUG_total_duration += response.getDuration();
+
+            if ( s_HTTP_DEBUG_request_count % 60 == 0 )
+            {
+                OE_NOTICE << LC << "Average duration = " << s_HTTP_DEBUG_total_duration/(double)s_HTTP_DEBUG_request_count
+                    << std::endl;
+            }
+        }
     }
 
     return response;
@@ -1010,6 +1039,9 @@ HTTPClient::doReadImage(const std::string&    location,
         {
             result.setLastModifiedTime( filetime );
         }
+        
+        // Time of query
+        result.setDuration( response.getDuration() );
     }
     else
     {

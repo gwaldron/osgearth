@@ -151,7 +151,6 @@ to extruded buildings.
             <viewpoint name="Boston Downtown 2" heading="-128.5" lat="42.3582" long="-71.0546" height="0" pitch="-19" range="1620" />
             <viewpoint name="Boston Street Level" heading="-145.85" lat="42.36460" long="-71.053612" pitch="-10.1" range="85.034"/>
         </viewpoints>
-        <sky driver="gl" hours="16.0"/>
     </external>
   
 </map>

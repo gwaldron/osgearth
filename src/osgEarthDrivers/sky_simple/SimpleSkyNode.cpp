@@ -202,24 +202,23 @@ _options( options )
 void
 SimpleSkyNode::initialize(const SpatialReference* srs)
 {
+    osg::Vec3f lightPos(0.0f, 1.0f, 0.0f);
+
+    _light = new osg::Light( 0 );
+    _light->setPosition( osg::Vec4f(0.0f, 0.0f, 1.0, 0.0f) );
+    _light->setAmbient ( osg::Vec4f(0.03f, 0.03f, 0.03f, 1.0f) );
+    _light->setDiffuse ( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
+    _light->setSpecular( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
+
     // only supports geocentric for now.
     if ( srs && !srs->isGeographic() )
     {
         OE_WARN << LC << "Sorry, SimpleSky only supports geocentric maps." << std::endl;
-        setNodeMask(0);
         return;
     }
 
     // containers for sky elements.
     _cullContainer = new osg::Group();
-
-    osg::Vec3f lightPos(0.0f, 1.0f, 0.0f);
-
-    _light = new osg::Light( 0 );
-    _light->setPosition( osg::Vec4f(0.0f, 1.0f, 0.0f, 0.0f) );
-    _light->setAmbient ( osg::Vec4f(0.03f, 0.03f, 0.03f, 1.0f) );
-    _light->setDiffuse ( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
-    _light->setSpecular( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
 
     _lightPosUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir");
     _lightPosUniform->set( lightPos / lightPos.length() );

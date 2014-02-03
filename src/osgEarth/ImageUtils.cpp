@@ -566,6 +566,7 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
 
     osg::Image* result = new osg::Image();
     result->allocateImage(image->s(), image->t(), image->r(), pixelFormat, dataType);
+    memset(result->data(), 0, result->getTotalSizeInBytes());
 
     if ( pixelFormat == GL_RGB && dataType == GL_UNSIGNED_BYTE )
         result->setInternalTextureFormat( GL_RGB8_INTERNAL );

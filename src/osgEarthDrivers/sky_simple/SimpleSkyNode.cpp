@@ -246,13 +246,6 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
 
     makeMoon();
 
-    if (_minStarMagnitude < 0)
-    {
-        const char* magEnv = ::getenv("OSGEARTH_MIN_STAR_MAGNITUDE");
-        if (magEnv)
-            _minStarMagnitude = as<float>(std::string(magEnv), -1.0f);
-    }
-
     makeStars();
 
     // Update everything based on the date/time.
@@ -628,6 +621,12 @@ SimpleSkyNode::StarData::StarData(std::stringstream &ss)
 void
 SimpleSkyNode::makeStars()
 {
+    const char* magEnv = ::getenv("OSGEARTH_MIN_STAR_MAGNITUDE");
+    if (magEnv)
+        _minStarMagnitude = as<float>(std::string(magEnv), -1.0f);
+    else
+        _minStarMagnitude = -1.0f;
+
     _starRadius = 20000.0 * (_sunDistance > 0.0 ? _sunDistance : _outerRadius);
 
     std::vector<StarData> stars;

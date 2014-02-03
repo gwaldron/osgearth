@@ -48,7 +48,8 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
+
+#include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -73,9 +74,6 @@ int main(int argc, char** argv)
         arguments.getApplicationUsage()->write(std::cout);
         return 1;
     }
-
-    float ambientBrightness = 0.4f;
-    arguments.read("--ambientBrightness", ambientBrightness);
 
     // set up the camera manipulators.
     viewer.setCameraManipulator(new EarthManipulator);
@@ -119,14 +117,14 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    MapNode* mapNode = osgEarth::findTopMostNodeOfType< MapNode > ( model.get() );
+    MapNode* mapNode = MapNode::get(model.get());
 
-    SkyNode* skyNode = osgEarth::findTopMostNodeOfType< SkyNode > ( model.get() );
-    if (!skyNode)
-    {
-        OE_NOTICE << "Please run with options --sky to enable the SkyNode" << std::endl;
-        //exit(1);
-    }
+    //SkyNode* skyNode = osgEarth::findTopMostNodeOfType< SkyNode > ( model.get() );
+    //if (!skyNode)
+    //{
+    //    OE_NOTICE << "Please run with options --sky to enable the SkyNode" << std::endl;
+    //    //exit(1);
+    //}
 
     // Prevent terrain skirts (or other "secondary geometry") from casting shadows
     const TerrainOptions& terrainOptions = mapNode->getTerrainEngine()->getTerrainOptions();
@@ -134,11 +132,6 @@ int main(int argc, char** argv)
 
     // Enables shadowing on an osgEarth map node
     ShadowUtils::setUpShadows(shadowedScene, mapNode);
-
-    // For shadowing to work, lighting MUST be enabled on the map node.
-    mapNode->getOrCreateStateSet()->setMode(
-        GL_LIGHTING,
-        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
 
     // Insert the ShadowedScene decorator just above the MapNode. We don't want other
     // elements (Control canvas, annotations, etc) under the decorator.

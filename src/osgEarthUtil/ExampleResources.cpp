@@ -561,10 +561,13 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( useSky || !skyConf.empty() )
     {
         SkyOptions options(skyConf);
-        if ( mapNode->getMapSRS()->isGeographic() )
-            options.setDriver("simple");
-        else
-            options.setDriver("gl");
+        if ( options.getDriver().empty() )
+        {
+            if ( mapNode->getMapSRS()->isGeographic() )
+                options.setDriver("simple");
+            else
+                options.setDriver("gl");
+        }
 
         SkyNode* sky = SkyNode::create(options, mapNode);
         if ( sky )

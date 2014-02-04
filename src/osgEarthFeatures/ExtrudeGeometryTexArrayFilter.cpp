@@ -46,84 +46,6 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-/*
- * Given a ResourceLibrary loads all the skins
- */
-class SkinTextureArray : public osg::Referenced
-{
-public:
-    SkinTextureArray()
-    {        
-    }
-
-    osg::Texture2DArray* getTexture()
-    {
-        return _texture.get();
-    }
-
-    int getSkinIndex( const SkinResource* skin )
-    {
-        LayerIndex::iterator itr = _layerIndex.find( skin->name());
-        if (itr != _layerIndex.end())
-        {
-            return itr->second;
-        }
-        OE_NOTICE << "Couldn't find skin" << skin->name() << std::endl;
-        return -1;
-    }
-
-    void build(SkinResourceVector& skins, const osgDB::Options* dbOptions)
-    {        
-        _texture = 0;
-        _layerIndex.clear();
-
-        unsigned int maxWidth = 0;
-        unsigned int maxHeight = 0;
-
-        std::vector< osg::ref_ptr< osg::Image > > images;
-
-        for (unsigned int i = 0; i < skins.size(); i++)
-        {
-            osg::ref_ptr< osg::Image > image = skins[i]->createImage( dbOptions );            
-            if (maxWidth < image->s()) maxWidth = image->s();
-            if (maxHeight < image->t()) maxHeight = image->t();            
-            _layerIndex[ skins[i]->name() ] = i;
-            images.push_back( image.get() );
-        }
-
-        // Now resize all the images to the right size
-        for (unsigned int i = 0; i < images.size(); i++)
-        {
-            osg::ref_ptr< osg::Image> resized;
-            ImageUtils::resizeImage( images[i].get(), maxWidth, maxHeight, resized);
-            OE_NOTICE << "resizing image to " << maxWidth << "x" << maxHeight << std::endl;
-            resized = ImageUtils::convertToRGBA8( resized.get() );
-            images[i] = resized.get();
-        }
-
-        osg::Texture2DArray* texture = new osg::Texture2DArray();
-        texture->setTextureDepth( images.size() );
-        texture->setTextureWidth( maxWidth );
-        texture->setTextureHeight( maxHeight );
-        texture->setSourceFormat( GL_RGBA );
-        texture->setInternalFormat( GL_RGBA8 );
-
-        texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR_MIPMAP_LINEAR);
-        texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
-        texture->setWrap(osg::Texture::WRAP_S,osg::Texture::REPEAT);
-        texture->setWrap(osg::Texture::WRAP_T,osg::Texture::REPEAT);
-        texture->setResizeNonPowerOfTwoHint(false);
-        for (unsigned int i = 0; i < images.size(); i++)
-        {
-            texture->setImage(i, images[i].get() );
-        }
-        _texture = texture;
-    }
-
-    typedef std::map< std::string, int > LayerIndex;
-    LayerIndex _layerIndex;
-    osg::ref_ptr< osg::Texture2DArray > _texture;
-};
 
 SkinTextureArray* getSkinTextureArray( const ResourceLibrary* resourceLibrary )
 {
@@ -140,7 +62,7 @@ SkinTextureArray* getSkinTextureArray( const ResourceLibrary* resourceLibrary )
         return itr->second.get();
     }
 
-    OE_NOTICE << "Building SkinTextureArray for " << resourceLibrary->getName() << std::endl;
+    OE_DEBUG << "Building SkinTextureArray for " << resourceLibrary->getName() << std::endl;
     // Build it.
     SkinResourceVector skins;
     resourceLibrary->getSkins( skins );
@@ -167,7 +89,7 @@ osg::StateSet* getResourceLibraryStateSet( const ResourceLibrary* resourceLibrar
         return itr->second.get();
     }
 
-    OE_NOTICE << "Building Stateset for " << resourceLibrary->getName() << std::endl;
+    OE_DEBUG << "Building Stateset for " << resourceLibrary->getName() << std::endl;
 
     osg::ref_ptr< SkinTextureArray > skinTextureArray = getSkinTextureArray( resourceLibrary );
 

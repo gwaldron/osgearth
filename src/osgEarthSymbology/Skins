@@ -25,6 +25,7 @@
 #include <osgEarthSymbology/Symbol>
 #include <osgEarth/URI>
 #include <osg/TexEnv>
+#include <osg/Texture2DArray>
 
 namespace osgEarth { namespace Symbology
 {
@@ -163,6 +164,36 @@ namespace osgEarth { namespace Symbology
     };
 
     typedef std::vector< osg::ref_ptr<SkinResource> > SkinResourceVector;
+
+    /**
+     * Utility class that builds a Texture2DArray from a list of SkinResources
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT SkinTextureArray : public osg::Referenced
+    {
+    public:
+        SkinTextureArray();
+
+        /**
+         * Gets the Texture2DArray for this SkinTextureArray
+         */
+        osg::Texture2DArray* getTexture();
+
+        /**
+         * Gets the index into the texture array for the given SkinResource.
+         */
+        int getSkinIndex( const SkinResource* skin );
+
+        /**
+         * Builds a Texture2DArray from the given SkinResources.
+         */
+        void build(SkinResourceVector& skins, const osgDB::Options* dbOptions);
+
+    protected:
+
+        typedef std::map< std::string, int > LayerIndex;
+        LayerIndex _layerIndex;
+        osg::ref_ptr< osg::Texture2DArray > _texture;
+    };
 
 } } // namespace osgEarth::Symbology
 

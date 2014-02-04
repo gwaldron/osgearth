@@ -206,12 +206,12 @@ _supportsFragDepthWrite ( false )
         if ( _supportsGLSL )
         {
             _GLSLversion = GL2->getLanguageVersion();
-            OE_INFO << LC << "  GLSL Version = " << _GLSLversion << std::endl;
+            OE_INFO << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 
         _supportsTextureArrays = 
             _supportsGLSL &&
-            osg::getGLVersionNumber() >= 2.0 && // hopefully this will detect Intel cards
+            osg::getGLVersionNumber() >= 2.0f && // hopefully this will detect Intel cards
             osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
         OE_INFO << LC << "  Texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
 
@@ -219,7 +219,7 @@ _supportsFragDepthWrite ( false )
         OE_INFO << LC << "  3D textures = " << SAYBOOL(_supportsTexture3D) << std::endl;
 
         _supportsMultiTexture = 
-            osg::getGLVersionNumber() >= 1.3 ||
+            osg::getGLVersionNumber() >= 1.3f ||
             osg::isGLExtensionSupported( id, "GL_ARB_multitexture") ||
             osg::isGLExtensionSupported( id, "GL_EXT_multitexture" );
         OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;

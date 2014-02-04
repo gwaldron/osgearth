@@ -48,6 +48,11 @@ namespace osgEarth { namespace Symbology
          */
         osg::StateSet* createStateSet( const osgDB::Options* dbOptions ) const;
 
+        /**
+         * Creates an image for this SkinResource.
+         */
+        osg::Image* createImage( const osgDB::Options* options ) const;
+
     public:
         /** Source location of the actual texture image.  */
         optional<URI>& imageURI() { return _imageURI; }
@@ -88,9 +93,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
 
-        osg::StateSet* createStateSet( osg::Image* image ) const;
-
-        osg::Image* createImage( const osgDB::Options* options ) const;
+        osg::StateSet* createStateSet( osg::Image* image ) const;        
 
     protected:
 

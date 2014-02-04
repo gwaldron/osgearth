@@ -287,6 +287,7 @@ Terrain::addTerrainCallback( TerrainCallback* cb )
     {        
         Threading::ScopedWriteLock exclusiveLock( _callbacksMutex );
         _callbacks.push_back( cb );
+        _callbacksSize++; // amotic increment
     }
 }
 
@@ -300,6 +301,7 @@ Terrain::removeTerrainCallback( TerrainCallback* cb )
         if ( i->get() == cb )
         {
             i = _callbacks.erase( i );
+            _callbacksSize--;
         }
         else
         {
@@ -316,7 +318,7 @@ Terrain::notifyTileAdded( const TileKey& key, osg::Node* node )
         OE_WARN << LC << "notify with a null node!" << std::endl;
     }
 
-    if ( _updateOperationQueue.valid() )
+    if ( _callbacksSize > 0 && _updateOperationQueue.valid() )
     {
         _updateOperationQueue->add( new OnTileAddedOperation(key, node, this) );
     }

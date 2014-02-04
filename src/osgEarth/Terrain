@@ -79,7 +79,7 @@ namespace osgEarth
         virtual void onTileAdded(
             const TileKey&          key, 
             osg::Node*              tile, 
-            TerrainCallbackContext& context) =0;
+            TerrainCallbackContext& context) { }
 
         /** dtor */
         virtual ~TerrainCallback() { }
@@ -216,6 +216,10 @@ namespace osgEarth
         // fires the onTileAdded callback (internal)
         void fireTileAdded( const TileKey& key, osg::Node* tile );
 
+        // queues the onTileRemoved callback (internal)
+        void notifyTilesRemoved(const std::vector<TileKey>& keys);
+        void fireTilesRemoved(const std::vector<TileKey>& keys);
+
         /** dtor */
         virtual ~Terrain() { }
 
@@ -228,6 +232,7 @@ namespace osgEarth
 
         CallbackList                 _callbacks;
         Threading::ReadWriteMutex    _callbacksMutex;
+        OpenThreads::Atomic          _callbacksSize;
         osg::ref_ptr<const Profile>  _profile;
         osg::observer_ptr<osg::Node> _graph;
         bool                         _geocentric;

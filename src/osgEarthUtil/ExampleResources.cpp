@@ -602,6 +602,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         ShadowCaster* caster = new ShadowCaster();
         caster->setLight( view->getLight() );
+        caster->getShadowCastingGroup()->addChild( mapNode->getModelLayerGroup() );
         if ( mapNode->getNumParents() > 0 )
         {
             insertGroup(caster, mapNode->getParent(0));

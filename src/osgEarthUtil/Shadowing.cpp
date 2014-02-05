@@ -26,39 +26,18 @@
 
 using namespace osgEarth::Util;
 
-namespace
-{
-    /**
-     * Takes a set of world verts and finds their bounding box in the 
-     * plane of the camera represented by the specified view matrix.
-     */
-    void
-    getExtentInView(const osg::Matrix& viewMatrix,
-                    std::vector<osg::Vec3d>& verts,
-                    osg::BoundingBoxd& bbox)
-    {
-        bbox.set(DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX);
-
-        for( std::vector<osg::Vec3d>::iterator i = verts.begin(); i != verts.end(); ++i )
-        {
-            osg::Vec3d d = (*i) * viewMatrix; // world to view
-            if ( d.x() < bbox.xMin() ) bbox.xMin() = d.x();
-            if ( d.x() > bbox.xMax() ) bbox.xMax() = d.x();
-            if ( d.y() < bbox.yMin() ) bbox.yMin() = d.y();
-            if ( d.y() > bbox.yMax() ) bbox.yMax() = d.y();
-            if ( d.z() < bbox.zMin() ) bbox.zMin() = d.z();
-            if ( d.z() > bbox.zMax() ) bbox.zMax() = d.z();
-        }
-    }
-}
-
-
 
 ShadowCaster::ShadowCaster() :
-_size( 2048 ),
-_unit( 7 )
+_size        ( 2048 ),
+_texImageUnit( 7 )
 {
     reinitialize();
+}
+
+osg::Group*
+ShadowCaster::getShadowCastingGroup()
+{
+    return _rtt.get();
 }
 
 void
@@ -89,10 +68,20 @@ ShadowCaster::reinitialize()
     _rtt->attach( osg::Camera::DEPTH_BUFFER, _shadowmap.get() );
 
     _rttStateSet = new osg::StateSet();
+
     _rttStateSet->setAttributeAndModes( 
         new osg::CullFace(osg::CullFace::FRONT),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-    
+
+    _rttStateSet->setAttributeAndModes(
+        new osg::Program(),
+        osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+
+    _rttStateSet->setAttributeAndModes(
+        new osg::PolygonOffset(-1.0f, -1.0f),
+        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+
+
     _renderStateSet = new osg::StateSet();
     
     const char* vertex =
@@ -110,6 +99,7 @@ ShadowCaster::reinitialize()
     const char* fragment =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "uniform float oe_shadow_blur; \n"
         "uniform sampler2DShadow oe_shadow_map; \n"
         "varying vec4 oe_shadow_coord; \n"
         "varying float oe_shadow_ambient; \n"
@@ -117,8 +107,22 @@ ShadowCaster::reinitialize()
         "{\n"
         "    float alpha = color.a; \n"
         "    float shadowFac = shadow2DProj(oe_shadow_map, oe_shadow_coord).r; \n"
+        "    float factor; \n"
+        "    if (oe_shadow_blur > 0.0) { \n"
+        "        float p = oe_shadow_blur; \n"
+        "        factor = \n"
+        "            shadow2DProj(oe_shadow_map, oe_shadow_coord).r + \n"
+        "            shadow2DProj(oe_shadow_map, vec4(oe_shadow_coord.x-p, oe_shadow_coord.y-p, oe_shadow_coord.z, oe_shadow_coord.q)).r + \n"
+        "            shadow2DProj(oe_shadow_map, vec4(oe_shadow_coord.x+p, oe_shadow_coord.y-p, oe_shadow_coord.z, oe_shadow_coord.q)).r + \n"
+        "            shadow2DProj(oe_shadow_map, vec4(oe_shadow_coord.x-p, oe_shadow_coord.y+p, oe_shadow_coord.z, oe_shadow_coord.q)).r + \n"
+        "            shadow2DProj(oe_shadow_map, vec4(oe_shadow_coord.x+p, oe_shadow_coord.y+p, oe_shadow_coord.z, oe_shadow_coord.q)).r;  \n"
+        "        factor /= 5.0; \n"
+        "    } \n"
+        "    else { \n"
+        "        factor = shadow2DProj(oe_shadow_map, oe_shadow_coord).r; \n"
+        "    } \n"
         "    vec4 colorInFullShadow = color * oe_shadow_ambient; \n"
-        "    color = mix(colorInFullShadow, color, shadowFac); \n"
+        "    color = mix(colorInFullShadow, color, factor); \n"
         "    color.a = alpha;\n"
         "}\n";
 
@@ -141,19 +145,21 @@ ShadowCaster::reinitialize()
 
     _renderStateSet->addUniform( _shadowMapTexGenUniform.get() ); 
 
+    _renderStateSet->getOrCreateUniform("oe_shadow_blur", osg::Uniform::FLOAT)->set( 0.0f );
+
     // bind the shadow map texture itself:
     _renderStateSet->setTextureAttributeAndModes(
-        _unit,
+        _texImageUnit,
         _shadowmap.get(),
         osg::StateAttribute::ON );
 
-    _renderStateSet->addUniform( new osg::Uniform("oe_shadow_map", _unit) );
+    _renderStateSet->addUniform( new osg::Uniform("oe_shadow_map", _texImageUnit) );
 }
 
 void
 ShadowCaster::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    if ( nv.getVisitorType() == nv.CULL_VISITOR && _rtt->getNumChildren() > 0 )
     {
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         osg::Camera* camera = cv->getCurrentCamera();
@@ -181,7 +187,7 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, camUp);
             
             // take the view frustum and clamp it's far plane.
-            double n = 1.0, f = 3000.0;
+            double n = 1.0, f = 1000.0;
             osg::Matrix proj = _prevProjMatrix;
             cv->clampProjectionMatrix(proj, n, f);
 
@@ -199,12 +205,14 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             // project those on to the plane of the light camera and fit them
             // to a bounding box. That box will form the extent of our orthographic camera.
             osg::BoundingBoxd bbox;
-            getExtentInView(lightViewMat, verts, bbox);
+            for( std::vector<osg::Vec3d>::iterator i = verts.begin(); i != verts.end(); ++i )
+                bbox.expandBy( (*i) * lightViewMat );
+
             osg::Matrix lightProjMat;
             n = -std::max(bbox.zMin(), bbox.zMax());
             f = -std::min(bbox.zMin(), bbox.zMax());
             lightProjMat.makeOrtho(bbox.xMin(), bbox.xMax(), bbox.yMin(), bbox.yMax(), n, f);
-
+            
             // done! set up the RTT camera and go.
             _rtt->setViewMatrix( lightViewMat );
             _rtt->setProjectionMatrix( lightProjMat );
@@ -221,8 +229,6 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             _shadowMapTexGenUniform->set( _shadowMatrix );
 
             cv->pushStateSet( _rttStateSet.get() );
-            if ( _rtt->getNumChildren() == 0 )
-                _rtt->addChild( this->getChild(0) ); // REDO - testing only
             _rtt->accept( nv );
             cv->popStateSet();
             

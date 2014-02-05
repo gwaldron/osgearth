@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/CentroidFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
-#include <osgEarthFeatures/ExtrudeGeometryTexArrayFilter>
 #include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
@@ -405,40 +404,22 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             altRequired = false;
         }
 
-        if (Registry::capabilities().supportsTextureArrays())        
-        {            
-            ExtrudeGeometryTexArrayFilter extrude;
-            extrude.setStyle( style );
+        ExtrudeGeometryFilter extrude;
+        extrude.setStyle( style );
+        extrude.useTextureArrays() = Registry::capabilities().supportsTextureArrays();
 
-            // apply per-feature naming if requested.
-            if ( _options.featureName().isSet() )
-                extrude.setFeatureNameExpr( *_options.featureName() );
-            if ( _options.useVertexBufferObjects().isSet())
-                extrude.useVertexBufferObjects() = *_options.useVertexBufferObjects();
+        // apply per-feature naming if requested.
+        if ( _options.featureName().isSet() )
+            extrude.setFeatureNameExpr( *_options.featureName() );
+        if ( _options.useVertexBufferObjects().isSet())
+            extrude.useVertexBufferObjects() = *_options.useVertexBufferObjects();
 
-            osg::Node* node = extrude.push( workingSet, sharedCX );
-            if ( node )
-            {
-                resultGroup->addChild( node );
-            }
+        osg::Node* node = extrude.push( workingSet, sharedCX );
+        if ( node )
+        {
+            resultGroup->addChild( node );
         }
-        else
-        {            
-            ExtrudeGeometryFilter extrude;
-            extrude.setStyle( style );
-
-            // apply per-feature naming if requested.
-            if ( _options.featureName().isSet() )
-                extrude.setFeatureNameExpr( *_options.featureName() );
-            if ( _options.useVertexBufferObjects().isSet())
-                extrude.useVertexBufferObjects() = *_options.useVertexBufferObjects();
-
-            osg::Node* node = extrude.push( workingSet, sharedCX );
-            if ( node )
-            {
-                resultGroup->addChild( node );
-            }
-        }
+        
     }
 
     // simple geometry

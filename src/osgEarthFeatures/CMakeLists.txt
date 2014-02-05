@@ -21,8 +21,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     ConvertTypeFilter
     CropFilter
-    ExtrudeGeometryFilter
-    ExtrudeGeometryTexArrayFilter
+    ExtrudeGeometryFilter    
     Feature
     FeatureCursor
     FeatureDisplayLayout
@@ -65,8 +64,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
-    ExtrudeGeometryFilter.cpp
-    ExtrudeGeometryTexArrayFilter.cpp
+    ExtrudeGeometryFilter.cpp    
     Feature.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp

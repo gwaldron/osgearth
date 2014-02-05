@@ -147,9 +147,9 @@ namespace osgEarth { namespace Features
             const osg::Vec4&     roofColor,
             const osg::Vec4&     outlineColor,
             const SkinResource*  wallSkin,
-            const ResourceLibrary* wallResourceLibrary,
+            int wallLayer,
             const SkinResource*  roofSkin,
-            const ResourceLibrary* roofResourceLibrary,
+            int roofLayer,            
             FilterContext&       cx );
     };
 

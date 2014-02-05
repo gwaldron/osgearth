@@ -46,62 +46,6 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-
-SkinTextureArray* getSkinTextureArray( const ResourceLibrary* resourceLibrary )
-{
-    static OpenThreads::Mutex mutex;
-    // Try to find the cached array
-    typedef std::map< std::string, osg::ref_ptr< SkinTextureArray > > SkinTextureArrayCache;
-    static SkinTextureArrayCache s_cache;
-
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( mutex );
-    SkinTextureArrayCache::iterator itr = s_cache.find( resourceLibrary->getName() );
-    if (itr != s_cache.end())
-    {
-        //OE_NOTICE << "Got cached SkinTextureArray" << std::endl;
-        return itr->second.get();
-    }
-
-    OE_DEBUG << "Building SkinTextureArray for " << resourceLibrary->getName() << std::endl;
-    // Build it.
-    SkinResourceVector skins;
-    resourceLibrary->getSkins( skins );
-
-    SkinTextureArray* skinTextureArray = new SkinTextureArray();
-    skinTextureArray->build( skins, 0 );
-
-    s_cache[ resourceLibrary->getName() ] = skinTextureArray;
-    return skinTextureArray;
-}
-
-osg::StateSet* getResourceLibraryStateSet( const ResourceLibrary* resourceLibrary )
-{
-    static OpenThreads::Mutex mutex;
-    // Try to find the cached array
-    typedef std::map< std::string, osg::ref_ptr< osg::StateSet > > StateSetCache;
-    static StateSetCache s_cache;
-
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( mutex );
-    StateSetCache::iterator itr = s_cache.find( resourceLibrary->getName() );
-    if (itr != s_cache.end())
-    {
-        //OE_NOTICE << "Got cached ResourceLibrary stateset" << std::endl;
-        return itr->second.get();
-    }
-
-    OE_DEBUG << "Building Stateset for " << resourceLibrary->getName() << std::endl;
-
-    osg::ref_ptr< SkinTextureArray > skinTextureArray = getSkinTextureArray( resourceLibrary );
-
-    osg::StateSet* stateset = new osg::StateSet();
-    stateset->setTextureAttribute( 0, skinTextureArray->getTexture() );
-
-    // Build it.    
-    s_cache[ resourceLibrary->getName() ] = stateset;
-    return stateset;
-}
-
-
 namespace
 {
     // Calculates the rotation angle of a shape. This conanically applies to
@@ -254,9 +198,9 @@ ExtrudeGeometryTexArrayFilter::extrudeGeometry(const Geometry*         input,
                                        const osg::Vec4&        roofColor,
                                        const osg::Vec4&        outlineColor,
                                        const SkinResource*     wallSkin,
-                                       const ResourceLibrary*  wallResourceLibrary,
+                                       int                     wallLayer,
                                        const SkinResource*     roofSkin,                                       
-                                       const ResourceLibrary*  roofResourceLibrary,
+                                       int                     roofLayer,
                                        FilterContext&          cx )
 {
     bool makeECEF = false;
@@ -321,17 +265,6 @@ ExtrudeGeometryTexArrayFilter::extrudeGeometry(const Geometry*         input,
     double          roofTexSpanX = 0.0, roofTexSpanY = 0.0;
     osg::ref_ptr<const SpatialReference> roofProjSRS;
 
-
-
-    
-    osg::ref_ptr< SkinTextureArray> roofTextureArray = roofResourceLibrary ? getSkinTextureArray( roofResourceLibrary ) : 0;
-    osg::ref_ptr< SkinTextureArray> wallTextureArray = wallResourceLibrary ? getSkinTextureArray( wallResourceLibrary ) : 0;
-
-    int roofSkinLayer = roofSkin ? roofTextureArray->getSkinIndex( roofSkin ) : -1;
-    int wallSkinLayer = wallSkin ? roofTextureArray->getSkinIndex( wallSkin ) : -1;
-
-    //OE_NOTICE << "Roof skin layer " << roofSkinLayer << std::endl;
-    //OE_NOTICE << "Wall skin layer " << wallSkinLayer << std::endl;
     
     if ( roof )
     {
@@ -527,7 +460,7 @@ ExtrudeGeometryTexArrayFilter::extrudeGeometry(const Geometry*         input,
                 float u = (cosR*xr - sinR*yr) / roofTexSpanX;
                 float v = (sinR*xr + cosR*yr) / roofTexSpanY;                
 
-                (*roofTexcoords)[roofVertPtr].set( u, v, roofSkinLayer );
+                (*roofTexcoords)[roofVertPtr].set( u, v, roofLayer );
             }
 
             transformAndLocalize( basePt, srs, basePt, mapSRS, _world2local, makeECEF );
@@ -566,8 +499,8 @@ ExtrudeGeometryTexArrayFilter::extrudeGeometry(const Geometry*         input,
 
             if ( wallSkin )
             {
-                (*wallTexcoords)[p].set( partLen/tex_width_m, 0.0f, wallSkinLayer );
-                (*wallTexcoords)[p+1].set( partLen/tex_width_m, h/tex_height_m_adj, wallSkinLayer );
+                (*wallTexcoords)[p].set( partLen/tex_width_m, 0.0f, wallLayer );
+                (*wallTexcoords)[p+1].set( partLen/tex_width_m, h/tex_height_m_adj, wallLayer );
             }
 
             // form the 2 triangles
@@ -595,8 +528,8 @@ ExtrudeGeometryTexArrayFilter::extrudeGeometry(const Geometry*         input,
                         {
                             partLen += ((*verts)[p+2] - (*verts)[p]).length();
                             double h = tex_repeats_y ? -((*verts)[p+2] - (*verts)[p+3]).length() : -tex_height_m_adj;
-                            (*wallTexcoords)[p+2].set( partLen/tex_width_m, 0.0f, wallSkinLayer );
-                            (*wallTexcoords)[p+3].set( partLen/tex_width_m, h/tex_height_m_adj, wallSkinLayer );
+                            (*wallTexcoords)[p+2].set( partLen/tex_width_m, 0.0f, wallLayer );
+                            (*wallTexcoords)[p+3].set( partLen/tex_width_m, h/tex_height_m_adj, wallLayer );
                         }
 
                         wallVertPtr += 2;
@@ -846,13 +779,31 @@ ExtrudeGeometryTexArrayFilter::process( FeatureList& features, FilterContext& co
                 outlineColor = _outlineSymbol->stroke()->color();
             }
 
+            // Determine the layers of the skins if there are any.
+            int wallLayer = -1;            
+            if (wallSkin)
+            {
+                osg::ref_ptr< SkinTextureArray > wallTextureArray;
+                context.resourceCache()->getOrCreateSkinTextureArray( _wallResLib.get(), wallTextureArray );
+                wallLayer = wallTextureArray->getSkinIndex( wallSkin );
+            }
+
+            int roofLayer = -1;
+            if (roofSkin)
+            {
+                osg::ref_ptr< SkinTextureArray > roofTextureArray;
+                context.resourceCache()->getOrCreateSkinTextureArray( _roofResLib.get(), roofTextureArray );
+                roofLayer = roofTextureArray->getSkinIndex( roofSkin );
+            }
+            
+
             // Create the extruded geometry!
             if (extrudeGeometry( 
                     part, height, offset, 
                     *_extrusionSymbol->flatten(),
                     walls.get(), rooflines.get(), baselines.get(), outlines.get(),
                     wallColor, wallBaseColor, roofColor, outlineColor,
-                    wallSkin, _wallResLib, roofSkin, _roofResLib,
+                    wallSkin, wallLayer, roofSkin, roofLayer,
                     context ) )
             {      
                 /*
@@ -865,7 +816,7 @@ ExtrudeGeometryTexArrayFilter::process( FeatureList& features, FilterContext& co
                 // Instead we get a stateset for the whole resource lib
                 if (wallSkin)
                 {
-                    wallStateSet = getResourceLibraryStateSet( _wallResLib );
+                    context.resourceCache()->getOrCreateStateSet( _wallResLib, wallStateSet );                    
                 }
 
                 // generate per-vertex normals, altering the geometry as necessary to avoid
@@ -895,9 +846,9 @@ ExtrudeGeometryTexArrayFilter::process( FeatureList& features, FilterContext& co
                     */
 
                     // Instead we get a stateset for the whole resource lib
-                    if (wallSkin)
+                    if (roofSkin)
                     {
-                        roofStateSet = getResourceLibraryStateSet( _roofResLib );
+                        context.resourceCache()->getOrCreateStateSet( _roofResLib, roofStateSet );                        
                     }
                 }
 

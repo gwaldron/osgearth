@@ -24,6 +24,7 @@
 #include <osgEarthSymbology/Skins>
 #include <osgEarthSymbology/MarkerResource>
 #include <osgEarthSymbology/InstanceResource>
+#include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarth/Containers>
 #include <osgEarth/ThreadingUtils>
 
@@ -66,6 +67,20 @@ namespace osgEarth { namespace Symbology
         bool getOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output );
         bool cloneOrCreateInstanceNode( InstanceResource* instance, osg::ref_ptr<osg::Node>& output );
 
+        /**
+         * Gets a SkinTextureArray from a ResourceLibrary
+         * @param library   The ResourceLibrary to generate a SkinTextureArray from
+         * @param output    Result goes here.
+         */
+        bool getOrCreateSkinTextureArray( ResourceLibrary* library, osg::ref_ptr< SkinTextureArray >& output );
+
+        /**
+         * Fetches the StateSet implemention for an entire ResourceLibrary.  This will contain a Texture2DArray with all of the skins merged into it.
+         * @param library    The library 
+         * @param output     Result goes here. 
+         */
+        bool getOrCreateStateSet( ResourceLibrary* library,  osg::ref_ptr<osg::StateSet>& output );
+
     protected:
         virtual ~ResourceCache() { }
 
@@ -80,6 +95,14 @@ namespace osgEarth { namespace Symbology
         typedef LRUCache<std::string, osg::ref_ptr<osg::Node> > InstanceCache;
         InstanceCache    _instanceCache;
         Threading::Mutex _instanceMutex;
+
+        typedef LRUCache<std::string, osg::ref_ptr< SkinTextureArray > > SkinTextureArrayCache;
+        SkinTextureArrayCache _skinTextureArrayCache;
+        Threading::Mutex _skinTextureArrayMutex;
+
+        typedef LRUCache<std::string, osg::ref_ptr<osg::StateSet> > ResourceLibraryCache;
+        ResourceLibraryCache  _resourceLibraryCache;
+        Threading::Mutex      _resourceLibraryMutex;
     };
 
 } } // namespace osgEarth::Symbology

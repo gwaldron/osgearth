@@ -35,16 +35,34 @@ _texImageUnit( 7 )
 {
     _castingGroup = new osg::Group();
 
-    // lots of slices!!!
+    // defaults to 4 slices.
     _ranges.push_back(0.0f);
     _ranges.push_back(250.0f);
     _ranges.push_back(500.0f);
-    _ranges.push_back(1000.0f);
     _ranges.push_back(1500.0f);
-    _ranges.push_back(2500.0f);
-    //for(int i=1; i<4; ++i)
-    //    _ranges.push_back( 500.0f * (float)i );
+    _ranges.push_back(3000.0f);
 
+    reinitialize();
+}
+
+void
+ShadowCaster::setRanges(const std::vector<float>& ranges)
+{
+    _ranges = ranges;
+    reinitialize();
+}
+
+void
+ShadowCaster::setTextureImageUnit(int unit)
+{
+    _texImageUnit = unit;
+    reinitialize();
+}
+
+void
+ShadowCaster::setTextureSize(unsigned size)
+{
+    _size = size;
     reinitialize();
 }
 
@@ -70,7 +88,7 @@ ShadowCaster::reinitialize()
     _shadowmap->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
     _shadowmap->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
     _shadowmap->setBorderColor(osg::Vec4(1,1,1,1));
-    _shadowmap->setShadowComparison(true);
+    //_shadowmap->setShadowComparison(true);
 
     // set up the RTT camera:
     for(int i=0; i<numSlices; ++i)
@@ -96,61 +114,76 @@ ShadowCaster::reinitialize()
         new osg::CullFace(osg::CullFace::FRONT),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
-    // attempt a polygon offset.. never works right
-    _rttStateSet->setAttributeAndModes(
-        new osg::PolygonOffset(-1.0f, 1.0f),
-        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-
-
     _renderStateSet = new osg::StateSet();
     
-    const char* vertex =
+    std::string vertex = Stringify() << 
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "uniform mat4 oe_shadow_matrix[" << numSlices << "]; \n"
         "varying float oe_shadow_ambient; \n"
-        "varying vec4 oe_shadow_vpos; \n"
+        "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
         "void oe_shadow_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
-        "    oe_shadow_vpos = VertexVIEW - vec4(0,0,-1,0); \n" // offset: good idea/bad idea??
         "    oe_shadow_ambient = 0.5; \n"
+        "    for(int i=0; i<" << numSlices << "; ++i) \n"
+        "        oe_shadow_coord[i] = oe_shadow_matrix[i] * VertexVIEW;\n"
         "} \n";
 
     std::string fragment = Stringify() << 
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#extension GL_EXT_texture_array : enable \n"
+        "uniform sampler2DArray oe_shadow_map; \n"
         "uniform float oe_shadow_blur; \n"
-        "uniform sampler2DArrayShadow oe_shadow_map; \n"
         "varying float oe_shadow_ambient; \n"
-        "varying vec4 oe_shadow_vpos; \n"
-        "uniform mat4 oe_shadow_matrix[" << numSlices << "]; \n"
+        "varying vec3 oe_Normal; \n"
+        "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
 
-        // this is slow.
-        "float oe_shadow_sample_blur(in vec4 c, in float p) \n"
+        // slow. revisit.
+        "float oe_shadow_multisample(in vec3 c, in float refvalue, in float blur) \n"
         "{ \n"
-        "    float sample = 0.0; \n"
-        "    for(float i=-p; i<=p; i+=p) { \n"
-        "        for(float j=-p; j<=p; j+=p) { \n"
-        "            sample += shadow2DArray(oe_shadow_map, vec4(c.x+i, c.y+j, c.z, c.w)).r; \n"
+        "    float shadowed = 0.0; \n"
+        "    for(float i=-blur; i<=blur; i+=blur) { \n"
+        "        for(float j=-blur; j<=blur; j+=blur) { \n"
+        "            float depth = texture2DArray(oe_shadow_map, vec3(c.x+i, c.y+j, c.z)).r; \n"
+        "            if ( depth < 1.0 && depth < refvalue ) \n"
+        "               shadowed += 1.0; \n"
         "        } \n"
         "    } \n"
-        "    return sample/9.0; \n"
+        "    return 1.0-(shadowed/9.0); \n"
         "} \n"
 
         "void oe_shadow_fragment( inout vec4 color )\n"
         "{\n"
         "    float alpha = color.a; \n"
         "    float factor = 1.0; \n"
-        "    for(int i=0; i<" << numSlices << "; ++i) \n"
+
+        // pre-pixel biasing to reduce moire/acne
+        "    const float b0 = 0.001; \n"
+        "    const float b1 = 0.01; \n"
+        "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
+        "    vec3 N = normalize(oe_Normal); \n"
+        "    float costheta = clamp(dot(L,N), 0.0, 1.0); \n"
+        "    float bias = b0*tan(acos(costheta)); \n"
+
+        // loop over the slices:
+        "    for(int i=0; i<" << numSlices << " && factor > 0.0; ++i) \n"
         "    { \n"
-        "        vec4 c = oe_shadow_matrix[i] * oe_shadow_vpos; \n"
-        "        c.w = c.z; \n"
-        "        c.z = float(i); \n"
+        "        vec4 c = oe_shadow_coord[i]; \n"
+        "        vec3 coord = vec3(c.x, c.y, float(i)); \n"
+
         "        if ( oe_shadow_blur > 0.0 ) \n"
-        "            factor = min(factor, oe_shadow_sample_blur(c, oe_shadow_blur)); \n"
+        "        { \n"
+        "            factor = min(factor, oe_shadow_multisample(coord, c.z-bias, oe_shadow_blur)); \n"
+        "        } \n"
         "        else \n"
-        "            factor = min(factor, shadow2DArray(oe_shadow_map, c).r); \n"
+        "        { \n"
+        "            float depth = texture2DArray(oe_shadow_map, coord).r; \n"
+        "            if ( depth < 1.0 && depth < c.z-bias ) \n"
+        "                factor = 0.0; \n"
+        "        } \n"
         "    } \n"
+
         "    vec4 colorInFullShadow = color * oe_shadow_ambient; \n"
         "    color = mix(colorInFullShadow, color, factor); \n"
         "    color.a = alpha;\n"

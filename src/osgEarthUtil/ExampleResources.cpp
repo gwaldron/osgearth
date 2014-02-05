@@ -26,6 +26,7 @@
 #include <osgEarthUtil/DataScanner>
 #include <osgEarthUtil/Sky>
 #include <osgEarthUtil/Ocean>
+#include <osgEarthUtil/Shadowing>
 
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/DetailTexture>
@@ -488,6 +489,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useCoords     = args.read("--coords") || useMGRS || useDMS || useDD;
     bool useOrtho      = args.read("--ortho");
     bool useAutoClip   = args.read("--autoclip");
+    bool useShadows    = args.read("--shadows");
 
     float ambientBrightness = 0.2f;
     args.read("--ambientBrightness", ambientBrightness);
@@ -592,6 +594,22 @@ MapNodeHelper::parse(MapNode*             mapNode,
             Control* c = OceanControlFactory().create(ocean);
             if ( c )
                 mainContainer->addControl(c);
+        }
+    }
+
+    // Shadowing.
+    if ( useShadows )
+    {
+        ShadowCaster* caster = new ShadowCaster();
+        caster->setLight( view->getLight() );
+        if ( mapNode->getNumParents() > 0 )
+        {
+            insertGroup(caster, mapNode->getParent(0));
+        }
+        else
+        {
+            caster->addChild(mapNode);
+            root = caster;
         }
     }
 

@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osg/Camera>
-#include <osg/Texture2D>
+#include <osg/Texture2DArray>
 #include <osg/Matrix>
 #include <osg/Uniform>
 #include <osg/Light>
@@ -49,7 +49,7 @@ namespace osgEarth { namespace Util
         /**
          * Group of geometry that should cast shadows on this node's children.
          */
-        osg::Group* getShadowCastingGroup();
+        osg::Group* getShadowCastingGroup() { return _castingGroup.get(); }
 
     public: // osg::Node
 
@@ -60,15 +60,16 @@ namespace osgEarth { namespace Util
 
         void reinitialize();
 
-        unsigned                     _size;
-        osg::ref_ptr<osg::Light>     _light;
-        osg::ref_ptr<osg::Texture2D> _shadowmap;
-        osg::ref_ptr<osg::Camera>    _rtt;
-        osg::Matrix                  _shadowMatrix;
-        osg::Matrix                  _prevProjMatrix;
+        osg::ref_ptr<osg::Group>                _castingGroup;
+        unsigned                                _size;
+        osg::ref_ptr<osg::Light>                _light;
+        osg::ref_ptr<osg::Texture2DArray>       _shadowmap;
+        osg::ref_ptr<osg::StateSet>             _rttStateSet;
+        std::vector<float>                      _ranges;
+        std::vector<osg::ref_ptr<osg::Camera> > _rttCameras;
+        osg::Matrix                             _prevProjMatrix;
 
         int                         _texImageUnit;
-        osg::ref_ptr<osg::StateSet> _rttStateSet;
         osg::ref_ptr<osg::StateSet> _renderStateSet;
         osg::ref_ptr<osg::Uniform>  _shadowMapTexGenUniform;
     };

@@ -353,7 +353,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    atmos_fCameraHeight = length(osg_ViewMatrixInverse[3].xyz); \n"
         "    atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; \n"
         "    atmos_lightDir = normalize(gl_LightSource[0].position.xyz); \n" // view space
-        "    atmos_vert = vertexVIEW; \n"
+        "    atmos_vert = vertexVIEW.xyz; \n"
 
         "    atmos_space = (atmos_fCameraHeight-atmos_fInnerRadius)/(atmos_fOuterRadius-atmos_fInnerRadius); \n"
         "    atmos_space = clamp(atmos_space, 0.0, 1.0); \n"

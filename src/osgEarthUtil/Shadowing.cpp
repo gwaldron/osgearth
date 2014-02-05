@@ -24,28 +24,42 @@
 #include <osg/PolygonOffset>
 #include <osgShadow/ConvexPolyhedron>
 
+#define LC "[ShadowCaster] "
+
 using namespace osgEarth::Util;
 
 
 ShadowCaster::ShadowCaster() :
-_size        ( 2048 ),
+_size        ( 1024 ),
 _texImageUnit( 7 )
 {
-    reinitialize();
-}
+    _castingGroup = new osg::Group();
 
-osg::Group*
-ShadowCaster::getShadowCastingGroup()
-{
-    return _rtt.get();
+    // lots of slices!!!
+    _ranges.push_back(0.0f);
+    _ranges.push_back(250.0f);
+    for(int i=1; i<8; ++i)
+        _ranges.push_back( 500.0f * (float)i );
+
+    reinitialize();
 }
 
 void
 ShadowCaster::reinitialize()
 {
+    _shadowmap = 0L;
+    _rttCameras.clear();
+
+    int numSlices = (int)_ranges.size() - 1;
+    if ( numSlices < 1 )
+    {
+        OE_WARN << LC << "Illegal. Must have at least one range slice." << std::endl;
+        return ;
+    }
+
     // create the projected texture:
-    _shadowmap = new osg::Texture2D();
-    _shadowmap->setTextureSize( _size, _size );
+    _shadowmap = new osg::Texture2DArray();
+    _shadowmap->setTextureSize( _size, _size, numSlices );
     _shadowmap->setInternalFormat( GL_DEPTH_COMPONENT );
     _shadowmap->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     _shadowmap->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
@@ -53,32 +67,34 @@ ShadowCaster::reinitialize()
     _shadowmap->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
     _shadowmap->setBorderColor(osg::Vec4(1,1,1,1));
     _shadowmap->setShadowComparison(true);
-    _shadowmap->setShadowTextureMode(osg::Texture::LUMINANCE);
 
     // set up the RTT camera:
-    _rtt = new osg::Camera();
-    _rtt->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
-    _rtt->setClearColor( osg::Vec4f(0,0,0,0) );
-    _rtt->setClearMask( GL_DEPTH_BUFFER_BIT );
-    _rtt->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    _rtt->setViewport( 0, 0, _size, _size );
-    _rtt->setRenderOrder( osg::Camera::PRE_RENDER );
-    _rtt->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    _rtt->setImplicitBufferAttachmentMask(0, 0);
-    _rtt->attach( osg::Camera::DEPTH_BUFFER, _shadowmap.get() );
+    for(int i=0; i<numSlices; ++i)
+    {
+        osg::Camera* rtt = new osg::Camera();
+        rtt->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
+        rtt->setClearColor( osg::Vec4f(0,0,0,0) );
+        rtt->setClearMask( GL_DEPTH_BUFFER_BIT );
+        rtt->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+        rtt->setViewport( 0, 0, _size, _size );
+        rtt->setRenderOrder( osg::Camera::PRE_RENDER );
+        rtt->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+        rtt->setImplicitBufferAttachmentMask(0, 0);
+        rtt->attach( osg::Camera::DEPTH_BUFFER, _shadowmap.get(), 0, i );
+        rtt->addChild( _castingGroup.get() );
+        _rttCameras.push_back(rtt);
+    }
 
     _rttStateSet = new osg::StateSet();
 
+    // only draw back faces to the shadow depth map
     _rttStateSet->setAttributeAndModes( 
         new osg::CullFace(osg::CullFace::FRONT),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
+    // attempt a polygon offset.. never works right
     _rttStateSet->setAttributeAndModes(
-        new osg::Program(),
-        osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-
-    _rttStateSet->setAttributeAndModes(
-        new osg::PolygonOffset(-1.0f, -1.0f),
+        new osg::PolygonOffset(-1.0f, 1.0f),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
 
 
@@ -87,39 +103,33 @@ ShadowCaster::reinitialize()
     const char* vertex =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform mat4 oe_shadowmap_matrix; \n"
         "varying float oe_shadow_ambient; \n"
-        "varying vec4 oe_shadow_coord; \n"
+        "varying vec4 oe_shadow_vpos; \n"
         "void oe_shadow_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
-        "    oe_shadow_coord = oe_shadowmap_matrix * VertexVIEW; \n"
+        "    oe_shadow_vpos = VertexVIEW; \n"
         "    oe_shadow_ambient = 0.5; \n"
         "} \n";
 
-    const char* fragment =
+    std::string fragment = Stringify() << 
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "#extension GL_EXT_texture_array : enable \n"
         "uniform float oe_shadow_blur; \n"
-        "uniform sampler2DShadow oe_shadow_map; \n"
-        "varying vec4 oe_shadow_coord; \n"
+        "uniform sampler2DArrayShadow oe_shadow_map; \n"
         "varying float oe_shadow_ambient; \n"
+        "varying vec4 oe_shadow_vpos; \n"
+        "uniform mat4 oe_shadow_matrix[" << numSlices << "]; \n"
         "void oe_shadow_fragment( inout vec4 color )\n"
         "{\n"
         "    float alpha = color.a; \n"
-        "    float shadowFac = shadow2DProj(oe_shadow_map, oe_shadow_coord).r; \n"
-        "    float factor; \n"
-        "    if (oe_shadow_blur > 0.0) { \n"
-        "        float p = oe_shadow_blur; \n"
-        "        factor = \n"
-        "            shadow2DProj(oe_shadow_map, oe_shadow_coord).r + \n"
-        "            shadow2DProj(oe_shadow_map, vec4(oe_shadow_coord.x-p, oe_shadow_coord.y-p, oe_shadow_coord.z, oe_shadow_coord.q)).r + \n"
-        "            shadow2DProj(oe_shadow_map, vec4(oe_shadow_coord.x+p, oe_shadow_coord.y-p, oe_shadow_coord.z, oe_shadow_coord.q)).r + \n"
-        "            shadow2DProj(oe_shadow_map, vec4(oe_shadow_coord.x-p, oe_shadow_coord.y+p, oe_shadow_coord.z, oe_shadow_coord.q)).r + \n"
-        "            shadow2DProj(oe_shadow_map, vec4(oe_shadow_coord.x+p, oe_shadow_coord.y+p, oe_shadow_coord.z, oe_shadow_coord.q)).r;  \n"
-        "        factor /= 5.0; \n"
-        "    } \n"
-        "    else { \n"
-        "        factor = shadow2DProj(oe_shadow_map, oe_shadow_coord).r; \n"
+        "    float factor = 1.0; \n"
+        "    for(int i=0; i<" << numSlices << "; ++i) \n"
+        "    { \n"
+        "        vec4 c = oe_shadow_matrix[i] * oe_shadow_vpos; \n"
+        "        c.w = c.z; \n"
+        "        c.z = float(i); \n"
+        "        factor = min(factor, shadow2DArray(oe_shadow_map, c).r); \n"
         "    } \n"
         "    vec4 colorInFullShadow = color * oe_shadow_ambient; \n"
         "    color = mix(colorInFullShadow, color, factor); \n"
@@ -138,17 +148,19 @@ ShadowCaster::reinitialize()
         fragment,
         ShaderComp::LOCATION_FRAGMENT_LIGHTING, 10.0f);
 
-    // the texture coord generator matrix (from the caster):
-    _shadowMapTexGenUniform = new osg::Uniform(
-        osg::Uniform::FLOAT_MAT4, 
-        "oe_shadowmap_matrix");
+    // the texture coord generator matrix array (from the caster):
+    _shadowMapTexGenUniform = _renderStateSet->getOrCreateUniform(
+        "oe_shadow_matrix",
+        osg::Uniform::FLOAT_MAT4,
+        numSlices );
 
-    _renderStateSet->addUniform( _shadowMapTexGenUniform.get() ); 
-
-    _renderStateSet->getOrCreateUniform("oe_shadow_blur", osg::Uniform::FLOAT)->set( 0.0f );
+    // default blurring uniform. You can override this from above.
+    _renderStateSet->getOrCreateUniform(
+        "oe_shadow_blur", 
+        osg::Uniform::FLOAT)->set( 0.0f );
 
     // bind the shadow map texture itself:
-    _renderStateSet->setTextureAttributeAndModes(
+    _renderStateSet->setTextureAttribute(
         _texImageUnit,
         _shadowmap.get(),
         osg::StateAttribute::ON );
@@ -159,7 +171,7 @@ ShadowCaster::reinitialize()
 void
 ShadowCaster::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.CULL_VISITOR && _rtt->getNumChildren() > 0 )
+    if ( nv.getVisitorType() == nv.CULL_VISITOR && _castingGroup->getNumChildren() > 0 && _shadowmap.valid() )
     {
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         osg::Camera* camera = cv->getCurrentCamera();
@@ -186,52 +198,63 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             osg::Matrix lightViewMat;
             lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, camUp);
             
-            // take the view frustum and clamp it's far plane.
-            double n = 1.0, f = 1000.0;
-            osg::Matrix proj = _prevProjMatrix;
-            cv->clampProjectionMatrix(proj, n, f);
+            int i;
+            for(i=0; i<_ranges.size()-1; ++i)
+            {
+                double n = _ranges[i];
+                double f = _ranges[i+1];
 
-            osg::Matrix MVP = MV * proj;
-            osg::Matrix inverseMVP;
-            inverseMVP.invert(MVP);
-
-            // extract the corner points of the camera frustum.
-            osgShadow::ConvexPolyhedron frustumPH;
-            frustumPH.setToUnitFrustum(true, true);
-            frustumPH.transform( inverseMVP, MVP );
-            std::vector<osg::Vec3d> verts;
-            frustumPH.getPoints( verts );
-
-            // project those on to the plane of the light camera and fit them
-            // to a bounding box. That box will form the extent of our orthographic camera.
-            osg::BoundingBoxd bbox;
-            for( std::vector<osg::Vec3d>::iterator i = verts.begin(); i != verts.end(); ++i )
-                bbox.expandBy( (*i) * lightViewMat );
-
-            osg::Matrix lightProjMat;
-            n = -std::max(bbox.zMin(), bbox.zMax());
-            f = -std::min(bbox.zMin(), bbox.zMax());
-            lightProjMat.makeOrtho(bbox.xMin(), bbox.xMax(), bbox.yMin(), bbox.yMax(), n, f);
-            
-            // done! set up the RTT camera and go.
-            _rtt->setViewMatrix( lightViewMat );
-            _rtt->setProjectionMatrix( lightProjMat );
-
-            // this xforms from clip [-1..1] to texture [0..1] space
-            static osg::Matrix s_scaleBiasMat = 
-                osg::Matrix::translate(1.0,1.0,1.0) * 
-                osg::Matrix::scale(0.5,0.5,0.5);
+                // take the camera's projection matrix and clamp it's near and far planes
+                // to our shadow map slice range.
+                osg::Matrix proj = _prevProjMatrix;
+                cv->clampProjectionMatrix(proj, n, f);
                 
-            // set the texture coordinate generation matrix that the shadow
-            // receiver will use to sample the shadow map.
-            osg::Matrix VPS = lightViewMat * lightProjMat * s_scaleBiasMat;
-            _shadowMatrix = inverseMV * VPS;
-            _shadowMapTexGenUniform->set( _shadowMatrix );
+                // extract the corner points of the camera frustum in world space.
+                osg::Matrix MVP = MV * proj;
+                osg::Matrix inverseMVP;
+                inverseMVP.invert(MVP);
+                osgShadow::ConvexPolyhedron frustumPH;
+                frustumPH.setToUnitFrustum(true, true);
+                frustumPH.transform( inverseMVP, MVP );
+                std::vector<osg::Vec3d> verts;
+                frustumPH.getPoints( verts );
 
+                // project those on to the plane of the light camera and fit them
+                // to a bounding box. That box will form the extent of our orthographic camera.
+                osg::BoundingBoxd bbox;
+                for( std::vector<osg::Vec3d>::iterator v = verts.begin(); v != verts.end(); ++v )
+                    bbox.expandBy( (*v) * lightViewMat );
+
+                osg::Matrix lightProjMat;
+                n = -std::max(bbox.zMin(), bbox.zMax());
+                f = -std::min(bbox.zMin(), bbox.zMax());
+                lightProjMat.makeOrtho(bbox.xMin(), bbox.xMax(), bbox.yMin(), bbox.yMax(), n, f);
+
+                // configure the RTT camera for this slice:
+                _rttCameras[i]->setViewMatrix( lightViewMat );
+                _rttCameras[i]->setProjectionMatrix( lightProjMat );
+
+                // this xforms from clip [-1..1] to texture [0..1] space
+                static osg::Matrix s_scaleBiasMat = 
+                    osg::Matrix::translate(1.0,1.0,1.0) * 
+                    osg::Matrix::scale(0.5,0.5,0.5);
+                
+                // set the texture coordinate generation matrix that the shadow
+                // receiver will use to sample the shadow map. Doing this on the CPU
+                // prevents nasty precision issues!
+                osg::Matrix VPS = lightViewMat * lightProjMat * s_scaleBiasMat;
+                _shadowMapTexGenUniform->setElement(i, inverseMV * VPS);
+            }
+
+            // render the shadow maps.
             cv->pushStateSet( _rttStateSet.get() );
-            _rtt->accept( nv );
+            for(i=0; i<_rttCameras.size(); ++i)
+            {
+                _rttCameras[i]->accept( nv );
+            }
             cv->popStateSet();
             
+            // render the shadowed subgraph.
             cv->pushStateSet( _renderStateSet.get() );
             osg::Group::traverse( nv );
             cv->popStateSet();

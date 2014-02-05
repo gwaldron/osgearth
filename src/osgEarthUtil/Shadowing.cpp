@@ -38,8 +38,12 @@ _texImageUnit( 7 )
     // lots of slices!!!
     _ranges.push_back(0.0f);
     _ranges.push_back(250.0f);
-    for(int i=1; i<8; ++i)
-        _ranges.push_back( 500.0f * (float)i );
+    _ranges.push_back(500.0f);
+    _ranges.push_back(1000.0f);
+    _ranges.push_back(1500.0f);
+    _ranges.push_back(2500.0f);
+    //for(int i=1; i<4; ++i)
+    //    _ranges.push_back( 500.0f * (float)i );
 
     reinitialize();
 }
@@ -107,7 +111,7 @@ ShadowCaster::reinitialize()
         "varying vec4 oe_shadow_vpos; \n"
         "void oe_shadow_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
-        "    oe_shadow_vpos = VertexVIEW; \n"
+        "    oe_shadow_vpos = VertexVIEW - vec4(0,0,-1,0); \n" // offset: good idea/bad idea??
         "    oe_shadow_ambient = 0.5; \n"
         "} \n";
 
@@ -120,6 +124,19 @@ ShadowCaster::reinitialize()
         "varying float oe_shadow_ambient; \n"
         "varying vec4 oe_shadow_vpos; \n"
         "uniform mat4 oe_shadow_matrix[" << numSlices << "]; \n"
+
+        // this is slow.
+        "float oe_shadow_sample_blur(in vec4 c, in float p) \n"
+        "{ \n"
+        "    float sample = 0.0; \n"
+        "    for(float i=-p; i<=p; i+=p) { \n"
+        "        for(float j=-p; j<=p; j+=p) { \n"
+        "            sample += shadow2DArray(oe_shadow_map, vec4(c.x+i, c.y+j, c.z, c.w)).r; \n"
+        "        } \n"
+        "    } \n"
+        "    return sample/9.0; \n"
+        "} \n"
+
         "void oe_shadow_fragment( inout vec4 color )\n"
         "{\n"
         "    float alpha = color.a; \n"
@@ -129,7 +146,10 @@ ShadowCaster::reinitialize()
         "        vec4 c = oe_shadow_matrix[i] * oe_shadow_vpos; \n"
         "        c.w = c.z; \n"
         "        c.z = float(i); \n"
-        "        factor = min(factor, shadow2DArray(oe_shadow_map, c).r); \n"
+        "        if ( oe_shadow_blur > 0.0 ) \n"
+        "            factor = min(factor, oe_shadow_sample_blur(c, oe_shadow_blur)); \n"
+        "        else \n"
+        "            factor = min(factor, shadow2DArray(oe_shadow_map, c).r); \n"
         "    } \n"
         "    vec4 colorInFullShadow = color * oe_shadow_ambient; \n"
         "    color = mix(colorInFullShadow, color, factor); \n"

@@ -32,6 +32,7 @@
 #include <osg/Texture2D>
 #include <osg/Texture3D>
 #include <osg/TextureRectangle>
+#include <osg/Texture2DArray>
 #include <osg/TexEnv>
 #include <osg/TexGen>
 #include <osg/ClipNode>
@@ -698,6 +699,10 @@ ShaderGenerator::apply(osg::Texture* tex,
    {
       apply(static_cast<osg::TextureRectangle*>(tex), unit, buf);
    }
+   else if ( dynamic_cast<osg::Texture2DArray*>(tex) )
+   {
+      apply(static_cast<osg::Texture2DArray*>(tex), unit, buf);
+   }
    else
    {
       OE_WARN << LC << "Unsupported texture type: " << tex->className() << std::endl;
@@ -876,6 +881,18 @@ ShaderGenerator::apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf)
     buf.fragHead << "uniform sampler2DRect " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture2DRect(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
     //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
+
+    return true;
+}
+
+bool
+ShaderGenerator::apply(osg::Texture2DArray* tex, int unit, GenBuffers& buf)
+{    
+    buf.fragHead <<  "#extension GL_EXT_texture_array : enable \n";    
+
+    buf.fragHead << "uniform sampler2DArray " SAMPLER << unit << ";\n";
+    buf.fragBody << INDENT "texel = texture2DArray(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
+    //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );         
 
     return true;
 }

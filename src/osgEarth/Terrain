@@ -232,7 +232,8 @@ namespace osgEarth
 
         CallbackList                 _callbacks;
         Threading::ReadWriteMutex    _callbacksMutex;
-        OpenThreads::Atomic          _callbacksSize;
+        OpenThreads::Atomic          _callbacksSize; // separate size tracker for MT size check w/o a lock
+
         osg::ref_ptr<const Profile>  _profile;
         osg::observer_ptr<osg::Node> _graph;
         bool                         _geocentric;

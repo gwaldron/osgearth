@@ -622,16 +622,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
             sky->attach( view, 0 );
             sky->setDateTime( DateTime() );
             osgEarth::insertGroup(sky, mapNode);
+            Control* c = SkyControlFactory().create(sky, view);
+            if ( c )
+                mainContainer->addControl( c );
+
             if (animateSky)
             {
                 sky->setUpdateCallback( new AnimateSkyUpdateCallback() );
             }
-            else
-            {
-                Control* c = SkyControlFactory().create(sky, view);
-                if ( c )
-                    mainContainer->addControl( c );
-            }
+
         }
     }
 

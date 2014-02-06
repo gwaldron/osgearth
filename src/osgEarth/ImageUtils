@@ -87,7 +87,7 @@ namespace osgEarth
             const osg::Image* input, 
             unsigned int new_s, unsigned int new_t,
             osg::ref_ptr<osg::Image>& output,
-            unsigned int mipmapLevel =0 );
+            unsigned int mipmapLevel =0, bool bilinear=false );
 
         /**
          * Crops the input image to the dimensions provided and returns a

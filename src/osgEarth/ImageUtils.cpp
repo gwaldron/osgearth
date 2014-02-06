@@ -173,7 +173,8 @@ bool
 ImageUtils::resizeImage(const osg::Image* input, 
                         unsigned int out_s, unsigned int out_t, 
                         osg::ref_ptr<osg::Image>& output,
-                        unsigned int mipmapLevel )
+                        unsigned int mipmapLevel,
+                        bool bilinear)
 {
     if ( !input && out_s == 0 && out_t == 0 )
         return false;
@@ -233,18 +234,63 @@ ImageUtils::resizeImage(const osg::Image* input,
         {
             // get an appropriate input row
             float output_row_ratio = (float)output_row/(float)out_t;
-            int input_row = (unsigned int)( output_row_ratio * (float)in_t );
+            float input_row = output_row_ratio * (float)in_t;
             if ( input_row >= input->t() ) input_row = in_t-1;
             else if ( input_row < 0 ) input_row = 0;
 
             for( unsigned int output_col = 0; output_col < out_s; output_col++ )
             {
                 float output_col_ratio = (float)output_col/(float)out_s;
-                int input_col = (unsigned int)( output_col_ratio * (float)in_s );
+                float input_col =  output_col_ratio * (float)in_s;
                 if ( input_col >= (int)in_s ) input_col = in_s-1;
-                else if ( input_row < 0 ) input_row = 0;
+                else if ( input_col < 0 ) input_col = 0.0f;                
 
-                osg::Vec4 color = read( input_col, input_row ); // read pixel from mip level 0
+                osg::Vec4 color;
+
+                if (bilinear)
+                {
+                    // Do a billinear interpolation for the image
+                    int rowMin = osg::maximum((int)floor(input_row), 0);
+                    int rowMax = osg::maximum(osg::minimum((int)ceil(input_row), (int)(input->t()-1)), 0);
+                    int colMin = osg::maximum((int)floor(input_col), 0);
+                    int colMax = osg::maximum(osg::minimum((int)ceil(input_col), (int)(input->s()-1)), 0);                    
+
+                    if (rowMin > rowMax) rowMin = rowMax;
+                    if (colMin > colMax) colMin = colMax;    
+
+                    osg::Vec4 urColor = read(colMax, rowMax);
+                    osg::Vec4 llColor = read(colMin, rowMin);
+                    osg::Vec4 ulColor = read(colMin, rowMax);
+                    osg::Vec4 lrColor = read(colMax, rowMin); 
+                    
+                    if ((colMax == colMin) && (rowMax == rowMin))
+                    {
+                        // Exact value
+                        color = urColor;
+                    }
+                    else if (colMax == colMin)
+                    {                     
+                        // Linear interpolate vertically            
+                        color = llColor * ((double)rowMax - input_row) + ulColor * (input_row - (double)rowMin);
+                    }
+                    else if (rowMax == rowMin)
+                    {                     
+                        // Linear interpolate horizontally
+                        color = llColor * ((double)colMax - input_col) + lrColor * (input_col - (double)colMin);
+                    }
+                    else
+                    {                        
+                        // Bilinear interpolate
+                        osg::Vec4 r1 = llColor * ((double)colMax - input_col) + lrColor * (input_col - (double)colMin);
+                        osg::Vec4 r2 = ulColor * ((double)colMax - input_col) + urColor * (input_col - (double)colMin);                      
+                        color = r1 * ((double)rowMax - input_row) + r2 * (input_row - (double)rowMin);
+                    }                         
+                }
+                else
+                {
+                    color = read( (unsigned int)input_col, (unsigned int )input_row ); // read pixel from mip level 0
+                }
+
                 write( color, output_col, output_row, 0, mipmapLevel ); // write to target mip level
             }
         }

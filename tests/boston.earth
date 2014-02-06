@@ -71,6 +71,7 @@ to extruded buildings.
                     altitude-clamping:       terrain;
                     altitude-technique:      map;
                     altitude-binding:        vertex;
+					altitude-resolution:     0;
                 }            
                 building-wall {
                     skin-library:     us_resources;
@@ -90,7 +91,7 @@ to extruded buildings.
     </model>
     
     
-    <model name="Streets" driver="feature_geom" enabled="false">
+    <model name="Streets" driver="feature_geom" enabled="true">
         <features name="streets" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
             <resample max_length="25"/>

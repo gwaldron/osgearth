@@ -21,7 +21,6 @@
 #include <osgEarth/VirtualProgram>
 #include <osg/Texture2D>
 #include <osg/CullFace>
-#include <osg/PolygonOffset>
 #include <osgShadow/ConvexPolyhedron>
 
 #define LC "[ShadowCaster] "
@@ -30,7 +29,7 @@ using namespace osgEarth::Util;
 
 
 ShadowCaster::ShadowCaster() :
-_size        ( 512 ),
+_size        ( 1024 ),
 _texImageUnit( 7 )
 {
     _castingGroup = new osg::Group();
@@ -40,7 +39,7 @@ _texImageUnit( 7 )
     _ranges.push_back(250.0f);
     _ranges.push_back(500.0f);
     _ranges.push_back(1500.0f);
-    _ranges.push_back(3000.0f);
+    _ranges.push_back(5000.0f);
 
     reinitialize();
 }
@@ -88,7 +87,6 @@ ShadowCaster::reinitialize()
     _shadowmap->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
     _shadowmap->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
     _shadowmap->setBorderColor(osg::Vec4(1,1,1,1));
-    //_shadowmap->setShadowComparison(true);
 
     // set up the RTT camera:
     for(int i=0; i<numSlices; ++i)

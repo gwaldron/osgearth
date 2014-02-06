@@ -252,8 +252,15 @@ void SkinTextureArray::build(SkinResourceVector& skins, const osgDB::Options* db
     for (unsigned int i = 0; i < images.size(); i++)
     {
         osg::ref_ptr< osg::Image> resized;
-        ImageUtils::resizeImage( images[i].get(), maxWidth, maxHeight, resized);
-        OE_DEBUG << "resizing image to " << maxWidth << "x" << maxHeight << std::endl;
+        if (images[i]->s() != maxWidth || images[i]->t() != maxHeight)
+        {            
+            OE_DEBUG << "resizing image to " << maxWidth << "x" << maxHeight << std::endl;
+            ImageUtils::resizeImage( images[i].get(), maxWidth, maxHeight, resized, 0, true);
+        }        
+        else
+        {
+             resized = images[i].get();
+        }
         resized = ImageUtils::convertToRGBA8( resized.get() );
         images[i] = resized.get();
     }

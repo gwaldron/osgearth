@@ -30,7 +30,7 @@ using namespace osgEarth::Util;
 
 
 ShadowCaster::ShadowCaster() :
-_size        ( 1024 ),
+_size        ( 512 ),
 _texImageUnit( 7 )
 {
     _castingGroup = new osg::Group();

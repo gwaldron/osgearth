@@ -32,8 +32,7 @@ namespace osgEarth { namespace Util
     /**
      * Group that casts shadows on its subgraph.
      *
-     * Caveats:
-     * - This object is not multi-camera aware yet.
+     * NOTE!! This object is not multi-camera aware yet.
      */
     class OSGEARTHUTIL_EXPORT ShadowCaster : public osg::Group
     {
@@ -42,14 +41,42 @@ namespace osgEarth { namespace Util
 
         /**
          * The light that will cast shadows.
+         * NOTE: Only works for point lights, like the sun.
          */
         void setLight(osg::Light* light) { _light = light; }
         osg::Light* getLight() { return _light.get(); }
 
         /**
          * Group of geometry that should cast shadows on this node's children.
+         * You must add geometry here in order to cast shadows. The geometry
+         * you add here will only be used to generate shadows - it must still
+         * exist elsewhere in the scene graph for rendering.
          */
         osg::Group* getShadowCastingGroup() { return _castingGroup.get(); }
+
+        /**
+         * Slice ranges. Each slice (the space beteen each value in the list)
+         * represents a single shadow map in the Cascading Shadow Maps 
+         * implementation.
+         */
+        const std::vector<float>& getRanges() { return _ranges; }
+        void setRanges(const std::vector<float>& ranges);
+
+        /**
+         * The GPU texture image unit that will store the shadow map while
+         * rendering the subgraph.
+         */
+        int getTextureImageUnit() const { return _texImageUnit; }
+        void setTextureImageUnit(int unit);
+
+        /**
+         * The size (in both dimensions) of the shadow depth texture. Bigger
+         * is sharper. Default is 1024. The total texture size used will be
+         * size * # of range slices * 3 bytes.
+         */
+        unsigned getTextureSize() const { return _size; }
+        void setTextureSize(unsigned size);
+
 
     public: // osg::Node
 

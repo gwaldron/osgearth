@@ -516,10 +516,10 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             osg::Matrix::scale(0.5,0.5,0.5);
 
         // resolution weighting based on camera distance.
-        if ( _maxFarNearRatio > 1.0 )
-        {
-            optimizeProjectionMatrix( params, _maxFarNearRatio );
-        }
+//        if ( _maxFarNearRatio > 1.0 )
+//        {
+//            optimizeProjectionMatrix( params, _maxFarNearRatio );
+//        }
 
         params._rttCamera->setViewMatrix      ( params._rttViewMatrix );
         params._rttCamera->setProjectionMatrix( params._rttProjMatrix );

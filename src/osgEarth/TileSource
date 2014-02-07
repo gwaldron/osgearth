@@ -38,9 +38,7 @@
 #include <osg/Object>
 #include <osg/Image>
 #include <osg/Shape>
-#if OSG_MIN_VERSION_REQUIRED(2,9,5)
 #include <osgDB/Options>
-#endif
 #include <osgDB/ReadFile>
 #include <string>
 

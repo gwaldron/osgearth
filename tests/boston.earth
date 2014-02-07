@@ -71,6 +71,7 @@ to extruded buildings.
                     altitude-clamping:       terrain;
                     altitude-technique:      map;
                     altitude-binding:        vertex;
+					altitude-resolution:     0;
                 }            
                 building-wall {
                     skin-library:     us_resources;

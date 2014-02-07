@@ -24,7 +24,8 @@
 #include <osg/Version>
 #include <osgEarth/Export>
 
-#define USE_FILELOCATIONCALLBACK OSG_MIN_VERSION_REQUIRED(2,9,5)
+#define USE_FILELOCATIONCALLBACK 1
+
 #if USE_FILELOCATIONCALLBACK
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine

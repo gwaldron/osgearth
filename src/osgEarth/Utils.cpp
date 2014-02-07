@@ -150,7 +150,6 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 setRotation(q);
             }
 
-#if OSG_MIN_VERSION_REQUIRED(3,0,0)
             else if (_autoRotateMode==ROTATE_TO_AXIS)
             {
                 osg::Matrix matrix;
@@ -225,7 +224,6 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 q.set(matrix);
                 setRotation(q);
             }
-#endif
 
             _dirty = false;
         }

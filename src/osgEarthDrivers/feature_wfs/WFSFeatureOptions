@@ -58,12 +58,22 @@ namespace osgEarth { namespace Drivers
         optional<bool>& disableTiling() { return _disableTiling; }
         const optional<bool>& disableTiling() const { return _disableTiling;}
 
+        /** The number of map units to buffer bounding box requests with 
+         *  to ensure that enough data is returned.  This is useful when rendering buffered lines
+         *  using the AGGLite driver.         
+         */
+        optional<double>& buffer() { return _buffer;}
+        const optional<double>& buffer() const { return _buffer;}
+
 
 
     public:
-        WFSFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) : FeatureSourceOptions( opt ) {
+        WFSFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          FeatureSourceOptions( opt ),
+          _buffer( 0 )
+        {
             setDriver( "wfs" );
-            fromConfig( _conf );
+            fromConfig( _conf );            
         }
 
         virtual ~WFSFeatureOptions() { }
@@ -77,6 +87,8 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "outputformat", _outputFormat);
             conf.updateIfSet( "maxfeatures", _maxFeatures );
             conf.updateIfSet( "disable_tiling", _disableTiling );
+            conf.updateIfSet( "request_buffer", _buffer);
+
             return conf;
         }
 
@@ -87,13 +99,14 @@ namespace osgEarth { namespace Drivers
         }
 
     private:
-        void fromConfig( const Config& conf ) {
+        void fromConfig( const Config& conf ) {            
             conf.getIfSet( "url", _url );
             conf.getIfSet( "geometry_profile", _geometryProfileConf );
             conf.getIfSet( "typename", _typename);
             conf.getIfSet( "outputformat", _outputFormat );
             conf.getIfSet( "maxfeatures", _maxFeatures );
             conf.getIfSet( "disable_tiling", _disableTiling);
+            conf.getIfSet( "request_buffer", _buffer);            
         }
 
         optional<URI>         _url;        
@@ -102,6 +115,7 @@ namespace osgEarth { namespace Drivers
         optional<std::string> _outputFormat;
         optional<unsigned>    _maxFeatures;            
         optional<bool>    _disableTiling;            
+        optional<double>  _buffer;            
     };
 
 } } // namespace osgEarth::Drivers

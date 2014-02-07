@@ -49,9 +49,9 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
                 return ReadResult::FILE_NOT_HANDLED;
 
             MapNode* mapNode = getMapNode(options);
-            const Map* map = mapNode ? mapNode->getMap() : 0L;
+            const SpatialReference* srs = mapNode ? mapNode->getMapSRS() : 0L;
 
-            return new SimpleSkyNode(map, getSkyOptions(options));
+            return new SimpleSkyNode(srs, getSkyOptions(options));
         }
 
     protected:

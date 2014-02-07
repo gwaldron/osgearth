@@ -21,8 +21,9 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Progress>
 
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
@@ -40,7 +41,7 @@ namespace
                    unsigned                            order,
                    const MapInfo&                      mapInfo,
                    const MPTerrainEngineOptions&       opt, 
-                   TileModel*                          model )
+                   TileModel*                          model)
         {
             _key      = key;
             _layer    = layer;
@@ -50,7 +51,7 @@ namespace
             _model    = model;
         }
 
-        bool execute()
+        bool execute(ProgressCallback* progress)
         {
             GeoImage geoImage;
             bool isFallbackData = false;
@@ -89,7 +90,7 @@ namespace
                     if ( useMercatorFastPath )
                     {
                         bool mercFallbackData = false;
-                        geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback, mercFallbackData );
+                        geoImage = _layer->createImageInNativeProfile( imageKey, progress, autoFallback, mercFallbackData );
                         if ( geoImage.valid() && mercFallbackData )
                         {
                             isFallbackData = true;
@@ -97,7 +98,7 @@ namespace
                     }
                     else
                     {
-                        geoImage = _layer->createImage( imageKey, 0L, autoFallback );
+                        geoImage = _layer->createImage( imageKey, progress, autoFallback );
                     }
 
                     if ( !geoImage.valid() )
@@ -167,7 +168,7 @@ namespace
             _hfCache = hfCache;
         }
 
-        void execute()
+        void execute(ProgressCallback* progress)
         {            
             const MapInfo& mapInfo = _mapf->getMapInfo();
 
@@ -176,17 +177,14 @@ namespace
             osg::ref_ptr<osg::HeightField> hf;
             bool isFallback = false;
 
-            //if ( _mapf->getHeightField( _key, true, hf, &isFallback ) )
-            if (_hfCache->getOrCreateHeightField( *_mapf, _key, true, hf, &isFallback) )
+            if (_hfCache->getOrCreateHeightField( *_mapf, _key, true, hf, &isFallback, true, SAMPLE_FIRST_VALID, progress))
             {
                 _model->_elevationData = TileModel::ElevationData(
                     hf,
                     GeoLocator::createForKey( _key, mapInfo ),
                     isFallback );
 
-#if 1
-                if ( *_opt->normalizeEdges() )
-#endif
+                if ( _opt->normalizeEdges().value() == true )
                 {
                     // next, query the neighboring tiles to get adjacency information.
                     for( int x=-1; x<=1; x++ )
@@ -198,7 +196,7 @@ namespace
                                 TileKey nk = _key.createNeighborKey(x, y);
                                 if ( nk.valid() )
                                 {
-                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, true, hf, &isFallback) )
+                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, true, hf, &isFallback, true, SAMPLE_FIRST_VALID, progress) )
                                     {
                                         if ( mapInfo.isPlateCarre() )
                                         {
@@ -215,7 +213,7 @@ namespace
                     // parent too.
                     if ( _key.getLOD() > 0 )
                     {
-                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), true, hf, &isFallback) )
+                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), true, hf, &isFallback, true, SAMPLE_FIRST_VALID, progress) )
                         {
                             if ( mapInfo.isPlateCarre() )
                             {
@@ -259,15 +257,18 @@ TileModelFactory::getHeightFieldCache() const
 void
 TileModelFactory::createTileModel(const TileKey&           key, 
                                   const MapFrame&          frame,
-                                  osg::ref_ptr<TileModel>& out_model) //,
-                                  //bool&                    out_hasRealData)
+                                  osg::ref_ptr<TileModel>& out_model,
+                                  ProgressCallback*        progress)
 {
 
     osg::ref_ptr<TileModel> model = new TileModel( frame.getRevision(), frame.getMapInfo() );
     model->_tileKey = key;
     model->_tileLocator = GeoLocator::createForKey(key, frame.getMapInfo());
-    
+
+    OE_START_TIMER(fetch_imagery);
+
     // Fetch the image data and make color layers.
+    unsigned index = 0;
     unsigned order = 0;
     for( ImageLayerVector::const_iterator i = frame.imageLayers().begin(); i != frame.imageLayers().end(); ++i )
     {
@@ -277,8 +278,8 @@ TileModelFactory::createTileModel(const TileKey&           key,
         {
             BuildColorData build;
             build.init( key, layer, order, frame.getMapInfo(), _terrainOptions, model.get() );
-            
-            bool addedToModel = build.execute();
+
+            bool addedToModel = build.execute(progress);
             if ( addedToModel )
             {
                 // only bump the order if we added something to the data model.
@@ -287,10 +288,19 @@ TileModelFactory::createTileModel(const TileKey&           key,
         }
     }
 
+    if (progress)
+        progress->stats()["fetch_imagery_time"] += OE_STOP_TIMER(fetch_imagery);
+
+    
+    OE_START_TIMER(fetch_elevation);
+
     // make an elevation layer.
     BuildElevationData build;
     build.init( key, frame, _terrainOptions, model.get(), _hfCache );
-    build.execute();
+    build.execute(progress);
+
+    if (progress)
+        progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);
 
 
     // Bail out now if there's no data to be had.

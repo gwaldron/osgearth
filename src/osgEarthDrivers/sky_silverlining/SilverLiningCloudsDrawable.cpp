@@ -33,7 +33,7 @@ _SL( SL )
     setSupportsDisplayList( false );
     
     // not MT-safe (camera updates, etc)
-    this->setDataVariance(osg::Object::DYNAMIC);
+    this->setDataVariance(osg::Object::DYNAMIC);    
 }
 
 void

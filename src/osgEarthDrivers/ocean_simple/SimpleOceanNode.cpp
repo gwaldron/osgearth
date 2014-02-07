@@ -36,7 +36,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers::SimpleOcean;
-
+using namespace osgEarth::Drivers::MPTerrainEngine;
 
 namespace
 {

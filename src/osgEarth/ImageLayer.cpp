@@ -275,6 +275,12 @@ _runtimeOptions( options )
 void
 ImageLayer::init()
 {
+    // Set the tile size to 256 if it's not explicitly set.
+    if (!_runtimeOptions.driver()->tileSize().isSet())
+    {
+        _runtimeOptions.driver()->tileSize().init( 256 );
+    }
+
     _emptyImage = ImageUtils::createEmptyImage();
     //*((unsigned*)_emptyImage->data()) = 0x7F0000FF;
 }
@@ -595,10 +601,6 @@ ImageLayer::createImageInKeyProfile( const TileKey& key, ProgressCallback* progr
             ImageUtils::normalizeImage( r.getImage() );
             return GeoImage( r.releaseImage(), key.getExtent() );
         }
-        //else if ( r.code() == ReadResult::RESULT_EXPIRED )
-        //{
-        //    OE_INFO << LC << getName() << " : " << key.str() << " record expired!" << std::endl;
-        //}
     }
     
     // The data was not in the cache. If we are cache-only, fail sliently
@@ -716,6 +718,8 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
             {
                 finalKey = finalKey.createParentKey();
                 out_isFallback = true;
+                if (progress)
+                    progress->stats()["imagelayer_fallback_count"] += 1;
             }
         }
 

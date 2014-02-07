@@ -139,20 +139,18 @@ _runtimeOptions( options )
 void
 ElevationLayer::init()
 {
+    // Set the tile size to 15 if it's not explicitly set.  15 is a sensible number for elevation tiles, the normal 256 is much too dense.
+    if (!_runtimeOptions.driver()->tileSize().isSet())
+    {
+        _runtimeOptions.driver()->tileSize().init( 15 );
+    }
     _tileSize = 15;
-    //_tileSize = 32;
 }
 
 std::string
 ElevationLayer::suggestCacheFormat() const
 {
-#if OSG_MIN_VERSION_REQUIRED(2,8,0)
-        //OSG 2.8 onwards should use TIF for heightfields
-        return "tif";
-#else
-        //OSG 2.8 and below should use DDS
-        return "dds";
-#endif
+    return "tif";
 }
 
 void
@@ -576,47 +574,61 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
 
         if ( layer->getEnabled() && layer->getVisible() )
         {
-            GeoHeightField geoHF;
-            if ( layer->isKeyValid(keyToUse) )
-            {
-                geoHF = layer->createHeightField( keyToUse, progress );
-            }
+            bool mightHaveData =
+                !layer->getTileSource() ||
+                layer->getTileSource()->hasDataInExtent(keyToUse.getExtent());
 
-            // if "fallback" is set, try to fall back on lower LODs.
-            if ( !geoHF.valid() && fallback )
+            if (mightHaveData)
             {
-                TileKey hf_key = keyToUse.createParentKey();
-
-                while ( hf_key.valid() && !geoHF.valid() )
+                GeoHeightField geoHF;
+                if ( layer->isKeyValid(keyToUse) )
                 {
-                    geoHF = layer->createHeightField( hf_key, progress );
-                    if ( !geoHF.valid() )
-                        hf_key = hf_key.createParentKey();
+                    geoHF = layer->createHeightField( keyToUse, progress );
+                }
+
+                // if "fallback" is set, try to fall back on lower LODs.
+                bool mightHaveFallbackData =
+                    !layer->getTileSource() ||
+                    layer->getTileSource()->hasDataForFallback(keyToUse);
+
+                if ( !geoHF.valid() && fallback && mightHaveFallbackData )
+                {
+                    TileKey hf_key = keyToUse.createParentKey();
+
+                    while ( hf_key.valid() && !geoHF.valid() )
+                    {
+                        if (progress)
+                            progress->stats()["elevationLayer_fallback_count"] += 1;
+
+                        geoHF = layer->createHeightField( hf_key, progress );
+                        if ( !geoHF.valid() )
+                            hf_key = hf_key.createParentKey();
+                    }
+
+                    if ( geoHF.valid() )
+                    {
+                        if ( hf_key.getLevelOfDetail() < lowestLOD )
+                        {
+                            lowestLOD = hf_key.getLevelOfDetail();
+                        }
+
+                        //This HeightField is fallback data, so increment the count.
+                        numFallbacks++;
+                    }
                 }
 
                 if ( geoHF.valid() )
                 {
-                    if ( hf_key.getLevelOfDetail() < lowestLOD )
-                    {
-                        lowestLOD = hf_key.getLevelOfDetail();
+                    //If the layer is offset, add it to the list of offset heightfields
+                    if (*layer->getElevationLayerOptions().offset())
+                    {                    
+                        offsetHeightFields.push_back( geoHF );
                     }
-
-                    //This HeightField is fallback data, so increment the count.
-                    numFallbacks++;
-                }
-            }
-
-            if ( geoHF.valid() )
-            {
-                //If the layer is offset, add it to the list of offset heightfields
-                if (*layer->getElevationLayerOptions().offset())
-                {                    
-                    offsetHeightFields.push_back( geoHF );
-                }
-                //Otherwise add it to the list of regular heightfields
-                else
-                {
-                    heightFields.push_back( geoHF );
+                    //Otherwise add it to the list of regular heightfields
+                    else
+                    {
+                        heightFields.push_back( geoHF );
+                    }
                 }
             }
         }

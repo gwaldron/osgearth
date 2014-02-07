@@ -90,6 +90,7 @@ SET(LIB_PUBLIC_HEADERS
     optional
     OverlayDecorator
     OverlayNode
+	PhongLightingEffect
     Pickers
     PrimitiveIntersector
     Profile
@@ -219,6 +220,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Notify.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
+	PhongLightingEffect.cpp
     Pickers.cpp
     PrimitiveIntersector.cpp
     Profile.cpp

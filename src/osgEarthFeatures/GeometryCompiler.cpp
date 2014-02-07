@@ -406,6 +406,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         ExtrudeGeometryFilter extrude;
         extrude.setStyle( style );
+        extrude.useTextureArrays() = Registry::capabilities().supportsTextureArrays();
 
         // apply per-feature naming if requested.
         if ( _options.featureName().isSet() )
@@ -418,6 +419,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         {
             resultGroup->addChild( node );
         }
+        
     }
 
     // simple geometry

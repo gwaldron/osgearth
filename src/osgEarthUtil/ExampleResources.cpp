@@ -26,6 +26,7 @@
 #include <osgEarthUtil/DataScanner>
 #include <osgEarthUtil/Sky>
 #include <osgEarthUtil/Ocean>
+#include <osgEarthUtil/Shadowing>
 
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/DetailTexture>
@@ -229,22 +230,66 @@ namespace
         }
     };
 
-#undef USE_AMBIENT_SLIDER
-//#define USE_AMBIENT_SLIDER 1
+//#undef USE_AMBIENT_SLIDER
+#define USE_AMBIENT_SLIDER 1
 
 #ifdef USE_AMBIENT_SLIDER
     struct AmbientBrightnessHandler : public ControlEventHandler
     {
-        AmbientBrightnessHandler(EnvironmentNode* sky) : _sky(sky) { }
+        AmbientBrightnessHandler(SkyNode* sky) : _sky(sky) { }
 
-        EnvironmentNode* _sky;
+        SkyNode* _sky;
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            _sky->setAmbientBrightness( value );
+            _sky->getSunLight()->setAmbient(osg::Vec4(value,value,value,1));
         }
     };
 #endif
+
+    struct AnimateSkyUpdateCallback : public osg::NodeCallback
+    {    
+        /**
+        * Creates an AnimateSkyCallback.  
+        * @param rate    The time multipler from real time.  Default of 1440 means 1 minute real time will equal 1 day simulation time.
+        */
+        AnimateSkyUpdateCallback( double rate = 1440 ):
+    _rate( rate ),
+        _prevTime( -1 ),
+        _accumTime( 0.0 )
+    {
+    }
+
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {             
+        SkyNode* sky = dynamic_cast< SkyNode* >( node );
+        if (sky)
+        {            
+            double time = nv->getFrameStamp()->getSimulationTime();            
+            if (_prevTime > 0)
+            {                
+                TimeStamp t = sky->getDateTime().asTimeStamp();                  
+                double delta = ceil((time - _prevTime) * _rate);
+                _accumTime += delta;
+                // The time stamp only works in seconds so we wait until we've accumulated at least 1 second to change the date.
+                if (_accumTime > 1.0)
+                {
+                    double deltaS = floor(_accumTime );                    
+                    _accumTime -= deltaS;
+                    t += deltaS;
+                    sky->setDateTime( t );                        
+                }                
+            }            
+            _prevTime = time;
+        }
+        traverse( node, nv );
+    }
+
+    double _accumTime;
+    double _prevTime;    
+    double _rate;
+    };
+
 }
 
 Control*
@@ -256,19 +301,19 @@ SkyControlFactory::create(SkyNode*         sky,
     grid->setChildSpacing( 10 );
     grid->setHorizFill( true );
 
-    grid->setControl( 0, 0, new LabelControl("Time: ", 16) );
+    grid->setControl( 0, 0, new LabelControl("Time (Hours UTC): ", 16) );
 
     DateTime dt = sky->getDateTime();
 
     HSliderControl* skySlider = grid->setControl(1, 0, new HSliderControl( 0.0f, 24.0f, dt.hours() ));
-    skySlider->setHorizFill( true, 200 );
+    skySlider->setHorizFill( true, 300 );
     skySlider->addEventHandler( new SkyTimeSliderHandler(sky) );
 
     grid->setControl(2, 0, new LabelControl(skySlider) );
 
 #ifdef USE_AMBIENT_SLIDER
-    grid->setControl(0, 1, new LabelControl("Ambient: ", 16) );
-    HSliderControl* ambient = grid->setControl(1, 1, new HSliderControl(0.0f, 1.0f, sky->getAmbientBrightness()));
+    grid->setControl(0, 1, new LabelControl("Min.Ambient: ", 16) );
+    HSliderControl* ambient = grid->setControl(1, 1, new HSliderControl(0.0f, 1.0f, sky->getSunLight()->getAmbient().r()));
     ambient->addEventHandler( new AmbientBrightnessHandler(sky) );
     grid->setControl(2, 1, new LabelControl(ambient) );
 #endif
@@ -488,6 +533,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useCoords     = args.read("--coords") || useMGRS || useDMS || useDD;
     bool useOrtho      = args.read("--ortho");
     bool useAutoClip   = args.read("--autoclip");
+    bool useShadows    = args.read("--shadows");
+    bool animateSky    = args.read("--animate-sky");
 
     float ambientBrightness = 0.2f;
     args.read("--ambientBrightness", ambientBrightness);
@@ -561,15 +608,29 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( useSky || !skyConf.empty() )
     {
         SkyOptions options(skyConf);
+        if ( options.getDriver().empty() )
+        {
+            if ( mapNode->getMapSRS()->isGeographic() )
+                options.setDriver("simple");
+            else
+                options.setDriver("gl");
+        }
+
         SkyNode* sky = SkyNode::create(options, mapNode);
         if ( sky )
         {
             sky->attach( view, 0 );
             sky->setDateTime( DateTime() );
-            root->addChild( sky );
+            osgEarth::insertGroup(sky, mapNode);
             Control* c = SkyControlFactory().create(sky, view);
             if ( c )
                 mainContainer->addControl( c );
+
+            if (animateSky)
+            {
+                sky->setUpdateCallback( new AnimateSkyUpdateCallback() );
+            }
+
         }
     }
 
@@ -584,6 +645,23 @@ MapNodeHelper::parse(MapNode*             mapNode,
             Control* c = OceanControlFactory().create(ocean);
             if ( c )
                 mainContainer->addControl(c);
+        }
+    }
+
+    // Shadowing.
+    if ( useShadows )
+    {
+        ShadowCaster* caster = new ShadowCaster();
+        caster->setLight( view->getLight() );
+        caster->getShadowCastingGroup()->addChild( mapNode->getModelLayerGroup() );
+        if ( mapNode->getNumParents() > 0 )
+        {
+            insertGroup(caster, mapNode->getParent(0));
+        }
+        else
+        {
+            caster->addChild(mapNode);
+            root = caster;
         }
     }
 

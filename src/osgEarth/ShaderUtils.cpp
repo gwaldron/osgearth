@@ -364,39 +364,20 @@ osg_LightSourceParameters::glslDefinition()
 #define LC "[UpdateLightingUniformHelper] "
 
 UpdateLightingUniformsHelper::UpdateLightingUniformsHelper( bool useUpdateTrav ) :
-_lightingEnabled( true ),
 _dirty          ( true ),
 _applied        ( false ),
 _useUpdateTrav  ( useUpdateTrav )
 {
     _maxLights = Registry::instance()->getCapabilities().getMaxLights();
-
-    _lightEnabled = new bool[ _maxLights ];
-    if ( _maxLights > 0 ){
-        _lightEnabled[0] = true;
-        //allocate light
-        _osgLightSourceParameters.push_back(osg_LightSourceParameters(0));
-    }
-    for(int i=1; i<_maxLights; ++i ){
-        _lightEnabled[i] = true;
-        _osgLightSourceParameters.push_back(osg_LightSourceParameters(i));
-    }
-
-    _lightingEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "oe_mode_GL_LIGHTING" );
-    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::BOOL, "oe_mode_GL_LIGHT", _maxLights );
-
-    if ( !_useUpdateTrav )
+    for(int i=0; i<_maxLights; ++i )
     {
-        // setting the data variance the DYNAMIC makes it safe to change the uniform values
-        // during the CULL traversal.
-        _lightingEnabledUniform->setDataVariance( osg::Object::DYNAMIC );
-        _lightEnabledUniform->setDataVariance( osg::Object::DYNAMIC );
+        _osgLightSourceParameters.push_back(osg_LightSourceParameters(i));
     }
 }
 
 UpdateLightingUniformsHelper::~UpdateLightingUniformsHelper()
 {
-    delete [] _lightEnabled;
+    //nop
 }
 
 void
@@ -421,6 +402,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
             sg = sg->_parent;
         }
 
+#if 0
         // Update the overall lighting-enabled value:
         bool lightingEnabled =
             ( getModeValue(stateSetStack, GL_LIGHTING) & osg::StateAttribute::ON ) != 0;
@@ -433,6 +415,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
             else
                 _lightingEnabledUniform->set( _lightingEnabled );
         }
+#endif
 
         osg::View* view = cv->getCurrentCamera()->getView();
         if ( view )
@@ -445,6 +428,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
             }
         }
 
+#if 0
         else
         {
             // Update the list of enabled lights:
@@ -478,6 +462,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
                 }
             }	
         }
+#endif
 
         // apply if necessary:
         if ( !_applied && !_useUpdateTrav )
@@ -485,8 +470,8 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _stateSetMutex );
             if (!_applied)
             {
-                node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
-                node->getStateSet()->addUniform( _lightEnabledUniform.get() );
+                //node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
+                //node->getStateSet()->addUniform( _lightEnabledUniform.get() );
                 for( int i=0; i < _maxLights; ++i )
                 {
                     _osgLightSourceParameters[i].applyState(node->getStateSet());
@@ -502,18 +487,18 @@ UpdateLightingUniformsHelper::updateTraverse( osg::Node* node )
 {
     if ( _dirty )
     {
-        _lightingEnabledUniform->set( _lightingEnabled );
+        //_lightingEnabledUniform->set( _lightingEnabled );
 
-        for( int i=0; i < _maxLights; ++i )
-            _lightEnabledUniform->setElement( i, _lightEnabled[i] );
+        //for( int i=0; i < _maxLights; ++i )
+            //_lightEnabledUniform->setElement( i, _lightEnabled[i] );
 
         _dirty = false;
 
         if ( !_applied )
         {
             osg::StateSet* stateSet = node->getOrCreateStateSet();
-            stateSet->addUniform( _lightingEnabledUniform.get() );
-            stateSet->addUniform( _lightEnabledUniform.get() );
+            //stateSet->addUniform( _lightingEnabledUniform.get() );
+            //stateSet->addUniform( _lightEnabledUniform.get() );
             for( int i=0; i < _maxLights; ++i )
             {
                 _osgLightSourceParameters[i].applyState(stateSet);

@@ -286,7 +286,7 @@ bool
 TextureCompositorTexArray::isSupported()
 {
     const Capabilities& caps = osgEarth::Registry::instance()->getCapabilities();
-    return caps.supportsGLSL(1.30f) && caps.supportsTextureArrays();
+    return caps.supportsGLSL(130u) && caps.supportsTextureArrays();
 }
 
 TextureCompositorTexArray::TextureCompositorTexArray( const TerrainOptions& options ) :

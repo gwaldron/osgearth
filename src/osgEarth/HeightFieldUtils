@@ -51,7 +51,7 @@ namespace osgEarth
             }
         }
 
-        void getNeighborForNormalizedLocation(double nx, double ny, osg::ref_ptr<osg::HeightField>& hf, double& out_nx, double& out_ny) const {
+        bool getNeighborForNormalizedLocation(double nx, double ny, osg::ref_ptr<osg::HeightField>& hf, double& out_nx, double& out_ny) const {
             int xoffset = nx < 0.0 ? -1 : nx > 1.0 ? 1 : 0;
             int yoffset = ny < 0.0 ? 1 : ny > 1.0 ? -1 : 0;
             if ( xoffset != 0 || yoffset != 0 )
@@ -60,6 +60,7 @@ namespace osgEarth
                 hf = _center.get();
             out_nx = nx < 0.0 ? 1.0+nx : nx > 1.0 ? nx-1.0 : nx;
             out_ny = ny < 0.0 ? 1.0+ny : ny > 1.0 ? ny-1.0 : ny;
+            return hf.valid();
         }
     };
 
@@ -108,11 +109,12 @@ namespace osgEarth
         /**
          * Gets the interpolated elevation at the specified "normalized unit location".
          * i.e., nx => [-1.0...2.0], ny => [-1.0...2.0] since it can query neighbors
-         * as well.
+         * as well. Returns FALSE if there's no heightfield in the hood.
          */
-        static float getHeightAtNormalizedLocation(
+        static bool getHeightAtNormalizedLocation(
             const HeightFieldNeighborhood& hood,
             double nx, double ny,
+            double& output,
             ElevationInterpolation interp = INTERP_BILINEAR);
 
         /**

@@ -413,7 +413,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         //Setup a separate blend function for the alpha components and the RGB components.  
         //Because the destination alpha is initialized to 0 instead of 1
         osg::BlendFunc* blendFunc = 0;        
-        if (Registry::capabilities().supportsGLSL(1.4f))
+        if (Registry::capabilities().supportsGLSL(140u))
         {
             //Blend Func Separate is only available on OpenGL 1.4 and above
             blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);

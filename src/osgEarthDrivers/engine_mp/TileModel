@@ -17,8 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef OSGEARTH_ENGINE_MP_TILE_MODEL
-#define OSGEARTH_ENGINE_MP_TILE_MODEL 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL 1
 
 #include "Common"
 #include <osgEarth/Common>
@@ -36,7 +36,7 @@
 #include <osg/State>
 #include <map>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
 
@@ -244,6 +244,6 @@ namespace osgEarth_engine_mp
         }
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_MODEL
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL

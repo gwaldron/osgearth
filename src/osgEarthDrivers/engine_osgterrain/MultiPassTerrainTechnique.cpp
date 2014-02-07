@@ -86,15 +86,6 @@ MultiPassTerrainTechnique::~MultiPassTerrainTechnique()
 {
 }
 
-#if 0
-void
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-MultiPassTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
-#else
-MultiPassTerrainTechnique::init()
-#endif
-#endif
-
 void
 MultiPassTerrainTechnique::init()
 {
@@ -881,16 +872,6 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
     {
         _tile->init();
         _terrainTileInitialized = true;
-
-#if 0
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-        _terrainTile->init(~0x0, true);
-#else
-        _terrainTile->init();
-#endif
-
-        _terrainTileInitialized = true;
-#endif
     }
     
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )

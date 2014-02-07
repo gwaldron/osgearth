@@ -14,8 +14,8 @@ http://readymap.org
 <map name="readymap.org" type="geocentric" version="2">
     
     <options>
-        <elevation_tile_size>7</elevation_tile_size>
-        <terrain first_lod="1"/>
+	    <elevation_tile_size>15</elevation_tile_size>
+        <terrain first_lod="1" min_tile_range_factor="7.0"/>
     </options>
     
     <image name="readymap_imagery" driver="tms" visible="true">
@@ -25,5 +25,4 @@ http://readymap.org
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
-    
 </map>

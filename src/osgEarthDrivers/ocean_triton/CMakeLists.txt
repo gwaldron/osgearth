@@ -25,7 +25,6 @@ SETUP_PLUGIN(osgearth_ocean_triton)
 # to install public driver includes:
 SET(LIB_NAME ocean_triton)
 
-SET(LIB_PUBLIC_HEADERS TritonNode
-                       TritonOptions)
+SET(LIB_PUBLIC_HEADERS TritonOptions)
 
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

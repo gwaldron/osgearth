@@ -9,14 +9,7 @@ to extruded buildings.
     
     <options elevation_tile_size="15">
         <terrain lighting="true"/>
-    </options>    
-    
-    <image name="mapquest_open_aerial" driver="xyz" enabled="false">
-        <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
-        <profile>spherical-mercator</profile>
-        <cache_policy usage="no_cache"/>
-        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
-    </image>
+    </options>   
     
     <image name="readymap_imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
@@ -78,6 +71,7 @@ to extruded buildings.
                     altitude-clamping:       terrain;
                     altitude-technique:      map;
                     altitude-binding:        vertex;
+					altitude-resolution:     0;
                 }            
                 building-wall {
                     skin-library:     us_resources;
@@ -155,7 +149,7 @@ to extruded buildings.
             <viewpoint name="Boston Downtown 2" heading="-128.5" lat="42.3582" long="-71.0546" height="0" pitch="-19" range="1620" />
             <viewpoint name="Boston Street Level" heading="-145.85" lat="42.36460" long="-71.053612" pitch="-10.1" range="85.034"/>
         </viewpoints>
-        <sky hours="14.0"/>
+        <sky driver="simple" hours="14.0"/>
     </external>
   
 </map>

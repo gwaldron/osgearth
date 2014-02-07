@@ -25,7 +25,6 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/ShaderUtils>
 
 namespace osgEarth
 {
@@ -209,8 +208,6 @@ namespace osgEarth
         osg::ref_ptr<TerrainEngineNode> _terrainEngine;
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
-
-        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
 
 
     public: // MapCallback proxy

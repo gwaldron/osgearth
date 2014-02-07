@@ -20,6 +20,7 @@ SET(HEADERS_ROOT
     DateTime
     DetailTexture
     EarthManipulator
+	Ephemeris
     ExampleResources
     Export
     FeatureManipTool
@@ -41,6 +42,7 @@ SET(HEADERS_ROOT
     Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
+	Shadowing
 	SimplexNoise
     Sky
 #    SkyNode
@@ -59,10 +61,6 @@ SET(HEADERS_ROOT
     WFS
     WMS
 )
-IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
-    SET(HEADERS_ROOT ${HEADERS_ROOT}
-        ShadowUtils)
-ENDIF()
 SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
 
@@ -76,6 +74,7 @@ SET(SOURCES_ROOT
     DataScanner.cpp    
     DetailTexture.cpp
     EarthManipulator.cpp
+	Ephemeris.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
@@ -94,6 +93,7 @@ SET(SOURCES_ROOT
     Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
+	Shadowing.cpp
 	SimplexNoise.cpp
     SpatialData.cpp
     Sky.cpp
@@ -110,10 +110,6 @@ SET(SOURCES_ROOT
     WFS.cpp
     WMS.cpp
 )
-IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
-    SET(SOURCES_ROOT ${SOURCES_ROOT} 
-        ShadowUtils.cpp)
-ENDIF()
 
 SOURCE_GROUP( Sources FILES ${SOURCES_ROOT} )
 

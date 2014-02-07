@@ -344,6 +344,23 @@ main(int argc, char** argv)
 		annoGroup->addChild( ellipse );
 		editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
 	}
+	{
+		Style ellipseStyle;
+		//ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Yellow, 1.0);
+		ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Yellow, 1.0);
+		ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0;
+		ellipseStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+		ellipseStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
+		EllipseNode* ellipse = new EllipseNode(
+			mapNode, 
+			GeoPoint(geoSRS, -111.81157835546561, 40.084919763639768, 0.0, ALTMODE_RELATIVE),
+			Linear(1808.6968623438568, Units::METERS),
+			Linear(839.43545163719330, Units::METERS),
+			Angular(0, Units::DEGREES),
+			ellipseStyle);
+		annoGroup->addChild( ellipse );
+		editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
+	}
 
     {
         // A rectangle around San Diego

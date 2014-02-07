@@ -38,7 +38,7 @@ _texImageUnit( 7 )
     _ranges.push_back(0.0f);
     _ranges.push_back(250.0f);
     _ranges.push_back(500.0f);
-    _ranges.push_back(1500.0f);
+    _ranges.push_back(1000.0f);
     _ranges.push_back(5000.0f);
 
     reinitialize();

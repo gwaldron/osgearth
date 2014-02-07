@@ -140,19 +140,12 @@ void
 ElevationLayer::init()
 {
     _tileSize = 15;
-    //_tileSize = 32;
 }
 
 std::string
 ElevationLayer::suggestCacheFormat() const
 {
-#if OSG_MIN_VERSION_REQUIRED(2,8,0)
-        //OSG 2.8 onwards should use TIF for heightfields
-        return "tif";
-#else
-        //OSG 2.8 and below should use DDS
-        return "dds";
-#endif
+    return "tif";
 }
 
 void

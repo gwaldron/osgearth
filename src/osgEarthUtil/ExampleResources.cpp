@@ -246,6 +246,50 @@ namespace
         }
     };
 #endif
+
+    struct AnimateSkyUpdateCallback : public osg::NodeCallback
+    {    
+        /**
+        * Creates an AnimateSkyCallback.  
+        * @param rate    The time multipler from real time.  Default of 1440 means 1 minute real time will equal 1 day simulation time.
+        */
+        AnimateSkyUpdateCallback( double rate = 1440 ):
+    _rate( rate ),
+        _prevTime( -1 ),
+        _accumTime( 0.0 )
+    {
+    }
+
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {             
+        SkyNode* sky = dynamic_cast< SkyNode* >( node );
+        if (sky)
+        {            
+            double time = nv->getFrameStamp()->getSimulationTime();            
+            if (_prevTime > 0)
+            {                
+                TimeStamp t = sky->getDateTime().asTimeStamp();                  
+                double delta = ceil((time - _prevTime) * _rate);
+                _accumTime += delta;
+                // The time stamp only works in seconds so we wait until we've accumulated at least 1 second to change the date.
+                if (_accumTime > 1.0)
+                {
+                    double deltaS = floor(_accumTime );                    
+                    _accumTime -= deltaS;
+                    t += deltaS;
+                    sky->setDateTime( t );                        
+                }                
+            }            
+            _prevTime = time;
+        }
+        traverse( node, nv );
+    }
+
+    double _accumTime;
+    double _prevTime;    
+    double _rate;
+    };
+
 }
 
 Control*
@@ -490,6 +534,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useOrtho      = args.read("--ortho");
     bool useAutoClip   = args.read("--autoclip");
     bool useShadows    = args.read("--shadows");
+    bool animateSky    = args.read("--animate-sky");
 
     float ambientBrightness = 0.2f;
     args.read("--ambientBrightness", ambientBrightness);
@@ -580,6 +625,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
             Control* c = SkyControlFactory().create(sky, view);
             if ( c )
                 mainContainer->addControl( c );
+
+            if (animateSky)
+            {
+                sky->setUpdateCallback( new AnimateSkyUpdateCallback() );
+            }
+
         }
     }
 

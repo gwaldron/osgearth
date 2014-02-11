@@ -556,6 +556,22 @@ TerrainLayer::initTileSource()
         if ( status == TileSource::STATUS_OK )
         {
             _tileSize = _tileSource->getPixelsPerTile();
+
+            // dump out data extents:
+            if ( _tileSource->getDataExtents().size() > 0 )
+            {
+                OE_INFO << LC << "Data extents reported:" << std::endl;
+                for(DataExtentList::const_iterator i = _tileSource->getDataExtents().begin();
+                    i != _tileSource->getDataExtents().end(); ++i)
+                {
+                    const DataExtent& de = *i;
+                    OE_INFO << "    "
+                        << "X(" << i->xMin() << ", " << i->xMax() << ") "
+                        << "Y(" << i->yMin() << ", " << i->yMax() << ") "
+                        << "Z(" << i->minLevel().get() << ", " << i->maxLevel().get() << ")"
+                        << std::endl;
+                }                
+            }
         }
         else
         {

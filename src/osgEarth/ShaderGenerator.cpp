@@ -772,11 +772,12 @@ ShaderGenerator::apply(osg::TexEnv* texenv, int unit, GenBuffers& buf)
 bool
 ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 {
+    bool genDefault = false;
+
     // by default, do not use texture coordinate generation:
     if ( !accept(texgen) )
     {
-        buf.vertBody
-            << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
+        genDefault = true;
     }
 
     else
@@ -834,9 +835,28 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             break;
 
         default: // fall back on non-gen setup.
+            genDefault = true;
+            break;
+        }
+    }
+    
+    if ( genDefault )
+    {
+        // GLSL only supports built-in "gl_MultiTexCoord{0..7}"
+        if ( unit <= 7 )
+        {
             buf.vertBody
                 << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
-            break;
+        }
+        else
+        {
+            OE_INFO << LC
+                << "Texture coordinate on unit (" << unit << ") "
+                << "requires a custom vertex attribute (osg_MultiTexCoord" << unit << ")."
+                << std::endl;
+
+            buf.vertBody 
+                << INDENT << TEX_COORD << unit << " = osg_MultiTexCoord" << unit << ";\n";
         }
     }
 

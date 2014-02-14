@@ -557,6 +557,7 @@ TerrainLayer::initTileSource()
         {
             _tileSize = _tileSource->getPixelsPerTile();
 
+#if 0 //debugging 
             // dump out data extents:
             if ( _tileSource->getDataExtents().size() > 0 )
             {
@@ -572,6 +573,7 @@ TerrainLayer::initTileSource()
                         << std::endl;
                 }                
             }
+#endif
         }
         else
         {

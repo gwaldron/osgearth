@@ -363,7 +363,11 @@ OverlayNode::traverse( osg::NodeVisitor& nv )
                   {
                     // Insert newlly found intersections into the original intersector.
                     for (PrimitiveIntersector::Intersections::iterator it = pi2->getIntersections().begin(); it != pi2->getIntersections().end(); ++it)
-                      pi->insertIntersection(*it);
+                    {
+                      PrimitiveIntersector::Intersection intersection(*it);
+                      intersection.ratio = 1.0;
+                      pi->insertIntersection(intersection);
+                    }
                   }
                 }
                 else

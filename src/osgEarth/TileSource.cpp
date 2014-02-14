@@ -193,20 +193,6 @@ TileSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "l2_cache_size", _L2CacheSize );
     conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.getObjIfSet( "profile", _profileOptions );
-
-    // special handling of default tile size:
-    if ( !tileSize().isSet() )
-    {
-        optional<int> defaultTileSize;
-        conf.getIfSet( "default_tile_size", defaultTileSize );
-        if ( defaultTileSize.isSet() )
-        {
-            _tileSize.init(*defaultTileSize);
-        }
-    }
-
-    // remove it now so it does not get serialized
-    _conf.remove( "default_tile_size" );
 }
 
 

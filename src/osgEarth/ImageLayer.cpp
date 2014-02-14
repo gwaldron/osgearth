@@ -275,6 +275,12 @@ _runtimeOptions( options )
 void
 ImageLayer::init()
 {
+    // Set the tile size to 256 if it's not explicitly set.
+    if (!_runtimeOptions.driver()->tileSize().isSet())
+    {
+        _runtimeOptions.driver()->tileSize().init( 256 );
+    }
+
     _emptyImage = ImageUtils::createEmptyImage();
     //*((unsigned*)_emptyImage->data()) = 0x7F0000FF;
 }

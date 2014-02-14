@@ -326,9 +326,13 @@ public:
                    "&Y=" << query.tileKey().get().getTileY();
         }
         else if (query.bounds().isSet())
-        {
-            buf << "&BBOX=" << query.bounds().get().xMin() << "," << query.bounds().get().yMin() << ","
-                            << query.bounds().get().xMax() << "," << query.bounds().get().yMax();
+        {            
+            double buffer = *_options.buffer();            
+            buf << "&BBOX=" << std::setprecision(16)
+                            << query.bounds().get().xMin() - buffer << ","
+                            << query.bounds().get().yMin() - buffer << ","
+                            << query.bounds().get().xMax() + buffer << ","
+                            << query.bounds().get().yMax() + buffer;
         }
         std::string str;
         str = buf.str();

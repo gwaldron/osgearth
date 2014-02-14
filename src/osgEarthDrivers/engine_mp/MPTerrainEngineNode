@@ -57,6 +57,13 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         // for standalone tile creation outside of a terrain
         osg::Node* createTile(const TileKey& key);
+        
+        // when incremental update is enabled, forces regeneration of tiles
+        // in the given region.
+        void invalidateRegion(
+            const GeoExtent& extent,
+            unsigned         minLevel,
+            unsigned         maxLevel);
 
     public: // internal TerrainEngineNode
 

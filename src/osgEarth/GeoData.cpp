@@ -774,6 +774,14 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
     return GeoExtent::INVALID;
 }
 
+
+bool
+GeoExtent::transform( const SpatialReference* srs, GeoExtent& output ) const
+{
+    output = transform(srs);
+    return output.isValid();
+}
+
 void
 GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const
 {

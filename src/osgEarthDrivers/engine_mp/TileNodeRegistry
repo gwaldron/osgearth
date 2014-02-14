@@ -66,6 +66,16 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** Map revision that the reg will assign to new tiles. */
         const Revision& getMapRevision() const { return _maprev; }
 
+        /**
+         * Marks all tiles intersecting the extent as dirty. If incremental
+         * update is enabled, they will automatically reload.
+         *
+         * NOTE: Input extent SRS must match the terrain's SRS exactly.
+         *       The method does not check.
+         */
+        void setDirty(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel);
+
+
         virtual ~TileNodeRegistry() { }
 
         /** Adds a tile to the registry */

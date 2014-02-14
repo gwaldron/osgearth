@@ -61,6 +61,22 @@ namespace osgEarth
         /** Removes a terrain effect */
         void removeEffect( TerrainEffect* effect );
 
+        /**
+         * Marks the terrain tiles intersecting the provied extent as invalid.
+         * If the terrain engine supports incremental update, it will reload
+         * invalid tiles. If not, it will simple regenerate all tiles in the 
+         * terrain (which might be slow).
+         */
+        virtual void invalidateRegion(
+            const GeoExtent& extent,
+            unsigned         minLevel,
+            unsigned         maxLevel) { }
+
+        // See invalidateRegion() above.
+        void invalidateRegion(const GeoExtent& extent) {
+            invalidateRegion(extent, 0u, INT_MAX);
+        }
+            
 
     public: // Runtime properties
 
@@ -79,6 +95,7 @@ namespace osgEarth
         /** Gets the sampling ratio for elevation grid data.
           * @depreceated */
         float getElevationSamplingRatio() const { return _elevationSamplingRatio; }
+
 
     protected:
         TerrainEngineNode();

@@ -153,39 +153,72 @@ MapFrame::getImageLayerByName( const std::string& name ) const
 bool
 MapFrame::isCached( const TileKey& key ) const
 {
+    // is there a map cache at all?
+    if ( _map->getCache() == 0L )
+        return false;
+
     //Check to see if the tile will load fast
     // Check the imagery layers
     for( ImageLayerVector::const_iterator i = imageLayers().begin(); i != imageLayers().end(); i++ )
     {   
-        //If we're cache only we should be fast
-        if (i->get()->isCacheOnly()) continue;
+        const ImageLayer* layer = i->get();
 
-        osg::ref_ptr< TileSource > source = i->get()->getTileSource();
-        if (!source.valid()) continue;
+        if (!layer->getEnabled())
+            continue;
+
+        // If we're cache only we should be fast
+        if (layer->isCacheOnly())
+            continue;
+
+        // no-cache mode? always slow
+        if (layer->isNoCache())
+            return false;
+
+        // No tile source? skip it
+        osg::ref_ptr< TileSource > source = layer->getTileSource();
+        if (!source.valid())
+            continue;
 
         //If the tile is blacklisted, it should also be fast.
-        if ( source->getBlacklist()->contains( key.getTileId() ) ) continue;
-        //If no data is available on this tile, we'll be fast
-        if ( !source->hasData( key ) ) continue;
+        if ( source->getBlacklist()->contains( key.getTileId() ) )
+            continue;
 
-        if ( !i->get()->isCached( key ) ) return false;
+        //If no data is available on this tile, we'll be fast
+        if ( !source->hasData( key ) )
+            continue;
+
+        if ( !layer->isCached(key) )
+            return false;
     }
 
     for( ElevationLayerVector::const_iterator i = elevationLayers().begin(); i != elevationLayers().end(); ++i )
     {
-        //If we're cache only we should be fast
-        if (i->get()->isCacheOnly()) continue;
+        const ElevationLayer* layer = i->get();
 
-        osg::ref_ptr< TileSource > source = i->get()->getTileSource();
-        if (!source.valid()) continue;
+        if (!layer->getEnabled())
+            continue;
+
+        //If we're cache only we should be fast
+        if (layer->isCacheOnly())
+            continue;
+
+        // no-cache mode? always high-latency.
+        if (layer->isNoCache())
+            return false;
+
+        osg::ref_ptr< TileSource > source = layer->getTileSource();
+        if (!source.valid())
+            continue;
 
         //If the tile is blacklisted, it should also be fast.
-        if ( source->getBlacklist()->contains( key.getTileId() ) ) continue;
-        if ( !source->hasData( key ) ) continue;
+        if ( source->getBlacklist()->contains( key.getTileId() ) )
+            continue;
+
+        if ( !source->hasData( key ) )
+            continue;
+
         if ( !i->get()->isCached( key ) )
-        {
             return false;
-        }
     }
 
     return true;

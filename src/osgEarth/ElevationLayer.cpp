@@ -294,6 +294,7 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
                 {
                     heightFields.push_back( GeoHeightField(hf, layerKey.getExtent()) );
                 }
+#if 0
                 else
                 { 
                     // We couldn't get a heightfield at the given key so fall back on parent tiles
@@ -321,6 +322,7 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
                         }                        
                     }                    
                 }
+#endif
             }
         }
     }
@@ -544,7 +546,6 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
 
     //Get a HeightField for each of the enabled layers
     GeoHeightFieldVector heightFields;
-
     GeoHeightFieldVector offsetHeightFields;
 
     //The number of fallback heightfields we have
@@ -654,7 +655,7 @@ ElevationLayerVector::createHeightField(const TileKey&                  key,
                 defaultSize );
 
             if ( offsetHeightFields.size() == 0 )
-            return true;
+                return true;
         }
         else
         {

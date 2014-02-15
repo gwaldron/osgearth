@@ -73,8 +73,8 @@ IF(SQLITE3_FOUND)
   ADD_SUBDIRECTORY(mbtiles)
 ENDIF(SQLITE3_FOUND)
 
-ADD_SUBDIRECTORY(engine_osgterrain)
-ADD_SUBDIRECTORY(engine_quadtree)
+#ADD_SUBDIRECTORY(engine_osgterrain)
+#ADD_SUBDIRECTORY(engine_quadtree)
 ADD_SUBDIRECTORY(engine_mp)
 ADD_SUBDIRECTORY(engine_byo)
 

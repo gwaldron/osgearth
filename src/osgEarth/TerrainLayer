@@ -314,6 +314,15 @@ namespace osgEarth
                 _runtimeOptions->cachePolicy().isSet() &&
                 _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY;
         }
+        
+        /**
+         * Convenience check for no-cache mode.
+         */
+        bool isNoCache() const {
+            return 
+                _runtimeOptions->cachePolicy().isSet() &&
+                _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE;
+        }
 
     public: // Layer interface
 

@@ -41,6 +41,7 @@ namespace
                    unsigned                            order,
                    const MapInfo&                      mapInfo,
                    const MPTerrainEngineOptions&       opt, 
+                   TileNodeRegistry*                   tiles,
                    TileModel*                          model)
         {
             _key      = key;
@@ -48,6 +49,7 @@ namespace
             _order    = order;
             _mapInfo  = &mapInfo;
             _opt      = &opt;
+            _tiles    = tiles;
             _model    = model;
         }
 
@@ -64,10 +66,6 @@ namespace
 
             // fetch the image from the layer.
 
-            //bool autoFallback = _key.getLevelOfDetail() <= 1;
-            bool autoFallback = false;
-
-            TileKey imageKey( _key );
             TileSource*    tileSource   = _layer->getTileSource();
             const Profile* layerProfile = _layer->getProfile();
 
@@ -83,29 +81,15 @@ namespace
                 hasDataInExtent = tileSource->hasDataInExtent( ext );
             }
             
-            if (hasDataInExtent)
+            if (hasDataInExtent && _layer->isKeyValid(_key))
             {
-                while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
+                if ( useMercatorFastPath )
                 {
-                    if ( useMercatorFastPath )
-                    {
-                        bool mercFallbackData = false;
-                        geoImage = _layer->createImageInNativeProfile( imageKey, progress, autoFallback, mercFallbackData );
-                        if ( geoImage.valid() && mercFallbackData )
-                        {
-                            isFallbackData = true;
-                        }
-                    }
-                    else
-                    {
-                        geoImage = _layer->createImage( imageKey, progress, autoFallback );
-                    }
-
-                    if ( !geoImage.valid() )
-                    {
-                        imageKey = imageKey.createParentKey();
-                        isFallbackData = true;
-                    }
+                    geoImage = _layer->createImageInNativeProfile( _key, progress );
+                }
+                else
+                {
+                    geoImage = _layer->createImage( _key, progress );
                 }
             }
 
@@ -132,20 +116,39 @@ namespace
                     _order,
                     geoImage.getImage(),
                     locator,
-                    _key,
                     isFallbackData );
 
                 return true;
             }
 
-            else
+            else // fall back on parent tile.
             {
-                return false;
+                TileKey parentKey = _key.createParentKey();
+                osg::ref_ptr<TileNode> parentNode;
+                _tiles->get(parentKey, parentNode);
+                if ( parentNode.valid() )
+                {
+                    const TileModel* parentModel = parentNode->getTileModel();
+                    if ( parentModel )
+                    {
+                        TileModel::ColorData parentColorData;
+                        if ( parentModel->getColorData(_layer->getUID(), parentColorData) )
+                        {
+                            TileModel::ColorData& colorData = _model->_colorData[_layer->getUID()];
+                            colorData = TileModel::ColorData(parentColorData);
+                            colorData.setIsFallbackData( true );
+                            return true;
+                        }
+                    }
+                }
             }
+
+            return false;
         }
 
         TileKey        _key;
         const MapInfo* _mapInfo;
+        TileNodeRegistry* _tiles;
         ImageLayer*    _layer;
         unsigned       _order;
         TileModel*     _model;
@@ -277,7 +280,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
         if ( layer->getEnabled() )
         {
             BuildColorData build;
-            build.init( key, layer, order, frame.getMapInfo(), _terrainOptions, model.get() );
+            build.init( key, layer, order, frame.getMapInfo(), _terrainOptions, _liveTiles.get(), model.get() );
 
             bool addedToModel = build.execute(progress);
             if ( addedToModel )

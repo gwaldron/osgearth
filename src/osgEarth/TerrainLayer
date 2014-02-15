@@ -381,12 +381,13 @@ namespace osgEarth
     protected:
 
         osg::ref_ptr<TileSource>       _tileSource;
-        osg::ref_ptr<const Profile>    _profile;
         osg::ref_ptr<const Profile>    _targetProfileHint;
         bool                           _tileSourceInitAttempted;
         bool                           _tileSourceInitFailed;
         unsigned                       _tileSize;  
         osg::ref_ptr<osgDB::Options>   _dbOptions;
+
+        mutable osg::ref_ptr<const Profile> _profile;
 
         void setCachePolicy( const CachePolicy& cp );
         const CachePolicy& getCachePolicy() const;

@@ -329,23 +329,6 @@ TerrainLayer::getProfile() const
             // Call getTileSource to make sure the TileSource is initialized
             getTileSource();
         }
-
-        if ( _tileSource.valid() && !_profile.valid() && !_tileSourceInitFailed )
-        {
-            const_cast<TerrainLayer*>(this)->_profile = _tileSource->getProfile();
-        }
-
-        // check for a vertical datum override:
-        if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
-        {
-            std::string vdatum = toLower( *_runtimeOptions->verticalDatum() );
-            if ( _profile->getSRS()->getVertInitString() != vdatum )
-            {
-                ProfileOptions po = _profile->toProfileOptions();
-                po.vsrsString() = vdatum;
-                const_cast<TerrainLayer*>(this)->_profile = Profile::create(po);
-            }
-        }
     }
     
     return _profile.get();
@@ -539,6 +522,7 @@ TerrainLayer::initTileSource()
             URIContext( _runtimeOptions->referrer() ).apply( _dbOptions.get() );
         }
 
+
         // report on a manual override profile:
         if ( _tileSource->getProfile() )
         {
@@ -587,7 +571,29 @@ TerrainLayer::initTileSource()
     // Set the profile from the TileSource if possible:
     if ( _tileSource.valid() )
     {
-        _profile = _tileSource->getProfile();
+        if ( !_profile.valid() && !_tileSourceInitFailed )
+        {
+            _profile = _tileSource->getProfile();
+        }
+
+        // check for a vertical datum override:
+        if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
+        {
+            std::string vdatum = toLower( *_runtimeOptions->verticalDatum() );
+            if ( _profile->getSRS()->getVertInitString() != vdatum )
+            {
+                OE_INFO << LC << "Overriding vdatum with: " << vdatum << std::endl;
+                ProfileOptions po = _profile->toProfileOptions();
+                po.vsrsString() = vdatum;
+                _profile = Profile::create(po);
+            }
+        }
+
+        if ( _profile.valid() )
+        {
+            OE_INFO << LC << "Profile=" << _profile->toString() << std::endl;
+        }
+        //_profile = _tileSource->getProfile();
     }
 
     // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 

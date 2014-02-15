@@ -38,7 +38,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             _skirtRatio        ( 0.05 ),
             _quickRelease      ( true ),
             _lodFallOff        ( 0.0 ),
-            _normalizeEdges    ( true ),
+            _normalizeEdges    ( false ),
             _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize     ( 256 ),
             _premultAlpha      ( false ),

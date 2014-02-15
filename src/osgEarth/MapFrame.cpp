@@ -81,6 +81,33 @@ MapFrame::needsSync() const
 
 
 bool
+MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
+                              const TileKey&                  key,
+                              bool                            convertToHAE,
+                              ElevationSamplePolicy           samplePolicy,
+                              ProgressCallback*               progress) const
+{
+    if ( !_map.valid() ) 
+        return false;
+
+    ElevationInterpolation interp = _map->getMapOptions().elevationInterpolation().get();    
+
+    if ( !hf.valid() )
+    {
+        hf = _map->createReferenceHeightField(key);
+    }
+
+    return _elevationLayers.populateHeightField(
+        hf.get(),
+        key,
+        convertToHAE ? _map->getProfileNoVDatum() : 0L,
+        interp, 
+        samplePolicy,
+        progress );
+}
+
+
+bool
 MapFrame::getHeightField(const TileKey&                  key,
                          bool                            fallback,
                          osg::ref_ptr<osg::HeightField>& out_hf,

@@ -95,8 +95,20 @@ namespace osgEarth
 
         /** Checks whether all the data for the specified key is cached. */
         bool isCached( const TileKey& key ) const;
+        
+        /**
+         * Equivalent to the Map::populateHeightField() method, but operates on the
+         * elevation stack snapshot in this MapFrame.
+         */
+        bool populateHeightField(
+            osg::ref_ptr<osg::HeightField>& hf,
+            const TileKey&                  key,
+            bool                            convertToHAE =true,
+            ElevationSamplePolicy           samplePolicy =SAMPLE_FIRST_VALID,
+            ProgressCallback*               progress     =0L) const;
 
         /**
+         * @deprecated
          * Equivalent to the Map::createHeightField() method, but operates on the elevation stack
          * snapshot in this MapFrame.
          */

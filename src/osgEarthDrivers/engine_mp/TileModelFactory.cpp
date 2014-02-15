@@ -162,12 +162,14 @@ namespace
 {
     struct BuildElevationData
     {
-        void init(const TileKey& key, const MapFrame& mapf, const MPTerrainEngineOptions& opt, TileModel* model, HeightFieldCache* hfCache) //sourceTileNodeBuilder::SourceRepo& repo)
+        void init(const TileKey& key, const MapFrame& mapf, const MPTerrainEngineOptions& opt, 
+                  TileNodeRegistry* tiles, TileModel* model, HeightFieldCache* hfCache)
         {
-            _key   = key;
-            _mapf  = &mapf;
-            _opt   = &opt;
-            _model = model;
+            _key     = key;
+            _mapf    = &mapf;
+            _opt     = &opt;
+            _tiles   = tiles;
+            _model   = model;
             _hfCache = hfCache;
         }
 
@@ -180,7 +182,7 @@ namespace
             osg::ref_ptr<osg::HeightField> hf;
             bool isFallback = false;
 
-            if (_hfCache->getOrCreateHeightField( *_mapf, _key, true, hf, &isFallback, true, SAMPLE_FIRST_VALID, progress))
+            if (_hfCache->getOrCreateHeightField( *_mapf, _key, hf, isFallback, true, SAMPLE_FIRST_VALID, progress))
             {
                 _model->_elevationData = TileModel::ElevationData(
                     hf,
@@ -199,7 +201,7 @@ namespace
                                 TileKey nk = _key.createNeighborKey(x, y);
                                 if ( nk.valid() )
                                 {
-                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, true, hf, &isFallback, true, SAMPLE_FIRST_VALID, progress) )
+                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, hf, isFallback, true, SAMPLE_FIRST_VALID, progress) )
                                     {
                                         if ( mapInfo.isPlateCarre() )
                                         {
@@ -216,7 +218,7 @@ namespace
                     // parent too.
                     if ( _key.getLOD() > 0 )
                     {
-                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), true, hf, &isFallback, true, SAMPLE_FIRST_VALID, progress) )
+                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), hf, isFallback, true, SAMPLE_FIRST_VALID, progress) )
                         {
                             if ( mapInfo.isPlateCarre() )
                             {
@@ -230,24 +232,23 @@ namespace
             }
         }
 
-        TileKey                  _key;
-        const MapFrame*          _mapf;
-        const MPTerrainEngineOptions* _opt;
-        TileModel* _model;
-        osg::ref_ptr< HeightFieldCache> _hfCache;
+        TileKey                        _key;
+        const MapFrame*                _mapf;
+        const MPTerrainEngineOptions*  _opt;
+        TileNodeRegistry*              _tiles;
+        TileModel*                     _model;
+        osg::ref_ptr<HeightFieldCache> _hfCache;
     };
 }
 
 //------------------------------------------------------------------------
 
-TileModelFactory::TileModelFactory(//const Map*                          map, 
-                                   TileNodeRegistry*                   liveTiles,
+TileModelFactory::TileModelFactory(TileNodeRegistry*             liveTiles,
                                    const MPTerrainEngineOptions& terrainOptions ) :
-//_map           ( map ),
 _liveTiles     ( liveTiles ),
 _terrainOptions( terrainOptions )
 {
-    _hfCache = new HeightFieldCache();
+    _hfCache = new HeightFieldCache(liveTiles);
 }
 
 HeightFieldCache*
@@ -299,7 +300,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
 
     // make an elevation layer.
     BuildElevationData build;
-    build.init( key, frame, _terrainOptions, model.get(), _hfCache );
+    build.init( key, frame, _terrainOptions, _liveTiles.get(), model.get(), _hfCache.get() );
     build.execute(progress);
 
     if (progress)

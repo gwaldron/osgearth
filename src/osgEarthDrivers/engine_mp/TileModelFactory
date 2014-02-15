@@ -39,16 +39,16 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     struct HFKey {
         TileKey _key;
         Revision _revision;
-        bool    _fallback;
-        bool    _convertToHAE;
+        //bool    _fallback;
+        //bool    _convertToHAE;
         ElevationSamplePolicy _samplePolicy;
         bool operator < (const HFKey& rhs) const {
             if ( _key < rhs._key ) return true;
             if ( rhs._key < _key ) return false;
             if ( _revision < rhs._revision ) return true;
             if ( _revision > rhs._revision ) return false;
-            if ( _fallback != rhs._fallback ) return true;
-            if ( _convertToHAE != rhs._convertToHAE ) return true;
+            //if ( _fallback != rhs._fallback ) return true;
+            //if ( _convertToHAE != rhs._convertToHAE ) return true;
             return _samplePolicy < rhs._samplePolicy;
         }
     };
@@ -61,28 +61,29 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     class HeightFieldCache : public osg::Referenced, public Revisioned
     {
     public:
-        HeightFieldCache():
-          _cache    ( true, 128 )
+        HeightFieldCache(TileNodeRegistry* tiles) :
+          _tiles( tiles ),
+          _cache( true, 128 )
         {
-
+            //nop
         }
 
         bool getOrCreateHeightField( 
                 const MapFrame&                 frame,
                 const TileKey&                  key,
-                bool                            fallback,
-                osg::ref_ptr<osg::HeightField>& out_hf,
-                bool*                           out_isFallback =0L,
+                osg::ref_ptr<osg::HeightField>& hf,
+                bool&                           isFallback,
                 bool                            convertToHAE   =true,
                 ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
-                ProgressCallback*               progress       =0L ) const
+                ProgressCallback*               progress       =0L )
         {                
+            // default
+            isFallback = false;
+
             // check the quick cache.
             HFKey cachekey;
             cachekey._key          = key;
             cachekey._revision     = frame.getRevision();
-            cachekey._fallback     = fallback;
-            cachekey._convertToHAE = convertToHAE;
             cachekey._samplePolicy = samplePolicy;
 
             if (progress)
@@ -92,9 +93,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             LRUCache<HFKey,HFValue>::Record rec;
             if ( _cache.get(cachekey, rec) )
             {
-                out_hf = rec.value()._hf.get();
-                if ( out_isFallback )
-                    *out_isFallback = rec.value()._isFallback;
+                hf = rec.value()._hf.get();
+                isFallback = rec.value()._isFallback;
 
                 if (progress)
                 {
@@ -105,31 +105,47 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 return true;
             }
 
-            bool isFallback;
-
-            bool ok = frame.getHeightField( key, fallback, out_hf, &isFallback, convertToHAE, samplePolicy, progress );
-
-            if ( ok )
-            {            
-                // Treat Plate Carre specially by scaling the height values. (There is no need
-                // to do this with an empty heightfield)
-                const MapInfo& mapInfo = frame.getMapInfo();
-                if ( mapInfo.isPlateCarre() )
+            // Find the parent tile and start with its heightfield.
+            osg::ref_ptr<TileNode> parentNode;
+            if ( _tiles->get(key.createParentKey(), parentNode) )
+            {
+                const TileModel* parentModel = parentNode->getTileModel();
+                if ( parentModel )
                 {
-                    HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
+                    osg::HeightField* parentHF = parentModel->_elevationData.getHeightField();
+                    if ( parentHF )
+                    {
+                        hf = HeightFieldUtils::createSubSample(
+                            parentHF,
+                            parentNode->getKey().getExtent(),
+                            key.getExtent());
+                    }
                 }
-
-                if ( out_isFallback )
-                    *out_isFallback = isFallback;
-
-                // cache me
-                HFValue cacheval;
-                cacheval._hf = out_hf.get();
-                cacheval._isFallback = isFallback;
-                _cache.insert( cachekey, cacheval );
             }
 
-            return ok;
+            bool populated = frame.populateHeightField(
+                hf,
+                key,
+                convertToHAE,
+                samplePolicy,
+                progress );
+     
+            // Treat Plate Carre specially by scaling the height values. (There is no need
+            // to do this with an empty heightfield)
+            const MapInfo& mapInfo = frame.getMapInfo();
+            if ( mapInfo.isPlateCarre() )
+            {
+                HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
+            }
+
+            // cache it.
+            HFValue cacheval;
+            cacheval._hf = hf.get();
+            cacheval._isFallback = !populated;
+            _cache.insert( cachekey, cacheval );
+
+            isFallback = !populated;
+            return true;
         }
 
         void clear()
@@ -139,7 +155,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     private:
         mutable LRUCache<HFKey,HFValue> _cache;
+        TileNodeRegistry*               _tiles;
     };
+
 
     /**
      * For a given TileKey, this class builds a a corresponding TileNode from

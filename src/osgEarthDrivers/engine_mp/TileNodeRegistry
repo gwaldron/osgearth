@@ -23,6 +23,7 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <OpenThreads/Atomic>
 #include <map>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
@@ -75,6 +76,13 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          */
         void setDirty(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel);
 
+        /**
+         * Sets the current cull traversal frame number so that tiles have
+         * access to the information. Atomic.
+         */
+        void setTraversalFrame(unsigned frame) { _frameNumber.exchange(frame); }
+
+        unsigned getTraversalFrame() const { return _frameNumber; }
 
         virtual ~TileNodeRegistry() { }
 
@@ -114,6 +122,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         Revision                          _maprev;
         std::string                       _name;
         TileNodeMap                       _tiles;
+        OpenThreads::Atomic               _frameNumber;
         mutable Threading::ReadWriteMutex _tilesMutex;
     };
 

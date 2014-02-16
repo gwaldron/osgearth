@@ -31,7 +31,8 @@ using namespace osgEarth;
 
 TileNodeRegistry::TileNodeRegistry(const std::string& name) :
 _name              ( name ),
-_revisioningEnabled( false )
+_revisioningEnabled( false ),
+_frameNumber       ( 0u )
 {
     //nop
 }

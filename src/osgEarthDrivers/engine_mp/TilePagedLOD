@@ -23,6 +23,7 @@
 #include "TileNodeRegistry"
 #include <osg/PagedLOD>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Progress>
 
 using namespace osgEarth;
 
@@ -43,10 +44,14 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         TileNode* getTileNode();
         void setTileNode(TileNode* tilenode);
 
+        osgDB::Options* getOrCreateDBOptions();
+
     public: // osg::Group
 
         /** called by the OSG DatabasePager when a paging result is ready. */
         bool addChild( osg::Node* node );
+
+        void traverse(osg::NodeVisitor& nv);
 
     public: // osg::PagedLOD
 
@@ -61,6 +66,15 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::ref_ptr<TileNodeRegistry> _dead;
         UID                            _engineUID;
         Threading::Mutex               _updateMutex;
+
+        struct MyProgressCallback : public ProgressCallback
+        {
+            bool isCanceled(); // override
+            unsigned _frameOfLastCull;
+            TileNodeRegistry* _tiles;
+            void update(unsigned frame);
+        };
+        osg::ref_ptr<MyProgressCallback> _progress;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

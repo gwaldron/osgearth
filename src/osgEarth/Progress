@@ -87,9 +87,14 @@ namespace osgEarth
         /**
          * Whether cancelation was requested
          */
-        virtual bool isCanceled() const { return _canceled; }
+        virtual bool isCanceled() { return _canceled; }
 
         std::string& message() { return _message; }
+
+        /**
+         * Resets the canceled flag.
+         */
+        void reset() { _canceled = false; }
 
         /**
         *Whether or not the task should be retried.

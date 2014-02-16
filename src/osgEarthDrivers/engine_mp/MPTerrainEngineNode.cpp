@@ -420,6 +420,13 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 }
             }
         }
+
+        // Inform the registry of the current frame so that Tiles have access
+        // to the information.
+        if ( _liveTiles.valid() && nv.getFrameStamp() )
+        {
+            _liveTiles->setTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
+        }
     }
 
 #if 0

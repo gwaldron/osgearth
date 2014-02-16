@@ -135,9 +135,9 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
 #endif
 
 #if USE_FILELOCATIONCALLBACK
-        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
+        osgDB::Options* options = plod->getOrCreateDBOptions();
         options->setFileLocationCallback( new FileLocationCallback() );
-        plod->setDatabaseOptions( options );
+        //plod->setDatabaseOptions( options );
 #endif
         
         result = plod;
@@ -178,6 +178,9 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
     osg::ref_ptr<TileModel> model[4];
     for(unsigned q=0; q<4; ++q)
     {
+        if ( progress && progress->isCanceled() )
+            return 0L;
+        
         TileKey child = key.createChildKey(q);
         _modelFactory->createTileModel( child, _frame, model[q], progress );
     }
@@ -200,6 +203,9 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
             }
         }
     }
+    
+    if ( progress && progress->isCanceled() )
+        return 0L;
 
     OE_START_TIMER(compile_tile);
 

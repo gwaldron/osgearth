@@ -157,9 +157,17 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                     // Deal with failed loads.
                     if ( !node.valid() )
                     {
-                        if ( key.getLOD() == 0 || (progress && progress->isCanceled()) )
+                        if ( key.getLOD() == 0  )
                         {
                             // the tile will ask again next time.
+                            return ReadResult::FILE_NOT_FOUND;
+                        }
+                        else if (progress && progress->isCanceled())
+                        {
+                            if ( _profiling )
+                            {
+                                OE_NOTICE << LC << "Tile " << key.str() << " -- canceled!" << std::endl;
+                            }
                             return ReadResult::FILE_NOT_FOUND;
                         }
                         else

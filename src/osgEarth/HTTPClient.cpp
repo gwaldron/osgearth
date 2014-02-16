@@ -822,7 +822,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     curl_easy_setopt( _curl_handle, CURLOPT_URL, url.c_str() );
     if (callback)
     {
-        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, callback); //progressCallback.get());
+        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, callback);
     }
 
     CURLcode res;

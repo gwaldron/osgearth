@@ -62,7 +62,7 @@ ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* prog
 
     osg::ref_ptr<osg::HeightField> hf;
 
-    if ( _mapf.getHeightField(key, true, hf) )
+    if ( _mapf.populateHeightField(hf, key, true) )
     {
         // encode the heightfield as a 16-bit normalized LUNIMANCE image
         osg::Image* image = new osg::Image();

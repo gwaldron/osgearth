@@ -107,20 +107,6 @@ namespace osgEarth
             ElevationSamplePolicy           samplePolicy =SAMPLE_FIRST_VALID,
             ProgressCallback*               progress     =0L) const;
 
-        /**
-         * @deprecated
-         * Equivalent to the Map::createHeightField() method, but operates on the elevation stack
-         * snapshot in this MapFrame.
-         */
-        bool getHeightField(
-            const TileKey&                  key,
-            bool                            fallback,
-            osg::ref_ptr<osg::HeightField>& out_hf,
-            bool*                           out_isFallback =0L,   
-            bool                            convertToHAE   =true,         
-            ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
-            ProgressCallback*               progress       =0L ) const;
-
     private:
         bool _initialized;
         osg::observer_ptr<const Map> _map;

@@ -308,7 +308,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     {
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
-        _mapf.getHeightField( key, true, tile, 0L );
+        _mapf.populateHeightField( tile, key, false, SAMPLE_FIRST_VALID );
 
         // bail out if we could not make a heightfield a all.
         if ( !tile.valid() )

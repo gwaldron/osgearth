@@ -182,7 +182,7 @@ namespace
             osg::ref_ptr<osg::HeightField> hf;
             bool isFallback = false;
 
-            if (_hfCache->getOrCreateHeightField( *_mapf, _key, hf, isFallback, true, SAMPLE_FIRST_VALID, progress))
+            if (_hfCache->getOrCreateHeightField( *_mapf, _key, hf, isFallback, SAMPLE_FIRST_VALID, progress))
             {
                 _model->_elevationData = TileModel::ElevationData(
                     hf,
@@ -201,7 +201,7 @@ namespace
                                 TileKey nk = _key.createNeighborKey(x, y);
                                 if ( nk.valid() )
                                 {
-                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, hf, isFallback, true, SAMPLE_FIRST_VALID, progress) )
+                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, hf, isFallback, SAMPLE_FIRST_VALID, progress) )
                                     {
                                         if ( mapInfo.isPlateCarre() )
                                         {
@@ -218,7 +218,7 @@ namespace
                     // parent too.
                     if ( _key.getLOD() > 0 )
                     {
-                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), hf, isFallback, true, SAMPLE_FIRST_VALID, progress) )
+                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), hf, isFallback, SAMPLE_FIRST_VALID, progress) )
                         {
                             if ( mapInfo.isPlateCarre() )
                             {

@@ -341,7 +341,7 @@ CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
     if ( mapf.elevationLayers().size() > 0 )
     {
         osg::ref_ptr<osg::HeightField> hf;
-        mapf.getHeightField( key, false, hf );
+        mapf.populateHeightField( hf, key, false, SAMPLE_FIRST_VALID );
         if ( hf.valid() )
             gotData = true;
     }

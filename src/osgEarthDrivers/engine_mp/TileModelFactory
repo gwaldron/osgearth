@@ -36,23 +36,22 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
 
+    /** Key into the height field cache */
     struct HFKey {
-        TileKey _key;
-        Revision _revision;
-        //bool    _fallback;
-        //bool    _convertToHAE;
+        TileKey               _key;
+        Revision              _revision;
         ElevationSamplePolicy _samplePolicy;
+
         bool operator < (const HFKey& rhs) const {
             if ( _key < rhs._key ) return true;
             if ( rhs._key < _key ) return false;
             if ( _revision < rhs._revision ) return true;
             if ( _revision > rhs._revision ) return false;
-            //if ( _fallback != rhs._fallback ) return true;
-            //if ( _convertToHAE != rhs._convertToHAE ) return true;
             return _samplePolicy < rhs._samplePolicy;
         }
     };
 
+    /** value in the height field cache */
     struct HFValue {
         osg::ref_ptr<osg::HeightField> _hf;
         bool                           _isFallback;
@@ -73,9 +72,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 const TileKey&                  key,
                 osg::ref_ptr<osg::HeightField>& hf,
                 bool&                           isFallback,
-                bool                            convertToHAE   =true,
-                ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
-                ProgressCallback*               progress       =0L )
+                ElevationSamplePolicy           samplePolicy,
+                ProgressCallback*               progress )
         {                
             // default
             isFallback = false;
@@ -126,7 +124,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             bool populated = frame.populateHeightField(
                 hf,
                 key,
-                convertToHAE,
+                true, // convertToHAE
                 samplePolicy,
                 progress );
      

@@ -173,20 +173,6 @@ namespace osgEarth
             ElevationSamplePolicy  samplePolicy,
             ProgressCallback*      progress ) const;
 
-        /**
-         * @deprecated
-         * Creates a heightfield object by sampling this elevation layer vector.
-         */
-        bool createHeightField(
-            const TileKey&                  key,
-            bool                            fallback,
-            const Profile*                  haeProfile,
-            ElevationInterpolation          interpolation,
-            ElevationSamplePolicy           samplePolicy,
-            osg::ref_ptr<osg::HeightField>& out_result,
-            bool*                           out_isFallback,
-            ProgressCallback*               progress ) const;
-
     public:
         /** Default ctor */
         ElevationLayerVector();

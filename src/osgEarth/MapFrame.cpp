@@ -107,32 +107,6 @@ MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
 }
 
 
-bool
-MapFrame::getHeightField(const TileKey&                  key,
-                         bool                            fallback,
-                         osg::ref_ptr<osg::HeightField>& out_hf,
-                         bool*                           out_isFallback,    
-                         bool                            convertToHAE,
-                         ElevationSamplePolicy           samplePolicy,
-                         ProgressCallback*               progress) const
-{
-    if ( !_map.valid() ) 
-        return false;
-    
-
-
-    return _elevationLayers.createHeightField(
-        key,
-        fallback, 
-        convertToHAE ? _map->getProfileNoVDatum() : 0L,
-        _mapInfo.getElevationInterpolation(), 
-        samplePolicy, 
-        out_hf, 
-        out_isFallback,
-        progress );    
-}
-
-
 int
 MapFrame::indexOf( ImageLayer* layer ) const
 {

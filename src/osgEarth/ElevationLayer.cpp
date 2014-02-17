@@ -21,6 +21,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osg/Version>
+#include <iterator>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -507,18 +508,11 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                                           const TileKey&         key,
                                           const Profile*         haeProfile,
                                           ElevationInterpolation interpolation,
-                                          ElevationSamplePolicy  samplePolicy,
                                           ProgressCallback*      progress ) const
 {
     // heightfield must already exist.
     if ( !hf )
         return false;
-    
-    unsigned lowestLOD = key.getLOD();
-
-    //Get a HeightField for each of the enabled layers
-    GeoHeightFieldVector heightFields;
-    GeoHeightFieldVector offsetHeightFields;
 
     // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
     // the map profile has a vertical datum. This is the usual case when building the 3D
@@ -529,53 +523,44 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     {
         keyToUse = TileKey(key.getLOD(), key.getTileX(), key.getTileY(), haeProfile );
     }
-
-    // Generate a heightfield for each elevation layer.
-    for( ElevationLayerVector::const_iterator i = this->begin(); i != this->end(); i++ )
+    
+    // Collect the valid layers for this tile.
+    ElevationLayerVector contenders;
+    for(ElevationLayerVector::const_reverse_iterator i = this->rbegin(); i != this->rend(); ++i)
     {
         ElevationLayer* layer = i->get();
 
         if ( layer->getEnabled() && layer->getVisible() )
         {
-            bool contender =
-                (layer->getTileSource() == 0L) ||               // no tile source (running off cache)
-                (layer->getTileSource()->hasData(keyToUse) && layer->isKeyValid(keyToUse));
-
-            if (contender)
+            if ((layer->getTileSource() == 0L) || 
+                (layer->getTileSource()->hasData(keyToUse) && layer->isKeyValid(keyToUse)))
             {
-                GeoHeightField geoHF = layer->createHeightField(keyToUse, progress);
-                if ( geoHF.valid() )
-                {
-                    // If the layer is offset, add it to the list of offset heightfields
-                    if (layer->getElevationLayerOptions().offset() == true)
-                    {                    
-                        offsetHeightFields.push_back( geoHF );
-                    }
-
-                    // Otherwise add it to the list of regular heightfields
-                    else
-                    {
-                        heightFields.push_back( geoHF );
-                    }
-                }
+                contenders.push_back(layer);
             }
         }
     }
 
-    // If we got nothing, we're done.
-    if ( heightFields.size() == 0 && offsetHeightFields.size() == 0 )
+    // nothing? bail out.
+    if ( contenders.empty() )
+    {
         return false;
+    }
 
-    const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
-
+    
+    // Sample the layers into our target.
     unsigned numColumns = hf->getNumColumns();
     unsigned numRows    = hf->getNumRows();
     double   xmin       = hf->getOrigin().x();
     double   ymin       = hf->getOrigin().y();
     double   dx         = hf->getXInterval();
     double   dy         = hf->getYInterval();
+    
+    // We will load the actual heightfields on demand. We might not need them all.
+    GeoHeightFieldVector heightFields(contenders.size());
+    std::vector<bool>    failed      (contenders.size(), false);
 
-    // Sample the heightfields into our target.
+    const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
+
     for (unsigned c = 0; c < numColumns; ++c)
     {
         double x = xmin + (dx * (double)c);
@@ -583,83 +568,34 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
         {
             double y = ymin + (dy * (double)r);
 
-            // Collect elevations from all of the layers. Iterate BACKWARDS because the last layer
-            // is the highest priority.
-            bool done = false;
+            // Collect elevations from each layer as necessary.
+            bool resolved = false;
 
-            float winner = NO_DATA_VALUE;
-
-            for(GeoHeightFieldVector::reverse_iterator itr = heightFields.rbegin();
-                itr != heightFields.rend() && !done;
-                ++itr )
+            for(int i=0; i<contenders.size() && !resolved; ++i)
             {
-                const GeoHeightField& geoHF = *itr;
-                float elevation;
-                if ( geoHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) )
+                if ( failed[i] )
+                    continue;
+
+                GeoHeightField& layerHF = heightFields[i];
+                if ( !layerHF.valid() )
                 {
-                    if (elevation != NO_DATA_VALUE)
+                    layerHF = contenders[i]->createHeightField( keyToUse, progress );
+                    if ( !layerHF.valid() )
                     {
-                        switch(samplePolicy)
-                        {
-                        default:
-                        case SAMPLE_FIRST_VALID:
-                            winner = elevation;
-                            done = true;
-                            break;
-
-                        case SAMPLE_HIGHEST:
-                            if ( winner == NO_DATA_VALUE || elevation > winner )
-                                winner = elevation;
-                            break;
-
-                        case SAMPLE_LOWEST:
-                            if ( winner == NO_DATA_VALUE || elevation < winner )
-                                winner = elevation;
-                            break;
-                        }
+                        failed[i] = true;
+                        continue;
                     }
                 }
-            }
 
-            if ( winner != NO_DATA_VALUE )
-            {
-                hf->setHeight(c, r, winner);
-            }
-        }
-    }
-
-    // Replace any NoData areas with the reference value. This is zero for HAE datums,
-    // and some geoid height for orthometric datums.
-    const Geoid*         geoid = 0L;
-    const VerticalDatum* vdatum = key.getProfile()->getSRS()->getVerticalDatum();
-    if ( haeProfile && vdatum )
-    {
-        geoid = vdatum->getGeoid();
-    }
-    HeightFieldUtils::resolveInvalidHeights(
-        hf,
-        key.getExtent(),
-        NO_DATA_VALUE,
-        geoid );
-
-    // Add any "offset" elevation layers to the resulting heightfield
-    if ( offsetHeightFields.size() > 0 )
-    {
-        const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
-
-        for( GeoHeightFieldVector::iterator itr = offsetHeightFields.begin(); itr != offsetHeightFields.end(); ++itr )
-        {
-            for (unsigned c = 0; c < numColumns; c++)
-            {
-                double x = xmin + (dx * (double)c);
-                for (unsigned r = 0; r < numRows; r++)
-                {                         
-                    double y = ymin + (dy * (double)r);
-                    float offset = 0.0;                    
-                    if (itr->getElevation(keySRS, x, y, interpolation, keySRS, offset))
-                    {                
-                        hf->setHeight(c, r, hf->getHeight(c, r) + offset);
-                    }                                
+                float elevation;
+                if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
+                    elevation != NO_DATA_VALUE)
+                {
+                    resolved = true;
+                    if (contenders[i]->isOffset())
+                        hf->setHeight(c, r, hf->getHeight(c, r) + elevation);
+                    else
+                        hf->setHeight(c, r, elevation);
                 }
             }
         }

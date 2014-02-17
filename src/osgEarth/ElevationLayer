@@ -125,6 +125,13 @@ namespace osgEarth
          */
         virtual bool isKeyValid(const TileKey& key) const;
 
+        /**
+         * Whether this layer contains offsets instead of absolute heights
+         */
+        bool isOffset() const {
+            return _runtimeOptions.offset() == true;
+        }
+
     protected:
         
         // creates a geoHF directly from the tile source
@@ -170,7 +177,6 @@ namespace osgEarth
             const TileKey&         key,
             const Profile*         haeProfile,
             ElevationInterpolation interpolation,
-            ElevationSamplePolicy  samplePolicy,
             ProgressCallback*      progress ) const;
 
     public:

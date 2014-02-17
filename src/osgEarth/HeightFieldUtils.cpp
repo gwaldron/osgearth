@@ -441,7 +441,10 @@ HeightFieldUtils::resampleHeightField(osg::HeightField*      input,
 
 
 osg::HeightField*
-HeightFieldUtils::createReferenceHeightField( const GeoExtent& ex, unsigned numCols, unsigned numRows )
+HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
+                                             unsigned         numCols,
+                                             unsigned         numRows,
+                                             bool             expressAsHAE)
 {
     osg::HeightField* hf = new osg::HeightField();
     hf->allocate( numCols, numRows );
@@ -451,7 +454,7 @@ HeightFieldUtils::createReferenceHeightField( const GeoExtent& ex, unsigned numC
 
     const VerticalDatum* vdatum = ex.isValid() ? ex.getSRS()->getVerticalDatum() : 0L;
 
-    if ( vdatum )
+    if ( vdatum && expressAsHAE )
     {
         // need the lat/long extent for geoid queries:
         GeoExtent geodeticExtent = ex.getSRS()->isGeographic() ? ex : ex.transform( ex.getSRS()->getGeographicSRS() );
@@ -474,7 +477,9 @@ HeightFieldUtils::createReferenceHeightField( const GeoExtent& ex, unsigned numC
     else
     {
         for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
+        {
             hf->getHeightList()[i] = 0.0;
+        }
     }
 
     hf->setBorderWidth( 0 );

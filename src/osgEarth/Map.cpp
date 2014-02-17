@@ -1087,10 +1087,11 @@ Map::calculateProfile()
 
 
 osg::HeightField*
-Map::createReferenceHeightField(const TileKey& key) const
+Map::createReferenceHeightField(const TileKey& key,
+                                bool           expressHeightsAsHAE) const
 {
     unsigned size = std::max(*_mapOptions.elevationTileSize(), 2u);
-    return HeightFieldUtils::createReferenceHeightField(key.getExtent(), size, size);
+    return HeightFieldUtils::createReferenceHeightField(key.getExtent(), size, size, expressHeightsAsHAE);
 }
 
 
@@ -1098,7 +1099,7 @@ bool
 Map::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
                          const TileKey&                  key,
                          bool                            convertToHAE,
-                         ElevationSamplePolicy           samplePolicy,
+                         ElevationSamplePolicy           samplePolicy, // deprecated (unused)
                          ProgressCallback*               progress) const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
@@ -1107,15 +1108,14 @@ Map::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
 
     if ( !hf.valid() )
     {
-        hf = createReferenceHeightField(key);
+        hf = createReferenceHeightField(key, convertToHAE);
     }
 
     return _elevationLayers.populateHeightField(
         hf.get(),
         key,
         convertToHAE ? _profileNoVDatum.get() : 0L,
-        interp, 
-        samplePolicy,
+        interp,
         progress );
 }
 

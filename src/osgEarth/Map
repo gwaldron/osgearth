@@ -285,10 +285,11 @@ namespace osgEarth
         const std::string& getName() const { return _name; }
         
         /**
-         * Creates a flat heightfield (all zeros) for the given tilekey.
+         * Creates a flat heightfield (MSL) for the given tilekey.
          */
         osg::HeightField* createReferenceHeightField(
-            const TileKey& key) const;
+            const TileKey& key,
+            bool           expressHeightsAsHAE =true) const;
         
         /**
          * Populates a heightfield with data from the elevation layers
@@ -303,9 +304,9 @@ namespace osgEarth
         bool populateHeightField(
             osg::ref_ptr<osg::HeightField>& hf,
             const TileKey&                  key,
-            bool                            convertToHAE =true,
-            ElevationSamplePolicy           samplePolicy =SAMPLE_FIRST_VALID,
-            ProgressCallback*               progress     =0L) const;
+            bool                            expressHeightsAsHAE =true,
+            ElevationSamplePolicy           samplePolicy        =SAMPLE_FIRST_VALID,
+            ProgressCallback*               progress            =0L) const;
 
         /**
          * Sets the Cache for this Map. Set to NULL for no cache.

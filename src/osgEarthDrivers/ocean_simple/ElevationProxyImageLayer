@@ -53,7 +53,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleOcean
 
         virtual bool isCached( const TileKey& key ) const;
 
-        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback );
+        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress);
 
     private:
         MapFrame _mapf;

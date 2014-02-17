@@ -279,7 +279,7 @@ TerrainLayer::getTileSource() const
     if ((_tileSource.valid() && !_tileSourceInitAttempted) ||
         (!_tileSource.valid() && !isCacheOnly()))
     {
-        OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
+        Threading::ScopedMutexLock lock(_initTileSourceMutex);
         
         // double-check pattern
         if ((_tileSource.valid() && !_tileSourceInitAttempted) ||
@@ -498,6 +498,8 @@ TerrainLayer::getCacheBinMetadata( const Profile* profile, CacheBinMetadata& out
 void
 TerrainLayer::initTileSource()
 {
+    _tileSourceInitAttempted = true;
+
     OE_DEBUG << LC << "Initializing tile source ..." << std::endl;
 
     // Instantiate it from driver options if it has not already been created.
@@ -593,7 +595,6 @@ TerrainLayer::initTileSource()
         {
             OE_INFO << LC << "Profile=" << _profile->toString() << std::endl;
         }
-        //_profile = _tileSource->getProfile();
     }
 
     // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
@@ -603,8 +604,6 @@ TerrainLayer::initTileSource()
         OE_NOTICE << LC << "Could not initialize TileSource " << _name << ", but a cache exists. Setting layer to cache-only mode." << std::endl;
         setCachePolicy( CachePolicy::CACHE_ONLY );
     }
-
-    _tileSourceInitAttempted = true;
 }
 
 bool

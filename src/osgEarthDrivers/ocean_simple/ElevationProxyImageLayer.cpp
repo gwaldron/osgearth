@@ -49,7 +49,7 @@ ElevationProxyImageLayer::isCached( const TileKey& key ) const
 }
 
 GeoImage
-ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* progress, bool forceFallback)
+ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* progress)
 {
     if ( _mapf.needsSync() )
     {
@@ -77,5 +77,9 @@ ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* prog
         }
 
         return GeoImage( image, key.getExtent() );
+    }
+    else
+    {
+        return GeoImage::INVALID;
     }
 }

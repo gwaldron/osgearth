@@ -74,6 +74,7 @@ TilePagedLOD::MyProgressCallback::isCanceled()
         //stats()["cancel:frame_of_last_cull"] = _frameOfLastCull;
         _frameOfLastCull = 0;
         cancel();
+        stats().clear();
     }
     return ProgressCallback::isCanceled();
 }

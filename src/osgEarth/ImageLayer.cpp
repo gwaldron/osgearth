@@ -612,7 +612,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         return GeoImage::INVALID;
 
     // If the profiles are different, use a compositing method to assemble the tile.
-    if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
+    if ( !key.getProfile()->isHorizEquivalentTo( getProfile() ) )
     {
         return assembleImageFromTileSource( key, progress );
     }

@@ -189,7 +189,7 @@ namespace
                     GeoLocator::createForKey( _key, mapInfo ),
                     isFallback );
 
-                if ( _opt->normalizeEdges().value() == true )
+                if ( false ) //_opt->normalizeEdges().value() == true )
                 {
                     // next, query the neighboring tiles to get adjacency information.
                     for( int x=-1; x<=1; x++ )

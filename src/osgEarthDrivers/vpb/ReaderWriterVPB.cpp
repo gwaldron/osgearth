@@ -73,10 +73,10 @@ public:
         osgTerrain::TerrainTile* terrainTile = dynamic_cast<osgTerrain::TerrainTile*>(&group);
         if (terrainTile)
         {
-            OE_DEBUG<<"VPB: Found terrain tile TileID("<<
-                TileKey::getLOD(terrainTile->getTileID())<<", "<<
-                terrainTile->getTileID().x<<", "<<
-                terrainTile->getTileID().y<<")"<<std::endl;
+            //OE_DEBUG<<"VPB: Found terrain tile TileID("<<
+            //    TileKey::getLOD(terrainTile->getTileID())<<", "<<
+            //    terrainTile->getTileID().x<<", "<<
+            //    terrainTile->getTileID().y<<")"<<std::endl;
             
             _terrainTiles.push_back(terrainTile);
         }
@@ -445,18 +445,18 @@ public:
                 _tileFIFO.pop_front();
                 _tileMap.erase(tileToRemove);
 
-                OE_DEBUG << LC << "Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
+//                OE_DEBUG << LC << "Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
             }
 
-            OE_DEBUG << LC << "insertTile ("
-                << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
-                << " tileFIFO.size()=="<<_tileFIFO.size()<<std::endl;
+            //OE_DEBUG << LC << "insertTile ("
+            //    << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
+            //    << " tileFIFO.size()=="<<_tileFIFO.size()<<std::endl;
         }
         else
         {
-            OE_DEBUG << LC << "insertTile ("
-                << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
-                << " ...already in cache!"<<std::endl;
+            //OE_DEBUG << LC << "insertTile ("
+            //    << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
+            //    << " ...already in cache!"<<std::endl;
         }
     }
 

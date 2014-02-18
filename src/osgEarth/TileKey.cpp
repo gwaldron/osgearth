@@ -28,7 +28,7 @@ TileKey TileKey::INVALID( 0, 0, 0, 0L );
 
 //------------------------------------------------------------------------
 
-TileKey::TileKey( unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
+TileKey::TileKey(unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
 {
     _x = tile_x;
     _y = tile_y;
@@ -185,4 +185,39 @@ TileKey::createNeighborKey( int xoffset, int yoffset ) const
     //OE_NOTICE << "Returning neighbor " << x << ", " << y << " for tile " << str() << " offset=" << xoffset << ", " << yoffset << std::endl;
 
     return TileKey( _lod, x, y, _profile.get() );
+}
+
+namespace
+{
+    int nextPowerOf2(int x) {
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x+1;
+    }
+}
+
+TileKey
+TileKey::mapResolution(unsigned targetSize,
+                       unsigned sourceSize,
+                       unsigned minimumLOD) const
+{
+    // round the target size up to the next power of 2.
+    unsigned potTargetSize = (unsigned)nextPowerOf2((int)targetSize);
+
+    // same or higher? we're good
+    if ( potTargetSize >= sourceSize )
+        return *this;
+
+    // how many licks?
+    int lod = (int)getLOD();
+    while(potTargetSize < sourceSize && lod >= 0)
+    {
+        potTargetSize << 1;
+        --lod;
+    }
+    return createAncestorKey( std::max(lod, (int)minimumLOD) );
 }

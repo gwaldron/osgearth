@@ -391,7 +391,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
         return GeoHeightField::INVALID;
     }
 
-    // First, attempt to read from the cache. Since the cached data is stored in the
+    // Now attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
     bool fromCache = false;
     if ( cacheBin && getCachePolicy().isCacheReadable() )

@@ -70,8 +70,6 @@ TilePagedLOD::MyProgressCallback::isCanceled()
         _frameOfLastCull > 0 && 
         ((int)_tiles->getTraversalFrame() - (int)_frameOfLastCull > 2))
     {
-        //stats()["cancel:traversal_frame"] = _tiles->getTraversalFrame();
-        //stats()["cancel:frame_of_last_cull"] = _frameOfLastCull;
         _frameOfLastCull = 0;
         cancel();
         stats().clear();

@@ -103,6 +103,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 MPTerrainEngineNode::getEngineByUID( (UID)engineID, engineNode );
                 if ( engineNode.valid() )
                 {
+                    Registry::instance()->startActivity(uri);
+
                     OE_START_TIMER(tileLoadTime);
 
                     // see if we have a progress tracker
@@ -136,6 +138,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
                     if ( _profiling )
                     {
+                        progress->stats()["http_get_time_avg"] =
+                            progress->stats()["http_get_time"] / progress->stats()["http_get_count"];
+
                         OE_NOTICE << "tile: " << tileDef << std::endl;
                         for(std::map<std::string,double>::iterator i = progress->stats().begin();
                             i != progress->stats().end();
@@ -154,6 +159,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                             progress = 0L;
                         }
                     }
+                    
+                    Registry::instance()->endActivity(uri);
 
                     // Deal with failed loads.
                     if ( !node.valid() )
@@ -184,7 +191,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                         engineNode->getTerrain()->notifyTileAdded(key, node.get());
                         osg::Timer_t end = osg::Timer::instance()->tick();
                     }
-
+                    
                     return ReadResult( node.get(), ReadResult::FILE_LOADED );
                 }
                 else

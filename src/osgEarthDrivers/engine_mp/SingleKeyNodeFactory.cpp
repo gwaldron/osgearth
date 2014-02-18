@@ -32,49 +32,6 @@ using namespace OpenThreads;
 
 #define LC "[SingleKeyNodeFactory] "
 
-namespace
-{
-    struct MyProgressCallback : public osgEarth::ProgressCallback
-    {
-        osg::observer_ptr<osg::PagedLOD> _plod;
-
-        MyProgressCallback( osg::PagedLOD* plod )
-            : _plod(plod) { }
-
-        bool isCanceled() const
-        {
-            if ( _canceled )
-                return true;
-
-            if ( !_plod.valid() )
-            {
-                _canceled = true;
-                OE_INFO << "CANCEL, plod = null." << std::endl;
-            }
-            else
-            {
-                osg::ref_ptr<osg::PagedLOD> plod;
-                if ( _plod.lock(plod) )
-                {
-                    osg::ref_ptr<osg::Referenced> dbr = plod->getDatabaseRequest( 1 );
-                    if ( !dbr.valid() || dbr->referenceCount() < 2 )
-                    {
-                        _canceled = true;
-                        OE_INFO << "CANCEL, REFCOUNT = " << dbr->referenceCount() << std::endl;
-                    }
-                }
-                else
-                {
-                    _canceled = true;
-                    OE_INFO << "CANCEL, plod = null." << std::endl;
-                }
-            }
-
-            return _canceled;
-        }
-    };
-}
-
 
 SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
                                            TileModelFactory*             modelFactory,
@@ -129,15 +86,15 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
         plod->setRange   ( 0, minRange, FLT_MAX );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engineUID << ".osgearth_engine_mp_tile" );
         plod->setRange   ( 1, 0, minRange );
-#if 0
-        plod->setPriorityScale( 1, 1000.0f );
-        plod->setPriorityOffset( 1, 10000.0f );
-#endif
+
+        // DBPager will set a priority based on the ratio range/maxRange.
+        // This will offset that number with a full LOD #, giving LOD precedence.
+        // Experimental.
+        //plod->setPriorityScale( 1, model->_tileKey.getLOD()+1 );
 
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = plod->getOrCreateDBOptions();
         options->setFileLocationCallback( new FileLocationCallback() );
-        //plod->setDatabaseOptions( options );
 #endif
         
         result = plod;

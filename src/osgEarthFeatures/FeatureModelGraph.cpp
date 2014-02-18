@@ -151,7 +151,10 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
             osg::ref_ptr<const Map> map = graph->getSession()->getMap();
             if (map.valid() == true)
             {
-                return ReadResult( graph->load( lod, x, y, uri ) );
+                Registry::instance()->startActivity(uri);
+                osg::Node* node = graph->load( lod, x, y, uri );
+                Registry::instance()->endActivity(uri);
+                return ReadResult(node);
             }
         }
 

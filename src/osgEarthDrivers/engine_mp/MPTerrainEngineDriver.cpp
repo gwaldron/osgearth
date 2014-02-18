@@ -26,6 +26,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <string>
+#include <sstream>
 
 #define LC "[engine_mp driver] "
 
@@ -140,11 +141,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                             i != progress->stats().end();
                             ++i)
                         {
-                            OE_NOTICE << "   " << i->first << " = " << std::setprecision(4) 
-                                << i->second << " ("
-                                << (int)((i->second/tileLoadTime)*100)
-                                << "%)" 
-                                << std::endl;
+                            std::stringstream buf;
+                            buf << i->first << " = " << std::setprecision(4) << i->second;
+                            if ( osgEarth::endsWith(i->first, "_time") )
+                                buf << " (" << (int)((i->second/tileLoadTime)*100) << "%)";
+                            OE_NOTICE << "   " << buf.str() << std::endl;
                         }
 
                         if ( ownProgress )

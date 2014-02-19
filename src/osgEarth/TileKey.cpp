@@ -205,6 +205,26 @@ TileKey::mapResolution(unsigned targetSize,
                        unsigned sourceSize,
                        unsigned minimumLOD) const
 {
+    if ( getLOD() == 0 || targetSize >= sourceSize )
+        return *this;
+
+    if ( targetSize < 2 )
+        targetSize = 2;
+
+    double width = _extent.width();
+    double cellSize = width / (double)(targetSize-1);
+
+    int lod = (int)getLOD()-1;
+    while(lod > minimumLOD &&
+          width/(double)(sourceSize-1) <= cellSize)
+    {
+        width *= 2.0;
+        --lod;
+    }
+    return createAncestorKey( std::max(lod+1, (int)minimumLOD) );
+}
+
+#if 0
     // round the target size up to the next power of 2.
     unsigned potTargetSize = (unsigned)nextPowerOf2((int)targetSize);
 
@@ -221,3 +241,4 @@ TileKey::mapResolution(unsigned targetSize,
     }
     return createAncestorKey( std::max(lod, (int)minimumLOD) );
 }
+#endif

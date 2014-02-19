@@ -248,7 +248,7 @@ TileModelFactory::TileModelFactory(TileNodeRegistry*             liveTiles,
 _liveTiles     ( liveTiles ),
 _terrainOptions( terrainOptions )
 {
-    _hfCache = new HeightFieldCache(liveTiles);
+    _hfCache = new HeightFieldCache(liveTiles, terrainOptions);
 }
 
 HeightFieldCache*

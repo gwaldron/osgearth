@@ -356,7 +356,7 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
 
 
 GeoHeightField
-ElevationLayer::createHeightField(const TileKey&    key, 
+ElevationLayer::createHeightField(const TileKey&    key,
                                   ProgressCallback* progress )
 {
     osg::ref_ptr<osg::HeightField> result;
@@ -532,8 +532,12 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
         if ( layer->getEnabled() && layer->getVisible() )
         {
+            TileKey mappedKeyToUse = 
+                keyToUse.mapResolution(hf->getNumColumns(), layer->getTileSize());
+
+            //TODO: not sure whether isKeyValid should use the mapped key..
             if ((layer->getTileSource() == 0L) || 
-                (layer->getTileSource()->hasData(keyToUse) && layer->isKeyValid(keyToUse)))
+                (layer->getTileSource()->hasData(mappedKeyToUse) && layer->isKeyValid(mappedKeyToUse)))
             {
                 contenders.push_back(layer);
             }
@@ -579,7 +583,10 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 GeoHeightField& layerHF = heightFields[i];
                 if ( !layerHF.valid() )
                 {
-                    layerHF = contenders[i]->createHeightField( keyToUse, progress );
+                    TileKey mappedKeyToUse = 
+                        keyToUse.mapResolution(hf->getNumColumns(), contenders[i]->getTileSize());
+
+                    layerHF = contenders[i]->createHeightField(mappedKeyToUse, progress);
                     if ( !layerHF.valid() )
                     {
                         failed[i] = true;

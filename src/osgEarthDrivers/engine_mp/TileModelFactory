@@ -60,11 +60,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     class HeightFieldCache : public osg::Referenced, public Revisioned
     {
     public:
-        HeightFieldCache(TileNodeRegistry* tiles) :
-          _tiles( tiles ),
-          _cache( true, 128 )
+        HeightFieldCache(TileNodeRegistry* tiles, const MPTerrainEngineOptions& options) :
+          _tiles  ( tiles ),
+          _cache  ( true, 128 )
         {
-            //nop
+            _firstLOD = options.firstLOD().get();
         }
 
         bool getOrCreateHeightField( 
@@ -121,6 +121,13 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 }
             }
 
+            if ( !hf.valid() && ((int)key.getLOD())-1 > _firstLOD )
+            {
+                OE_WARN << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry"
+                    << std::endl;
+                return false;
+            }
+
             bool populated = frame.populateHeightField(
                 hf,
                 key,
@@ -154,6 +161,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     private:
         mutable LRUCache<HFKey,HFValue> _cache;
         TileNodeRegistry*               _tiles;
+        int                             _firstLOD;
     };
 
 

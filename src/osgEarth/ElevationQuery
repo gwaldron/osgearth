@@ -77,7 +77,7 @@ namespace osgEarth
             const GeoPoint& point,
             double&         out_elevation,
             double          desiredResolution    =0.0,
-            double*         out_actualResolution =0L );
+            double*         out_actualResolution =0L );      
 
         /** 
          * Gets elevations for a whole array of points, storing the result in the
@@ -134,13 +134,17 @@ namespace osgEarth
         unsigned int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile ) const;
 
     private:
-        MapFrame  _mapf;
-        unsigned  _maxCacheSize;
-        int       _tileSize;        
-        int       _maxLevelOverride;
+        MapFrame     _mapf;
+        unsigned     _maxCacheSize;
+        int          _tileSize;        
+        int          _maxLevelOverride;
+        unsigned int _maxTilesToCache;
 
-        typedef LRUCache< TileKey, osg::ref_ptr<osg::HeightField> > TileCache;
-        TileCache _tileCache;
+        typedef LRUCache< TileKey, GeoHeightField > TileCache;
+
+        // We keep a vector of caches, one per ElevationLayer.  The heightfields are queried separately
+        // to avoid processing tiles you won't ever need.
+        std::vector< TileCache* > _caches;        
 
         double _queries;
         double _totalTime;
@@ -149,7 +153,7 @@ namespace osgEarth
         void postCTOR();
         void sync();
 
-        bool getElevationImpl(
+        bool getElevationImpl(            
             const GeoPoint& point,
             double&         out_elevation,
             double          desiredResolution,

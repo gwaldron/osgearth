@@ -34,11 +34,11 @@ namespace osgEarth { namespace Drivers { namespace Triton
     public:
 
     public:
-        TritonOptions(const ConfigOptions& conf =ConfigOptions()) :
+        TritonOptions(const OceanOptions& conf =OceanOptions()) :
           OceanOptions( conf )
         {
             setDriver( "triton" );
-            mergeConfig( _conf );
+            fromConfig( _conf );
         }
 
         virtual ~TritonOptions() { }
@@ -57,7 +57,7 @@ namespace osgEarth { namespace Drivers { namespace Triton
 
     public:
         Config getConfig() const {
-            Config conf = ConfigOptions::newConfig();
+            Config conf = OceanOptions::newConfig();
             conf.addIfSet("user", _user);
             conf.addIfSet("license_code", _licenseCode);
             conf.addIfSet("resource_path", _resourcePath);
@@ -66,7 +66,7 @@ namespace osgEarth { namespace Drivers { namespace Triton
 
     protected:
         void mergeConfig( const Config& conf ) {
-            ConfigOptions::mergeConfig( conf );
+            OceanOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 

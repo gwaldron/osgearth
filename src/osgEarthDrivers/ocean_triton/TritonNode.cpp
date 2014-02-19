@@ -47,6 +47,8 @@ _options ( options )
     geode->addDrawable( _drawable );
 
     this->addChild( geode );
+
+    this->setNumChildrenRequiringUpdateTraversal(1);
 }
 
 TritonNode::~TritonNode()
@@ -68,4 +70,14 @@ osg::BoundingSphere
 TritonNode::computeBound() const
 {
     return osg::BoundingSphere();
+}
+
+void
+TritonNode::traverse(osg::NodeVisitor& nv)
+{
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR && _TRITON->ready() )
+    {
+        _TRITON->update(nv.getFrameStamp()->getSimulationTime());
+    }
+    OceanNode::traverse(nv);
 }

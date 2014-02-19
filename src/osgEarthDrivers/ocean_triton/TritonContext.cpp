@@ -95,6 +95,11 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
                     _environment, 
                     ::Triton::JONSWAP );
             }
+
+            if ( _ocean )
+            {
+                OE_INFO << LC << "Triton initialized OK!" << std::endl;
+            }
             else
             {
                 _initFailed = true;

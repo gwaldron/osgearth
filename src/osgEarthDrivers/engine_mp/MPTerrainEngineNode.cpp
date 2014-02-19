@@ -26,6 +26,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/MapModelChange>
@@ -682,6 +683,12 @@ MPTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
 void
 MPTerrainEngineNode::updateShaders()
 {
+    if ( !Registry::capabilities().supportsGLSL() )
+    {
+        _shaderUpdateRequired = false;
+        return;
+    }
+
     if ( _batchUpdateInProgress )
     {
         _shaderUpdateRequired = true;

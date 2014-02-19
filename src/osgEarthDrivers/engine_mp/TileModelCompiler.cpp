@@ -1902,8 +1902,6 @@ TileModelCompiler::compile(const TileModel* model,
 
     // A Geode/Geometry for the surface:
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );
-    //d.surface->setUseVertexBufferObjects(d.useVBOs);
-    //d.surface->setUseDisplayList(!d.useVBOs);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
     d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );

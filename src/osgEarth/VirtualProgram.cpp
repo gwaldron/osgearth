@@ -763,6 +763,9 @@ VirtualProgram::setInheritShaders( bool value )
 void
 VirtualProgram::apply( osg::State& state ) const
 {
+    if (!Registry::capabilities().supportsGLSL())
+        return;
+
     if (_shaderMap.empty() && !_inheritSet)
     {
         // If there's no data in the VP, and never has been, unload any existing program.

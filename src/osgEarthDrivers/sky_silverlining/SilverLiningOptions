@@ -32,7 +32,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
     class SilverLiningOptions : public SkyOptions
     {
     public:
-        SilverLiningOptions(const ConfigOptions& options =ConfigOptions()) :
+        SilverLiningOptions(const SkyOptions& options =SkyOptions()) :
           SkyOptions(options),
           _drawClouds(false)
         {

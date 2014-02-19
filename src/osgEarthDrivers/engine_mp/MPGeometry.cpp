@@ -21,6 +21,8 @@
 #include <osg/Version>
 #include <osgUtil/MeshOptimizers>
 #include <iterator>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 using namespace osg;
 using namespace osgEarth::Drivers::MPTerrainEngine;
@@ -38,6 +40,8 @@ osg::Geometry    ( ),
 _frame           ( frame ),
 _imageUnit       ( imageUnit )
 {
+    _supportsGLSL = Registry::capabilities().supportsGLSL();
+
     unsigned tw, th;
     key.getProfile()->getNumTiles(key.getLOD(), tw, th);
     _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
@@ -412,6 +416,12 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 void 
 MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 {
+    if (!_supportsGLSL)
+    {
+        osg::Geometry::drawImplementation(renderInfo);
+        return;
+    }
+
     osg::State& state = *renderInfo.getState();
 
     bool usingVertexBufferObjects = _useVertexBufferObjects && state.isVertexBufferObjectSupported();

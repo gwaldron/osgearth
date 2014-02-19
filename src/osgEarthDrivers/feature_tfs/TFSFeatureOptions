@@ -43,8 +43,11 @@ namespace osgEarth { namespace Drivers
         const optional<std::string>& format() const { return _format; }        
 
     public:
-        TFSFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) : FeatureSourceOptions( opt ) {
-            setDriver( "tfs" );
+        TFSFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          FeatureSourceOptions( opt ),
+          _format("json")
+          {
+            setDriver( "tfs" );            
             fromConfig( _conf );
         }
 

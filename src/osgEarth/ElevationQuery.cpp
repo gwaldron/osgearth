@@ -310,10 +310,6 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
                 hf->getFloatArray()->at( i ) = NO_DATA_VALUE;
             }   
 
-
-            // Create a temporary GeoHeightField to populate the HeightField's origin and internal values.
-            GeoHeightField tmpHF( hf, key.getExtent() );
-            
             if (_mapf.populateHeightField( hf, key ) )
             {                
                 geoHF = GeoHeightField( hf.get(), key.getExtent() );

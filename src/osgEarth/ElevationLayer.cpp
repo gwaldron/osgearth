@@ -549,11 +549,11 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     
     // Sample the layers into our target.
     unsigned numColumns = hf->getNumColumns();
-    unsigned numRows    = hf->getNumRows();
-    double   xmin       = hf->getOrigin().x();
-    double   ymin       = hf->getOrigin().y();
-    double   dx         = hf->getXInterval();
-    double   dy         = hf->getYInterval();
+    unsigned numRows    = hf->getNumRows();    
+    double   xmin       = key.getExtent().xMin();
+    double   ymin       = key.getExtent().yMin();
+    double   dx         = key.getExtent().width() / (double)(numColumns-1);
+    double   dy         = key.getExtent().height() / (double)(numRows-1);
     
     // We will load the actual heightfields on demand. We might not need them all.
     GeoHeightFieldVector heightFields(contenders.size());

@@ -28,7 +28,7 @@ ElevationQuery::postCTOR()
     _maxLevelOverride = -1;
     _queries          = 0.0;
     _totalTime        = 0.0;  
-    _maxTilesToCache = 500;
+    _cache.setMaxSize( 500 );
 }
 
 void
@@ -44,21 +44,9 @@ ElevationQuery::sync()
             int layerTileSize = i->get()->getTileSize();
             if ( layerTileSize > _tileSize )
                 _tileSize = layerTileSize;
-        }
+        }     
 
-        for (unsigned int i = 0; i < _caches.size(); i++)
-        {
-            delete _caches[i];
-        }
-
-        _caches.clear();
-
-        for (unsigned int i = 0; i < _mapf.elevationLayers().size(); ++i)
-        {
-            _caches.push_back( new TileCache(_maxTilesToCache) );
-        }
-        
-
+        _cache.clear();
     }
 }
 
@@ -179,20 +167,13 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
 void
 ElevationQuery::setMaxTilesToCache( int value )
 {
-    if (_maxTilesToCache != value)
-    {
-        _maxTilesToCache = value;
-        for (unsigned int i = 0; i < _caches.size(); i++)
-        {
-            _caches[i]->setMaxSize( _maxTilesToCache );
-        }
-    }
+    _cache.setMaxSize( value );   
 }
 
 int
 ElevationQuery::getMaxTilesToCache() const
 {
-    return _maxTilesToCache;    
+    return _cache.getMaxSize();    
 }
         
 void
@@ -307,74 +288,68 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         OE_WARN << LC << "Fail: coords fall outside map" << std::endl;
         return false;
     }
-
-    bool result = false;         
-
+        
+    bool result = false;      
     while (!result)
-    {
-        unsigned int index = 0;
-        // Loop over each elevation layer and try to get a sample from them at the location.
-        for (ElevationLayerVector::const_reverse_iterator i = _mapf.elevationLayers().rbegin(); i != _mapf.elevationLayers().rend(); i++)
-        {            
-            // See if this layer has data for the requested tile key
-            ElevationLayer* layer = i->get();
-            //OE_DEBUG << LC << "Trying " << layer->getName() << std::endl;
-            if (layer->getEnabled() && layer->getVisible())
+    {      
+        GeoHeightField geoHF;
+        TileCache::Record record;
+        // Try to get the hf from the cache
+        if ( _cache.get( key, record ) )
+        {                        
+            geoHF = record.value();
+        }
+        else
+        {
+            // Create it            
+            osg::ref_ptr< osg::HeightField > hf = new osg::HeightField;
+            hf->allocate( _tileSize, _tileSize );
+            // Initialize the heightfield to nodata
+            for (unsigned int i = 0; i < hf->getFloatArray()->size(); i++)
             {
-                if (layer->getTileSource() == 0 || layer->getTileSource()->hasData( key ) )
-                {
-                    GeoHeightField hf;
-                    TileCache::Record record;
-                    if (_caches[index]->get( key, record))
-                    {
-                        //OE_NOTICE << "Hit " << key.str() << std::endl;
-                        hf = record.value();
-                    }
-                    else
-                    {
-                        //OE_NOTICE << "Miss " << key.str() << std::endl;
-                        hf = layer->createHeightField( key );
-                        if (hf.valid())
-                        {
-                            _caches[index]->insert( key, hf );
-                        }
-                    }
-                    if (hf.valid())
-                    {                    
-                        float elevation = 0.0f;                 
-                        result = hf.getElevation( mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), _mapf.getMapInfo().getElevationInterpolation(), mapPoint.getSRS(), elevation);                     
-                        if (result && elevation != NO_DATA_VALUE)
-                        {                        
-                            // see what the actual resolution of the heightfield is.
-                            if ( out_actualResolution )
-                                *out_actualResolution = hf.getXInterval(); 
-                            out_elevation = (double)elevation;
-                            //OE_NOTICE << "Got elevation " <<  out_elevation << " from layer " << layer->getName() << std::endl;
-                            break;
-                        }
-                        else
-                        {                               
-                            result = false;                     
-                        }
-                    } 
-                }
-                else
-                {
-                    //OE_NOTICE << "Skipping hf creation for layer " << layer->getName() << std::endl;
-                }
+                hf->getFloatArray()->at( i ) = NO_DATA_VALUE;
+            }   
+
+
+            // Create a temporary GeoHeightField to populate the HeightField's origin and internal values.
+            GeoHeightField tmpHF( hf, key.getExtent() );
+            
+            if (_mapf.populateHeightField( hf, key ) )
+            {                
+                geoHF = GeoHeightField( hf.get(), key.getExtent() );
+                _cache.insert( key, geoHF );
             }
-            index++;
+        }
+
+        if (geoHF.valid())
+        {            
+            float elevation = 0.0f;                 
+            result = geoHF.getElevation( mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), _mapf.getMapInfo().getElevationInterpolation(), mapPoint.getSRS(), elevation);                              
+            if (result && elevation != NO_DATA_VALUE)
+            {                        
+                // see what the actual resolution of the heightfield is.
+                if ( out_actualResolution )
+                    *out_actualResolution = geoHF.getXInterval(); 
+                out_elevation = (double)elevation;                
+                break;
+            }
+            else
+            {                               
+                result = false;                     
+            }
         }
 
         if (!result)
-        {
-            key = key.createParentKey();            
+        {                   
+            key = key.createParentKey();                        
             if (!key.valid())
             {
                 break;
             }
         }         
     }
+
+         
 
     osg::Timer_t end = osg::Timer::instance()->tick();
     _queries++;

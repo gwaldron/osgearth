@@ -137,15 +137,10 @@ namespace osgEarth
         MapFrame     _mapf;
         unsigned     _maxCacheSize;
         int          _tileSize;        
-        int          _maxLevelOverride;
-        unsigned int _maxTilesToCache;
+        int          _maxLevelOverride;        
 
         typedef LRUCache< TileKey, GeoHeightField > TileCache;
-
-        // We keep a vector of caches, one per ElevationLayer.  The heightfields are queried separately
-        // to avoid processing tiles you won't ever need.
-        std::vector< TileCache* > _caches;        
-
+        TileCache _cache;
         double _queries;
         double _totalTime;
 

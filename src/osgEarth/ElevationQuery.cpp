@@ -27,11 +27,8 @@ ElevationQuery::postCTOR()
     _tileSize         = 0;
     _maxLevelOverride = -1;
     _queries          = 0.0;
-    _totalTime        = 0.0;
-
-    // Limit the size of the cache we'll use to cache heightfields. This is an
-    // LRU cache.
-    _tileCache.setMaxSize( 50 );
+    _totalTime        = 0.0;  
+    _maxTilesToCache = 500;
 }
 
 void
@@ -48,6 +45,20 @@ ElevationQuery::sync()
             if ( layerTileSize > _tileSize )
                 _tileSize = layerTileSize;
         }
+
+        for (unsigned int i = 0; i < _caches.size(); i++)
+        {
+            delete _caches[i];
+        }
+
+        _caches.clear();
+
+        for (unsigned int i = 0; i < _mapf.elevationLayers().size(); ++i)
+        {
+            _caches.push_back( new TileCache(_maxTilesToCache) );
+        }
+        
+
     }
 }
 
@@ -168,13 +179,20 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
 void
 ElevationQuery::setMaxTilesToCache( int value )
 {
-    _tileCache.setMaxSize( value );
+    if (_maxTilesToCache != value)
+    {
+        _maxTilesToCache = value;
+        for (unsigned int i = 0; i < _caches.size(); i++)
+        {
+            _caches[i]->setMaxSize( _maxTilesToCache );
+        }
+    }
 }
 
 int
 ElevationQuery::getMaxTilesToCache() const
 {
-    return _tileCache.getMaxSize();
+    return _maxTilesToCache;    
 }
         
 void
@@ -198,6 +216,7 @@ ElevationQuery::getElevation(const GeoPoint&         point,
     sync();
     return getElevationImpl( point, out_elevation, desiredResolution, out_actualResolution );
 }
+
 
 bool
 ElevationQuery::getElevations(std::vector<osg::Vec3d>& points,
@@ -250,14 +269,14 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
                                  double*         out_actualResolution)
 {
     osg::Timer_t start = osg::Timer::instance()->tick();
-    
+
     if ( _mapf.elevationLayers().empty() )
     {
         // this means there are no heightfields.
         out_elevation = 0.0;
         return true;
     }
-    
+
     //This is the max resolution that we actually have data at this point
     unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS(), _mapf.getProfile());
 
@@ -267,7 +286,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         if (desiredLevel < bestAvailLevel) bestAvailLevel = desiredLevel;
     }
 
-    OE_DEBUG << "Best available data level " << point.x() << ", " << point.y() << " = "  << bestAvailLevel << std::endl;
+    OE_DEBUG << LC << "Best available data level " << point.x() << ", " << point.y() << " = "  << bestAvailLevel << std::endl;
 
     // transform the input coords to map coords:
     GeoPoint mapPoint = point;
@@ -279,9 +298,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
             OE_WARN << LC << "Fail: coord transform failed" << std::endl;
             return false;
         }
-    }
-
-    osg::ref_ptr<osg::HeightField> tile;
+    }    
 
     // get the tilekey corresponding to the tile we need:
     TileKey key = _mapf.getProfile()->createTileKey( mapPoint.x(), mapPoint.y(), bestAvailLevel );
@@ -291,52 +308,73 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         return false;
     }
 
-    // Check the tile cache. Note that the TileSource already likely has a MemCache
-    // attached to it. We employ a secondary cache here because: since the call to
-    // getHeightField can fallback on a lower resolution, this cache will hold the
-    // final resolution heightfield instead of trying to fetch the higher resolution
-    // one each item.
+    bool result = false;         
 
-    TileCache::Record record;
-    if ( _tileCache.get(key, record) )
+    while (!result)
     {
-        tile = record.value().get();
-    }
-
-    // if we didn't find it, build it.
-    if ( !tile.valid() )
-    {
-        // generate the heightfield corresponding to the tile key, automatically falling back
-        // on lower resolution if necessary:
-        _mapf.populateHeightField( tile, key, false, SAMPLE_FIRST_VALID );
-
-        // bail out if we could not make a heightfield a all.
-        if ( !tile.valid() )
-        {
-            OE_WARN << LC << "Unable to create heightfield for key " << key.str() << std::endl;
-            return false;
+        unsigned int index = 0;
+        // Loop over each elevation layer and try to get a sample from them at the location.
+        for (ElevationLayerVector::const_reverse_iterator i = _mapf.elevationLayers().rbegin(); i != _mapf.elevationLayers().rend(); i++)
+        {            
+            // See if this layer has data for the requested tile key
+            ElevationLayer* layer = i->get();
+            //OE_DEBUG << LC << "Trying " << layer->getName() << std::endl;
+            if (layer->getEnabled() && layer->getVisible())
+            {
+                if (layer->getTileSource() == 0 || layer->getTileSource()->hasData( key ) )
+                {
+                    GeoHeightField hf;
+                    TileCache::Record record;
+                    if (_caches[index]->get( key, record))
+                    {
+                        //OE_NOTICE << "Hit " << key.str() << std::endl;
+                        hf = record.value();
+                    }
+                    else
+                    {
+                        //OE_NOTICE << "Miss " << key.str() << std::endl;
+                        hf = layer->createHeightField( key );
+                        if (hf.valid())
+                        {
+                            _caches[index]->insert( key, hf );
+                        }
+                    }
+                    if (hf.valid())
+                    {                    
+                        float elevation = 0.0f;                 
+                        result = hf.getElevation( mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), _mapf.getMapInfo().getElevationInterpolation(), mapPoint.getSRS(), elevation);                     
+                        if (result && elevation != NO_DATA_VALUE)
+                        {                        
+                            // see what the actual resolution of the heightfield is.
+                            if ( out_actualResolution )
+                                *out_actualResolution = hf.getXInterval(); 
+                            out_elevation = (double)elevation;
+                            //OE_NOTICE << "Got elevation " <<  out_elevation << " from layer " << layer->getName() << std::endl;
+                            break;
+                        }
+                        else
+                        {                               
+                            result = false;                     
+                        }
+                    } 
+                }
+                else
+                {
+                    //OE_NOTICE << "Skipping hf creation for layer " << layer->getName() << std::endl;
+                }
+            }
+            index++;
         }
 
-        _tileCache.insert(key, tile.get());
+        if (!result)
+        {
+            key = key.createParentKey();            
+            if (!key.valid())
+            {
+                break;
+            }
+        }         
     }
-
-    OE_DEBUG << LC << "LRU Cache, hit ratio = " << _tileCache.getStats()._hitRatio << std::endl;
-
-    // see what the actual resolution of the heightfield is.
-    if ( out_actualResolution )
-        *out_actualResolution = (double)tile->getXInterval();
-
-    bool result = true;
-
-    const GeoExtent& extent = key.getExtent();
-    double xInterval = extent.width()  / (double)(tile->getNumColumns()-1);
-    double yInterval = extent.height() / (double)(tile->getNumRows()-1);
-    
-    out_elevation = (double) HeightFieldUtils::getHeightAtLocation( 
-        tile.get(), 
-        mapPoint.x(), mapPoint.y(), 
-        extent.xMin(), extent.yMin(), 
-        xInterval, yInterval, _mapf.getMapInfo().getElevationInterpolation() );
 
     osg::Timer_t end = osg::Timer::instance()->tick();
     _queries++;

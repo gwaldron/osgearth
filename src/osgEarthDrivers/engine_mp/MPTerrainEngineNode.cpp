@@ -169,10 +169,7 @@ void
 MPTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
     TerrainEngineNode::preInitialize( map, options );
-
-    // override the compositor technique because we want to do unit
-    // reservations but nothing else.
-    getTextureCompositor()->setTechnique( 0L );
+    //nop.
 }
 
 void
@@ -541,12 +538,6 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         // dispatch the change handler
         if ( change.getLayer() )
         {
-            // first inform the texture compositor with the new model changes:
-            if ( _texCompositor.valid() && change.getImageLayer() )
-            {
-                _texCompositor->applyMapModelChange( change );
-            }
-
             // then apply the actual change:
             switch( change.getAction() )
             {
@@ -665,17 +656,6 @@ void
 MPTerrainEngineNode::toggleElevationLayer( ElevationLayer* layer )
 {
     refresh();
-}
-
-void
-MPTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
-{
-    TerrainEngineNode::validateTerrainOptions( options );
-    
-    //nop for now.
-    //note: to validate plugin-specific features, we would create an MPTerrainEngineOptions
-    // and do the validation on that. You would then re-integrate it by calling
-    // options.mergeConfig( osgTerrainOptions ).
 }
 
 

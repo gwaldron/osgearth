@@ -220,25 +220,14 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
         this->setEllipsoidModel( NULL );
     
     // install the proper layer composition technique:
-    _texCompositor = new TextureCompositor( options );
-
-    // prime the compositor with pre-existing image layers:
-    MapFrame mapf(map, Map::IMAGE_LAYERS);
-    for( unsigned i=0; i<mapf.imageLayers().size(); ++i )
-    {
-        _texCompositor->applyMapModelChange( MapModelChange(
-            MapModelChange::ADD_IMAGE_LAYER,
-            mapf.getRevision(),
-            mapf.getImageLayerAt(i),
-            i ) );
-    }
+    _texCompositor = new TextureCompositor();
 
     // then register the callback so we can process further map model changes
     _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
 
     // enable backface culling
     osg::StateSet* set = getOrCreateStateSet();
-    //set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+
     set->setMode( GL_CULL_FACE, 1 );
 
     // elevation uniform
@@ -345,15 +334,6 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         }
     }
 
-    // if post-initialization has not yet happened, we need to make sure the 
-    // compositor is up to date with the map model. (After post-initialization,
-    // this happens in the subclass...something that probably needs to change
-    // since this is unclear)
-    else if ( _texCompositor.valid() && change.getImageLayer() )
-    {
-        _texCompositor->applyMapModelChange( change );
-    }
-
     // notify that a redraw is required.
     dirty();
 }
@@ -404,22 +384,6 @@ TerrainEngineNode::updateImageUniforms()
     }
 
     dirty();
-}
-
-void
-TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
-{
-    // make sure all the requested properties are compatible, and fall back as necessary.
-    //const Capabilities& caps = Registry::instance()->getCapabilities();
-
-    // warn against mixing multipass technique with preemptive/sequential mode:
-    if (options.compositingTechnique() == TerrainOptions::COMPOSITING_MULTIPASS &&
-        options.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
-    {
-        OE_WARN << LC << "MULTIPASS compositor is incompatible with preemptive/sequential loading policy; "
-            << "falling back on STANDARD mode" << std::endl;
-        options.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
-    }
 }
 
 namespace
@@ -505,12 +469,7 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
 
     std::string driverExt = std::string( ".osgearth_engine_" ) + driver;
     result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt ) );
-    if ( result )
-    {
-        TerrainOptions terrainOptions( options );
-        result->validateTerrainOptions( terrainOptions );
-    }
-    else
+    if ( !result )
     {
         OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << driver << "\"" << std::endl;
     }

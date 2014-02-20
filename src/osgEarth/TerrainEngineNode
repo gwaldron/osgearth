@@ -116,8 +116,6 @@ namespace osgEarth
         friend class MapNode;
         friend class TerrainEngineNodeFactory;
 
-        virtual void validateTerrainOptions( TerrainOptions& options );
-
         /** Attaches a map to the terrain engine and initialized it.*/
         virtual void preInitialize( const Map* map, const TerrainOptions& options );
         virtual void postInitialize( const Map* map, const TerrainOptions& options );

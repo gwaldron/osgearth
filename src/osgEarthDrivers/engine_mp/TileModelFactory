@@ -126,7 +126,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
             if ( !hf.valid() && ((int)key.getLOD())-1 > _firstLOD )
             {
-                OE_WARN << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry"
+                // This most likely means that a parent tile expired while we were building the child.
+                // No harm done in that case as this tile will soo be discarded as well.
+                OE_DEBUG << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry"
                     << std::endl;
                 return false;
             }

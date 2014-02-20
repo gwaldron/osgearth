@@ -94,7 +94,7 @@ MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
 
     if ( !hf.valid() )
     {
-        hf = _map->createReferenceHeightField(key);
+        hf = _map->createReferenceHeightField(key, convertToHAE);
     }
 
     return _elevationLayers.populateHeightField(

@@ -140,12 +140,7 @@ _runtimeOptions( options )
 void
 ElevationLayer::init()
 {
-    // Set the tile size to 15 if it's not explicitly set.  15 is a sensible number for elevation tiles, the normal 256 is much too dense.
-    if (!_runtimeOptions.driver()->tileSize().isSet())
-    {
-        _runtimeOptions.driver()->tileSize().init( 15 );
-    }
-    _tileSize = 15;
+    //nop
 }
 
 std::string

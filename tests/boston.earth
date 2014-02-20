@@ -8,7 +8,6 @@ to extruded buildings.
 <map name="Boston Demo" type="geocentric" version="2">
     
     <options elevation_tile_size="15">
-        <terrain lighting="true"/>
     </options>   
     
     <image name="readymap_imagery" driver="tms">
@@ -106,8 +105,7 @@ to extruded buildings.
                 streets {
                     stroke:                       #ffff007f;
                     stroke-width:                 7.5m;
-                    altitude-clamping:            terrain;
-                    altitude-technique:           gpu;
+                    altitude-clamping:            terrain-gpu;
                     render-depth-offset-min-bias: 10;
                 }
             </style>
@@ -115,7 +113,7 @@ to extruded buildings.
     </model>
     
     
-    <model name="Parks" driver="feature_geom" enabled="false">
+    <model name="Parks" driver="feature_geom" enabled="true">
         <features name="parks" driver="ogr" build_spatial_index="true">
             <url>../data/boston-parks.shp</url>
         </features>
@@ -134,8 +132,7 @@ to extruded buildings.
                    model-density:          12000;
                    model-scale:            1.0;
                    altitude-clamping:      terrain;
-                   altitude-technique:     map;
-                   altitude-resolution:    0.001;
+                   altitude-resolution:    0;
                 }
             </style>
         </styles>        

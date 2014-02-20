@@ -121,11 +121,6 @@ namespace osgEarth
             ProgressCallback* progress =0L );
 
         /**
-         * Whether the given key is valid for this layer
-         */
-        virtual bool isKeyValid(const TileKey& key) const;
-
-        /**
          * Whether this layer contains offsets instead of absolute heights
          */
         bool isOffset() const {

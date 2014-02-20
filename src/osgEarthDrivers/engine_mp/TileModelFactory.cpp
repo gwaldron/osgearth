@@ -81,7 +81,7 @@ namespace
                 hasDataInExtent = tileSource->hasDataInExtent( ext );
             }
             
-            if (hasDataInExtent && _layer->isKeyValid(_key))
+            if (hasDataInExtent && _layer->isKeyInRange(_key))
             {
                 if ( useMercatorFastPath )
                 {

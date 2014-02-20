@@ -607,35 +607,40 @@ TerrainLayer::initTileSource()
 }
 
 bool
-TerrainLayer::isKeyValid(const TileKey& key) const
+TerrainLayer::isKeyInRange(const TileKey& key) const
 {    
-    if (!key.valid())
-        return false;
-
-    // Check to see if an explicity max LOD is set. Do NOT compare against the minLevel,
-    // because we still need to create empty tiles until we get to the data. The ImageLayer
-    // will deal with this.
-    if ( _runtimeOptions->maxLevel().isSet() && key.getLOD() > _runtimeOptions->maxLevel().value() ) 
+    if ( !key.valid() )
     {
         return false;
     }
 
-    // Check to see if levels of detail based on resolution are set
-    const Profile* profile = getProfile();
-    if ( profile )
+    // First check the key against the min/max level limits, it they are set.
+    if ((_runtimeOptions->maxLevel().isSet() && key.getLOD() > _runtimeOptions->maxLevel().value()) ||
+        (_runtimeOptions->minLevel().isSet() && key.getLOD() < _runtimeOptions->minLevel().value()))
     {
-        if ( !profile->isEquivalentTo( key.getProfile() ) )
-        {
-            OE_DEBUG << LC
-                << "TerrainLayer::isKeyValid called with key of a different profile" << std::endl;
-        }
+        return false;
+    }
 
-        if ( _runtimeOptions->maxResolution().isSet() )
+    // Next, check against resolution limits (based on the source tile size).
+    if (_runtimeOptions->minResolution().isSet() ||
+        _runtimeOptions->maxResolution().isSet())
+    {
+        const Profile* profile = getProfile();
+        if ( profile )
         {
-            double keyres = key.getExtent().width() / (double)getTileSize();
-            double keyresInLayerProfile = key.getProfile()->getSRS()->transformUnits(keyres, profile->getSRS());
+            // calculate the resolution in the layer's profile, which can
+            // be different that the key's profile.
+            double resKey   = key.getExtent().width() / (double)getTileSize();
+            double resLayer = key.getProfile()->getSRS()->transformUnits(resKey, profile->getSRS());
 
-            if ( _runtimeOptions->maxResolution().isSet() && keyresInLayerProfile < _runtimeOptions->maxResolution().value() )
+            if (_runtimeOptions->maxResolution().isSet() &&
+                _runtimeOptions->maxResolution().value() > resLayer)
+            {
+                return false;
+            }
+
+            if (_runtimeOptions->minResolution().isSet() &&
+                _runtimeOptions->minResolution().value() < resLayer)
             {
                 return false;
             }

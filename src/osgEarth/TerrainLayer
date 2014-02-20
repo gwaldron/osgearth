@@ -89,15 +89,6 @@ namespace osgEarth
          */
         optional<double>& maxResolution() { return _maxResolution; }
         const optional<double>& maxResolution() const { return _maxResolution; }
-
-        /**
-         * Overrides the maximum available LOD of the underlying tile source. The layer
-         * will never ask the tile source (or the cache) for an LOD higher than this.
-         * Data from this layer may still appear in map tiles above the maxDataLevel,
-         * but it will be upsampled from the maxDataLevel.
-         */
-        optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
-        const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
         
         /**
          * Whether to use this layer with the map. Setting this to false means that 
@@ -269,9 +260,10 @@ namespace osgEarth
         TileSource* getTileSource() const;
 
         /**
-         * Gets the tile size of the this MapLayer
+         * Gets the size (i.e. number of samples in each dimension) or the source
+         * data for this layer.
          */
-        unsigned int getTileSize() const;
+        unsigned getTileSize() const;
         
         /**
          * Whether the layer represents dynamic data, i.e. tile data that can change.
@@ -279,9 +271,10 @@ namespace osgEarth
         bool isDynamic() const;
 
         /**
-         * Whether the given key is valid for this layer
+         * Whether the given key falls within the range limits set in the options;
+         * i.e. min/maxLevel or min/maxResolution.
          */
-        virtual bool isKeyValid(const TileKey& key) const;
+        virtual bool isKeyInRange(const TileKey& key) const;
 
         /** 
          * Whether the data for the specified tile key is in the cache.

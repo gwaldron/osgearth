@@ -205,21 +205,30 @@ TileKey::mapResolution(unsigned targetSize,
                        unsigned sourceSize,
                        unsigned minimumLOD) const
 {
+    // This only works when falling back; i.e. targetSize is smaller than sourceSize.
     if ( getLOD() == 0 || targetSize >= sourceSize )
         return *this;
 
+    // Minimum target tile size.
     if ( targetSize < 2 )
         targetSize = 2;
 
-    double width = _extent.width();
-    double dx = width / (double)(targetSize-1);
+    int lod = (int)getLOD();
+    int targetSizePOT = nextPowerOf2((int)targetSize);
 
-    int lod = (int)getLOD()-1;
-    while(lod > minimumLOD &&
-          dx  >= width/(double)(sourceSize-1))
+    while(true)
     {
-        width *= 2.0;
-        --lod;
+        if (targetSizePOT >= (int)sourceSize)
+        {
+            return createAncestorKey(lod);
+        }
+
+        if ( lod == (int)minimumLOD )
+        {
+            return createAncestorKey(lod);
+        }
+
+        lod--;
+        targetSizePOT *= 2;        
     }
-    return createAncestorKey( std::max(lod+1, (int)minimumLOD) );
 }

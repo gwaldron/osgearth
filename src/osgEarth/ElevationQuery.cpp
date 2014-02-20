@@ -9,6 +9,19 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
+namespace
+{
+    int nextPowerOf2(int x) {
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x+1;
+    }
+}
+
 ElevationQuery::ElevationQuery( const Map* map ) :
 _mapf( map, Map::TERRAIN_LAYERS )
 {
@@ -40,17 +53,19 @@ ElevationQuery::sync()
     }
 }
 
-unsigned int
+unsigned
 ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, const Profile* profile ) const
 {
-    unsigned int maxLevel = 0;
+    int targetTileSizePOT = nextPowerOf2((int)_mapf.getMapOptions().elevationTileSize().get());
+
+    int maxLevel = 0;
     for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
     {
         // skip disabled layers
-        if ( !i->get()->getEnabled() )
+        if ( !i->get()->getEnabled() || !i->get()->getVisible() )
             continue;
 
-        unsigned int layerMax = 0;
+        int layerMaxLevel = 0;
 
         osgEarth::TileSource* ts = i->get()->getTileSource();
         if ( ts )
@@ -68,31 +83,47 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
                 
                 for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
                 {
-                    if (j->maxLevel().isSet() && j->maxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
+                    if (j->maxLevel().isSet() && j->maxLevel() > layerMaxLevel && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
                     {
-                        layerMax = j->maxLevel().value();
+                        layerMaxLevel = j->maxLevel().value();
                     }
                 }
 
-                //Need to convert the layer max of this TileSource to that of the actual profile
-                layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
+                // Need to convert the layer max of this TileSource to that of the actual profile
+                layerMaxLevel = profile->getEquivalentLOD( ts->getProfile(), layerMaxLevel );            
             }
 
             // cap the max to the layer's express max level (if set).
             if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
             {
-                layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
+                layerMaxLevel = std::min( layerMaxLevel, (int)(*i->get()->getTerrainLayerRuntimeOptions().maxLevel()) );
             }
         }
         else
         {
             // no TileSource? probably in cache-only mode. Use the layer max (or its default).
-            layerMax = i->get()->getTerrainLayerRuntimeOptions().maxLevel().value();
+            layerMaxLevel = (int)(i->get()->getTerrainLayerRuntimeOptions().maxLevel().value());
         }
 
-        if (layerMax > maxLevel) maxLevel = layerMax;
-    }    
+        // Adjust for the tile size resolution differential.
+        int layerTileSize = i->get()->getTileSize();
+        if (layerTileSize > targetTileSizePOT)
+        {
+            int oldMaxLevel = layerMaxLevel;
+            int temp = std::max(targetTileSizePOT, 2);
+            while(temp < layerTileSize) {
+                temp *= 2;
+                ++layerMaxLevel;
+            }
+        }
 
+        if (layerMaxLevel > maxLevel)
+        {
+            maxLevel = layerMaxLevel;
+        }
+    }
+
+#if 0
     // need to check the image layers too, because if image layers go deeper than elevation layers,
     // upsampling occurs that can change the formation of the terrain skin.
     // NOTE: this doesn't happen in "triangulation" interpolation mode.
@@ -150,6 +181,7 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
     {
         //This means we had no data extents on any of our layers and no max levels are set
     }
+#endif
 
     return maxLevel;
 }
@@ -264,7 +296,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
 
     // transform the input coords to map coords:
     GeoPoint mapPoint = point;
-    if ( point.isValid() && !point.getSRS()->isEquivalentTo( _mapf.getProfile()->getSRS() ) )
+    if ( point.isValid() && !point.getSRS()->isHorizEquivalentTo( _mapf.getProfile()->getSRS() ) )
     {
         mapPoint = point.transform(_mapf.getProfile()->getSRS());
         if ( !mapPoint.isValid() )

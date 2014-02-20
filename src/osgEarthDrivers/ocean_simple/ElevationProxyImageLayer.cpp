@@ -37,7 +37,7 @@ ElevationProxyImageLayer::initTileSource()
 }
 
 bool
-ElevationProxyImageLayer::isKeyValid( const TileKey& key ) const
+ElevationProxyImageLayer::isKeyInRange( const TileKey& key ) const
 {
     return key.getLevelOfDetail() <= *_runtimeOptions.maxLevel();
 }

@@ -330,7 +330,7 @@ CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
         ImageLayer* layer = i->get();
-        if ( layer->isKeyValid( key ) )
+        if ( layer->isKeyInRange( key ) )
         {
             GeoImage image = layer->createImage( key );
             if ( image.valid() )

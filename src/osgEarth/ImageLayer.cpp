@@ -499,30 +499,10 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         return GeoImage::INVALID;
     }
 
-    // Check the max data level, which limits the LOD of available data.
-    if ( _runtimeOptions.maxDataLevel().isSet() && key.getLOD() > _runtimeOptions.maxDataLevel().value() )
+    // Make sure the request is in range.
+    if ( !isKeyInRange(key) )
     {
         return GeoImage::INVALID;
-    }
-
-    // Check for a "Minumum level" setting on this layer. If we are before the
-    // min level, just return the empty image. Do not cache empties
-    if ( _runtimeOptions.minLevel().isSet() && key.getLOD() < _runtimeOptions.minLevel().value() )
-    {
-        return GeoImage( _emptyImage.get(), key.getExtent() );
-    }
-
-    // Check for a "Minimum resolution" setting on the layer. If we are before the
-    // min resolution, return the empty image. Do not cache empties.
-    if ( _runtimeOptions.minResolution().isSet() )
-    {
-        double keyres = key.getExtent().width() / getTileSize();
-        double keyresInLayerProfile = key.getProfile()->getSRS()->transformUnits(keyres, getProfile()->getSRS());
-
-        if ( keyresInLayerProfile > _runtimeOptions.minResolution().value() )
-        {
-            return GeoImage( _emptyImage.get(), key.getExtent() );
-        }
     }
 
     OE_DEBUG << LC << "create image for \"" << key.str() << "\", ext= "

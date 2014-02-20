@@ -288,7 +288,7 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
         {
             const TileKey& layerKey = intersectingTiles[i];
 
-            if ( isKeyValid(layerKey) )
+            if ( isKeyInRange(layerKey) )
             {
                 osg::HeightField* hf = createHeightFieldFromTileSource( layerKey, progress );
                 if ( hf )
@@ -362,17 +362,12 @@ ElevationLayer::createHeightField(const TileKey&    key,
     osg::ref_ptr<osg::HeightField> result;
 
     // If the layer is disabled, bail out.
-    if ( _runtimeOptions.enabled().isSetTo( false ) )
+    if ( getEnabled() == false )
     {
         return GeoHeightField::INVALID;
     }
 
-    // Check the max data level, which limits the LOD of available data.
-    if ( _runtimeOptions.maxDataLevel().isSet() && key.getLOD() > _runtimeOptions.maxDataLevel().value() )
-    {
-        return GeoHeightField::INVALID;
-    }
-
+    // See if there's a cache.
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
     // validate that we have either a valid tile source, or we're cache-only.
@@ -420,7 +415,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
         if ( !getTileSource() || !getTileSource()->isOK() )
             return GeoHeightField::INVALID;
 
-        if ( !isKeyValid(key) )
+        if ( !isKeyInRange(key) )
             return GeoHeightField::INVALID;
 
         // build a HF from the TileSource.
@@ -459,21 +454,6 @@ ElevationLayer::createHeightField(const TileKey&    key,
     return result ?
         GeoHeightField( result, key.getExtent() ) :
         GeoHeightField::INVALID;
-}
-
-
-bool
-ElevationLayer::isKeyValid(const TileKey& key) const
-{
-    if (!key.valid())
-        return false;
-
-    if ( _runtimeOptions.minLevel().isSet() && key.getLOD() < _runtimeOptions.minLevel().value() ) 
-    {
-        return false;
-    }
-
-    return TerrainLayer::isKeyValid(key);
 }
 
 
@@ -536,9 +516,10 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
             TileKey mappedKey = 
                 keyToUse.mapResolution(hf->getNumColumns(), layer->getTileSize());
 
-            //TODO: not sure whether isKeyValid should use the mapped key..
+            // Note: isKeyInRange tests the key, but haData tests the mapped key.
+            // I think that's right!
             if ((layer->getTileSource() == 0L) || 
-                (layer->isKeyValid(key) && layer->getTileSource()->hasData(mappedKey)))
+                (layer->isKeyInRange(key) && layer->getTileSource()->hasData(mappedKey)))
             {
                 contenders.push_back(layer);
             }

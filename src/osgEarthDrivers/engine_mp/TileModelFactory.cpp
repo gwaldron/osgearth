@@ -204,13 +204,9 @@ namespace
                                 TileKey nk = _key.createNeighborKey(x, y);
                                 if ( nk.valid() )
                                 {
+                                    osg::ref_ptr<osg::HeightField> hf;
                                     if (_hfCache->getOrCreateHeightField( *_mapf, nk, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
                                     {
-                                        if ( mapInfo.isPlateCarre() )
-                                        {
-                                            HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
-                                        }
-
                                         _model->_elevationData.setNeighbor( x, y, hf.get() );
                                     }
                                 }
@@ -221,13 +217,9 @@ namespace
                     // parent too.
                     if ( _key.getLOD() > 0 )
                     {
+                        osg::ref_ptr<osg::HeightField> hf;
                         if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
                         {
-                            if ( mapInfo.isPlateCarre() )
-                            {
-                                HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
-                            }
-
                             _model->_elevationData.setParent( hf.get() );
                         }
                     }

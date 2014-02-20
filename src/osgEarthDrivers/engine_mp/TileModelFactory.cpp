@@ -55,16 +55,15 @@ namespace
 
         bool execute(ProgressCallback* progress)
         {
+            bool ok = false;
+
             GeoImage geoImage;
-            bool isFallbackData = false;
 
             bool useMercatorFastPath =
                 _opt->enableMercatorFastPath() != false &&
                 _mapInfo->isGeocentric()                &&
                 _layer->getProfile()                    &&
                 _layer->getProfile()->getSRS()->isSphericalMercator();
-
-            // fetch the image from the layer.
 
             TileSource*    tileSource   = _layer->getTileSource();
             const Profile* layerProfile = _layer->getProfile();
@@ -81,6 +80,7 @@ namespace
                 hasDataInExtent = tileSource->hasDataInExtent( ext );
             }
             
+            // fetch the image from the layer.
             if (hasDataInExtent && _layer->isKeyInRange(_key))
             {
                 if ( useMercatorFastPath )
@@ -116,9 +116,9 @@ namespace
                     _order,
                     geoImage.getImage(),
                     locator,
-                    isFallbackData );
+                    false ); // isFallbackData
 
-                return true;
+                ok = true;
             }
 
             else // fall back on parent tile.
@@ -137,21 +137,21 @@ namespace
                             TileModel::ColorData& colorData = _model->_colorData[_layer->getUID()];
                             colorData = TileModel::ColorData(parentColorData);
                             colorData.setIsFallbackData( true );
-                            return true;
+                            ok = true;
                         }
                     }
                 }
             }
 
-            return false;
+            return ok;
         }
 
-        TileKey        _key;
-        const MapInfo* _mapInfo;
+        TileKey           _key;
+        const MapInfo*    _mapInfo;
         TileNodeRegistry* _tiles;
-        ImageLayer*    _layer;
-        unsigned       _order;
-        TileModel*     _model;
+        ImageLayer*       _layer;
+        unsigned          _order;
+        TileModel*        _model;
         const MPTerrainEngineOptions* _opt;
     };
 }

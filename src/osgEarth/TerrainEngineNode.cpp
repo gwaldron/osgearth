@@ -105,16 +105,6 @@ TerrainEngineNode::getTextureCompositor() const
 void
 TerrainEngineNode::ImageLayerController::onVisibleChanged( TerrainLayer* layer )
 {
-    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
-        return;
-
-    _mapf.sync();
-    int layerNum = _mapf.indexOf( static_cast<ImageLayer*>(layer) );
-    if ( layerNum >= 0 )
-        _layerVisibleUniform.setElement( layerNum, layer->getVisible() );
-    else
-        OE_WARN << LC << "Odd, onVisibleChanged did not find layer" << std::endl;
-
     _engine->dirty();
 }
 
@@ -123,35 +113,12 @@ TerrainEngineNode::ImageLayerController::onVisibleChanged( TerrainLayer* layer )
 void
 TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
 {
-    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
-        return;
-
-    _mapf.sync();
-    int layerNum = _mapf.indexOf( layer );
-    if ( layerNum >= 0 )
-        _layerOpacityUniform.setElement( layerNum, layer->getOpacity() );
-    else
-        OE_WARN << LC << "Odd, onOpacityChanged did not find layer" << std::endl;
-
     _engine->dirty();
 }
 
 void
 TerrainEngineNode::ImageLayerController::onVisibleRangeChanged( ImageLayer* layer )
 {
-    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
-        return;
-
-    _mapf.sync();
-    int layerNum = _mapf.indexOf( layer );
-    if ( layerNum >= 0 )
-    {
-         _layerRangeUniform.setElement( (2*layerNum),   layer->getMinVisibleRange() );
-         _layerRangeUniform.setElement( (2*layerNum)+1, layer->getMaxVisibleRange() );
-    }        
-    else
-        OE_WARN << LC << "Odd, onVisibleRangeChanged did not find layer" << std::endl;
-
     _engine->dirty();
 }
 
@@ -169,7 +136,6 @@ TerrainEngineNode::ImageLayerController::onColorFiltersChanged( ImageLayer* laye
 
 TerrainEngineNode::TerrainEngineNode() :
 _verticalScale         ( 1.0f ),
-_elevationSamplingRatio( 1.0f ),
 _initStage             ( INIT_NONE ),
 _dirtyCount            ( 0 )
 {
@@ -227,17 +193,7 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
 
     // enable backface culling
     osg::StateSet* set = getOrCreateStateSet();
-
     set->setMode( GL_CULL_FACE, 1 );
-
-    // elevation uniform
-    // NOTE: wrong...this should be per-CullVisitor...consider putting in the Culling::CullUserData
-    _cameraElevationUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_CameraElevation" );
-    _cameraElevationUniform->set( 0.0f );
-    set->addUniform( _cameraElevationUniform.get() );
-    
-    set->getOrCreateUniform( "osgearth_ImageLayerAttenuation", osg::Uniform::FLOAT )->set(
-        *options.attentuationDistance() );
 
     if ( options.enableMercatorFastPath().isSet() )
     {
@@ -267,8 +223,6 @@ TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options
         {
             i->get()->addCallback( _imageLayerController.get() );
         }
-
-        updateImageUniforms();
     }
 
     _initStage = INIT_POSTINIT_COMPLETE;
@@ -295,13 +249,6 @@ TerrainEngineNode::setVerticalScale( float value )
 }
 
 void
-TerrainEngineNode::setElevationSamplingRatio( float value )
-{
-    _elevationSamplingRatio = value;
-    onElevationSamplingRatioChanged();
-}
-
-void
 TerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     // set up the CSN values   
@@ -325,64 +272,9 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         {
             change.getImageLayer()->removeCallback( _imageLayerController.get() );
         }
-
-        if (change.getAction() == MapModelChange::ADD_IMAGE_LAYER ||
-            change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER ||
-            change.getAction() == MapModelChange::MOVE_IMAGE_LAYER )
-        {
-            updateImageUniforms();
-        }
     }
 
     // notify that a redraw is required.
-    dirty();
-}
-
-void
-TerrainEngineNode::updateImageUniforms()
-{
-    // don't bother if this is a hurting old card
-    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
-        return;
-
-    // update the layer uniform arrays:
-    osg::StateSet* stateSet = this->getOrCreateStateSet();
-
-    // get a copy of the image layer stack:
-    MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
-
-    _imageLayerController->_layerVisibleUniform.detach();
-    _imageLayerController->_layerOpacityUniform.detach();
-    _imageLayerController->_layerRangeUniform.detach();
-    
-    if ( mapf.imageLayers().size() > 0 )
-    {
-        // the "enabled" uniform is fixed size. this is handy to account for layers that are in flux...i.e., their source
-        // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
-        // "ghost" layers that used to exist at a given index, but no longer do.
-        
-        _imageLayerController->_layerVisibleUniform.attach( "osgearth_ImageLayerVisible", osg::Uniform::BOOL,  stateSet, mapf.imageLayers().size() );
-        _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
-        _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
-
-        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
-        {
-            ImageLayer* layer = i->get();
-            int index = (int)(i - mapf.imageLayers().begin());
-
-            _imageLayerController->_layerVisibleUniform.setElement( index, layer->getVisible() );
-            _imageLayerController->_layerOpacityUniform.setElement( index, layer->getOpacity() );
-            _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getMinVisibleRange() );
-            _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getMaxVisibleRange() );
-        }
-
-        // set the remainder of the layers to disabled 
-        for( int j=mapf.imageLayers().size(); j<_imageLayerController->_layerVisibleUniform.getNumElements(); ++j)
-        {
-            _imageLayerController->_layerVisibleUniform.setElement( j, false );
-        }
-    }
-
     dirty();
 }
 
@@ -417,30 +309,6 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
                         _terrainInterface->_updateOperationQueue = q;
                     }
                 }
-            }
-        }
-
-
-        if ( Registry::capabilities().supportsGLSL() )
-        {
-            //_updateLightingUniformsHelper.cullTraverse( this, &nv );
-
-            // TODO: the "camera elevation" uniform is only used by the old
-            // multi- and texarray- texture compositors. Once we get rid of those
-            // we can get rid of this too.
-            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            if ( cv )
-            {
-                osg::Vec3d eye = cv->getEyePoint();
-
-                float elevation;
-                if ( _map->isGeocentric() )
-                    elevation = eye.length() - osg::WGS_84_RADIUS_EQUATOR;
-                else
-                    elevation = eye.z();
-
-                //TODO: no good. cannot be setting this in cull.
-                _cameraElevationUniform->set( elevation );
             }
         }
     }

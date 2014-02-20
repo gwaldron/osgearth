@@ -21,6 +21,9 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers::SimpleOcean;
 
+#define LC "[ElevationProxyImageLayer] "
+
+
 ElevationProxyImageLayer::ElevationProxyImageLayer(const Map* sourceMap,
                                                    const ImageLayerOptions& options ) :
 ImageLayer( options ),
@@ -33,7 +36,7 @@ void
 ElevationProxyImageLayer::initTileSource()
 {
     _tileSourceInitAttempted = true;
-    _tileSourceInitFailed    = true;
+    _tileSourceInitFailed    = false;
 }
 
 bool

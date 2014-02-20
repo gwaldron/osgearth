@@ -1731,9 +1731,9 @@ public:
 
 
 #if 0
-    osg::HeightField* creatHeightField( const TileKey&        key,
+    osg::HeightField* createHeightField( const TileKey&        key,
                                          ProgressCallback*     progress)
-    {
+    {        
         if (key.getLevelOfDetail() > _maxDataLevel)
         {
             //OE_NOTICE << "Reached maximum data resolution key=" << key.getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
@@ -1786,7 +1786,7 @@ public:
 #else
      osg::HeightField* createHeightField( const TileKey&        key,
                                          ProgressCallback*     progress)
-    {
+    {        
         if (key.getLevelOfDetail() > _maxDataLevel)
         {
             //OE_NOTICE << "Reached maximum data resolution key=" << key.getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
@@ -1817,21 +1817,11 @@ public:
             geoToPixel( intersection.xMin(), intersection.yMax(), src_min_x, src_min_y);
             geoToPixel( intersection.xMax(), intersection.yMin(), src_max_x, src_max_y);
 
-            //TODO:  Apply the half pixel offset here?
-             //Apply half pixel offset
-            /*
-            src_min_x-= 0.5;
-            src_max_x-= 0.5;
-            src_max_y-= 0.5;
-            src_min_y-= 0.5;
-            */
-
             // Convert the doubles to integers.  We floor the mins and ceil the maximums to give the widest window possible.
             src_min_x = osg::maximum(0.0, floor(src_min_x - 1.0));
             src_min_y = osg::maximum(0.0, floor(src_min_y - 1.0));
             src_max_x = osg::minimum((double)_warpedDS->GetRasterXSize(), ceil(src_max_x + 1.0));
             src_max_y = osg::minimum((double)_warpedDS->GetRasterYSize(), ceil(src_max_y + 1.0));
-
             int off_x = (int)( src_min_x );
             int off_y = (int)( src_min_y );
             int width  = (int)(src_max_x - src_min_x);
@@ -1870,6 +1860,16 @@ public:
             pixelToGeo(off_x, off_y, read_min_x, read_max_y);
             pixelToGeo(off_x + width, off_y + height, read_max_x, read_min_y);
 
+            // We need to deflate the size of the extents by the width of 0.5 pixel to get the correct extents of the heightfield since it's 
+            // sampled at the center of the pixels and not the outside edges.
+            double half_dx = ((read_max_x - read_min_x)/((double)target_width)) / 2.0;
+            double half_dy = ((read_max_y - read_min_y)/((double)target_height)) / 2.0;
+            read_min_x += half_dx;
+            read_min_y += half_dy;
+            read_max_x -= half_dx;
+            read_max_y -= half_dy;
+
+
             OE_DEBUG << "Read extents " << read_min_x << ", " << read_min_y << " to " << read_max_x << ", " << read_max_y << std::endl;
 
             // Try to find a FLOAT band
@@ -1901,7 +1901,8 @@ public:
             }    
 
             // Delete the heights array, it's been copied into readHF.
-            delete[] heights;
+            delete[] heights;            
+
 
             // Create a GeoHeightField so we can easily sample it.
             GeoHeightField readGeoHeightField(readHF, GeoExtent(this->getProfile()->getSRS(), read_min_x, read_min_y, read_max_x, read_max_y));

@@ -1827,10 +1827,10 @@ public:
             */
 
             // Convert the doubles to integers.  We floor the mins and ceil the maximums to give the widest window possible.
-            src_min_x = floor(src_min_x);
-            src_min_y = floor(src_min_y);
-            src_max_x = ceil(src_max_x);
-            src_max_y = ceil(src_max_y);
+            src_min_x = osg::maximum(0.0, floor(src_min_x - 1.0));
+            src_min_y = osg::maximum(0.0, floor(src_min_y - 1.0));
+            src_max_x = osg::minimum((double)_warpedDS->GetRasterXSize(), ceil(src_max_x + 1.0));
+            src_max_y = osg::minimum((double)_warpedDS->GetRasterYSize(), ceil(src_max_y + 1.0));
 
             int off_x = (int)( src_min_x );
             int off_y = (int)( src_min_y );

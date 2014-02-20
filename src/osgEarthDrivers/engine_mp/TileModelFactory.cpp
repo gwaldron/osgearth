@@ -177,19 +177,22 @@ namespace
         {            
             const MapInfo& mapInfo = _mapf->getMapInfo();
 
+            const osgEarth::ElevationInterpolation& interp =
+                _mapf->getMapOptions().elevationInterpolation().get();
+
             // Request a heightfield from the map, falling back on lower resolution tiles
             // if necessary (fallback=true)
             osg::ref_ptr<osg::HeightField> hf;
             bool isFallback = false;
 
-            if (_hfCache->getOrCreateHeightField( *_mapf, _key, hf, isFallback, SAMPLE_FIRST_VALID, progress))
+            if (_hfCache->getOrCreateHeightField( *_mapf, _key, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
             {
                 _model->_elevationData = TileModel::ElevationData(
                     hf,
                     GeoLocator::createForKey( _key, mapInfo ),
                     isFallback );
 
-                if ( false ) //_opt->normalizeEdges().value() == true )
+                if ( _opt->normalizeEdges().value() == true )
                 {
                     // next, query the neighboring tiles to get adjacency information.
                     for( int x=-1; x<=1; x++ )
@@ -201,7 +204,7 @@ namespace
                                 TileKey nk = _key.createNeighborKey(x, y);
                                 if ( nk.valid() )
                                 {
-                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, hf, isFallback, SAMPLE_FIRST_VALID, progress) )
+                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
                                     {
                                         if ( mapInfo.isPlateCarre() )
                                         {
@@ -218,7 +221,7 @@ namespace
                     // parent too.
                     if ( _key.getLOD() > 0 )
                     {
-                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), hf, isFallback, SAMPLE_FIRST_VALID, progress) )
+                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
                         {
                             if ( mapInfo.isPlateCarre() )
                             {

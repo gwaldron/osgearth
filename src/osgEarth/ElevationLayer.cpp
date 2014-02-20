@@ -532,12 +532,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
         if ( layer->getEnabled() && layer->getVisible() )
         {
-            TileKey mappedKeyToUse = 
+            // calculate the resolution-mapped key (adjusted for tile resolution differential).
+            TileKey mappedKey = 
                 keyToUse.mapResolution(hf->getNumColumns(), layer->getTileSize());
 
             //TODO: not sure whether isKeyValid should use the mapped key..
             if ((layer->getTileSource() == 0L) || 
-                (layer->getTileSource()->hasData(mappedKeyToUse) && layer->isKeyValid(mappedKeyToUse)))
+                (layer->isKeyValid(key) && layer->getTileSource()->hasData(mappedKey)))
             {
                 contenders.push_back(layer);
             }
@@ -583,10 +584,10 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 GeoHeightField& layerHF = heightFields[i];
                 if ( !layerHF.valid() )
                 {
-                    TileKey mappedKeyToUse = 
+                    TileKey mappedKey = 
                         keyToUse.mapResolution(hf->getNumColumns(), contenders[i]->getTileSize());
 
-                    layerHF = contenders[i]->createHeightField(mappedKeyToUse, progress);
+                    layerHF = contenders[i]->createHeightField(mappedKey, progress);
                     if ( !layerHF.valid() )
                     {
                         failed[i] = true;

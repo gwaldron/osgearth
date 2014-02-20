@@ -223,3 +223,9 @@ MapFrame::isCached( const TileKey& key ) const
 
     return true;
 }
+
+const MapOptions&
+MapFrame::getMapOptions() const
+{
+    return _map->getMapOptions();
+}

@@ -24,7 +24,6 @@ _mapf( mapFrame )
 void
 ElevationQuery::postCTOR()
 {
-    _tileSize         = 0;
     _maxLevelOverride = -1;
     _queries          = 0.0;
     _totalTime        = 0.0;  
@@ -34,18 +33,9 @@ ElevationQuery::postCTOR()
 void
 ElevationQuery::sync()
 {
-    if ( _mapf.sync() || _tileSize == 0  )
+    if ( _mapf.needsSync() )
     {
-        _tileSize = 0;        
-
-        for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
-        {
-            // we need the maximum tile size
-            int layerTileSize = i->get()->getTileSize();
-            if ( layerTileSize > _tileSize )
-                _tileSize = layerTileSize;
-        }     
-
+        _mapf.sync();
         _cache.clear();
     }
 }
@@ -255,15 +245,18 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     {
         // this means there are no heightfields.
         out_elevation = 0.0;
-        return true;
+        return true;        
     }
+
+    // tile size (resolution of elevation tiles)
+    unsigned tileSize = std::max(_mapf.getMapOptions().elevationTileSize().get(), 2u);
 
     //This is the max resolution that we actually have data at this point
     unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS(), _mapf.getProfile());
 
     if (desiredResolution > 0.0)
     {
-        unsigned int desiredLevel = _mapf.getProfile()->getLevelOfDetailForHorizResolution( desiredResolution, _tileSize );
+        unsigned int desiredLevel = _mapf.getProfile()->getLevelOfDetailForHorizResolution( desiredResolution, tileSize );
         if (desiredLevel < bestAvailLevel) bestAvailLevel = desiredLevel;
     }
 
@@ -302,8 +295,9 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         else
         {
             // Create it            
-            osg::ref_ptr< osg::HeightField > hf = new osg::HeightField;
-            hf->allocate( _tileSize, _tileSize );
+            osg::ref_ptr<osg::HeightField> hf = new osg::HeightField();
+            hf->allocate( tileSize, tileSize );
+
             // Initialize the heightfield to nodata
             for (unsigned int i = 0; i < hf->getFloatArray()->size(); i++)
             {
@@ -331,12 +325,12 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
             }
             else
             {                               
-                result = false;                     
+                result = false;
             }
         }
 
         if (!result)
-        {                   
+        {
             key = key.createParentKey();                        
             if (!key.valid())
             {

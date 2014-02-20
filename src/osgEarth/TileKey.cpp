@@ -212,33 +212,14 @@ TileKey::mapResolution(unsigned targetSize,
         targetSize = 2;
 
     double width = _extent.width();
-    double cellSize = width / (double)(targetSize-1);
+    double dx = width / (double)(targetSize-1);
 
     int lod = (int)getLOD()-1;
     while(lod > minimumLOD &&
-          width/(double)(sourceSize-1) <= cellSize)
+          dx  >= width/(double)(sourceSize-1))
     {
         width *= 2.0;
         --lod;
     }
     return createAncestorKey( std::max(lod+1, (int)minimumLOD) );
 }
-
-#if 0
-    // round the target size up to the next power of 2.
-    unsigned potTargetSize = (unsigned)nextPowerOf2((int)targetSize);
-
-    // same or higher? we're good
-    if ( potTargetSize >= sourceSize )
-        return *this;
-
-    // how many licks?
-    int lod = (int)getLOD();
-    while(potTargetSize < sourceSize && lod >= 0)
-    {
-        potTargetSize << 1;
-        --lod;
-    }
-    return createAncestorKey( std::max(lod, (int)minimumLOD) );
-}
-#endif

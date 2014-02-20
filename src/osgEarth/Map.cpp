@@ -1085,7 +1085,6 @@ Map::calculateProfile()
     }
 }
 
-
 osg::HeightField*
 Map::createReferenceHeightField(const TileKey& key,
                                 bool           expressHeightsAsHAE) const

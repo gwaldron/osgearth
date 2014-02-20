@@ -73,6 +73,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 osg::ref_ptr<osg::HeightField>& hf,
                 bool&                           isFallback,
                 ElevationSamplePolicy           samplePolicy,
+                ElevationInterpolation          interp,
                 ProgressCallback*               progress )
         {                
             // default
@@ -105,7 +106,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
             // Find the parent tile and start with its heightfield.
             osg::ref_ptr<TileNode> parentNode;
-            if ( _tiles->get(key.createParentKey(), parentNode) )
+            TileKey parentKey = key.createParentKey();
+            if ( _tiles->get(parentKey, parentNode) )
             {
                 const TileModel* parentModel = parentNode->getTileModel();
                 if ( parentModel )
@@ -115,8 +117,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                     {
                         hf = HeightFieldUtils::createSubSample(
                             parentHF,
-                            parentNode->getKey().getExtent(),
-                            key.getExtent());
+                            parentKey.getExtent(),
+                            key.getExtent(),
+                            interp );
                     }
                 }
             }

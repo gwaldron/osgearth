@@ -1730,7 +1730,8 @@ public:
     }
 
 
-    osg::HeightField* createHeightField( const TileKey&        key,
+#if 0
+    osg::HeightField* creatHeightField( const TileKey&        key,
                                          ProgressCallback*     progress)
     {
         if (key.getLevelOfDetail() > _maxDataLevel)
@@ -1781,6 +1782,162 @@ public:
         }
         return hf.release();
     }
+
+#else
+     osg::HeightField* createHeightField( const TileKey&        key,
+                                         ProgressCallback*     progress)
+    {
+        if (key.getLevelOfDetail() > _maxDataLevel)
+        {
+            //OE_NOTICE << "Reached maximum data resolution key=" << key.getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
+            return NULL;
+        }
+
+        GDAL_SCOPED_LOCK;
+
+        int tileSize = _options.tileSize().value();
+
+        //Allocate the heightfield
+        osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
+        hf->allocate(tileSize, tileSize);
+        for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
+
+        if (intersects(key))
+        {
+            //Get the extents of the tile
+            double xmin, ymin, xmax, ymax;
+            key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+
+            // Compute the intersection of the incoming key with the data extents of the dataset
+            osgEarth::GeoExtent intersection = key.getExtent().intersectionSameSRS( _extents );
+            
+            // Determine the read window
+            double src_min_x, src_min_y, src_max_x, src_max_y;
+            // Get the pixel coordiantes of the intersection
+            geoToPixel( intersection.xMin(), intersection.yMax(), src_min_x, src_min_y);
+            geoToPixel( intersection.xMax(), intersection.yMin(), src_max_x, src_max_y);
+
+            //TODO:  Apply the half pixel offset here?
+             //Apply half pixel offset
+            /*
+            src_min_x-= 0.5;
+            src_max_x-= 0.5;
+            src_max_y-= 0.5;
+            src_min_y-= 0.5;
+            */
+
+            // Convert the doubles to integers.  We floor the mins and ceil the maximums to give the widest window possible.
+            src_min_x = floor(src_min_x);
+            src_min_y = floor(src_min_y);
+            src_max_x = ceil(src_max_x);
+            src_max_y = ceil(src_max_y);
+
+            int off_x = (int)( src_min_x );
+            int off_y = (int)( src_min_y );
+            int width  = (int)(src_max_x - src_min_x);
+            int height = (int)(src_max_y - src_min_y);      
+
+            int rasterWidth = _warpedDS->GetRasterXSize();
+            int rasterHeight = _warpedDS->GetRasterYSize();
+            if (off_x + width > rasterWidth || off_y + height > rasterHeight)
+            {
+                OE_WARN << LC << "Read window outside of bounds of dataset.  Source Dimensions=" << rasterWidth << "x" << rasterHeight << " Read Window=" << off_x << ", " << off_y << " " << width << "x" << height << std::endl;
+            }
+
+            // Compute the offsets in geo coordinates of the intersection from the TileKey
+            double offset_left = intersection.xMin() - xmin;            
+            double offset_top = ymax - intersection.yMax();
+
+            // Don't read anything greater than a dimension of 1000.  If the source window is really large it will use
+            // GDAL's nearest neighbor sampling.  If the source window is < 1000x1000 then the exact source data is read and 
+            // resampled.  This make sure that once get into high enough resolution data the verts don't move around on you due to sampling.
+            int max_read_dimensions = 1000;
+            int target_width = osg::minimum( max_read_dimensions, width );
+            int target_height = osg::minimum( max_read_dimensions, height );
+
+            //Return if parameters are out of range.
+            if (width <= 0 || height <= 0 || target_width <= 0 || target_height <= 0)
+            {
+                return 0;
+            }            
+
+            OE_DEBUG << LC << "Reading key " << key.str() << std::endl;
+            OE_DEBUG << LC << "ReadWindow " << off_x << "," << off_y << " " << width << "x" << height << std::endl;
+            OE_DEBUG << LC << "DestWindowSize " << target_width << "x" << target_height << std::endl;                        
+
+            // Figure out the true pixel extents of what we read
+            double read_min_x, read_min_y, read_max_x, read_max_y;
+            pixelToGeo(off_x, off_y, read_min_x, read_max_y);
+            pixelToGeo(off_x + width, off_y + height, read_max_x, read_min_y);
+
+            OE_DEBUG << "Read extents " << read_min_x << ", " << read_min_y << " to " << read_max_x << ", " << read_max_y << std::endl;
+
+            // Try to find a FLOAT band
+            GDALRasterBand* band = findBandByDataType(_warpedDS, GDT_Float32);
+            if (band == NULL)
+            {
+                // Just get first band
+                band = _warpedDS->GetRasterBand(1);
+            }
+
+            float *heights = new float[target_width * target_height];
+            for (unsigned int i = 0; i < target_width * target_height; i++)
+            {                
+                heights[i] = NO_DATA_VALUE;
+            }            
+            band->RasterIO(GF_Read, off_x, off_y, width, height, heights, target_width, target_height, GDT_Float32, 0, 0);
+
+            // Now create a GeoHeightField that we can sample from.  This heightfield only contains the portion that was actually read from the dataset
+            osg::ref_ptr< osg::HeightField > readHF = new osg::HeightField();
+            readHF->allocate( target_width, target_height );
+            for (unsigned int c = 0; c < target_width; c++)
+            {
+                for (unsigned int r = 0; r < target_height; r++)
+                {
+                    unsigned inv_r = target_height - r -1;
+                    float h = heights[r * target_width + c];
+                    readHF->setHeight(c, inv_r, h );
+                }                
+            }    
+
+            // Delete the heights array, it's been copied into readHF.
+            delete[] heights;
+
+            // Create a GeoHeightField so we can easily sample it.
+            GeoHeightField readGeoHeightField(readHF, GeoExtent(this->getProfile()->getSRS(), read_min_x, read_min_y, read_max_x, read_max_y));
+
+
+            // Iterate over the output heightfield and sample the data that was read into it.            
+            double dx = (xmax - xmin) / (tileSize-1);
+            double dy = (ymax - ymin) / (tileSize-1);
+
+            for (int c = 0; c < tileSize; ++c)
+            {
+                double geoX = xmin + (dx * (double)c);
+                for (int r = 0; r < tileSize; ++r)
+                {
+                    double geoY = ymin + (dy * (double)r);
+
+                    float h = NO_DATA_VALUE;
+                    if (readGeoHeightField.getExtent().contains(geoX, geoY))
+                    {
+                        float elevation = NO_DATA_VALUE;
+                        readGeoHeightField.getElevation(readGeoHeightField.getExtent().getSRS(),
+                                                        geoX, geoY,
+                                                        *_options.interpolation(), 
+                                                        readGeoHeightField.getExtent().getSRS(),
+                                                        h);                        
+                    }                    
+                    hf->setHeight(c, r, h);
+                }
+            }
+        }
+        return hf.release();
+    }
+
+#endif
+
+
 
     bool intersects(const TileKey& key)
     {

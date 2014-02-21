@@ -61,13 +61,15 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
     int maxLevel = 0;
     for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
     {
+        const ElevationLayer* layer = i->get();
+
         // skip disabled layers
-        if ( !i->get()->getEnabled() || !i->get()->getVisible() )
+        if ( !layer->getEnabled() || !layer->getVisible() )
             continue;
 
         int layerMaxLevel = 0;
 
-        osgEarth::TileSource* ts = i->get()->getTileSource();
+        osgEarth::TileSource* ts = layer->getTileSource();
         if ( ts )
         {
             // TileSource is good; check for optional data extents:
@@ -94,19 +96,19 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
             }
 
             // cap the max to the layer's express max level (if set).
-            if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
+            if ( layer->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
             {
-                layerMaxLevel = std::min( layerMaxLevel, (int)(*i->get()->getTerrainLayerRuntimeOptions().maxLevel()) );
+                layerMaxLevel = std::min( layerMaxLevel, (int)(*layer->getTerrainLayerRuntimeOptions().maxLevel()) );
             }
         }
         else
         {
             // no TileSource? probably in cache-only mode. Use the layer max (or its default).
-            layerMaxLevel = (int)(i->get()->getTerrainLayerRuntimeOptions().maxLevel().value());
+            layerMaxLevel = (int)(layer->getTerrainLayerRuntimeOptions().maxLevel().value());
         }
 
-        // Adjust for the tile size resolution differential.
-        int layerTileSize = i->get()->getTileSize();
+        // Adjust for the tile size resolution differential, if supported by the layer.
+        int layerTileSize = layer->getTileSize();
         if (layerTileSize > targetTileSizePOT)
         {
             int oldMaxLevel = layerMaxLevel;
@@ -122,66 +124,6 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
             maxLevel = layerMaxLevel;
         }
     }
-
-#if 0
-    // need to check the image layers too, because if image layers go deeper than elevation layers,
-    // upsampling occurs that can change the formation of the terrain skin.
-    // NOTE: this doesn't happen in "triangulation" interpolation mode.
-    if ( _mapf.getMapInfo().getElevationInterpolation() != osgEarth::INTERP_TRIANGULATE )
-    {
-        for( ImageLayerVector::const_iterator i = _mapf.imageLayers().begin(); i != _mapf.imageLayers().end(); ++i )
-        {
-            // skip disabled layers
-            if ( !i->get()->getEnabled() )
-                continue;
-
-            unsigned int layerMax = 0;
-            osgEarth::TileSource* ts = i->get()->getTileSource();
-            if ( ts )
-            {
-                // TileSource is good; check for optional data extents:
-                if ( ts->getDataExtents().size() > 0 )
-                {
-                    osg::Vec3d tsCoord(x, y, 0);
-                    const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
-                    if ( srs && tsSRS )
-                        srs->transform(tsCoord, tsSRS, tsCoord);
-                    else
-                        tsSRS = srs;
-                    
-                    for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
-                    {
-                        if (j->maxLevel().isSet()  && j->maxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
-                        {
-                            layerMax = j->maxLevel().value();
-                        }
-                    }
-
-                    // Need to convert the layer max of this TileSource to that of the actual profile
-                    layerMax = profile->getEquivalentLOD( ts->getProfile(), layerMax );            
-                }        
-                
-                if ( i->get()->getTerrainLayerRuntimeOptions().maxLevel().isSet() )
-                {
-                    layerMax = std::min( layerMax, *i->get()->getTerrainLayerRuntimeOptions().maxLevel() );
-                }
-            }
-            else
-            {
-                // no TileSource? probably in cache-only mode. Use the layer max (or its default).
-                layerMax = i->get()->getTerrainLayerRuntimeOptions().maxLevel().value();
-            }
-
-            if (layerMax > maxLevel)
-                maxLevel = layerMax;
-        }
-    }
-
-    if (maxLevel == 0) 
-    {
-        //This means we had no data extents on any of our layers and no max levels are set
-    }
-#endif
 
     return maxLevel;
 }

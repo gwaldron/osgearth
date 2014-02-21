@@ -501,6 +501,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     
     // Collect the valid layers for this tile.
     ElevationLayerVector contenders;
+    ElevationLayerVector offsets;
     for(ElevationLayerVector::const_reverse_iterator i = this->rbegin(); i != this->rend(); ++i)
     {
         ElevationLayer* layer = i->get();
@@ -516,13 +517,16 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
             if ((layer->getTileSource() == 0L) || 
                 (layer->isKeyInRange(key) && layer->getTileSource()->hasData(mappedKey)))
             {
-                contenders.push_back(layer);
+                if (layer->isOffset())
+                    offsets.push_back(layer);
+                else
+                    contenders.push_back(layer);
             }
         }
     }
 
     // nothing? bail out.
-    if ( contenders.empty() )
+    if ( contenders.empty() && offsets.empty() )
     {
         return false;
     }
@@ -538,7 +542,9 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     
     // We will load the actual heightfields on demand. We might not need them all.
     GeoHeightFieldVector heightFields(contenders.size());
-    std::vector<bool>    failed      (contenders.size(), false);
+    GeoHeightFieldVector offsetFields(offsets.size());
+    std::vector<bool>    heightFailed (contenders.size(), false);
+    std::vector<bool>    offsetFailed(offsets.size(), false);
 
     const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
 
@@ -554,7 +560,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
             for(int i=0; i<contenders.size() && !resolved; ++i)
             {
-                if ( failed[i] )
+                if ( heightFailed[i] )
                     continue;
 
                 GeoHeightField& layerHF = heightFields[i];
@@ -566,7 +572,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     layerHF = contenders[i]->createHeightField(mappedKey, progress);
                     if ( !layerHF.valid() )
                     {
-                        failed[i] = true;
+                        heightFailed[i] = true;
                         continue;
                     }
                 }
@@ -576,10 +582,34 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     elevation != NO_DATA_VALUE)
                 {
                     resolved = true;
-                    if (contenders[i]->isOffset())
-                        hf->setHeight(c, r, hf->getHeight(c, r) + elevation);
-                    else
-                        hf->setHeight(c, r, elevation);
+                    hf->setHeight(c, r, elevation);
+                }
+            }
+
+            for(int i=offsets.size()-1; i>=0; --i)
+            {
+                if ( offsetFailed[i] )
+                    continue;
+
+                GeoHeightField& layerHF = offsetFields[i];
+                if ( !layerHF.valid() )
+                {
+                    TileKey mappedKey = 
+                        keyToUse.mapResolution(hf->getNumColumns(), offsets[i]->getTileSize());
+
+                    layerHF = offsets[i]->createHeightField(mappedKey, progress);
+                    if ( !layerHF.valid() )
+                    {
+                        offsetFailed[i] = true;
+                        continue;
+                    }
+                }
+
+                float elevation = 0.0f;
+                if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
+                    elevation != NO_DATA_VALUE)
+                {
+                    hf->getHeight(c, r) += elevation;
                 }
             }
         }

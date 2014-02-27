@@ -415,7 +415,9 @@ CubeSpatialReference::_init()
     _key.first      = "unified-cube";
     _name           = "Unified Cube";
 
-    // custom units.
+    // Custom units. The big number there roughly converts [0..1] to meters
+    // on a spheroid with WGS84-ish radius. Not perfect but close enough for
+    // the purposes of this class
     _units = Units("Cube face", "cube", Units::TYPE_LINEAR, 42949672.96/4.0);
 }
 

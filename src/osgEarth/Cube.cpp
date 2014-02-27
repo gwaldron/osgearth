@@ -414,6 +414,9 @@ CubeSpatialReference::_init()
     _is_geographic  = false;
     _key.first      = "unified-cube";
     _name           = "Unified Cube";
+
+    // custom units.
+    _units = Units("Cube face", "cube", Units::TYPE_LINEAR, 42949672.96);
 }
 
 GeoLocator*
@@ -692,13 +695,13 @@ UnifiedCubeProfile::transformGcsExtentOnFace( const GeoExtent& gcsExtent, int fa
 }
 
 void
-UnifiedCubeProfile::getIntersectingTiles(
-    const GeoExtent& remoteExtent,
-    std::vector<TileKey>& out_intersectingKeys ) const
+UnifiedCubeProfile::getIntersectingTiles(const GeoExtent&      remoteExtent,
+                                         unsigned              localLOD,
+                                         std::vector<TileKey>& out_intersectingKeys ) const
 {
-    if ( getSRS()->isEquivalentTo( remoteExtent.getSRS() ) )
+    if ( getSRS()->isHorizEquivalentTo( remoteExtent.getSRS() ) )
     {
-        addIntersectingTiles( remoteExtent, out_intersectingKeys );
+        addIntersectingTiles( remoteExtent, localLOD, out_intersectingKeys );
     }
     else
     {
@@ -718,9 +721,9 @@ UnifiedCubeProfile::getIntersectingTiles(
             if ( partExtent_gcs.isValid() )
             {
                 GeoExtent partExtent = transformGcsExtentOnFace( partExtent_gcs, face );
-                addIntersectingTiles( partExtent, out_intersectingKeys );
+                addIntersectingTiles( partExtent, localLOD, out_intersectingKeys );
             }
-        }
+        }        
     }
 }
 

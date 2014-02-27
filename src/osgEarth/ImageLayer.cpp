@@ -446,7 +446,7 @@ ImageLayer::createImageInNativeProfile(const TileKey&    key,
     {
         // find the intersection of keys.
         std::vector<TileKey> nativeKeys;
-        nativeProfile->getIntersectingTiles(key.getExtent(), nativeKeys);
+        nativeProfile->getIntersectingTiles(key, nativeKeys);
 
         // build a mosaic of the images from the native profile keys:
         bool foundAtLeastOneRealTile = false;
@@ -649,7 +649,7 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
 
     // Get a set of layer tiles that intersect the requested extent.
     std::vector<TileKey> intersectingKeys;
-    getProfile()->getIntersectingTiles( ext, intersectingKeys );
+    getProfile()->getIntersectingTiles( key, intersectingKeys );
 
     if ( intersectingKeys.size() > 0 )
     {

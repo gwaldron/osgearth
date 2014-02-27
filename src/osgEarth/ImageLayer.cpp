@@ -437,7 +437,7 @@ ImageLayer::createImageInNativeProfile(const TileKey&    key,
         return GeoImage::INVALID;
     }
 
-    if ( key.getProfile()->isEquivalentTo(nativeProfile) )
+    if ( key.getProfile()->isHorizEquivalentTo(nativeProfile) )
     {
         // requested profile matches native profile, move along.
         result = createImageInKeyProfile( key, progress );
@@ -507,7 +507,16 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
 
     OE_DEBUG << LC << "create image for \"" << key.str() << "\", ext= "
         << key.getExtent().toString() << std::endl;
-
+    
+    // Check the layer L2 cache first
+    if ( _memCache.valid() )
+    {
+        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
+        ReadResult result = bin->readObject(key.str(), 0);
+        if ( result.succeeded() )
+            return GeoImage(static_cast<osg::Image*>(result.releaseObject()), key.getExtent());
+        //_memCache->dumpStats(key.getProfile()->getFullSignature());
+    }
 
     // locate the cache bin for the target profile for this layer:
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
@@ -556,7 +565,15 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         ImageUtils::normalizeImage( result.getImage() );
     }
 
-    // If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.
+    // memory cache first:
+    if ( result.valid() && _memCache.valid() )
+    {
+        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
+        bin->write(key.str(), result.getImage());
+    }
+
+    // If we got a result, the cache is valid and we are caching in the map profile,
+    // write to the map cache.
     if (result.valid()  &&
         cacheBin        && 
         getCachePolicy().isCacheWriteable() )

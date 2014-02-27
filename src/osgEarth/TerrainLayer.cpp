@@ -190,6 +190,14 @@ TerrainLayer::init()
     
     initializeCachePolicy( _dbOptions.get() );
     storeProxySettings( _dbOptions.get() );
+
+    // Create an L2 mem cache that sits atop the main cache, if necessary.
+    // For now: use the same L2 cache size at the driver.
+    int memCacheSize = _initOptions.driver()->L2CacheSize().get();
+    if ( memCacheSize > 0 )
+    {
+        _memCache = new MemCache(memCacheSize);
+    }
 }
 
 void

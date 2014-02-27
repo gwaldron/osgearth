@@ -362,7 +362,17 @@ ElevationLayer::createHeightField(const TileKey&    key,
         return GeoHeightField::INVALID;
     }
 
-    // See if there's a cache.
+    // Check the memory cache first
+    if ( _memCache.valid() )
+    {
+        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
+        ReadResult result = bin->readObject(key.str(), 0);
+        if ( result.succeeded() )
+            return GeoHeightField(static_cast<osg::HeightField*>(result.releaseObject()), key.getExtent());
+        //_memCache->dumpStats(key.getProfile()->getFullSignature());
+    }
+
+    // See if there's a persistent cache.
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
     // validate that we have either a valid tile source, or we're cache-only.
@@ -422,6 +432,13 @@ ElevationLayer::createHeightField(const TileKey&    key,
             OE_WARN << LC << "Driver " << getTileSource()->getName() << " returned an illegal heightfield" << std::endl;
             result = 0L;
         }
+    }
+
+    // memory cache first:
+    if ( result && _memCache.valid() )
+    {
+        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
+        bin->write(key.str(), result.get());
     }
 
     // cache if necessary

@@ -32,6 +32,8 @@
 
 namespace osgEarth
 {
+    class MemCache;
+
     /**
      * Initialization (and serializable) options for a terrain layer.
      */
@@ -388,6 +390,7 @@ namespace osgEarth
         bool                           _tileSourceInitFailed;
         unsigned                       _tileSize;  
         osg::ref_ptr<osgDB::Options>   _dbOptions;
+        osg::ref_ptr<MemCache>         _memCache;
 
         mutable osg::ref_ptr<const Profile> _profile;
 

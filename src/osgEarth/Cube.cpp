@@ -416,7 +416,7 @@ CubeSpatialReference::_init()
     _name           = "Unified Cube";
 
     // custom units.
-    _units = Units("Cube face", "cube", Units::TYPE_LINEAR, 42949672.96);
+    _units = Units("Cube face", "cube", Units::TYPE_LINEAR, 42949672.96/4.0);
 }
 
 GeoLocator*

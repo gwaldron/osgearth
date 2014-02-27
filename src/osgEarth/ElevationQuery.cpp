@@ -89,10 +89,7 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
                     {
                         layerMaxLevel = j->maxLevel().value();
                     }
-                }
-
-                // Need to convert the layer max of this TileSource to that of the actual profile
-                layerMaxLevel = profile->getEquivalentLOD( ts->getProfile(), layerMaxLevel );            
+                }            
             }
 
             // cap the max to the layer's express max level (if set).
@@ -100,6 +97,9 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
             {
                 layerMaxLevel = std::min( layerMaxLevel, (int)(*layer->getTerrainLayerRuntimeOptions().maxLevel()) );
             }
+
+            // Need to convert the layer max of this TileSource to that of the actual profile
+            layerMaxLevel = profile->getEquivalentLOD( ts->getProfile(), layerMaxLevel );
         }
         else
         {

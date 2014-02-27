@@ -689,7 +689,7 @@ Profile::getIntersectingTiles(const TileKey& key, std::vector<TileKey>& out_inte
     {
         // figure out which LOD in the local profile is a best match for the LOD
         // in the source LOD in terms of resolution.
-        unsigned localLOD = getEquivalentLOD(key.getProfile(), key.getLOD());
+        unsigned localLOD = getEquivalentLOD(key.getProfile(), key.getLOD());        
 
         getIntersectingTiles(key.getExtent(), localLOD, out_intersectingKeys);
 
@@ -735,7 +735,7 @@ Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
         return rhsLOD;
 
     double rhsWidth, rhsHeight;
-    rhsProfile->getTileDimensions( rhsLOD, rhsWidth, rhsHeight );
+    rhsProfile->getTileDimensions( rhsLOD, rhsWidth, rhsHeight );    
 
     // safety catch
     if ( osg::equivalent(rhsWidth, 0.0) || osg::equivalent(rhsHeight, 0.0) )
@@ -745,19 +745,33 @@ Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
     }
 
     const SpatialReference* rhsSRS = rhsProfile->getSRS();
-    double rhsTargetHeight = rhsSRS->transformUnits( rhsHeight, getSRS() );
+    double rhsTargetHeight = rhsSRS->transformUnits( rhsHeight, getSRS() );    
     
     int currLOD = 0;
     int destLOD = currLOD;
 
-    //Find the LOD that most closely matches the area of the incoming key without going under.
+    double delta = DBL_MAX;
+
+    // Find the LOD that most closely matches the resolution of the incoming key.
+    // We use the closest (under or over) so that you can match back and forth between profiles and be sure to get the same results each time.
     while( true )
     {
+        double prevDelta = delta;
+
         currLOD++;
         double w, h;
         getTileDimensions(currLOD, w, h);
-        if ( h < rhsTargetHeight )
+        delta = osg::absolute( h - rhsTargetHeight );
+        if (delta < prevDelta)
+        {
+            // We're getting closer so keep going
+            destLOD = currLOD;
+        }
+        else
+        {
+            // We are further away from the previous lod so stop.
             break;
+        }        
         destLOD = currLOD;
     }
     return destLOD;

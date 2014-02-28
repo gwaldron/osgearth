@@ -122,6 +122,10 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 +------------------------------------+--------------------------------------------------------------------+
 | ``--max-level level``              | max LOD level for tiles (all layers; default=inf)                  |
 +------------------------------------+--------------------------------------------------------------------+
+| ``--min-level level``              | min LOD level for tiles (all layers; default=0)                    |
++------------------------------------+--------------------------------------------------------------------+
+| ``--root-key z/x/y``               | initial tile to start processing                                   |
++------------------------------------+--------------------------------------------------------------------+
 | ``--out-earth earthfile``          | export an earth file referencing the new repo                      |
 +------------------------------------+--------------------------------------------------------------------+
 | ``--ext extension``                | overrides the image file extension (e.g. jpg)                      |
@@ -131,7 +135,7 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 | ``--keep-empties``                 | writes out fully transparent image tiles (normally discarded)      |
 +------------------------------------+--------------------------------------------------------------------+
 | ``--continue-single-color``        | continues to subdivide single color tiles,                         |
-|                                    | subdivision typicall stops on single color images                  |
+|                                    | subdivision typicaly stops on single color images                  |
 +------------------------------------+--------------------------------------------------------------------+
 | ``--db-options``                   | db options string to pass to the image writer                      |
 |                                    | in quotes (e.g., "JPEG_QUALITY 60")                                |

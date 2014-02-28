@@ -65,9 +65,11 @@ TaskRequest::wasCanceled() const
 
 //------------------------------------------------------------------------
 
-TaskRequestQueue::TaskRequestQueue() :
+TaskRequestQueue::TaskRequestQueue( int maxTasks ) :
 osg::Referenced( true ),
-_done( false )
+_done( false ),
+_availableTasks( maxTasks ),
+_limitTasks( maxTasks > 0 )
 {
 }
 
@@ -94,6 +96,10 @@ TaskRequestQueue::add( TaskRequest* request )
     if ( !request->getProgressCallback() )
         request->setProgressCallback( new ProgressCallback() );
 
+    // limit number of tasks in queue if requested
+    // NOTE: This can cause deadlock if tasks add tasks to the queue.
+    if ( _limitTasks ) _availableTasks.acquire();
+
     ScopedLock<Mutex> lock(_mutex);
 
     // insert by priority.
@@ -118,6 +124,9 @@ TaskRequestQueue::get()
     {
         return 0L;
     }
+
+    // if were limiting tasks, a new slot is available
+    if ( _limitTasks ) _availableTasks.release();
 
     osg::ref_ptr<TaskRequest> next = _requests.begin()->second.get(); //_requests.front();
     _requests.erase( _requests.begin() ); //_requests.pop_front();
@@ -233,13 +242,13 @@ TaskThread::cancel()
 
 //------------------------------------------------------------------------
 
-TaskService::TaskService( const std::string& name, int numThreads ):
+TaskService::TaskService( const std::string& name, int numThreads, int maxTasks ):
 osg::Referenced( true ),
 _lastRemoveFinishedThreadsStamp(0),
 _name(name),
 _numThreads( 0 )
 {
-    _queue = new TaskRequestQueue();
+    _queue = new TaskRequestQueue( maxTasks );
     setNumThreads( numThreads );
 }
 

@@ -530,6 +530,43 @@ namespace osgEarth { namespace Threading
         osgEarth::Threading::ReadWriteMutex  _mutex;
     };
 
+
+    /* Basic semaphore built on a condition variable. */
+    /* NOTE: Ideally this would be a thin cross-platform wrapper around
+    *  a platform specific semaphore. */
+    class Semaphore
+    {
+    public:
+        /* Initialize the semaphore with a value. */
+        explicit Semaphore( int initialValue )
+        : _value( initialValue )
+        {
+        }
+        /* Decrement the value.  If the value is zero, then wait until
+        *  it can be decremented.  Otherwise return. 
+        *  I.e. acquire a limited resource. */
+        void acquire()
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+            while ( _value <= 0 )
+                _cond.wait(&_m);
+            --_value;
+        }
+        /* Increment the value.  Signal an acquiring thread that the
+        * value can be decremented. 
+        * I.e. Release a limited resource. */
+        void release()
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_m);
+            ++_value;
+            _cond.signal();
+        }
+    private:
+        int _value;
+        OpenThreads::Mutex _m;
+        OpenThreads::Condition _cond;
+    };
+
 } } // namepsace osgEarth::Threading
 
 

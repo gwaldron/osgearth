@@ -41,6 +41,23 @@ using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_package] "
 
+/**
+* Convert elapsed time in seconds to HH::MM:SS.S
+*/
+// NOTE: Should be placed somewhere better.
+std::string toHMS( double elapsed )
+{
+    using namespace std;
+    std::ostringstream os;
+    int hours = elapsed/3600;
+    int minutes = (elapsed-hours*3600)/60;
+    double seconds = (elapsed-hours*3600-minutes*60);
+    os << setw(2) << setfill('0') << hours << ":";
+    os << setw(2) << setfill('0') << minutes << ":"; 
+    os << setw(4) << fixed << setprecision(1) << seconds;
+    return os.str();
+}
+
 
 /** Prints an error message, usage information, and returns -1. */
 int
@@ -60,6 +77,8 @@ usage( const std::string& msg = "" )
         << "            --out <path>                    : root output folder of the TMS repo (required)\n"
         << "            [--bounds xmin ymin xmax ymax]* : bounds to package (in map coordinates; default=entire map)\n"
         << "            [--max-level <num>]             : max LOD level for tiles (all layers; default=inf)\n"
+        << "            [--min-level <num>]             : min LOD level for tiles (all layers; default=0)\n"
+        << "            [--root-key <z/x/y>]            : initial tile to start processing\n"
         << "            [--out-earth <earthfile>]       : export an earth file referencing the new repo\n"
         << "            [--ext <extension>]             : overrides the image file extension (e.g. jpg)\n"
         << "            [--overwrite]                   : overwrite existing tiles\n"
@@ -154,10 +173,18 @@ makeTMS( osg::ArgumentParser& args )
     unsigned maxLevel = ~0;
     args.read( "--max-level", maxLevel );
 
+    // min level to start processing
+    unsigned minLevel = 0;
+    args.read( "--min-level", minLevel );
+
     // whether to keep 'empty' tiles
     bool keepEmpties = args.read("--keep-empties");    
 
     bool continueSingleColor = args.read("--continue-single-color");
+
+    // get root key to start processing at
+    std::string rootKeyStr;
+    args.read( "--root-key", rootKeyStr );
 
     // load up the map
     osg::ref_ptr<MapNode> mapNode = MapNode::load( args );
@@ -171,6 +198,26 @@ makeTMS( osg::ArgumentParser& args )
 
     Map* map = mapNode->getMap();
 
+    // With the map in hand, create the rootKey if needed.
+    TileKey rootKey;
+    if ( !rootKeyStr.empty() )
+    {
+        unsigned lod;
+        unsigned tx;
+        unsigned ty;
+        std::istringstream is( rootKeyStr );
+        is >> lod;
+        is.ignore();
+        is >> tx;
+        is.ignore();
+        is >> ty;
+        unsigned w,h;
+        map->getProfile()->getNumTiles( lod, w, h );
+        // NOTE: Reverse tile y as it will be reversed again in process(Image/Elev)Layer.
+        //       The reported key written will be reversed from what was requested.
+        rootKey = TileKey( lod, tx, h-ty-1, map->getProfile() );
+    }
+
     // fire up a packager:
     TMSPackager packager( map->getProfile(), options);
 
@@ -181,6 +228,8 @@ makeTMS( osg::ArgumentParser& args )
 
     if ( maxLevel != ~0 )
         packager.setMaxLevel( maxLevel );
+    if ( minLevel != 0 )
+        packager.setMinLevel( minLevel );
 
     if (bounds.size() > 0)
     {
@@ -226,7 +275,7 @@ makeTMS( osg::ArgumentParser& args )
 
             osg::ref_ptr< ConsoleProgressCallback > progress = new ConsoleProgressCallback();
             std::string layerRoot = osgDB::concatPaths( rootFolder, layerFolder );
-            TMSPackager::Result r = packager.package( layer, layerRoot,  progress, extension );
+            TMSPackager::Result r = packager.package( layer, layerRoot, rootKey, progress, extension );
             if ( r.ok )
             {
                 // save to the output map if requested:
@@ -275,8 +324,9 @@ makeTMS( osg::ArgumentParser& args )
                 OE_NOTICE << LC << "Packaging elevation layer \"" << layerFolder << "\"" << std::endl;
             }
 
+            osg::ref_ptr< ConsoleProgressCallback > progress = new ConsoleProgressCallback();
             std::string layerRoot = osgDB::concatPaths( rootFolder, layerFolder );
-            TMSPackager::Result r = packager.package( layer, layerRoot );
+            TMSPackager::Result r = packager.package( layer, layerRoot, rootKey, progress );
 
             if ( r.ok )
             {
@@ -335,9 +385,19 @@ main(int argc, char** argv)
 
     HTTPClient::setUserAgent( "osgearth_package/2.2" );
 
+    osg::Timer* timer = osg::Timer::instance();
+    osg::Timer_t start_t = timer->tick();
+
+    int result;
     if ( args.read("--tms") )
-        return makeTMS(args);
+        result = makeTMS(args);
 
     else
         return usage();
+
+    osg::Timer_t end_t = timer->tick();
+    double elapsed = osg::Timer::instance()->delta_s( start_t, end_t );
+    OE_NOTICE << LC << "Completed in " << toHMS(elapsed) << std::endl;
+
+    return result;
 }

@@ -27,6 +27,15 @@
 
 namespace osgEarth { namespace Util
 {
+    template< typename Ty >
+    struct greater
+    {
+        bool operator()(const Ty& lhs, const Ty& rhs) const
+        { 
+            return rhs < lhs;
+        }    
+    };
+
     /**
      * Utility that reads tiles from an ImageLayer or ElevationLayer and stores
      * the resulting data in a disk-based TMS (Tile Map Service) repository.
@@ -64,6 +73,12 @@ namespace osgEarth { namespace Util
          */
         void setMaxLevel( unsigned value ) { _maxLevel = value; }
         unsigned getMaxLevel() const { return _maxLevel; }
+
+        /**
+         * Minimum level of detail of tiles to package
+         */
+        void setMinLevel( unsigned value ) { _minLevel = value; }
+        unsigned getMinLevel() const { return _minLevel; }
 
         /**
          * Whether to overwrite files that already exist in the repo
@@ -110,11 +125,14 @@ namespace osgEarth { namespace Util
          * Packages an image layer as a TMS repository.
          * @param layer          Image layer to export
          * @param rootFolder     Root output folder of TMS repo
+         * @param rootKey        (optional) Root tile key at which to start
+         * @param progress       (optional) Progress callback
          * @param imageExtension (optional) Force an image type extension (e.g., "jpg")
          */
         Result package(
             ImageLayer*        layer,
             const std::string& rootFolder,
+            const TileKey&     rootKey = TileKey(),
             osgEarth::ProgressCallback* progress=0L,
             const std::string& imageExtension="png" );
 
@@ -122,10 +140,13 @@ namespace osgEarth { namespace Util
          * Packages an elevation layer as a TMS repository.
          * @param layer          Image layer to 
          * @param rootFolder     Root output folder of TMS repo
+         * @param rootKey        (optional) Root tile key at which to start
+         * @param progress       (optional) Progress callback
          */
         Result package( 
             ElevationLayer*    layer,
             const std::string& rootFolder,
+            const TileKey&     rootKey = TileKey(),
             osgEarth::ProgressCallback* progress=0L );
 
         /**
@@ -137,6 +158,11 @@ namespace osgEarth { namespace Util
          * Reports progress to the main ProgressCallback.  Do not use directly.
          */
         void reportProgress( const std::string& message );
+
+        /**
+         * Increment the number of tiles that will be processed.
+         */
+        void incrementTileCount() { ++_numAdded; }
 
     protected:
 
@@ -159,17 +185,16 @@ namespace osgEarth { namespace Util
         bool shouldPackageKey( 
             const TileKey&     key ) const;
 
-        
+        void subdivideTile( const TileKey& key, bool tileOK, bool singleColor );
 
     protected:
 
         void resetStats();
 
-        OpenThreads::Mutex _mutex;
+        OpenThreads::Mutex          _mutex;
         OpenThreads::Atomic         _completed;
         unsigned int                _total;
-        unsigned int                _numAdded;
-
+        OpenThreads::Atomic         _numAdded;
 
         bool                        _verbose;
         bool                        _abortOnError;
@@ -177,11 +202,19 @@ namespace osgEarth { namespace Util
         bool                        _keepEmptyImageTiles;
         bool                        _subdivideSingleColorImageTiles;
         unsigned                    _maxLevel;
+        unsigned                    _minLevel;
         std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;
         osg::ref_ptr<osgDB::Options>    _imageWriteOptions;
 
         osg::ref_ptr< osgEarth::ProgressCallback > _progress;
+
+        unsigned                    _maxLevelForLayer;
+        unsigned                    _minLevelForLayer;
+        //std::priority_queue< TileKey >       _key_queue;
+        std::set< TileKey, greater<TileKey> >         _key_queue;
+        std::vector< osg::ref_ptr<TaskRequest> > _task_list;
+        Threading::Semaphore        _completeTasks;
     };
 
 } } // namespace osgEarth::Util

@@ -210,6 +210,12 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
     _light->setDiffuse ( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
     _light->setSpecular( osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f) );
 
+    if ( _options.ambient().isSet() )
+    {
+        float a = osg::clampBetween(_options.ambient().get(), 0.0f, 1.0f);
+        _light->setAmbient(osg::Vec4(a, a, a, 1.0f));
+    }
+
     // only supports geocentric for now.
     if ( srs && !srs->isGeographic() )
     {

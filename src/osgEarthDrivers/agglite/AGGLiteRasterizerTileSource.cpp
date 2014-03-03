@@ -218,7 +218,7 @@ public:
         agg::rasterizer ras;
 
         // Setup the rasterizer
-        ras.gamma(1.3);
+        ras.gamma(_options.gamma().get());
         ras.filling_rule(agg::fill_even_odd);
 
         // construct an extent for cropping the geometry to our tile.

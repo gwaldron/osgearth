@@ -66,6 +66,7 @@ namespace osgEarth { namespace Drivers { namespace GLSky
         osg::ref_ptr<osg::Light>          _light;
         osg::ref_ptr<const Profile>       _profile;
         osg::ref_ptr<PhongLightingEffect> _lighting;
+        GLSkyOptions                      _options;
     };
 
 } } } // namespace osgEarth::Drivers::GLSky

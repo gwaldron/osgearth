@@ -32,12 +32,12 @@ using namespace osgEarth::Util;
 
 SkyNode::SkyNode()
 {
-    baseInit();
+    baseInit(SkyOptions());
 }
 
 SkyNode::SkyNode(const SkyOptions& options)
 {
-    baseInit();
+    baseInit(options);
 }
 
 SkyNode::~SkyNode()
@@ -46,7 +46,7 @@ SkyNode::~SkyNode()
 }
 
 void
-SkyNode::baseInit()
+SkyNode::baseInit(const SkyOptions& options)
 {
     _ephemeris = new Ephemeris();
     _sunVisible = true;
@@ -54,6 +54,13 @@ SkyNode::baseInit()
     _starsVisible = true;
 
     setLighting( osg::StateAttribute::ON );
+
+    if ( options.hours().isSet() )
+    {
+        float hours = osg::clampBetween(options.hours().get(), 0.0f, 24.0f);
+        _dateTime = DateTime(_dateTime.year(), _dateTime.month(), _dateTime.day(), (double)hours);
+        // (don't call setDateTime sinec this is called from the CTOR)
+    }
 }
 
 void

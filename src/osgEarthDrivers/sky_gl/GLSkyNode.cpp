@@ -42,7 +42,8 @@ SkyNode()
 
 GLSkyNode::GLSkyNode(const Profile*      profile,
                      const GLSkyOptions& options) :
-SkyNode ( options )
+SkyNode ( options ),
+_options( options )
 {
     initialize(profile);
 }
@@ -55,6 +56,12 @@ GLSkyNode::initialize(const Profile* profile)
     _light->setAmbient(osg::Vec4(0.1f, 0.1f, 0.1f, 1.0f));
     _light->setDiffuse(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
     _light->setSpecular(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
+    
+    if ( _options.ambient().isSet() )
+    {
+        float a = osg::clampBetween(_options.ambient().get(), 0.0f, 1.0f);
+        _light->setAmbient(osg::Vec4(a, a, a, 1.0f));
+    }
 
     // installs the main uniforms and the shaders that will light the subgraph (terrain).
     osg::StateSet* stateset = this->getOrCreateStateSet();

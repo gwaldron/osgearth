@@ -135,7 +135,7 @@ namespace osgEarth
     class TaskRequestQueue : public osg::Referenced
     {
     public:
-        TaskRequestQueue();
+        explicit TaskRequestQueue( int maxTasks =0 );
 
         void add( TaskRequest* request );
         TaskRequest* get();
@@ -152,9 +152,12 @@ namespace osgEarth
         TaskRequestPriorityMap _requests;
         OpenThreads::Mutex _mutex;
         OpenThreads::Condition _cond;
+        Threading::Semaphore _availableTasks;
+        bool _limitTasks;
         volatile bool _done;
 
         int _stamp;
+        int _maxTasks;
     };
     
     struct TaskThread : public OpenThreads::Thread
@@ -177,7 +180,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TaskService : public osg::Referenced
     {
     public:
-        TaskService( const std::string& name ="", int numThreads =4 );
+        TaskService( const std::string& name ="", int numThreads =4, int maxTasks =0 );
 
         void add( TaskRequest* request );
 

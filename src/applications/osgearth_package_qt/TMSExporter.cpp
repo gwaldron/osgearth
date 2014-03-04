@@ -111,14 +111,14 @@ namespace
         if (_verbose)
           OE_NOTICE << LC << "Packaging image layer \"" << _layerFolder << "\"" << std::endl;
 
-        _packageResult = packager.package( _imageLayer.get(), layerRoot, _callback, _extension );
+        _packageResult = packager.package( _imageLayer.get(), layerRoot, TileKey(), _callback, _extension );
       }
       else if (_elevationLayer.valid())
       {
         if (_verbose)
           OE_NOTICE << LC << "Packaging elevation layer \"" << _layerFolder << "\"" << std::endl;
 
-        _packageResult = packager.package( _elevationLayer.get(), layerRoot, _callback );
+        _packageResult = packager.package( _elevationLayer.get(), layerRoot, TileKey(), _callback );
       }
     }
 

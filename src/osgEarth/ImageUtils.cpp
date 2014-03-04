@@ -309,6 +309,36 @@ ImageUtils::resizeImage(const osg::Image* input,
     return true;
 }
 
+bool
+ImageUtils::flattenImage(osg::Image*                             input,
+                         std::vector<osg::ref_ptr<osg::Image> >& output)
+{
+    if (input == 0L)
+        return false;
+
+    if ( input->r() == 1 )
+    {
+        output.push_back( input );
+        return true;
+    }
+
+    for(int r=0; r<input->r(); ++r)
+    {
+        osg::Image* layer = new osg::Image();
+        layer->allocateImage(input->s(), input->t(), 1, input->getPixelFormat(), input->getDataType(), input->getPacking());
+        layer->setPixelAspectRatio(input->getPixelAspectRatio());
+        layer->setRowLength(input->getRowLength());
+        layer->setOrigin(input->getOrigin());
+        layer->setFileName(input->getFileName());
+        layer->setWriteHint(input->getWriteHint());
+        layer->setInternalTextureFormat(input->getInternalTextureFormat());
+        ::memcpy(layer->data(), input->data(0,0,r), layer->getTotalSizeInBytes());
+        output.push_back(layer);
+    }
+
+    return true;
+}
+
 osg::Image*
 ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Image* secondary )
 {

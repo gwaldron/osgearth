@@ -20,6 +20,8 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
+#include <osg/Texture2D>
+#include <osg/Texture2DArray>
 #include <osgTerrain/Locator>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
@@ -131,14 +133,31 @@ _fallbackData( fallbackData )
     osg::Texture::FilterMode minFilter = layer->getImageLayerOptions().minFilter().get();
     osg::Texture::FilterMode magFilter = layer->getImageLayerOptions().magFilter().get();
 
-    _texture = new osg::Texture2D( image );
-    _texture->setUnRefImageDataAfterApply( true );
+    if (image->r() == 1)
+    {
+        _texture = new osg::Texture2D( image );
+    }
+    else // image->r() > 1
+    {
+        // If the image has a third dimension, split it into separate images
+        // and stick them into a texture array.
+        std::vector< osg::ref_ptr<osg::Image> > images;
+        ImageUtils::flattenImage(image, images);
+
+        osg::Texture2DArray* tex = new osg::Texture2DArray();
+        for( int i=0; i<images.size(); ++i)
+            tex->setImage( i, images[i].get() );
+
+        _texture = tex;
+    }
+
+    _texture->setUnRefImageDataAfterApply(true);
     _texture->setMaxAnisotropy( 16.0f );
     _texture->setResizeNonPowerOfTwoHint(false);
     _texture->setFilter( osg::Texture::MAG_FILTER, minFilter );
     _texture->setFilter( osg::Texture::MIN_FILTER, magFilter  );
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-    _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );    
+    _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
 
     // Disable mip mapping for npot tiles
     if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))

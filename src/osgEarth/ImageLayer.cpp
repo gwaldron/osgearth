@@ -795,6 +795,7 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
         bool foundAtLeastOneRealTile = false;
         bool retry = false;
         ImageMosaic mosaic;
+        GLenum finalPixelFormat = 0;
 
         for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
         {
@@ -805,11 +806,20 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             GeoImage image = createImageFromTileSource( *k, progress, true, isFallback );
             if ( image.valid() )
             {
-                // make sure the image is RGBA.
-                // (TODO: investigate whether we still need this -gw 6/25/2012)
-                if (image.getImage()->getPixelFormat() != GL_RGBA || image.getImage()->getDataType() != GL_UNSIGNED_BYTE || image.getImage()->getInternalTextureFormat() != GL_RGBA8 )
+                ImageUtils::normalizeImage(image.getImage());
+
+                // make sure all images in mosaic are based on unsigned byte and in the same format (based on first image format)
+                if (finalPixelFormat == 0)
                 {
-                    osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
+                    finalPixelFormat = image.getImage()->getPixelFormat();
+                    // Use only RGB or RGBA images, other formats are converted to GL_RGBA
+                    if (finalPixelFormat != GL_RGB) finalPixelFormat = GL_RGBA;
+                }
+
+                if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
+                    || (image.getImage()->getPixelFormat() != finalPixelFormat) )
+                {
+                    osg::ref_ptr<osg::Image> convertedImg = (finalPixelFormat==GL_RGB)?(ImageUtils::convertToRGB8(image.getImage())):(ImageUtils::convertToRGBA8(image.getImage()));
                     if (convertedImg.valid())
                     {
                         image = GeoImage(convertedImg, image.getExtent());

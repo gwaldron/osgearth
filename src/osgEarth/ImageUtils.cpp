@@ -84,8 +84,7 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
     // check for fast bytewise copy:
     if (src->getPacking() == dst->getPacking() &&
         src->getDataType() == dst->getDataType() &&
-        src->getPixelFormat() == dst->getPixelFormat() &&
-        src->getInternalTextureFormat() == dst->getInternalTextureFormat() )
+        src->getPixelFormat() == dst->getPixelFormat() )
     {
         for( int src_row=0, dst_row=dst_start_row; src_row < src->t(); src_row++, dst_row++ )
         {

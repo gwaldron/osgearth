@@ -242,8 +242,8 @@ void SkinTextureArray::build(SkinResourceVector& skins, const osgDB::Options* db
     for (unsigned int i = 0; i < skins.size(); i++)
     {
         osg::ref_ptr< osg::Image > image = skins[i]->createImage( dbOptions );            
-        if (maxWidth < image->s()) maxWidth = image->s();
-        if (maxHeight < image->t()) maxHeight = image->t();            
+        if (maxWidth < (unsigned int) image->s()) maxWidth = image->s();
+        if (maxHeight < (unsigned int) image->t()) maxHeight = image->t();            
         _layerIndex[ skins[i]->name() ] = i;
         images.push_back( image.get() );
     }

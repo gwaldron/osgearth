@@ -145,7 +145,7 @@ _fallbackData( fallbackData )
         ImageUtils::flattenImage(image, images);
 
         osg::Texture2DArray* tex = new osg::Texture2DArray();
-        for( int i=0; i<images.size(); ++i)
+        for (int i = 0; i < (int) images.size(); ++i)
             tex->setImage( i, images[i].get() );
 
         _texture = tex;

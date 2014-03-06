@@ -47,7 +47,8 @@ namespace osgEarth
          * @param binID  Name of this caching bin (unique withing a Cache)
          * @param driver ReaderWriter that serializes data for this caching bin.
          */
-        CacheBin( const std::string& binID ) : _binID(binID) { }
+        CacheBin( const std::string& binID )
+            : _binID(binID), _hashKeys(false) { }
 
         /** dtor */
         virtual ~CacheBin() { }
@@ -56,6 +57,13 @@ namespace osgEarth
          * The identifier (unique withing a Cache) of this bin.
          */
         const std::string& getID() const { return _binID; }
+
+        /**
+         * Whether the implemention should hash record keys instead of using
+         * them directly. Default = false.
+         */
+        void setHashKeys(bool value) { _hashKeys = value; }
+        bool getHashKeys() const { return _hashKeys; }
 
         /**
          * Reads an object from the cache bin.
@@ -95,13 +103,6 @@ namespace osgEarth
          * @param minTime Return EXPIRED if the key exists but is older than this
          */
         virtual RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime) =0;
-
-        /**
-         * Checks whether a key exists in the cache.
-         * @deprecated - Please use getRecordStatus instead
-         */
-        //bool isCached(const std::string& key) { 
-        //    return getRecordStatus(key, 0) == STATUS_OK; }
 
         /**
          * Purge an entry from the cache bin
@@ -145,6 +146,7 @@ namespace osgEarth
 
     protected:
         std::string _binID;
+        bool        _hashKeys;
     };
 }
 

@@ -83,6 +83,7 @@ public:
 
                 std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON()) << "_wfs";
                 _cacheBin = cache->addBin( binId );
+                _cacheBin->setHashKeys(true);
                 
                 // write a metadata record just for reference purposes.. we don't actually use it
                 Config metadata = _cacheBin->readMetadata();

@@ -127,6 +127,18 @@ namespace osgEarth
         sp->write((const char*)ptr, realsize);
         return realsize;
     }
+
+    TimeStamp
+    getCurlFileTime(void* curl)
+    {
+        long filetime;
+        if (CURLE_OK != curl_easy_getinfo(curl, CURLINFO_FILETIME, &filetime))
+            return TimeStamp(0);
+        else if (filetime < 0)
+            return TimeStamp(0);
+        else
+            return TimeStamp(filetime);
+    }
 }
 
 static int CurlProgressCallback(void *clientp,double dltotal,double dlnow,double ultotal,double ulnow)
@@ -920,9 +932,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
     if ( s_HTTP_DEBUG )
     {
-        TimeStamp filetime = 0;
-        if (CURLE_OK != curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime))
-            filetime = 0;
+        TimeStamp filetime = getCurlFileTime(_curl_handle);
 
         OE_NOTICE << LC 
             << "GET(" << response_code << ", " << response._mimeType << ") : \"" 
@@ -1088,11 +1098,7 @@ HTTPClient::doReadImage(const std::string&    location,
         }
         
         // last-modified (file time)
-        TimeStamp filetime = 0;
-        if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
-        {
-            result.setLastModifiedTime( filetime );
-        }
+        result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
         
         // Time of query
         result.setDuration( response.getDuration() );
@@ -1161,11 +1167,7 @@ HTTPClient::doReadNode(const std::string&    location,
         }
         
         // last-modified (file time)
-        TimeStamp filetime = 0;
-        if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
-        {
-            result.setLastModifiedTime( filetime );
-        }
+        result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
     }
     else
     {
@@ -1227,11 +1229,7 @@ HTTPClient::doReadObject(const std::string&    location,
         }
         
         // last-modified (file time)
-        TimeStamp filetime = 0;
-        if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
-        {
-            result.setLastModifiedTime( filetime );
-        }
+        result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
     }
     else
     {
@@ -1301,11 +1299,7 @@ HTTPClient::doReadString(const std::string&    location,
     }
 
     // last-modified (file time)
-    TimeStamp filetime = 0;
-    if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
-    {
-        result.setLastModifiedTime( filetime );
-    }
+    result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
 
     return result;
 }

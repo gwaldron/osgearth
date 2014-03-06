@@ -146,7 +146,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 return _locator.get();
             }
 
-            osg::Texture2D* getTexture() const {
+            osg::Texture* getTexture() const {
                 return _texture.get();
             }
 
@@ -180,7 +180,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             osg::ref_ptr<const osgEarth::ImageLayer> _layer;
             osg::ref_ptr<GeoLocator>                 _locator;
             osg::ref_ptr<osg::Image>                 _image;
-            osg::ref_ptr<osg::Texture2D>             _texture;
+            osg::ref_ptr<osg::Texture>               _texture;
             osgEarth::TileKey                        _tileKey;
             bool                                     _fallbackData;
             unsigned                                 _order;

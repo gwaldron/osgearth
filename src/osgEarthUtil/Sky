@@ -49,13 +49,24 @@ namespace osgEarth { namespace Util
     class SkyOptions : public DriverConfigOptions
     {
     public:
+
+        /** Time of day - Hours [0..24] component of DateTime */
+        optional<float>& hours() { return _hours; }
+        const optional<float>& hours() const { return _hours; }
+
+        /** Ambient light level [0..1] */
+        optional<float>& ambient() { return _ambient; }
+        const optional<float>& ambient() const { return _ambient; }
+
+    public:
         SkyOptions( const ConfigOptions& options =ConfigOptions() ) : DriverConfigOptions(options) {
             fromConfig(_conf);
         }
         virtual ~SkyOptions() { }
         virtual Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
-            // future adds go here
+            conf.addIfSet("hours", _hours);
+            conf.addIfSet("ambient", _ambient);
             return conf;
         }
 
@@ -67,8 +78,12 @@ namespace osgEarth { namespace Util
         
     private:
         void fromConfig( const Config& conf ) {
-            // future gets go here
+            conf.getIfSet("hours", _hours);
+            conf.getIfSet("ambient", _ambient);
         }
+        
+        optional<float> _hours;
+        optional<float> _ambient;
     };
 
 
@@ -179,7 +194,7 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<UpdateLightingUniformsHelper> _lightingUniformsHelper;
 
-        void baseInit();
+        void baseInit(const SkyOptions&);
     };
 
 

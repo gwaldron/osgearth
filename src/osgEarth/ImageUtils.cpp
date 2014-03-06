@@ -72,11 +72,12 @@ ImageUtils::normalizeImage( osg::Image* image )
 }
 
 bool
-ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row, int dst_img )
+ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row)
 {
     if (!src || !dst ||
         dst_start_col + src->s() > dst->s() ||
-        dst_start_row + src->t() > dst->t() )
+        dst_start_row + src->t() > dst->t() ||
+        src->r() != dst->r())
     {
         return false;
     }
@@ -86,11 +87,14 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
         src->getDataType() == dst->getDataType() &&
         src->getPixelFormat() == dst->getPixelFormat() )
     {
-        for( int src_row=0, dst_row=dst_start_row; src_row < src->t(); src_row++, dst_row++ )
+        for(int r=0; r<src->r(); ++r) // each layer
         {
-            const void* src_data = src->data( 0, src_row, 0 );
-            void* dst_data = dst->data( dst_start_col, dst_row, dst_img );
-            memcpy( dst_data, src_data, src->getRowSizeInBytes() );
+            for( int src_row=0, dst_row=dst_start_row; src_row < src->t(); src_row++, dst_row++ )
+            {
+                const void* src_data = src->data( 0, src_row, r );
+                void* dst_data = dst->data( dst_start_col, dst_row, r );
+                memcpy( dst_data, src_data, src->getRowSizeInBytes() );
+            }
         }
     }
 
@@ -103,11 +107,14 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
         PixelReader read(src);
         PixelWriter write(dst);
 
-        for( int src_t=0, dst_t=dst_start_row; src_t < src->t(); src_t++, dst_t++ )
+        for( int r=0; r<src->r(); ++r)
         {
-            for( int src_s=0, dst_s=dst_start_col; src_s < src->s(); src_s++, dst_s++ )
-            {           
-                write( read(src_s, src_t), dst_s, dst_t );
+            for( int src_t=0, dst_t=dst_start_row; src_t < src->t(); src_t++, dst_t++ )
+            {
+                for( int src_s=0, dst_s=dst_start_col; src_s < src->s(); src_s++, dst_s++ )
+                {           
+                    write(read(src_s, src_t, r), dst_s, dst_t, r);
+                }
             }
         }
     }
@@ -199,13 +206,13 @@ ImageUtils::resizeImage(const osg::Image* input,
 
         if ( PixelWriter::supports(input) )
         {
-            output->allocateImage( out_s, out_t, 1, input->getPixelFormat(), input->getDataType(), input->getPacking() );
+            output->allocateImage( out_s, out_t, input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
             output->setInternalTextureFormat( input->getInternalTextureFormat() );
         }
         else
         {
             // for unsupported write formats, convert to RGBA8 automatically.
-            output->allocateImage( out_s, out_t, 1, GL_RGBA, GL_UNSIGNED_BYTE );
+            output->allocateImage( out_s, out_t, input->r(), GL_RGBA, GL_UNSIGNED_BYTE );
             output->setInternalTextureFormat( GL_RGB8A_INTERNAL );
         }
     }
@@ -246,53 +253,86 @@ ImageUtils::resizeImage(const osg::Image* input,
 
                 osg::Vec4 color;
 
-                if (bilinear)
+                for(int layer=0; layer<input->r(); ++layer)
                 {
-                    // Do a billinear interpolation for the image
-                    int rowMin = osg::maximum((int)floor(input_row), 0);
-                    int rowMax = osg::maximum(osg::minimum((int)ceil(input_row), (int)(input->t()-1)), 0);
-                    int colMin = osg::maximum((int)floor(input_col), 0);
-                    int colMax = osg::maximum(osg::minimum((int)ceil(input_col), (int)(input->s()-1)), 0);                    
-
-                    if (rowMin > rowMax) rowMin = rowMax;
-                    if (colMin > colMax) colMin = colMax;    
-
-                    osg::Vec4 urColor = read(colMax, rowMax);
-                    osg::Vec4 llColor = read(colMin, rowMin);
-                    osg::Vec4 ulColor = read(colMin, rowMax);
-                    osg::Vec4 lrColor = read(colMax, rowMin); 
-                    
-                    if ((colMax == colMin) && (rowMax == rowMin))
+                    if (bilinear)
                     {
-                        // Exact value
-                        color = urColor;
-                    }
-                    else if (colMax == colMin)
-                    {                     
-                        // Linear interpolate vertically            
-                        color = llColor * ((double)rowMax - input_row) + ulColor * (input_row - (double)rowMin);
-                    }
-                    else if (rowMax == rowMin)
-                    {                     
-                        // Linear interpolate horizontally
-                        color = llColor * ((double)colMax - input_col) + lrColor * (input_col - (double)colMin);
+                        // Do a billinear interpolation for the image
+                        int rowMin = osg::maximum((int)floor(input_row), 0);
+                        int rowMax = osg::maximum(osg::minimum((int)ceil(input_row), (int)(input->t()-1)), 0);
+                        int colMin = osg::maximum((int)floor(input_col), 0);
+                        int colMax = osg::maximum(osg::minimum((int)ceil(input_col), (int)(input->s()-1)), 0);                    
+
+                        if (rowMin > rowMax) rowMin = rowMax;
+                        if (colMin > colMax) colMin = colMax;  
+
+                        osg::Vec4 urColor = read(colMax, rowMax, layer);
+                        osg::Vec4 llColor = read(colMin, rowMin, layer);
+                        osg::Vec4 ulColor = read(colMin, rowMax, layer);
+                        osg::Vec4 lrColor = read(colMax, rowMin, layer);
+                    
+                        if ((colMax == colMin) && (rowMax == rowMin))
+                        {
+                            // Exact value
+                            color = urColor;
+                        }
+                        else if (colMax == colMin)
+                        {                     
+                            // Linear interpolate vertically            
+                            color = llColor * ((double)rowMax - input_row) + ulColor * (input_row - (double)rowMin);
+                        }
+                        else if (rowMax == rowMin)
+                        {                     
+                            // Linear interpolate horizontally
+                            color = llColor * ((double)colMax - input_col) + lrColor * (input_col - (double)colMin);
+                        }
+                        else
+                        {                        
+                            // Bilinear interpolate
+                            osg::Vec4 r1 = llColor * ((double)colMax - input_col) + lrColor * (input_col - (double)colMin);
+                            osg::Vec4 r2 = ulColor * ((double)colMax - input_col) + urColor * (input_col - (double)colMin);                      
+                            color = r1 * ((double)rowMax - input_row) + r2 * (input_row - (double)rowMin);
+                        }                         
                     }
                     else
-                    {                        
-                        // Bilinear interpolate
-                        osg::Vec4 r1 = llColor * ((double)colMax - input_col) + lrColor * (input_col - (double)colMin);
-                        osg::Vec4 r2 = ulColor * ((double)colMax - input_col) + urColor * (input_col - (double)colMin);                      
-                        color = r1 * ((double)rowMax - input_row) + r2 * (input_row - (double)rowMin);
-                    }                         
-                }
-                else
-                {
-                    color = read( (unsigned int)input_col, (unsigned int )input_row ); // read pixel from mip level 0
-                }
+                    {
+                        color = read( (int)input_col, (int)input_row, layer ); // read pixel from mip level 0
+                    }
 
-                write( color, output_col, output_row, 0, mipmapLevel ); // write to target mip level
+                    write( color, output_col, output_row, layer, mipmapLevel ); // write to target mip level
+                }
             }
         }
+    }
+
+    return true;
+}
+
+bool
+ImageUtils::flattenImage(osg::Image*                             input,
+                         std::vector<osg::ref_ptr<osg::Image> >& output)
+{
+    if (input == 0L)
+        return false;
+
+    if ( input->r() == 1 )
+    {
+        output.push_back( input );
+        return true;
+    }
+
+    for(int r=0; r<input->r(); ++r)
+    {
+        osg::Image* layer = new osg::Image();
+        layer->allocateImage(input->s(), input->t(), 1, input->getPixelFormat(), input->getDataType(), input->getPacking());
+        layer->setPixelAspectRatio(input->getPixelAspectRatio());
+        layer->setRowLength(input->getRowLength());
+        layer->setOrigin(input->getOrigin());
+        layer->setFileName(input->getFileName());
+        layer->setWriteHint(input->getWriteHint());
+        layer->setInternalTextureFormat(input->getInternalTextureFormat());
+        ::memcpy(layer->data(), input->data(0,0,r), layer->getTotalSizeInBytes());
+        output.push_back(layer);
     }
 
     return true;
@@ -377,7 +417,7 @@ namespace
 bool
 ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
 {
-    if (!dest || !src || dest->s() != src->s() || dest->t() != src->t() ||
+    if (!dest || !src || dest->s() != src->s() || dest->t() != src->t() || src->r() != dest->r() ||
         !PixelReader::supports(src) ||
         !PixelWriter::supports(dest) )
     {
@@ -436,18 +476,20 @@ ImageUtils::cropImage(const osg::Image* image,
 
     //Allocate the croppped image
     osg::Image* cropped = new osg::Image;
-    cropped->allocateImage(windowWidth, windowHeight, 1, image->getPixelFormat(), image->getDataType());
+    cropped->allocateImage(windowWidth, windowHeight, image->r(), image->getPixelFormat(), image->getDataType());
     cropped->setInternalTextureFormat( image->getInternalTextureFormat() );
     
     
-    for (int src_row = windowY, dst_row=0; dst_row < windowHeight; src_row++, dst_row++)
+    for (int layer=0; layer<image->r(); ++layer)
     {
-        if (src_row > image->t()-1) OE_NOTICE << "HeightBroke" << std::endl;
-        const void* src_data = image->data(windowX, src_row, 0);
-        void* dst_data = cropped->data(0, dst_row, 0);
-        memcpy( dst_data, src_data, cropped->getRowSizeInBytes());
+        for (int src_row = windowY, dst_row=0; dst_row < windowHeight; src_row++, dst_row++)
+        {
+            if (src_row > image->t()-1) OE_NOTICE << "HeightBroke" << std::endl;
+            const void* src_data = image->data(windowX, src_row, layer);
+            void* dst_data = cropped->data(0, dst_row, layer);
+            memcpy( dst_data, src_data, cropped->getRowSizeInBytes());
+        }
     }
-
     return cropped;
 }
 
@@ -464,27 +506,30 @@ ImageUtils::createSharpenedImage( const osg::Image* input )
 {
     int filter[9] = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };
     osg::Image* output = ImageUtils::cloneImage(input);
-    for( int t=1; t<input->t()-1; t++ )
+    for( int r=0; r<input->r(); ++r)
     {
-        for( int s=1; s<input->s()-1; s++ )
+        for( int t=1; t<input->t()-1; t++ )
         {
-            int pixels[9] = {
-                *(int*)input->data(s-1,t-1), *(int*)input->data(s,t-1), *(int*)input->data(s+1,t-1),
-                *(int*)input->data(s-1,t  ), *(int*)input->data(s,t  ), *(int*)input->data(s+1,t  ),
-                *(int*)input->data(s-1,t+1), *(int*)input->data(s,t+1), *(int*)input->data(s+1,t+1) };
-
-            int shifts[4] = { 0, 8, 16, 32 };
-
-            for( int c=0; c<4; c++ ) // components
+            for( int s=1; s<input->s()-1; s++ )
             {
-                int mask = 0xff << shifts[c];
-                int sum = 0;
-                for( int i=0; i<9; i++ )
+                int pixels[9] = {
+                    *(int*)input->data(s-1,t-1,r), *(int*)input->data(s,t-1,r), *(int*)input->data(s+1,t-1,r),
+                    *(int*)input->data(s-1,t  ,r), *(int*)input->data(s,t  ,r), *(int*)input->data(s+1,t  ,r),
+                    *(int*)input->data(s-1,t+1,r), *(int*)input->data(s,t+1,r), *(int*)input->data(s+1,t+1,r) };
+
+                int shifts[4] = { 0, 8, 16, 32 };
+
+                for( int c=0; c<4; c++ ) // components
                 {
-                    sum += ((pixels[i] & mask) >> shifts[c]) * filter[i];
+                    int mask = 0xff << shifts[c];
+                    int sum = 0;
+                    for( int i=0; i<9; i++ )
+                    {
+                        sum += ((pixels[i] & mask) >> shifts[c]) * filter[i];
+                    }
+                    sum = sum > 255? 255 : sum < 0? 0 : sum;
+                    output->data(s,t,r)[c] = sum;
                 }
-                sum = sum > 255? 255 : sum < 0? 0 : sum;
-                output->data(s,t)[c] = sum;
             }
         }
     }
@@ -529,13 +574,16 @@ ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
         return false;
 
     PixelReader read(image);
-    for(unsigned t=0; t<(unsigned)image->t(); ++t) 
+    for(unsigned r=0; r<(unsigned)image->r(); ++r)
     {
-        for(unsigned s=0; s<(unsigned)image->s(); ++s)
+        for(unsigned t=0; t<(unsigned)image->t(); ++t) 
         {
-            osg::Vec4 color = read(s, t);
-            if ( color.a() > alphaThreshold )
-                return false;
+            for(unsigned s=0; s<(unsigned)image->s(); ++s)
+            {
+                osg::Vec4 color = read(s, t, r);
+                if ( color.a() > alphaThreshold )
+                    return false;
+            }
         }
     }
     return true;
@@ -561,27 +609,29 @@ ImageUtils::isSingleColorImage(const osg::Image* image, float threshold)
 
     PixelReader read(image);
 
-    osg::Vec4 referenceColor = read(0, 0);
+    osg::Vec4 referenceColor = read(0, 0, 0);
     float refR = referenceColor.r();
     float refG = referenceColor.g();
     float refB = referenceColor.b();
     float refA = referenceColor.a();
 
-    for(unsigned t=0; t<(unsigned)image->t(); ++t) 
+    for(unsigned r=0; r<(unsigned)image->r(); ++r)
     {
-        for(unsigned s=0; s<(unsigned)image->s(); ++s)
+        for(unsigned t=0; t<(unsigned)image->t(); ++t) 
         {
-            osg::Vec4 color = read(s, t);
-            if (   (fabs(color.r()-refR) > threshold)
-                || (fabs(color.g()-refG) > threshold)
-                || (fabs(color.b()-refB) > threshold)
-                || (fabs(color.a()-refA) > threshold) )
+            for(unsigned s=0; s<(unsigned)image->s(); ++s)
             {
-                return false;
+                osg::Vec4 color = read(s, t, r);
+                if (   (fabs(color.r()-refR) > threshold)
+                    || (fabs(color.g()-refG) > threshold)
+                    || (fabs(color.b()-refB) > threshold)
+                    || (fabs(color.a()-refA) > threshold) )
+                {
+                    return false;
+                }
             }
         }
     }
-
     return true;
 }
 
@@ -682,6 +732,7 @@ ImageUtils::areEquivalent(const osg::Image *lhs, const osg::Image *rhs)
 
     if ((lhs->s() == rhs->s()) &&
         (lhs->t() == rhs->t()) &&
+        (lhs->r() == rhs->r()) &&
         (lhs->getInternalTextureFormat() == rhs->getInternalTextureFormat()) &&
         (lhs->getPixelFormat() == rhs->getPixelFormat()) &&
         (lhs->getDataType() == rhs->getDataType()) &&
@@ -725,10 +776,11 @@ ImageUtils::hasTransparency(const osg::Image* image, float threshold)
         return false;
 
     PixelReader read(image);
-    for( int t=0; t<image->t(); ++t )
-        for( int s=0; s<image->s(); ++s )
-            if ( read(s, t).a() < threshold )
-                return true;
+    for( int r=0; r<image->r(); ++r)
+        for( int t=0; t<image->t(); ++t )
+            for( int s=0; s<image->s(); ++s )
+                if ( read(s, t, r).a() < threshold )
+                    return true;
 
     return false;
 }
@@ -745,57 +797,61 @@ ImageUtils::featherAlphaRegions(osg::Image* image, float maxAlpha)
 
     int ns = image->s();
     int nt = image->t();
+    int nr = image->r();
 
     osg::Vec4 n;
 
-    for( int t=0; t<nt; ++t )
+    for( int r=0; r<nr; ++r )
     {
-        bool rowdone = false;
-        for( int s=0; s<ns && !rowdone; ++s )
+        for( int t=0; t<nt; ++t )
         {
-            osg::Vec4 pixel = read(s, t);
-            if ( pixel.a() <= maxAlpha )
+            bool rowdone = false;
+            for( int s=0; s<ns && !rowdone; ++s )
             {
-                bool wrote = false;
-                if ( s < ns-1 ) {
-                    n = read( s+1, t );
-                    if ( n.a() > maxAlpha ) {
-                        write( n, s, t );
-                        wrote = true;
+                osg::Vec4 pixel = read(s, t, r);
+                if ( pixel.a() <= maxAlpha )
+                {
+                    bool wrote = false;
+                    if ( s < ns-1 ) {
+                        n = read( s+1, t, r);
+                        if ( n.a() > maxAlpha ) {
+                            write( n, s, t, r);
+                            wrote = true;
+                        }
                     }
-                }
-                if ( !wrote && s > 0 ) {
-                    n = read( s-1, t );
-                    if ( n.a() > maxAlpha ) {
-                        write( n, s, t );
-                        rowdone = true;
+                    if ( !wrote && s > 0 ) {
+                        n = read( s-1, t, r);
+                        if ( n.a() > maxAlpha ) {
+                            write( n, s, t, r);
+                            rowdone = true;
+                        }
                     }
                 }
             }
         }
-    }
 
-    for( int s=0; s<ns; ++s )
-    {
-        bool coldone = false;
-        for( int t=0; t<nt && !coldone; ++t )
+        for( int s=0; s<ns; ++s )
         {
-            osg::Vec4 pixel = read(s, t);
-            if ( pixel.a() <= maxAlpha )
+            bool coldone = false;
+            for( int t=0; t<nt && !coldone; ++t )
             {
-                bool wrote = false;
-                if ( t < nt-1 ) {
-                    n = read( s, t+1 );
-                    if ( n.a() > maxAlpha ) {
-                        write( n, s, t );
-                        wrote = true;
+                osg::Vec4 pixel = read(s, t, r);
+                if ( pixel.a() <= maxAlpha )
+                {
+                    bool wrote = false;
+                    if ( t < nt-1 ) {
+                        n = read( s, t+1, r );
+                        if ( n.a() > maxAlpha ) {
+                            write( n, s, t, r );
+                            wrote = true;
+                        }
                     }
-                }
-                if ( !wrote && t > 0 ) {
-                    n = read( s, t-1 );
-                    if ( n.a() > maxAlpha ) {
-                        write( n, s, t );
-                        coldone = true;
+                    if ( !wrote && t > 0 ) {
+                        n = read( s, t-1, r );
+                        if ( n.a() > maxAlpha ) {
+                            write( n, s, t, r);
+                            coldone = true;
+                        }
                     }
                 }
             }
@@ -814,10 +870,12 @@ ImageUtils::convertToPremultipliedAlpha(osg::Image* image)
 
     PixelReader read(image);
     PixelWriter write(image);
-    for(int s=0; s<image->s(); ++s) {
-        for( int t=0; t<image->t(); ++t ) {
-            osg::Vec4f c = read(s, t);
-            write( osg::Vec4f(c.r()*c.a(), c.g()*c.a(), c.b()*c.a(), c.a()), s, t);
+    for(int r=0; r<image->r(); ++r) {
+        for(int s=0; s<image->s(); ++s) {
+            for( int t=0; t<image->t(); ++t ) {
+                osg::Vec4f c = read(s, t, r);
+                write( osg::Vec4f(c.r()*c.a(), c.g()*c.a(), c.b()*c.a(), c.a()), s, t, r);
+            }
         }
     }
     return true;

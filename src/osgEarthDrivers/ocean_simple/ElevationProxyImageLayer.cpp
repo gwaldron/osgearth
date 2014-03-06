@@ -78,4 +78,5 @@ ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* prog
 
         return GeoImage( image, key.getExtent() );
     }
+    return (GeoImage::INVALID);
 }

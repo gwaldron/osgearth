@@ -250,7 +250,7 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, camUp);
             
             int i;
-            for(i=0; i<_ranges.size()-1; ++i)
+            for(i=0; i < (int) _ranges.size()-1; ++i)
             {
                 double n = _ranges[i];
                 double f = _ranges[i+1];
@@ -299,7 +299,7 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
 
             // render the shadow maps.
             cv->pushStateSet( _rttStateSet.get() );
-            for(i=0; i<_rttCameras.size(); ++i)
+            for(i=0; i < (int) _rttCameras.size(); ++i)
             {
                 _rttCameras[i]->accept( nv );
             }

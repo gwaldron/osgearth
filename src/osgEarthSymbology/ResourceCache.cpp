@@ -96,7 +96,7 @@ ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
     return output.valid();
 }
 
- bool ResourceCache::getOrCreateSkinTextureArray( ResourceLibrary* library, osg::ref_ptr< SkinTextureArray >& output )
+ bool ResourceCache::getOrCreateSkinTextureArray(ResourceLibrary* library, osg::ref_ptr< SkinTextureArray >& output )
  {
     output = 0L;
     std::string key = library->getConfig().toJSON(false);
@@ -116,7 +116,7 @@ ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
             SkinResourceVector skins;
             library->getSkins( skins );
             output = new SkinTextureArray();
-            output->build( skins, 0 );
+            output->build( skins, _dbOptions.get() );
             _skinTextureArrayCache.insert( key, output.get() );            
         }
     }

@@ -795,7 +795,6 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
         bool foundAtLeastOneRealTile = false;
         bool retry = false;
         ImageMosaic mosaic;
-        GLenum finalPixelFormat = 0;
 
         for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
         {
@@ -808,18 +807,17 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             {
                 ImageUtils::normalizeImage(image.getImage());
 
-                // make sure all images in mosaic are based on unsigned byte and in the same format (based on first image format)
-                if (finalPixelFormat == 0)
-                {
-                    finalPixelFormat = image.getImage()->getPixelFormat();
-                    // Use only RGB or RGBA images, other formats are converted to GL_RGBA
-                    if (finalPixelFormat != GL_RGB) finalPixelFormat = GL_RGBA;
-                }
-
+                // Make sure all images in mosaic are based on "RGBA - unsigned byte" pixels.
+                // This is not the smarter choice (in some case RGB would be sufficient) but
+                // it ensure consistency between all images / layers.
+                //
+                // The main drawback is probably the CPU memory foot-print which would be reduced by allocating RGB instead of RGBA images.
+                // On GPU side, this should not change anything because of data alignements : often RGB and RGBA textures have the same memory footprint
+                //
                 if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
-                    || (image.getImage()->getPixelFormat() != finalPixelFormat) )
+                    || (image.getImage()->getPixelFormat() != GL_RGBA) )
                 {
-                    osg::ref_ptr<osg::Image> convertedImg = (finalPixelFormat==GL_RGB)?(ImageUtils::convertToRGB8(image.getImage())):(ImageUtils::convertToRGBA8(image.getImage()));
+                    osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
                     if (convertedImg.valid())
                     {
                         image = GeoImage(convertedImg, image.getExtent());

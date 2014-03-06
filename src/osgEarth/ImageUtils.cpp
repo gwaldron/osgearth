@@ -598,6 +598,7 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
     if ( !image )
         return 0L;
 
+    // Very fast conversion if possible : clone image
     if ( image->getPixelFormat() == pixelFormat && image->getDataType() == dataType)
     {
         GLenum texFormat = image->getInternalTextureFormat();
@@ -606,9 +607,46 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
             || (pixelFormat == GL_RGBA && texFormat == GL_RGB8A_INTERNAL))
         return cloneImage(image);
     }
+
+    // Fast conversion if possible : RGB8 to RGBA8
+    if ( dataType == GL_UNSIGNED_BYTE && pixelFormat == GL_RGBA && image->getDataType() == GL_UNSIGNED_BYTE && image->getPixelFormat() == GL_RGB)
+    {
+        OE_NOTICE << "Fast convert !" << std::endl;
+
+        // Do fast conversion
+        osg::Image* result = new osg::Image();
+        result->allocateImage(image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE);
+        result->setInternalTextureFormat(GL_RGBA8);
+
+        const unsigned char* pSrcData = image->data();
+        unsigned char* pDstData = result->data();
+        int srcIndex = 0;
+        int dstIndex = 0;
+
+        // Convert all pixels except last one by reading 32bits chunks
+        for (int i=0; i<image->t()*image->s()*image->r()-1; i++)
+        {
+            unsigned int srcValue = *((const unsigned int*) (pSrcData + srcIndex)) | 0xFF000000;
+            *((unsigned int*) (pDstData + dstIndex)) = srcValue;
+
+            srcIndex += 3;
+            dstIndex += 4;
+        }
+
+        // Convert last pixel
+        pDstData[dstIndex + 0] = pSrcData[srcIndex + 0];
+        pDstData[dstIndex + 1] = pSrcData[srcIndex + 1];
+        pDstData[dstIndex + 2] = pSrcData[srcIndex + 2];
+        pDstData[dstIndex + 3] = 0xFF;
+
+        return result;
+    }
+
+    // Test if generic conversion is possible
     if ( !canConvert(image, pixelFormat, dataType) )
         return 0L;
 
+    // Generic conversion : use PixelVisitor
     osg::Image* result = new osg::Image();
     result->allocateImage(image->s(), image->t(), image->r(), pixelFormat, dataType);
     memset(result->data(), 0, result->getTotalSizeInBytes());

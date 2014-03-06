@@ -48,7 +48,7 @@ namespace osgEarth
          * @param driver ReaderWriter that serializes data for this caching bin.
          */
         CacheBin( const std::string& binID )
-            : _binID(binID), _hashKeys(false) { }
+            : _binID(binID), _hashKeys(false), _minTime(0) { }
 
         /** dtor */
         virtual ~CacheBin() { }
@@ -64,6 +64,12 @@ namespace osgEarth
          */
         void setHashKeys(bool value) { _hashKeys = value; }
         bool getHashKeys() const { return _hashKeys; }
+
+        /**
+         * A global minimum valid timestamp for cached records.
+         */
+        void setMinValidTime(TimeStamp minTime) { _minTime = minTime; }
+        TimeStamp getMinValidTime() const { return _minTime; }
 
         /**
          * Reads an object from the cache bin.
@@ -101,6 +107,7 @@ namespace osgEarth
          * Pass in a minTime = 0 to simply check whether the record exists.
          * @param key     Lookup key to check for
          * @param minTime Return EXPIRED if the key exists but is older than this
+         *                or older than getMinValidTime().
          */
         virtual RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime) =0;
 
@@ -147,6 +154,7 @@ namespace osgEarth
     protected:
         std::string _binID;
         bool        _hashKeys;
+        TimeStamp   _minTime;
     };
 }
 

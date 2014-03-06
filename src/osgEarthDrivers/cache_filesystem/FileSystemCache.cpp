@@ -285,7 +285,7 @@ namespace
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < minTime )
+        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
             return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
@@ -318,7 +318,7 @@ namespace
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < minTime )
+        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
             return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
@@ -351,7 +351,7 @@ namespace
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < minTime )
+        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
             return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
@@ -460,9 +460,11 @@ namespace
         if ( !osgDB::fileExists(path) )
             return STATUS_NOT_FOUND;
 
+        TimeStamp oldestValidTime = std::max(minTime, getMinValidTime());
+
         struct stat s;
         ::stat( path.c_str(), &s );
-        return s.st_mtime >= minTime ? STATUS_OK : STATUS_EXPIRED;
+        return s.st_mtime >= oldestValidTime ? STATUS_OK : STATUS_EXPIRED;
     }
 
     bool

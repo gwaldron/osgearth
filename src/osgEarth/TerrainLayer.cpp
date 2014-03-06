@@ -345,8 +345,9 @@ TerrainLayer::getProfile() const
 unsigned
 TerrainLayer::getTileSize() const
 {
-    TileSource* ts = getTileSource();
-    return ts ? ts->getPixelsPerTile() : _tileSize;
+    // force tile source initialization (which sets _tileSize)
+    getTileSource();
+    return _tileSize; //ts ? ts->getPixelsPerTile() : _tileSize;
 }
 
 bool
@@ -411,7 +412,7 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
             // attempt to read the cache metadata:
             CacheBinMetadata meta( newBin->readMetadata() );
 
-            if ( !meta._empty ) // cache exists
+            if ( meta.isValid() ) // cache exists and is valid.
             {
                 // verify that the cache if compatible with the tile source:
                 if ( getTileSource() && getProfile() )
@@ -431,6 +432,7 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                     // in cacheonly mode, create a profile from the first cache bin accessed
                     // (they SHOULD all be the same...)
                     _profile = Profile::create( *meta._sourceProfile );
+                    _tileSize = *meta._sourceTileSize;
                 }
             }
 
@@ -441,11 +443,13 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                 if ( getTileSource() && getProfile() )
                 {
                     // no existing metadata; create some.
-                    meta._cacheBinId    = binId;
-                    meta._sourceName    = this->getName();
-                    meta._sourceDriver  = getTileSource()->getOptions().getDriver();
-                    meta._sourceProfile = getProfile()->toProfileOptions();
-                    meta._cacheProfile  = profile->toProfileOptions();
+                    meta._cacheBinId      = binId;
+                    meta._sourceName      = this->getName();
+                    meta._sourceDriver    = getTileSource()->getOptions().getDriver();
+                    meta._sourceTileSize  = getTileSize();
+                    meta._sourceProfile   = getProfile()->toProfileOptions();
+                    meta._cacheProfile    = profile->toProfileOptions();
+                    meta._cacheCreateTime = DateTime().asTimeStamp();
 
                     // store it in the cache bin.
                     newBin->writeMetadata( meta.getConfig() );

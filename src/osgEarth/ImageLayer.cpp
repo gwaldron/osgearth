@@ -805,9 +805,17 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             GeoImage image = createImageFromTileSource( *k, progress, true, isFallback );
             if ( image.valid() )
             {
-                // make sure the image is RGBA.
-                // (TODO: investigate whether we still need this -gw 6/25/2012)
-                if (image.getImage()->getPixelFormat() != GL_RGBA || image.getImage()->getDataType() != GL_UNSIGNED_BYTE || image.getImage()->getInternalTextureFormat() != GL_RGBA8 )
+                ImageUtils::normalizeImage(image.getImage());
+
+                // Make sure all images in mosaic are based on "RGBA - unsigned byte" pixels.
+                // This is not the smarter choice (in some case RGB would be sufficient) but
+                // it ensure consistency between all images / layers.
+                //
+                // The main drawback is probably the CPU memory foot-print which would be reduced by allocating RGB instead of RGBA images.
+                // On GPU side, this should not change anything because of data alignements : often RGB and RGBA textures have the same memory footprint
+                //
+                if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
+                    || (image.getImage()->getPixelFormat() != GL_RGBA) )
                 {
                     osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
                     if (convertedImg.valid())

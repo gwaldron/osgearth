@@ -661,8 +661,6 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
     // Fast conversion if possible : RGB8 to RGBA8
     if ( dataType == GL_UNSIGNED_BYTE && pixelFormat == GL_RGBA && image->getDataType() == GL_UNSIGNED_BYTE && image->getPixelFormat() == GL_RGB)
     {
-        OE_NOTICE << "Fast convert !" << std::endl;
-
         // Do fast conversion
         osg::Image* result = new osg::Image();
         result->allocateImage(image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE);

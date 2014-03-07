@@ -48,6 +48,8 @@ namespace osgEarth { namespace Drivers
         optional<int>& secondarySplitLevel() { return _secondarySplitLevel; }
         const optional<int>& secondarySplitLevel() const { return _secondarySplitLevel; }
 
+        optional<unsigned int>& maxDataLevelOverride() { return _maxDataLevelOverride;}
+        const optional<unsigned int>& maxDataLevelOverride() const { return _maxDataLevelOverride;}
         optional<DirectoryStructure>& directoryStructure() { return _dirStruct; }
         const optional<DirectoryStructure>& directoryStructure() const { return _dirStruct; }
 
@@ -92,6 +94,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("url", _url);
             conf.updateIfSet("primary_split_level", _primarySplitLevel);
             conf.updateIfSet("secondary_split_level", _secondarySplitLevel);
+            conf.updateIfSet( "max_data_level_override", _maxDataLevelOverride);
             conf.updateIfSet("layer", _layer);
             conf.updateIfSet("layer_setname", _layerSetName);
             conf.updateIfSet("num_tiles_wide_at_lod_0", _widthLod0 );
@@ -117,6 +120,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet("url", _url);
             conf.getIfSet("primary_split_level", _primarySplitLevel);
             conf.getIfSet("secondary_split_level", _secondarySplitLevel);
+            conf.getIfSet( "max_data_level_override", _maxDataLevelOverride);
             conf.getIfSet("layer", _layer);
             conf.getIfSet("layer_setname", _layerSetName);
             conf.getIfSet("num_tiles_wide_at_lod_0", _widthLod0 );
@@ -133,6 +137,7 @@ namespace osgEarth { namespace Drivers
         optional<URI>         _url;
         optional<std::string> _baseName, _layerSetName;
         optional<int>         _primarySplitLevel, _secondarySplitLevel, _layer, _widthLod0, _heightLod0;
+        optional<unsigned int>       _maxDataLevelOverride;
         optional<DirectoryStructure> _dirStruct;
         optional<int> _terrainTileCacheSize;
     };

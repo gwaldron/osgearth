@@ -525,6 +525,19 @@ public:
 
         _vpbDatabase->initialize( _dbOptions.get() );
 
+        unsigned maxLevel;
+        if(_options.maxDataLevelOverride().isSet())
+            maxLevel = _options.maxDataLevelOverride().value();
+        else
+        {
+            int psl = _options.primarySplitLevel().value();
+            int ssl = _options.secondarySplitLevel().value();
+            int calculatedThirdSplitLevel = ssl + (ssl - psl);
+            maxLevel = (unsigned)std::max(psl, std::max(ssl, calculatedThirdSplitLevel));
+        }
+
+        //Push back a single area that encompasses the whole profile going up to the max level
+        this->getDataExtents().push_back(DataExtent(_vpbDatabase->_profile->getExtent(), 0, maxLevel));
         if ( !getProfile() )
         {
             setProfile(_vpbDatabase->_profile.get());

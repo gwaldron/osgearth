@@ -192,6 +192,40 @@ _parentStateSet( rhs._parentStateSet )
     //nop
 }
 
+bool
+TileModel::requiresUpdateTraverse() const
+{
+    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+    {
+        if ( i->second.getMapLayer()->isDynamic() )
+            return true;
+    }
+    return false;
+}
+
+void
+TileModel::updateTraverse(osg::NodeVisitor& nv) const
+{
+    // supports updatable images (ImageStream, etc.)
+    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+    {
+        if ( i->second.getMapLayer()->isDynamic() )
+        {
+            osg::Texture* tex = i->second.getTexture();
+            if ( tex )
+            {
+                for(int r=0; r<tex->getNumImages(); ++r )
+                {
+                    osg::Image* image = tex->getImage(r);
+                    if ( image && image->requiresUpdateCall() )
+                    {
+                        image->update(&nv);
+                    }
+                }
+            }
+        }
+    }
+}
 
 TileModel*
 TileModel::createQuadrant(unsigned q) const

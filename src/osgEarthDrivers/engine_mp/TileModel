@@ -34,6 +34,7 @@
 #include <osg/StateSet>
 #include <osg/Texture2D>
 #include <osg/State>
+#include <osg/NodeVisitor>
 #include <map>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
@@ -243,6 +244,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             }
             return false;
         }
+
+        bool requiresUpdateTraverse() const;
+
+        void updateTraverse(osg::NodeVisitor&) const;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

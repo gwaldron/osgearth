@@ -38,8 +38,5 @@ Try running this with:
     
     <options>
         <lighting>false</lighting>
-		
-		<!-- default engine doesn't support sequencing yet -->
-		<terrain driver="quadtree"/>
     </options>
 </map>

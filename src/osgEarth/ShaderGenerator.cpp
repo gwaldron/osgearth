@@ -36,6 +36,7 @@
 #include <osg/TexEnv>
 #include <osg/TexGen>
 #include <osg/ClipNode>
+#include <osg/ValueObject>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/ReadFile>
@@ -44,6 +45,8 @@
 #define LC "[ShaderGenerator] "
 
 #define SHADERGEN_PL_EXTENSION "osgearth_shadergen"
+
+#define SHADERGEN_HINT_IGNORE "osgEarth.ShaderGenerator.ignore"
 
 using namespace osgEarth;
 
@@ -211,6 +214,15 @@ ShaderGenerator::ShaderGenerator()
 }
 
 void
+ShaderGenerator::setIgnoreHint(osg::Node* graph, bool ignore)
+{
+    if (graph)
+    {
+        graph->setUserValue( SHADERGEN_HINT_IGNORE, ignore );
+    }
+}
+
+void
 ShaderGenerator::setProgramName(const std::string& name)
 {
     _name = name;
@@ -274,23 +286,38 @@ ShaderGenerator::run(osg::Node* graph, StateSetCache* cache)
 void 
 ShaderGenerator::apply( osg::Node& node )
 {
-    if ( !_active ) return;
+    if ( !_active )
+        return;
 
-    if ( node.getStateSet() )
-        _state->pushStateSet( node.getStateSet() );
+    bool ignore;
+    if ( node.getUserValue(SHADERGEN_HINT_IGNORE, ignore) && ignore )
+        return;
+
+    osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
+    if ( stateset.valid() )
+    {
+        _state->pushStateSet( stateset.get() );
+    }
 
     traverse(node);
 
-    if ( node.getStateSet() )
+    if ( stateset.valid() )
+    {
         _state->popStateSet();
+    }
 }
 
 void
-ShaderGenerator::apply(osg::Group& group)
+ShaderGenerator::apply(osg::Group& node)
 {
-    if ( !_active ) return;
+    if ( !_active )
+        return;
 
-    traverse(group);
+    bool ignore;
+    if ( node.getUserValue(SHADERGEN_HINT_IGNORE, ignore) && ignore )
+        return;
+
+    traverse(node);
 
 #if 0
     std::set<VirtualProgram*> childVPs;
@@ -320,17 +347,22 @@ ShaderGenerator::apply(osg::Group& group)
 }
 
 void 
-ShaderGenerator::apply( osg::Geode& geode )
+ShaderGenerator::apply( osg::Geode& node )
 {
-    if ( !_active ) return;
+    if ( !_active )
+        return;
 
-    osg::ref_ptr<osg::StateSet> stateset = geode.getStateSet();
+    bool ignore;
+    if ( node.getUserValue(SHADERGEN_HINT_IGNORE, ignore) && ignore )
+        return;
+
+    osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
     if ( stateset.valid() )
     {
-        _state->pushStateSet( geode.getStateSet() );
+        _state->pushStateSet( stateset.get() );
     }
 
-    unsigned numDrawables = geode.getNumDrawables();
+    unsigned numDrawables = node.getNumDrawables();
     bool traverseDrawables = true;
 
     // This block checks whether all the geode's drawables are equivalent,
@@ -343,7 +375,7 @@ ShaderGenerator::apply( osg::Geode& geode )
         unsigned numInheritingText = 0, numInheritingGeometry = 0;
         for( d = 0; d < numDrawables; ++d )
         {
-            osg::Drawable* drawable = geode.getDrawable(d);
+            osg::Drawable* drawable = node.getDrawable(d);
             if ( drawable->getStateSet() == 0L )
             {
                 if ( drawable->asGeometry() )
@@ -358,7 +390,7 @@ ShaderGenerator::apply( osg::Geode& geode )
             osg::ref_ptr<osg::StateSet> replacement;
             if ( processGeometry(stateset.get(), replacement) )
             {
-                geode.setStateSet(replacement.get() );
+                node.setStateSet(replacement.get() );
                 traverseDrawables = false;
             }
         }
@@ -367,7 +399,7 @@ ShaderGenerator::apply( osg::Geode& geode )
             osg::ref_ptr<osg::StateSet> replacement;
             if ( processText(stateset.get(), replacement) )
             {
-                geode.setStateSet(replacement.get() );
+                node.setStateSet(replacement.get() );
                 traverseDrawables = false;
             }
         }
@@ -376,9 +408,9 @@ ShaderGenerator::apply( osg::Geode& geode )
     // Drawables have state sets, so let's traverse them.
     if ( traverseDrawables )
     {
-        for( unsigned d = 0; d < geode.getNumDrawables(); ++d )
+        for( unsigned d = 0; d < node.getNumDrawables(); ++d )
         {
-            apply( geode.getDrawable(d) );
+            apply( node.getDrawable(d) );
         }
     }
 
@@ -434,16 +466,24 @@ ShaderGenerator::apply( osg::Drawable* drawable )
 void
 ShaderGenerator::apply(osg::PagedLOD& node)
 {
-    if ( !_active ) return;
+    if ( !_active )
+        return;
+
+    bool ignore;
+    if ( node.getUserValue(SHADERGEN_HINT_IGNORE, ignore) && ignore )
+        return;
 
     for( unsigned i=0; i<node.getNumFileNames(); ++i )
     {
+        static Threading::Mutex s_mutex;
+        s_mutex.lock();
         const std::string& filename = node.getFileName( i );
         if (!filename.empty() && 
             osgDB::getLowerCaseFileExtension(filename).compare(SHADERGEN_PL_EXTENSION) != 0 )
         {
             node.setFileName( i, Stringify() << filename << "." << SHADERGEN_PL_EXTENSION );
         }
+        s_mutex.unlock();
     }
 
     apply( static_cast<osg::LOD&>(node) );
@@ -453,7 +493,12 @@ ShaderGenerator::apply(osg::PagedLOD& node)
 void
 ShaderGenerator::apply(osg::ProxyNode& node)
 {
-    if ( !_active ) return;
+    if ( !_active )
+        return;
+
+    bool ignore;
+    if ( node.getUserValue(SHADERGEN_HINT_IGNORE, ignore) && ignore )
+        return;
 
     if ( node.getLoadingExternalReferenceMode() != osg::ProxyNode::LOAD_IMMEDIATELY )
     {
@@ -484,7 +529,12 @@ ShaderGenerator::apply(osg::ClipNode& node)
         "    gl_ClipVertex = vertexVIEW; \n"
         "}\n";
 
-    if ( !_active ) return;
+    if ( !_active )
+        return;
+
+    bool ignore;
+    if ( node.getUserValue(SHADERGEN_HINT_IGNORE, ignore) && ignore )
+        return;
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(node.getOrCreateStateSet());
     if ( vp->referenceCount() == 1 ) vp->setName( _name );

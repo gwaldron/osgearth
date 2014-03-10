@@ -39,7 +39,8 @@ _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true ),
 _backfaceCulling   ( true ),
-_alphaBlending     ( true )
+_alphaBlending     ( true ),
+_sessionWideResourceCache( true )
 {
     fromConfig( _conf );
 }
@@ -64,7 +65,8 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "cluster_culling",  _clusterCulling );
     conf.getIfSet( "backface_culling", _backfaceCulling );
     conf.getIfSet( "alpha_blending",   _alphaBlending );
-
+    
+    conf.getIfSet( "session_wide_resource_cache", _sessionWideResourceCache );
 }
 
 Config
@@ -90,6 +92,8 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
     conf.updateIfSet( "backface_culling", _backfaceCulling );
     conf.updateIfSet( "alpha_blending",   _alphaBlending );
+    
+    conf.updateIfSet( "session_wide_resource_cache", _sessionWideResourceCache );
 
     return conf;
 }

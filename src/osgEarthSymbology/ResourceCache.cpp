@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/ResourceCache>
+#include <osgEarth/ShaderGenerator>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;

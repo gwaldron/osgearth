@@ -73,6 +73,12 @@ namespace osgEarth
          */
         void run(osg::Node* graph, StateSetCache* cache =0L);
 
+        /**
+         * Marks a node with a hint that the shader generator should ignore it in
+         * the future. Useful if you want to gen shaders once and never again.
+         */
+        void setIgnoreHint(osg::Node* graph, bool ignore);
+
     public:
         /**
          * User callback that lets you selectly reject shader generation for

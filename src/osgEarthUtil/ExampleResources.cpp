@@ -27,6 +27,7 @@
 #include <osgEarthUtil/Sky>
 #include <osgEarthUtil/Ocean>
 #include <osgEarthUtil/Shadowing>
+#include <osgEarthUtil/ActivityMonitorTool>
 
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/DetailTexture>
@@ -535,6 +536,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useAutoClip   = args.read("--autoclip");
     bool useShadows    = args.read("--shadows");
     bool animateSky    = args.read("--animate-sky");
+    bool showActivity  = args.read("--activity");
 
     float ambientBrightness = 0.2f;
     args.read("--ambientBrightness", ambientBrightness);
@@ -734,6 +736,17 @@ MapNodeHelper::parse(MapNode*             mapNode,
         {
             manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
         }
+    }
+
+    // activity monitor (debugging)
+    if ( showActivity )
+    {
+        VBox* vbox = new VBox();
+        vbox->setBackColor( Color(Color::Black, 0.8) );
+        vbox->setHorizAlign( Control::ALIGN_LEFT );
+        vbox->setVertAlign( Control::ALIGN_BOTTOM );
+        view->addEventHandler( new ActivityMonitorTool(vbox) );
+        canvas->addControl( vbox );
     }
 
     // Install an auto clip plane clamper

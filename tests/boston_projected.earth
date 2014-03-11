@@ -7,7 +7,7 @@ to extruded buildings.
 
 <map name="Boston Demo" type="projected" version="2">
     
-    <options elevation_tile_size="15">
+    <options elevation_tile_size="8">
 		<profile srs="+proj=utm +zone=19 +ellps=GRS80 +units=m +no_defs"
 		         xmin="291343" xmax="367343"
 				 ymin="4653876" ymax="4722276"
@@ -117,7 +117,7 @@ to extruded buildings.
     </model>
     
     
-    <model name="Parks" driver="feature_geom" enabled="false">
+    <model name="Parks" driver="feature_geom" enabled="true">
         <features name="parks" driver="ogr" build_spatial_index="true">
             <url>../data/boston-parks.shp</url>
         </features>

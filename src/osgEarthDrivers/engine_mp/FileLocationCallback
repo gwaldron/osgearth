@@ -41,7 +41,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** dtor */
         virtual ~FileLocationCallback() { }
 
-        virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        Location fileLocation(const std::string& filename, const osgDB::Options* options)
         {
             Location result = REMOTE_FILE;
 
@@ -75,7 +75,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             return result;
         }
 
-        virtual bool useFileCache() const { return false; }
+        bool useFileCache() const { return false; }
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

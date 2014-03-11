@@ -497,6 +497,27 @@ Registry::getStateSetCache() const
     return _stateSetCache.get();
 }
 
+void
+Registry::startActivity(const std::string& activity)
+{
+    Threading::ScopedMutexLock lock(_activityMutex);
+    _activities.insert(activity);
+}
+
+void
+Registry::endActivity(const std::string& activity)
+{
+    Threading::ScopedMutexLock lock(_activityMutex);
+    _activities.erase(activity);
+}
+
+void
+Registry::getActivities(std::set<std::string>& output)
+{
+    Threading::ScopedMutexLock lock(_activityMutex);
+    output = _activities;
+}
+
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin
 class RegisterEarthTileExtension

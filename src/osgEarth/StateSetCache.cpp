@@ -92,10 +92,16 @@ namespace
 
         void apply(osg::Node& node)
         {
-            if (node.getStateSet() && 
-                node.getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
+            if (node.getStateSet())
             {
-                applyStateSet( node.getStateSet() );
+                // ref for thread-safety; another thread might replace this stateset
+                // during optimization while we're looking at it.
+                osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
+                if (stateset.valid() && 
+                    stateset->getDataVariance() != osg::Object::DYNAMIC )            
+                {
+                    applyStateSet( stateset.get() );
+                }
             }
             traverse(node);
         }
@@ -106,16 +112,22 @@ namespace
             for( unsigned i=0; i<numDrawables; ++i )
             {
                 osg::Drawable* d = geode.getDrawable(i);
-                if (d &&
-                    d->getStateSet() &&
-                    d->getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
+                if (d && d->getStateSet() )
                 {
-                    applyStateSet( d->getStateSet() );
+                    // ref for thread-safety; another thread might replace this stateset
+                    // during optimization while we're looking at it.
+                    osg::ref_ptr<osg::StateSet> stateset = d->getStateSet();
+                    if (stateset.valid() &&
+                        stateset->getDataVariance() != osg::Object::DYNAMIC)
+                    {
+                        applyStateSet( stateset.get() );
+                    }
                 }
             }
             apply((osg::Node&)geode);
         }
 
+        // assume: stateSet is safely referenced by caller
         void applyStateSet(osg::StateSet* stateSet)
         {
             osg::StateSet::AttributeList& attrs = stateSet->getAttributeList();
@@ -170,19 +182,21 @@ namespace
 
         void apply(osg::Node& node)
         {
-            if ( isEligible(node.getStateSet()) )
-            //if (node.getStateSet() && 
-            //    node.getStateSet()->getDataVariance() != osg::Object::DYNAMIC)
+            if (node.getStateSet())
             {
-                _stateSets++;
-                osg::ref_ptr<osg::StateSet> in, shared;
-                in = node.getStateSet();
-                if ( in.valid() && _cache->share(in, shared) )
+                osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
+
+                if ( isEligible(stateset.get()) )
                 {
-                    node.setStateSet( shared.get() );
-                    _shares++;
+                    _stateSets++;
+                    osg::ref_ptr<osg::StateSet> shared;
+                    if ( _cache->share(stateset, shared) )
+                    {
+                        node.setStateSet( shared.get() );
+                        _shares++;
+                    }
+                    //else _misses.push_back(in.get());
                 }
-                //else _misses.push_back(in.get());
             }
             traverse(node);
         }
@@ -193,17 +207,20 @@ namespace
             for( unsigned i=0; i<numDrawables; ++i )
             {
                 osg::Drawable* d = geode.getDrawable(i);
-                if ( d && isEligible(d->getStateSet()) ) // && d->getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
+                if ( d && d->getStateSet())
                 {
-                    _stateSets++;
-                    osg::ref_ptr<osg::StateSet> in, shared;
-                    in = d->getStateSet();
-                    if ( in.valid() && _cache->share(in, shared) )
+                    osg::ref_ptr<osg::StateSet> stateset = d->getStateSet();
+                    if (stateset.valid() && isEligible(stateset.get()))
                     {
-                        d->setStateSet( shared.get() );
-                        _shares++;
+                        _stateSets++;
+                        osg::ref_ptr<osg::StateSet> shared;
+                        if ( _cache->share(stateset, shared) )
+                        {
+                            d->setStateSet( shared.get() );
+                            _shares++;
+                        }
+                        //else _misses.push_back(in.get());
                     }
-                    //else _misses.push_back(in.get());
                 }
             }
             apply((osg::Node&)geode);
@@ -379,9 +396,10 @@ StateSetCache::prune()
 
     for( StateSetSet::iterator i = _stateSetCache.begin(); i != _stateSetCache.end(); )
     {
-        if ( i->get()->referenceCount() == 1 )
+        if ( i->get()->referenceCount() <= 1 )
         {
             // do not call releaseGLObjects since the attrs themselves might still be shared
+            // TODO: review this.
             _stateSetCache.erase( i++ );
             ss_count++;
         }
@@ -393,7 +411,7 @@ StateSetCache::prune()
 
     for( StateAttributeSet::iterator i = _stateAttributeCache.begin(); i != _stateAttributeCache.end(); )
     {
-        if ( i->get()->referenceCount() == 1 )
+        if ( i->get()->referenceCount() <= 1 )
         {
             i->get()->releaseGLObjects( 0L );
             _stateAttributeCache.erase( i++ );

@@ -25,95 +25,7 @@
 #include <osg/Texture>
 
 namespace osgEarth
-{
-    /**
-     * @deprecated
-     * The LoadingPolicy configures how the terrain engine loads map data.
-     */
-    class OSGEARTH_EXPORT LoadingPolicy
-    {
-    public:
-        /** Tile loading modes. */
-        enum Mode {
-            /** Load tiles one LOD at a tile, serially */ 
-            MODE_SERIAL,
-
-            /** Load tiles one LOD at a tile, in parallel */
-            MODE_PARALLEL,
-
-            /** Load tiles using a task service thread pool, enforcing sequential display
-                of tile LODs. */
-            MODE_SEQUENTIAL,
-
-            /** Load tiles using a task service thread pool, but prioritize loading of the
-                highest visible LOD for imagery (elevation data is always sequential). */
-            MODE_PREEMPTIVE,
-
-            /** Load tiles using the standard OSG database pager mechanism. The default. */
-            MODE_STANDARD = MODE_SERIAL
-        };
-
-    public:
-        LoadingPolicy( const Config& conf =Config() );
-        virtual ~LoadingPolicy() { }
-
-    public: // Configrable
-        virtual Config getConfig() const;
-        virtual void fromConfig( const Config& conf );
-
-    public:
-        /**
-         * Gets or sets the tile loading mode.
-         */
-        optional<Mode>& mode() { return _mode; }
-        const optional<Mode>& mode() const { return _mode; }
-
-        /**
-         * Gets or sets the number of loading threads to use per CPU core.
-         *
-         * In STANDARD mode, this affects the number of OSG database pager threads;
-         * in SEQUENTIAL or PREEMPTIVE mode, this sets the number of task thread
-         * pool threads.
-         */
-        optional<float>& numLoadingThreadsPerCore() { return _numLoadingThreadsPerCore; }
-        const optional<float>& numLoadingThreadsPerCore() const { return _numLoadingThreadsPerCore; }
-
-        /**
-         * Gets or sets the total number of loading threads to use.
-         *
-         * In STANDARD mode, this affects the number of OSG database pager threads;
-         * in SEQUENTIAL or PREEMPTIVE mode, this sets the number of task thread
-         * pool threads.
-         */
-        const optional<int>& numLoadingThreads() const { return _numLoadingThreads; }
-        optional<int>& numLoadingThreads() { return _numLoadingThreads; }
-
-        /**
-         * Gets or sets the number of threads to allocate for regenerating terrain
-         * tiles in the background. This only applies in SEQUENTIAL or PREEMPTIVE
-         * mode.
-         */
-        const optional<int>& numCompileThreads() const { return _numCompileThreads; }
-        optional<int>& numCompileThreads() { return _numCompileThreads; }
-
-        /**
-         * Gets or sets the number of threads to allocate for regenerating terrain
-         * tiles in the background. This only applies in SEQUENTIAL or PREEMPTIVE
-         * mode.
-         */
-        const optional<float>& numCompileThreadsPerCore() const { return _numCompileThreadsPerCore; }
-        optional<float>& numCompileThreadsPerCore() { return _numCompileThreadsPerCore; }
-
-    protected:
-        optional<Mode> _mode;
-        optional<int>   _numLoadingThreads;
-        optional<float> _numLoadingThreadsPerCore;
-        optional<int>   _numCompileThreads;
-        optional<float> _numCompileThreadsPerCore;
-    };
-
-    extern OSGEARTH_EXPORT int computeLoadingThreads(const LoadingPolicy& policy);
-    
+{    
     /**
      * Base class for the configuration for a terrain engine driver.
      */
@@ -155,13 +67,6 @@ namespace osgEarth
         const optional<float>& minTileRangeFactor() const { return _minTileRangeFactor; }
 
         /**
-         * @deprecated
-         * Properties associated with the tile loading subsystem.
-         */
-        optional<LoadingPolicy>& loadingPolicy() { return _loadingPolicy; }
-        const optional<LoadingPolicy>& loadingPolicy() const { return _loadingPolicy; }
-
-        /**
          * The image-layer fading attenuation distance
          */
         optional<float>& attenuationDistance() { return _attenuationDistance; }
@@ -192,13 +97,6 @@ namespace osgEarth
             COMPOSITING_MULTIPASS,
             COMPOSITING_USER
         };
-
-        /**
-         * @deprecated - will either go away or be moved into the Quadtree terrain engine
-         * The texture composition technique
-         */
-        optional<CompositingTechnique>& compositingTechnique() { return _compositingTech; }
-        const optional<CompositingTechnique>& compositingTechnique() const { return _compositingTech; }
 
         /**
          * The maximum level of detail to which the terrain should subdivide. If you leave this
@@ -299,8 +197,6 @@ namespace osgEarth
         optional<float> _heightFieldSampleRatio;
         optional<float> _minTileRangeFactor;        
         optional<bool> _combineLayers;
-        optional<LoadingPolicy> _loadingPolicy;
-        optional<CompositingTechnique> _compositingTech;
         optional<unsigned> _minLOD;
         optional<unsigned> _maxLOD;
         optional<unsigned> _firstLOD;

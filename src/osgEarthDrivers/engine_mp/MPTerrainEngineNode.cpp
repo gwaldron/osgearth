@@ -26,6 +26,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/MapModelChange>
@@ -168,10 +169,7 @@ void
 MPTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
     TerrainEngineNode::preInitialize( map, options );
-
-    // override the compositor technique because we want to do unit
-    // reservations but nothing else.
-    getTextureCompositor()->setTechnique( 0L );
+    //nop.
 }
 
 void
@@ -420,6 +418,13 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
                 }
             }
         }
+
+        // Inform the registry of the current frame so that Tiles have access
+        // to the information.
+        if ( _liveTiles.valid() && nv.getFrameStamp() )
+        {
+            _liveTiles->setTraversalFrame( nv.getFrameStamp()->getFrameNumber() );
+        }
     }
 
 #if 0
@@ -533,12 +538,6 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         // dispatch the change handler
         if ( change.getLayer() )
         {
-            // first inform the texture compositor with the new model changes:
-            if ( _texCompositor.valid() && change.getImageLayer() )
-            {
-                _texCompositor->applyMapModelChange( change );
-            }
-
             // then apply the actual change:
             switch( change.getAction() )
             {
@@ -659,22 +658,17 @@ MPTerrainEngineNode::toggleElevationLayer( ElevationLayer* layer )
     refresh();
 }
 
-void
-MPTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
-{
-    TerrainEngineNode::validateTerrainOptions( options );
-    
-    //nop for now.
-    //note: to validate plugin-specific features, we would create an MPTerrainEngineOptions
-    // and do the validation on that. You would then re-integrate it by calling
-    // options.mergeConfig( osgTerrainOptions ).
-}
-
 
 // Generates the main shader code for rendering the terrain.
 void
 MPTerrainEngineNode::updateShaders()
 {
+    if ( !Registry::capabilities().supportsGLSL() )
+    {
+        _shaderUpdateRequired = false;
+        return;
+    }
+
     if ( _batchUpdateInProgress )
     {
         _shaderUpdateRequired = true;

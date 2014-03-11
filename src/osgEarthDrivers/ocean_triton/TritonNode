@@ -49,6 +49,8 @@ namespace osgEarth { namespace Drivers { namespace Triton
 
         osg::BoundingSphere computeBound() const;
 
+        void traverse(osg::NodeVisitor&);
+
     protected:
         virtual ~TritonNode();
 

@@ -229,6 +229,7 @@ namespace osgEarth
          */
         virtual void getIntersectingTiles(
             const GeoExtent& extent,
+            unsigned localLOD,
             std::vector<TileKey>& out_intersectingKeys) const;
 
         /** 
@@ -271,7 +272,7 @@ namespace osgEarth
          * Given another Profile and an LOD in that Profile, determine 
          * the LOD in this Profile that is nearly equivalent.
          */
-        unsigned int getEquivalentLOD( const Profile* profile, unsigned int lod ) const;
+        unsigned getEquivalentLOD( const Profile* profile, unsigned lod ) const;
 
     public:
 
@@ -301,6 +302,7 @@ namespace osgEarth
 
         virtual void addIntersectingTiles(
             const GeoExtent& key_ext,
+            unsigned localLOD,
             std::vector<TileKey>& out_intersectingKeys) const;
 
 

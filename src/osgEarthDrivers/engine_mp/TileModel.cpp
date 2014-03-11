@@ -122,12 +122,10 @@ TileModel::ColorData::ColorData(const osgEarth::ImageLayer* layer,
                                 unsigned                    order,
                                 osg::Image*                 image,
                                 GeoLocator*                 locator,
-                                const osgEarth::TileKey&    tileKey,
                                 bool                        fallbackData) :
 _layer       ( layer ),
 _order       ( order ),
 _locator     ( locator ),
-_tileKey     ( tileKey ),
 _fallbackData( fallbackData )
 {
     osg::Texture::FilterMode minFilter = layer->getImageLayerOptions().minFilter().get();
@@ -166,7 +164,6 @@ _fallbackData( fallbackData )
         _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     }    
 
-
     _hasAlpha = image && ImageUtils::hasTransparency(image);
 }
 
@@ -174,7 +171,6 @@ TileModel::ColorData::ColorData(const TileModel::ColorData& rhs) :
 _layer       ( rhs._layer.get() ),
 _locator     ( rhs._locator.get() ),
 _texture     ( rhs._texture.get() ),
-_tileKey     ( rhs._tileKey ),
 _fallbackData( rhs._fallbackData ),
 _order       ( rhs._order ),
 _hasAlpha    ( rhs._hasAlpha )
@@ -215,6 +211,42 @@ _parentStateSet( rhs._parentStateSet )
     //nop
 }
 
+bool
+TileModel::requiresUpdateTraverse() const
+{
+    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+    {
+        if ( i->second.getMapLayer()->isDynamic() )
+            return true;
+    }
+    return false;
+}
+
+void
+TileModel::updateTraverse(osg::NodeVisitor& nv) const
+{
+    // Supports updatable images (ImageStream, etc.), since the built-in
+    // mechanism for doing so requires the Texture/Image to be in a StateSet
+    // in the scene graph, and we don't keep it there.
+    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+    {
+        if ( i->second.getMapLayer()->isDynamic() )
+        {
+            osg::Texture* tex = i->second.getTexture();
+            if ( tex )
+            {
+                for(int r=0; r<tex->getNumImages(); ++r )
+                {
+                    osg::Image* image = tex->getImage(r);
+                    if ( image && image->requiresUpdateCall() )
+                    {
+                        image->update(&nv);
+                    }
+                }
+            }
+        }
+    }
+}
 
 TileModel*
 TileModel::createQuadrant(unsigned q) const

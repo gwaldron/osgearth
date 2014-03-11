@@ -1085,28 +1085,36 @@ Map::calculateProfile()
     }
 }
 
+osg::HeightField*
+Map::createReferenceHeightField(const TileKey& key,
+                                bool           expressHeightsAsHAE) const
+{
+    unsigned size = std::max(*_mapOptions.elevationTileSize(), 2u);
+    return HeightFieldUtils::createReferenceHeightField(key.getExtent(), size, size, expressHeightsAsHAE);
+}
+
 
 bool
-Map::getHeightField(const TileKey&                  key,
-                    bool                            fallback,
-                    osg::ref_ptr<osg::HeightField>& out_result,
-                    bool*                           out_isFallback,
-                    bool                            convertToHAE,
-                    ElevationSamplePolicy           samplePolicy,
-                    ProgressCallback*               progress) const
+Map::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
+                         const TileKey&                  key,
+                         bool                            convertToHAE,
+                         ElevationSamplePolicy           samplePolicy, // deprecated (unused)
+                         ProgressCallback*               progress) const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
 
     ElevationInterpolation interp = getMapOptions().elevationInterpolation().get();    
 
-    return _elevationLayers.createHeightField(
-        key, 
-        fallback, 
+    if ( !hf.valid() )
+    {
+        hf = createReferenceHeightField(key, convertToHAE);
+    }
+
+    return _elevationLayers.populateHeightField(
+        hf.get(),
+        key,
         convertToHAE ? _profileNoVDatum.get() : 0L,
-        interp, 
-        samplePolicy, 
-        out_result,  
-        out_isFallback,
+        interp,
         progress );
 }
 

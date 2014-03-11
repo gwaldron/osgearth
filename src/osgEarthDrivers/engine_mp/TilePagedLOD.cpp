@@ -19,6 +19,7 @@
 #include "TilePagedLOD"
 #include "TileNodeRegistry"
 #include <osg/Version>
+#include <osgEarth/Registry>
 #include <cassert>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
@@ -62,6 +63,37 @@ namespace
 }
 
 
+bool
+TilePagedLOD::MyProgressCallback::isCanceled()
+{
+    if (!ProgressCallback::isCanceled() &&
+        _frameOfLastCull > 0 && 
+        ((int)_tiles->getTraversalFrame() - (int)_frameOfLastCull > 2))
+    {
+        _frameOfLastCull = 0;
+        cancel();
+        stats().clear();
+    }
+    return ProgressCallback::isCanceled();
+}
+
+void
+TilePagedLOD::MyProgressCallback::update(unsigned frame)
+{
+    if ( ProgressCallback::isCanceled() )
+    {
+        // this lets up re-use a progress callback if the tile was previously
+        // canceled and then queued up again later without being expired
+        reset();
+        _frameOfLastCull = 0;
+    }
+    else
+    {
+        _frameOfLastCull = frame;
+    }
+}
+
+
 TilePagedLOD::TilePagedLOD(const UID&        engineUID,
                            TileNodeRegistry* live,
                            TileNodeRegistry* dead) :
@@ -70,7 +102,15 @@ _engineUID( engineUID ),
 _live     ( live ),
 _dead     ( dead )
 {
-    //nop
+    if ( live )
+    {
+        _progress = new MyProgressCallback();
+        _progress->_frameOfLastCull = 0;
+        _progress->_tiles = live;
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
+        options->setUserData( _progress.get() );
+        setDatabaseOptions( options );
+    }
 }
 
 TilePagedLOD::~TilePagedLOD()
@@ -80,6 +120,14 @@ TilePagedLOD::~TilePagedLOD()
     // so we still need to process the live/dead list.
     ExpirationCollector collector( _live.get(), _dead.get() );
     this->accept( collector );
+}
+
+osgDB::Options*
+TilePagedLOD::getOrCreateDBOptions()
+{
+    if ( !getDatabaseOptions() )
+        setDatabaseOptions( Registry::instance()->cloneOrCreateOptions() );
+    return static_cast<osgDB::Options*>(getDatabaseOptions());
 }
 
 TileNode*
@@ -129,6 +177,19 @@ TilePagedLOD::addChild(osg::Node* node)
     }
 
     return false;
+}
+
+void
+TilePagedLOD::traverse(osg::NodeVisitor& nv)
+{
+    if (_progress.valid() && 
+        nv.getVisitorType() == nv.CULL_VISITOR && 
+        nv.getFrameStamp() )
+    {
+        _progress->update( nv.getFrameStamp()->getFrameNumber() );
+    }
+    
+    osg::PagedLOD::traverse(nv);
 }
 
 

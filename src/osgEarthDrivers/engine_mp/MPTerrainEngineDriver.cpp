@@ -26,6 +26,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <string>
+#include <sstream>
 
 #define LC "[engine_mp driver] "
 
@@ -102,6 +103,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 MPTerrainEngineNode::getEngineByUID( (UID)engineID, engineNode );
                 if ( engineNode.valid() )
                 {
+                    Registry::instance()->startActivity(uri);
+
                     OE_START_TIMER(tileLoadTime);
 
                     // see if we have a progress tracker
@@ -135,16 +138,19 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
                     if ( _profiling )
                     {
+                        progress->stats()["http_get_time_avg"] =
+                            progress->stats()["http_get_time"] / progress->stats()["http_get_count"];
+
                         OE_NOTICE << "tile: " << tileDef << std::endl;
                         for(std::map<std::string,double>::iterator i = progress->stats().begin();
                             i != progress->stats().end();
                             ++i)
                         {
-                            OE_NOTICE << "   " << i->first << " = " << std::setprecision(4) 
-                                << i->second << " ("
-                                << (int)((i->second/tileLoadTime)*100)
-                                << "%)" 
-                                << std::endl;
+                            std::stringstream buf;
+                            buf << i->first << " = " << std::setprecision(4) << i->second;
+                            if ( osgEarth::endsWith(i->first, "_time") )
+                                buf << " (" << (int)((i->second/tileLoadTime)*100) << "%)";
+                            OE_NOTICE << "   " << buf.str() << std::endl;
                         }
 
                         if ( ownProgress )
@@ -153,13 +159,23 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                             progress = 0L;
                         }
                     }
+                    
+                    Registry::instance()->endActivity(uri);
 
                     // Deal with failed loads.
                     if ( !node.valid() )
                     {
-                        if ( key.getLOD() == 0 || (progress && progress->isCanceled()) )
+                        if ( key.getLOD() == 0  )
                         {
                             // the tile will ask again next time.
+                            return ReadResult::FILE_NOT_FOUND;
+                        }
+                        else if (progress && progress->isCanceled())
+                        {
+                            if ( _profiling )
+                            {
+                                OE_NOTICE << LC << "Tile " << key.str() << " -- canceled!" << std::endl;
+                            }
                             return ReadResult::FILE_NOT_FOUND;
                         }
                         else
@@ -175,7 +191,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                         engineNode->getTerrain()->notifyTileAdded(key, node.get());
                         osg::Timer_t end = osg::Timer::instance()->tick();
                     }
-
+                    
                     return ReadResult( node.get(), ReadResult::FILE_LOADED );
                 }
                 else

@@ -34,6 +34,7 @@
 #include <osg/StateSet>
 #include <osg/Texture2D>
 #include <osg/State>
+#include <osg/NodeVisitor>
 #include <map>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
@@ -117,6 +118,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         {
         public:
             ColorData() : _fallbackData(true) { }
+
+            /** Copy ctor - shallow */
             ColorData(const ColorData& rhs);
 
             /** dtor */
@@ -127,7 +130,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 unsigned                    order,
                 osg::Image*                 image,
                 GeoLocator*                 locator,
-                const osgEarth::TileKey&    tileKey,
                 bool                        fallbackData =false );
     
             void resizeGLObjectBuffers(unsigned maxSize);
@@ -150,14 +152,15 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 return _texture.get();
             }
 
-            const osgEarth::TileKey& getTileKey() const {
-                return _tileKey; }
-
             const osgEarth::ImageLayer* getMapLayer() const {
                 return _layer.get(); }
 
             bool isFallbackData() const {
-                return _fallbackData;}
+                return _fallbackData;
+            }
+            void setIsFallbackData(bool value) {
+                _fallbackData = value;
+            }
 
             bool hasAlpha() const {
                 return _hasAlpha;
@@ -179,9 +182,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
             osg::ref_ptr<const osgEarth::ImageLayer> _layer;
             osg::ref_ptr<GeoLocator>                 _locator;
-            osg::ref_ptr<osg::Image>                 _image;
             osg::ref_ptr<osg::Texture>               _texture;
-            osgEarth::TileKey                        _tileKey;
             bool                                     _fallbackData;
             unsigned                                 _order;
             bool                                     _hasAlpha;
@@ -242,6 +243,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             }
             return false;
         }
+
+        bool requiresUpdateTraverse() const;
+
+        void updateTraverse(osg::NodeVisitor&) const;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

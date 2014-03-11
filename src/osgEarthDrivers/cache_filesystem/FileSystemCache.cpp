@@ -23,6 +23,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/URI>
 #include <osgEarth/FileUtils>
+#include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
@@ -105,9 +106,11 @@ namespace
     protected:
         bool purgeDirectory( const std::string& dir );
 
-        bool binValidForReading();
+        bool binValidForReading(bool silent =true);
 
-        bool binValidForWriting();
+        bool binValidForWriting(bool silent =false);
+
+        std::string getValidKey(const std::string&);
 
         bool                              _ok;
         bool                              _binPathExists;
@@ -192,8 +195,17 @@ namespace
 
     //------------------------------------------------------------------------
 
+    std::string
+    FileSystemCacheBin::getValidKey(const std::string& key)
+    {
+        if ( getHashKeys() )
+            return Stringify() << std::hex << osgEarth::hashString(key);
+        else
+            return osgEarth::toLegalFileName(key);
+    }
+
     bool
-    FileSystemCacheBin::binValidForReading()
+    FileSystemCacheBin::binValidForReading(bool silent)
     {
         if ( !_binPathExists )
         {
@@ -206,7 +218,10 @@ namespace
             else if ( _ok )
             {
                 // one-time error.
-                OE_WARN << LC << "Failed to locate cache bin at [" << _binPath << "]" << std::endl;
+                if ( !silent )
+                {
+                    OE_WARN << LC << "Failed to locate cache bin at [" << _binPath << "]" << std::endl;
+                }
                 _ok = false;
             }
         }
@@ -215,7 +230,7 @@ namespace
     }
 
     bool
-    FileSystemCacheBin::binValidForWriting()
+    FileSystemCacheBin::binValidForWriting(bool silent)
     {
         if ( !_binPathExists )
         {
@@ -230,7 +245,10 @@ namespace
             else
             {
                 // one-time error.
-                OE_WARN << LC << "FAILED to find or create cache bin at [" << _metaPath << "]" << std::endl;
+                if ( !silent )
+                {
+                    OE_WARN << LC << "FAILED to find or create cache bin at [" << _metaPath << "]" << std::endl;
+                }
                 _ok = false;
             }
         }
@@ -261,13 +279,13 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI( toLegalFileName(key), _metaPath );
+        URI fileURI( getValidKey(key), _metaPath );
         std::string path = fileURI.full() + ".osgb";
 
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < minTime )
+        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
             return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
@@ -294,13 +312,13 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI( toLegalFileName(key), _metaPath );
+        URI fileURI( getValidKey(key), _metaPath );
         std::string path = fileURI.full() + ".osgb";
 
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < minTime )
+        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
             return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
@@ -327,13 +345,13 @@ namespace
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
         // mangle "key" into a legal path name
-        URI fileURI( toLegalFileName(key), _metaPath );
+        URI fileURI( getValidKey(key), _metaPath );
         std::string path = fileURI.full() + ".osgb";
 
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < minTime )
+        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
             return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
@@ -377,7 +395,9 @@ namespace
             return false;
 
         // convert the key into a legal filename:
-        URI fileURI( toLegalFileName(key), _metaPath );
+        URI fileURI( getValidKey(key), _metaPath );
+        
+        osgDB::ReaderWriter::WriteResult r;
 
         bool objWriteOK = false;
         {
@@ -388,8 +408,6 @@ namespace
             if ( !osgDB::fileExists( osgDB::getFilePath(fileURI.full()) ) )
                 osgDB::makeDirectoryForFile( fileURI.full() );
 
-            // write it.  
-            osgDB::ReaderWriter::WriteResult r;
 
             if ( dynamic_cast<const osg::Image*>(object) )
             {
@@ -424,7 +442,8 @@ namespace
         }
         else
         {
-            OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin " << getID() << std::endl;
+            OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin " << getID()
+                << "; msg = \"" << r.message() << "\"" << std::endl;
         }
 
         return objWriteOK;
@@ -436,21 +455,23 @@ namespace
         if ( !binValidForReading() ) 
             return STATUS_NOT_FOUND;
 
-        URI fileURI( toLegalFileName(key), _metaPath );
+        URI fileURI( getValidKey(key), _metaPath );
         std::string path( fileURI.full() + ".osgb" );
         if ( !osgDB::fileExists(path) )
             return STATUS_NOT_FOUND;
 
+        TimeStamp oldestValidTime = std::max(minTime, getMinValidTime());
+
         struct stat s;
         ::stat( path.c_str(), &s );
-        return s.st_mtime >= minTime ? STATUS_OK : STATUS_EXPIRED;
+        return s.st_mtime >= oldestValidTime ? STATUS_OK : STATUS_EXPIRED;
     }
 
     bool
     FileSystemCacheBin::remove(const std::string& key)
     {
         if ( !binValidForReading() ) return false;
-        URI fileURI( toLegalFileName(key), _metaPath );
+        URI fileURI( getValidKey(key), _metaPath );
         std::string path( fileURI.full() + ".osgb" );
         return ::unlink( path.c_str() ) == 0;
     }
@@ -459,7 +480,7 @@ namespace
     FileSystemCacheBin::touch(const std::string& key)
     {
         if ( !binValidForReading() ) return false;
-        URI fileURI( toLegalFileName(key), _metaPath );
+        URI fileURI( getValidKey(key), _metaPath );
         std::string path( fileURI.full() + ".osgb" );
         return osgEarth::touchFile( path );
     }

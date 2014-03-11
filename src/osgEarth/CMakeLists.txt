@@ -112,8 +112,6 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TextureCompositor
-    TextureCompositorMulti
-    TextureCompositorTexArray
     TileKey
     TileSource
     TimeControl
@@ -241,8 +239,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TerrainOptions.cpp
     TerrainEngineNode.cpp
     TextureCompositor.cpp
-    TextureCompositorMulti.cpp
-    TextureCompositorTexArray.cpp
     TileKey.cpp
     TileSource.cpp
     TimeControl.cpp

@@ -88,14 +88,6 @@ namespace osgEarth
           * #deprecated */
         float getVerticalScale() const { return _verticalScale; }
 
-        /** Sets the sampling ratio for elevation grid data. Default is 1.0.
-          * @deprecated */
-        void setElevationSamplingRatio( float value );
-
-        /** Gets the sampling ratio for elevation grid data.
-          * @depreceated */
-        float getElevationSamplingRatio() const { return _elevationSamplingRatio; }
-
 
     protected:
         TerrainEngineNode();
@@ -115,8 +107,6 @@ namespace osgEarth
     protected:
         friend class MapNode;
         friend class TerrainEngineNodeFactory;
-
-        virtual void validateTerrainOptions( TerrainOptions& options );
 
         /** Attaches a map to the terrain engine and initialized it.*/
         virtual void preInitialize( const Map* map, const TerrainOptions& options );
@@ -144,7 +134,6 @@ namespace osgEarth
         void ctor();
         void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
         void onMapModelChanged( const MapModelChange& change );
-        void updateImageUniforms();
         virtual void updateTextureCombining() { }
 
     private:
@@ -158,10 +147,6 @@ namespace osgEarth
             void onColorFiltersChanged( ImageLayer* layer );      
             void onVisibleRangeChanged( ImageLayer* layer );
 
-            ArrayUniform _layerOpacityUniform;
-            ArrayUniform _layerVisibleUniform;
-            ArrayUniform _layerRangeUniform;
-
         private:
             MapFrame           _mapf;
             TerrainEngineNode* _engine;
@@ -170,14 +155,10 @@ namespace osgEarth
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
         osg::ref_ptr<const Map>            _map;
-        osg::ref_ptr<osg::Uniform>         _startFrameTimeUniform;
-        osg::ref_ptr<osg::Uniform>         _cameraElevationUniform;
         bool                               _redrawRequired;
         float                              _verticalScale;
-        float                              _elevationSamplingRatio;
         osg::ref_ptr<Terrain>              _terrainInterface;
         unsigned                           _dirtyCount;
-        //UpdateLightingUniformsHelper       _updateLightingUniformsHelper;
         
         enum InitStage {
             INIT_NONE,

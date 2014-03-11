@@ -438,15 +438,6 @@ MapNode::getTerrainEngine() const
     return _terrainEngine;
 }
 
-void
-MapNode::setCompositorTechnique( TextureCompositorTechnique* tech )
-{
-    if ( _terrainEngine )
-    {
-        _terrainEngine->getTextureCompositor()->setTechnique( tech );
-    }
-}
-
 osg::Group*
 MapNode::getModelLayerGroup() const
 {

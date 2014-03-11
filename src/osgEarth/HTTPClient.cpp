@@ -127,6 +127,18 @@ namespace osgEarth
         sp->write((const char*)ptr, realsize);
         return realsize;
     }
+
+    TimeStamp
+    getCurlFileTime(void* curl)
+    {
+        long filetime;
+        if (CURLE_OK != curl_easy_getinfo(curl, CURLINFO_FILETIME, &filetime))
+            return TimeStamp(0);
+        else if (filetime < 0)
+            return TimeStamp(0);
+        else
+            return TimeStamp(filetime);
+    }
 }
 
 static int CurlProgressCallback(void *clientp,double dltotal,double dlnow,double ultotal,double ulnow)
@@ -380,7 +392,7 @@ HTTPClient::initializeImpl()
     curl_easy_setopt( _curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
-    curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);
+    curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //0=enable.
     curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
 
     osg::ref_ptr< CurlConfigHandler > curlConfigHandler = getCurlConfigHandler();
@@ -668,7 +680,9 @@ HTTPClient::download(const std::string& uri,
 }
 
 HTTPResponse
-HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, ProgressCallback* callback) const
+HTTPClient::doGet(const HTTPRequest&    request,
+                  const osgDB::Options* options, 
+                  ProgressCallback*     progress) const
 {
     initialize();
 
@@ -820,9 +834,9 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     //Take a temporary ref to the callback (why? dangerous.)
     //osg::ref_ptr<ProgressCallback> progressCallback = callback;
     curl_easy_setopt( _curl_handle, CURLOPT_URL, url.c_str() );
-    if (callback)
+    if (progress)
     {
-        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, callback); //progressCallback.get());
+        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, progress);
     }
 
     CURLcode res;
@@ -908,17 +922,17 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
 
     response._duration_s = OE_STOP_TIMER(get_duration);
 
-    if ( callback )
+    if ( progress )
     {
-        callback->stats()["http_get_time"] += OE_STOP_TIMER(http_get);
-        callback->stats()["http_get_count"] += 1;
+        progress->stats()["http_get_time"] += OE_STOP_TIMER(http_get);
+        progress->stats()["http_get_count"] += 1;
+        if ( response._cancelled )
+            progress->stats()["http_cancel_count"] += 1;
     }
 
     if ( s_HTTP_DEBUG )
     {
-        TimeStamp filetime = 0;
-        if (CURLE_OK != curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime))
-            filetime = 0;
+        TimeStamp filetime = getCurlFileTime(_curl_handle);
 
         OE_NOTICE << LC 
             << "GET(" << response_code << ", " << response._mimeType << ") : \"" 
@@ -936,6 +950,34 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
                     << std::endl;
             }
         }
+
+#if 0
+        // time details - almost 100% of the time is spent in
+        // STARTTRANSFER, which is the time until the first byte is received.
+        double td[7];
+
+        curl_easy_getinfo(_curl_handle, CURLINFO_TOTAL_TIME,         &td[0]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_NAMELOOKUP_TIME,    &td[1]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_CONNECT_TIME,       &td[2]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_APPCONNECT_TIME,    &td[3]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_PRETRANSFER_TIME,   &td[4]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_STARTTRANSFER_TIME, &td[5]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_REDIRECT_TIME,      &td[6]);
+
+        for(int i=0; i<7; ++i)
+        {
+            OE_NOTICE << LC
+                << std::setprecision(4)
+                << "TIMES: total=" <<td[0]
+                << ", lookup=" <<td[1]<<" ("<<(int)((td[1]/td[0])*100)<<"%)"
+                << ", connect=" <<td[2]<<" ("<<(int)((td[2]/td[0])*100)<<"%)"
+                << ", appconn=" <<td[3]<<" ("<<(int)((td[3]/td[0])*100)<<"%)"
+                << ", prexfer=" <<td[4]<<" ("<<(int)((td[4]/td[0])*100)<<"%)"
+                << ", startxfer=" <<td[5]<<" ("<<(int)((td[5]/td[0])*100)<<"%)"
+                << ", redir=" <<td[6]<<" ("<<(int)((td[6]/td[0])*100)<<"%)"
+                << std::endl;
+        }
+#endif
     }
 
     return response;
@@ -1056,11 +1098,7 @@ HTTPClient::doReadImage(const std::string&    location,
         }
         
         // last-modified (file time)
-        TimeStamp filetime = 0;
-        if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
-        {
-            result.setLastModifiedTime( filetime );
-        }
+        result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
         
         // Time of query
         result.setDuration( response.getDuration() );
@@ -1129,11 +1167,7 @@ HTTPClient::doReadNode(const std::string&    location,
         }
         
         // last-modified (file time)
-        TimeStamp filetime = 0;
-        if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
-        {
-            result.setLastModifiedTime( filetime );
-        }
+        result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
     }
     else
     {
@@ -1195,11 +1229,7 @@ HTTPClient::doReadObject(const std::string&    location,
         }
         
         // last-modified (file time)
-        TimeStamp filetime = 0;
-        if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
-        {
-            result.setLastModifiedTime( filetime );
-        }
+        result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
     }
     else
     {
@@ -1269,11 +1299,7 @@ HTTPClient::doReadString(const std::string&    location,
     }
 
     // last-modified (file time)
-    TimeStamp filetime = 0;
-    if ( CURLE_OK == curl_easy_getinfo(_curl_handle, CURLINFO_FILETIME, &filetime) )
-    {
-        result.setLastModifiedTime( filetime );
-    }
+    result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
 
     return result;
 }

@@ -88,6 +88,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         int _imageUnit;          // image unit for primary texture
         int _imageUnitParent;    // image unit for secondary (parent) texture
 
+        bool _supportsGLSL;
+
     public:
         
         // construct a new MPGeometry.

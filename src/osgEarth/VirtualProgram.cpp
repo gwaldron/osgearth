@@ -556,35 +556,33 @@ VirtualProgram::removeBindAttribLocation( const std::string& name )
 void
 VirtualProgram::compileGLObjects(osg::State& state) const
 {
-    //nop - precompilation not required
+    this->apply(state);
 }
 
 void
 VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 {
-  Threading::ScopedWriteLock exclusive( _programCacheMutex );
+    Threading::ScopedWriteLock exclusive( _programCacheMutex );
 
-//  OE_WARN << LC << "Resize VP " << getName() << std::endl;
+    //  OE_WARN << LC << "Resize VP " << getName() << std::endl;
 
-  for (ProgramMap::iterator i = _programCache.begin();
-    i != _programCache.end(); ++i)
-  {
-    i->second->resizeGLObjectBuffers(maxSize);
-  }
+    for (ProgramMap::iterator i = _programCache.begin(); i != _programCache.end(); ++i)
+    {
+        i->second->resizeGLObjectBuffers(maxSize);
+    }
 }
 
 void
 VirtualProgram::releaseGLObjects(osg::State* state) const
 {
-  Threading::ScopedWriteLock exclusive( _programCacheMutex );
+    Threading::ScopedWriteLock exclusive( _programCacheMutex );
 
-//  OE_WARN << LC << "Release VP " << getName() << std::endl;
+    //  OE_WARN << LC << "Release VP " << getName() << std::endl;
 
-  for (ProgramMap::const_iterator i = _programCache.begin();
-    i != _programCache.end(); ++i)
-  {
-    i->second->releaseGLObjects(state);
-  }
+    for (ProgramMap::const_iterator i = _programCache.begin(); i != _programCache.end(); ++i)
+    {
+        i->second->releaseGLObjects(state);
+    }
 }
 
 osg::Shader*

@@ -120,12 +120,14 @@ SimpleOceanNode::rebuild()
             mno.enableLighting() = *mno.enableLighting();
 
         MPTerrainEngineOptions mpoptions;
-        mpoptions.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
+        mpoptions.heightFieldSkirtRatio() = 0.0;      // don't want to see skirts
+        mpoptions.minLOD() = _options.maxLOD().get(); // weird, I know
 
         // so we can the surface from underwater:
         mpoptions.clusterCulling() = false;       // want to see underwater
 
         mpoptions.enableBlending() = true;        // gotsta blend with the main node
+
         mno.setTerrainOptions( mpoptions );
 
         // make the ocean's map node:
@@ -159,7 +161,7 @@ SimpleOceanNode::rebuild()
             // parent map and turns them into encoded images for our shader to use.
             ImageLayerOptions epo( "ocean-proxy" );
             epo.cachePolicy() = CachePolicy::NO_CACHE;
-            epo.maxLevel() = *_options.maxLOD();
+            //epo.maxLevel() = *_options.maxLOD();
             oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
         }
 

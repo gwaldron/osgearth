@@ -365,7 +365,11 @@ GeoPoint::transform(const SpatialReference* outSRS, GeoPoint& output) const
 bool
 GeoPoint::toWorld( osg::Vec3d& out_world ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+    {
+        OE_WARN << LC << "Called toWorld() on an invalid point" << std::endl;
+        return false;
+    }
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
         OE_WARN << LC << "ILLEGAL: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
@@ -377,7 +381,11 @@ GeoPoint::toWorld( osg::Vec3d& out_world ) const
 bool
 GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+    {
+        OE_WARN << LC << "Called toWorld() on an invalid point" << std::endl;
+        return false;
+    }
     if ( _altMode == ALTMODE_ABSOLUTE )
     {
         return _srs->transformToWorld( _p, out_world );

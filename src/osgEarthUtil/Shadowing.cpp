@@ -93,7 +93,8 @@ ShadowCaster::reinitialize()
     {
         osg::Camera* rtt = new osg::Camera();
         rtt->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
-        rtt->setClearColor( osg::Vec4f(0,0,0,0) );
+        //rtt->setClearColor( osg::Vec4f(0,0,0,0) );
+        rtt->setClearDepth( 1.0 );
         rtt->setClearMask( GL_DEPTH_BUFFER_BIT );
         rtt->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
         rtt->setViewport( 0, 0, _size, _size );

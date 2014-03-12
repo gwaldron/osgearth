@@ -277,7 +277,7 @@ static osgEarthRegisterRenderBinProxy<ClampingRenderBin> s_regbin(OSGEARTH_CLAMP
 //---------------------------------------------------------------------------
 
 ClampingTechnique::ClampingTechnique() :
-_textureSize( 4096 )
+_textureSize( 1024 )
 {
     // disable if GLSL is not supported
     _supported = Registry::capabilities().supportsGLSL();

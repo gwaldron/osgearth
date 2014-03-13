@@ -140,6 +140,13 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
         
         TileKey child = key.createChildKey(q);
         _modelFactory->createTileModel( child, _frame, model[q], progress );
+
+        // if any one of the TileModel creations fail, we will be unable to build
+        // this quadtile. So goodbye.
+        if ( !model[q].valid() )
+        {
+            return 0L;
+        }
     }
 
     if (progress)

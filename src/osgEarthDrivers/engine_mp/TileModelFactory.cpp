@@ -302,7 +302,9 @@ TileModelFactory::createTileModel(const TileKey&           key,
         progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);
 
 
-    // Bail out now if there's no data to be had.
+    // If nothing was added, not even a fallback heightfield, something went
+    // horribly wrong. Leave without a tile model. Chances are that a parent tile
+    // not not found in the live-tile registry.
     if ( model->_colorData.size() == 0 && !model->_elevationData.getHeightField() )
     {
         return;

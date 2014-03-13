@@ -99,7 +99,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void setParentImageUnit(int value) { _imageUnitParent = value; }
 
         // render all passes of the geometry.
-        void renderPrimitiveSets(osg::State& state, bool usingVBOs) const;
+        void renderPrimitiveSets(osg::State& state, bool renderColor, bool usingVBOs) const;
 
         // validate the geometry is OK.
         void validate();

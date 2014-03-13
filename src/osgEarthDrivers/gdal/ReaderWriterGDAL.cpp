@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/URI>
+#include <osgEarth/HeightFieldUtils>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -1784,6 +1785,34 @@ public:
     }
 
 #else
+
+    /**
+     * Specialized version of GeoHeightField's getHeightAtLocation that just clamps values that are outside of the dataset 
+     * to be within the dataset (logic in HeightFieldUtils::getHeightAtLocation).
+     * This is necessary when sampling datasets along the edges where data might actually not exist.
+     * For example, take a worldwide elevation dataset with bounds -180, -90 to 180, 90 that is 200x100 pixels.
+     * When you go to sample the western hemisphere you end up reading a heightfield of size 100x100.  The bounds of the actual data that was
+     * read in heightfield form are actually 0.5,0.5 to 99.5, 99.5 b/c the elevation sample point is in the center of the pixels, not the entire pixel.
+     * So the loop that attempts to resample the heightfield might be asking for elevation values at -180,-90 which is in pixel space 0,0.
+     * In this version of the getHeightAtLocation function it will just return the value at 0.5, 0.5.
+     */
+    float getHeightAtLocation(const GeoHeightField& hf, double x, double y, ElevationInterpolation interp)
+    {        
+        double xInterval = hf.getExtent().width()  / (double)(hf.getHeightField()->getNumColumns()-1);
+        double yInterval = hf.getExtent().height() / (double)(hf.getHeightField()->getNumRows()-1);
+
+        // sample the heightfield at the input coordinates:
+        // (note: since it's sampling the HF, it will return an MSL height if applicable)
+        float height = HeightFieldUtils::getHeightAtLocation(
+            hf.getHeightField(), 
+            x, y,
+            hf.getExtent().xMin(), hf.getExtent().yMin(), 
+            xInterval, yInterval, 
+            interp);
+
+        return height;
+    }
+
      osg::HeightField* createHeightField( const TileKey&        key,
                                          ProgressCallback*     progress)
     {        
@@ -1921,13 +1950,8 @@ public:
 
                     float h = NO_DATA_VALUE;
                     if (readGeoHeightField.getExtent().contains(geoX, geoY))
-                    {
-                        float elevation = NO_DATA_VALUE;
-                        readGeoHeightField.getElevation(readGeoHeightField.getExtent().getSRS(),
-                                                        geoX, geoY,
-                                                        *_options.interpolation(), 
-                                                        readGeoHeightField.getExtent().getSRS(),
-                                                        h);                        
+                    {                      
+                        h = getHeightAtLocation( readGeoHeightField, geoX, geoY, *_options.interpolation() );
                     }                    
                     hf->setHeight(c, r, h);
                 }

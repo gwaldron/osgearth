@@ -105,11 +105,12 @@ namespace
 
     struct CreateElevationTileTask : public TaskRequest
     {        
-        CreateElevationTileTask(TMSPackager* packager, ElevationLayer* layer, const TileKey& key, const std::string& path, bool verbose)
+		CreateElevationTileTask(TMSPackager* packager, ElevationLayer* layer, const TileKey& key, const std::string& path, osgDB::Options* elevationWriteOptions, bool verbose)
         {
           _layer = layer;
           _key = key;
           _path = path;
+		  _elevationWriteOptions = elevationWriteOptions;
           _verbose = verbose;
           _packager = packager;
         }
@@ -130,7 +131,7 @@ namespace
 
                 // dump it to disk
                 osgDB::makeDirectoryForFile( _path );
-                tileOK = osgDB::writeImageFile( *image.get(), _path );
+				tileOK = osgDB::writeImageFile(*image.get(), _path, _elevationWriteOptions);
 
                 if ( _verbose )
                 {
@@ -154,13 +155,14 @@ namespace
         osg::ref_ptr<ElevationLayer> _layer;
         TileKey _key;
         std::string _path;
-        bool _verbose;
+		osg::ref_ptr<osgDB::Options> _elevationWriteOptions;
+		bool _verbose;
         TMSPackager* _packager;
     };    
 }
 
 
-TMSPackager::TMSPackager(const Profile* outProfile, osgDB::Options* imageWriteOptions) :
+TMSPackager::TMSPackager(const Profile* outProfile, osgDB::Options* writeOptions) :
 _outProfile         ( outProfile ),
 _maxLevel           ( 99 ),
 _verbose            ( false ),
@@ -168,7 +170,7 @@ _overwrite          ( false ),
 _keepEmptyImageTiles( false ),
 _subdivideSingleColorImageTiles ( false ),
 _abortOnError       ( true ),
-_imageWriteOptions  (imageWriteOptions),
+_writeOptions  (writeOptions),
 _numAdded           ( 0 ),
 _total              ( 0 ),
 _completed          ( 0 )
@@ -241,7 +243,7 @@ TMSPackager::packageImageTile(ImageLayer*                  layer,
             tileOK = osgDB::fileExists(path) && !_overwrite;
             if ( !tileOK )
             {
-                CreateImageTileTask *task = new CreateImageTileTask(this, layer, key, path, extension, _imageWriteOptions, _keepEmptyImageTiles, _verbose);                                
+                CreateImageTileTask *task = new CreateImageTileTask(this, layer, key, path, extension, _writeOptions, _keepEmptyImageTiles, _verbose);                                
                 service->add( task );
                 _numAdded++;
                 tileOK = true;
@@ -318,7 +320,7 @@ TMSPackager::packageElevationTile(ElevationLayer*               layer,
             tileOK = osgDB::fileExists(path) && !_overwrite;
             if ( !tileOK )
             {
-                CreateElevationTileTask* task = new CreateElevationTileTask(this, layer, key, path, _verbose);                
+				CreateElevationTileTask* task = new CreateElevationTileTask(this, layer, key, path, _writeOptions, _verbose);
                 service->add( task );
                 _numAdded++;
                 tileOK = true;

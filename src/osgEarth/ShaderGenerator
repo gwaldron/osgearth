@@ -161,8 +161,6 @@ namespace osgEarth
 
         std::string _name;
 
-        std::set<int> _texImageUnits;
-
         typedef std::vector<osg::ref_ptr<AcceptCallback> > AcceptCallbackVector;
         AcceptCallbackVector _acceptCallbacks;
 

@@ -136,6 +136,7 @@ namespace
                         {
                             TileModel::ColorData& colorData = _model->_colorData[_layer->getUID()];
                             colorData = TileModel::ColorData(parentColorData);
+                            colorData._order = _order;
                             colorData.setIsFallbackData( true );
                             ok = true;
                         }

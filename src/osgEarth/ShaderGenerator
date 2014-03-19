@@ -107,8 +107,6 @@ namespace osgEarth
 
         virtual void apply( osg::Node& );
 
-        virtual void apply(osg::Group& group);
-
         virtual void apply( osg::Geode& );
 
         virtual void apply( osg::PagedLOD& );

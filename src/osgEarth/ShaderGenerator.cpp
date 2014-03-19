@@ -297,45 +297,6 @@ ShaderGenerator::apply( osg::Node& node )
     }
 }
 
-void
-ShaderGenerator::apply(osg::Group& node)
-{
-    if ( !_active )
-        return;
-
-    bool ignore;
-    if ( node.getUserValue(SHADERGEN_HINT_IGNORE, ignore) && ignore )
-        return;
-
-    traverse(node);
-
-#if 0
-    std::set<VirtualProgram*> childVPs;
-    unsigned childrenWithVP = 0;
-    for(unsigned i=0; i<group.getNumChildren(); ++i)
-    {
-        osg::StateSet* stateset = group.getChild(i)->getStateSet();
-        if ( !stateset )
-            break;
-
-        VirtualProgram* vp = dynamic_cast<VirtualProgram*>(stateset->getAttribute(VirtualProgram::SA_TYPE));
-        if ( vp )
-        {
-            childVPs.insert( vp );
-            childrenWithVP++;
-        }
-    }
-    if ( childrenWithVP == group.getNumChildren() && childVPs.size() == 1 )
-    {
-        group.getOrCreateStateSet()->setAttributeAndModes( *childVPs.begin(), 1 );
-        for(unsigned i=0; i<group.getNumChildren(); ++i)
-        {
-            group.getChild(i)->getStateSet()->removeAttribute(VirtualProgram::SA_TYPE);
-        }
-    }
-#endif
-}
-
 void 
 ShaderGenerator::apply( osg::Geode& node )
 {

@@ -25,8 +25,14 @@ KML_PolyStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 {
 	if (!conf.empty())
 	{
-		bool fill = true;	// By default it is true
 		Color color(Color::White);
+		bool colorSpecified = conf.hasValue("color");
+		if (colorSpecified)
+		{
+			color = Color(Stringify() << "#" << conf.value("color"), Color::ABGR);
+		}
+
+		bool fill = true;	// By default it is true
 		if (conf.hasValue("fill"))
 		{
 			fill = (as<int>(conf.value("fill"), 1) == 1);
@@ -36,12 +42,7 @@ KML_PolyStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 			}
 		}
 
-		bool colorSpecified = conf.hasValue("color");
-		if (colorSpecified)
-		{
-			color = Color(Stringify() << "#" << conf.value("color"), Color::ABGR);
-		}
-		if (!fill || colorSpecified || !style.has<PolygonSymbol>())
+		if (colorSpecified || !style.has<PolygonSymbol>())
 		{
 			PolygonSymbol* poly = style.getOrCreate<PolygonSymbol>();
 			poly->fill()->color() = color;
@@ -55,8 +56,7 @@ KML_PolyStyle::scan( const Config& conf, Style& style, KMLContext& cx )
 		if (!outline)
 		{
 			LineSymbol* line = style.getOrCreate<LineSymbol>();
-			color.a() = 0;
-			line->stroke()->color() = color;
+			line->stroke()->color().a() = 0;
 		}
 	}
 }

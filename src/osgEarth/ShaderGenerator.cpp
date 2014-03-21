@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2008-2013 Pelican Mapping
@@ -35,6 +36,7 @@
 #include <osg/Texture2DArray>
 #include <osg/TexEnv>
 #include <osg/TexGen>
+#include <osg/TexMat>
 #include <osg/ClipNode>
 #include <osg/ValueObject>
 #include <osgDB/FileNameUtils>
@@ -73,6 +75,7 @@ using namespace osgEarth;
 #define SAMPLER_TEXT   "oe_sg_sampler_text"
 #define ATTRIB         "oe_sg_attrib"
 #define TEXENV_COLOR   "oe_sg_texenvcolor"
+#define TEX_MATRIX     "oe_sg_texmat"
 
 #define VERTEX_FUNCTION   "oe_sg_vert"
 #define FRAGMENT_FUNCTION "oe_sg_frag"
@@ -295,6 +298,12 @@ ShaderGenerator::apply( osg::Node& node )
     {
         _state->popStateSet();
     }
+}
+
+void
+ShaderGenerator::apply( osg::Group& group )
+{
+    apply( static_cast<osg::Node&>(group) );
 }
 
 void 
@@ -630,8 +639,9 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
             {
                 osg::TexGen* texgen = dynamic_cast<osg::TexGen*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXGEN));
                 osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
+                osg::TexMat* texmat = dynamic_cast<osg::TexMat*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXMAT));
 
-                if ( apply(tex, texgen, texenv, unit, buf) == true )
+                if ( apply(tex, texgen, texenv, texmat, unit, buf) == true )
                 {
                    need_new_stateset = true;
                 }
@@ -670,7 +680,8 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
 bool
 ShaderGenerator::apply(osg::Texture* tex, 
                        osg::TexGen*  texgen,
-                       osg::TexEnv*  texenv, 
+                       osg::TexEnv*  texenv,
+                       osg::TexMat*  texmat,
                        int           unit,
                        GenBuffers&   buf)
 {
@@ -680,6 +691,7 @@ ShaderGenerator::apply(osg::Texture* tex,
    buf.fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
 
    apply( texgen, unit, buf );
+   apply( texmat, unit, buf );
 
    if ( dynamic_cast<osg::Texture1D*>(tex) )
    {
@@ -856,6 +868,23 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             buf.vertBody 
                 << INDENT << TEX_COORD << unit << " = osg_MultiTexCoord" << unit << ";\n";
         }
+    }
+
+    return true;
+}
+
+bool
+ShaderGenerator::apply(osg::TexMat* texmat, int unit, GenBuffers& buf)
+{
+    if ( accept(texmat) )
+    {
+        std::string texMatUniform = Stringify() << TEX_MATRIX << unit;
+
+        buf.vertBody << INDENT << TEX_COORD << unit << " *= " << texMatUniform << ";\n";
+
+        buf.stateSet
+            ->getOrCreateUniform(texMatUniform, osg::Uniform::FLOAT_MAT4)
+            ->set( texmat->getMatrix() );
     }
 
     return true;

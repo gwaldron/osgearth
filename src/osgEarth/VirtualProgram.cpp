@@ -317,7 +317,11 @@ namespace
             {
                 program->addShader( i->get() );
                 if ( s_dumpShaders )
-                    OE_NOTICE << LC << "SHADER " << i->get()->getName() << ":\n" << i->get()->getShaderSource() << "\n" << std::endl;
+                {
+                    OE_NOTIFY(osg::NOTICE,"")
+                        << "----------\n"
+                        << i->get()->getShaderSource() << std::endl;
+                }
             }
         }
 
@@ -363,7 +367,9 @@ namespace
         buildVector.push_back( fragMain );
 
         if ( s_dumpShaders )
-            OE_NOTICE << LC << "---------PROGRAM: " << programName << " ---------------\n" << std::endl;
+        {
+            OE_NOTICE << LC << "\nPROGRAM: " << programName << " =============================\n" << std::endl;
+        }
 
         // Create the new program.
         osg::Program* program = new osg::Program();
@@ -453,7 +459,6 @@ _inheritSet        ( false )
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
     {
         s_dumpShaders = true;
-        s_mergeShaders = true;
     }
 
     // check the merge env var

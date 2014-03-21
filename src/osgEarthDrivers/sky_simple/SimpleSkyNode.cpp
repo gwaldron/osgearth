@@ -31,6 +31,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/ShaderGenerator>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -202,6 +203,9 @@ _options( options )
 void
 SimpleSkyNode::initialize(const SpatialReference* srs)
 {
+    // protect us from the ShaderGenerator.
+    ShaderGenerator::setIgnoreHint(this, true);
+
     osg::Vec3f lightPos(0.0f, 1.0f, 0.0f);
 
     _light = new osg::Light( 0 );

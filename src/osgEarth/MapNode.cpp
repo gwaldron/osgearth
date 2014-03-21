@@ -33,6 +33,7 @@
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
+#include <osgEarth/ShaderGenerator>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
@@ -207,6 +208,9 @@ MapNode::init()
 
     // Protect the MapNode from the Optimizer
     setDataVariance(osg::Object::DYNAMIC);
+
+    // Protect the MapNode from the ShaderGenerator
+    ShaderGenerator::setIgnoreHint(this, true);
 
     // initialize 0Ls
     _terrainEngine          = 0L;

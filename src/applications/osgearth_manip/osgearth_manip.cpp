@@ -296,13 +296,13 @@ namespace
             }
             else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
             {
-                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get() );
+                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get(), 2.0 );                
                 if ( _manip->getTetherNode() )
                 {
                     _manip->getSettings()->setArcViewpointTransitions( false );
                     _manip->setViewpoint(Viewpoint(osg::Vec3d(0,0,0), 45, -25, 250000));
                     _manip->getSettings()->setArcViewpointTransitions( true );
-                }
+                }                
                 return true;
             }
             return false;
@@ -358,7 +358,7 @@ int main(int argc, char** argv)
     // Simulator for tethering:
     viewer.addEventHandler( new Simulator(root, manip, mapNode) );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
-    manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );
+    manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 
 
     viewer.setSceneData( root );
@@ -368,7 +368,7 @@ int main(int argc, char** argv)
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
         osgGA::GUIEventAdapter::MODKEY_SHIFT );
 
-    manip->getSettings()->setArcViewpointTransitions( true );
+    manip->getSettings()->setArcViewpointTransitions( true );    
     
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));

@@ -614,12 +614,12 @@ EarthManipulator::established()
             return false;
 
         // find a map node.
-        MapNode* mapNode = MapNode::findMapNode( safeNode.get(), _findNodeTraversalMask );
+        MapNode* mapNode = MapNode::findMapNode( safeNode.get(), _findNodeTraversalMask );        
         if ( mapNode && !_settings->getDisableCollisionAvoidance() )
         {            
             _terrainCallback = new ManipTerrainCallback( this );
             mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
-        }   
+        }         
 
         // find a CSN node - if there is one, we want to attach the manip to that
         _csn = findRelativeNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), _findNodeTraversalMask );
@@ -1075,7 +1075,7 @@ EarthManipulator::getViewpoint() const
 
 
 void
-EarthManipulator::setTetherNode( osg::Node* node )
+EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
 {
     if (_tether_node != node)
     {
@@ -1102,9 +1102,15 @@ EarthManipulator::setTetherNode( osg::Node* node )
             double newDistance = (eye-_center).length();
             setDistance( newDistance );
         }
-    }
+    }    
 
     _tether_node = node;
+
+    if (_tether_node.valid() && duration_s > 0.0)
+    {                
+        Viewpoint destVP = getTetherNodeViewpoint();
+        setViewpoint( destVP, duration_s );
+    }
 }
 
 
@@ -1628,6 +1634,83 @@ EarthManipulator::postUpdate()
 void
 EarthManipulator::updateTether()
 {
+    if (!_setting_viewpoint)
+    {        
+        osg::ref_ptr<osg::Node> tether_node;
+        if ( _tether_node.lock(tether_node) )
+        {            
+            osg::Matrix localToWorld;
+
+            osg::NodePathList nodePaths = tether_node->getParentalNodePaths();
+            if ( nodePaths.empty() )
+                return;
+
+            localToWorld = osg::computeLocalToWorld( nodePaths[0] );
+            if ( !localToWorld.valid() )
+                return;
+
+            setCenter( osg::Vec3d(0,0,0) * localToWorld );
+
+            _previousUp = getUpVector( _centerLocalToWorld );
+
+            double sx = 1.0/sqrt(localToWorld(0,0)*localToWorld(0,0) + localToWorld(1,0)*localToWorld(1,0) + localToWorld(2,0)*localToWorld(2,0));
+            double sy = 1.0/sqrt(localToWorld(0,1)*localToWorld(0,1) + localToWorld(1,1)*localToWorld(1,1) + localToWorld(2,1)*localToWorld(2,1));
+            double sz = 1.0/sqrt(localToWorld(0,2)*localToWorld(0,2) + localToWorld(1,2)*localToWorld(1,2) + localToWorld(2,2)*localToWorld(2,2));
+            localToWorld = localToWorld*osg::Matrixd::scale(sx,sy,sz);
+
+            //Just track the center
+            if (_settings->getTetherMode() == TETHER_CENTER)
+            {
+                _centerRotation = _centerLocalToWorld.getRotate();
+            }
+            //Track all rotations
+            else if (_settings->getTetherMode() == TETHER_CENTER_AND_ROTATION)
+            {
+                _centerRotation = localToWorld.getRotate();
+            }
+            else if (_settings->getTetherMode() == TETHER_CENTER_AND_HEADING)
+            {
+                //Track just the heading
+                osg::Matrixd localToFrame(localToWorld*osg::Matrixd::inverse( _centerLocalToWorld ));
+                double azim = atan2(-localToFrame(0,1),localToFrame(0,0));
+                osg::Quat nodeRotationRelToFrame, rotationOfFrame;
+                nodeRotationRelToFrame.makeRotate(-azim,0.0,0.0,1.0);
+                rotationOfFrame = _centerLocalToWorld.getRotate();
+                _centerRotation = nodeRotationRelToFrame*rotationOfFrame;
+            }
+        }
+    }
+    else
+    {
+        // Update the deltas since this is a moving node.
+        Viewpoint vp = getTetherNodeViewpoint();        
+        _delta_heading = vp.getHeading() - _start_viewpoint.getHeading();
+        _delta_pitch   = vp.getPitch() - _start_viewpoint.getPitch();
+        // We don't care about the range, we want it to stay the same as it was originally.
+        //_delta_range   = vp.getRange() - _start_viewpoint.getRange();        
+        osg::Vec3d vpFocalPoint = vp.getFocalPoint();
+        if ( _cached_srs.valid() && vp.getSRS() && !_cached_srs->isEquivalentTo( vp.getSRS() ) )
+        {
+            vp.getSRS()->transform( vp.getFocalPoint(), _cached_srs.get(), vpFocalPoint );
+        }
+
+        _delta_focal_point = vpFocalPoint - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
+
+        while( _delta_heading > 180.0 ) _delta_heading -= 360.0;
+        while( _delta_heading < -180.0 ) _delta_heading += 360.0;
+
+        // adjust for geocentric date-line crossing
+        if ( _is_geocentric )
+        {
+            while( _delta_focal_point.x() > 180.0 ) _delta_focal_point.x() -= 360.0;
+            while( _delta_focal_point.x() < -180.0 ) _delta_focal_point.x() += 360.0;
+        }
+
+    }
+}
+
+Viewpoint EarthManipulator::getTetherNodeViewpoint() const
+{
     osg::ref_ptr<osg::Node> tether_node;
     if ( _tether_node.lock(tether_node) )
     {
@@ -1635,42 +1718,20 @@ EarthManipulator::updateTether()
 
         osg::NodePathList nodePaths = tether_node->getParentalNodePaths();
         if ( nodePaths.empty() )
-            return;
+            return Viewpoint();
 
         localToWorld = osg::computeLocalToWorld( nodePaths[0] );
         if ( !localToWorld.valid() )
-            return;
+            return Viewpoint();
 
-        setCenter( osg::Vec3d(0,0,0) * localToWorld );
-
-        _previousUp = getUpVector( _centerLocalToWorld );
-
-        double sx = 1.0/sqrt(localToWorld(0,0)*localToWorld(0,0) + localToWorld(1,0)*localToWorld(1,0) + localToWorld(2,0)*localToWorld(2,0));
-        double sy = 1.0/sqrt(localToWorld(0,1)*localToWorld(0,1) + localToWorld(1,1)*localToWorld(1,1) + localToWorld(2,1)*localToWorld(2,1));
-        double sz = 1.0/sqrt(localToWorld(0,2)*localToWorld(0,2) + localToWorld(1,2)*localToWorld(1,2) + localToWorld(2,2)*localToWorld(2,2));
-        localToWorld = localToWorld*osg::Matrixd::scale(sx,sy,sz);
-
-        //Just track the center
-        if (_settings->getTetherMode() == TETHER_CENTER)
-        {
-            _centerRotation = _centerLocalToWorld.getRotate();
-        }
-        //Track all rotations
-        else if (_settings->getTetherMode() == TETHER_CENTER_AND_ROTATION)
-        {
-            _centerRotation = localToWorld.getRotate();
-        }
-        else if (_settings->getTetherMode() == TETHER_CENTER_AND_HEADING)
-        {
-            //Track just the heading
-            osg::Matrixd localToFrame(localToWorld*osg::Matrixd::inverse( _centerLocalToWorld ));
-            double azim = atan2(-localToFrame(0,1),localToFrame(0,0));
-            osg::Quat nodeRotationRelToFrame, rotationOfFrame;
-            nodeRotationRelToFrame.makeRotate(-azim,0.0,0.0,1.0);
-            rotationOfFrame = _centerLocalToWorld.getRotate();
-            _centerRotation = nodeRotationRelToFrame*rotationOfFrame;
-        }
-    }
+        // For now we just care about the center point of the tethered node.
+        osg::Vec3d centerWorld = osg::Vec3d(0,0,0) * localToWorld;
+        GeoPoint centerMap;
+        centerMap.fromWorld( _cached_srs.get(), centerWorld );
+        Viewpoint vp = getViewpoint();
+        return Viewpoint( centerMap.vec3d(), vp.getHeading(), vp.getPitch(), vp.getRange(), vp.getSRS() );        
+    }    
+    return Viewpoint();
 }
 
 bool

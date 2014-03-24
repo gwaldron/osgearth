@@ -561,7 +561,7 @@ namespace osgEarth { namespace Util
         /**
          * Gets the current camera position.
          */
-        Viewpoint getViewpoint() const;
+        Viewpoint getViewpoint() const;        
 
         /**
          * Sets the camera position, optionally moving it there over time.
@@ -585,8 +585,10 @@ namespace osgEarth { namespace Util
          *
          * @param node
          *      Node to which to tether the viewpoint.
+         * @param duration_s
+         *      The duration that the camera should transition when tethering to the node.
          */
-        void setTetherNode( osg::Node* node );
+        void setTetherNode( osg::Node* node, double duration_s =0.0  );
 
         /**
          * Gets the node to which the camera is tethered, or NULL if tethering is
@@ -838,6 +840,11 @@ namespace osgEarth { namespace Util
         virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
         //virtual bool handleMultiTouchAction( const Action& action, const TouchEvent& te, osg::View* view );
 
+        /**
+         * Gets the viewpoint of the TetherNode.
+         */
+        Viewpoint getTetherNodeViewpoint() const;
+
     protected:
 
         // makeshift "stack" of the last 2 incoming events.
@@ -891,8 +898,6 @@ namespace osgEarth { namespace Util
         osg::Vec3d              _previousUp;
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;
-        //double                  _local_pitch;
-        //double                  _local_azim;
 
         bool                    _continuous;
         double                  _continuous_dx;

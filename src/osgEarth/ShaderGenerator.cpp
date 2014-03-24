@@ -880,6 +880,7 @@ ShaderGenerator::apply(osg::TexMat* texmat, int unit, GenBuffers& buf)
     {
         std::string texMatUniform = Stringify() << TEX_MATRIX << unit;
 
+        buf.vertHead << "uniform mat4 " << texMatUniform << ";\n";
         buf.vertBody << INDENT << TEX_COORD << unit << " *= " << texMatUniform << ";\n";
 
         buf.stateSet

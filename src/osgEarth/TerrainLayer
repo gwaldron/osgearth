@@ -340,10 +340,10 @@ namespace osgEarth
                 _cacheBinId     ( rhs._cacheBinId ),
                 _sourceName     ( rhs._sourceName ),
                 _sourceDriver   ( rhs._sourceDriver ),
-                _sourceTileSize ( rhs._sourceTileSize ),   
-                _cacheCreateTime( rhs._cacheCreateTime ),
+                _sourceTileSize ( rhs._sourceTileSize ),
                 _sourceProfile  ( rhs._sourceProfile ),
-                _cacheProfile   ( rhs._cacheProfile ) { }
+                _cacheProfile   ( rhs._cacheProfile ),   
+                _cacheCreateTime( rhs._cacheCreateTime ) { }
 
             CacheBinMetadata( const Config& conf )
             {
@@ -352,10 +352,10 @@ namespace osgEarth
                 conf.getIfSet   ( "cachebin_id",      _cacheBinId );
                 conf.getIfSet   ( "source_name",      _sourceName );
                 conf.getIfSet   ( "source_driver",    _sourceDriver );   
-                conf.getIfSet   ( "source_tile_size", _sourceTileSize );   
-                conf.getIfSet   ( "cache_create_time", _cacheCreateTime );          
+                conf.getIfSet   ( "source_tile_size", _sourceTileSize );           
                 conf.getObjIfSet( "source_profile",   _sourceProfile );
-                conf.getObjIfSet( "cache_profile",    _cacheProfile );
+                conf.getObjIfSet( "cache_profile",    _cacheProfile ); 
+                conf.getIfSet   ( "cache_create_time", _cacheCreateTime ); 
                 
                 // check for validity. This will reject older caches that don't have
                 // sufficient attribution.
@@ -379,9 +379,9 @@ namespace osgEarth
                 conf.addIfSet   ( "source_name",       _sourceName );
                 conf.addIfSet   ( "source_driver",     _sourceDriver );      
                 conf.addIfSet   ( "source_tile_size",  _sourceTileSize );
-                conf.addIfSet   ( "cache_create_time", _cacheCreateTime );
                 conf.addObjIfSet( "source_profile",    _sourceProfile );
                 conf.addObjIfSet( "cache_profile",     _cacheProfile );
+                conf.addIfSet   ( "cache_create_time", _cacheCreateTime );
                 return conf;
             }
 

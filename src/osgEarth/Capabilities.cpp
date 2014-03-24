@@ -38,7 +38,15 @@ struct MyGraphicsContext
 {
     MyGraphicsContext()
     {
-        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
+
+    	osg::GraphicsContext::ScreenIdentifier si;
+	    si.readDISPLAY();
+	    si.setUndefinedScreenDetailsToDefaultScreen();
+
+        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;  
+    	traits->hostName = si.hostName;
+	    traits->displayNum = si.displayNum;
+	    traits->screenNum = si.screenNum;
         traits->x = 0;
         traits->y = 0;
         traits->width = 1;

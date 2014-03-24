@@ -143,8 +143,8 @@ _terrain              ( 0L ),
 _update_mapf          ( 0L ),
 _tileCount            ( 0 ),
 _tileCreationTime     ( 0.0 ),
-_primaryUnit          ( 0 ),
-_secondaryUnit        ( 1 ),
+_primaryUnit          ( -1 ),
+_secondaryUnit        ( -1 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
 _shaderUpdateRequired ( false )
@@ -207,14 +207,6 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     {
         // NOTE: this will initialize the map with the startup layers
         onMapInfoEstablished( MapInfo(map) );
-    }
-
-    // populate the terrain with whatever data is in the map to begin with:
-    if ( _terrain )
-    {
-        // reserve a GPU image unit and two attribute indexes.
-        this->getTextureCompositor()->reserveTextureImageUnit( _primaryUnit );
-        this->getTextureCompositor()->reserveTextureImageUnit( _secondaryUnit );
     }
 
     // install a layer callback for processing further map actions:
@@ -337,6 +329,16 @@ MPTerrainEngineNode::createTerrain()
     if (_terrainOptions.enableBlending().value())
     {
         _terrain->getOrCreateStateSet()->setMode(GL_BLEND , osg::StateAttribute::ON);
+    }
+
+    // reserve GPU space.
+    if ( _primaryUnit < 0 )
+    {
+        this->getTextureCompositor()->reserveTextureImageUnit( _primaryUnit );
+    }
+    if ( _secondaryUnit < 0 )
+    {
+        this->getTextureCompositor()->reserveTextureImageUnit( _secondaryUnit );
     }
 
     // Factory to create the root keys:

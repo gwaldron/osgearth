@@ -2679,6 +2679,10 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
 
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
+   
+#ifndef OSG_GLES2_AVAILABLE
+    this->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(), osg::StateAttribute::OFF|osg::StateAttribute::OVERRIDE);
+#endif
 
     // register this canvas.
     if ( registerCanvas )
@@ -2830,12 +2834,14 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
         _controlNodeBin->draw( _context, _contextDirty, bin );
     }
 
+#ifdef OSG_GLES2_AVAILABLE
     // shaderize.
     // we don't really need to rebuild shaders on every dirty; we could probably
     // just do it on add/remove controls; but that's an optimization for later
     ShaderGenerator shaderGen;
     shaderGen.setProgramName( "osgEarth.ControlCanvas" );
     shaderGen.run( this );
+#endif
 
     _contextDirty = false;
 }

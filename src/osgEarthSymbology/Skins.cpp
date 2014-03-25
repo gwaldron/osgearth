@@ -111,7 +111,7 @@ SkinResource::createStateSet( osg::Image* image ) const
             osg::TexEnv* texenv = new osg::TexEnv();
             texenv = new osg::TexEnv();
             texenv->setMode( *_texEnvMode );
-            stateSet->setTextureAttribute( 0, texenv, osg::StateAttribute::ON );
+            stateSet->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
         }
 
         if ( ImageUtils::hasAlphaChannel( image ) )

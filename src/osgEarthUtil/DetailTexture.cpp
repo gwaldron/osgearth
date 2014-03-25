@@ -358,7 +358,7 @@ DetailTexture::onInstall(TerrainEngineNode* engine)
         {
             _samplerUniform = stateset->getOrCreateUniform( "oe_detail_tex", osg::Uniform::SAMPLER_2D_ARRAY );
             _samplerUniform->set( _unit );
-            stateset->setTextureAttribute( _unit, _texture.get() ); // don't use "..andModes"
+            stateset->setTextureAttribute( _unit, _texture.get(), osg::StateAttribute::ON ); // don't use "..andModes"
         }
 
         if ( _maskLayer.valid() )

@@ -215,8 +215,14 @@ namespace
                 if (!as.attributeVec.empty())
                 {
                     const osg::State::AttributePair& pair = as.attributeVec.back();
-                    ActiveAttributeCollector collector(stateset, pair.first);
-                    pair.first->getModeUsage(collector);
+                    osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
+                    ActiveAttributeCollector collector(stateset, sa);
+                    if (sa->getModeUsage(collector) == false)
+                    {
+                        // if getModeUsage returns false, there are no modes associated with
+                        // this attr, so just add it (it can't be forcably disabled)
+                        stateset->setAttribute(sa, osg::StateAttribute::ON);
+                    }
                 }
             }
 
@@ -230,31 +236,18 @@ namespace
                     {
                         const osg::State::AttributePair& pair = as.attributeVec.back();
                         osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
-
-                        // if there are no associated modes, just add it.
-                        if ( isModeless(sa) )
+                        ActiveAttributeCollector collector(stateset, sa, unit);
+                        if (sa->getModeUsage(collector) == false)
                         {
+                            // if getModeUsage returns false, there are no modes associated with
+                            // this attr, so just add it (it can't be forcably disabled)
                             stateset->setTextureAttribute(unit, sa, osg::StateAttribute::ON);
-                        }
-                        else
-                        {
-                            ActiveAttributeCollector collector(stateset, pair.first, unit);
-                            pair.first->getModeUsage(collector);
                         }
                     }
                 }
             }
 
             return stateset;
-        }
-
-        // some attrs don't have modes, so we can't use the mode's override value
-        // to determine whether they are active.
-        bool isModeless(const osg::StateAttribute* sa) const
-        {
-            return 
-                dynamic_cast<const osg::Texture2DArray*>(sa) != 0L ||
-                dynamic_cast<const osg::Texture2DMultisample*>(sa) != 0L;
         }
     };
 }

@@ -1684,28 +1684,12 @@ EarthManipulator::updateTether()
     {
         // Update the deltas since this is a moving node.
         Viewpoint vp = getTetherNodeViewpoint();        
-        _delta_heading = vp.getHeading() - _start_viewpoint.getHeading();
-        _delta_pitch   = vp.getPitch() - _start_viewpoint.getPitch();
-        // We don't care about the range, we want it to stay the same as it was originally.
-        //_delta_range   = vp.getRange() - _start_viewpoint.getRange();        
         osg::Vec3d vpFocalPoint = vp.getFocalPoint();
         if ( _cached_srs.valid() && vp.getSRS() && !_cached_srs->isEquivalentTo( vp.getSRS() ) )
         {
             vp.getSRS()->transform( vp.getFocalPoint(), _cached_srs.get(), vpFocalPoint );
         }
-
         _delta_focal_point = vpFocalPoint - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
-
-        while( _delta_heading > 180.0 ) _delta_heading -= 360.0;
-        while( _delta_heading < -180.0 ) _delta_heading += 360.0;
-
-        // adjust for geocentric date-line crossing
-        if ( _is_geocentric )
-        {
-            while( _delta_focal_point.x() > 180.0 ) _delta_focal_point.x() -= 360.0;
-            while( _delta_focal_point.x() < -180.0 ) _delta_focal_point.x() += 360.0;
-        }
-
     }
 }
 

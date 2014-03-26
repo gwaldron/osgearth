@@ -571,12 +571,17 @@ namespace osgEarth { namespace Util
         /**
          * Cancels a viewpoint transition if one is in progress
          */
-        void cancelViewpointTransition() { _setting_viewpoint = false; }
+        void cancelViewpointTransition() { _setting_viewpoint = false; }        
 
         /**
          * Sets the viewpoint to activate when performing the ACTION_HOME action.
          */
         void setHomeViewpoint( const Viewpoint& vp, double duration_s = 0.0 );
+
+        /**
+         * Whether the manipulator is performing a viewpoint transition
+         */
+        bool isSettingViewpoint() const { return _setting_viewpoint; }
 
         /**
          * Locks the camera's focal point on the center of a node's bounding sphere.

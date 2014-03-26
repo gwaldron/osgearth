@@ -71,11 +71,15 @@ namespace
 
         void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
         {
-            const GeoPoint& centerMap = _manip->centerMap();
-            if ( _manip.valid() && key.getExtent().contains(centerMap.x(), centerMap.y()) )
-            {
-                _manip->recalculateCenter();
-            }
+            // Only do collision avoidance if it's enabled, we're not tethering and we're not in the middle of setting a viewpoint.            
+            if (!_manip->getSettings()->getDisableCollisionAvoidance() && !_manip->getTetherNode() && !_manip->isSettingViewpoint() )
+            {                
+                const GeoPoint& centerMap = _manip->centerMap();
+                if ( _manip.valid() && key.getExtent().contains(centerMap.x(), centerMap.y()) )
+                {
+                    _manip->recalculateCenter();
+                }
+            }            
         }
 
         osg::observer_ptr<EarthManipulator> _manip;
@@ -614,7 +618,7 @@ EarthManipulator::established()
 
         // find a map node.
         MapNode* mapNode = MapNode::findMapNode( safeNode.get(), _findNodeTraversalMask );        
-        if ( mapNode && !_settings->getDisableCollisionAvoidance() )
+        if ( mapNode)
         {            
             _terrainCallback = new ManipTerrainCallback( this );
             mapNode->getTerrain()->addTerrainCallback( _terrainCallback );

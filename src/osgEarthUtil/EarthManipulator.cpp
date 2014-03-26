@@ -589,8 +589,7 @@ EarthManipulator::reinitialize()
     _last_action = ACTION_NULL;
     _srs_lookup_failed = false;
     _setting_viewpoint = false;
-    _delta_t = 0.0;
-    _t_factor = 1.0;
+    _delta_t = 0.0;    
     _has_pending_viewpoint = false;
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
     _arc_height = 0.0;
@@ -1348,9 +1347,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         _time_s_last_frame = _time_s_now;
         _time_s_now = time_s_now;
         _delta_t = _time_s_now - _time_s_last_frame;
-        // this factor adjusts for the variation of frame rate relative to 60fps
-        _t_factor = _delta_t / 0.01666666666;
-
+        
         if ( _has_pending_viewpoint && _node.valid() )
         {
             _has_pending_viewpoint = false;
@@ -1684,28 +1681,12 @@ EarthManipulator::updateTether()
     {
         // Update the deltas since this is a moving node.
         Viewpoint vp = getTetherNodeViewpoint();        
-        _delta_heading = vp.getHeading() - _start_viewpoint.getHeading();
-        _delta_pitch   = vp.getPitch() - _start_viewpoint.getPitch();
-        // We don't care about the range, we want it to stay the same as it was originally.
-        //_delta_range   = vp.getRange() - _start_viewpoint.getRange();        
         osg::Vec3d vpFocalPoint = vp.getFocalPoint();
         if ( _cached_srs.valid() && vp.getSRS() && !_cached_srs->isEquivalentTo( vp.getSRS() ) )
         {
             vp.getSRS()->transform( vp.getFocalPoint(), _cached_srs.get(), vpFocalPoint );
         }
-
         _delta_focal_point = vpFocalPoint - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
-
-        while( _delta_heading > 180.0 ) _delta_heading -= 360.0;
-        while( _delta_heading < -180.0 ) _delta_heading += 360.0;
-
-        // adjust for geocentric date-line crossing
-        if ( _is_geocentric )
-        {
-            while( _delta_focal_point.x() > 180.0 ) _delta_focal_point.x() -= 360.0;
-            while( _delta_focal_point.x() < -180.0 ) _delta_focal_point.x() += 360.0;
-        }
-
     }
 }
 

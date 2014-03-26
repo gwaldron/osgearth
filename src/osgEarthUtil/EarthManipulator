@@ -867,10 +867,8 @@ namespace osgEarth { namespace Util
         osg::observer_ptr<osg::Node> _tether_node;        
 
         double                  _time_s_last_frame;
-        double                  _time_s_now;
-        osg::Timer_t            _now;
-        double                  _delta_t;
-        double                  _t_factor;
+        double                  _time_s_now;        
+        double                  _delta_t;        
         bool                    _thrown;
         double                  _throw_dx;
         double                  _throw_dy;

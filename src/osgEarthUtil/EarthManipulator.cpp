@@ -589,8 +589,7 @@ EarthManipulator::reinitialize()
     _last_action = ACTION_NULL;
     _srs_lookup_failed = false;
     _setting_viewpoint = false;
-    _delta_t = 0.0;
-    _t_factor = 1.0;
+    _delta_t = 0.0;    
     _has_pending_viewpoint = false;
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
     _arc_height = 0.0;
@@ -1348,9 +1347,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         _time_s_last_frame = _time_s_now;
         _time_s_now = time_s_now;
         _delta_t = _time_s_now - _time_s_last_frame;
-        // this factor adjusts for the variation of frame rate relative to 60fps
-        _t_factor = _delta_t / 0.01666666666;
-
+        
         if ( _has_pending_viewpoint && _node.valid() )
         {
             _has_pending_viewpoint = false;

@@ -217,7 +217,8 @@ namespace
                     const osg::State::AttributePair& pair = as.attributeVec.back();
                     osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
                     ActiveAttributeCollector collector(stateset, sa);
-                    if (sa->getModeUsage(collector) == false)
+                    bool modeless = !sa->getModeUsage(collector);
+                    if (modeless || isModeless(sa))
                     {
                         // if getModeUsage returns false, there are no modes associated with
                         // this attr, so just add it (it can't be forcably disabled)
@@ -237,7 +238,8 @@ namespace
                         const osg::State::AttributePair& pair = as.attributeVec.back();
                         osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
                         ActiveAttributeCollector collector(stateset, sa, unit);
-                        if (sa->getModeUsage(collector) == false)
+                        bool modeless = !sa->getModeUsage(collector);
+                        if (modeless || isModeless(sa))
                         {
                             // if getModeUsage returns false, there are no modes associated with
                             // this attr, so just add it (it can't be forcably disabled)
@@ -248,6 +250,19 @@ namespace
             }
 
             return stateset;
+        }
+
+        // some attrs dont' properly report mode usage until OSG 3.3.1.
+        // ref: https://github.com/openscenegraph/osg/commit/22af59482ac4f727eeed5b97476a3a47d7fe8a69
+        bool isModeless(osg::StateAttribute* sa) const
+        {
+#if OSG_VERSION_LESS_THAN(3,3,1)            
+            return
+                dynamic_cast<osg::Texture2DArray*>(sa) ||
+                dynamic_cast<osg::Texture2DMultisample*>(sa);
+#else
+            return false;
+#endif
         }
     };
 }

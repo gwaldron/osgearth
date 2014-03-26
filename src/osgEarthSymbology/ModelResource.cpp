@@ -21,7 +21,6 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ShaderGenerator>
 #include <osgUtil/Optimizer>
 
 #define LC "[ModelResource] "

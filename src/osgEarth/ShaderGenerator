@@ -39,6 +39,7 @@ namespace osg
     class Texture3D;
     class TextureRectangle;
     class Texture2DArray;
+    class Texture2DMultisample;
 }
 
 namespace osgEarth
@@ -76,9 +77,14 @@ namespace osgEarth
 
         /**
          * Marks a node with a hint that the shader generator should ignore it in
-         * the future. Useful if you want to gen shaders once and never again.
+         * the future.
          */
-        static void setIgnoreHint(osg::Node* graph, bool ignore);
+        static void setIgnoreHint(osg::Object* object, bool ignore);
+
+        /**
+         * Whether an object has been marked for ignore 
+         */
+        static bool ignore(const osg::Object* object);
 
     public:
         /**

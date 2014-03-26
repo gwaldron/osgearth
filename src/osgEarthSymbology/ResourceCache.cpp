@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/ResourceCache>
-#include <osgEarth/ShaderGenerator>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -146,7 +145,7 @@ ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
             getOrCreateSkinTextureArray( library, skinTextureArray );
 
             output = new osg::StateSet();
-            output->setTextureAttribute( 0, skinTextureArray->getTexture() );
+            output->setTextureAttribute(0, skinTextureArray->getTexture(), osg::StateAttribute::ON);
 
             _resourceLibraryCache.insert( key, output.get() );            
         }

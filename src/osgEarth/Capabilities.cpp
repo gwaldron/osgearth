@@ -151,6 +151,16 @@ _supportsFragDepthWrite ( false )
         osg::GraphicsContext* gc = mgc._gc.get();
         unsigned int id = gc->getState()->getContextID();
         const osg::GL2Extensions* GL2 = osg::GL2Extensions::Get( id, true );
+        
+        if ( ::getenv("OSGEARTH_NO_GLSL") )
+        {
+            _supportsGLSL = false;
+            OE_INFO << LC << "Note: GLSL expressly disabled (OSGEARTH_NO_GLSL)" << std::endl;
+        }
+        else
+        {
+            _supportsGLSL = GL2->isGlslSupported();
+        }
 
         OE_INFO << LC << "Detected hardware capabilities:" << std::endl;
 
@@ -204,11 +214,6 @@ _supportsFragDepthWrite ( false )
 #endif
         OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
-        
-        if ( ::getenv("OSGEARTH_NO_GLSL") )
-            _supportsGLSL = false;
-        else
-            _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         if ( _supportsGLSL )

@@ -56,7 +56,7 @@ _imageUnit       ( imageUnit )
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
     _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_matrix" );
 
-    // we will set these later:
+    // we will set these later (in TileModelCompiler)
     this->setUseVertexBufferObjects(false);
     this->setUseDisplayList(false);
 }
@@ -94,18 +94,25 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     unsigned layersDrawn = 0;
 
     // access the GL extensions interface for the current GC:
-    unsigned contextID = state.getContextID();
-    osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( contextID, true );
-    const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
+    const osg::Program::PerContextProgram* pcp = 0L;
+    osg::ref_ptr<osg::GL2Extensions> ext;
+    unsigned contextID;
+
+    if (_supportsGLSL)
+    {
+        contextID = state.getContextID();
+        ext = osg::GL2Extensions::Get( contextID, true );
+        pcp = state.getLastAppliedProgramObject();
+    }
 
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
-    GLint tileKeyLocation;
-    GLint birthTimeLocation;
-    GLint opacityLocation;
-    GLint uidLocation;
-    GLint orderLocation;
-    GLint texMatParentLocation;
+    GLint tileKeyLocation       = -1;
+    GLint birthTimeLocation     = -1;
+    GLint opacityLocation       = -1;
+    GLint uidLocation           = -1;
+    GLint orderLocation         = -1;
+    GLint texMatParentLocation  = -1;
 
     // The PCP can change (especially in a VirtualProgram environment). So we do need to
     // requery the uni locations each time unfortunately. TODO: explore optimizations.
@@ -163,23 +170,26 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         // in !renderColor mode b/c these textures could be used by vertex shaders
         // to alter the geometry.
         int sharedLayers = 0;
-        for(unsigned i=0; i<_layers.size(); ++i)
+        if ( _supportsGLSL )
         {
-            const Layer& layer = _layers[i];
-
-            // a "shared" layer binds to a secondary texture unit so that other layers
-            // can see it and use it.
-            if ( layer._imageLayer->isShared() )
+            for(unsigned i=0; i<_layers.size(); ++i)
             {
-                ++sharedLayers;
-                int sharedUnit = layer._imageLayer->shareImageUnit().get();
-                {
-                    state.setActiveTextureUnit( sharedUnit );
-                    state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
-                    // bind the texture for this layer to the active share unit.
-                    layer._tex->apply( state );
+                const Layer& layer = _layers[i];
 
-                    // no texture LOD blending for shared layers for now. maybe later.
+                // a "shared" layer binds to a secondary texture unit so that other layers
+                // can see it and use it.
+                if ( layer._imageLayer->isShared() )
+                {
+                    ++sharedLayers;
+                    int sharedUnit = layer._imageLayer->shareImageUnit().get();
+                    {
+                        state.setActiveTextureUnit( sharedUnit );
+                        state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
+                        // bind the texture for this layer to the active share unit.
+                        layer._tex->apply( state );
+
+                        // no texture LOD blending for shared layers for now. maybe later.
+                    }
                 }
             }
         }
@@ -218,6 +228,12 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 
                     // bind the texture for this layer:
                     layer._tex->apply( state );
+
+                    // in FFP mode, we need to enable the GL mode for texturing:
+                    if (!_supportsGLSL)
+                    {
+                        state.applyMode(GL_TEXTURE_2D, true);
+                    }
 
                     // if we're using a parent texture for blending, activate that now
                     if ( texMatParentLocation >= 0 && layer._texParent.valid() )
@@ -429,11 +445,11 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 void 
 MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 {
-    if (!_supportsGLSL)
-    {
-        osg::Geometry::drawImplementation(renderInfo);
-        return;
-    }
+    //if (!_supportsGLSL)
+    //{
+    //    osg::Geometry::drawImplementation(renderInfo);
+    //    return;
+    //}
 
     // See if this is a depth-only camera. If so we can skip all the layers
     // and just render the primitive sets.

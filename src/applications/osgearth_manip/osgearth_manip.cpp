@@ -295,14 +295,8 @@ namespace
                 _label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
-            {
-                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get(), 2.0 );                
-                if ( _manip->getTetherNode() )
-                {
-                    _manip->getSettings()->setArcViewpointTransitions( false );
-                    _manip->setViewpoint(Viewpoint(osg::Vec3d(0,0,0), 45, -25, 250000));
-                    _manip->getSettings()->setArcViewpointTransitions( true );
-                }                
+            {                                
+                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get(), 2.0 );                                
                 return true;
             }
             return false;

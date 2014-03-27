@@ -102,7 +102,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     protected:
         // override from TerrainEngineNode
-        virtual void updateTextureCombining() { updateShaders(); }
+        virtual void updateTextureCombining() { updateState(); }
 
     private:
         void init();
@@ -122,7 +122,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
         void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
         
-        void updateShaders(); 
+        void updateState(); 
 
     private:
         MPTerrainEngineOptions _terrainOptions;
@@ -134,7 +134,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         Revision           _shaderLibRev;
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
-        bool               _shaderUpdateRequired;
+        bool               _stateUpdateRequired;
         bool               _rootTilesRegistered;
         Threading::Mutex   _rootTilesRegisteredMutex;
 

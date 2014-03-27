@@ -1195,7 +1195,11 @@ namespace
         {
             GLushort p = *(const GLushort*)ia->data(s, t, r, m);
             //internal format GL_RGB5_A1 is implied
-            return osg::Vec4( r5*(float)(p>>11), r5*(float)((p&0x7c0)>>6), r5*((p&0x3e)>>1), (float)(p&0x1));
+            return osg::Vec4(
+                r5*(float)(p>>11), 
+                r5*(float)((p&0x7c0)>>6), 
+                r5*(float)((p&0x3e)>>1), 
+                (float)(p&0x1));
         }
     };
 

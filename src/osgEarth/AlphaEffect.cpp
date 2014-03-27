@@ -18,9 +18,10 @@
 */
 
 #include <osgEarth/AlphaEffect>
-#include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 using namespace osgEarth;
 
@@ -49,8 +50,12 @@ AlphaEffect::AlphaEffect(osg::StateSet* stateset)
 void
 AlphaEffect::init()
 {
-    _alphaUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_alphaeffect_alpha");
-    _alphaUniform->set( 1.0f );
+    _active = Registry::capabilities().supportsGLSL(110u);
+    if ( _active )
+    {
+        _alphaUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_alphaeffect_alpha");
+        _alphaUniform->set( 1.0f );
+    }
 }
 
 AlphaEffect::~AlphaEffect()
@@ -61,21 +66,23 @@ AlphaEffect::~AlphaEffect()
 void
 AlphaEffect::setAlpha(float value)
 {
-    _alphaUniform->set( value );
+    if ( _active )
+        _alphaUniform->set( value );
 }
 
 float
 AlphaEffect::getAlpha() const
 {
-    float value;
-    _alphaUniform->get(value);
+    float value = 1.0f;
+    if (_active)
+        _alphaUniform->get(value);
     return value;
 }
 
 void
 AlphaEffect::attach(osg::StateSet* stateset)
 {
-    if ( stateset )
+    if ( stateset && _active )
     {
         _statesets.push_back(stateset);
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
@@ -88,6 +95,9 @@ AlphaEffect::attach(osg::StateSet* stateset)
 void
 AlphaEffect::detach()
 {
+    if (!_active)
+        return;
+
     for (StateSetList::iterator it = _statesets.begin(); it != _statesets.end(); ++it)
     {
         osg::ref_ptr<osg::StateSet> stateset;
@@ -104,7 +114,7 @@ AlphaEffect::detach()
 void
 AlphaEffect::detach(osg::StateSet* stateset)
 {
-    if ( stateset )
+    if ( stateset && _active )
     {
         stateset->removeUniform( _alphaUniform.get() );
         VirtualProgram* vp = VirtualProgram::get( stateset );

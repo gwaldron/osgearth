@@ -891,6 +891,12 @@ public:
         //Create a spatial reference for the source.
         std::string srcProj = _srcDS->GetProjectionRef();
 
+        // If the projection is empty and we have GCP's then use the GCP projection.
+        if (srcProj.empty() && _srcDS->GetGCPCount() > 0)
+        {
+            srcProj = _srcDS->GetGCPProjection();
+        }        
+
         
         if ( !srcProj.empty() && getProfile() != 0L )
         {

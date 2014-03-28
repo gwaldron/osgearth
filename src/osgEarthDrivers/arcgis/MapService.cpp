@@ -7,6 +7,8 @@
 
 using namespace osgEarth;
 
+#define LC "[MapService] "
+
 
 MapServiceLayer::MapServiceLayer(int in_id, 
                                  const std::string& in_name) :
@@ -139,29 +141,80 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
     Json::Reader reader;
 //    if ( !reader.parse( response.getPartStream(0), doc ) )
     if ( !reader.parse( r.getString(), doc ) )
+	{
         return setError( "Unable to parse metadata; invalid JSON" );
+	}
 
     // Read the profile. We are using "fullExtent"; perhaps an option to use "initialExtent" instead?
-    double xmin = doc["fullExtent"].get("xmin", 0).asDouble();
-    double ymin = doc["fullExtent"].get("ymin", 0).asDouble();
-    double xmax = doc["fullExtent"].get("xmax", 0).asDouble();
-    double ymax = doc["fullExtent"].get("ymax", 0).asDouble();
-    int srs = doc["fullExtent"].get("spatialReference", osgEarth::Json::Value::null).get("wkid", 0).asInt();
+	double xmin = 0.0;
+	double ymin = 0.0; 
+	double xmax = 0.0;
+	double ymax = 0.0;
+	int srs = 0;
+
+    Json::Value fullExtentValue = doc["fullExtent"];
+	Json::Value extentValue = doc["extent"];
+	std::string srsValue;
+	
+	// added a case for "extent" which can be removed if we want to fall back on initialExtent if fullExtent fails
+    if ( !fullExtentValue.empty() )
+	{
+		// if "fullExtent" exists .. use that
+		xmin = doc["fullExtent"].get("xmin", 0).asDouble();
+		ymin = doc["fullExtent"].get("ymin", 0).asDouble();
+		xmax = doc["fullExtent"].get("xmax", 0).asDouble();
+		ymax = doc["fullExtent"].get("ymax", 0).asDouble();
+		srs = doc["fullExtent"].get("spatialReference", osgEarth::Json::Value::null).get("wkid", 0).asInt();
+
+		srsValue = doc["fullExtent"].get("spatialReference", osgEarth::Json::Value::null).get("wkt", "null").asString();
+	
+		OE_DEBUG << LC << "fullExtent discovered: xmin: " << xmin << ", ymin: " << ymin << ", xmax: " << xmax << ", ymax: " << ymax << ", srs: " << srs << std::endl;
+	}
+	else if( !extentValue.empty() )
+	{
+		// else if "extent" exists .. use that
+		xmin = doc["extent"].get("xmin", 0).asDouble();
+		ymin = doc["extent"].get("ymin", 0).asDouble();
+		xmax = doc["extent"].get("xmax", 0).asDouble();
+		ymax = doc["extent"].get("ymax", 0).asDouble();
+		srs = doc["extent"].get("spatialReference", osgEarth::Json::Value::null).get("wkid", 0).asInt();
+
+		srsValue = doc["extent"].get("spatialReference", osgEarth::Json::Value::null).get("wkt", "null").asString();
+
+		OE_DEBUG << LC << "extent discovered: xmin: " << xmin << ", ymin: " << ymin << ", xmax: " << xmax << ", ymax: " << ymax << ", srs: " << srs << std::endl;
+	}
+	else
+	{
+		// else "initialExtent" must exist ..
+		xmin = doc["initialExtent"].get("xmin", 0).asDouble();
+		ymin = doc["initialExtent"].get("ymin", 0).asDouble();
+		xmax = doc["initialExtent"].get("xmax", 0).asDouble();
+		ymax = doc["initialExtent"].get("ymax", 0).asDouble();
+		srs = doc["initialExtent"].get("spatialReference", osgEarth::Json::Value::null).get("wkid", 0).asInt();
+
+		srsValue = doc["initialExtent"].get("spatialReference", osgEarth::Json::Value::null).get("wkt", "null").asString();
+
+		OE_DEBUG << LC << "initialExtent discovered: xmin: " << xmin << ", ymin: " << ymin << ", xmax: " << xmax << ", ymax: " << ymax << ", srs: " << srs << std::endl;
+	}
     
     //Assumes the SRS is going to be an EPSG code
     std::stringstream ss;
     ss << "epsg:" << srs;
     
-    if ( ! (xmax > xmin && ymax > ymin && srs != 0 ) )
+	// we can create a valid spatial reference from the WKT/proj4 string .. here just check if x/y/min/max values are set & correct
+    if ( ! (xmax > xmin && ymax > ymin /*&& srs != 0*/ ) )
     {
         return setError( "Map service does not define a full extent" );
     }
 
-    // Read the layers list
+    // Check that the layers list is not empty
     Json::Value j_layers = doc["layers"];
     if ( j_layers.empty() )
+	{
         return setError( "Map service contains no layers" );
+	}
 
+	// not required to initialise a layer .. in any case this code does nothing
     for( unsigned int i=0; i<j_layers.size(); i++ )
     {
         Json::Value layer = j_layers[i];
@@ -195,15 +248,21 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
         tile_rows = j_tileinfo.get( "rows", 0 ).asInt();
         tile_cols = j_tileinfo.get( "cols", 0 ).asInt();
         if ( tile_rows <= 0 && tile_cols <= 0 )
+		{
             return setError( "Map service tile size not specified" );
+		}
 
         format = j_tileinfo.get( "format", "" ).asString();
         if ( format.empty() )
+		{
             return setError( "Map service tile schema does not specify an image format" );
+		}
 
         Json::Value j_levels = j_tileinfo["lods"];
         if ( j_levels.empty() )
+		{
             return setError( "Map service tile schema contains no LODs" );
+		}
         
         min_level = INT_MAX;
         max_level = 0;
@@ -211,9 +270,13 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
         {
             int level = j_levels[i].get( "level", -1 ).asInt();
             if ( level >= 0 && level < min_level )
+			{
                 min_level = level;
+			}
             if ( level >= 0 && level > max_level )
+			{
                 max_level = level;
+			}
         }
 
         if (j_levels.size() > 0)
@@ -235,31 +298,58 @@ MapService::init( const URI& _uri, const osgDB::ReaderWriter::Options* options )
         }
     }
 
-	 std::string ssStr;
-	 ssStr = ss.str();
+	std::string ssStr;
+	ssStr = ss.str();
 
-    osg::ref_ptr< SpatialReference > spatialReference = SpatialReference::create( ssStr );
-    if (spatialReference->isGeographic())
-    {
-        //If we have a geographic SRS, just use the geodetic profile
-        profile = Registry::instance()->getGlobalGeodeticProfile();
-    }
-    else if (spatialReference->isMercator())
-    {
-        //If we have a mercator SRS, just use the mercator profile
-        profile = Registry::instance()->getGlobalMercatorProfile();
-    }
-    else
-    {
-        //It's not geodetic or mercator, so try to use the full extent
-        profile = Profile::create(
-            spatialReference.get(),
-            xmin, ymin, xmax, ymax,
-            num_tiles_wide,
-            num_tiles_high);
-    }    
+	osg::ref_ptr< SpatialReference > spatialReference;
 
+	 // if srs is in a non integer form .. find out what form it's in & create ..
+	if(srs == 0)
+	{
+		OE_DEBUG << LC << "srsString: " << srsValue << std::endl;
 
+		// create spatial reference from WKT string
+		spatialReference = SpatialReference::create( srsValue );
+	}
+	else
+	{
+		// create spatial reference from epsg string (WKID)
+		spatialReference = SpatialReference::create( ssStr );
+	}
+
+	// if spatial reference is valid .. create a profile
+	if( spatialReference.valid() )
+	{
+		// create profile from spatial reference
+		if ( spatialReference->isGeographic() )
+		{
+			// If we have a geographic SRS, just use the geodetic profile
+			profile = Registry::instance()->getGlobalGeodeticProfile();
+		}
+		else if ( spatialReference->isMercator() )
+		{
+			// If we have a mercator SRS, just use the mercator profile
+			profile = Registry::instance()->getGlobalMercatorProfile();
+		}
+		else
+		{
+			//It's not geodetic or mercator, so try to use the full extent
+			profile = Profile::create(
+				spatialReference.get(),
+				xmin, ymin, xmax, ymax,
+				num_tiles_wide,
+				num_tiles_high);
+		}
+	}
+	else
+	{
+		return setError( "Map service Spatial Reference INVALID" );
+	}
+
+	if( !profile.valid() )
+	{
+		return setError( "Map service could not create a valid profile" );
+	}
 
     // now we're good.
     tile_info = TileInfo( tile_rows, format, min_level, max_level, num_tiles_wide, num_tiles_high);

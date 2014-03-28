@@ -1933,6 +1933,11 @@ public:
                 {
                     unsigned inv_r = target_height - r -1;
                     float h = heights[r * target_width + c];
+                    // Mark the value as nodata using the universal NO_DATA_VALUE marker.
+                    if (!isValidValue( h, band ) )
+                    {
+                        h = NO_DATA_VALUE;
+                    }
                     readHF->setHeight(c, inv_r, h );
                 }                
             }    

@@ -41,6 +41,10 @@ namespace osgEarth { namespace Drivers
         /** Override the image format read from the server metadata */
         optional<std::string>& format() { return _format; }
         const optional<std::string>& format() const { return _format; }
+        
+        /** Override the layers read from the server metadata */
+        optional<std::string>& layers() { return _layers; }
+        const optional<std::string>& layers() const { return _layers; }
 
     public:
         ArcGISOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt )
@@ -58,6 +62,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("url", _url );
             conf.updateIfSet("token", _token );
             conf.updateIfSet("format", _format );
+            conf.updateIfSet("layers", _layers );
             return conf;
         }
 
@@ -70,12 +75,14 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "url", _url );
             conf.getIfSet( "token", _token);
             conf.getIfSet( "format", _format);
+            conf.getIfSet( "layers", _layers);
         }
 
     private:
         optional<URI>         _url;
         optional<std::string> _token;
         optional<std::string> _format;
+        optional<std::string> _layers;
     };
 
 } } // namespace osgEarth::Drivers

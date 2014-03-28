@@ -975,8 +975,9 @@ Map::calculateProfile()
                 else
                 {
                     OE_WARN << LC 
-                        << "Map is geocentric, but the configured profile does not "
-                        << "have a geographic SRS. Falling back on default.."
+                        << "Map is geocentric, but the configured profile SRS ("
+                        << userProfile->getSRS()->getName() << ") is not geographic; "
+                        << "it will be ignored."
                         << std::endl;
                 }
             }

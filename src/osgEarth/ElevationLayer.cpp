@@ -525,7 +525,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
         if ( layer->getEnabled() && layer->getVisible() )
         {
-            // calculate the resolution-mapped key (adjusted for tile resolution differential).
+            // calculate the resolution-mapped key (adjusted for tile resolution differential).            
             TileKey mappedKey = 
                 keyToUse.mapResolution(hf->getNumColumns(), layer->getTileSize());
 
@@ -565,6 +565,8 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
     const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
 
+    bool realData = false;
+
     for (unsigned c = 0; c < numColumns; ++c)
     {
         double x = xmin + (dx * (double)c);
@@ -599,6 +601,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     elevation != NO_DATA_VALUE)
                 {
                     resolved = true;
+                    realData = true;
                     hf->setHeight(c, r, elevation);
                 }
             }
@@ -626,11 +629,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
                     elevation != NO_DATA_VALUE)
                 {
+                    realData = true;
                     hf->getHeight(c, r) += elevation;
                 }
             }
         }
-    }
+    }   
 
-    return true;
+    // Return whether or not we actually read any real data
+    return realData;
 }

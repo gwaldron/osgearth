@@ -1859,21 +1859,16 @@ public:
             src_min_y = osg::maximum(0.0, floor(src_min_y - 1.0));
             src_max_x = osg::minimum((double)_warpedDS->GetRasterXSize(), ceil(src_max_x + 1.0));
             src_max_y = osg::minimum((double)_warpedDS->GetRasterYSize(), ceil(src_max_y + 1.0));
-            int off_x = (int)( src_min_x );
-            int off_y = (int)( src_min_y );
+            
             int width  = (int)(src_max_x - src_min_x);
             int height = (int)(src_max_y - src_min_y);      
 
             int rasterWidth = _warpedDS->GetRasterXSize();
             int rasterHeight = _warpedDS->GetRasterYSize();
-            if (off_x + width > rasterWidth || off_y + height > rasterHeight)
+            if (src_min_x + width > rasterWidth || src_min_y + height > rasterHeight)
             {
-                OE_WARN << LC << "Read window outside of bounds of dataset.  Source Dimensions=" << rasterWidth << "x" << rasterHeight << " Read Window=" << off_x << ", " << off_y << " " << width << "x" << height << std::endl;
+                OE_WARN << LC << "Read window outside of bounds of dataset.  Source Dimensions=" << rasterWidth << "x" << rasterHeight << " Read Window=" << src_min_x << ", " << src_min_y << " " << width << "x" << height << std::endl;
             }
-
-            // Compute the offsets in geo coordinates of the intersection from the TileKey
-            double offset_left = intersection.xMin() - xmin;            
-            double offset_top = ymax - intersection.yMax();
 
             // Don't read anything greater than a dimension of 1000.  If the source window is really large it will use
             // GDAL's nearest neighbor sampling.  If the source window is < 1000x1000 then the exact source data is read and 
@@ -1889,13 +1884,13 @@ public:
             }            
 
             OE_DEBUG << LC << "Reading key " << key.str() << std::endl;
-            OE_DEBUG << LC << "ReadWindow " << off_x << "," << off_y << " " << width << "x" << height << std::endl;
+            OE_DEBUG << LC << "ReadWindow " << src_min_x << "," << src_min_y << " " << width << "x" << height << std::endl;
             OE_DEBUG << LC << "DestWindowSize " << target_width << "x" << target_height << std::endl;                        
 
             // Figure out the true pixel extents of what we read
             double read_min_x, read_min_y, read_max_x, read_max_y;
-            pixelToGeo(off_x, off_y, read_min_x, read_max_y);
-            pixelToGeo(off_x + width, off_y + height, read_max_x, read_min_y);
+            pixelToGeo(src_min_x, src_min_y, read_min_x, read_max_y);
+            pixelToGeo(src_min_x + width, src_min_y + height, read_max_x, read_min_y);
 
             // We need to deflate the size of the extents by the width of 0.5 pixel to get the correct extents of the heightfield since it's 
             // sampled at the center of the pixels and not the outside edges.
@@ -1922,7 +1917,7 @@ public:
             {                
                 heights[i] = NO_DATA_VALUE;
             }            
-            band->RasterIO(GF_Read, off_x, off_y, width, height, heights, target_width, target_height, GDT_Float32, 0, 0);
+            band->RasterIO(GF_Read, src_min_x, src_min_y, width, height, heights, target_width, target_height, GDT_Float32, 0, 0);
 
             // Now create a GeoHeightField that we can sample from.  This heightfield only contains the portion that was actually read from the dataset
             osg::ref_ptr< osg::HeightField > readHF = new osg::HeightField();

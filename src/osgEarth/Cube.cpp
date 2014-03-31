@@ -318,7 +318,8 @@ CubeFaceLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& world
         osg::Vec3d faceCoord = local * _transform;
 
         double lat_deg, lon_deg;
-        CubeUtils::faceCoordsToLatLon( faceCoord.x(), faceCoord.y(), _face, lat_deg, lon_deg );
+        if ( !CubeUtils::faceCoordsToLatLon( faceCoord.x(), faceCoord.y(), _face, lat_deg, lon_deg ))
+            return false;
 
         //OE_NOTICE << "LatLon=" << latLon <<  std::endl;
 
@@ -361,11 +362,12 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 
             if (!success)
             {
-                OE_NOTICE << LC << "Couldn't convert to face coords " << std::endl;
+                OE_WARN << LC << "Couldn't convert to face coords " << std::endl;
+                return false;
             }
             if (face != _face)
             {
-                OE_NOTICE << LC
+                OE_WARN << LC
                     << "Face should be " << _face << " but is " << face
                     << ", lat = " << lat_deg
                     << ", lon = " << lon_deg

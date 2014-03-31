@@ -43,6 +43,8 @@
 
 #define LC "[GDAL driver] "
 
+#define INDENT ""
+
 // From easyrgb.com
 float Hue_2_RGB( float v1, float v2, float vH )
 {
@@ -752,7 +754,7 @@ public:
                 OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
                 for (unsigned int i = 0; i < files.size(); ++i)
                 {
-                    OE_INFO << LC << "" << files[i] << std::endl;
+                    OE_INFO << LC << INDENT << files[i] << std::endl;
                 }
             }
             else
@@ -783,7 +785,7 @@ public:
                         _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );
                         if (_srcDS)
                         {
-                            OE_INFO << LC << "Read VRT from cache!" << std::endl;
+                            OE_INFO << LC << INDENT << "Read VRT from cache!" << std::endl;
                         }
                     }
                 }
@@ -795,7 +797,7 @@ public:
                     osg::Timer_t startTime = osg::Timer::instance()->tick();                    
                     _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
                     osg::Timer_t endTime = osg::Timer::instance()->tick();                                                            
-                    OE_INFO << LC << "Built VRT in " << osg::Timer::instance()->delta_s(startTime, endTime) << " s" << std::endl;
+                    OE_INFO << LC << INDENT << "Built VRT in " << osg::Timer::instance()->delta_s(startTime, endTime) << " s" << std::endl;
 
                     if (_srcDS)
                     {
@@ -803,7 +805,7 @@ public:
                         if (_cacheBin)
                         {
                             std::string vrtFile = getTempName( "", ".vrt");
-                            OE_INFO << "Writing temp VRT to " << vrtFile << std::endl;
+                            OE_INFO << LC << INDENT << "Writing temp VRT to " << vrtFile << std::endl;
                          
                             if (vrtDriver)
                             {                    
@@ -882,7 +884,7 @@ public:
 
         if (warpProfile.valid())
         {
-            OE_NOTICE << "Created warp profile " << warpProfile->toString() <<  std::endl;
+            OE_INFO << LC << INDENT << "Created warp profile " << warpProfile->toString() <<  std::endl;
         }
 
 
@@ -900,7 +902,7 @@ public:
         
         if ( !srcProj.empty() && getProfile() != 0L )
         {
-            OE_WARN << LC << "WARNING, overriding profile of a source that already defines its own SRS (" 
+            OE_WARN << LC << "Overriding profile of a source that already defines its own SRS (" 
                 << this->getName() << ")" << std::endl;
         }
 
@@ -1059,7 +1061,7 @@ public:
             pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, maxX, maxY);
         }
 
-        OE_DEBUG << LC << "Geo extents: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
+        OE_DEBUG << LC << INDENT << "Geo extents: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
 
         if ( !profile )
         {
@@ -1067,7 +1069,7 @@ public:
                 warpedSRSWKT,
                 minX, minY, maxX, maxY);
 
-            OE_INFO << LC << "" << source << " is projected, SRS = " 
+            OE_INFO << LC << INDENT << source << " is projected, SRS = " 
                 << warpedSRSWKT << std::endl;
                 //<< _warpedDS->GetProjectionRef() << std::endl;
         }
@@ -1078,12 +1080,12 @@ public:
 
         double maxResolution = osg::minimum(resolutionX, resolutionY);
 
-        OE_INFO << LC << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
+        OE_INFO << LC << INDENT << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
         if (_options.maxDataLevelOverride().isSet())
         {
             _maxDataLevel = _options.maxDataLevelOverride().value();
-            OE_INFO << _options.url().value().full() << " using override max data level " << _maxDataLevel << std::endl;
+            OE_INFO << LC << INDENT << _options.url().value().full() << " using override max data level " << _maxDataLevel << std::endl;
         }
         else
         {
@@ -1102,7 +1104,7 @@ public:
                 }
             }
 
-            OE_INFO << LC << _options.url().value().full() << " max Data Level: " << _maxDataLevel << std::endl;
+            OE_INFO << LC << INDENT << _options.url().value().full() << " max Data Level: " << _maxDataLevel << std::endl;
         }
 
         osg::ref_ptr< SpatialReference > srs = SpatialReference::create( warpedSRSWKT );

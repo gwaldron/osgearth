@@ -105,9 +105,9 @@ namespace osgEarth { namespace Features
 	public:
     static ScriptEngineFactory* instance();
 
-    static ScriptEngine* create( const std::string& language, const std::string& engineName="" );
-    static ScriptEngine* create( const Script& script, const std::string& engineName="" );
-    static ScriptEngine* create( const ScriptEngineOptions& options );
+    static ScriptEngine* create( const std::string& language, const std::string& engineName="", bool quiet =false);
+    static ScriptEngine* create( const Script& script, const std::string& engineName="", bool quiet =false);
+    static ScriptEngine* create( const ScriptEngineOptions& options, bool quiet =false);
 
   protected:
     ScriptEngineFactory() { }

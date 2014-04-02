@@ -108,10 +108,6 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
         setupChildrenIfNecessary &&
         model->_tileKey.getLOD() < *_options.maxLOD();
 
-    bool subdivide = setupChildrenIfNecessary &&
-                    _options.minLOD().isSet() &&
-                    model->_tileKey.getLOD() < *_options.minLOD();
-
     osg::Node* result = 0L;
 
     if ( prepareForChildren )
@@ -122,14 +118,7 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
         plod->addChild   ( tileNode );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engineUID << ".osgearth_engine_mp_tile" );
 
-        if ( subdivide )
-        {
-            // set range parameter in a way, that the children with higher resolution will always be displayed
-            plod->setRange( 0, 0.0f, 0.0f );
-            plod->setRange( 1, 0.0f, FLT_MAX);
-            plod->setRangeMode( osg::LOD::DISTANCE_FROM_EYE_POINT );
-        }
-        else if ( _options.rangeMode().value() == osg::LOD::DISTANCE_FROM_EYE_POINT )
+        if ( _options.rangeMode().value() == osg::LOD::DISTANCE_FROM_EYE_POINT )
         {
             //Compute the min range based on the 2D size of the tile
             GeoExtent extent = model->_tileKey.getExtent();

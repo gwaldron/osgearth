@@ -124,7 +124,7 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
 
         if ( subdivide )
         {
-            // set range parameter in a way, that the child with higher resolution will always be displayed
+            // set range parameter in a way, that the children with higher resolution will always be displayed
             plod->setRange( 0, 0.0f, 0.0f );
             plod->setRange( 1, 0.0f, FLT_MAX);
             plod->setRangeMode( osg::LOD::DISTANCE_FROM_EYE_POINT );

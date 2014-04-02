@@ -330,7 +330,7 @@ CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
         ImageLayer* layer = i->get();
-        if ( layer->isKeyValid( key ) )
+        if ( layer->isKeyInRange( key ) )
         {
             GeoImage image = layer->createImage( key );
             if ( image.valid() )
@@ -341,7 +341,7 @@ CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
     if ( mapf.elevationLayers().size() > 0 )
     {
         osg::ref_ptr<osg::HeightField> hf;
-        mapf.getHeightField( key, false, hf );
+        mapf.populateHeightField( hf, key, false, SAMPLE_FIRST_VALID );
         if ( hf.valid() )
             gotData = true;
     }

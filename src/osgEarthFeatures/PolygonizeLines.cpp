@@ -226,6 +226,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
             // flip it depending on the current side.
             //osg::Vec3 bufVecUnit = (s==0) ? normal ^ dir : dir ^ normal;
             osg::Vec3 bufVecUnit = (side < 0.0f) ? normal ^ dir : dir ^ normal;
+            bufVecUnit.normalize();
 
             // scale the buffering vector to half the stroke width.
             osg::Vec3 bufVec = bufVecUnit * halfWidth;
@@ -472,27 +473,26 @@ PolygonizeLinesOperator::installShaders(osg::StateSet* stateset) const
 
         "void oe_polyline_scalelines(inout vec4 VertexMODEL) \n"
         "{ \n"
-        //"   if ( oe_polyline_scale != 1.0 || oe_polyline_min_pixels > 0.0 ) \n"
+        "   vec4  center_model = vec4(oe_polyline_center*VertexMODEL.w, VertexMODEL.w); \n"
+        "   vec4  vector_model = VertexMODEL - center_model; \n"
+
+        "   if ( length(vector_model.xyz) > 0.0 ) \n"
         "   { \n"
-        "       vec4  center_model = vec4(oe_polyline_center*VertexMODEL.w, VertexMODEL.w); \n"
-        "       vec4  vector_model = VertexMODEL - center_model; \n"
-        "       if ( length(vector_model.xyz) > 0.0 ) \n"
+        "       float scale = oe_polyline_scale; \n"
+
+        "       vec4 vertex_clip = gl_ModelViewProjectionMatrix * VertexMODEL; \n"
+        "       vec4 center_clip = gl_ModelViewProjectionMatrix * center_model; \n"
+        "       vec4 vector_clip = vertex_clip - center_clip; \n"
+
+        "       if ( oe_polyline_min_pixels > 0.0 ) \n"
         "       { \n"
-        "           float scale = oe_polyline_scale; \n"
+        "           vec3 vector_win = oe_WindowScaleMatrix * vec3(vector_clip.xy, 0); \n" //(vertex_clip.xy/vertex_clip.w - center_clip.xy/center_clip.w); \n"
+        "           float min_scale = max( (0.5*oe_polyline_min_pixels)/length(vector_win.xy), 1.0 ); \n"
+        "           scale = max( scale, min_scale ); \n"
+        "       } \n"
 
-        "           vec4 vertex_clip = gl_ModelViewProjectionMatrix * VertexMODEL; \n"
-        "           vec4 center_clip = gl_ModelViewProjectionMatrix * center_model; \n"
-        "           vec4 vector_clip = vertex_clip - center_clip; \n"
-
-        "           if ( oe_polyline_min_pixels > 0.0 ) \n"
-        "           { \n"
-        "               vec3 vector_win = oe_WindowScaleMatrix * (vertex_clip.xyz/vertex_clip.w - center_clip.xyz/center_clip.w); \n"
-        "               float min_scale = max( (0.5*oe_polyline_min_pixels)/length(vector_win.xy), 1.0 ); \n"
-        "               scale = max( scale, min_scale ); \n"
-        "           } \n"
-
-        "           VertexMODEL = center_model + vector_model*scale; \n"
-        "        } \n"
+        "       vec4 n = vec4(center_clip.xyz + vector_clip.xyz*scale, vertex_clip.w); \n"
+        "       VertexMODEL = gl_ModelViewProjectionMatrixInverse * vec4(n.x, n.y, vertex_clip.z, n.w); \n"
         "    } \n"
         "} \n";
 

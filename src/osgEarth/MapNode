@@ -25,7 +25,6 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/TerrainEngineNode>
-#include <osgEarth/ShaderUtils>
 
 namespace osgEarth
 {
@@ -163,13 +162,6 @@ namespace osgEarth
         Config& externalConfig() { return _externalConf; }
         const Config& externalConfig() const { return _externalConf; }
 
-        /**
-         * Sets a custom texture compositor technique on the underlying terrain engine.
-         * This method is here b/c just calling getTerrainEngine()->getTextureCompositor()
-         * ->setTechnique() has problems (with init order of the terrain engine). Someday
-         * this needs to be cleaned up.
-         */
-        void setCompositorTechnique( class TextureCompositorTechnique* tech );
 
     public: // special purpose
 
@@ -209,8 +201,6 @@ namespace osgEarth
         osg::ref_ptr<TerrainEngineNode> _terrainEngine;
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
-
-        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
 
 
     public: // MapCallback proxy

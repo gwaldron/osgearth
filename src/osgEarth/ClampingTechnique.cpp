@@ -277,7 +277,7 @@ static osgEarthRegisterRenderBinProxy<ClampingRenderBin> s_regbin(OSGEARTH_CLAMP
 //---------------------------------------------------------------------------
 
 ClampingTechnique::ClampingTechnique() :
-_textureSize( 4096 )
+_textureSize( 1024 )
 {
     // disable if GLSL is not supported
     _supported = Registry::capabilities().supportsGLSL();
@@ -329,7 +329,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // set up the RTT camera:
     params._rttCamera = new osg::Camera();
     params._rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
-    params._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
+    params._rttCamera->setClearDepth( 1.0 );
     params._rttCamera->setClearMask( GL_DEPTH_BUFFER_BIT );
     params._rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
     params._rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );

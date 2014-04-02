@@ -37,7 +37,7 @@
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>
 
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
@@ -538,19 +538,52 @@ namespace
                 // If so, skip the sampling and mark it as a mask location
                 if ( validValue && d.maskRecords.size() > 0 )
                 {
-                    for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
-                    {
-                        if(ndc.x() >= (*mr)._ndcMin.x() && ndc.x() <= (*mr)._ndcMax.x() &&
-                            ndc.y() >= (*mr)._ndcMin.y() && ndc.y() <= (*mr)._ndcMax.y())
-                        {
-                            validValue = false;
-                            d.indices[iv] = -2;
+					double minndcx = d.maskRecords[0]._ndcMin.x();
+					double minndcy = d.maskRecords[0]._ndcMin.y();
+					double maxndcx = d.maskRecords[0]._ndcMax.x();
+					double maxndcy = d.maskRecords[0]._ndcMax.y();
+					for (int mrs = 1; mrs < d.maskRecords.size(); ++mrs)
+					{
+						if ( d.maskRecords[mrs]._ndcMin.x()< minndcx)
+						{
+							minndcx = d.maskRecords[mrs]._ndcMin.x();
+						}
+						if ( d.maskRecords[mrs]._ndcMin.y()< minndcy)
+						{
+							minndcy = d.maskRecords[mrs]._ndcMin.y();
+						}
+						if ( d.maskRecords[mrs]._ndcMax.x()> maxndcx)
+						{
+							maxndcx = d.maskRecords[mrs]._ndcMax.x();
+						}
+						if ( d.maskRecords[mrs]._ndcMax.y()> maxndcy)
+						{
+							maxndcy = d.maskRecords[mrs]._ndcMax.y();
+						}
 
-                            (*mr)._internal->push_back(ndc);
 
-                            break;
-                        }
-                    }
+					}
+					if(ndc.x() >= (minndcx) && ndc.x() <= (maxndcx) &&
+						        ndc.y() >= (minndcy) && ndc.y() <= (maxndcy))
+				    {
+				        validValue = false;
+				        d.indices[iv] = -2;
+				    
+				    }
+                    //for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
+                    //{
+                    //    if(ndc.x() >= ((*mr)._ndcMin.x()) && ndc.x() <= ((*mr)._ndcMax.x()) &&
+                    //        ndc.y() >= ((*mr)._ndcMin.y()) && ndc.y() <= ((*mr)._ndcMax.y()))
+						
+                    //    {
+                    //        validValue = false;
+                    //        d.indices[iv] = -2;
+
+                    //       // (*mr)._internal->push_back(ndc);
+
+                    //        break;
+                    //    }
+                    //}
                 }
                 
                 if ( validValue )
@@ -650,23 +683,53 @@ namespace
     {
         bool hasElev = d.model->hasElevation();
 
-        for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
-        {
-            int min_i = (int)floor((*mr)._ndcMin.x() * (double)(d.numCols-1));
+		osg::ref_ptr<osgUtil::DelaunayTriangulator> trig=new osgUtil::DelaunayTriangulator();
+
+		std::vector<osg::ref_ptr<osgUtil::DelaunayConstraint>> alldcs;
+	
+		osg::ref_ptr<osg::Vec3Array> coordsArray = new osg::Vec3Array;
+						
+		double minndcx = d.maskRecords[0]._ndcMin.x();
+		double minndcy = d.maskRecords[0]._ndcMin.y();
+		double maxndcx = d.maskRecords[0]._ndcMax.x();
+		double maxndcy = d.maskRecords[0]._ndcMax.y();
+        for (int mrs = 1; mrs < d.maskRecords.size(); ++mrs)
+		{
+			if ( d.maskRecords[mrs]._ndcMin.x()< minndcx)
+			{
+				minndcx = d.maskRecords[mrs]._ndcMin.x();
+			}
+			if ( d.maskRecords[mrs]._ndcMin.y()< minndcy)
+			{
+				minndcy = d.maskRecords[mrs]._ndcMin.y();
+			}
+			if ( d.maskRecords[mrs]._ndcMax.x()> maxndcx)
+			{
+				maxndcx = d.maskRecords[mrs]._ndcMax.x();
+			}
+			if ( d.maskRecords[mrs]._ndcMax.y()> maxndcy)
+			{
+				maxndcy = d.maskRecords[mrs]._ndcMax.y();
+			}
+
+			
+		}
+       
+            int min_i = (int)floor(minndcx * (double)(d.numCols-1));
             if (min_i < 0) min_i = 0;
             if (min_i >= (int)d.numCols) min_i = d.numCols - 1;
 
-            int min_j = (int)floor((*mr)._ndcMin.y() * (double)(d.numRows-1));
+            int min_j = (int)floor(minndcy * (double)(d.numRows-1));
             if (min_j < 0) min_j = 0;
-            if (min_j >= (int)d.numCols) min_j = d.numCols - 1;
+            if (min_j >= (int)d.numRows) min_j = d.numRows - 1;
 
-            int max_i = (int)ceil((*mr)._ndcMax.x() * (double)(d.numCols-1));
+            int max_i = (int)ceil(maxndcx * (double)(d.numCols-1));
             if (max_i < 0) max_i = 0;
             if (max_i >= (int)d.numCols) max_i = d.numCols - 1;
 
-            int max_j = (int)ceil((*mr)._ndcMax.y() * (double)(d.numRows-1));
+            int max_j = (int)ceil(maxndcy * (double)(d.numRows-1));
             if (max_j < 0) max_j = 0;
-            if (max_j >= (int)d.numCols) max_j = d.numCols - 1;
+            if (max_j >= (int)d.numRows) max_j = d.numRows - 1;
 
             if (min_i >= 0 && max_i >= 0 && min_j >= 0 && max_j >= 0)
             {
@@ -750,34 +813,49 @@ namespace
                     }
                 }
 
-                //Create local polygon representing mask
-                osg::ref_ptr<Polygon> maskPoly = new Polygon();
-                for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
-                {
-                    osg::Vec3d local;
-                    d.geoLocator->convertModelToLocal(*it, local);
-                    maskPoly->push_back(local);
-                }
+			    for (int j = 0; j < num_j; j++)
+					for (int i = 0; i < num_i; i++)
+					{
+						//int index = indices[min_j*numColumns + i + min_i];
+						{
+							osg::Vec3d ndc( ((double)(i + min_i))/(double)(d.numCols-1), ((double)(j+min_j))/(double)(d.numRows-1), 0.0);
+
+							//if (elevationLayer)
+							if ( hasElev )
+							{
+								float value = 0.0f;
+								if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
+									ndc.z() = value * d.heightScale + d.heightOffset;
+							}
+
+							coordsArray->push_back(ndc) ;
+						}						
+					}
 
 
                 // Use delaunay triangulation for stitching:
+                for (MaskRecordVector::iterator mr = d.maskRecords.begin();mr != d.maskRecords.end();mr++)
+                {
 
-                // Add the outter stitching bounds to the collection of vertices to be used for triangulation
-                (*mr)._internal->insert((*mr)._internal->end(), maskSkirtPoly->begin(), maskSkirtPoly->end());
-
-                osg::ref_ptr<osgUtil::DelaunayTriangulator> trig=new osgUtil::DelaunayTriangulator();
-                trig->setInputPointArray((*mr)._internal.get());
-
-
-                // Add mask bounds as a triangulation constraint
-                osg::ref_ptr<osgUtil::DelaunayConstraint> dc=new osgUtil::DelaunayConstraint;
-
-                osg::Vec3Array* maskConstraint = new osg::Vec3Array();
-                dc->setVertexArray(maskConstraint);
-
-                //Crop the mask to the stitching poly (for case where mask crosses tile edge)
-                osg::ref_ptr<Geometry> maskCrop;
-                maskPoly->crop(maskSkirtPoly.get(), maskCrop);
+					 // Add the outter stitching bounds to the collection of vertices to be used for triangulation
+				//	coordsArray->insert(coordsArray->end(), (*mr)._internal->begin(), (*mr)._internal->end());
+					//Create local polygon representing mask
+					osg::ref_ptr<Polygon> maskPoly = new Polygon();
+					for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
+					{
+						osg::Vec3d local;
+						d.geoLocator->convertModelToLocal(*it, local);
+						maskPoly->push_back(local);
+					}
+					// Add mask bounds as a triangulation constraint
+										
+					osg::ref_ptr<osgUtil::DelaunayConstraint> newdc=new osgUtil::DelaunayConstraint;
+					osg::Vec3Array* maskConstraint = new osg::Vec3Array();
+					newdc->setVertexArray(maskConstraint);
+					
+					//Crop the mask to the stitching poly (for case where mask crosses tile edge)
+					osg::ref_ptr<Geometry> maskCrop;
+					maskPoly->crop(maskSkirtPoly.get(), maskCrop);
 
                 GeometryIterator i( maskCrop.get(), false );
                 while( i.hasMore() )
@@ -786,13 +864,13 @@ namespace
                     if (!part)
                         continue;
 
-                    if (part->getType() == Geometry::TYPE_POLYGON)
-                    {
-                        osg::Vec3Array* partVerts = part->toVec3Array();
-                        maskConstraint->insert(maskConstraint->end(), partVerts->begin(), partVerts->end());
-                        dc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - partVerts->size(), partVerts->size()));
-                    }
-                }
+						if (part->getType() == Geometry::TYPE_POLYGON)
+						{
+							osg::Vec3Array* partVerts = part->toVec3Array();
+							maskConstraint->insert(maskConstraint->end(), partVerts->begin(), partVerts->end());
+							newdc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - partVerts->size(), partVerts->size()));
+						}
+					}
 
                 // Cropping strips z-values so need reassign
                 std::vector<int> isZSet;
@@ -900,22 +978,37 @@ namespace
                     if (!isZSet[count])
                         OE_WARN << LC << "Z-value not set for mask constraint vertex" << std::endl;
 
-                    count++;
+						count++;
+					}
+					
+					alldcs.push_back(newdc);
                 }
+                          							
+          
+				//coordsArray->insert(coordsArray->end(),maskSkirtPoly->begin(),maskSkirtPoly->end());
+				trig->setInputPointArray(coordsArray.get());
 
-                trig->addInputConstraint(dc.get());
 
-
-                // Create array to hold vertex normals
+				for (int dcnum =0; dcnum < alldcs.size();dcnum++)
+				{
+					trig->addInputConstraint(alldcs[dcnum].get());
+				}
+		       
+		         // Create array to hold vertex normals
                 osg::Vec3Array *norms=new osg::Vec3Array;
                 trig->setOutputNormalArray(norms);
 
 
                 // Triangulate vertices and remove triangles that lie within the contraint loop
                 trig->triangulate();
-                trig->removeInternalTriangles(dc.get());
+				for (int dcnum =0; dcnum < alldcs.size();dcnum++)
+				{
+					
+					trig->removeInternalTriangles(alldcs[dcnum].get());
+				}             
 
 
+				MaskRecordVector::iterator mr = d.maskRecords.begin();
                 // Set up new arrays to hold final vertices and normals
                 osg::Geometry* stitch_geom = (*mr)._geom;
                 osg::Vec3Array* stitch_verts = new osg::Vec3Array();
@@ -979,7 +1072,6 @@ namespace
 
                 // Get triangles from triangulator and add as primative set to the geometry
                 stitch_geom->addPrimitiveSet(trig->getTriangles());
-            }
         }
     }
 
@@ -1832,12 +1924,16 @@ namespace
 
 #endif
 
-        osgUtil::Optimizer o;
+		if (d.maskRecords.size()<1)
+		{
+			osgUtil::Optimizer o;
 
-        o.optimize( d.surfaceGeode,
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::INDEX_MESH |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+			o.optimize( d.surfaceGeode,
+				osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+				osgUtil::Optimizer::INDEX_MESH |
+				osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+		}
+       
 
 #if 1
         d.surface->setUseVertexBufferObjects(false);
@@ -1902,8 +1998,6 @@ TileModelCompiler::compile(const TileModel* model,
 
     // A Geode/Geometry for the surface:
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );
-    //d.surface->setUseVertexBufferObjects(d.useVBOs);
-    //d.surface->setUseDisplayList(!d.useVBOs);
     d.surfaceGeode = new osg::Geode();
     d.surfaceGeode->addDrawable( d.surface );
     d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );

@@ -192,12 +192,18 @@ SubstituteModelFilter::process(const FeatureList&           features,
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
+#if 1
+            // Always clone the cached instance so we're not processing data that's
+            // already in the scene graph. -gw
+            context.resourceCache()->cloneOrCreateInstanceNode(instance.get(), model);
+#else
             // for DI, we must clone the instances since we intend to change them
             // (i.e. we will convert their primsets to drawinstanced)
             if ( _useDrawInstanced )
                 context.resourceCache()->cloneOrCreateInstanceNode( instance.get(), model );
             else
                 context.resourceCache()->getOrCreateInstanceNode( instance.get(), model );
+#endif
 
             // if icon decluttering is off, install an AutoTransform.
             if ( iconSymbol )

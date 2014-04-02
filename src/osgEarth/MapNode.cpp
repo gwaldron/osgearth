@@ -33,6 +33,7 @@
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
+#include <osgEarth/ShaderGenerator>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
@@ -208,6 +209,9 @@ MapNode::init()
     // Protect the MapNode from the Optimizer
     setDataVariance(osg::Object::DYNAMIC);
 
+    // Protect the MapNode from the ShaderGenerator
+    ShaderGenerator::setIgnoreHint(this, true);
+
     // initialize 0Ls
     _terrainEngine          = 0L;
     _terrainEngineContainer = 0L;
@@ -260,12 +264,12 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        //_terrainEngineContainer->getOrCreateStateSet()->setMode( 
-        //    GL_LIGHTING, 
-        //    terrainOptions.enableLighting().value() ? 1 : 0 );
-
         _terrainEngineContainer->getOrCreateStateSet()->addUniform(
             Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, *terrainOptions.enableLighting()) );
+
+        _terrainEngineContainer->getOrCreateStateSet()->setMode( 
+            GL_LIGHTING, 
+            terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
     if ( _terrainEngine )
@@ -340,13 +344,18 @@ MapNode::init()
     osg::StateSet* stateset = getOrCreateStateSet();
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
+        stateset->addUniform(Registry::shaderFactory()->createUniformForGLMode(
+            GL_LIGHTING, 
+            _mapNodeOptions.enableLighting().value() ? 1 : 0));
+
         stateset->setMode( 
             GL_LIGHTING, 
-            _mapNodeOptions.enableLighting().value() ? 1 : 0 );
+            _mapNodeOptions.enableLighting().value() ? 1 : 0);
     }
 
     dirtyBound();
 
+#if 0
     // Install a default lighting shader program.
     if ( Registry::capabilities().supportsGLSL() )
     {
@@ -355,6 +364,7 @@ MapNode::init()
 
         Registry::shaderFactory()->installLightingShaders( vp );
     }
+#endif
 
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
@@ -430,15 +440,6 @@ MapNode::getTerrainEngine() const
         me->dirtyBound();
     }
     return _terrainEngine;
-}
-
-void
-MapNode::setCompositorTechnique( TextureCompositorTechnique* tech )
-{
-    if ( _terrainEngine )
-    {
-        _terrainEngine->getTextureCompositor()->setTechnique( tech );
-    }
 }
 
 osg::Group*
@@ -651,9 +652,6 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
     else if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        // update the light model uniforms.
-        _updateLightingUniformsHelper.cullTraverse( this, &nv );
-
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         if ( cv )
         {

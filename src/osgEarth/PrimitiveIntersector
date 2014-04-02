@@ -46,6 +46,8 @@ public:
             ratio(-1.0),
             primitiveIndex(0) {}
 
+        Intersection(const Intersection &rhs);
+
         bool operator < (const Intersection& rhs) const { return ratio < rhs.ratio; }
 
         typedef std::vector<unsigned int>   IndexList;

@@ -365,7 +365,11 @@ GeoPoint::transform(const SpatialReference* outSRS, GeoPoint& output) const
 bool
 GeoPoint::toWorld( osg::Vec3d& out_world ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+    {
+        OE_WARN << LC << "Called toWorld() on an invalid point" << std::endl;
+        return false;
+    }
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
         OE_WARN << LC << "ILLEGAL: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
@@ -377,7 +381,11 @@ GeoPoint::toWorld( osg::Vec3d& out_world ) const
 bool
 GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+    {
+        OE_WARN << LC << "Called toWorld() on an invalid point" << std::endl;
+        return false;
+    }
     if ( _altMode == ALTMODE_ABSOLUTE )
     {
         return _srs->transformToWorld( _p, out_world );
@@ -420,7 +428,7 @@ GeoPoint::createLocalToWorld( osg::Matrixd& out_l2w ) const
     if ( !isValid() ) return false;
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocalToorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createLocalToWorld( _p, out_l2w );
@@ -432,7 +440,7 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
     if ( !isValid() ) return false;
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createWorldToLocal with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createWorldToLocal( _p, out_w2l );
@@ -772,6 +780,14 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
 
     }
     return GeoExtent::INVALID;
+}
+
+
+bool
+GeoExtent::transform( const SpatialReference* srs, GeoExtent& output ) const
+{
+    output = transform(srs);
+    return output.isValid();
 }
 
 void

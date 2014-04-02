@@ -59,12 +59,23 @@ namespace osgEarth
         /** bits in depth buffer */
         int getDepthBufferBits() const { return _depthBits; }
 
-        /** whether the GPU supports shaders */
-        bool supportsGLSL(float minimumVersion =1.0f) const { 
+        /** whether the GPU supports shaders. */
+        bool supportsGLSL() const { 
+            return _supportsGLSL; }
+        
+        /** whether the GPU supports a minimum GLSL version */
+        bool supportsGLSL(float minimumVersion) const { 
             return _supportsGLSL && _GLSLversion >= minimumVersion; }
+        
+        /** whether the GPU supports a minimum GLSL version (as an int; e.g. 1.2 => "120") */
+        bool supportsGLSL(unsigned minVersionInt) const {
+            return _supportsGLSL && ((unsigned)(_GLSLversion*100.0f)) >= minVersionInt; }
 
         /** the GLSL version */
         float getGLSLVersion() const { return _GLSLversion; }
+
+        /** GLSL version as an integer x 100. I.e.: GLSL 1.4 => 140. */
+        unsigned getGLSLVersionInt() const { return (unsigned)(_GLSLversion*100.0f); }
 
         /** the GPU vendor */
         const std::string& getVendor() const { return _vendor;}

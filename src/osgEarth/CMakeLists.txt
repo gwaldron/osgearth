@@ -90,6 +90,7 @@ SET(LIB_PUBLIC_HEADERS
     optional
     OverlayDecorator
     OverlayNode
+	PhongLightingEffect
     Pickers
     PrimitiveIntersector
     Profile
@@ -111,8 +112,6 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TextureCompositor
-    TextureCompositorMulti
-    TextureCompositorTexArray
     TileKey
     TileSource
     TimeControl
@@ -219,6 +218,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Notify.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
+	PhongLightingEffect.cpp
     Pickers.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
@@ -239,8 +239,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TerrainOptions.cpp
     TerrainEngineNode.cpp
     TextureCompositor.cpp
-    TextureCompositorMulti.cpp
-    TextureCompositorTexArray.cpp
     TileKey.cpp
     TileSource.cpp
     TimeControl.cpp

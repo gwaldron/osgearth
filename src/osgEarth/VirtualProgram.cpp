@@ -317,7 +317,11 @@ namespace
             {
                 program->addShader( i->get() );
                 if ( s_dumpShaders )
-                    OE_NOTICE << LC << "SHADER " << i->get()->getName() << ":\n" << i->get()->getShaderSource() << "\n" << std::endl;
+                {
+                    OE_NOTIFY(osg::NOTICE,"")
+                        << "----------\n"
+                        << i->get()->getShaderSource() << std::endl;
+                }
             }
         }
 
@@ -363,7 +367,9 @@ namespace
         buildVector.push_back( fragMain );
 
         if ( s_dumpShaders )
-            OE_NOTICE << LC << "---------PROGRAM: " << programName << " ---------------\n" << std::endl;
+        {
+            OE_NOTICE << LC << "\nPROGRAM: " << programName << " =============================\n" << std::endl;
+        }
 
         // Create the new program.
         osg::Program* program = new osg::Program();
@@ -453,7 +459,6 @@ _inheritSet        ( false )
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
     {
         s_dumpShaders = true;
-        s_mergeShaders = true;
     }
 
     // check the merge env var
@@ -556,35 +561,33 @@ VirtualProgram::removeBindAttribLocation( const std::string& name )
 void
 VirtualProgram::compileGLObjects(osg::State& state) const
 {
-    //nop - precompilation not required
+    this->apply(state);
 }
 
 void
 VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 {
-  Threading::ScopedWriteLock exclusive( _programCacheMutex );
+    Threading::ScopedWriteLock exclusive( _programCacheMutex );
 
-//  OE_WARN << LC << "Resize VP " << getName() << std::endl;
+    //  OE_WARN << LC << "Resize VP " << getName() << std::endl;
 
-  for (ProgramMap::iterator i = _programCache.begin();
-    i != _programCache.end(); ++i)
-  {
-    i->second->resizeGLObjectBuffers(maxSize);
-  }
+    for (ProgramMap::iterator i = _programCache.begin(); i != _programCache.end(); ++i)
+    {
+        i->second->resizeGLObjectBuffers(maxSize);
+    }
 }
 
 void
 VirtualProgram::releaseGLObjects(osg::State* state) const
 {
-  Threading::ScopedWriteLock exclusive( _programCacheMutex );
+    Threading::ScopedWriteLock exclusive( _programCacheMutex );
 
-//  OE_WARN << LC << "Release VP " << getName() << std::endl;
+    //  OE_WARN << LC << "Release VP " << getName() << std::endl;
 
-  for (ProgramMap::const_iterator i = _programCache.begin();
-    i != _programCache.end(); ++i)
-  {
-    i->second->releaseGLObjects(state);
-  }
+    for (ProgramMap::const_iterator i = _programCache.begin(); i != _programCache.end(); ++i)
+    {
+        i->second->releaseGLObjects(state);
+    }
 }
 
 osg::Shader*

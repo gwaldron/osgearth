@@ -28,6 +28,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/DepthOffset>
+#include <osgDB/Callbacks>
 #include <osg/Node>
 #include <set>
 
@@ -196,6 +197,8 @@ namespace osgEarth { namespace Features
             OVERLAY_INSTALL_DRAPEABLE
         };
         OverlayChange                    _overlayChange;
+
+        osg::ref_ptr<osgDB::FileLocationCallback> _defaultFileLocationCallback;
 
         osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
 

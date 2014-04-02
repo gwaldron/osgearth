@@ -88,6 +88,7 @@ _terrainEngineDriver( "mp" )
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "osgb" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/jpg",                            "jpg" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "image/dds",                            "dds" );
     
     // pre-load OSG's ZIP plugin so that we can use it in URIs
     std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );
@@ -495,6 +496,27 @@ StateSetCache*
 Registry::getStateSetCache() const
 {
     return _stateSetCache.get();
+}
+
+void
+Registry::startActivity(const std::string& activity)
+{
+    Threading::ScopedMutexLock lock(_activityMutex);
+    _activities.insert(activity);
+}
+
+void
+Registry::endActivity(const std::string& activity)
+{
+    Threading::ScopedMutexLock lock(_activityMutex);
+    _activities.erase(activity);
+}
+
+void
+Registry::getActivities(std::set<std::string>& output)
+{
+    Threading::ScopedMutexLock lock(_activityMutex);
+    output = _activities;
 }
 
 

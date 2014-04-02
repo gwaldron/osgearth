@@ -17,8 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef OSGEARTH_ENGINE_MP_TILE_MODEL
-#define OSGEARTH_ENGINE_MP_TILE_MODEL 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL 1
 
 #include "Common"
 #include <osgEarth/Common>
@@ -34,9 +34,10 @@
 #include <osg/StateSet>
 #include <osg/Texture2D>
 #include <osg/State>
+#include <osg/NodeVisitor>
 #include <map>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
 
@@ -117,6 +118,8 @@ namespace osgEarth_engine_mp
         {
         public:
             ColorData() : _fallbackData(true) { }
+
+            /** Copy ctor - shallow */
             ColorData(const ColorData& rhs);
 
             /** dtor */
@@ -127,7 +130,6 @@ namespace osgEarth_engine_mp
                 unsigned                    order,
                 osg::Image*                 image,
                 GeoLocator*                 locator,
-                const osgEarth::TileKey&    tileKey,
                 bool                        fallbackData =false );
     
             void resizeGLObjectBuffers(unsigned maxSize);
@@ -146,18 +148,19 @@ namespace osgEarth_engine_mp
                 return _locator.get();
             }
 
-            osg::Texture2D* getTexture() const {
+            osg::Texture* getTexture() const {
                 return _texture.get();
             }
-
-            const osgEarth::TileKey& getTileKey() const {
-                return _tileKey; }
 
             const osgEarth::ImageLayer* getMapLayer() const {
                 return _layer.get(); }
 
             bool isFallbackData() const {
-                return _fallbackData;}
+                return _fallbackData;
+            }
+            void setIsFallbackData(bool value) {
+                _fallbackData = value;
+            }
 
             bool hasAlpha() const {
                 return _hasAlpha;
@@ -179,9 +182,7 @@ namespace osgEarth_engine_mp
 
             osg::ref_ptr<const osgEarth::ImageLayer> _layer;
             osg::ref_ptr<GeoLocator>                 _locator;
-            osg::ref_ptr<osg::Image>                 _image;
-            osg::ref_ptr<osg::Texture2D>             _texture;
-            osgEarth::TileKey                        _tileKey;
+            osg::ref_ptr<osg::Texture>               _texture;
             bool                                     _fallbackData;
             unsigned                                 _order;
             bool                                     _hasAlpha;
@@ -242,8 +243,12 @@ namespace osgEarth_engine_mp
             }
             return false;
         }
+
+        bool requiresUpdateTraverse() const;
+
+        void updateTraverse(osg::NodeVisitor&) const;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_MODEL
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL

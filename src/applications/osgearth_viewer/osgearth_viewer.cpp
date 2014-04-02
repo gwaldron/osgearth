@@ -22,13 +22,13 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/ModelNode>
+
+#include <osgEarth/Units>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
 
 int
 usage(const char* name)

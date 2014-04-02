@@ -76,8 +76,8 @@ namespace
         "   vec2 lonlat = ocean_xyz_to_spherical( worldVertex.xyz/worldVertex.w ); \n"
         "   ocean_surface_tex_coord.xy = lonlat / 0.0005; \n"
         "   ocean_surface_tex_coord.zw = ocean_surface_tex_coord.xy; \n"
-        "   ocean_surface_tex_coord.x += mod(osg_FrameTime,100.0)/100.0;\n"
-        "   ocean_surface_tex_coord.w -= mod(osg_FrameTime,25.0)/25.0;\n"
+        //"   ocean_surface_tex_coord.x += mod(0.1*osg_FrameTime,100.0)/100.0;\n"
+        "   ocean_surface_tex_coord.w -= mod(0.1*osg_FrameTime,25.0)/25.0;\n"
         "} \n";
 
 
@@ -196,7 +196,7 @@ namespace
         "   ocean_surface_tex_coord.xy = lonlat / 0.0005; \n"
         "   ocean_surface_tex_coord.zw = ocean_surface_tex_coord.xy; \n"
         "   ocean_surface_tex_coord.x += mod(osg_FrameTime,100.0)/100.0;\n"
-        "   ocean_surface_tex_coord.w -= mod(osg_FrameTime,50.0)/50.0;\n"
+        //"   ocean_surface_tex_coord.w -= mod(osg_FrameTime,50.0)/50.0;\n"
         "} \n";
 
 

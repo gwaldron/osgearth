@@ -318,7 +318,8 @@ CubeFaceLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& world
         osg::Vec3d faceCoord = local * _transform;
 
         double lat_deg, lon_deg;
-        CubeUtils::faceCoordsToLatLon( faceCoord.x(), faceCoord.y(), _face, lat_deg, lon_deg );
+        if ( !CubeUtils::faceCoordsToLatLon( faceCoord.x(), faceCoord.y(), _face, lat_deg, lon_deg ))
+            return false;
 
         //OE_NOTICE << "LatLon=" << latLon <<  std::endl;
 
@@ -361,11 +362,12 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 
             if (!success)
             {
-                OE_NOTICE << LC << "Couldn't convert to face coords " << std::endl;
+                OE_WARN << LC << "Couldn't convert to face coords " << std::endl;
+                return false;
             }
             if (face != _face)
             {
-                OE_NOTICE << LC
+                OE_WARN << LC
                     << "Face should be " << _face << " but is " << face
                     << ", lat = " << lat_deg
                     << ", lon = " << lon_deg
@@ -414,6 +416,11 @@ CubeSpatialReference::_init()
     _is_geographic  = false;
     _key.first      = "unified-cube";
     _name           = "Unified Cube";
+
+    // Custom units. The big number there roughly converts [0..1] to meters
+    // on a spheroid with WGS84-ish radius. Not perfect but close enough for
+    // the purposes of this class
+    _units = Units("Cube face", "cube", Units::TYPE_LINEAR, 42949672.96/4.0);
 }
 
 GeoLocator*
@@ -692,13 +699,13 @@ UnifiedCubeProfile::transformGcsExtentOnFace( const GeoExtent& gcsExtent, int fa
 }
 
 void
-UnifiedCubeProfile::getIntersectingTiles(
-    const GeoExtent& remoteExtent,
-    std::vector<TileKey>& out_intersectingKeys ) const
+UnifiedCubeProfile::getIntersectingTiles(const GeoExtent&      remoteExtent,
+                                         unsigned              localLOD,
+                                         std::vector<TileKey>& out_intersectingKeys ) const
 {
-    if ( getSRS()->isEquivalentTo( remoteExtent.getSRS() ) )
+    if ( getSRS()->isHorizEquivalentTo( remoteExtent.getSRS() ) )
     {
-        addIntersectingTiles( remoteExtent, out_intersectingKeys );
+        addIntersectingTiles( remoteExtent, localLOD, out_intersectingKeys );
     }
     else
     {
@@ -718,9 +725,9 @@ UnifiedCubeProfile::getIntersectingTiles(
             if ( partExtent_gcs.isValid() )
             {
                 GeoExtent partExtent = transformGcsExtentOnFace( partExtent_gcs, face );
-                addIntersectingTiles( partExtent, out_intersectingKeys );
+                addIntersectingTiles( partExtent, localLOD, out_intersectingKeys );
             }
-        }
+        }        
     }
 }
 

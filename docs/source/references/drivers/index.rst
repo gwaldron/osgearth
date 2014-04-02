@@ -12,3 +12,4 @@ resource within osgEarth.
    feature/index
    terrain/index
    loaders/index
+   effects/index

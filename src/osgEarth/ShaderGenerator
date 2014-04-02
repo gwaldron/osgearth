@@ -33,10 +33,13 @@ namespace osg
 {
     class TexEnv;
     class TexGen;
+    class TexMat;
     class Texture1D;
     class Texture2D;
     class Texture3D;
     class TextureRectangle;
+    class Texture2DArray;
+    class Texture2DMultisample;
 }
 
 namespace osgEarth
@@ -72,15 +75,27 @@ namespace osgEarth
          */
         void run(osg::Node* graph, StateSetCache* cache =0L);
 
+        /**
+         * Marks a node with a hint that the shader generator should ignore it in
+         * the future.
+         */
+        static void setIgnoreHint(osg::Object* object, bool ignore);
+
+        /**
+         * Whether an object has been marked for ignore 
+         */
+        static bool ignore(const osg::Object* object);
+
     public:
         /**
          * User callback that lets you selectly reject shader generation for
          * specific state attributes.
          */
-        struct AcceptCallback : public osg::Referenced
+        struct OSGEARTH_EXPORT AcceptCallback : public osg::Referenced
         {
             /** Return true to generate shader code for the SA; false to ignore and skip it */
             virtual bool accept(const osg::StateAttribute* sa) const =0;
+            virtual ~AcceptCallback() { }
         };
 
         /**
@@ -99,15 +114,10 @@ namespace osgEarth
     public: // osg::NodeVisitor
 
         virtual void apply( osg::Node& );
-
-        virtual void apply(osg::Group& group);
-
+        virtual void apply( osg::Group& );
         virtual void apply( osg::Geode& );
-
         virtual void apply( osg::PagedLOD& );
-
         virtual void apply( osg::ProxyNode& );
-
         virtual void apply( osg::ClipNode& );
 
 
@@ -129,11 +139,13 @@ namespace osgEarth
             osg::StateSet*    stateSet;
         };
 
-        virtual bool apply(osg::Texture* tex, osg::TexGen* texgen, osg::TexEnv* texenv, int unit, GenBuffers& buf);
+        virtual bool apply(osg::Texture* tex, osg::TexGen* texgen, osg::TexEnv* texenv, osg::TexMat* texmat, int unit, GenBuffers& buf);
 
         virtual bool apply(osg::TexEnv* texenv, int unit, GenBuffers& buf);
 
         virtual bool apply(osg::TexGen* texgen, int unit, GenBuffers& buf);
+
+        virtual bool apply(osg::TexMat* texmat, int unit, GenBuffers& buf);
 
         virtual bool apply(osg::Texture1D* tex, int unit, GenBuffers& buf);
 
@@ -143,6 +155,8 @@ namespace osgEarth
 
         virtual bool apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf);
 
+        virtual bool apply(osg::Texture2DArray* tex, int unit, GenBuffers& buf);
+
 
     protected:
 
@@ -151,8 +165,6 @@ namespace osgEarth
         bool _active;
 
         std::string _name;
-
-        std::set<int> _texImageUnits;
 
         typedef std::vector<osg::ref_ptr<AcceptCallback> > AcceptCallbackVector;
         AcceptCallbackVector _acceptCallbacks;

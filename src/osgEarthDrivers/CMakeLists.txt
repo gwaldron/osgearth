@@ -48,7 +48,6 @@ ADD_SUBDIRECTORY(agglite)
 ADD_SUBDIRECTORY(model_simple)
 ADD_SUBDIRECTORY(debug)
 ADD_SUBDIRECTORY(cache_filesystem)
-ADD_SUBDIRECTORY(ocean_simple)
 ADD_SUBDIRECTORY(refresh)
 ADD_SUBDIRECTORY(xyz)
 ADD_SUBDIRECTORY(bing)
@@ -74,8 +73,8 @@ IF(SQLITE3_FOUND)
   ADD_SUBDIRECTORY(mbtiles)
 ENDIF(SQLITE3_FOUND)
 
-ADD_SUBDIRECTORY(engine_osgterrain)
-ADD_SUBDIRECTORY(engine_quadtree)
+#ADD_SUBDIRECTORY(engine_osgterrain)
+#ADD_SUBDIRECTORY(engine_quadtree)
 ADD_SUBDIRECTORY(engine_mp)
 ADD_SUBDIRECTORY(engine_byo)
 
@@ -91,15 +90,16 @@ ADD_SUBDIRECTORY(vdatum_egm84)
 ADD_SUBDIRECTORY(vdatum_egm96)
 ADD_SUBDIRECTORY(vdatum_egm2008)
 
+ADD_SUBDIRECTORY(sky_gl)
+ADD_SUBDIRECTORY(sky_simple)
 IF(SILVERLINING_FOUND)
-  ADD_SUBDIRECTORY(environment_silverlining)
+  ADD_SUBDIRECTORY(sky_silverlining)
 ENDIF(SILVERLINING_FOUND)
 
+ADD_SUBDIRECTORY(ocean_simple)
 IF(TRITON_FOUND)
   ADD_SUBDIRECTORY(ocean_triton)
 ENDIF(TRITON_FOUND)
 
 # temporary
 ADD_SUBDIRECTORY(template_matclass)
-
-

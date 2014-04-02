@@ -289,7 +289,7 @@ namespace
 //---------------------------------------------------------------------------
 
 OverlayDecorator::OverlayDecorator() :
-_useShaders          ( false ),
+_useShaders          ( true ),
 _dumpRequested       ( false ),
 _rttTraversalMask    ( ~0 ),
 _maxHorizonDistance  ( DBL_MAX ),
@@ -387,12 +387,6 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     _isGeocentric = info.isGeocentric();
     _srs = info.getProfile()->getSRS();
     _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
-
-    //todo: need this? ... probably not anymore
-    _useShaders = 
-        Registry::capabilities().supportsGLSL() && (
-            !engine->getTextureCompositor() ||
-            engine->getTextureCompositor()->usesShaderComposition() );
 
     for(Techniques::iterator t = _techniques.begin(); t != _techniques.end(); ++t )
     {

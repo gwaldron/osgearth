@@ -90,6 +90,10 @@ namespace osgEarth { namespace Features
         optional<FadeOptions>& fading() { return _fading; }
         const optional<FadeOptions>& fading() const { return _fading; }
 
+        /** Debug: whether to enable a session-wide resource cache (default=true) */
+        optional<bool>& sessionWideResourceCache() { return _sessionWideResourceCache; }
+        const optional<bool>& sessionWideResourceCache() const { return _sessionWideResourceCache; }
+
     public:
         /** A live feature source instance to use. Note, this does not serialize. */
         osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
@@ -123,6 +127,7 @@ namespace osgEarth { namespace Features
         optional<CachePolicy>               _cachePolicy;
         optional<FadeOptions>               _fading;
         optional<FeatureSourceIndexOptions> _featureIndexing;
+        optional<bool>                      _sessionWideResourceCache;
 
         osg::ref_ptr<StyleSheet>            _styles;
         osg::ref_ptr<FeatureSource>         _featureSource;

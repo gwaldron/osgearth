@@ -4,8 +4,8 @@ osgEarth Sample - Detail Texturing
 
 <map>
 
-    <options elevation_interpolation="bilinear" elevation_tile_size="9">
-        <terrain min_lod="19" max_lod="19"/>
+    <options elevation_interpolation="bilinear">
+        <terrain min_lod="19" max_lod="19" min_tile_range_factor="7"/>
     </options>
     
     <image name="readymap_imagery" driver="tms" visible="true" opacity="1">
@@ -40,7 +40,7 @@ osgEarth Sample - Detail Texturing
         <detail_texture mask_layer="splat"
                         start_lod ="10"
                         scale     ="4"
-                        intensity ="0.85"
+                        intensity ="0.9"
                         octaves   ="3"
                         attenuation_distance="20000">
             <textures>
@@ -63,7 +63,7 @@ osgEarth Sample - Detail Texturing
     </external>
     
     
-    <model name="trees" driver="feature_geom" enabled="false">
+    <model name="trees" driver="feature_geom" enabled="true">
         <features name="trees" driver="ogr">
 			<geometry>
 				POLYGON((-121.82 46.833, -121.82 46.754, -121.63 46.754, -121.63 46.836))

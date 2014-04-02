@@ -22,12 +22,12 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/DateTime>
 #include <osgEarth/Config>
+#include <osgEarth/SpatialReference>
 #include <osg/Group>
 #include <osg/View>
 #include <osgDB/ReaderWriter>
 
 namespace osgEarth {
-    class Map;
     class MapNode;
 }
 namespace osgDB {
@@ -67,9 +67,21 @@ namespace osgEarth { namespace Util
     */
     class OSGEARTHUTIL_EXPORT OceanNode : public osg::Group
     {
+    public:
+        static OceanNode* create(
+            MapNode* map);
+
+        static OceanNode* create(
+            const OceanOptions&  options,
+            MapNode*             map );
+
     protected:
         // CTOR (abstract base class)
-        OceanNode();
+        OceanNode(const OceanOptions& options);
+
+        // SRS for this ocean. Impl class should call this.
+        void setSRS(const SpatialReference* srs) { _srs = srs; }
+        const SpatialReference* getSRS() { return _srs.get(); }
 
         // protected DTOR (heap-only)
         virtual ~OceanNode();
@@ -80,6 +92,10 @@ namespace osgEarth { namespace Util
         void setSeaLevel(float offsetMeters);
         float getSeaLevel() const { return _seaLevel; }
 
+    public: // osg::Group
+
+        virtual void traverse(osg::NodeVisitor&);
+
     protected: // impl class can override these to detect changes
 
         virtual void onSetSeaLevel() { }
@@ -87,6 +103,8 @@ namespace osgEarth { namespace Util
     private:
 
         float _seaLevel;
+        osg::ref_ptr<const SpatialReference> _srs;
+        const OceanOptions _options;
     };
 
 
@@ -98,18 +116,6 @@ namespace osgEarth { namespace Util
     protected:
         MapNode* getMapNode(const osgDB::Options* opt) const;
         const OceanOptions& getOceanOptions(const osgDB::Options* opt) const;
-    };
-
-
-    /**
-     * Factory for creating an OceanNode from a plugin driver.
-     */
-    class OSGEARTHUTIL_EXPORT OceanFactory
-    {
-    public:
-        static OceanNode* create(
-            const OceanOptions&  options,
-            MapNode*             map );
     };
 
 } } // namespace osgEarth::Util

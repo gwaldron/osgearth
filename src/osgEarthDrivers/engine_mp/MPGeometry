@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_MPGEOMETRY
-#define OSGEARTH_ENGINE_MP_MPGEOMETRY 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_MPGEOMETRY
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_MPGEOMETRY 1
 
 #include "Common"
 #include "TileNode"
@@ -27,10 +27,9 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapFrame>
 
-
 using namespace osgEarth;
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
      * A Geometry that will draw its primitive sets multiple time,
@@ -89,6 +88,8 @@ namespace osgEarth_engine_mp
         int _imageUnit;          // image unit for primary texture
         int _imageUnitParent;    // image unit for secondary (parent) texture
 
+        bool _supportsGLSL;
+
     public:
         
         // construct a new MPGeometry.
@@ -98,7 +99,7 @@ namespace osgEarth_engine_mp
         void setParentImageUnit(int value) { _imageUnitParent = value; }
 
         // render all passes of the geometry.
-        void renderPrimitiveSets(osg::State& state, bool usingVBOs) const;
+        void renderPrimitiveSets(osg::State& state, bool renderColor, bool usingVBOs) const;
 
         // validate the geometry is OK.
         void validate();
@@ -127,6 +128,6 @@ namespace osgEarth_engine_mp
         virtual ~MPGeometry() { }
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_MPGEOMETRY
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_MPGEOMETRY

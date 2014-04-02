@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_SINGLE_KEY_NODE_FACTORY
-#define OSGEARTH_ENGINE_MP_SINGLE_KEY_NODE_FACTORY 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_SINGLE_KEY_NODE_FACTORY
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_SINGLE_KEY_NODE_FACTORY 1
 
 #include "Common"
 #include "KeyNodeFactory"
@@ -29,9 +29,8 @@
 #include <osgEarth/Progress>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     class SingleKeyNodeFactory : public KeyNodeFactory
     {
@@ -76,6 +75,6 @@ namespace osgEarth_engine_mp
         UID                                 _engineUID;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_SINGLE_KEY_NODE_FACTORY
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_SINGLE_KEY_NODE_FACTORY

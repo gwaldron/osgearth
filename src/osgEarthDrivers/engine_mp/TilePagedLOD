@@ -16,17 +16,18 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TILE_PAGED_LOD
-#define OSGEARTH_ENGINE_MP_TILE_PAGED_LOD 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_PAGED_LOD
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_PAGED_LOD 1
 
 #include "Common"
 #include "TileNodeRegistry"
 #include <osg/PagedLOD>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Progress>
 
 using namespace osgEarth;
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
      * TilePagedLOD is an extension to osg::PagedLOD that supports the tile registry.
@@ -43,10 +44,14 @@ namespace osgEarth_engine_mp
         TileNode* getTileNode();
         void setTileNode(TileNode* tilenode);
 
+        osgDB::Options* getOrCreateDBOptions();
+
     public: // osg::Group
 
         /** called by the OSG DatabasePager when a paging result is ready. */
         bool addChild( osg::Node* node );
+
+        void traverse(osg::NodeVisitor& nv);
 
     public: // osg::PagedLOD
 
@@ -61,8 +66,17 @@ namespace osgEarth_engine_mp
         osg::ref_ptr<TileNodeRegistry> _dead;
         UID                            _engineUID;
         Threading::Mutex               _updateMutex;
+
+        struct MyProgressCallback : public ProgressCallback
+        {
+            bool isCanceled(); // override
+            unsigned _frameOfLastCull;
+            TileNodeRegistry* _tiles;
+            void update(unsigned frame);
+        };
+        osg::ref_ptr<MyProgressCallback> _progress;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_PAGED_LOD
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_PAGED_LOD

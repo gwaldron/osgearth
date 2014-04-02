@@ -34,7 +34,7 @@ namespace
     struct BaseOp : public osg::Operation
     {
         BaseOp(Terrain* terrain ) : osg::Operation("",false), _terrain(terrain) { }
-        osg::ref_ptr<Terrain> _terrain;
+        osg::observer_ptr<Terrain> _terrain;
     };
 
     struct OnTileAddedOperation : public BaseOp
@@ -42,7 +42,6 @@ namespace
         TileKey _key;
         osg::observer_ptr<osg::Node> _node;
         unsigned _count;
-        //osg::ref_ptr<osg::Node> _node;
 
         OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
             : BaseOp(terrain), _key(key), _node(node), _count(0) { }
@@ -52,13 +51,15 @@ namespace
             ++_count;
             this->setKeep( false );
 
+            osg::ref_ptr<Terrain>   terrain;
             osg::ref_ptr<osg::Node> node;
-            if ( _terrain.valid() && _node.lock(node) )
+
+            if ( _terrain.lock(terrain) && _node.lock(node) )
             {
                 if ( node->getNumParents() > 0 )
                 {
                     //OE_NOTICE << LC << "FIRING onTileAdded for " << _key.str() << " (tries=" << _count << ")" << std::endl;
-                    _terrain->fireTileAdded( _key, node.get() );
+                    terrain->fireTileAdded( _key, node.get() );
                 }
                 else
                 {
@@ -71,10 +72,6 @@ namespace
                 // nop; tile expired; let it go.
                 //OE_NOTICE << "Tile expired before notification: " << _key.str() << std::endl;
             }
-            //if ( _node.valid() && _node->referenceCount() > 1 && _terrain.valid() )
-            //{
-            //    _terrain->fireTileAdded( _key, _node.get() );
-            //}
         }
     };
 }
@@ -287,6 +284,7 @@ Terrain::addTerrainCallback( TerrainCallback* cb )
     {        
         Threading::ScopedWriteLock exclusiveLock( _callbacksMutex );
         _callbacks.push_back( cb );
+        ++_callbacksSize; // atomic increment
     }
 }
 
@@ -300,6 +298,7 @@ Terrain::removeTerrainCallback( TerrainCallback* cb )
         if ( i->get() == cb )
         {
             i = _callbacks.erase( i );
+            --_callbacksSize;
         }
         else
         {
@@ -316,9 +315,10 @@ Terrain::notifyTileAdded( const TileKey& key, osg::Node* node )
         OE_WARN << LC << "notify with a null node!" << std::endl;
     }
 
-    if ( _updateOperationQueue.valid() )
+    osg::ref_ptr<osg::OperationQueue> queue;
+    if ( _callbacksSize > 0 && _updateOperationQueue.lock(queue) )
     {
-        _updateOperationQueue->add( new OnTileAddedOperation(key, node, this) );
+        queue->add( new OnTileAddedOperation(key, node, this) );
     }
 }
 

@@ -20,9 +20,11 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
+#include <osg/Texture2D>
+#include <osg/Texture2DArray>
 #include <osgTerrain/Locator>
 
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[TileModel] "
@@ -86,15 +88,21 @@ TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
     osg::Vec3d hf_ndc;
     GeoLocator::convertLocalCoordBetween( *ndcLocator, ndc, *_locator.get(), hf_ndc );
 
+    float centerHeight = HeightFieldUtils::getHeightAtNormalizedLocation(_hf.get(), hf_ndc.x(), hf_ndc.y(), interp);
+
     osg::Vec3d west ( hf_ndc.x()-xres, hf_ndc.y(), 0.0 );
     osg::Vec3d east ( hf_ndc.x()+xres, hf_ndc.y(), 0.0 );
     osg::Vec3d south( hf_ndc.x(), hf_ndc.y()-yres, 0.0 );
     osg::Vec3d north( hf_ndc.x(), hf_ndc.y()+yres, 0.0 );
 
-    west.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  interp);
-    east.z()  = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  interp);
-    south.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), interp);
-    north.z() = HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), interp);
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  west.z(), interp))
+        west.z() = centerHeight;
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  east.z(), interp))
+        east.z() = centerHeight;
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), south.z(), interp))
+        south.z() = centerHeight;
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), north.z(), interp))
+        north.z() = centerHeight;
 
     osg::Vec3d westWorld, eastWorld, southWorld, northWorld;
     _locator->unitToModel(west,  westWorld);
@@ -114,25 +122,40 @@ TileModel::ColorData::ColorData(const osgEarth::ImageLayer* layer,
                                 unsigned                    order,
                                 osg::Image*                 image,
                                 GeoLocator*                 locator,
-                                const osgEarth::TileKey&    tileKey,
                                 bool                        fallbackData) :
 _layer       ( layer ),
 _order       ( order ),
 _locator     ( locator ),
-_tileKey     ( tileKey ),
 _fallbackData( fallbackData )
 {
     osg::Texture::FilterMode minFilter = layer->getImageLayerOptions().minFilter().get();
     osg::Texture::FilterMode magFilter = layer->getImageLayerOptions().magFilter().get();
 
-    _texture = new osg::Texture2D( image );
-    _texture->setUnRefImageDataAfterApply( true );
+    if (image->r() == 1)
+    {
+        _texture = new osg::Texture2D( image );
+    }
+    else // image->r() > 1
+    {
+        // If the image has a third dimension, split it into separate images
+        // and stick them into a texture array.
+        std::vector< osg::ref_ptr<osg::Image> > images;
+        ImageUtils::flattenImage(image, images);
+
+        osg::Texture2DArray* tex = new osg::Texture2DArray();
+        for (int i = 0; i < (int) images.size(); ++i)
+            tex->setImage( i, images[i].get() );
+
+        _texture = tex;
+    }
+
+    _texture->setUnRefImageDataAfterApply(true);
     _texture->setMaxAnisotropy( 16.0f );
     _texture->setResizeNonPowerOfTwoHint(false);
-    _texture->setFilter( osg::Texture::MAG_FILTER, minFilter );
-    _texture->setFilter( osg::Texture::MIN_FILTER, magFilter  );
+    _texture->setFilter( osg::Texture::MAG_FILTER, magFilter );
+    _texture->setFilter( osg::Texture::MIN_FILTER, minFilter  );
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-    _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );    
+    _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
 
     // Disable mip mapping for npot tiles
     if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))
@@ -141,7 +164,6 @@ _fallbackData( fallbackData )
         _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     }    
 
-
     _hasAlpha = image && ImageUtils::hasTransparency(image);
 }
 
@@ -149,7 +171,6 @@ TileModel::ColorData::ColorData(const TileModel::ColorData& rhs) :
 _layer       ( rhs._layer.get() ),
 _locator     ( rhs._locator.get() ),
 _texture     ( rhs._texture.get() ),
-_tileKey     ( rhs._tileKey ),
 _fallbackData( rhs._fallbackData ),
 _order       ( rhs._order ),
 _hasAlpha    ( rhs._hasAlpha )
@@ -190,6 +211,42 @@ _parentStateSet( rhs._parentStateSet )
     //nop
 }
 
+bool
+TileModel::requiresUpdateTraverse() const
+{
+    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+    {
+        if ( i->second.getMapLayer()->isDynamic() )
+            return true;
+    }
+    return false;
+}
+
+void
+TileModel::updateTraverse(osg::NodeVisitor& nv) const
+{
+    // Supports updatable images (ImageStream, etc.), since the built-in
+    // mechanism for doing so requires the Texture/Image to be in a StateSet
+    // in the scene graph, and we don't keep it there.
+    for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
+    {
+        if ( i->second.getMapLayer()->isDynamic() )
+        {
+            osg::Texture* tex = i->second.getTexture();
+            if ( tex )
+            {
+                for(int r=0; r<tex->getNumImages(); ++r )
+                {
+                    osg::Image* image = tex->getImage(r);
+                    if ( image && image->requiresUpdateCall() )
+                    {
+                        image->update(&nv);
+                    }
+                }
+            }
+        }
+    }
+}
 
 TileModel*
 TileModel::createQuadrant(unsigned q) const

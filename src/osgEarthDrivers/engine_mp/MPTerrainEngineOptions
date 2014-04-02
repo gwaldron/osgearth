@@ -16,14 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_ENGINE_MP_OPTIONS
-#define OSGEARTH_ENGINE_MP_OPTIONS 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_OPTIONS
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_OPTIONS 1
 
 #include <osgEarth/Common>
 #include <osgEarth/TerrainOptions>
 #include <osgEarthSymbology/Color>
 
-namespace osgEarth { namespace Drivers
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
@@ -38,7 +38,7 @@ namespace osgEarth { namespace Drivers
             _skirtRatio        ( 0.05 ),
             _quickRelease      ( true ),
             _lodFallOff        ( 0.0 ),
-            _normalizeEdges    ( true ),
+            _normalizeEdges    ( false ),
             _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize     ( 256 ),
             _premultAlpha      ( false ),
@@ -139,6 +139,6 @@ namespace osgEarth { namespace Drivers
         optional<bool>                _incrementalUpdate;
     };
 
-} } // namespace osgEarth::Drivers
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_OPTIONS
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_OPTIONS

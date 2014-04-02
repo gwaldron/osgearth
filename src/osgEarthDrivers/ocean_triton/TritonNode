@@ -22,6 +22,7 @@
 #include "TritonOptions"
 #include <osgEarthUtil/Ocean>
 #include <osgEarth/Map>
+#include <osg/Drawable>
 
 namespace osgEarth { namespace Drivers { namespace Triton
 {
@@ -46,12 +47,16 @@ namespace osgEarth { namespace Drivers { namespace Triton
 
     public: // osg::Node
 
+        osg::BoundingSphere computeBound() const;
+
         void traverse(osg::NodeVisitor&);
 
     protected:
         virtual ~TritonNode();
 
         osg::ref_ptr<TritonContext> _TRITON;
+        TritonOptions               _options;
+        osg::Drawable*              _drawable;
     };
 
 } } } // namespace osgEarth::Drivers::Triton

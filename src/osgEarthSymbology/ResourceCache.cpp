@@ -26,7 +26,9 @@ using namespace osgEarth::Symbology;
 ResourceCache::ResourceCache(const osgDB::Options* dbOptions ) :
 _dbOptions    ( dbOptions ),
 _skinCache    ( false ),
-_instanceCache( false )
+_instanceCache( false ),
+_skinTextureArrayCache( false ),
+_resourceLibraryCache( false )
 {
     //nop
 }
@@ -93,6 +95,64 @@ ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
 
     return output.valid();
 }
+
+ bool ResourceCache::getOrCreateSkinTextureArray(ResourceLibrary* library, osg::ref_ptr< SkinTextureArray >& output )
+ {
+    output = 0L;
+    std::string key = library->getConfig().toJSON(false);
+
+    // exclusive lock (since it's an LRU)
+    {
+        Threading::ScopedMutexLock exclusive( _skinTextureArrayMutex );
+            
+        // double check to avoid race condition
+        SkinTextureArrayCache::Record rec;
+        if ( _skinTextureArrayCache.get(key, rec) && rec.value().valid() )
+        {
+            output = rec.value().get();
+        }
+        else
+        {
+            SkinResourceVector skins;
+            library->getSkins( skins );
+            output = new SkinTextureArray();
+            output->build( skins, _dbOptions.get() );
+            _skinTextureArrayCache.insert( key, output.get() );            
+        }
+    }
+
+    return output.valid();
+ }
+
+ bool ResourceCache::getOrCreateStateSet( ResourceLibrary* library,  osg::ref_ptr<osg::StateSet>& output )
+ {
+    output = 0L;
+    std::string key = library->getConfig().toJSON(false);
+
+    // exclusive lock (since it's an LRU)
+    {
+        Threading::ScopedMutexLock exclusive( _resourceLibraryMutex );
+            
+        // double check to avoid race condition
+        ResourceLibraryCache::Record rec;
+        if ( _resourceLibraryCache.get(key, rec) && rec.value().valid() )
+        {
+            output = rec.value().get();
+        }
+        else
+        {
+            osg::ref_ptr< SkinTextureArray > skinTextureArray;
+            getOrCreateSkinTextureArray( library, skinTextureArray );
+
+            output = new osg::StateSet();
+            output->setTextureAttribute(0, skinTextureArray->getTexture(), osg::StateAttribute::ON);
+
+            _resourceLibraryCache.insert( key, output.get() );            
+        }
+    }
+
+    return output.valid();
+ }
 
 
 bool

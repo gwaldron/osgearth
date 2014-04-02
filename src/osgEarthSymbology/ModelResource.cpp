@@ -21,7 +21,6 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ShaderGenerator>
 #include <osgUtil/Optimizer>
 
 #define LC "[ModelResource] "
@@ -57,12 +56,13 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
 {
     osg::Node* node = 0L;
 
-    ReadResult r = uri.getNode( dbOptions );
+    ReadResult r = uri.readNode( dbOptions );
     if ( r.succeeded() )
     {
         node = r.releaseNode();
-
-        OE_INFO << LC << "Loading " << uri.full() << std::endl;
+        
+        OE_INFO << LC << "Loaded " << uri.base() << "(from " << (r.isFromCache()? "cache" : "source") << ")"
+            << std::endl;
 
         osgUtil::Optimizer o;
         o.optimize( node,

@@ -29,6 +29,7 @@
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
 #include <osgText/Font>
+#include <set>
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
@@ -188,6 +189,14 @@ namespace osgEarth
         void setDefaultTerrainEngineDriverName( const std::string& name );
         const std::string& getDefaultTerrainEngineDriverName() const { return _terrainEngineDriver; }
 
+        /**
+         * For debugging - tracks activities in progress.
+         */
+        void startActivity(const std::string& name);
+        void endActivity(const std::string& name);
+        void getActivities(std::set<std::string>& output);
+
+
     protected:
         virtual ~Registry();
         Registry();
@@ -243,6 +252,9 @@ namespace osgEarth
         osg::ref_ptr<StateSetCache> _stateSetCache;
 
         std::string _terrainEngineDriver;
+
+        std::set<std::string> _activities;
+        mutable Threading::Mutex _activityMutex;
     };
 }
 

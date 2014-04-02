@@ -90,12 +90,10 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         plod->setRange( 0, minRange, maxRange );
         plod->setCenter( lodCenter );
         plod->setRadius( d );
-#if OSG_MIN_VERSION_REQUIRED(3,0,0)
+
         osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
         options->setPluginData( "osgEarth::MapNode", cx._mapNode );
         plod->setDatabaseOptions( options );
-#endif
-        //plod->setNodeMask( open ? ~0 : 0 );
 
         OE_DEBUG << LC << 
             "PLOD: radius = " << d << ", minRange=" << minRange << ", maxRange=" << maxRange << std::endl;
@@ -107,12 +105,10 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
     {
         osg::ProxyNode* proxy = new osg::ProxyNode();
         proxy->setFileName( 0, href );                
-#if OSG_MIN_VERSION_REQUIRED(3,0,0)
+
         osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
         options->setPluginData( "osgEarth::MapNode", cx._mapNode );
         proxy->setDatabaseOptions( options );
-#endif
-        //proxy->setNodeMask( open ? ~0 : 0 );
 
         cx._groupStack.top()->addChild( proxy );
     }

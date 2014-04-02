@@ -57,8 +57,9 @@ namespace osgEarth
 
         typedef std::list< osg::observer_ptr<osg::StateSet> > StateSetList;
 
-        StateSetList _statesets;
-        osg::ref_ptr<osg::Uniform>       _alphaUniform;
+        bool                       _active;
+        StateSetList               _statesets;
+        osg::ref_ptr<osg::Uniform> _alphaUniform;
 
         void init();
     };

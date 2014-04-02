@@ -685,7 +685,7 @@ namespace
 
 		osg::ref_ptr<osgUtil::DelaunayTriangulator> trig=new osgUtil::DelaunayTriangulator();
 
-		std::vector<osg::ref_ptr<osgUtil::DelaunayConstraint>> alldcs;
+		std::vector<osg::ref_ptr<osgUtil::DelaunayConstraint> > alldcs;
 	
 		osg::ref_ptr<osg::Vec3Array> coordsArray = new osg::Vec3Array;
 						

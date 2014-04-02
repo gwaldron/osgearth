@@ -38,7 +38,15 @@ struct MyGraphicsContext
 {
     MyGraphicsContext()
     {
-        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
+
+    	osg::GraphicsContext::ScreenIdentifier si;
+	    si.readDISPLAY();
+	    si.setUndefinedScreenDetailsToDefaultScreen();
+
+        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;  
+    	traits->hostName = si.hostName;
+	    traits->displayNum = si.displayNum;
+	    traits->screenNum = si.screenNum;
         traits->x = 0;
         traits->y = 0;
         traits->width = 1;
@@ -143,6 +151,16 @@ _supportsFragDepthWrite ( false )
         osg::GraphicsContext* gc = mgc._gc.get();
         unsigned int id = gc->getState()->getContextID();
         const osg::GL2Extensions* GL2 = osg::GL2Extensions::Get( id, true );
+        
+        if ( ::getenv("OSGEARTH_NO_GLSL") )
+        {
+            _supportsGLSL = false;
+            OE_INFO << LC << "Note: GLSL expressly disabled (OSGEARTH_NO_GLSL)" << std::endl;
+        }
+        else
+        {
+            _supportsGLSL = GL2->isGlslSupported();
+        }
 
         OE_INFO << LC << "Detected hardware capabilities:" << std::endl;
 
@@ -196,22 +214,17 @@ _supportsFragDepthWrite ( false )
 #endif
         OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
-        
-        if ( ::getenv("OSGEARTH_NO_GLSL") )
-            _supportsGLSL = false;
-        else
-            _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         if ( _supportsGLSL )
         {
             _GLSLversion = GL2->getLanguageVersion();
-            OE_INFO << LC << "  GLSL Version = " << _GLSLversion << std::endl;
+            OE_INFO << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 
         _supportsTextureArrays = 
             _supportsGLSL &&
-            osg::getGLVersionNumber() >= 2.0 && // hopefully this will detect Intel cards
+            osg::getGLVersionNumber() >= 2.0f && // hopefully this will detect Intel cards
             osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
         OE_INFO << LC << "  Texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
 
@@ -219,7 +232,7 @@ _supportsFragDepthWrite ( false )
         OE_INFO << LC << "  3D textures = " << SAYBOOL(_supportsTexture3D) << std::endl;
 
         _supportsMultiTexture = 
-            osg::getGLVersionNumber() >= 1.3 ||
+            osg::getGLVersionNumber() >= 1.3f ||
             osg::isGLExtensionSupported( id, "GL_ARB_multitexture") ||
             osg::isGLExtensionSupported( id, "GL_EXT_multitexture" );
         OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;

@@ -22,6 +22,7 @@
 
 #include <osgEarth/Export>
 #include <osg/Notify>
+#include <osg/Timer>
 #include <string>
 
 namespace osgEarth
@@ -53,5 +54,8 @@ namespace osgEarth
 #define OE_INFO_CONTINUE OE_NOTIFY(osg::INFO, "")
 #define OE_DEBUG OE_NOTIFY(osg::DEBUG_INFO,"[osgEarth]  ")
 #define OE_NULL if(false) osgEarth::notify(osg::ALWAYS)
+
+#define OE_START_TIMER(VAR) osg::Timer_t VAR##_timer = osg::Timer::instance()->tick()
+#define OE_STOP_TIMER(VAR) osg::Timer::instance()->delta_s( VAR##_timer, osg::Timer::instance()->tick() )
 
 #endif // OSGEARTH_NOTIFY_H

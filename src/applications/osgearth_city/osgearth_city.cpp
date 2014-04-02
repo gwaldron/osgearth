@@ -24,7 +24,6 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/SkyNode>
 #include <osgEarthDrivers/tms/TMSOptions>
 #include <osgEarthDrivers/xyz/XYZOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>

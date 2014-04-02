@@ -188,6 +188,7 @@ namespace osgEarth
 
         virtual void getIntersectingTiles(
             const GeoExtent& extent,
+            unsigned localLOD,
             std::vector< TileKey >& out_intersectingKeys ) const;
 
     private:

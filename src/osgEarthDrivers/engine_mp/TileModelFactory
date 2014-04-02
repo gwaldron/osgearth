@@ -16,14 +16,15 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TILE_MODEL_FACTORY
-#define OSGEARTH_ENGINE_MP_TILE_MODEL_FACTORY 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_FACTORY
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_FACTORY 1
 
 #include "Common"
 #include "TileNode"
 #include "TileNodeRegistry"
 #include "MPTerrainEngineOptions"
 #include <osgEarth/Map>
+#include <osgEarth/Progress>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Containers>
 #include <osgEarth/HeightFieldUtils>
@@ -31,27 +32,26 @@
 #include <osgEarth/MapInfo>
 #include <osg/Group>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
 
+    /** Key into the height field cache */
     struct HFKey {
-        TileKey _key;
-        Revision _revision;
-        bool    _fallback;
-        bool    _convertToHAE;
+        TileKey               _key;
+        Revision              _revision;
         ElevationSamplePolicy _samplePolicy;
+
         bool operator < (const HFKey& rhs) const {
             if ( _key < rhs._key ) return true;
             if ( rhs._key < _key ) return false;
             if ( _revision < rhs._revision ) return true;
             if ( _revision > rhs._revision ) return false;
-            if ( _fallback != rhs._fallback ) return true;
-            if ( _convertToHAE != rhs._convertToHAE ) return true;
             return _samplePolicy < rhs._samplePolicy;
         }
     };
 
+    /** value in the height field cache */
     struct HFValue {
         osg::ref_ptr<osg::HeightField> _hf;
         bool                           _isFallback;
@@ -60,67 +60,102 @@ namespace osgEarth_engine_mp
     class HeightFieldCache : public osg::Referenced, public Revisioned
     {
     public:
-        HeightFieldCache():
-          _cache    ( true, 128 )
+        HeightFieldCache(TileNodeRegistry* tiles, const MPTerrainEngineOptions& options) :
+          _tiles  ( tiles ),
+          _cache  ( true, 128 )
         {
-
+            _firstLOD = options.firstLOD().get();
         }
 
         bool getOrCreateHeightField( 
                 const MapFrame&                 frame,
                 const TileKey&                  key,
-                bool                            fallback,
-                osg::ref_ptr<osg::HeightField>& out_hf,
-                bool*                           out_isFallback =0L,
-                bool                            convertToHAE   =true,
-                ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
-                ProgressCallback*               progress       =0L ) const
+                osg::ref_ptr<osg::HeightField>& hf,
+                bool&                           isFallback,
+                ElevationSamplePolicy           samplePolicy,
+                ElevationInterpolation          interp,
+                ProgressCallback*               progress )
         {                
+            // default
+            isFallback = false;
+
             // check the quick cache.
             HFKey cachekey;
             cachekey._key          = key;
             cachekey._revision     = frame.getRevision();
-            cachekey._fallback     = fallback;
-            cachekey._convertToHAE = convertToHAE;
             cachekey._samplePolicy = samplePolicy;
+
+            if (progress)
+                progress->stats()["hfcache_try_count"] += 1;
 
             bool hit = false;
             LRUCache<HFKey,HFValue>::Record rec;
             if ( _cache.get(cachekey, rec) )
             {
-                out_hf = rec.value()._hf.get();
-                if ( out_isFallback )
-                    *out_isFallback = rec.value()._isFallback;
+                hf = rec.value()._hf.get();
+                isFallback = rec.value()._isFallback;
 
-                //OE_NOTICE << "Found HF " << key.str() << " in HF cache." << std::endl;
+                if (progress)
+                {
+                    progress->stats()["hfcache_hit_count"] += 1;
+                    progress->stats()["hfcache_hit_rate"] = progress->stats()["hfcache_hit_count"]/progress->stats()["hfcache_try_count"];
+                }
+
                 return true;
             }
 
-            bool isFallback;
-
-            bool ok = frame.getHeightField( key, fallback, out_hf, &isFallback, convertToHAE, samplePolicy, progress );
-
-            if ( ok )
-            {            
-                // Treat Plate Carre specially by scaling the height values. (There is no need
-                // to do this with an empty heightfield)
-                const MapInfo& mapInfo = frame.getMapInfo();
-                if ( mapInfo.isPlateCarre() )
+            // Find the parent tile and start with its heightfield.
+            osg::ref_ptr<TileNode> parentNode;
+            TileKey parentKey = key.createParentKey();
+            if ( _tiles->get(parentKey, parentNode) )
+            {
+                const TileModel* parentModel = parentNode->getTileModel();
+                if ( parentModel )
                 {
-                    HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
+                    osg::HeightField* parentHF = parentModel->_elevationData.getHeightField();
+                    if ( parentHF )
+                    {
+                        hf = HeightFieldUtils::createSubSample(
+                            parentHF,
+                            parentKey.getExtent(),
+                            key.getExtent(),
+                            interp );
+                    }
                 }
-
-                if ( out_isFallback )
-                    *out_isFallback = isFallback;
-
-                // cache me
-                HFValue cacheval;
-                cacheval._hf = out_hf.get();
-                cacheval._isFallback = isFallback;
-                _cache.insert( cachekey, cacheval );
             }
 
-            return ok;
+            if ( !hf.valid() && ((int)key.getLOD())-1 > _firstLOD )
+            {
+                // This most likely means that a parent tile expired while we were building the child.
+                // No harm done in that case as this tile will soo be discarded as well.
+                OE_DEBUG << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry"
+                    << std::endl;
+                return false;
+            }
+
+            bool populated = frame.populateHeightField(
+                hf,
+                key,
+                true, // convertToHAE
+                samplePolicy,
+                progress );
+     
+            // Treat Plate Carre specially by scaling the height values. (There is no need
+            // to do this with an empty heightfield)
+            const MapInfo& mapInfo = frame.getMapInfo();
+            if ( mapInfo.isPlateCarre() )
+            {
+                HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
+            }
+
+            // cache it.
+            HFValue cacheval;
+            cacheval._hf = hf.get();
+            cacheval._isFallback = !populated;
+            _cache.insert( cachekey, cacheval );
+
+            isFallback = !populated;
+            return true;
         }
 
         void clear()
@@ -130,7 +165,10 @@ namespace osgEarth_engine_mp
 
     private:
         mutable LRUCache<HFKey,HFValue> _cache;
+        TileNodeRegistry*               _tiles;
+        int                             _firstLOD;
     };
+
 
     /**
      * For a given TileKey, this class builds a a corresponding TileNode from
@@ -144,8 +182,8 @@ namespace osgEarth_engine_mp
     {
     public:
         TileModelFactory(
-            TileNodeRegistry*                      liveTiles,
-            const Drivers::MPTerrainEngineOptions& terrainOptions );
+            TileNodeRegistry*             liveTiles,
+            const MPTerrainEngineOptions& terrainOptions );
 
         HeightFieldCache* getHeightFieldCache() const;
 
@@ -155,17 +193,16 @@ namespace osgEarth_engine_mp
         void createTileModel(
             const TileKey&           key,
             const MapFrame&          frame,
-            osg::ref_ptr<TileModel>& out_model);//,
-            //bool&                    out_hasRealData);
+            osg::ref_ptr<TileModel>& out_model,
+            ProgressCallback*        progress);
 
     private:        
 
-        //const Map*                             _map;
-        osg::ref_ptr<TileNodeRegistry>         _liveTiles;
-        const Drivers::MPTerrainEngineOptions& _terrainOptions;
-        osg::ref_ptr< HeightFieldCache >       _hfCache;
+        osg::ref_ptr<TileNodeRegistry>   _liveTiles;
+        const MPTerrainEngineOptions&    _terrainOptions;
+        osg::ref_ptr< HeightFieldCache > _hfCache;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_MODEL_FACTORY
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_FACTORY

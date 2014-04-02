@@ -16,10 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthUtil/Environment>
-#include <osgEarth/Registry>
-#include <osgDB/ReadFile>
-#include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/Ephemeris>
+#include <sstream>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -27,7 +25,7 @@ using namespace osgEarth::Util;
 //------------------------------------------------------------------------
 
 #undef  LC
-#define LC "[Environment] "
+#define LC "[Ephemeris] "
 
 namespace
 {
@@ -42,6 +40,16 @@ namespace
     static const double TWO_PI = (2.0*osg::PI);
     static const double JD2000 = 2451545.0;
 
+    struct CelestialPosition
+    {
+        osg::Vec3d _ecef;
+        double     _rightAscension;
+        double     _declination;
+        double     _localAzimuth;
+        double     _localElevation;
+        double     _localLatitude;
+        double     _localLongitude;
+    };
     
     osg::Vec3d getPositionFromRADecl(double ra, double decl, double range)
     {
@@ -73,12 +81,6 @@ namespace
         return eccAnom;
     }
 
-    //double getTimeScale( int year, int month, int date, double hoursUT )
-    //{
-    //    int a = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
-    //    return (double)a + hoursUT/24.0;
-    //}
-
     double getJulianDate( int year, int month, int date )
     {
         if ( month <= 2 )
@@ -97,7 +99,12 @@ namespace
     struct Sun
     {
         // https://www.cfa.harvard.edu/~wsoon/JuanRamirez09-d/Chang09-OptimalTiltAngleforSolarCollector.pdf
-        osg::Vec3d getPosition(int year, int month, int date, double hoursUTC ) const
+        void getLatLonRaDecl(int year, int month, int date, double hoursUTC,
+                             double& out_lat,
+                             double& out_lon,
+                             double& out_ra,
+                             double& out_decl,
+                             double& out_almanacTime) const
         {
             double JD = getJulianDate(year, month, date);
             double JD1 = (JD - JD2000);                         // julian time since JD2000 epoch
@@ -125,7 +132,8 @@ namespace
             nrad2(sun_lon);
 
             // angle between the ecliptic plane and the equatorial plane
-            double zeta = d2r(23.4392); // zeta
+            double zeta_deg = 23.4392;
+            double zeta = d2r(zeta_deg);
 
             // latitude of the sun on the ecliptic plane:
             double omega = d2r(0.0);
@@ -147,19 +155,59 @@ namespace
             double app_sun_lon = sun_lon - diff_lon + osg::PI;
             nrad2(app_sun_lon);
 
-#if 0
-            OE_INFO
-                << "sun lat = " << r2d(sun_lat) 
-                << ", sun lon = " << r2d(sun_lon)
-                << ", time delta_lon = " << r2d(diff_lon)
-                << ", app sun lon = " << r2d(app_sun_lon)
-                << std::endl;
-#endif
+            out_lat = sun_lat;
+            out_lon = app_sun_lon;
 
-            return osg::Vec3d(
-                cos(sun_lat) * cos(-app_sun_lon),
-                cos(sun_lat) * sin(-app_sun_lon),
-                sin(sun_lat) );
+            // right ascension and declination.
+            double eclong = sun_lon;
+            double oblqec = d2r(zeta_deg - 0.0000004*JD1);
+            double num = cos(oblqec) * sin(eclong);
+            double den = cos(eclong);
+            out_ra = atan(num/den);
+            if ( den < 0.0 ) out_ra += osg::PI;
+            if ( den >= 0 && num < 0 ) out_ra += TWO_PI;
+            out_decl = asin(sin(oblqec)*sin(eclong));
+
+            // almanac time is the difference between the Julian Date and JD2000 epoch
+            out_almanacTime = JD1;
+        }
+
+        void getECEF(int year, int month, int date, double hoursUTC, osg::Vec3d& out_ecef)
+        {
+            double lat, applon, ra, decl, almanacTime;
+            getLatLonRaDecl(year, month, date, hoursUTC, lat, applon, ra, decl, almanacTime);
+            out_ecef.set(
+                cos(lat) * cos(-applon),
+                cos(lat) * sin(-applon),
+                sin(lat) );
+
+            out_ecef *= 149600000;
+        }
+
+        void getLocalAzEl(int year, int month, int date, double hoursUTC, double lat, double lon, double& out_az, double out_el)
+        {
+            // UNTESTED!
+            // http://stackoverflow.com/questions/257717/position-of-the-sun-given-time-of-day-and-lat-long 
+            double sunLat, sunAppLon, ra, decl, almanacTime;
+            getLatLonRaDecl(year, month, date, hoursUTC, sunLat, sunAppLon, ra, decl, almanacTime);
+            // UTC sidereal time:
+            double gmst = 6.697375 + .0657098242 * almanacTime + hoursUTC;
+            gmst = fmod(gmst, 24.0);
+            if ( gmst < 0.0 ) gmst += 24.0;
+            // Local mean sidereal time:
+            double lmst = gmst + r2d(lon)/15.0;
+            lmst = fmod(lmst, 24.0);
+            if ( lmst < 0.0 ) lmst += 24.0;
+            lmst = d2r(lmst*15.0);
+            // Hour angle:
+            double ha = lmst - ra;
+            nrad2(ha);
+            // Az/el:
+            out_el = asin(sin(decl)*sin(lat)+cos(decl)*cos(lat)*cos(ha));
+            out_az = asin(-cos(decl)*sin(ha)/cos(out_el));
+            double elc = asin(sin(decl)/sin(lat));
+            if ( out_el >= elc ) out_az = osg::PI - out_az;
+            if ( out_el <= elc && ha > 0.0 ) out_az += TWO_PI;
         }
     };
 
@@ -255,9 +303,10 @@ osg::Vec3d
 Ephemeris::getSunPositionECEF(const DateTime& date) const
 {
     Sun sun;
-    return sun.getPosition( date.year(), date.month(), date.day(), date.hours() );
+    osg::Vec3d ecef;
+    sun.getECEF( date.year(), date.month(), date.day(), date.hours(), ecef );
+    return ecef;
 }
-
 
 osg::Vec3d
 Ephemeris::getMoonPositionECEF(const DateTime& date) const
@@ -266,137 +315,8 @@ Ephemeris::getMoonPositionECEF(const DateTime& date) const
     return moon.getPosition( date.year(), date.month(), date.day(), date.hours() );
 }
 
-
 osg::Vec3d
-Ephemeris::getECEFfromRADecl( double ra, double decl, double range )
+Ephemeris::getECEFfromRADecl( double ra, double decl, double range ) const
 {
     return getPositionFromRADecl(ra, decl, range);
-}
-
-
-//------------------------------------------------------------------------
-
-EnvironmentOptions::EnvironmentOptions(const ConfigOptions& options) :
-DriverConfigOptions( options )
-{
-    fromConfig(_conf);
-}
-
-void
-EnvironmentOptions::fromConfig( const Config& conf )
-{
-    //nop
-}
-
-void
-EnvironmentOptions::mergeConfig( const Config& conf )
-{
-    DriverConfigOptions::mergeConfig( conf );
-    fromConfig( conf );
-}
-
-Config
-EnvironmentOptions::getConfig() const
-{
-    Config conf = DriverConfigOptions::getConfig();
-    return conf;
-}
-
-//------------------------------------------------------------------------
-
-#undef  LC
-#define LC "[EnvironmentNode] "
-
-EnvironmentNode::EnvironmentNode()
-{
-    _ephemeris = new Ephemeris();
-    _dateTime = DateTime(2011, 06, 01, 0.0);
-}
-
-EnvironmentNode::~EnvironmentNode()
-{
-    //nop
-}
-
-void
-EnvironmentNode::setEphemeris(Ephemeris* ephemeris)
-{
-    // cannot be null.
-    _ephemeris = ephemeris ? ephemeris : new Ephemeris();
-    onSetEphemeris();
-}
-
-Ephemeris*
-EnvironmentNode::getEphemeris() const
-{
-    return _ephemeris.get();
-}
-
-void
-EnvironmentNode::setDateTime(const DateTime& dt)
-{
-    _dateTime = dt;
-    //OE_INFO << LC << "Time = " << dt.asRFC1123() << std::endl;
-    onSetDateTime();
-}
-
-const DateTime&
-EnvironmentNode::getDateTime() const
-{
-    return _dateTime;
-}
-
-//------------------------------------------------------------------------
-
-#undef  LC
-#define LC "[EnvironmentFactory] "
-#define MAP_TAG                 "__osgEarth::Map"
-#define ENVIRONMENT_OPTIONS_TAG "__osgEarth::Util::EnvironmentOptions"
-
-EnvironmentNode*
-EnvironmentFactory::create(const EnvironmentOptions& options,
-                           const Map*                map)
-{
-    EnvironmentNode* result = 0L;
-
-    if ( !options.getDriver().empty() )
-    {
-        std::string driverExt = std::string(".osgearth_environment_") + options.getDriver();
-
-        osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
-        rwopts->setPluginData( MAP_TAG, (void*)map );
-        rwopts->setPluginData( ENVIRONMENT_OPTIONS_TAG, (void*)&options );
-
-        result = dynamic_cast<EnvironmentNode*>( osgDB::readNodeFile( driverExt, rwopts.get() ) );
-        if ( result )
-        {
-            OE_INFO << "Loaded environment driver: \"" << options.getDriver() << "\" OK." << std::endl;
-        }
-        else
-        {
-            OE_WARN << "FAIL, unable to load environment driver for \"" << options.getDriver() << "\"" << std::endl;
-        }
-    }
-    else
-    {
-        return new SkyNode(map);
-        //OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
-    }
-
-    return result;
-}
-
-//------------------------------------------------------------------------
-
-const EnvironmentOptions&
-EnvironmentDriver::getEnvironmentOptions( const osgDB::Options* options ) const
-{
-    return *static_cast<const EnvironmentOptions*>( options->getPluginData( ENVIRONMENT_OPTIONS_TAG ) );
-}
-
-
-const Map*
-EnvironmentDriver::getMap( const osgDB::Options* options ) const
-{
-    return static_cast<const Map*>( options->getPluginData( MAP_TAG ) );
 }

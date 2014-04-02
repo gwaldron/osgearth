@@ -109,7 +109,6 @@ namespace
             return true;
         }
 
-    private:
         MemCacheLRU _lru;
     };
     
@@ -132,6 +131,15 @@ MemCache::addBin( const std::string& binID )
 }
 
 CacheBin*
+MemCache::getOrCreateBin(const std::string& binID)
+{
+    CacheBin* bin = getBin(binID);
+    if ( !bin )
+        bin = addBin(binID);
+    return bin;
+}
+
+CacheBin*
 MemCache::getOrCreateDefaultBin()
 {
     if ( !_defaultBin.valid() )
@@ -145,4 +153,13 @@ MemCache::getOrCreateDefaultBin()
     }
 
     return _defaultBin.get();
+}
+
+
+void
+MemCache::dumpStats(const std::string& binID)
+{
+    MemCacheBin* bin = static_cast<MemCacheBin*>(getBin(binID));
+    CacheStats stats = bin->_lru.getStats();
+    OE_INFO << LC << "hit ratio = " << stats._hitRatio << std::endl;
 }

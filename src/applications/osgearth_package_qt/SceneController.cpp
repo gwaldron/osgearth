@@ -22,12 +22,9 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
-//#include <osgEarth/StringUtils>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
-//#include <osgEarthUtil/SkyNode>
-
 
 
 using namespace PackageQt;

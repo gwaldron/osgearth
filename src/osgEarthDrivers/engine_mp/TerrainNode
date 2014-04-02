@@ -16,13 +16,13 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TERRAIN_NODE
-#define OSGEARTH_ENGINE_MP_TERRAIN_NODE 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TERRAIN_NODE
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TERRAIN_NODE 1
 
 #include "Common"
 #include "TileNodeRegistry"
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     class TileFactory;
 
@@ -54,6 +54,6 @@ namespace osgEarth_engine_mp
         bool _quickReleaseCallbackInstalled;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TERRAIN_NODE
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TERRAIN_NODE

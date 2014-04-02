@@ -23,7 +23,7 @@
 #include <osg/NodeVisitor>
 #include <osg/Uniform>
 
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 using namespace OpenThreads;
 
@@ -43,7 +43,13 @@ _outOfDate         ( false )
 
     // revisions are initially in sync:
     if ( model )
+    {
         _maprevision = model->_revision;
+        if ( model->requiresUpdateTraverse() )
+        {
+            this->setNumChildrenRequiringUpdateTraversal(1);
+        }
+    }
 }
 
 
@@ -57,21 +63,28 @@ TileNode::setLastTraversalFrame(unsigned frame)
 void
 TileNode::traverse( osg::NodeVisitor& nv )
 {
-    if ( _model.valid() && nv.getVisitorType() == nv.CULL_VISITOR )
+    if ( _model.valid() )
     {
-        osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
-        if (ccc)
+        if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
-            if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
-        }
+            osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
+            if (ccc)
+            {
+                if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
+            }
 
-        // if this tile is marked dirty, bump the marker so the engine knows it
-        // needs replacing.
-        if ( _dirty || _model->_revision != _maprevision )
-        {
-            _outOfDate = true;
+            // if this tile is marked dirty, bump the marker so the engine knows it
+            // needs replacing.
+            if ( _dirty || _model->_revision != _maprevision )
+            {
+                _outOfDate = true;
+            }
         }
-    }
+        else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+        {
+            _model->updateTraverse(nv);
+        }
+    }    
 
     osg::MatrixTransform::traverse( nv );
 }

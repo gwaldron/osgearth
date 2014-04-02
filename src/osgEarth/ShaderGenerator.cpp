@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2008-2013 Pelican Mapping
@@ -32,9 +33,13 @@
 #include <osg/Texture2D>
 #include <osg/Texture3D>
 #include <osg/TextureRectangle>
+#include <osg/Texture2DMultisample>
+#include <osg/Texture2DArray>
 #include <osg/TexEnv>
 #include <osg/TexGen>
+#include <osg/TexMat>
 #include <osg/ClipNode>
+#include <osg/ValueObject>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/ReadFile>
@@ -43,6 +48,8 @@
 #define LC "[ShaderGenerator] "
 
 #define SHADERGEN_PL_EXTENSION "osgearth_shadergen"
+
+#define SHADERGEN_HINT_IGNORE "osgEarth.ShaderGenerator.ignore"
 
 using namespace osgEarth;
 
@@ -69,6 +76,7 @@ using namespace osgEarth;
 #define SAMPLER_TEXT   "oe_sg_sampler_text"
 #define ATTRIB         "oe_sg_attrib"
 #define TEXENV_COLOR   "oe_sg_texenvcolor"
+#define TEX_MATRIX     "oe_sg_texmat"
 
 #define VERTEX_FUNCTION   "oe_sg_vert"
 #define FRAGMENT_FUNCTION "oe_sg_frag"
@@ -127,6 +135,37 @@ REGISTER_OSGPLUGIN(SHADERGEN_PL_EXTENSION, OSGEarthShaderGenPseudoLoader)
 
 namespace
 {
+    struct ActiveAttributeCollector : public osg::StateAttribute::ModeUsage
+    {
+        ActiveAttributeCollector(osg::StateSet* stateset, const osg::StateAttribute* sa, unsigned unit=0) :
+            _stateset(stateset),
+            _sa      (const_cast<osg::StateAttribute*>(sa)),
+            _unit    (unit) {}
+
+        virtual ~ActiveAttributeCollector() {}
+
+        virtual void usesMode(osg::StateAttribute::GLMode mode)
+        {
+            if (_stateset->getMode(mode) & osg::StateAttribute::ON)
+            {
+                _stateset->setAttribute(_sa, osg::StateAttribute::ON);
+            }
+        }
+
+        virtual void usesTextureMode(osg::StateAttribute::GLMode mode)
+        {
+            if (_stateset->getTextureMode(_unit, mode) & osg::StateAttribute::ON)
+            {
+                _stateset->setTextureAttribute(_unit, _sa, osg::StateAttribute::ON);
+            }
+        }
+
+        osg::StateSet*       _stateset;
+        osg::StateAttribute* _sa;
+        unsigned             _unit;
+    };
+
+
     /**
      * The OSG State extended with mode/attribute accessors.
      */
@@ -134,58 +173,96 @@ namespace
     {
     public:
         StateEx() : State() {}
-        
-        osg::StateAttribute::GLModeValue getMode(osg::StateAttribute::GLMode mode,
-                                                 osg::StateAttribute::GLModeValue def = osg::StateAttribute::INHERIT) const
+
+        // Captures the ACTIVE state into a state set. i.e., only state attributes
+        // set to ON.
+        osg::StateSet* capture() const
         {
-            return getMode(_modeMap, mode, def);
-        }
-        
-        osg::StateAttribute* getAttribute(osg::StateAttribute::Type type, unsigned int member = 0) const
-        {
-            return getAttribute(_attributeMap, type, member);
-        }
-        
-        osg::StateAttribute::GLModeValue getTextureMode(unsigned int unit,
-                                                        osg::StateAttribute::GLMode mode,
-                                                        osg::StateAttribute::GLModeValue def = osg::StateAttribute::INHERIT) const
-        {
-            return unit < _textureModeMapList.size() ? getMode(_textureModeMapList[unit], mode, def) : def;
+            osg::StateSet* stateset = new osg::StateSet();
+
+            // add ON modes to the new stateset:
+            for(ModeMap::const_iterator i=_modeMap.begin();
+                i!=_modeMap.end();
+                ++i)
+            {
+                // note GLMode = mitr->first
+                const ModeStack& ms = i->second;
+                if (!ms.valueVec.empty())
+                {
+                    stateset->setMode(i->first,ms.valueVec.back());
+                }
+            }
+
+            // add ON texture modes to the new stateset:
+            for(unsigned unit=0; unit<_textureModeMapList.size(); ++unit)
+            {
+                const ModeMap& modeMap = _textureModeMapList[unit];
+                for(ModeMap::const_iterator i = modeMap.begin(); i != modeMap.end(); ++i)
+                {
+                    const ModeStack& ms = i->second;
+                    if (!ms.valueVec.empty())
+                    {
+                        stateset->setTextureMode(unit, i->first, ms.valueVec.back());
+                    }
+                }
+            }
+
+            for(AttributeMap::const_iterator i=_attributeMap.begin();
+                i!=_attributeMap.end();
+                ++i)
+            {
+                const AttributeStack& as = i->second;
+                if (!as.attributeVec.empty())
+                {
+                    const osg::State::AttributePair& pair = as.attributeVec.back();
+                    osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
+                    ActiveAttributeCollector collector(stateset, sa);
+                    bool modeless = !sa->getModeUsage(collector);
+                    if (modeless || isModeless(sa))
+                    {
+                        // if getModeUsage returns false, there are no modes associated with
+                        // this attr, so just add it (it can't be forcably disabled)
+                        stateset->setAttribute(sa, osg::StateAttribute::ON);
+                    }
+                }
+            }
+
+            for(unsigned unit=0; unit<_textureAttributeMapList.size(); ++unit)
+            {
+                const AttributeMap& attrMap = _textureAttributeMapList[unit];
+                for(AttributeMap::const_iterator i = attrMap.begin(); i != attrMap.end(); ++i)
+                {                    
+                    const AttributeStack& as = i->second;
+                    if (!as.attributeVec.empty())
+                    {
+                        const osg::State::AttributePair& pair = as.attributeVec.back();
+                        osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
+                        ActiveAttributeCollector collector(stateset, sa, unit);
+                        bool modeless = !sa->getModeUsage(collector);
+                        if (modeless || isModeless(sa))
+                        {
+                            // if getModeUsage returns false, there are no modes associated with
+                            // this attr, so just add it (it can't be forcably disabled)
+                            stateset->setTextureAttribute(unit, sa, osg::StateAttribute::ON);
+                        }
+                    }
+                }
+            }
+
+            return stateset;
         }
 
-        unsigned getNumTextureAttributes() const 
+        // some attrs dont' properly report mode usage until OSG 3.3.1.
+        // ref: https://github.com/openscenegraph/osg/commit/22af59482ac4f727eeed5b97476a3a47d7fe8a69
+        bool isModeless(osg::StateAttribute* sa) const
         {
-            return _textureAttributeMapList.size();
-        }
-
-        osg::StateAttribute* getTextureAttribute(unsigned int unit, osg::StateAttribute::Type type) const
-        {
-            return unit < _textureAttributeMapList.size() ? getAttribute(_textureAttributeMapList[unit], type, 0) : 0;
-        }
-        
-        osg::Uniform* getUniform(const std::string& name) const
-        {
-            UniformMap::const_iterator it = _uniformMap.find(name);
-            return it != _uniformMap.end() ? 
-            const_cast<osg::Uniform *>(it->second.uniformVec.back().first) : 0;
-        }
-        
-    protected:
-        
-        osg::StateAttribute::GLModeValue getMode(const ModeMap &modeMap,
-                                                 osg::StateAttribute::GLMode mode, 
-                                                 osg::StateAttribute::GLModeValue def = osg::StateAttribute::INHERIT) const
-        {
-            ModeMap::const_iterator it = modeMap.find(mode);
-            return (it != modeMap.end() && it->second.valueVec.size()) ? it->second.valueVec.back() : def;
-        }
-        
-        osg::StateAttribute* getAttribute(const AttributeMap &attributeMap,
-                                          osg::StateAttribute::Type type, unsigned int member = 0) const
-        {
-            AttributeMap::const_iterator it = attributeMap.find(std::make_pair(type, member));
-            return (it != attributeMap.end() && it->second.attributeVec.size()) ? 
-            const_cast<osg::StateAttribute*>(it->second.attributeVec.back().first) : 0;
+#if OSG_VERSION_LESS_THAN(3,3,1)            
+            return
+                dynamic_cast<osg::Texture2DArray*>(sa) ||
+                dynamic_cast<osg::Texture2DMultisample*>(sa);
+#else
+            return false;
+#endif
         }
     };
 }
@@ -210,6 +287,22 @@ ShaderGenerator::ShaderGenerator()
 }
 
 void
+ShaderGenerator::setIgnoreHint(osg::Object* object, bool ignore)
+{
+    if (object)
+    {
+        object->setUserValue( SHADERGEN_HINT_IGNORE, ignore );
+    }
+}
+
+bool
+ShaderGenerator::ignore(const osg::Object* object)
+{
+    bool value;
+    return object && object->getUserValue(SHADERGEN_HINT_IGNORE, value) && value;
+}
+
+void
 ShaderGenerator::setProgramName(const std::string& name)
 {
     _name = name;
@@ -227,6 +320,9 @@ ShaderGenerator::accept(const osg::StateAttribute* sa) const
     if ( sa == 0L )
         return false;
 
+    if ( ignore(sa) )
+        return false;
+
     for(AcceptCallbackVector::const_iterator i = _acceptCallbacks.begin(); i != _acceptCallbacks.end(); ++i )
     {
         if ( !i->get()->accept(sa) )
@@ -240,8 +336,6 @@ ShaderGenerator::run(osg::Node* graph, StateSetCache* cache)
 {
     if ( graph )
     {
-        _texImageUnits.clear();
-
         // generate shaders:
         graph->accept( *this );
 
@@ -259,77 +353,54 @@ ShaderGenerator::run(osg::Node* graph, StateSetCache* cache)
             vp->setInheritShaders( true );
             vp->setName( _name );
         }
-
-        // apply a uniform for each sampler binding we found.
-        for(std::set<int>::iterator i = _texImageUnits.begin(); i != _texImageUnits.end(); ++i)
-        {
-            std::string name = Stringify() << SAMPLER << *i;
-            stateset->addUniform( new osg::Uniform(name.c_str(), *i) );
-        }
-        _texImageUnits.clear();
     }
 }
 
 void 
 ShaderGenerator::apply( osg::Node& node )
 {
-    if ( !_active ) return;
+    if ( !_active )
+        return;
 
-    if ( node.getStateSet() )
-        _state->pushStateSet( node.getStateSet() );
+    if ( ignore(&node) )
+        return;
+
+    osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
+    if ( stateset.valid() )
+    {
+        _state->pushStateSet( stateset.get() );
+    }
 
     traverse(node);
 
-    if ( node.getStateSet() )
+    if ( stateset.valid() )
+    {
         _state->popStateSet();
+    }
 }
 
 void
-ShaderGenerator::apply(osg::Group& group)
+ShaderGenerator::apply( osg::Group& group )
 {
-    if ( !_active ) return;
-
-    traverse(group);
-
-#if 0
-    std::set<VirtualProgram*> childVPs;
-    unsigned childrenWithVP = 0;
-    for(unsigned i=0; i<group.getNumChildren(); ++i)
-    {
-        osg::StateSet* stateset = group.getChild(i)->getStateSet();
-        if ( !stateset )
-            break;
-
-        VirtualProgram* vp = dynamic_cast<VirtualProgram*>(stateset->getAttribute(VirtualProgram::SA_TYPE));
-        if ( vp )
-        {
-            childVPs.insert( vp );
-            childrenWithVP++;
-        }
-    }
-    if ( childrenWithVP == group.getNumChildren() && childVPs.size() == 1 )
-    {
-        group.getOrCreateStateSet()->setAttributeAndModes( *childVPs.begin(), 1 );
-        for(unsigned i=0; i<group.getNumChildren(); ++i)
-        {
-            group.getChild(i)->getStateSet()->removeAttribute(VirtualProgram::SA_TYPE);
-        }
-    }
-#endif
+    apply( static_cast<osg::Node&>(group) );
 }
 
 void 
-ShaderGenerator::apply( osg::Geode& geode )
+ShaderGenerator::apply( osg::Geode& node )
 {
-    if ( !_active ) return;
+    if ( !_active )
+        return;
 
-    osg::ref_ptr<osg::StateSet> stateset = geode.getStateSet();
+    if ( ignore(&node) )
+        return;
+
+    osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
     if ( stateset.valid() )
     {
-        _state->pushStateSet( geode.getStateSet() );
+        _state->pushStateSet( stateset.get() );
     }
 
-    unsigned numDrawables = geode.getNumDrawables();
+    unsigned numDrawables = node.getNumDrawables();
     bool traverseDrawables = true;
 
     // This block checks whether all the geode's drawables are equivalent,
@@ -342,7 +413,7 @@ ShaderGenerator::apply( osg::Geode& geode )
         unsigned numInheritingText = 0, numInheritingGeometry = 0;
         for( d = 0; d < numDrawables; ++d )
         {
-            osg::Drawable* drawable = geode.getDrawable(d);
+            osg::Drawable* drawable = node.getDrawable(d);
             if ( drawable->getStateSet() == 0L )
             {
                 if ( drawable->asGeometry() )
@@ -357,7 +428,7 @@ ShaderGenerator::apply( osg::Geode& geode )
             osg::ref_ptr<osg::StateSet> replacement;
             if ( processGeometry(stateset.get(), replacement) )
             {
-                geode.setStateSet(replacement.get() );
+                node.setStateSet(replacement.get() );
                 traverseDrawables = false;
             }
         }
@@ -366,7 +437,7 @@ ShaderGenerator::apply( osg::Geode& geode )
             osg::ref_ptr<osg::StateSet> replacement;
             if ( processText(stateset.get(), replacement) )
             {
-                geode.setStateSet(replacement.get() );
+                node.setStateSet(replacement.get() );
                 traverseDrawables = false;
             }
         }
@@ -375,9 +446,9 @@ ShaderGenerator::apply( osg::Geode& geode )
     // Drawables have state sets, so let's traverse them.
     if ( traverseDrawables )
     {
-        for( unsigned d = 0; d < geode.getNumDrawables(); ++d )
+        for( unsigned d = 0; d < node.getNumDrawables(); ++d )
         {
-            apply( geode.getDrawable(d) );
+            apply( node.getDrawable(d) );
         }
     }
 
@@ -433,16 +504,23 @@ ShaderGenerator::apply( osg::Drawable* drawable )
 void
 ShaderGenerator::apply(osg::PagedLOD& node)
 {
-    if ( !_active ) return;
+    if ( !_active )
+        return;
+    
+    if ( ignore(&node) )
+        return;
 
     for( unsigned i=0; i<node.getNumFileNames(); ++i )
     {
+        static Threading::Mutex s_mutex;
+        s_mutex.lock();
         const std::string& filename = node.getFileName( i );
         if (!filename.empty() && 
             osgDB::getLowerCaseFileExtension(filename).compare(SHADERGEN_PL_EXTENSION) != 0 )
         {
             node.setFileName( i, Stringify() << filename << "." << SHADERGEN_PL_EXTENSION );
         }
+        s_mutex.unlock();
     }
 
     apply( static_cast<osg::LOD&>(node) );
@@ -452,7 +530,11 @@ ShaderGenerator::apply(osg::PagedLOD& node)
 void
 ShaderGenerator::apply(osg::ProxyNode& node)
 {
-    if ( !_active ) return;
+    if ( !_active )
+        return;
+
+    if ( ignore(&node) )
+        return;
 
     if ( node.getLoadingExternalReferenceMode() != osg::ProxyNode::LOAD_IMMEDIATELY )
     {
@@ -483,7 +565,11 @@ ShaderGenerator::apply(osg::ClipNode& node)
         "    gl_ClipVertex = vertexVIEW; \n"
         "}\n";
 
-    if ( !_active ) return;
+    if ( !_active )
+        return;
+
+    if ( ignore(&node) )
+        return;
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(node.getOrCreateStateSet());
     if ( vp->referenceCount() == 1 ) vp->setName( _name );
@@ -500,12 +586,12 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     if ( !_active )
         return false;
 
-    // State object with extra accessors:
-    StateEx* state = static_cast<StateEx*>(_state.get());
+    // Capture the active current state:
+    osg::ref_ptr<osg::StateSet> current = static_cast<StateEx*>(_state.get())->capture();
 
     // check for a real osg::Program. If it exists, bail out so that OSG
     // can use the program already in the graph
-    osg::StateAttribute* program = state->getAttribute(osg::StateAttribute::PROGRAM);
+    osg::StateAttribute* program = current->getAttribute(osg::StateAttribute::PROGRAM);
     if ( dynamic_cast<osg::Program*>(program) != 0L )
         return false;
 
@@ -555,14 +641,14 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     // do nothing if there's no GLSL support
     if ( !_active )
         return false;
-
-    // State object with extra accessors:
-    StateEx* state = static_cast<StateEx*>(_state.get());
+    
+    // capture the active current state:
+    osg::ref_ptr<osg::StateSet> current = static_cast<StateEx*>(_state.get())->capture();
 
     // check for a real osg::Program in the whole state stack. If it exists, bail out
     // so that OSG can use the program already in the graph. We never override a
     // full Program.
-    osg::StateAttribute* program = state->getAttribute(osg::StateAttribute::PROGRAM);
+    osg::StateAttribute* program = current->getAttribute(osg::StateAttribute::PROGRAM);
     if ( dynamic_cast<osg::Program*>(program) != 0L )
         return false;
 
@@ -589,12 +675,12 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     {
         need_new_stateset = true;
 
-        osg::StateAttribute::GLModeValue value = state->getMode(GL_LIGHTING); // from the state, not the ss.
+        osg::StateAttribute::GLModeValue value = current->getMode(GL_LIGHTING);
         new_stateset->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, value) );
     }
 
     // if the stateset changes any texture attributes, we need a new virtual program:
-    if (state->getNumTextureAttributes() > 0)
+    if (current->getTextureAttributeList().size() > 0)
     {
         // start generating the shader source.
         GenBuffers buf;
@@ -621,18 +707,15 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
                 wroteTexelDecl = true;
             }
 
-            osg::Texture* tex = dynamic_cast<osg::Texture*>(
-                state->getTextureAttribute(unit, osg::StateAttribute::TEXTURE));
+            osg::Texture* tex = dynamic_cast<osg::Texture*>( current->getTextureAttribute(unit, osg::StateAttribute::TEXTURE) );
 
             if (accept(tex) && !ImageUtils::isFloatingPointInternalFormat(tex->getInternalFormat()))
             {
-                // record this unit as being in use
-                _texImageUnits.insert( unit );
+                osg::TexGen* texgen = dynamic_cast<osg::TexGen*>(current->getTextureAttribute(unit, osg::StateAttribute::TEXGEN));
+                osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(current->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
+                osg::TexMat* texmat = dynamic_cast<osg::TexMat*>(current->getTextureAttribute(unit, osg::StateAttribute::TEXMAT));
 
-                osg::TexGen* texgen = dynamic_cast<osg::TexGen*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXGEN));
-                osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(state->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
-
-                if ( apply(tex, texgen, texenv, unit, buf) == true )
+                if ( apply(tex, texgen, texenv, texmat, unit, buf) == true )
                 {
                    need_new_stateset = true;
                 }
@@ -671,7 +754,8 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
 bool
 ShaderGenerator::apply(osg::Texture* tex, 
                        osg::TexGen*  texgen,
-                       osg::TexEnv*  texenv, 
+                       osg::TexEnv*  texenv,
+                       osg::TexMat*  texmat,
                        int           unit,
                        GenBuffers&   buf)
 {
@@ -681,6 +765,7 @@ ShaderGenerator::apply(osg::Texture* tex,
    buf.fragHead << "varying " MEDIUMP "vec4 " TEX_COORD << unit << ";\n";
 
    apply( texgen, unit, buf );
+   apply( texmat, unit, buf );
 
    if ( dynamic_cast<osg::Texture1D*>(tex) )
    {
@@ -697,6 +782,10 @@ ShaderGenerator::apply(osg::Texture* tex,
    else if ( dynamic_cast<osg::TextureRectangle*>(tex) )
    {
       apply(static_cast<osg::TextureRectangle*>(tex), unit, buf);
+   }
+   else if ( dynamic_cast<osg::Texture2DArray*>(tex) )
+   {
+      apply(static_cast<osg::Texture2DArray*>(tex), unit, buf);
    }
    else
    {
@@ -767,11 +856,12 @@ ShaderGenerator::apply(osg::TexEnv* texenv, int unit, GenBuffers& buf)
 bool
 ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 {
+    bool genDefault = false;
+
     // by default, do not use texture coordinate generation:
     if ( !accept(texgen) )
     {
-        buf.vertBody
-            << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
+        genDefault = true;
     }
 
     else
@@ -829,10 +919,47 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             break;
 
         default: // fall back on non-gen setup.
-            buf.vertBody
-                << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
+            genDefault = true;
             break;
         }
+    }
+    
+    if ( genDefault )
+    {
+        // GLSL only supports built-in "gl_MultiTexCoord{0..7}"
+        if ( unit <= 7 )
+        {
+            buf.vertBody
+                << INDENT << TEX_COORD << unit << " = gl_MultiTexCoord" << unit << ";\n";
+        }
+        else
+        {
+            OE_INFO << LC
+                << "Texture coordinate on unit (" << unit << ") "
+                << "requires a custom vertex attribute (osg_MultiTexCoord" << unit << ")."
+                << std::endl;
+
+            buf.vertBody 
+                << INDENT << TEX_COORD << unit << " = osg_MultiTexCoord" << unit << ";\n";
+        }
+    }
+
+    return true;
+}
+
+bool
+ShaderGenerator::apply(osg::TexMat* texmat, int unit, GenBuffers& buf)
+{
+    if ( accept(texmat) )
+    {
+        std::string texMatUniform = Stringify() << TEX_MATRIX << unit;
+
+        buf.vertHead << "uniform mat4 " << texMatUniform << ";\n";
+        buf.vertBody << INDENT << TEX_COORD << unit << " *= " << texMatUniform << ";\n";
+
+        buf.stateSet
+            ->getOrCreateUniform(texMatUniform, osg::Uniform::FLOAT_MAT4)
+            ->set( texmat->getMatrix() );
     }
 
     return true;
@@ -843,7 +970,7 @@ ShaderGenerator::apply(osg::Texture1D* tex, int unit, GenBuffers& buf)
 {
     buf.fragHead << "uniform sampler1D " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture1D(" SAMPLER << unit << ", " TEX_COORD << unit << ".x);\n";
-    //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_1D )->set( unit );
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_1D )->set( unit );
 
     return true;
 }
@@ -853,7 +980,7 @@ ShaderGenerator::apply(osg::Texture2D* tex, int unit, GenBuffers& buf)
 {
     buf.fragHead << "uniform sampler2D " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture2D(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
-    //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
 
     return true;
 }
@@ -863,7 +990,7 @@ ShaderGenerator::apply(osg::Texture3D* tex, int unit, GenBuffers& buf)
 {
     buf.fragHead << "uniform sampler3D " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture3D(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
-    //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_3D )->set( unit );
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_3D )->set( unit );
 
     return true;
 }
@@ -875,7 +1002,19 @@ ShaderGenerator::apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf)
 
     buf.fragHead << "uniform sampler2DRect " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture2DRect(" SAMPLER << unit << ", " TEX_COORD << unit << ".xy);\n";
-    //buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );
+
+    return true;
+}
+
+bool
+ShaderGenerator::apply(osg::Texture2DArray* tex, int unit, GenBuffers& buf)
+{    
+    buf.fragHead <<  "#extension GL_EXT_texture_array : enable \n";    
+
+    buf.fragHead << "uniform sampler2DArray " SAMPLER << unit << ";\n";
+    buf.fragBody << INDENT "texel = texture2DArray(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );         
 
     return true;
 }

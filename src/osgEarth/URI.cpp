@@ -498,21 +498,6 @@ namespace
             (*post)(result);
         }
 
-        /*
-        osg::Timer_t endTime = osg::Timer::instance()->tick();
-
-        double time = osg::Timer::instance()->delta_s( startTime, endTime );
-        {
-            OpenThreads::ScopedLock< OpenThreads::Mutex > lock( s_statsLock );            
-            totalTime += time;
-            totalRequests += 1;
-            double avg = (double)totalRequests / totalTime;
-            OE_NOTICE << "total req = " << totalRequests << " totalTime = " << totalTime << " " << avg << " req/s" << std::endl;            
-        }
-        */
-
-        
-
         return result;
     }
 }

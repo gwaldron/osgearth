@@ -18,8 +18,9 @@
  */
 
 #include "SilverLiningOptions"
-#include <osgEarthUtil/Environment>
+#include <osgEarthUtil/Sky>
 #include <osgEarth/Map>
+#include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
 
 namespace osgEarth { namespace Drivers { namespace SilverLining
@@ -32,14 +33,16 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
     /**
      * Node that roots the silverlining adapter.
      */
-    class SilverLiningNode : public EnvironmentNode
+    class SilverLiningNode : public SkyNode
     {
     public:
         SilverLiningNode(
             const Map*                 map,
             const SilverLiningOptions& options );
 
-    public: // EnvironmentNode
+    public: // SkyNode
+
+        osg::Light* getSunLight() { return _light.get(); }
 
         void attach(osg::View* view, int lightNum);
 
@@ -59,6 +62,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         osg::ref_ptr<osg::Light> _light;
 		double _lastAltitude;
 		const SilverLiningOptions _options;
+        osg::ref_ptr<PhongLightingEffect> _lighting;
     };
 
 } } } // namespace osgEarth::Drivers::SilverLining

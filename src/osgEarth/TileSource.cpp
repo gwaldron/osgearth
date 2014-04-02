@@ -193,20 +193,6 @@ TileSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "l2_cache_size", _L2CacheSize );
     conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.getObjIfSet( "profile", _profileOptions );
-
-    // special handling of default tile size:
-    if ( !tileSize().isSet() )
-    {
-        optional<int> defaultTileSize;
-        conf.getIfSet( "default_tile_size", defaultTileSize );
-        if ( defaultTileSize.isSet() )
-        {
-            _tileSize.init(*defaultTileSize);
-        }
-    }
-
-    // remove it now so it does not get serialized
-    _conf.remove( "default_tile_size" );
 }
 
 
@@ -458,14 +444,23 @@ TileSource::hasData(const osgEarth::TileKey& key) const
     if (_dataExtents.size() == 0) 
         return true;
 
-    const osgEarth::GeoExtent& keyExtent = key.getExtent();
+    unsigned int lod = key.getLevelOfDetail();
+
+    // Remap the lod to an appropriate lod if it's not in the same SRS        
+    if (!key.getProfile()->isHorizEquivalentTo( getProfile() ) )
+    {        
+        lod = getProfile()->getEquivalentLOD( key.getProfile(), key.getLevelOfDetail() );        
+    }
+
     bool intersectsData = false;
+    const osgEarth::GeoExtent& keyExtent = key.getExtent();
+    
 
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
         if ((keyExtent.intersects( *itr )) && 
-            (!itr->minLevel().isSet() || itr->minLevel() <= key.getLOD()) &&
-            (!itr->maxLevel().isSet() || itr->maxLevel() >= key.getLOD()))
+            (!itr->minLevel().isSet() || itr->minLevel() <= lod ) &&
+            (!itr->maxLevel().isSet() || itr->maxLevel() >= lod ))
         {
             intersectsData = true;
             break;

@@ -96,9 +96,7 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
     ConfigSet images = conf.children( "image" );
     for( ConfigSet::const_iterator i = images.begin(); i != images.end(); i++ )
     {
-        Config layerDriverConf = *i;
-        layerDriverConf.add( "default_tile_size", "256" );
-
+        Config layerDriverConf = *i;        
         ImageLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value("name");
         layerOpt.driver() = TileSourceOptions( layerDriverConf );
@@ -114,8 +112,7 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
         ConfigSet heightfields = conf.children( tagName );
         for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); i++ )
         {
-            Config layerDriverConf = *i;
-            layerDriverConf.add( "default_tile_size", "16" );
+            Config layerDriverConf = *i;            
 
             ElevationLayerOptions layerOpt( layerDriverConf );
             layerOpt.name() = layerDriverConf.value( "name" );

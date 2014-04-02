@@ -282,17 +282,22 @@ HeightFieldUtils::getHeightAtNormalizedLocation(const osg::HeightField* input,
     return getHeightAtPixel( input, px, py, interp );
 }
 
-float
+bool
 HeightFieldUtils::getHeightAtNormalizedLocation(const HeightFieldNeighborhood& hood,
                                                 double nx, double ny,
+                                                double& output,
                                                 ElevationInterpolation interp)
 {
     osg::ref_ptr<osg::HeightField> hf;
     double nx2, ny2;
-    hood.getNeighborForNormalizedLocation(nx, ny, hf, nx2, ny2);
-    double px = osg::clampBetween(nx2, 0.0, 1.0) * (double)(hf->getNumColumns() - 1);
-    double py = osg::clampBetween(ny2, 0.0, 1.0) * (double)(hf->getNumRows() - 1);
-    return getHeightAtPixel( hf.get(), px, py, interp );
+    if ( hood.getNeighborForNormalizedLocation(nx, ny, hf, nx2, ny2) )
+    {
+        double px = osg::clampBetween(nx2, 0.0, 1.0) * (double)(hf->getNumColumns() - 1);
+        double py = osg::clampBetween(ny2, 0.0, 1.0) * (double)(hf->getNumRows() - 1);
+        output = getHeightAtPixel( hf.get(), px, py, interp );
+        return true;
+    }
+    return false;
 }
 
 bool
@@ -370,6 +375,7 @@ HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inpu
     dest->allocate( numCols, numRows );
     dest->setXInterval( dx );
     dest->setYInterval( dy );
+    dest->setBorderWidth( input->getBorderWidth() );
 
     // copy over the skirt height, adjusting it for relative tile size.
     dest->setSkirtHeight( input->getSkirtHeight() * div );
@@ -435,7 +441,10 @@ HeightFieldUtils::resampleHeightField(osg::HeightField*      input,
 
 
 osg::HeightField*
-HeightFieldUtils::createReferenceHeightField( const GeoExtent& ex, unsigned numCols, unsigned numRows )
+HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
+                                             unsigned         numCols,
+                                             unsigned         numRows,
+                                             bool             expressAsHAE)
 {
     osg::HeightField* hf = new osg::HeightField();
     hf->allocate( numCols, numRows );
@@ -445,7 +454,7 @@ HeightFieldUtils::createReferenceHeightField( const GeoExtent& ex, unsigned numC
 
     const VerticalDatum* vdatum = ex.isValid() ? ex.getSRS()->getVerticalDatum() : 0L;
 
-    if ( vdatum )
+    if ( vdatum && expressAsHAE )
     {
         // need the lat/long extent for geoid queries:
         GeoExtent geodeticExtent = ex.getSRS()->isGeographic() ? ex : ex.transform( ex.getSRS()->getGeographicSRS() );
@@ -468,7 +477,9 @@ HeightFieldUtils::createReferenceHeightField( const GeoExtent& ex, unsigned numC
     else
     {
         for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
+        {
             hf->getHeightList()[i] = 0.0;
+        }
     }
 
     hf->setBorderWidth( 0 );

@@ -18,6 +18,8 @@ Properties:
     :typename:        WFS type name to access (i.e., the layer)
     :outputformat:    Format to return from the service; ``json`` or ``gml``
     :maxfeatures:     Maximum number of features to return for a query
+    :request_buffer:  The number of map units to buffer bounding box requests with to ensure that enough data is returned.
+                      This is useful when rendering buffered lines using the AGGLite driver.         
 
 
 .. _Web Feature Service:    http://en.wikipedia.org/wiki/Web_Feature_Service

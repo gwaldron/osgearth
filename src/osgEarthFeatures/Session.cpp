@@ -50,7 +50,7 @@ _dbOptions     ( dbOptions )
 
     // if no script engine was created when the style was set above, create a default javascript one
     if (!_styleScriptEngine.valid())
-      _styleScriptEngine = ScriptEngineFactory::create("javascript");
+      _styleScriptEngine = ScriptEngineFactory::create("javascript", "", true);
 
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )

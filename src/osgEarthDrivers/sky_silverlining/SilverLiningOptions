@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_DRIVER_SILVERLINING_OPTIONS
 #define OSGEARTH_DRIVER_SILVERLINING_OPTIONS 1
 
-#include <osgEarthUtil/Environment>
+#include <osgEarthUtil/Sky>
 
 namespace osgEarth { namespace Drivers { namespace SilverLining
 {
@@ -29,11 +29,11 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
     /**
      * Options for creating a SilverLining environment node
      */
-    class SilverLiningOptions : public EnvironmentOptions
+    class SilverLiningOptions : public SkyOptions
     {
     public:
-        SilverLiningOptions(const ConfigOptions& options =ConfigOptions()) :
-          EnvironmentOptions(options),
+        SilverLiningOptions(const SkyOptions& options =SkyOptions()) :
+          SkyOptions(options),
           _drawClouds(false)
         {
             setDriver( "silverlining" );
@@ -65,7 +65,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
     public:
         Config getConfig() const {
-            Config conf = EnvironmentOptions::getConfig();
+            Config conf = SkyOptions::getConfig();
             conf.addIfSet("user", _user);
             conf.addIfSet("license_code", _licenseCode);
             conf.addIfSet("resource_path", _resourcePath);
@@ -76,7 +76,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
     protected:
         void mergeConfig( const Config& conf ) {
-            EnvironmentOptions::mergeConfig( conf );
+            SkyOptions::mergeConfig( conf );
             fromConfig(conf);
         }
 

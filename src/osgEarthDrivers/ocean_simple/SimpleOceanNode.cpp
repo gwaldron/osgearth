@@ -22,6 +22,9 @@
 #include <osgEarth/Map>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/TextureCompositor>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/CullingUtils>
+#include <osgEarthUtil/SimplexNoise>
 #include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
 
 #include <osg/CullFace>
@@ -33,15 +36,62 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers::SimpleOcean;
+using namespace osgEarth::Drivers::MPTerrainEngine;
+
+namespace
+{
+#define SIR 512
+
+    osg::Image* createSurfaceImage()
+    {
+        static const double twoPI = 2.0*osg::PI;
+
+        osg::Image* image = new osg::Image();
+        image->allocateImage(SIR, SIR, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+        SimplexNoise noise;
+        noise.setFrequency(SIR*512.0);
+        noise.setOctaves(10);
+        noise.setRange(1.0, 1.8);
+
+        ImageUtils::PixelWriter write(image);
+        for(int s=0; s<image->s(); ++s)
+        {
+            for(int t=0; t<image->t(); ++t)
+            {
+                double a = (double)s / (double)image->s();
+                double b = (double)t / (double)image->t();
+
+                // trick to create tiled noise (2 ortho circles)
+                // http://www.gamedev.net/blog/33/entry-2138456-seamless-noise/
+
+                double x = cos(a*twoPI)/twoPI;
+                double y = cos(b*twoPI)/twoPI;
+                double z = sin(a*twoPI)/twoPI;
+                double w = sin(b*twoPI)/twoPI;
+
+                double n = noise.getValue(x, y, z, w);
+
+                write( osg::Vec4(0.2*n, 0.3*n, 0.5*n, 0.95), s, t );
+            }
+        }
+
+        return image;
+    }
+}
+
+
 
 
 SimpleOceanNode::SimpleOceanNode(const SimpleOceanOptions& options,
                                  MapNode*                  mapNode) :
+OceanNode     ( options ),
 _parentMapNode( mapNode ),
 _options      ( options )
 {
     // set the node mask so that our custom EarthManipulator will NOT find this node.
     setNodeMask( 0xFFFFFFFE );
+    setSRS( mapNode? mapNode->getMapSRS() : 0L );
     rebuild();
 }
 
@@ -70,16 +120,18 @@ SimpleOceanNode::rebuild()
             mno.enableLighting() = *mno.enableLighting();
 
         MPTerrainEngineOptions mpoptions;
-        mpoptions.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
+        mpoptions.heightFieldSkirtRatio() = 0.0;      // don't want to see skirts
+        mpoptions.minLOD() = _options.maxLOD().get(); // weird, I know
+
+        // so we can the surface from underwater:
         mpoptions.clusterCulling() = false;       // want to see underwater
+
         mpoptions.enableBlending() = true;        // gotsta blend with the main node
+
         mno.setTerrainOptions( mpoptions );
 
         // make the ocean's map node:
         MapNode* oceanMapNode = new MapNode( oceanMap, mno );
-        
-        // install a custom compositor. Must do this before adding any image layers.
-        //oceanMapNode->setCompositorTechnique( new OceanCompositor(_options) );
 
         // if the caller requested a mask layer, install that now.
         if ( _options.maskLayer().isSet() )
@@ -109,7 +161,7 @@ SimpleOceanNode::rebuild()
             // parent map and turns them into encoded images for our shader to use.
             ImageLayerOptions epo( "ocean-proxy" );
             epo.cachePolicy() = CachePolicy::NO_CACHE;
-            epo.maxLevel() = *_options.maxLOD();
+            //epo.maxLevel() = *_options.maxLOD();
             oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
         }
 
@@ -161,23 +213,30 @@ SimpleOceanNode::rebuild()
         ss->setRenderBinDetails( 15, "RenderBin" );
 
         // load up a surface texture
+        osg::ref_ptr<osg::Image> surfaceImage;
         ss->getOrCreateUniform( "ocean_has_surface_tex", osg::Uniform::BOOL )->set( false );
         if ( _options.textureURI().isSet() )
         {
-            //TODO: enable cache support here:
-            osg::Image* image = _options.textureURI()->getImage();
-            if ( image )
-            {
-                osg::Texture2D* tex = new osg::Texture2D( image );
-                tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-                tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-                tex->setWrap  ( osg::Texture::WRAP_S, osg::Texture::REPEAT );
-                tex->setWrap  ( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+            //TODO: enable cache support here?
+            surfaceImage = _options.textureURI()->getImage();
+        }
 
-                ss->setTextureAttributeAndModes( 2, tex, 1 );
-                ss->getOrCreateUniform( "ocean_surface_tex", osg::Uniform::SAMPLER_2D )->set( 2 );
-                ss->getOrCreateUniform( "ocean_has_surface_tex", osg::Uniform::BOOL )->set( true );
-            }
+        if ( !surfaceImage.valid() )
+        {
+            surfaceImage = createSurfaceImage();
+        }
+
+        if ( surfaceImage.valid() )
+        {
+            osg::Texture2D* tex = new osg::Texture2D( surfaceImage.get() );
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+            tex->setWrap  ( osg::Texture::WRAP_S, osg::Texture::REPEAT );
+            tex->setWrap  ( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+
+            ss->setTextureAttributeAndModes( 2, tex, 1 );
+            ss->getOrCreateUniform( "ocean_surface_tex", osg::Uniform::SAMPLER_2D )->set( 2 );
+            ss->getOrCreateUniform( "ocean_has_surface_tex", osg::Uniform::BOOL )->set( true );
         }
 
         // remove backface culling so we can see underwater

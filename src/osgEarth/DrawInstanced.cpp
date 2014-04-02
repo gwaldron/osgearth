@@ -306,6 +306,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 
             // sampler that will hold the instance matrices:
             osg::Image* image = new osg::Image();
+            image->setName("osgearth.drawinstanced.postex");
             image->allocateImage( (int)texSize.x(), (int)texSize.y(), 1, GL_RGBA, GL_FLOAT );
 
             osg::Texture2D* postex = new osg::Texture2D( image );
@@ -317,6 +318,9 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             postex->setUnRefImageDataAfterApply( true );
             if ( !ImageUtils::isPowerOfTwo(image) )
                 postex->setResizeNonPowerOfTwoHint( false );
+
+            // Tell the SG to skip the positioning texture.
+            ShaderGenerator::setIgnoreHint(postex, true);
 
             osg::StateSet* stateset = sliceGroup->getOrCreateStateSet();
             stateset->setTextureAttributeAndModes(POSTEX_TEXTURE_UNIT, postex, 1);

@@ -55,13 +55,15 @@ Stroke::Stroke(const Stroke& rhs)
 void
 Stroke::init()
 {
-    _color.set         ( 1.0f, 1.0f, 1.0f, 1.0f );
-    _lineCap.init      ( LINECAP_FLAT );
-    _lineJoin.init     ( LINEJOIN_ROUND );
-    _width.init        ( 1.0f );
-    _widthUnits.init   ( Units::PIXELS );
-    _roundingRatio.init( 0.4f );
-    _minPixels.init    ( 0.0f );
+    _color.set          ( 1.0f, 1.0f, 1.0f, 1.0f );
+    _lineCap.init       ( LINECAP_FLAT );
+    _lineJoin.init      ( LINEJOIN_ROUND );
+    _width.init         ( 1.0f );
+    _widthUnits.init    ( Units::PIXELS );
+    _roundingRatio.init ( 0.4f );
+    _minPixels.init     ( 0.0f );
+    _stipplePattern.init( 0xFFFF );
+    _stippleFactor.init ( 1u );
 }
 
 Config 

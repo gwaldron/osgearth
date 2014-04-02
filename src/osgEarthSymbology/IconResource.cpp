@@ -150,6 +150,9 @@ IconResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions
     ReadResult r = uri.readImage( dbOptions );
     if ( r.succeeded() )
     {
+        OE_INFO << LC << "Loaded " << uri.base() << "(from " << (r.isFromCache()? "cache" : "source") << ")"
+            << std::endl;
+
         if ( r.getImage() )
         {
             node = buildIconModel( r.releaseImage() );

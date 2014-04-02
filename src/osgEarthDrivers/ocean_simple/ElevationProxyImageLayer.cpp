@@ -21,6 +21,9 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers::SimpleOcean;
 
+#define LC "[ElevationProxyImageLayer] "
+
+
 ElevationProxyImageLayer::ElevationProxyImageLayer(const Map* sourceMap,
                                                    const ImageLayerOptions& options ) :
 ImageLayer( options ),
@@ -33,11 +36,11 @@ void
 ElevationProxyImageLayer::initTileSource()
 {
     _tileSourceInitAttempted = true;
-    _tileSourceInitFailed    = true;
+    _tileSourceInitFailed    = false;
 }
 
 bool
-ElevationProxyImageLayer::isKeyValid( const TileKey& key ) const
+ElevationProxyImageLayer::isKeyInRange( const TileKey& key ) const
 {
     return key.getLevelOfDetail() <= *_runtimeOptions.maxLevel();
 }
@@ -49,7 +52,7 @@ ElevationProxyImageLayer::isCached( const TileKey& key ) const
 }
 
 GeoImage
-ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* progress, bool forceFallback)
+ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* progress)
 {
     if ( _mapf.needsSync() )
     {
@@ -62,7 +65,7 @@ ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* prog
 
     osg::ref_ptr<osg::HeightField> hf;
 
-    if ( _mapf.getHeightField(key, true, hf) )
+    if ( _mapf.populateHeightField(hf, key, true) )
     {
         // encode the heightfield as a 16-bit normalized LUNIMANCE image
         osg::Image* image = new osg::Image();
@@ -77,5 +80,9 @@ ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* prog
         }
 
         return GeoImage( image, key.getExtent() );
+    }
+    else
+    {
+        return GeoImage::INVALID;
     }
 }

@@ -52,6 +52,20 @@ using namespace osgEarth::Symbology;
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 
+namespace
+{
+    // callback to force features onto the high-latency queue.
+    struct HighLatencyFileLocationCallback : public osgDB::FileLocationCallback
+    {
+        Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        {
+            return REMOTE_FILE;
+        }
+
+        bool useFileCache() const { return false; }
+    };
+}
+
 //---------------------------------------------------------------------------
 
 // pseudo-loader for paging in feature tiles for a FeatureModelGraph.
@@ -78,7 +92,8 @@ namespace
                                 float maxRange, 
                                 float priOffset, 
                                 float priScale,
-                                RefNodeOperationVector* postMergeOps)
+                                RefNodeOperationVector* postMergeOps,
+                                osgDB::FileLocationCallback* flc)
     {
 #ifdef USE_PROXY_NODE_FOR_TESTING
         osg::ProxyNode* p = new osg::ProxyNode();
@@ -88,13 +103,17 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        //p->setRadius(std::max((float)bs.radius(),maxRange));
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
         p->setPriorityOffset( 0, priOffset );
         p->setPriorityScale( 0, priScale );
 #endif
+
+        // force onto the high-latency thread pool.
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
+        options->setFileLocationCallback( flc );
+        p->setDatabaseOptions( options );
 
         return p;
     }
@@ -132,7 +151,10 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
             osg::ref_ptr<const Map> map = graph->getSession()->getMap();
             if (map.valid() == true)
             {
-                return ReadResult( graph->load( lod, x, y, uri ) );
+                Registry::instance()->startActivity(uri);
+                osg::Node* node = graph->load( lod, x, y, uri );
+                Registry::instance()->endActivity(uri);
+                return ReadResult(node);
             }
         }
 
@@ -226,6 +248,9 @@ _overlayChange     ( OVERLAY_NO_CHANGE )
     // scene graph by the pager.
     _postMergeOperations = new RefNodeOperationVector();
 
+    // an FLC that queues feature data on the high-latency thread.
+    _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
+
     // install the stylesheet in the session if it doesn't already have one.
     if ( !session->styles() )
         session->setStyles( _options.styles().get() );
@@ -238,7 +263,7 @@ _overlayChange     ( OVERLAY_NO_CHANGE )
 
     // set up a shared resource cache for the session. The ResourceCache will make sure
     // that resources (skin textures, instance models, etc.) only get loaded once.
-    if ( !session->getResourceCache() )
+    if ( !session->getResourceCache() && _options.sessionWideResourceCache() == true )
     {
         session->setResourceCache( new ResourceCache(session->getDBOptions()) );
     }
@@ -470,7 +495,8 @@ FeatureModelGraph::setupPaging()
         maxRange, 
         *_options.layout()->priorityOffset(), 
         *_options.layout()->priorityScale(),
-        _postMergeOperations.get() );
+        _postMergeOperations.get(),
+        _defaultFileLocationCallback.get() );
 
     return pagedNode;
 }
@@ -663,7 +689,8 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     0.0f, maxRange, 
                     *_options.layout()->priorityOffset(), 
                     *_options.layout()->priorityScale(),
-                    _postMergeOperations.get() );
+                    _postMergeOperations.get(),
+                    _defaultFileLocationCallback.get() );
 
                 parent->addChild( pagedNode );
             }

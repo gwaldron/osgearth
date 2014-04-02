@@ -20,7 +20,7 @@
 #include "TritonNode"
 #include "TritonContext"
 #include "TritonDrawable"
-#include <osgEarth/ElevationLOD>
+#include <osgEarth/CullingUtils>
 #include <Triton.h>
 
 #define LC "[TritonNode] "
@@ -30,19 +30,25 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Drivers::Triton;
 
 TritonNode::TritonNode(const Map*           map,
-                       const TritonOptions& options)
+                       const TritonOptions& options) :
+OceanNode( options ),
+_options ( options )
 {
-    _TRITON = new TritonContext( options );
-    _TRITON->setSRS( map->getSRS() );
+    if ( map )
+        setSRS( map->getSRS() );
 
+    _TRITON = new TritonContext( options );
+
+    if ( map )
+        _TRITON->setSRS( map->getSRS() );
+
+    _drawable = new TritonDrawable(_TRITON);
     osg::Geode* geode = new osg::Geode();
-    geode->setCullingActive( false );
-    geode->addDrawable( new TritonDrawable(_TRITON) );
+    geode->addDrawable( _drawable );
 
     this->addChild( geode );
-    
-    // Triton requires an update pass.
-    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+
+    this->setNumChildrenRequiringUpdateTraversal(1);
 }
 
 TritonNode::~TritonNode()
@@ -54,18 +60,24 @@ void
 TritonNode::onSetSeaLevel()
 {
     if ( _TRITON->ready() )
+    {
         _TRITON->getEnvironment()->SetSeaLevel( getSeaLevel() );
+    }
+    dirtyBound();
+}
+
+osg::BoundingSphere
+TritonNode::computeBound() const
+{
+    return osg::BoundingSphere();
 }
 
 void
 TritonNode::traverse(osg::NodeVisitor& nv)
 {
-    if ( _TRITON->ready() )
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR && _TRITON->ready() )
     {
-        if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
-        {
-            _TRITON->update( nv.getFrameStamp()->getSimulationTime() );
-        }
+        _TRITON->update(nv.getFrameStamp()->getSimulationTime());
     }
-    osgEarth::Util::OceanNode::traverse( nv );
+    OceanNode::traverse(nv);
 }

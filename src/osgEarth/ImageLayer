@@ -279,12 +279,13 @@ namespace osgEarth
          * image is in the profile of the key and will be reprojected, mosaiced and
          * cropped automatically.
          */
-        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0, bool forceFallback =false);
+        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
 
         /**
          * Creates an image that is in the image layer's native profile.
          */
-        GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
+        GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress);
+
 
     public: // TerrainLayer override
 
@@ -294,16 +295,16 @@ namespace osgEarth
     protected:
 
         // Creates an image that's in the same profile as the provided key.
-        GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
+        GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress);
 
         // Fetches an image from the underlying TileSource whose data matches that of the
         // key extent.
-        GeoImage createImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
+        GeoImage createImageFromTileSource(const TileKey& key, ProgressCallback* progress);
 
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
         // returns a single tile. This is called by createImageFromTileSource() if the key profile
         // doesn't match the layer profile.
-        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool& out_isFallback);
+        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
 
 
         virtual void initTileSource();

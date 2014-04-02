@@ -24,13 +24,11 @@
 #include <osg/Version>
 #include <osgEarth/Export>
 
-
-#define USE_FILELOCATIONCALLBACK OSG_MIN_VERSION_REQUIRED(2,9,5)
-
+#define USE_FILELOCATIONCALLBACK 1
 
 #if USE_FILELOCATIONCALLBACK
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
      * A database pager callback that determines if the given filename is cached or not
@@ -43,7 +41,7 @@ namespace osgEarth_engine_mp
         /** dtor */
         virtual ~FileLocationCallback() { }
 
-        virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        Location fileLocation(const std::string& filename, const osgDB::Options* options)
         {
             Location result = REMOTE_FILE;
 
@@ -72,13 +70,15 @@ namespace osgEarth_engine_mp
                 }
             }
 
+            //OE_NOTICE << (result?"REMOTE":"LOCAL") << " - " << filename << std::endl;
+
             return result;
         }
 
-        virtual bool useFileCache() const { return false; }
+        bool useFileCache() const { return false; }
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
 #endif // USE_FILELOCATIONCALLBACK
 

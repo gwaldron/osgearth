@@ -12,3 +12,4 @@ to those above):
     :lighting:              Whether to override and set the lighting mode on this layer (t/f)
     :max_granularity:       Anglular threshold at which to subdivide lines on a globe (degrees)
     :shader_policy:         Options for shader generation (see: `Shader Policy`_)
+	:use_texture_arrays:    Whether to use texture arrays for wall and roof skins if you're card supports them.  (default is ``true``)

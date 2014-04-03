@@ -32,6 +32,10 @@
 using namespace osgEarth::Util;
 using namespace osgEarth;
 
+// A global mutex to make sure that we're not creating directories concurrently.
+// If you don't do this you will get 
+static OpenThreads::Mutex s_dirLock;
+
 
 namespace
 {
@@ -70,7 +74,10 @@ namespace
                         final = ImageUtils::convertToRGB8( image.getImage() );
 
                     // dump it to disk
-                    osgDB::makeDirectoryForFile( _path );
+                    {
+                        OpenThreads::ScopedLock< OpenThreads::Mutex > lk( s_dirLock );
+                        osgDB::makeDirectoryForFile( _path );
+                    }
                     tileOK = osgDB::writeImageFile( *final.get(), _path, _imageWriteOptions);
 
                     if ( _verbose )
@@ -130,7 +137,11 @@ namespace
                 osg::ref_ptr<osg::Image> image = conv.convert( hf.getHeightField() );
 
                 // dump it to disk
-                osgDB::makeDirectoryForFile( _path );
+                // attempt to create the output folder:
+                {
+                    OpenThreads::ScopedLock< OpenThreads::Mutex > lk( s_dirLock );
+                    osgDB::makeDirectoryForFile( _path );
+                }
 				tileOK = osgDB::writeImageFile(*image.get(), _path, _elevationWriteOptions);
 
                 if ( _verbose )
@@ -244,7 +255,7 @@ TMSPackager::packageImageTile(ImageLayer*                  layer,
             if ( !tileOK )
             {
                 CreateImageTileTask *task = new CreateImageTileTask(this, layer, key, path, extension, _writeOptions, _keepEmptyImageTiles, _verbose);                                
-                service->add( task );
+                service->add( task );                
                 _numAdded++;
                 tileOK = true;
             }
@@ -379,7 +390,10 @@ TMSPackager::package(ImageLayer*        layer,
         return Result( "Illegal null layer or profile" );
 
     // attempt to create the output folder:
-    osgDB::makeDirectory( rootFolder );
+    {
+        OpenThreads::ScopedLock< OpenThreads::Mutex > lk( s_dirLock );
+        osgDB::makeDirectory( rootFolder );
+    }
     if ( !osgDB::fileExists( rootFolder ) )
         return Result( "Unable to create output folder" );
 
@@ -507,7 +521,11 @@ TMSPackager::package(ElevationLayer*    layer,
         return Result( "Illegal null layer or profile" );
 
     // attempt to create the output folder:
-    osgDB::makeDirectory( rootFolder );
+    // attempt to create the output folder:
+    {
+        OpenThreads::ScopedLock< OpenThreads::Mutex > lk( s_dirLock );
+        osgDB::makeDirectory( rootFolder );
+    }
     if ( !osgDB::fileExists( rootFolder ) )
         return Result( "Unable to create output folder" );
 

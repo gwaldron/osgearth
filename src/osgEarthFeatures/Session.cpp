@@ -48,7 +48,9 @@ _dbOptions     ( dbOptions )
     else
         _styles = new StyleSheet();
 
-    // if no script engine was created when the style was set above, create a default javascript one
+    // If no script engine was created when the style was set above, create a
+    // default JS one if possible. This enables the use of "inline" scripting 
+    // in StringExpression and NumericExpression style values.
     if (!_styleScriptEngine.valid())
       _styleScriptEngine = ScriptEngineFactory::create("javascript", "", true);
 

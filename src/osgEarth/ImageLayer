@@ -121,6 +121,13 @@ namespace osgEarth
         optional<osg::Texture::FilterMode>& magFilter() { return _magFilter; }
         const optional<osg::Texture::FilterMode>& magFilter() const { return _magFilter; }
 
+        /**
+         * Texture compression mode to use. Default is "unset", which means to 
+         * automatically compute the best compression mode to use.
+         */
+        optional<osg::Texture::InternalFormatMode>& textureCompression() { return _texcomp; }
+        const optional<osg::Texture::InternalFormatMode>& textureCompression() const { return _texcomp; }
+
     public:
 
         virtual Config getConfig() const { return getConfig(false); }
@@ -142,6 +149,7 @@ namespace osgEarth
         optional<bool>        _featherPixels;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<osg::Texture::FilterMode> _magFilter;
+        optional<osg::Texture::InternalFormatMode> _texcomp;
     };
 
     //--------------------------------------------------------------------
@@ -286,6 +294,10 @@ namespace osgEarth
          */
         GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress);
 
+        /**
+         * Applies the texture compression options to a texture.
+         */
+        void applyTextureCompressionMode(osg::Texture* texture) const;
 
     public: // TerrainLayer override
 

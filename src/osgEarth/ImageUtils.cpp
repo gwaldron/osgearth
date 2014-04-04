@@ -19,6 +19,8 @@
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Notify>
 #include <osg/Texture>
 #include <osg/ImageSequence>
@@ -636,6 +638,66 @@ ImageUtils::isSingleColorImage(const osg::Image* image, float threshold)
         }
     }
     return true;
+}
+
+bool
+ImageUtils::computeTextureCompressionMode(const osg::Image*                 image,
+                                          osg::Texture::InternalFormatMode& out_mode)
+{
+    if (!image)
+        return false;
+
+    const Capabilities& caps = Registry::capabilities();
+#ifndef OSG_GLES2_AVAILABLE
+    if (image->getPixelFormat() == GL_RGBA && image->getPixelSizeInBits() == 32) 
+    {
+        if (caps.supportsTextureCompression(osg::Texture::USE_S3TC_DXT5_COMPRESSION))
+        {
+            out_mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
+            return true;
+        }
+        else if (caps.supportsTextureCompression(osg::Texture::USE_ARB_COMPRESSION))
+        {
+            out_mode = osg::Texture::USE_ARB_COMPRESSION;
+            return true;
+        }
+    }
+    else if (image->getPixelFormat() == GL_RGB && image->getPixelSizeInBits() == 24)
+    {
+        if (caps.supportsTextureCompression(osg::Texture::USE_S3TC_DXT1_COMPRESSION))
+        {
+            out_mode = osg::Texture::USE_S3TC_DXT1_COMPRESSION;
+            return true;
+        }
+        else if (caps.supportsTextureCompression(osg::Texture::USE_ARB_COMPRESSION))
+        {
+            out_mode = osg::Texture::USE_ARB_COMPRESSION;
+            return true;
+        }
+    }
+#else
+    if (caps.supportsTextureCompression(osg::Texture::USE_PVRTC_4BPP_COMPRESSION))
+    {
+        out_mode = osg::Texture::USE_PVRTC_4BPP_COMPRESSION;
+        return true;
+    }
+    else if (caps.supportsTextureCompression(osg::Texture::USE_PVRTC_2BPP_COMPRESSION))
+    {
+        out_mode = osg::Texture::USE_PVRTC_2BPP_COMPRESSION;
+        return true;
+    }
+    else if (caps.supportsTextureCompression(osg::Texture::USE_ETC_COMPRESSION))
+    {
+        out_mode = osg::Texture::USE_ETC_COMPRESSION;
+        return true;
+    }
+    else if (caps.supportsTextureCompression(osg::Texture::USE_ARB_COMPRESSION))
+    {
+        out_mode = osg::Texture::USE_ARB_COMPRESSION;
+        return true;
+    }
+#endif
+    return false;
 }
 
 bool

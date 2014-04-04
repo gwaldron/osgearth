@@ -157,6 +157,8 @@ _fallbackData( fallbackData )
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
 
+    layer->applyTextureCompressionMode( _texture.get() );
+
     // Disable mip mapping for npot tiles
     if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))
     {
@@ -199,14 +201,14 @@ TileModel::ColorData::releaseGLObjects(osg::State* state) const
 //------------------------------------------------------------------
 
 TileModel::TileModel(const TileModel& rhs) :
-_mapInfo       ( rhs._mapInfo ),
-_revision      ( rhs._revision ),
-_tileKey       ( rhs._tileKey ),
-_tileLocator   ( rhs._tileLocator.get() ),
-_colorData     ( rhs._colorData ),
-_elevationData ( rhs._elevationData ),
-_sampleRatio   ( rhs._sampleRatio ),
-_parentStateSet( rhs._parentStateSet )
+_mapInfo         ( rhs._mapInfo ),
+_revision        ( rhs._revision ),
+_tileKey         ( rhs._tileKey ),
+_tileLocator     ( rhs._tileLocator.get() ),
+_colorData       ( rhs._colorData ),
+_elevationData   ( rhs._elevationData ),
+_sampleRatio     ( rhs._sampleRatio ),
+_parentStateSet  ( rhs._parentStateSet )
 {
     //nop
 }
@@ -235,7 +237,7 @@ TileModel::updateTraverse(osg::NodeVisitor& nv) const
             osg::Texture* tex = i->second.getTexture();
             if ( tex )
             {
-                for(int r=0; r<tex->getNumImages(); ++r )
+                for(int r=0; r<(int)tex->getNumImages(); ++r )
                 {
                     osg::Image* image = tex->getImage(r);
                     if ( image && image->requiresUpdateCall() )

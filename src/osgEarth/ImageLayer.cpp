@@ -66,6 +66,7 @@ ImageLayerOptions::setDefaults()
     _featherPixels.init( false );
     _minFilter.init( osg::Texture::LINEAR );
     _magFilter.init( osg::Texture::LINEAR );
+    _texcomp.init( (osg::Texture::InternalFormatMode)~0 );
 }
 
 void
@@ -107,6 +108,10 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
     conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+
+    conf.getIfSet("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
+    conf.getIfSet("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
+    //TODO add all the enums
 }
 
 Config
@@ -146,7 +151,11 @@ ImageLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
     conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    
+
+    conf.updateIfSet("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
+    conf.updateIfSet("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
+    //TODO add all the enums
+
     return conf;
 }
 
@@ -761,4 +770,26 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
     }
 
     return result;
+}
+
+
+void
+ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
+{
+    if ( tex == 0L )
+        return;
+
+    if ( _runtimeOptions.textureCompression() == (osg::Texture::InternalFormatMode)~0 )
+    {
+        // auto - pick a good one.
+        osg::Texture::InternalFormatMode mode;
+        if (ImageUtils::computeTextureCompressionMode(tex->getImage(0), mode))
+        {
+            tex->setInternalFormatMode(mode);
+        }
+    }
+    else if ( _runtimeOptions.textureCompression().isSet() )
+    {
+        tex->setInternalFormatMode( *_runtimeOptions.textureCompression() );
+    }
 }

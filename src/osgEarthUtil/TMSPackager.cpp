@@ -451,8 +451,10 @@ TMSPackager::package(ImageLayer*        layer,
         OE_NOTICE << LC << "MIME-TYPE = " << mimeType << ", Extension = " << extension << std::endl;
     }
 
+    // Only keep 1000 jobs in the queue
+    unsigned int maxSize = 1000;
     unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
-    osg::ref_ptr<osgEarth::TaskService> taskService = new osgEarth::TaskService("TMS Packager", num);
+    osg::ref_ptr<osgEarth::TaskService> taskService = new osgEarth::TaskService("TMS Packager", num, maxSize);
 
     //Estimate the number of tiles
     _total = 0;    

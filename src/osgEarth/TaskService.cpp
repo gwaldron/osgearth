@@ -65,9 +65,10 @@ TaskRequest::wasCanceled() const
 
 //------------------------------------------------------------------------
 
-TaskRequestQueue::TaskRequestQueue() :
+TaskRequestQueue::TaskRequestQueue(unsigned int maxSize) :
 osg::Referenced( true ),
-_done( false )
+_done( false ),
+_maxSize( maxSize )
 {
 }
 
@@ -94,10 +95,26 @@ TaskRequestQueue::add( TaskRequest* request )
     if ( !request->getProgressCallback() )
         request->setProgressCallback( new ProgressCallback() );
 
-    ScopedLock<Mutex> lock(_mutex);
+    // Lock on the add mutex so no one else can add.
+    ScopedLock<Mutex> lock( _addMutex );
 
+    if (_maxSize > 0)
+    {
+        if (_requests.size() == _maxSize)    
+        {        
+            //OE_NOTICE << "Waiting on add...." << std::endl;
+            _addCond.wait( &_addMutex );        
+            //OE_NOTICE << "I have awakend!" << std::endl;
+        }
+    }
+
+
+    // Now lock on the main mutex to protect the queue
+    ScopedLock<Mutex> lock2( _mutex );
     // insert by priority.
     _requests.insert( std::pair<float,TaskRequest*>(request->getPriority(), request) );
+
+    //OE_NOTICE << "There are now " << _requests.size() << " tasks" << std::endl;
 
     // since there is data in the queue, wake up one waiting task thread.
     _cond.signal(); 
@@ -109,9 +126,8 @@ TaskRequestQueue::get()
     ScopedLock<Mutex> lock(_mutex);
 
     while ( !_done && _requests.empty() )
-    {
-        // releases the mutex and waits on the condition.
-        _cond.wait( &_mutex );
+    {                
+        _cond.wait( &_mutex );        
     }
 
     if ( _done )
@@ -124,8 +140,9 @@ TaskRequestQueue::get()
 
     // I'm done, someone else take a turn:
     // (technically this shouldn't be necessary since add() bumps the semaphore once
-    // for each request in the queue)
-    _cond.signal();
+    // for each request in the queue)    
+    _cond.signal();    
+    _addCond.signal();
 
     return next.release();
 }
@@ -233,13 +250,13 @@ TaskThread::cancel()
 
 //------------------------------------------------------------------------
 
-TaskService::TaskService( const std::string& name, int numThreads ):
+TaskService::TaskService( const std::string& name, int numThreads, unsigned int maxSize ):
 osg::Referenced( true ),
 _lastRemoveFinishedThreadsStamp(0),
 _name(name),
 _numThreads( 0 )
 {
-    _queue = new TaskRequestQueue();
+    _queue = new TaskRequestQueue( maxSize );
     setNumThreads( numThreads );
 }
 

@@ -39,7 +39,6 @@ SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
                                            TileNodeRegistry*             liveTiles,
                                            TileNodeRegistry*             deadTiles,
                                            const MPTerrainEngineOptions& options,
-                                           TerrainNode*                  terrain,
                                            UID                           engineUID ) :
 _frame           ( map ),
 _modelFactory    ( modelFactory ),
@@ -47,7 +46,6 @@ _modelCompiler   ( modelCompiler ),
 _liveTiles       ( liveTiles ),
 _deadTiles       ( deadTiles ),
 _options         ( options ),
-_terrain         ( terrain ),
 _engineUID       ( engineUID )
 {
     //nop

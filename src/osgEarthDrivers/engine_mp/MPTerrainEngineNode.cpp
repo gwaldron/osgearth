@@ -467,11 +467,10 @@ MPTerrainEngineNode::getKeyNodeFactory()
             _liveTiles.get(),
             _deadTiles.get(),
             _terrainOptions,
-            _terrain, 
             _uid );
     }
 
-    return knf.get();
+    return knf.release();
 }
 
 osg::Node*

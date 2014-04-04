@@ -648,7 +648,9 @@ ImageUtils::computeTextureCompressionMode(const osg::Image*                 imag
         return false;
 
     const Capabilities& caps = Registry::capabilities();
+
 #ifndef OSG_GLES2_AVAILABLE
+
     if (image->getPixelFormat() == GL_RGBA && image->getPixelSizeInBits() == 32) 
     {
         if (caps.supportsTextureCompression(osg::Texture::USE_S3TC_DXT5_COMPRESSION))
@@ -656,6 +658,7 @@ ImageUtils::computeTextureCompressionMode(const osg::Image*                 imag
             out_mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
             return true;
         }
+        //todo: add ETC2
         else if (caps.supportsTextureCompression(osg::Texture::USE_ARB_COMPRESSION))
         {
             out_mode = osg::Texture::USE_ARB_COMPRESSION;
@@ -669,13 +672,21 @@ ImageUtils::computeTextureCompressionMode(const osg::Image*                 imag
             out_mode = osg::Texture::USE_S3TC_DXT1_COMPRESSION;
             return true;
         }
+        else if (caps.supportsTextureCompression(osg::Texture::USE_ETC_COMPRESSION))
+        {
+            // ETC1 is RGB only
+            out_mode = osg::Texture::USE_ETC_COMPRESSION;
+            return true;
+        }
         else if (caps.supportsTextureCompression(osg::Texture::USE_ARB_COMPRESSION))
         {
             out_mode = osg::Texture::USE_ARB_COMPRESSION;
             return true;
         }
     }
-#else
+
+#else // OSG_GLES2_AVAILABLE
+
     if (caps.supportsTextureCompression(osg::Texture::USE_PVRTC_4BPP_COMPRESSION))
     {
         out_mode = osg::Texture::USE_PVRTC_4BPP_COMPRESSION;
@@ -691,12 +702,9 @@ ImageUtils::computeTextureCompressionMode(const osg::Image*                 imag
         out_mode = osg::Texture::USE_ETC_COMPRESSION;
         return true;
     }
-    else if (caps.supportsTextureCompression(osg::Texture::USE_ARB_COMPRESSION))
-    {
-        out_mode = osg::Texture::USE_ARB_COMPRESSION;
-        return true;
-    }
+
 #endif
+
     return false;
 }
 

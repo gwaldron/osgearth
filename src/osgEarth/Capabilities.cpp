@@ -346,7 +346,7 @@ _supportsRGTC           ( false )
         if ( _supportsPVRTC ) OE_INFO_CONTINUE << "PVR ";
 
         _supportsETC = osg::isGLExtensionSupported( id, "GL_OES_compressed_ETC1_RGB8_texture" );
-        if ( _supportsETC ) OE_INFO_CONTINUE << "ETC ";
+        if ( _supportsETC ) OE_INFO_CONTINUE << "ETC1 ";
 
         _supportsRGTC = osg::isGLExtensionSupported( id, "GL_EXT_texture_compression_rgtc" );
         if ( _supportsRGTC ) OE_INFO_CONTINUE << "RG";

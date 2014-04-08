@@ -354,9 +354,9 @@ namespace osgEarth
         virtual void _init();
         virtual bool _isEquivalentTo( const SpatialReference* srs, bool considerVDatum =true ) const;
 
-        virtual bool preTransform(std::vector<osg::Vec3d>&) const { return true; }
+        virtual const SpatialReference* preTransform(std::vector<osg::Vec3d>&) const { return this; }
 
-        virtual bool postTransform(std::vector<osg::Vec3d>&) const { return true; }
+        virtual const SpatialReference* postTransform(std::vector<osg::Vec3d>&) const { return this; }
 
         bool transformXYPointArrays(
             double*  x,

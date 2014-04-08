@@ -33,7 +33,7 @@ TangentPlaneSpatialReference::TangentPlaneSpatialReference( void* handle, const 
 SpatialReference( handle, false ),
 _originLLA      ( originLLA )
 {
-    //todo, set proper init string?
+    //nop
 }
 
 void
@@ -58,28 +58,33 @@ TangentPlaneSpatialReference::_init()
     _world2local.invert( _local2world );
 }
 
-bool
-TangentPlaneSpatialReference::preTransform(double& x, double& y, double& z, void* context) const
+const SpatialReference*
+TangentPlaneSpatialReference::preTransform(std::vector<osg::Vec3d>& points) const
 {
-    osg::Vec3d world = osg::Vec3d(x,y,z) * _local2world;
-    double lat, lon, height;
-    getEllipsoid()->convertXYZToLatLongHeight(world.x(), world.y(), world.z(), lat, lon, height);
-    x = osg::RadiansToDegrees(lon);
-    y = osg::RadiansToDegrees(lat);
-    z = height;
-    return true;
+    for(std::vector<osg::Vec3d>::iterator i = points.begin(); i != points.end(); ++i)
+    {
+        osg::Vec3d world = (*i) * _local2world;
+        double lat, lon, height;
+        getEllipsoid()->convertXYZToLatLongHeight(world.x(), world.y(), world.z(), lat, lon, height);
+        i->x() = osg::RadiansToDegrees(lon);
+        i->y() = osg::RadiansToDegrees(lat);
+        i->z() = height;
+    }
+    return getGeodeticSRS();
 }
 
-bool
-TangentPlaneSpatialReference::postTransform(double& x, double& y, double& z, void* context) const
+const SpatialReference*
+TangentPlaneSpatialReference::postTransform(std::vector<osg::Vec3d>& points) const
 {
     osg::Vec3d world;
-    getEllipsoid()->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians(y), osg::DegreesToRadians(x), z,
-        world.x(), world.y(), world.z() );
-    osg::Vec3d local = world * _world2local;
-    x = local.x(), y = local.y(), z = local.z();
-    return true;
+    for(std::vector<osg::Vec3d>::iterator i = points.begin(); i != points.end(); ++i)
+    {
+        getEllipsoid()->convertLatLongHeightToXYZ(
+            osg::DegreesToRadians(i->y()), osg::DegreesToRadians(i->x()), i->z(),
+            world.x(), world.y(), world.z() );
+        i->set( world * _world2local );
+    }
+    return getGeodeticSRS();
 }
 
 bool

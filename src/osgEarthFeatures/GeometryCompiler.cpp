@@ -409,14 +409,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         ExtrudeGeometryFilter extrude;
         extrude.setStyle( style );
-        // See if they support texture arrays at all.
-        bool textureArrays = Registry::capabilities().supportsTextureArrays();
-        // If they do support texture arrays and they are 
-        if ( textureArrays && !*_options.useTextureArrays())
-        {
-            textureArrays = false;            
-        }
-        extrude.useTextureArrays() = textureArrays;
+
+        // Activate texture arrays if the GPU supports them and if the user
+        // hasn't disabled them.        
+        extrude.useTextureArrays() =
+            Registry::capabilities().supportsTextureArrays() &&
+            _options.useTextureArrays() == true;
 
         // apply per-feature naming if requested.
         if ( _options.featureName().isSet() )

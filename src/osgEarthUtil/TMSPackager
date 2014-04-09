@@ -138,6 +138,9 @@ namespace osgEarth { namespace Util
          */
         void reportProgress( const std::string& message );
 
+
+        void cancel(const std::string& msg="");
+
     protected:
 
         void packageImageTile(
@@ -179,8 +182,10 @@ namespace osgEarth { namespace Util
         unsigned                    _maxLevel;
         std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;
-		osg::ref_ptr<osgDB::Options>    _writeOptions;
+		    osg::ref_ptr<osgDB::Options>    _writeOptions;
+        std::string                 _errorMessage;
 
+        osg::ref_ptr<osgEarth::TaskService> _taskService;
         osg::ref_ptr< osgEarth::ProgressCallback > _progress;
     };
 

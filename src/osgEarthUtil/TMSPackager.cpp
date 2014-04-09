@@ -50,7 +50,7 @@ namespace
         }
 
         virtual void operator()(ProgressCallback* progress )
-        {            
+        {
             bool tileOK = false;
 
             std::stringstream message;
@@ -73,17 +73,35 @@ namespace
                     osgDB::makeDirectoryForFile( _path );
                     tileOK = osgDB::writeImageFile( *final.get(), _path, _imageWriteOptions);
 
+                    if ( !tileOK )
+                    {
+                        std::string errMsg = "Error writing image for tile " + _key.str();
+
+                        OE_WARN << LC << errMsg << std::endl;
+
+                        _packager->cancel(errMsg);
+                    }
+
                     if ( _verbose )
                     {
                         if ( tileOK ) {
                             message << "Wrote tile " << _key.str() << " (" << _key.getExtent().toString() << ")";
                         }
                         else {
-                            message << "Error write tile " << _key.str();
+                            message << "Error writing image for tile " << _key.str();
                         }
                     }                   
                 }
             }
+            else
+            {
+                std::string errMsg = "Image creation failed for tile " + _key.str();
+
+                OE_WARN << LC << errMsg << std::endl;
+
+                _packager->cancel(errMsg);
+            }
+
             _packager->incrementCompleted();
             if (_verbose)
             {
@@ -173,12 +191,16 @@ _abortOnError       ( true ),
 _writeOptions  (writeOptions),
 _numAdded           ( 0 ),
 _total              ( 0 ),
-_completed          ( 0 )
+_completed          ( 0 ),
+_errorMessage       ("")
 {
     // Pre-load some extensions since the getReaderWriterForExtension function isn't threadsafe and can cause tiles to not be written.
     osgDB::Registry::instance()->getReaderWriterForExtension("png");
     osgDB::Registry::instance()->getReaderWriterForExtension("jpg");
     osgDB::Registry::instance()->getReaderWriterForExtension("tiff");
+
+    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
+    _taskService = new osgEarth::TaskService("TMS Packager", num);
 }
 
 
@@ -369,6 +391,9 @@ TMSPackager::package(ImageLayer*        layer,
                      osgEarth::ProgressCallback* progress,
                      const std::string& overrideExtension )
 {
+    if (progress && progress->isCanceled())
+        return Result();
+
     resetStats();
 
     _progress = progress;
@@ -437,9 +462,6 @@ TMSPackager::package(ImageLayer*        layer,
         OE_NOTICE << LC << "MIME-TYPE = " << mimeType << ", Extension = " << extension << std::endl;
     }
 
-    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
-    osg::ref_ptr<osgEarth::TaskService> taskService = new osgEarth::TaskService("TMS Packager", num);
-
     //Estimate the number of tiles
     _total = 0;    
     CacheEstimator est;
@@ -456,16 +478,16 @@ TMSPackager::package(ImageLayer*        layer,
     unsigned maxLevel = 0;
     for( std::vector<TileKey>::const_iterator i = rootKeys.begin(); i != rootKeys.end(); ++i )
     {
-        packageImageTile( layer, *i, rootFolder, extension, taskService, maxLevel );
+        packageImageTile( layer, *i, rootFolder, extension, _taskService, maxLevel );
     }
 
     // Set the total to the actual # that was added
     _total = _numAdded;
 
     // Send a poison pill to kill all the threads
-    taskService->add( new PoisonPill() );
+    _taskService->add( new PoisonPill() );
 
-    taskService->waitforThreadsToComplete();
+    _taskService->waitforThreadsToComplete();
 
     osg::Timer_t end_t = timer->tick();
     double elapsed = osg::Timer::instance()->delta_s( start_t, end_t );
@@ -489,9 +511,7 @@ TMSPackager::package(ImageLayer*        layer,
     TMS::TileMapReaderWriter::write( tileMap.get(), tileMapFilename );
     reportProgress("Completed");
 
-    resetStats();
-
-    return Result();
+    return _errorMessage.empty() ? Result() : Result(_errorMessage);
 }
 
 
@@ -500,6 +520,11 @@ TMSPackager::package(ElevationLayer*    layer,
                      const std::string& rootFolder,
                      osgEarth::ProgressCallback* progress )
 {
+    if (progress && progress->isCanceled())
+        return Result();
+
+    resetStats();
+
     osg::Timer* timer = osg::Timer::instance();
     osg::Timer_t start_t = timer->tick();
 
@@ -545,23 +570,20 @@ TMSPackager::package(ElevationLayer*    layer,
     } 
     _total = est.getNumTiles();
 
-    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
-    osg::ref_ptr<osgEarth::TaskService> taskService = new osgEarth::TaskService("TMS Elevation Packager", num);
-
     // package the tile hierarchy
     unsigned maxLevel = 0;
     for( std::vector<TileKey>::const_iterator i = rootKeys.begin(); i != rootKeys.end(); ++i )
     {
-        packageElevationTile( layer, *i, rootFolder, extension, taskService, maxLevel );
+        packageElevationTile( layer, *i, rootFolder, extension, _taskService, maxLevel );
     }
 
     // Set the total to the actual # that was added
     _total = _numAdded;
 
     // Send a poison pill to kill all the threads
-    taskService->add( new PoisonPill() );
+    _taskService->add( new PoisonPill() );
 
-    taskService->waitforThreadsToComplete();
+    _taskService->waitforThreadsToComplete();
 
     reportProgress( "Completed"); 
 
@@ -587,9 +609,7 @@ TMSPackager::package(ElevationLayer*    layer,
     double elapsed = osg::Timer::instance()->delta_s( start_t, end_t );
     OE_DEBUG << LC << "Packaging elevation layer \"" << layer->getName() << "\" complete. Seconds elapsed: " << elapsed << std::endl;
 
-    resetStats();
-
-    return Result();
+    return _errorMessage.empty() ? Result() : Result(_errorMessage);
 }
 
 void TMSPackager::resetStats()
@@ -606,9 +626,18 @@ void TMSPackager::incrementCompleted()
 
 void TMSPackager::reportProgress( const std::string& message )
 {
-     if ( _progress.valid() )
+    if ( _progress.valid() )
     {     
         OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _mutex );
         _progress->reportProgress(_completed, _total, message );
+
+        if ( _progress->isCanceled() )
+            cancel();
     }
+}
+
+void TMSPackager::cancel(const std::string& msg)
+{
+    _errorMessage = msg;
+    _taskService->cancelAll();
 }

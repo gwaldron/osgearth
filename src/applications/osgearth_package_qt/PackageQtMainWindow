@@ -51,8 +51,8 @@ namespace
   class ExportProgressCallback : public osgEarth::ProgressCallback
   {
   public:
-    ExportProgressCallback(QProgressDialog* dialog)
-      : _dialog(dialog)
+    ExportProgressCallback(QMainWindow* parent, QProgressDialog* dialog)
+      : _parent(parent), _dialog(dialog)
     {
     }
 
@@ -65,7 +65,9 @@ namespace
         QMetaObject::invokeMethod(_dialog, "setValue", Qt::QueuedConnection, Q_ARG(int, (current / total) * 100));
 
         if (_dialog->wasCanceled())
+        {
           return true;
+        }
       }
 
       return false;
@@ -73,10 +75,15 @@ namespace
 
     void onCompleted()
     {
+      bool userCanceled = _dialog->wasCanceled();
       QMetaObject::invokeMethod(_dialog, "close", Qt::QueuedConnection);
+
+      if (!userCanceled)
+        QMetaObject::invokeMethod(_parent, "showExportResult", Qt::BlockingQueuedConnection);
     }
 
   private:
+    QMainWindow* _parent;
     QProgressDialog* _dialog;
   };
 
@@ -223,11 +230,11 @@ private slots:
 	        if (exportDialog.exec() == QDialog::Accepted)
 	        {
             //QProgressDialog* progress = new QProgressDialog(tr("Exporting. Please wait."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
-            QProgressDialog* progress = new QProgressDialog(tr("Processing layers..."), QString(), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
+            QProgressDialog* progress = new QProgressDialog(tr("Processing layers..."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
             progress->setAttribute(Qt::WA_DeleteOnClose, true);
             progress->setWindowTitle(tr("Exporting"));
             progress->setValue(0);
-            _exporter->setProgressCallback(new ExportProgressCallback(progress));
+            _exporter->setProgressCallback(new ExportProgressCallback(this, progress));
 
             progress->setWindowModality(Qt::WindowModal);
             progress->show();
@@ -254,6 +261,14 @@ private slots:
             _exportThread->start();
           }
         }
+    }
+
+    void showExportResult()
+    {
+      if (_exporter->isCanceled())
+        QMessageBox::warning(this, tr("Error"), tr(_exporter->getErrorMessage().c_str()));
+      else
+        QMessageBox::information(this, tr("Complete"), tr("The export finished successfully"));
     }
 
     void getBoundingBox(bool checked)

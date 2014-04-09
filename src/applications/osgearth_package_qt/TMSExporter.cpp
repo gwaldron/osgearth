@@ -85,6 +85,9 @@ namespace
 
     void execute()
     {
+      if (_callback->isCanceled())
+        return;
+
       TMSPackager packager( _map->getProfile(), _options);
 
       packager.setVerbose( _verbose );
@@ -92,16 +95,16 @@ namespace
       packager.setKeepEmptyImageTiles( _keepEmpties );
 
       if ( _maxLevel != ~0 )
-          packager.setMaxLevel( _maxLevel );
+        packager.setMaxLevel( _maxLevel );
 
       if (_bounds.size() > 0)
       {
-          for (unsigned int i = 0; i < _bounds.size(); ++i)
-          {
-              Bounds b = _bounds[i];            
-              if ( b.isValid() )
-                  packager.addExtent( osgEarth::GeoExtent(_map->getProfile()->getSRS(), b) );
-          }
+        for (unsigned int i = 0; i < _bounds.size(); ++i)
+        {
+          Bounds b = _bounds[i];            
+          if ( b.isValid() )
+            packager.addExtent( osgEarth::GeoExtent(_map->getProfile()->getSRS(), b) );
+        }
       }
 
       std::string layerRoot = osgDB::concatPaths( _rootFolder, _layerFolder );
@@ -119,6 +122,12 @@ namespace
           OE_NOTICE << LC << "Packaging elevation layer \"" << _layerFolder << "\"" << std::endl;
 
         _packageResult = packager.package( _elevationLayer.get(), layerRoot, _callback );
+      }
+
+      if (!_packageResult.ok)
+      {
+        _callback->message() = _packageResult.message;
+        _callback->cancel();
       }
     }
 
@@ -141,7 +150,7 @@ namespace
 
 
 TMSExporter::TMSExporter(const std::string& log)
-: _dbOptions(""), _maxLevel(~0), _keepEmpties(false), _errorMessage("")
+: _dbOptions(""), _maxLevel(~0), _keepEmpties(false), _errorMessage(""), _canceled(false)
 {
   unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
   _taskService = new osgEarth::TaskService("TMS Packager", num);
@@ -252,57 +261,59 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
   // Wait for them to complete
   semaphore.wait();
 
-
-  // Add successfully packaged layers to the new map object and
-  // write out the .earth file (if requested)
-  if (outMap.valid())
+  if (!_canceled)
   {
-    for( TaskRequestVector::iterator i = tasks.begin(); i != tasks.end(); ++i )
-    {
-      PackageLayer* p = dynamic_cast<PackageLayer*>(i->get());
-      if (p)
+      // Add successfully packaged layers to the new map object and
+      // write out the .earth file (if requested)
+      if (outMap.valid())
       {
-        if (p->_packageResult.ok)
+        for( TaskRequestVector::iterator i = tasks.begin(); i != tasks.end(); ++i )
         {
-          TMSOptions tms;
-          tms.url() = URI(osgDB::concatPaths(p->_layerFolder, "tms.xml"), outEarthFile );
-
-          if (p->_imageLayer.valid())
+          PackageLayer* p = dynamic_cast<PackageLayer*>(i->get());
+          if (p)
           {
-            ImageLayerOptions layerOptions( p->_imageLayer->getName(), tms );
-            layerOptions.mergeConfig( p->_imageLayer->getInitialOptions().getConfig(true) );
-            layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+            if (p->_packageResult.ok)
+            {
+              TMSOptions tms;
+              tms.url() = URI(osgDB::concatPaths(p->_layerFolder, "tms.xml"), outEarthFile );
 
-            outMap->addImageLayer( new ImageLayer(layerOptions) );
+              if (p->_imageLayer.valid())
+              {
+                ImageLayerOptions layerOptions( p->_imageLayer->getName(), tms );
+                layerOptions.mergeConfig( p->_imageLayer->getInitialOptions().getConfig(true) );
+                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+                outMap->addImageLayer( new ImageLayer(layerOptions) );
+              }
+              else
+              {
+                ElevationLayerOptions layerOptions( p->_elevationLayer->getName(), tms );
+                layerOptions.mergeConfig( p->_elevationLayer->getInitialOptions().getConfig(true) );
+                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+                outMap->addElevationLayer( new ElevationLayer(layerOptions) );
+              }
+            }
+            else
+            {
+              OE_WARN << LC << p->_packageResult.message << std::endl;
+            }
+          }
+        }
+      }
+
+      if ( outMap.valid() )
+      {
+          MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
+          osg::ref_ptr<MapNode> outMapNode = new MapNode(outMap.get(), outNodeOptions);
+          if ( !osgDB::writeNodeFile(*outMapNode.get(), outEarthFile) )
+          {
+              OE_WARN << LC << "Error writing earth file to \"" << outEarthFile << "\"" << std::endl;
           }
           else
           {
-            ElevationLayerOptions layerOptions( p->_elevationLayer->getName(), tms );
-            layerOptions.mergeConfig( p->_elevationLayer->getInitialOptions().getConfig(true) );
-            layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
-
-            outMap->addElevationLayer( new ElevationLayer(layerOptions) );
+              OE_NOTICE << LC << "Wrote earth file to \"" << outEarthFile << "\"" << std::endl;
           }
-        }
-        else
-        {
-          OE_WARN << LC << p->_packageResult.message << std::endl;
-        }
-      }
-    }
-  }
-
-  if ( outMap.valid() )
-  {
-      MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
-      osg::ref_ptr<MapNode> outMapNode = new MapNode(outMap.get(), outNodeOptions);
-      if ( !osgDB::writeNodeFile(*outMapNode.get(), outEarthFile) )
-      {
-          OE_WARN << LC << "Error writing earth file to \"" << outEarthFile << "\"" << std::endl;
-      }
-      else
-      {
-          OE_NOTICE << LC << "Wrote earth file to \"" << outEarthFile << "\"" << std::endl;
       }
   }
 
@@ -322,7 +333,8 @@ void TMSExporter::packageTaskProgress(int id, double complete)
     _percentComplete += complete - _taskProgress[id];
     _taskProgress[id] = complete;
 
-    _progress->reportProgress(_percentComplete, _totalTasks);
+    if ( _progress->isCanceled() || _progress->reportProgress(_percentComplete, _totalTasks) )
+        cancel(_progress->message());
   }
 }
 
@@ -330,17 +342,19 @@ void TMSExporter::packageTaskComplete(int id)
 {
   if (_progress.valid())
   {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+      OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
 
-    _percentComplete += 1.0 - _taskProgress[id];
-    _taskProgress[id] = 1.0;
+      _percentComplete += 1.0 - _taskProgress[id];
+      _taskProgress[id] = 1.0;
 
-    //if ( _progress.valid() && (_progress->isCanceled() || _progress->reportProgress(_completedTasks, _totalTasks)) )
-    //{
-    //    //Canceled
-    //}
-
-    _progress->reportProgress(_percentComplete, _totalTasks);
+      if ( _progress->isCanceled() || _progress->reportProgress(_percentComplete, _totalTasks) )
+          cancel(_progress->message());
   }
+}
+
+void TMSExporter::cancel(const std::string& message)
+{
+  _canceled = true;
+  _errorMessage = message;
 }
 

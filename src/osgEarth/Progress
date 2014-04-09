@@ -82,7 +82,7 @@ namespace osgEarth
         /**
          * Sets the cancelation flag
          */
-        void cancel() { _canceled = true; }
+        virtual void cancel() { _canceled = true; }
 
         /**
          * Whether cancelation was requested

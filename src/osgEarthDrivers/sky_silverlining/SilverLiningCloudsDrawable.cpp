@@ -39,9 +39,12 @@ _SL( SL )
 void
 CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
-    renderInfo.getState()->disableAllVertexArrays();
-    _SL->getAtmosphere()->DrawObjects( true, true, true );
-    renderInfo.getState()->dirtyAllVertexArrays();
+    if(_SL->ready())
+    {
+        renderInfo.getState()->disableAllVertexArrays();
+        _SL->getAtmosphere()->DrawObjects( true, true, true );
+        renderInfo.getState()->dirtyAllVertexArrays();
+    }
 }
 
 osg::BoundingBox

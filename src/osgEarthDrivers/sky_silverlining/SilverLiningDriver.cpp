@@ -59,7 +59,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
                 {
                     slOptions.resourcePath() = osgDB::concatPaths(
                         std::string(ev),
-                        "resources" );
+                        "Resources" );
                 }
                 else
                 {

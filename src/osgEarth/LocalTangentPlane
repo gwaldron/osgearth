@@ -45,8 +45,8 @@ namespace osgEarth
 
         // This SRS uses a WGS84 lat/long SRS under the hood for reprojection. So we need the
         // pre/post transforms to move from LTP to Geodetic and back.
-        virtual bool preTransform(double& x, double& y, double& z, void* context) const;
-        virtual bool postTransform(double& x, double& y, double& z, void* context) const;
+        virtual const SpatialReference* preTransform(std::vector<osg::Vec3d>& points) const;
+        virtual const SpatialReference* postTransform(std::vector<osg::Vec3d>& points) const;
 
     protected: // SpatialReference overrides
 

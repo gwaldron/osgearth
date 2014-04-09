@@ -130,7 +130,12 @@ _supportsNonPowerOfTwoTextures( false ),
 _maxUniformBlockSize    ( 0 ),
 _preferDLforStaticGeom  ( true ),
 _numProcessors          ( 1 ),
-_supportsFragDepthWrite ( false )
+_supportsFragDepthWrite ( false ),
+_supportsS3TC           ( false ),
+_supportsPVRTC          ( false ),
+_supportsARBTC          ( false ),
+_supportsETC            ( false ),
+_supportsRGTC           ( false )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -328,6 +333,62 @@ _supportsFragDepthWrite ( false )
         _maxFastTextureSize = _maxTextureSize;
 
         OE_INFO << LC << "  Max Fast Texture Size = " << _maxFastTextureSize << std::endl;
+
+        // tetxure compression
+        OE_INFO << LC << "  Compression = ";
+        _supportsARBTC = osg::isGLExtensionSupported( id, "GL_ARB_texture_compression" );
+        if (_supportsARBTC) OE_INFO_CONTINUE << "ARB ";
+
+        _supportsS3TC = osg::isGLExtensionSupported( id, "GL_EXT_texture_compression_s3tc" );
+        if ( _supportsS3TC ) OE_INFO_CONTINUE << "S3 ";
+
+        _supportsPVRTC = osg::isGLExtensionSupported( id, "GL_IMG_texture_compression_pvrtc" );
+        if ( _supportsPVRTC ) OE_INFO_CONTINUE << "PVR ";
+
+        _supportsETC = osg::isGLExtensionSupported( id, "GL_OES_compressed_ETC1_RGB8_texture" );
+        if ( _supportsETC ) OE_INFO_CONTINUE << "ETC1 ";
+
+        _supportsRGTC = osg::isGLExtensionSupported( id, "GL_EXT_texture_compression_rgtc" );
+        if ( _supportsRGTC ) OE_INFO_CONTINUE << "RG";
+
+        OE_INFO_CONTINUE << std::endl;
     }
 }
 
+bool
+Capabilities::supportsTextureCompression(const osg::Texture::InternalFormatMode& mode) const
+{
+    switch( mode )
+    {
+    case osg::Texture::USE_ARB_COMPRESSION:
+        return _supportsARBTC;
+        break;
+
+    case osg::Texture::USE_S3TC_DXT1a_COMPRESSION:
+    case osg::Texture::USE_S3TC_DXT1c_COMPRESSION:
+    case osg::Texture::USE_S3TC_DXT1_COMPRESSION:
+    case osg::Texture::USE_S3TC_DXT3_COMPRESSION:
+    case osg::Texture::USE_S3TC_DXT5_COMPRESSION:
+        return _supportsS3TC;
+        break;
+
+    case osg::Texture::USE_PVRTC_2BPP_COMPRESSION:
+    case osg::Texture::USE_PVRTC_4BPP_COMPRESSION:
+        return _supportsPVRTC;
+        break;
+
+    case osg::Texture::USE_ETC_COMPRESSION:
+        return _supportsETC;
+        break;
+
+    case osg::Texture::USE_RGTC1_COMPRESSION:
+    case osg::Texture::USE_RGTC2_COMPRESSION:
+        return _supportsRGTC;
+        break;
+
+    default:
+        return false;
+    }
+
+    return false;
+}

@@ -88,6 +88,7 @@ _clustering        ( false ),
 _instancing        ( false ),
 _ignoreAlt         ( false ),
 _useVertexBufferObjects( true ),
+_useTextureArrays( true ),
 _shaderPolicy      ( SHADERPOLICY_GENERATE )
 {
     fromConfig(_conf);
@@ -106,6 +107,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
+    conf.getIfSet   ( "use_texture_arrays", _useTextureArrays );
 
     conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -125,6 +127,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
+    conf.addIfSet   ( "use_texture_arrays", _useTextureArrays );
 
     conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -406,7 +409,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         ExtrudeGeometryFilter extrude;
         extrude.setStyle( style );
-        extrude.useTextureArrays() = Registry::capabilities().supportsTextureArrays();
+
+        // Activate texture arrays if the GPU supports them and if the user
+        // hasn't disabled them.        
+        extrude.useTextureArrays() =
+            Registry::capabilities().supportsTextureArrays() &&
+            _options.useTextureArrays() == true;
 
         // apply per-feature naming if requested.
         if ( _options.featureName().isSet() )

@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osg/Uniform>
+#include <osg/Texture>
 
 namespace osgEarth
 {
@@ -133,6 +134,9 @@ namespace osgEarth
 
         /** whether the GPU supports writing to the depth fragment */
         bool supportsFragDepthWrite() const { return _supportsFragDepthWrite; }
+        
+        /** whether the GPU supports a texture compression scheme */
+        bool supportsTextureCompression(const osg::Texture::InternalFormatMode& mode) const;
 
     protected:
         Capabilities();
@@ -170,6 +174,11 @@ namespace osgEarth
         std::string _vendor;
         std::string _renderer;
         std::string _version;
+        bool _supportsS3TC;
+        bool _supportsPVRTC;
+        bool _supportsARBTC;
+        bool _supportsETC;
+        bool _supportsRGTC;
 
     public:
         friend class Registry;

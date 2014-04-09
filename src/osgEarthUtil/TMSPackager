@@ -90,6 +90,13 @@ namespace osgEarth { namespace Util
         bool getSubdivideSingleColorImageTiles() const { return _subdivideSingleColorImageTiles; }
 
         /**
+        * Pixeldepth for elevations
+        * default = 32
+        */
+        void setElevationPixelDepth(unsigned value) { _elevationPixelDepth = value; }
+        unsigned getElevationPixelDepth() const { return _elevationPixelDepth; }
+
+        /**
          * Bounding box to package
          */
         void addExtent( const GeoExtent& value );
@@ -179,6 +186,7 @@ namespace osgEarth { namespace Util
         bool                        _overwrite;
         bool                        _keepEmptyImageTiles;
         bool                        _subdivideSingleColorImageTiles;
+		unsigned                    _elevationPixelDepth;
         unsigned                    _maxLevel;
         std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;

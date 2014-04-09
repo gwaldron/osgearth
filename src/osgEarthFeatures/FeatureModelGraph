@@ -86,7 +86,7 @@ namespace osgEarth { namespace Features
          */
         Session* getSession() { return _session; }
 
-		/**
+        /**
          * UID given to this feature graph when registered with the pseudo-loader
          */
         UID getUID() const { return _uid; }

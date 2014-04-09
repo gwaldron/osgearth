@@ -443,7 +443,7 @@ CubeSpatialReference::createLocator(double xmin, double ymin, double xmax, doubl
     return result;
 }
 
-bool
+const SpatialReference*
 CubeSpatialReference::preTransform( std::vector<osg::Vec3d>& points ) const
 {
     for( unsigned i=0; i<points.size(); ++i )
@@ -455,7 +455,7 @@ CubeSpatialReference::preTransform( std::vector<osg::Vec3d>& points ) const
         if ( !CubeUtils::cubeToFace( p.x(), p.y(), face ) )
         {
             OE_WARN << LC << "Failed to convert (" << p.x() << "," << p.y() << ") into face coordinates." << std::endl;
-            return false;
+            return 0L;
         }
 
         double lat_deg, lon_deg;
@@ -467,15 +467,15 @@ CubeSpatialReference::preTransform( std::vector<osg::Vec3d>& points ) const
                 << "Could not transform face coordinates ["
                 << p.x() << ", " << p.y() << ", " << face << "] to lat lon"
                 << std::endl;
-            return false;
+            return 0L;
         }
         p.x() = lon_deg;
         p.y() = lat_deg;
     }
-    return true;
+    return getGeodeticSRS();
 }
 
-bool
+const SpatialReference*
 CubeSpatialReference::postTransform( std::vector<osg::Vec3d>& points) const
 {
     for( unsigned i=0; i<points.size(); ++i )
@@ -495,7 +495,7 @@ CubeSpatialReference::postTransform( std::vector<osg::Vec3d>& points) const
                 << "Could not transform lat long ["
                 << p.y() << ", " << p.x() << "] coordinates to face" 
                 << std::endl;
-            return false;
+            return 0L;
         }
 
         //TODO: what to do about boundary points?
@@ -509,7 +509,7 @@ CubeSpatialReference::postTransform( std::vector<osg::Vec3d>& points) const
         p.x() = out_x;
         p.y() = out_y;
     }
-    return true;
+    return getGeodeticSRS();
 }
 
 #define LL 0

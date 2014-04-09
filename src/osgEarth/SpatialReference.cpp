@@ -1006,36 +1006,38 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     bool success = false;
 
     // do the pre-transformation pass:
-    preTransform( points );
+    const SpatialReference* inputSRS = preTransform( points );
+    if ( !inputSRS )
+        return false;
 
     // Spherical Mercator is a special case transformation, because we want to bypass
     // any normal horizontal datum conversion. In other words we ignore the ellipsoid
     // of the other SRS and just do a straight spherical conversion.
-    if ( isGeographic() && outputSRS->isSphericalMercator() )
+    if ( inputSRS->isGeographic() && outputSRS->isSphericalMercator() )
     {        
-        transformZ( points, outputSRS, true );
+        inputSRS->transformZ( points, outputSRS, true );
         success = geographicToSphericalMercator( points );
         return success;
     }
 
-    else if ( isSphericalMercator() && outputSRS->isGeographic() )
+    else if ( inputSRS->isSphericalMercator() && outputSRS->isGeographic() )
     {     
         success = sphericalMercatorToGeographic( points );
-        transformZ( points, outputSRS, true );
+        inputSRS->transformZ( points, outputSRS, true );
         return success;
     }
 
-    else if ( isECEF() && !outputSRS->isECEF() )
+    else if ( inputSRS->isECEF() && !outputSRS->isECEF() )
     {
         const SpatialReference* outputGeoSRS = outputSRS->getGeodeticSRS();
         ECEFtoGeodetic(points, outputGeoSRS->getEllipsoid());
         return outputGeoSRS->transform(points, outputSRS);
     }
 
-    else if ( !isECEF() && outputSRS->isECEF() )
+    else if ( !inputSRS->isECEF() && outputSRS->isECEF() )
     {
         const SpatialReference* outputGeoSRS = outputSRS->getGeodeticSRS();
-        success = transform(points, outputGeoSRS);
+        success = inputSRS->transform(points, outputGeoSRS);
         geodeticToECEF(points, outputGeoSRS->getEllipsoid());
         return success;
     }
@@ -1043,9 +1045,9 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     // if the points are starting as geographic, do the Z's first to avoid an unneccesary
     // transformation in the case of differing vdatums.
     bool z_done = false;
-    if ( isGeographic() )
+    if ( inputSRS->isGeographic() )
     {
-        z_done = transformZ( points, outputSRS, true );
+        z_done = inputSRS->transformZ( points, outputSRS, true );
     }
 
     // move the xy data into straight arrays that OGR can use
@@ -1059,11 +1061,11 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
         y[i] = points[i].y();
     }
 
-    success = transformXYPointArrays( x, y, count, outputSRS );
+    success = inputSRS->transformXYPointArrays( x, y, count, outputSRS );
 
     if ( success )
     {
-        if ( isProjected() && outputSRS->isGeographic() )
+        if ( inputSRS->isProjected() && outputSRS->isGeographic() )
         {
             // special case: when going from projected to geographic, clamp the 
             // points to the maximum geographic extent. Sometimes the conversion from
@@ -1091,7 +1093,7 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     // calculate the Zs if we haven't already done so
     if ( !z_done )
     {
-        z_done = transformZ( points, outputSRS, outputSRS->isGeographic() );
+        z_done = inputSRS->transformZ( points, outputSRS, outputSRS->isGeographic() );
     }   
 
     // run the user post-transform code

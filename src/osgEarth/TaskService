@@ -135,7 +135,7 @@ namespace osgEarth
     class TaskRequestQueue : public osg::Referenced
     {
     public:
-        TaskRequestQueue();
+        TaskRequestQueue(unsigned int maxSize=0);
 
         void add( TaskRequest* request );
         TaskRequest* get();
@@ -144,16 +144,22 @@ namespace osgEarth
 
         void setDone();
 
+        unsigned int getMaxSize() const { return _maxSize;}
+
         void setStamp( int value ) { _stamp = value; }
         int getStamp() const { return _stamp; }
 
         unsigned int getNumRequests() const;
 
+
     private:
         TaskRequestPriorityMap _requests;
         OpenThreads::Mutex _mutex;
+        OpenThreads::Mutex _addMutex;
         OpenThreads::Condition _cond;
+        OpenThreads::Condition _addCond;
         volatile bool _done;
+        unsigned int _maxSize;
 
         int _stamp;
     };
@@ -178,7 +184,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TaskService : public osg::Referenced
     {
     public:
-        TaskService( const std::string& name ="", int numThreads =4 );
+        TaskService( const std::string& name ="", int numThreads =4, unsigned int maxSize=0 );
 
         void add( TaskRequest* request );
 

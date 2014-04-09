@@ -55,30 +55,43 @@ GLSLColorFilter::GLSLColorFilter()
 void 
 GLSLColorFilter::init()
 {
-    m_instanceId = (++s_uniformNameGen) - 1;
+    _instanceId = (++s_uniformNameGen) - 1;
+    _type.init( osg::Shader::FRAGMENT );
+    _functionName.init("");
 }
 
 std::string
-GLSLColorFilter::getEntryPointFunctionName(void) const
+GLSLColorFilter::getEntryPointFunctionName() const
 {
-    return (osgEarth::Stringify() << FUNCTION_PREFIX << m_instanceId);
+    if ( _functionName.isSet() )
+        return _functionName.get();
+    else
+        return osgEarth::Stringify() << FUNCTION_PREFIX << _instanceId; // default
 }
 
 void 
 GLSLColorFilter::install(osg::StateSet* stateSet) const
 {
-    osgEarth::VirtualProgram* vp = dynamic_cast<osgEarth::VirtualProgram*>(stateSet->getAttribute(VirtualProgram::SA_TYPE));
+    osgEarth::VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
     if (vp)
     {
-        // build the local shader (unique per instance). We will
-        // use a template with search and replace for this one.
-        std::string entryPoint = osgEarth::Stringify() << FUNCTION_PREFIX << m_instanceId;
-        std::string code = s_localShaderSource;
-        osgEarth::replaceIn(code, "__ENTRY_POINT__", entryPoint);
-        osgEarth::replaceIn(code, "__CODE__", _code);
+        if (_functionName.isSet())
+        {
+            osg::Shader* shader = new osg::Shader(_type.value(), _code);
+            vp->setShader( getEntryPointFunctionName(), shader );
+        }
+        else
+        {
+            // build the local shader (unique per instance). We will
+            // use a template with search and replace for this one.
+            std::string entryPoint = getEntryPointFunctionName();
+            std::string code = s_localShaderSource;
+            osgEarth::replaceIn(code, "__ENTRY_POINT__", entryPoint);
+            osgEarth::replaceIn(code, "__CODE__", _code);
 
-        osg::Shader* main = new osg::Shader(osg::Shader::FRAGMENT, code);
-        vp->setShader(entryPoint, main);
+            osg::Shader* main = new osg::Shader(_type.value(), code);
+            vp->setShader(entryPoint, main);
+        }
     }
 }
 
@@ -91,6 +104,12 @@ OSGEARTH_REGISTER_COLORFILTER( glsl, osgEarth::Util::GLSLColorFilter );
 GLSLColorFilter::GLSLColorFilter(const Config& conf)
 {
     init();
+    if ( conf.hasValue("function") )
+        _functionName = conf.value("function");
+    if ( conf.value("type").compare("vertex") == 0 )
+        _type = osg::Shader::VERTEX;
+    else if ( conf.value("type").compare("fragment") == 0 )
+        _type = osg::Shader::FRAGMENT;
     setCode( conf.value() );
 }
 
@@ -98,5 +117,8 @@ Config
 GLSLColorFilter::getConfig() const
 {
     Config conf("glsl", getCode());
+    conf.addIfSet( "function", _functionName );
+    conf.addIfSet( "type", "vertex",   _type, osg::Shader::VERTEX );
+    conf.addIfSet( "type", "fragment", _type, osg::Shader::FRAGMENT );
     return conf;
 }

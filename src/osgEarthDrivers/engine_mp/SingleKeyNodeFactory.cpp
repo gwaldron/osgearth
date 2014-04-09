@@ -39,7 +39,6 @@ SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
                                            TileNodeRegistry*             liveTiles,
                                            TileNodeRegistry*             deadTiles,
                                            const MPTerrainEngineOptions& options,
-                                           TerrainNode*                  terrain,
                                            UID                           engineUID ) :
 _frame           ( map ),
 _modelFactory    ( modelFactory ),
@@ -47,7 +46,6 @@ _modelCompiler   ( modelCompiler ),
 _liveTiles       ( liveTiles ),
 _deadTiles       ( deadTiles ),
 _options         ( options ),
-_terrain         ( terrain ),
 _engineUID       ( engineUID )
 {
     //nop
@@ -69,23 +67,36 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
 
     if ( prepareForChildren )
     {
-        //Compute the min range based on the 2D size of the tile
         osg::BoundingSphere bs = tileNode->getBound();
-        GeoExtent extent = model->_tileKey.getExtent();
-        GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
-        GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
-        osg::Vec3d ll, ur;
-        lowerLeft.toWorld( ll );
-        upperRight.toWorld( ur );
-        double radius = (ur - ll).length() / 2.0;
-        float minRange = (float)(radius * _options.minTileRangeFactor().value());
-
         TilePagedLOD* plod = new TilePagedLOD( _engineUID, _liveTiles, _deadTiles );
         plod->setCenter  ( bs.center() );
         plod->addChild   ( tileNode );
-        plod->setRange   ( 0, minRange, FLT_MAX );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engineUID << ".osgearth_engine_mp_tile" );
-        plod->setRange   ( 1, 0, minRange );
+
+        if ( _options.rangeMode().value() == osg::LOD::DISTANCE_FROM_EYE_POINT )
+        {
+            //Compute the min range based on the 2D size of the tile
+            GeoExtent extent = model->_tileKey.getExtent();
+            GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+            GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
+            osg::Vec3d ll, ur;
+            lowerLeft.toWorld( ll );
+            upperRight.toWorld( ur );
+            double radius = (ur - ll).length() / 2.0;
+            float minRange = (float)(radius * _options.minTileRangeFactor().value());
+
+            plod->setRange( 0, minRange, FLT_MAX );
+            plod->setRange( 1, 0, minRange );
+            plod->setRangeMode( osg::LOD::DISTANCE_FROM_EYE_POINT );
+        }
+        else
+        {
+            plod->setRange( 0, 0.0f, _options.tilePixelSize().value() );
+            plod->setRange( 1, _options.tilePixelSize().value(), FLT_MAX );
+            plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
+        }
+
+
 
         // DBPager will set a priority based on the ratio range/maxRange.
         // This will offset that number with a full LOD #, giving LOD precedence.

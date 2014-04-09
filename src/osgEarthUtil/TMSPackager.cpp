@@ -112,12 +112,12 @@ namespace
 
     struct CreateElevationTileTask : public TaskRequest
     {        
-		CreateElevationTileTask(TMSPackager* packager, ElevationLayer* layer, const TileKey& key, const std::string& path, osgDB::Options* elevationWriteOptions, bool verbose)
+        CreateElevationTileTask(TMSPackager* packager, ElevationLayer* layer, const TileKey& key, const std::string& path, osgDB::Options* elevationWriteOptions, bool verbose)
         {
           _layer = layer;
           _key = key;
           _path = path;
-		  _elevationWriteOptions = elevationWriteOptions;
+          _elevationWriteOptions = elevationWriteOptions;
           _verbose = verbose;
           _packager = packager;
         }
@@ -134,7 +134,7 @@ namespace
             {
                 // convert the HF to an image
                 ImageToHeightFieldConverter conv;
-                osg::ref_ptr<osg::Image> image = conv.convert( hf.getHeightField() );
+                osg::ref_ptr<osg::Image> image = conv.convert( hf.getHeightField(), _packager->getElevationPixelDepth() );
 
                 // dump it to disk
                 // attempt to create the output folder:
@@ -180,6 +180,7 @@ _verbose            ( false ),
 _overwrite          ( false ),
 _keepEmptyImageTiles( false ),
 _subdivideSingleColorImageTiles ( false ),
+_elevationPixelDepth(32),
 _abortOnError       ( true ),
 _writeOptions  (writeOptions),
 _numAdded           ( 0 ),

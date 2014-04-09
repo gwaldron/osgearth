@@ -51,6 +51,9 @@ namespace PackageQt
 
     void setProgressCallback(osgEarth::ProgressCallback* progress) { _progress = progress ? progress : new osgEarth::ProgressCallback; }
 
+    void cancel(const std::string& message="");
+    bool isCanceled() { return _canceled; }
+
   protected:
     friend class PackageLayerProgressCallback;
 
@@ -63,6 +66,7 @@ namespace PackageQt
     unsigned _maxLevel;
     bool _keepEmpties;
     std::string _errorMessage;
+    bool _canceled;
 
     OpenThreads::Mutex _m;
 
@@ -123,6 +127,18 @@ namespace PackageQt
       if (_exporter)
         _exporter->packageTaskComplete(_id);
     }
+
+    void cancel()
+    {
+      osgEarth::ProgressCallback::cancel();
+      _exporter->cancel(message());
+    }
+
+    bool isCanceled()
+    {
+      return _canceled || _exporter->isCanceled();
+    }
+
 
   private:
     TMSExporter* _exporter;

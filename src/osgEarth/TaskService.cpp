@@ -79,6 +79,16 @@ TaskRequestQueue::clear()
     _requests.clear();
 }
 
+void
+TaskRequestQueue::cancel()
+{
+    ScopedLock<Mutex> lock(_mutex);
+    for (TaskRequestPriorityMap::iterator it = _requests.begin(); it != _requests.end(); ++it)
+        (*it).second->cancel();
+
+    _requests.clear();
+}
+
 unsigned int
 TaskRequestQueue::getNumRequests() const
 {
@@ -395,6 +405,18 @@ TaskService::removeFinishedThreads()
     if (numRemoved > 0)
     {
         OE_DEBUG << LC << "Removed " << numRemoved << " finished threads " << std::endl;
+    }
+}
+
+void
+TaskService::cancelAll()
+{
+    if (_numThreads > 0)
+    {
+        _numThreads = 0;
+        adjustThreadCount();
+
+        OE_INFO << LC << "Cancelled all threads in TaskService [" << _name << "]" << std::endl;
     }
 }
 

@@ -140,6 +140,7 @@ namespace osgEarth
         void add( TaskRequest* request );
         TaskRequest* get();
         void clear();
+        void cancel();
 
         void setDone();
 
@@ -202,6 +203,8 @@ namespace osgEarth
         unsigned int getNumRequests() const;
 
         void waitforThreadsToComplete();
+
+        void cancelAll();
 
     private:
         void adjustThreadCount();

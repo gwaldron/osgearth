@@ -18,7 +18,7 @@ Help us add useful sources of Free data to this list.
       transportation, structures, and land cover products for the US.
     
     * `NASA EOSDIS`_ - NASA's Global Imagery Browse Services (GIBS) replaces the agency's old
-      `JPL OnEarth`_ site for global imagery products like MODIS.
+      JPL OnEarth site for global imagery products like MODIS.
        
     * `NASA BlueMarble`_ - NASA's whole-earth imagery (including topography and bathymetry maps)
     
@@ -49,7 +49,7 @@ Help us add useful sources of Free data to this list.
     
 
 .. _CGIAR:                      http://srtm.csi.cgiar.org/
-.. _CGIAR Europoean mirror:     ftp://xftp.jrc.it/pub/srtmV4/
+.. _CGIAR European mirror:      ftp://xftp.jrc.it/pub/srtmV4/
 .. _DIVA-GIS:                   http://www.diva-gis.org/gData
 .. _GEBCO:                      http://www.gebco.net/
 .. _GLCF:                       http://glcf.umiacs.umd.edu/data/srtm/

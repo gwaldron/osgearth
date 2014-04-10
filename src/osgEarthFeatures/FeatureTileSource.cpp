@@ -113,24 +113,24 @@ FeatureTileSource::initialize(const osgDB::Options* dbOptions)
         _features->initialize( dbOptions );
 
         // Try to find a Profile for this TileSource from the FeatureSource
-        const FeatureProfile* pFeatureProfile = _features->getFeatureProfile();
-        if (pFeatureProfile != NULL)
+        const FeatureProfile* featureProfile = _features->getFeatureProfile();
+        if (featureProfile != NULL)
         {
-            if (pFeatureProfile->getProfile() != NULL)
+            if (featureProfile->getProfile() != NULL)
             {
                 // Use specified profile
-                setProfile(pFeatureProfile->getProfile());
+                setProfile(featureProfile->getProfile());
             }
-            else if (pFeatureProfile->getExtent().isValid() == true)
+            else if (featureProfile->getExtent().isValid() == true)
             {
                 // Build a profile from features GeoExtent
-                osg::ref_ptr<const Profile> pProfile = Profile::create(pFeatureProfile->getExtent().getSRS(),
-                                                                       pFeatureProfile->getExtent().xMin(), pFeatureProfile->getExtent().yMin(),
-                                                                       pFeatureProfile->getExtent().xMax(), pFeatureProfile->getExtent().yMax());
+                osg::ref_ptr<const Profile> profile = Profile::create(featureProfile->getExtent().getSRS(),
+                                                                      featureProfile->getExtent().xMin(), featureProfile->getExtent().yMin(),
+                                                                      featureProfile->getExtent().xMax(), featureProfile->getExtent().yMax());
 
-                if (pProfile->isOK() == true)
+                if (profile->isOK() == true)
                 {
-                    setProfile(pProfile);
+                    setProfile(profile);
                 }
             }
         }

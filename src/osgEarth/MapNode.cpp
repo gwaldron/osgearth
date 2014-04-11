@@ -486,7 +486,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
     {
         // install a post-processing callback on the ModelLayer's source 
         // so we can update the MapNode on new data that comes in:
-        modelSource->addPostProcessor( new MapNodeObserverInstaller(this) );
+        modelSource->addPostMergeOperation( new MapNodeObserverInstaller(this) );
     }
 
     // create the scene graph:

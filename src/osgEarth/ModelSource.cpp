@@ -74,7 +74,8 @@ ModelSourceOptions::getConfig() const
 ModelSource::ModelSource( const ModelSourceOptions& options ) :
 _options( options )
 {
-   _postProcessors = new RefNodeOperationVector();
+   _preMergeOps  = new RefNodeOperationVector();
+   _postMergeOps = new RefNodeOperationVector();
 }
 
 ModelSource::~ModelSource()
@@ -98,27 +99,53 @@ ModelSource::createNode(const Map*            map,
 
 
 void 
-ModelSource::addPostProcessor( NodeOperation* op )
+ModelSource::addPreMergeOperation( NodeOperation* op )
 {
     if ( op )
     {
-        _postProcessors->mutex().writeLock();
-        _postProcessors->push_back( op );
-        _postProcessors->mutex().writeUnlock();
+        _preMergeOps->mutex().writeLock();
+        _preMergeOps->push_back( op );
+        _preMergeOps->mutex().writeUnlock();
     }
 }
 
 
 void
-ModelSource::removePostProcessor( NodeOperation* op )
+ModelSource::removePreMergeOperation( NodeOperation* op )
 {
     if ( op )
     {
-        _postProcessors->mutex().writeLock();
-        NodeOperationVector::iterator i = std::find( _postProcessors->begin(), _postProcessors->end(), op );
-        if ( i != _postProcessors->end() )
-            _postProcessors->erase( i );
-        _postProcessors->mutex().writeUnlock();
+        _preMergeOps->mutex().writeLock();
+        NodeOperationVector::iterator i = std::find( _preMergeOps->begin(), _preMergeOps->end(), op );
+        if ( i != _postMergeOps->end() )
+            _preMergeOps->erase( i );
+        _preMergeOps->mutex().writeUnlock();
+    }
+}
+
+
+void 
+ModelSource::addPostMergeOperation( NodeOperation* op )
+{
+    if ( op )
+    {
+        _postMergeOps->mutex().writeLock();
+        _postMergeOps->push_back( op );
+        _postMergeOps->mutex().writeUnlock();
+    }
+}
+
+
+void
+ModelSource::removePostMergeOperation( NodeOperation* op )
+{
+    if ( op )
+    {
+        _postMergeOps->mutex().writeLock();
+        NodeOperationVector::iterator i = std::find( _postMergeOps->begin(), _postMergeOps->end(), op );
+        if ( i != _postMergeOps->end() )
+            _postMergeOps->erase( i );
+        _postMergeOps->mutex().writeUnlock();
     }
 }
 
@@ -128,12 +155,21 @@ ModelSource::firePostProcessors( osg::Node* node )
 {
     if ( node )
     {
-        _postProcessors->mutex().readLock();
-        for( NodeOperationVector::iterator i = _postProcessors->begin(); i != _postProcessors->end(); ++i )
+        // pres:
+        _preMergeOps->mutex().readLock();
+        for( NodeOperationVector::iterator i = _preMergeOps->begin(); i != _preMergeOps->end(); ++i )
         {
             i->get()->operator()( node );
         }
-        _postProcessors->mutex().readUnlock();
+        _preMergeOps->mutex().readUnlock();
+
+        // posts:
+        _postMergeOps->mutex().readLock();
+        for( NodeOperationVector::iterator i = _postMergeOps->begin(); i != _postMergeOps->end(); ++i )
+        {
+            i->get()->operator()( node );
+        }
+        _postMergeOps->mutex().readUnlock();
     }
 }
 

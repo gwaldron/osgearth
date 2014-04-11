@@ -185,7 +185,8 @@ FeatureModelSource::createNodeImplementation(const Map*            map,
        session,
        _options,
        factory,
-       _postProcessors.get() );
+       _preMergeOps.get(),
+       _postMergeOps.get() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

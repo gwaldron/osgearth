@@ -79,7 +79,7 @@ How do make the terrain transparent?
     In code, this option is found in the ``MPTerrainEngineOptions`` class::
     
         #include <osgEarthDrivers/engine_mp/MPTerrainEngineOptions>
-        using namespace osgEarth::Drivers;
+        using namespace osgEarth::Drivers::MPTerrainEngine;
         ...
         MPTerrainEngineOptions options;
         options.color() = osg::Vec4(1,1,1,0);

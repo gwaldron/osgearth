@@ -60,6 +60,9 @@ namespace osgEarth { namespace Features
          *      Node factory that will be invoked to compile feature data into nodes
          * @param session
          *      Session under which to create elements in this graph
+         * @param preMergeOperations
+         *      Node operations that will execute in the pager thread after it finishes
+         *      building a node
          * @param postMergeOperations
          *      Node operations that will execute after merging a node into the graph
          */
@@ -67,6 +70,7 @@ namespace osgEarth { namespace Features
             Session*                         session,
             const FeatureModelSourceOptions& options,
             FeatureNodeFactory*              factory,
+            RefNodeOperationVector*          preMergeOperations,
             RefNodeOperationVector*          postMergeOperations);
 
         /**
@@ -196,8 +200,10 @@ namespace osgEarth { namespace Features
 
         osg::ref_ptr<osgDB::FileLocationCallback> _defaultFileLocationCallback;
 
+        osg::ref_ptr<RefNodeOperationVector> _preMergeOperations;
         osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
 
+        void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);
         void checkForGlobalStyles(const Style& style);
         void changeOverlay();

@@ -103,20 +103,32 @@ namespace osgEarth
             ProgressCallback*     progress ) =0;
 
         /**
-         * Add a post processing opeation - this will be called on any node
-         * that enters the scene graph by the model source.
+         * Add a post processing operation that will run (possibly in a pager
+         * thread) after a new node has been generated.
          */
-        void addPostProcessor( NodeOperation* cb );
+        void addPreMergeOperation( NodeOperation* cb );
+
+        /**
+         * Add a post processing operation that will run (in the update thread)
+         * after a node merges into the scene graph.
+         */
+        void addPostMergeOperation( NodeOperation* cb );
         
         /**
-         * Remove a post processing operation
+         * Remove a pre-merge processing operation
          */
-        void removePostProcessor( NodeOperation* cb );
+        void removePreMergeOperation( NodeOperation* cb );
+        
+        /**
+         * Remove a post-merge processing operation
+         */
+        void removePostMergeOperation( NodeOperation* cb );
 
         /**
          * The vector of post processor callback operations
          */
-        const NodeOperationVector& postProcessors() const { return *_postProcessors; }
+        const NodeOperationVector& preMergeOperations() const { return *_preMergeOps; }
+        const NodeOperationVector& postMergeOperations() const { return *_postMergeOps; }
 
 
     public: // META_Object specialization
@@ -144,7 +156,8 @@ namespace osgEarth
 
     protected:
 
-        osg::ref_ptr<RefNodeOperationVector> _postProcessors;
+        osg::ref_ptr<RefNodeOperationVector> _postMergeOps;
+        osg::ref_ptr<RefNodeOperationVector> _preMergeOps;
 
     private:
         const ModelSourceOptions _options;

@@ -116,7 +116,7 @@ namespace osgEarth
         /**
          * The vector of post processor callback operations
          */
-        const NodeOperationVector& postProcessors() const { return _postProcessors; }
+        const NodeOperationVector& postProcessors() const { return *_postProcessors; }
 
 
     public: // META_Object specialization
@@ -142,14 +142,15 @@ namespace osgEarth
          */
         void firePostProcessors( osg::Node* node );
 
+    protected:
+
+        osg::ref_ptr<RefNodeOperationVector> _postProcessors;
+
     private:
         const ModelSourceOptions _options;
         optional<double> _minRange;
         optional<double> _maxRange;
         optional<int>    _renderOrder;
-
-        NodeOperationVector       _postProcessors;
-        mutable Threading::Mutex  _postProcessorsMutex;
 
         friend class Map;
         friend class MapEngine;

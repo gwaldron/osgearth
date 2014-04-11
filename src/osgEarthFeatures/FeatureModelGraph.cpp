@@ -42,6 +42,9 @@
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
 
+#include <algorithm>
+#include <iterator>
+
 #define LC "[FeatureModelGraph] "
 
 using namespace osgEarth;
@@ -230,23 +233,21 @@ namespace
 
 FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      const FeatureModelSourceOptions& options,
-                                     FeatureNodeFactory*              factory ) :
-_session           ( session ),
-_options           ( options ),
-_factory           ( factory ),
-_dirty             ( false ),
-_pendingUpdate     ( false ),
-_overlayInstalled  ( 0L ),
-_overlayPlaceholder( 0L ),
-_clampable         ( 0L ),
-_drapeable         ( 0L ),
-_overlayChange     ( OVERLAY_NO_CHANGE )
+                                     FeatureNodeFactory*              factory,
+                                     RefNodeOperationVector*          postMergeOperations) :
+_session            ( session ),
+_options            ( options ),
+_factory            ( factory ),
+_postMergeOperations( postMergeOperations ),
+_dirty              ( false ),
+_pendingUpdate      ( false ),
+_overlayInstalled   ( 0L ),
+_overlayPlaceholder ( 0L ),
+_clampable          ( 0L ),
+_drapeable          ( 0L ),
+_overlayChange      ( OVERLAY_NO_CHANGE )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
-
-    // operations that get applied after a new node gets merged into the 
-    // scene graph by the pager.
-    _postMergeOperations = new RefNodeOperationVector();
 
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
@@ -342,7 +343,9 @@ _overlayChange     ( OVERLAY_NO_CHANGE )
     // proper fade time for paged nodes.
     if ( _options.fading().isSet() )
     {
-        addPostMergeOperation( new SetupFading() );
+        _postMergeOperations->mutex().writeLock();
+        _postMergeOperations->push_back( new SetupFading() );
+        _postMergeOperations->mutex().writeUnlock();
         OE_INFO << LC << "Added fading post-merge operation" << std::endl;
     }
 
@@ -360,13 +363,6 @@ void
 FeatureModelGraph::dirty()
 {
     _dirty = true;
-}
-
-void
-FeatureModelGraph::addPostMergeOperation( NodeOperation* op )
-{
-    if ( op )
-        _postMergeOperations->push_back( op );
 }
 
 osg::BoundingSphered
@@ -1271,13 +1267,12 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 void
 FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 {
-    if ( _postMergeOperations.valid() )
-    {
-        for( NodeOperationVector::iterator i = _postMergeOperations->begin(); i != _postMergeOperations->end(); ++i )
-        {
-            i->get()->operator()( node );
-        }
-    }
+   _postMergeOperations->mutex().readLock();
+   for( NodeOperationVector::iterator i = _postMergeOperations->begin(); i != _postMergeOperations->end(); ++i )
+   {
+      i->get()->operator()( node );
+   }
+   _postMergeOperations->mutex().readUnlock();
 }
 
 

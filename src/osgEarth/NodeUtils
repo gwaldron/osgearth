@@ -40,7 +40,13 @@ namespace osgEarth
 
     typedef std::vector< osg::ref_ptr<NodeOperation> > NodeOperationVector;
 
-    struct RefNodeOperationVector : public osg::Referenced, public NodeOperationVector { };
+    struct RefNodeOperationVector : public osg::Referenced, public NodeOperationVector
+    {
+    public:
+       Threading::ReadWriteMutex& mutex() const { return _mutex; }
+    private:
+       mutable Threading::ReadWriteMutex _mutex;
+    };
 
     /**
      * A PagedLOD that will fire node operation callbacks when it merges

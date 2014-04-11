@@ -135,11 +135,31 @@ _altMode( altMode )
 }
 
 GeoPoint::GeoPoint(const SpatialReference* srs,
+                   double x,
+                   double y,
+                   double z) :
+_srs    ( srs ),
+_p      ( x, y, z ),
+_altMode( ALTMODE_ABSOLUTE )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
                    const osg::Vec3d&       xyz,
                    const AltitudeMode&     altMode) :
 _srs(srs),
 _p  (xyz),
 _altMode( altMode )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   const osg::Vec3d&       xyz) :
+_srs(srs),
+_p  (xyz),
+_altMode( ALTMODE_ABSOLUTE )
 {
     //nop
 }

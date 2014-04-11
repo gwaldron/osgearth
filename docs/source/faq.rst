@@ -17,7 +17,30 @@ Common Usage
 How do I place a 3D model on the map?
 .....................................
 
-    One way to position a 3D model is to use the ``ModelNode``. Here is the basic idea::
+    The most basic approach is to make a ``osg::Matrix`` so you can position
+    a model using your own ``osg::MatrixTransform``. You can use the ``GeoPoint``
+    class like so::
+    
+        GeoPoint point(latLong, -121.0, 34.0, 1000.0, ALTMODE_ABSOLUTE);
+        osg::Matrix matrix;
+        point.createLocalToWorld( matrix );
+        myMatrixTransform->setMatrix( matrix );
+
+    Another option is the ``osgEarth::GeoTransform`` class. It inherits from
+    ``osg::Transform`` so you can add your own nodes as children. ``GeoTransform``
+    can automatically convert coordinates as well, as long as you tell it 
+    about your map's terrain::
+
+        GeoTransform* xform = new GeoTransform();
+        ...
+        xform->setTerrain( mapNode->getTerrain() );
+        ...
+        GeoPoint point(srs, -121.0, 34.0, 1000.0, ALTMODE_ABSOLUTE);
+        xform->setPosition(point);
+
+    Finally, you can position a node by using the ``ModelNode`` from the
+    osgEarth::Annotation namespace. This is more complicated, but lets you
+    take advantage of symbology::
 
         using namespace osgEarth;
         using namespace osgEarth::Symbology;
@@ -38,14 +61,6 @@ How do I place a 3D model on the map?
         
         // Set its location.
         model->setPosition( GeoPoint(latLong, -121.0, 34.0, 1000.0, ALTMODE_ABSOLUTE) );
-
-    If you just want to make a ``osg::Matrix`` so you can position a model using your own 
-    ``osg::MatrixTransform``, you can use the ``GeoPoint`` class like so::
-    
-        GeoPoint point(latLong, -121.0, 34.0, 1000.0, ALTMODE_ABSOLUTE);
-        osg::Matrix matrix;
-        point.createLocalToWorld( matrix );
-        myMatrixTransform->setMatrix( matrix );
 
     Look at the ``osgearth_annotation.cpp`` sample for more inspiration.
     

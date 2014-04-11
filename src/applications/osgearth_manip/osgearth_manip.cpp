@@ -262,10 +262,10 @@ namespace
         Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode )
             : _manip(manip), _mapnode(mapnode), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
         {
-            osg::Node* geode = AnnotationUtils::createSphere( 25.0, osg::Vec4(1,.7,.4,1) );
+            osg::Node* geode = AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
             
             _xform = new GeoTransform();
-            _xform->setSRS( mapnode->getMapSRS() );
+            _xform->setTerrain(mapnode->getTerrain());
 
             _xform->addChild( geode );
 
@@ -290,13 +290,17 @@ namespace
                 double t = fmod( osg::Timer::instance()->time_s(), 600.0 ) / 600.0;
                 double lat, lon;
                 GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
-                GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 25000.0, ALTMODE_ABSOLUTE );
+                GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
                 _xform->setPosition( p );
                 _label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
             {                                
-                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get(), 2.0 );                                
+                _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
+                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get(), 2.0 );
+                Viewpoint vp = _manip->getViewpoint();
+                vp.setRange(5000);
+                _manip->setViewpoint(vp);
                 return true;
             }
             return false;

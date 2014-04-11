@@ -52,6 +52,15 @@ namespace osgEarth
             const AltitudeMode& mode );
 
         /**
+         * Constructs a GeoPoint with an absolute Z.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            double x,
+            double y,
+            double z );
+
+        /**
          * Constructs a GeoPoint with X and Y coordinates. The Z defaults
          * to zero with an ALTMODE_RELATIVE altitude mode (i.e., 0 meters
          * above the terrain).
@@ -68,6 +77,13 @@ namespace osgEarth
             const SpatialReference* srs,
             const osg::Vec3d&       xyz,
             const AltitudeMode&     mode );
+
+        /**
+         * Constructs a GeoPoint from a vec3 with absolute Z.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            const osg::Vec3d&       xyz);
 
         /**
          * Constructs a new GeoPoint by transforming an existing GeoPoint into

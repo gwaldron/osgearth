@@ -866,10 +866,6 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 
     else
     {
-        // Add the oe_Normal varying.
-        buf.vertHead
-                << "varying vec3 oe_Normal;\n";
-
         // Handle different TexGen modes.
         // From the GLSL Orange Book.
         switch( texgen->getMode() )
@@ -897,6 +893,8 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             break;
 
         case osg::TexGen::SPHERE_MAP:
+            buf.vertHead
+                << "varying vec3 oe_Normal;\n";
             buf.vertBody 
                 << INDENT "{\n" // scope it in case there are > 1
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w); \n"
@@ -908,6 +906,8 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             break;
 
         case osg::TexGen::REFLECTION_MAP:
+            buf.vertHead
+                << "varying vec3 oe_Normal;\n";
             buf.vertBody
                 << INDENT "{\n"
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w);\n"
@@ -916,6 +916,8 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
             break;
 
         case osg::TexGen::NORMAL_MAP:
+            buf.vertHead
+                << "varying vec3 oe_Normal;\n";
             buf.vertBody
                 << INDENT "{\n"
                 << INDENT TEX_COORD << unit << " = vec4(oe_Normal, 1.0); \n"

@@ -299,7 +299,7 @@ GeoPoint::transform(const SpatialReference* outSRS) const
 }
 
 bool
-GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain ) 
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainResolver* terrain ) 
 {
     double z;
     if ( transformZ(altMode, terrain, z) )
@@ -312,7 +312,7 @@ GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t
 }
 
 bool
-GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain, double& out_z ) const
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainResolver* terrain, double& out_z ) const
 {
     if ( !isValid() )
         return false;
@@ -379,7 +379,7 @@ GeoPoint::toWorld( osg::Vec3d& out_world ) const
 }
 
 bool
-GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain ) const
+GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainResolver* terrain ) const
 {
     if ( !isValid() )
     {

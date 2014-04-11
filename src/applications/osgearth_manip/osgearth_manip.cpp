@@ -27,6 +27,7 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/GeoMath>
+#include <osgEarth/GeoTransform>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Viewpoint>
@@ -35,7 +36,6 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
 
@@ -264,7 +264,9 @@ namespace
         {
             osg::Node* geode = AnnotationUtils::createSphere( 25.0, osg::Vec4(1,.7,.4,1) );
             
-            _xform = new osg::MatrixTransform();
+            _xform = new GeoTransform();
+            _xform->setSRS( mapnode->getMapSRS() );
+
             _xform->addChild( geode );
 
             _cam = new osg::Camera();
@@ -289,9 +291,7 @@ namespace
                 double lat, lon;
                 GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
                 GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 25000.0, ALTMODE_ABSOLUTE );
-                osg::Vec3d world;
-                p.toWorld( world );
-                _xform->setMatrix( osg::Matrix::translate(world) );
+                _xform->setPosition( p );
                 _label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
@@ -305,7 +305,7 @@ namespace
         MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
         osg::ref_ptr<osg::Camera>          _cam;
-        osg::ref_ptr<osg::MatrixTransform> _xform;
+        osg::ref_ptr<GeoTransform>         _xform;
         double                             _lat0, _lon0, _lat1, _lon1;
         LabelNode*                         _label;
     };

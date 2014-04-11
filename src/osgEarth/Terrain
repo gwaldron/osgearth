@@ -86,7 +86,11 @@ namespace osgEarth
     };
 
 
-    class /*interface-only*/ TerrainHeightProvider
+    /**
+     * Interface for an object that can resolve the terrain elevation
+     * at a given map location.
+     */
+    class /*interface-only*/ TerrainResolver
     {
     public:
         virtual bool getHeight(
@@ -97,8 +101,11 @@ namespace osgEarth
             double*                 out_heightAboveEllipsoid =0L) const =0;
 
         /** dtor */
-        virtual ~TerrainHeightProvider() { }
+        virtual ~TerrainResolver() { }
     };
+
+    // backwards compatibility
+    typedef TerrainResolver TerrainHeightProvider;
 
 
     /**
@@ -109,7 +116,7 @@ namespace osgEarth
      * All returned map coordinate values are in the units conveyed in the
      * spatial reference at getSRS().
      */
-    class OSGEARTH_EXPORT Terrain : public osg::Referenced, public TerrainHeightProvider
+    class OSGEARTH_EXPORT Terrain : public osg::Referenced, public TerrainResolver
     {
     public:
         /**
@@ -129,7 +136,7 @@ namespace osgEarth
         bool isGeocentric() const { return _geocentric; }
 
 
-    public: // Intersection Utilities
+    public: // TerrainResolver interface
 
         /**
          * Intersects the terrain at the location x, y and returns the height data.
@@ -151,6 +158,8 @@ namespace osgEarth
             double                  y,
             double*                 out_heightAboveMSL,
             double*                 out_heightAboveEllipsoid =0L) const;
+
+    public:
 
         /**
          * Save as above, but specify a subgraph patch.
@@ -249,10 +258,13 @@ namespace osgEarth
      * terrain tile, i.e. one that is not in the scene graph yet -- making it
      * MT-safe.
      */
-    class OSGEARTH_EXPORT TerrainPatch : public TerrainHeightProvider
+    class OSGEARTH_EXPORT TerrainPatch : public TerrainResolver
     {
     public:
         TerrainPatch( osg::Node* patch, const Terrain* terrain );
+
+
+    public: // TerrainResolver interface
 
         /**
         * Queries the elevation under the specified point. This method is

@@ -866,7 +866,11 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 
     else
     {
-        // Hdle different TexGen modes.
+        // Add the oe_Normal varying.
+        buf.vertHead
+                << "varying vec3 oe_Normal;\n";
+
+        // Handle different TexGen modes.
         // From the GLSL Orange Book.
         switch( texgen->getMode() )
         {

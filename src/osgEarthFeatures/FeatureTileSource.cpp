@@ -112,26 +112,19 @@ FeatureTileSource::initialize(const osgDB::Options* dbOptions)
     {
         _features->initialize( dbOptions );
 
-        // Try to find a Profile for this TileSource from the FeatureSource
+        // Try to fill the DataExtent list using the FeatureProfile
         const FeatureProfile* featureProfile = _features->getFeatureProfile();
         if (featureProfile != NULL)
         {
             if (featureProfile->getProfile() != NULL)
             {
-                // Use specified profile
-                setProfile(featureProfile->getProfile());
+                // Use specified profile's GeoExtent
+                getDataExtents().push_back(DataExtent(featureProfile->getProfile()->getExtent()));
             }
             else if (featureProfile->getExtent().isValid() == true)
             {
-                // Build a profile from features GeoExtent
-                osg::ref_ptr<const Profile> profile = Profile::create(featureProfile->getExtent().getSRS(),
-                                                                      featureProfile->getExtent().xMin(), featureProfile->getExtent().yMin(),
-                                                                      featureProfile->getExtent().xMax(), featureProfile->getExtent().yMax());
-
-                if (profile->isOK() == true)
-                {
-                    setProfile(profile);
-                }
+                // Use FeatureProfile's GeoExtent
+                getDataExtents().push_back(DataExtent(featureProfile->getExtent()));
             }
         }
     }

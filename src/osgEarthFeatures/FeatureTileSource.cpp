@@ -111,6 +111,29 @@ FeatureTileSource::initialize(const osgDB::Options* dbOptions)
     if ( _features.valid() )
     {
         _features->initialize( dbOptions );
+
+        // Try to find a Profile for this TileSource from the FeatureSource
+        const FeatureProfile* featureProfile = _features->getFeatureProfile();
+        if (featureProfile != NULL)
+        {
+            if (featureProfile->getProfile() != NULL)
+            {
+                // Use specified profile
+                setProfile(featureProfile->getProfile());
+            }
+            else if (featureProfile->getExtent().isValid() == true)
+            {
+                // Build a profile from features GeoExtent
+                osg::ref_ptr<const Profile> profile = Profile::create(featureProfile->getExtent().getSRS(),
+                                                                      featureProfile->getExtent().xMin(), featureProfile->getExtent().yMin(),
+                                                                      featureProfile->getExtent().xMax(), featureProfile->getExtent().yMax());
+
+                if (profile->isOK() == true)
+                {
+                    setProfile(profile);
+                }
+            }
+        }
     }
     else
     {

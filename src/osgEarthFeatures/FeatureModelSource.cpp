@@ -181,14 +181,11 @@ FeatureModelSource::createNodeImplementation(const Map*            map,
     Session* session = new Session( map, _options.styles().get(), _features.get(), dbOptions );
 
     // Graph that will render feature models. May included paged data.
-    FeatureModelGraph* graph = new FeatureModelGraph( session, _options, factory );
-
-    // install any post-merge operations on the FMG so it can call them during paging:
-    const NodeOperationVector& ops = postProcessors();
-    for( NodeOperationVector::const_iterator i = ops.begin(); i != ops.end(); ++i )
-    {
-        graph->addPostMergeOperation( i->get() );
-    }
+    FeatureModelGraph* graph = new FeatureModelGraph( 
+       session,
+       _options,
+       factory,
+       _postProcessors.get() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

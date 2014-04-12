@@ -34,7 +34,13 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT GeometryCompilerOptions : public ConfigOptions
     {
     public:
-        GeometryCompilerOptions( const ConfigOptions& conf =ConfigOptions() );
+        /**
+         * Set the global default values for the options.
+         */
+        static void setDefaults(const GeometryCompilerOptions& defaults);
+
+    public:
+        GeometryCompilerOptions(const ConfigOptions& conf =ConfigOptions());
         
         virtual ~GeometryCompilerOptions() { }
 
@@ -74,14 +80,21 @@ namespace osgEarth { namespace Features
         optional<double>& resampleMaxLength() { return _resampleMaxLength; }
         const optional<double>& resampleMaxLength() const { return _resampleMaxLength;}
 
+        /** @deprecated Whether to use VBOs in geometry */
         optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
         const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
 
+        /** Whether to combine resource library textures into a single texture array */        
         optional<bool>& useTextureArrays() { return _useTextureArrays;}
         const optional<bool>& useTextureArrays() const { return _useTextureArrays;}
 
+        /** Whether to generate shader components on compiled geometry */
         optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
         const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
+
+        /** Whether to run consolidate equivalent state attributes for better performance. */
+        optional<bool>& optimizeStateSharing() { return _optimizeStateSharing; }
+        const optional<bool>& optimizeStateSharing() const { return _optimizeStateSharing; }
 
 
     public:
@@ -101,8 +114,14 @@ namespace osgEarth { namespace Features
         optional<bool>                 _useVertexBufferObjects;
         optional<ShaderPolicy>         _shaderPolicy;
         optional<bool>                 _useTextureArrays;
+        optional<bool>                 _optimizeStateSharing;
 
         void fromConfig( const Config& conf );
+
+        static GeometryCompilerOptions s_defaults;
+
+    public:
+       GeometryCompilerOptions(bool); // internal
     };
 
     /**

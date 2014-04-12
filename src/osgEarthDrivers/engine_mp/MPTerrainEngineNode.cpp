@@ -306,8 +306,6 @@ MPTerrainEngineNode::refresh(bool forceDirty)
 void
 MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
-    OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
-
     createTerrain();
 }
 

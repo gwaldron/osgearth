@@ -80,19 +80,46 @@ namespace
 
 //-----------------------------------------------------------------------
 
-GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
-ConfigOptions      ( conf ),
-_maxGranularity_deg( 1.0 ),
-_mergeGeometry     ( false ),
-_clustering        ( false ),
-_instancing        ( false ),
-_ignoreAlt         ( false ),
+GeometryCompilerOptions GeometryCompilerOptions::s_defaults(true);
+
+void
+GeometryCompilerOptions::setDefaults(const GeometryCompilerOptions& defaults)
+{
+   s_defaults = defaults;
+}
+
+// defaults.
+GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
+_maxGranularity_deg    ( 1.0 ),
+_mergeGeometry         ( false ),
+_clustering            ( false ),
+_instancing            ( false ),
+_ignoreAlt             ( false ),
 _useVertexBufferObjects( true ),
-_useTextureArrays( true ),
-_shaderPolicy      ( SHADERPOLICY_GENERATE )
+_useTextureArrays      ( true ),
+_shaderPolicy          ( SHADERPOLICY_GENERATE ),
+_geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
+_optimizeStateSharing  ( true )
+{
+   //nop
+}
+
+//-----------------------------------------------------------------------
+
+GeometryCompilerOptions::GeometryCompilerOptions(const ConfigOptions& conf) :
+ConfigOptions          ( conf ),
+_maxGranularity_deg    ( s_defaults.maxGranularity().value() ),
+_mergeGeometry         ( s_defaults.mergeGeometry().value() ),
+_clustering            ( s_defaults.clustering().value() ),
+_instancing            ( s_defaults.instancing().value() ),
+_ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
+_useVertexBufferObjects( s_defaults.useVertexBufferObjects().value() ),
+_useTextureArrays      ( s_defaults.useTextureArrays().value() ),
+_shaderPolicy          ( s_defaults.shaderPolicy().value() ),
+_geoInterp             ( s_defaults.geoInterp().value() ),
+_optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() )
 {
     fromConfig(_conf);
-    _useVertexBufferObjects = !Registry::capabilities().preferDisplayListsForStaticGeometry();
 }
 
 void
@@ -108,6 +135,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.getIfSet   ( "use_texture_arrays", _useTextureArrays );
+    conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
 
     conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -128,6 +156,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.addIfSet   ( "use_texture_arrays", _useTextureArrays );
+    conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
 
     conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -474,13 +503,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    // Common state set cache?
-    osg::ref_ptr<StateSetCache> sscache;
-    if ( sharedCX.getSession() )
-        sscache = sharedCX.getSession()->getStateSetCache();
-    else 
-        sscache = new StateSetCache();
-
     if (Registry::capabilities().supportsGLSL())
     {
         if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
@@ -499,7 +521,17 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // Optimize stateset sharing.
-    sscache->optimize( resultGroup.get() );
+    if ( _options.optimizeStateSharing() == true )
+    {
+        // Common state set cache?
+        osg::ref_ptr<StateSetCache> sscache;
+        if ( sharedCX.getSession() )
+            sscache = sharedCX.getSession()->getStateSetCache();
+        else 
+            sscache = new StateSetCache();
+
+        sscache->optimize( resultGroup.get() );
+    }
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
 

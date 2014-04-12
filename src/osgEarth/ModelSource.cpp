@@ -74,10 +74,12 @@ ModelSourceOptions::getConfig() const
 ModelSource::ModelSource( const ModelSourceOptions& options ) :
 _options( options )
 {
+   _postProcessors = new RefNodeOperationVector();
 }
 
 ModelSource::~ModelSource()
 {
+   //nop
 }
 
 
@@ -100,8 +102,9 @@ ModelSource::addPostProcessor( NodeOperation* op )
 {
     if ( op )
     {
-        Threading::ScopedMutexLock lock( _postProcessorsMutex );
-        _postProcessors.push_back( op );
+        _postProcessors->mutex().writeLock();
+        _postProcessors->push_back( op );
+        _postProcessors->mutex().writeUnlock();
     }
 }
 
@@ -111,10 +114,11 @@ ModelSource::removePostProcessor( NodeOperation* op )
 {
     if ( op )
     {
-        Threading::ScopedMutexLock lock( _postProcessorsMutex );
-        NodeOperationVector::iterator i = std::find( _postProcessors.begin(), _postProcessors.end(), op );
-        if ( i != _postProcessors.end() )
-            _postProcessors.erase( i );
+        _postProcessors->mutex().writeLock();
+        NodeOperationVector::iterator i = std::find( _postProcessors->begin(), _postProcessors->end(), op );
+        if ( i != _postProcessors->end() )
+            _postProcessors->erase( i );
+        _postProcessors->mutex().writeUnlock();
     }
 }
 
@@ -124,11 +128,12 @@ ModelSource::firePostProcessors( osg::Node* node )
 {
     if ( node )
     {
-        Threading::ScopedMutexLock lock( _postProcessorsMutex );
-        for( NodeOperationVector::iterator i = _postProcessors.begin(); i != _postProcessors.end(); ++i )
+        _postProcessors->mutex().readLock();
+        for( NodeOperationVector::iterator i = _postProcessors->begin(); i != _postProcessors->end(); ++i )
         {
             i->get()->operator()( node );
         }
+        _postProcessors->mutex().readUnlock();
     }
 }
 
@@ -155,14 +160,9 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
         rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
         modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
-        if ( modelSource )
+        if ( !modelSource )
         {
-            //modelSource->setName( options.getName() );
-            OE_INFO << "Loaded ModelSource driver \"" << options.getDriver() << "\" OK" << std::endl;
-        }
-        else
-        {
-            OE_WARN << "FAIL, unable to load model source driver for \"" << options.getDriver() << "\"" << std::endl;
+            OE_WARN << "FAILED to load model source driver \"" << options.getDriver() << "\"" << std::endl;
         }
     }
     else

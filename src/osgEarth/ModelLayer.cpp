@@ -159,6 +159,8 @@ ModelLayer::initialize( const osgDB::Options* dbOptions )
 {
     if ( !_modelSource.valid() && _initOptions.driver().isSet() )
     {
+        OE_INFO << LC << "Initializing model layer \"" << getName() << "\", driver=\"" << _initOptions.driver()->getDriver() << "\"" << std::endl;
+
         _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
 
         if ( _modelSource.valid() )

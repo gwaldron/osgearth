@@ -52,6 +52,10 @@ will be missing:
       
     * QT_ - Cross-platform UI framework. Point the ``QT_QMAKE_EXECUTABLE`` CMake variable
       to the ``qmake.exe`` you want to use and CMake will populate all the other QT variables.
+
+    * LevelDB_ - Google's embedded key/value store. Include this if you want to build
+      osgEarth's optional "leveldb" cache driver.
+
       
 **Optional: get pre-built dependencies**
 
@@ -103,4 +107,4 @@ Here are a few tips.
 .. _AlphaPixel:     http://openscenegraph.alphapixel.com/osg/downloads/openscenegraph-third-party-library-downloads
 .. _Mike Weiblen:   http://mew.cx/osg/
 .. _the forum:      http://forum.osgearth.org
-
+.. _LevelDB:        https://github.com/pelicanmapping/leveldb

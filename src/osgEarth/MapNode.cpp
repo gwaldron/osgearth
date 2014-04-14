@@ -676,12 +676,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
                 cullData->_cameraAltitude = eye.z();
             }
 
-            // window scale matrix:
-            osg::Matrix  m4 = cv->getWindowMatrix();
-            osg::Matrix3 m3( m4(0,0), m4(1,0), m4(2,0),
-                             m4(0,1), m4(1,1), m4(2,1),
-                             m4(0,2), m4(1,2), m4(2,2) );
-            cullData->_windowScaleMatrixUniform->set( m3 );
+            // window matrix:
+            cullData->_windowMatrixUniform->set( cv->getWindowMatrix() );
 
             // traverse:
             cv->pushStateSet( cullData->_stateSet.get() );

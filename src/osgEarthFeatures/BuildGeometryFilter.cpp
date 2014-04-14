@@ -217,7 +217,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&         features,
                 context.featureIndex()->tagPrimitiveSets( geom, input );
         }
 
-        polygonizer.installShaders( geode->getOrCreateStateSet() );
+        polygonizer.installShaders( geode ); //->getOrCreateStateSet() );
     }
     return geode;
 }

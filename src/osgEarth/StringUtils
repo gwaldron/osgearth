@@ -111,6 +111,16 @@ namespace osgEarth
 
     /** Generates a hashed integer for a string (poor man's MD5) */
     extern OSGEARTH_EXPORT unsigned hashString( const std::string& input );
+
+    /**
+    * Gets the total number of seconds formatted as H:M:S
+    */
+    extern OSGEARTH_EXPORT std::string prettyPrintTime( double seconds );
+
+    /**
+    * Gets a pretty printed version of the given size in MB.
+    */
+    extern OSGEARTH_EXPORT std::string prettyPrintSize( double mb );
     
     //------------------------------------------------------------------------
     // conversion templates

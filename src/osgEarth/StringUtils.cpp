@@ -388,6 +388,41 @@ osgEarth::toLower( const std::string& input )
     return output;
 }
 
+std::string
+osgEarth::prettyPrintTime( double seconds )
+{
+    int hours = (int)floor(seconds / (3600.0) );
+    seconds -= hours * 3600.0;
+
+    int minutes = (int)floor(seconds/60.0);
+    seconds -= minutes * 60.0;
+
+    std::stringstream buf;
+    buf << hours << ":" << minutes << ":" << seconds;
+    return buf.str();
+}
+
+std::string
+osgEarth::prettyPrintSize( double mb )
+{
+    std::stringstream buf;
+    // Convert to terabytes
+    if ( mb > 1024 * 1024 )
+    {
+        buf << (mb / (1024.0*1024.0)) << " TB";
+    }
+    else if (mb > 1024)
+    {
+        buf << (mb / 1024.0) << " GB";
+    }
+    else 
+    {
+        buf << mb << " MB";
+    }
+    return buf.str();
+}
+
+
 namespace
 {
     template<typename charT>

@@ -131,6 +131,8 @@ LatLongFormatter::format( const Angular& angle, int precision, const AngularForm
     return result;
 }
 
+#define SIGN(x) (x>=0.0?1.0:-1.0)
+
 bool
 LatLongFormatter::parseAngle( const std::string& input, Angular& out_value )
 {
@@ -145,7 +147,7 @@ LatLongFormatter::parseAngle( const std::string& input, Angular& out_value )
         sscanf(c, "%lfd %lfm %lfs",  &d, &m, &s) == 3 ||
         sscanf(c, "%lf %lf' %lf\"",  &d, &m, &s) == 3 )
     {
-        out_value.set( d + m/60.0 + s/3600.0, Units::DEGREES );
+        out_value.set( SIGN(d) * (fabs(d) + m/60.0 + s/3600.0), Units::DEGREES );
         return true;
     }
     else if (
@@ -157,7 +159,7 @@ LatLongFormatter::parseAngle( const std::string& input, Angular& out_value )
         sscanf(c, "%lfd%lf'",  &d, &m) == 2 ||
         sscanf(c, "%lf %lf'",  &d, &m) == 2 )
     {
-        out_value.set( d + m/60.0, Units::DEGREES );
+        out_value.set( SIGN(d) * (fabs(d) + m/60.0), Units::DEGREES );
         return true;
     }
     else if (

@@ -113,6 +113,8 @@ SET(LIB_PUBLIC_HEADERS
     TerrainEngineNode
     TextureCompositor
     TileKey
+    TileHandler
+    TileVisitor
     TileSource
     TimeControl
     TraversalData
@@ -240,6 +242,8 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TerrainEngineNode.cpp
     TextureCompositor.cpp
     TileKey.cpp
+    TileHandler.cpp
+    TileVisitor.cpp
     TileSource.cpp
     TimeControl.cpp
     TraversalData.cpp

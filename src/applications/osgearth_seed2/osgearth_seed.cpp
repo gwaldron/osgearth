@@ -34,9 +34,12 @@
 #include <osgEarth/Registry>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/FileUtils>
 #include <osgEarthUtil/TMS>
 
 #include <osgEarth/TaskService>
+
+#include <osgEarth/TileVisitor>
 
 #include <iostream>
 #include <sstream>
@@ -78,205 +81,6 @@ s_send (void *socket, const char *string) {
 // If you don't do this you will get 
 static OpenThreads::Mutex s_dirLock;
 
-
-/******************************************************************************************************************/
-
-/**
- * TileHandler is an interface for operations on a TileKey
- */
-class TileHandler : public osg::Referenced
-{
-public:
-    virtual bool handleTile( const TileKey& key ) { return true; }
-};
-
-
-/******************************************************************************************************************/
-
-/**
- * Utility class that traverses a Profile and emits TileKey's based on a collection of extents and min/max levels
- */
-class TileVisitor
-{
-public:
-
-    TileVisitor();
-
-    TileVisitor(TileHandler* handler);
-
-    /**
-    * Sets the minimum level to generate
-    */
-    void setMinLevel(const unsigned int& minLevel) {_minLevel = minLevel;}
-
-    /**
-    * Gets the minimum level to generate
-    */
-    const unsigned int getMinLevel() const {return _minLevel;}
-
-    /**
-    * Sets the maximum level to generate
-    */
-    void setMaxLevel(const unsigned int& maxLevel) {_maxLevel = maxLevel;}
-
-    /**
-    * Gets the maximum level to cache to.
-    */
-    const unsigned int getMaxLevel() const {return _maxLevel;}
-
-    std::vector< GeoExtent >& getExtents() { return _extents; }    
-
-    /**
-    *Adds an extent to cache
-    */
-    void addExtent( const GeoExtent& extent );    
-
-    virtual void run(const Profile* mapProfile);
-
-    bool intersects( const GeoExtent& extent );    
-
-    void setTileHandler( TileHandler* handler );
-
-
-protected:
-
-    virtual bool handleTile( const TileKey& key );
-
-    void processKey( const TileKey& key );
-
-    unsigned int _minLevel;
-    unsigned int _maxLevel;
-
-    std::vector< GeoExtent > _extents;
-
-    osg::ref_ptr< TileHandler > _tileHandler;
-};
-
-/******************************************************************************************************************/
-TileVisitor::TileVisitor()
-{
-}
-
-
-TileVisitor::TileVisitor(TileHandler* handler):
-_tileHandler( handler )
-{
-}
-
-void TileVisitor::addExtent( const GeoExtent& extent )
-{
-    _extents.push_back( extent );
-}
-
-bool TileVisitor::intersects( const GeoExtent& extent )
-{    
-    if ( _extents.empty()) return true;
-    else
-    {
-        for (unsigned int i = 0; i < _extents.size(); ++i)
-        {
-            if (_extents[i].intersects( extent ))                
-            {
-                return true;
-            }
-
-        }
-    }
-    return false;
-}
-
-void TileVisitor::setTileHandler( TileHandler* handler )
-{
-    _tileHandler = handler;
-}
-
-void TileVisitor::run( const Profile* mapProfile )
-{
-    std::vector<TileKey> keys;
-    mapProfile->getRootKeys(keys);
-
-    for (unsigned int i = 0; i < keys.size(); ++i)
-    {
-        processKey( keys[i] );
-    }
-}
-
-void TileVisitor::processKey( const TileKey& key )
-{
-    unsigned int x, y, lod;
-    key.getTileXY(x, y);
-    lod = key.getLevelOfDetail();
-
-    bool traverseChildren = true;
-
-    // Check to see if this key is within valid range.
-    if ( _minLevel <= lod && _maxLevel >= lod && intersects( key.getExtent() ) )
-    {        
-        // Process the key
-        traverseChildren = handleTile( key );        
-    }
-
-    // Traverse the children
-    if (traverseChildren && lod < _maxLevel)
-    {
-        for (unsigned int i = 0; i < 4; i++)
-        {
-            TileKey k = key.createChildKey(i);
-            processKey( k );
-        }                                
-    }       
-}
-
-bool TileVisitor::handleTile( const TileKey& key )
-{
-    if (_tileHandler.valid() )
-    {
-        return _tileHandler->handleTile( key );
-    }
-    return false;
-}
-
-
-/******************************************************************************************************************/
-/**
- * A TileHandler that simply reads a tile from a TerrainLayer, populating the cache.
- */
-class CacheTileHandler : public TileHandler
-{
-public:
-    CacheTileHandler( TerrainLayer* layer ):
-      _layer( layer )
-    {
-    }
-
-    virtual bool handleTile( const TileKey& key )
-    {        
-        ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
-        ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );
-
-        if (imageLayer)
-        {                
-            GeoImage image = imageLayer->createImage( key );
-            if (image.valid())
-            {
-                //OE_NOTICE << "Created image for " << key.str() << std::endl;
-                return true;
-            }            
-        }
-        else if (elevationLayer )
-        {
-            GeoHeightField hf = elevationLayer->createHeightField( key );
-            if (hf.valid())
-            {
-                OE_NOTICE << "Created heightfield for " << key.str() << std::endl;
-                return true;
-            }            
-        }
-        return false;        
-    }   
-
-    osg::ref_ptr< TerrainLayer > _layer;
-};
 
 /******************************************************************************************************************/
 /**
@@ -448,84 +252,6 @@ public:
 
 };
 
-/**
- * A TaskRequest that runs a TileHandler in a background thread.
- */
-class HandleTileTask : public TaskRequest
-{
-public:
-    HandleTileTask( TileHandler* handler, const TileKey& key ):      
-      _handler( handler ),
-      _key( key )
-    {
-
-    }
-
-     virtual void operator()(ProgressCallback* progress )
-     {         
-         if (_handler.valid())
-         {             
-             _handler->handleTile( _key );
-         }
-     }
-
-     osg::ref_ptr < TileHandler > _handler;
-     TileKey _key;
-};
-
-
-/**
- * A TileVisitor that pushes all of it's generated keys onto a TaskService queue and handles them in background threads.
- */
-class MultithreadedTileVisitor: public TileVisitor
-{
-public:
-    MultithreadedTileVisitor():
-      _numThreads( OpenThreads::GetNumberOfProcessors() )
-      {
-          osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
-      }
-
-      MultithreadedTileVisitor( TileHandler* handler ):
-      TileVisitor( handler ),
-          _numThreads( OpenThreads::GetNumberOfProcessors() )
-      {
-      }
-
-      unsigned int getNumThreads() const { return _numThreads; }
-      void setNumThreads( unsigned int numThreads) { _numThreads = numThreads; }
-
-      virtual void run(const Profile* mapProfile)
-      {                   
-          // Start up the task service
-          OE_NOTICE << "Starting " << _numThreads << std::endl;
-          _taskService = new TaskService( "MTTileHandler", _numThreads, 5000 );
-          
-          // Produce the tiles
-          TileVisitor::run( mapProfile );
-          
-          // Send a poison pill to kill all the threads
-          _taskService->add( new PoisonPill() );
-
-          // Wait for everything to finish
-          _taskService->waitforThreadsToComplete();
-
-          OE_NOTICE << "All threads have completed" << std::endl;
-      }
-
-protected:
-
-    virtual bool handleTile( const TileKey& key )        
-    {
-        _taskService->add( new HandleTileTask(_tileHandler, key ) );
-        return true;
-    }
-
-    unsigned int _numThreads;
-
-    // The work queue to pass seed operations to
-    osg::ref_ptr<osgEarth::TaskService> _taskService;
-};
 
 class ProcessThread : public OpenThreads::Thread, public osg::Referenced
 {
@@ -536,8 +262,7 @@ public:
     }
 
     void run()
-    {
-        OE_NOTICE << "Running: " << _command << std::endl;
+    {        
         system(_command.c_str());
         //OE_NOTICE << "Finished" << std::endl;
     }
@@ -585,9 +310,7 @@ public:
         // Wait for the threads to actually launch their processes and begin listening
         OpenThreads::Thread::microSleep( 30000000 );
 
-        
-
-        OE_NOTICE <<"Running...." << std::endl;
+               
 
         
         /*
@@ -693,27 +416,6 @@ public:
 
 
 
-
-/**
-* Executes a command in an external process
-*/
-class ExecuteTask : public TaskRequest
-{
-public:
-    ExecuteTask(const std::string& command):            
-      _command( command )
-      {
-      }
-
-      virtual void operator()(ProgressCallback* progress )
-      {         
-          system(_command.c_str());
-      }
-
-      std::string _command;
-};
-
-
 typedef std::vector< TileKey > TileKeyList;
 
 class TaskList
@@ -725,9 +427,7 @@ public:
     }
 
     bool load( const std::string &filename)
-    {  
-        OE_NOTICE << "Loading from " << filename;
-
+    {          
         std::ifstream in( filename.c_str(), std::ios::in );
 
         std::string line;
@@ -735,23 +435,20 @@ public:
         {            
             std::vector< std::string > parts;
             StringTokenizer(line, parts, "," );
-
-            //OE_NOTICE << "Read line " << line << " into " << parts.size() << " parts" << std::endl;
+            
 
             _keys.push_back( TileKey(as<unsigned int>(parts[0], 0), 
                                      as<unsigned int>(parts[1], 0), 
                                      as<unsigned int>(parts[2], 0),
                                      _profile ) );
         }
-
-        OE_NOTICE << "Loaded " << _keys.size() << std::endl;
+        
 
         return true;
     }
 
     void save( const std::string& filename )
-    {
-        OE_NOTICE << "Saving to " << filename << std::endl;
+    {        
         std::ofstream out( filename.c_str() );
         for (TileKeyList::iterator itr = _keys.begin(); itr != _keys.end(); ++itr)
         {
@@ -769,6 +466,49 @@ public:
     osg::ref_ptr< const Profile > _profile;
 };
 
+
+/**
+* Executes a command in an external process
+*/
+class ExecuteTask : public TaskRequest
+{
+public:
+    ExecuteTask(const std::string& command, TileVisitor* visitor, unsigned int count):            
+      _command( command ),
+      _visitor( visitor ),
+      _count( count )
+      {
+      }
+
+      virtual void operator()(ProgressCallback* progress )
+      {         
+          system(_command.c_str());          
+          cleanupTempFiles();
+          _visitor->incrementProgress( _count );
+      }
+
+      void addTempFile( const std::string& filename )
+      {
+          _tempFiles.push_back(filename);
+      }
+
+      void cleanupTempFiles()
+      {
+          for (unsigned int i = 0; i < _tempFiles.size(); i++)
+          {
+              remove( _tempFiles[i].c_str() );
+          }
+      }
+
+
+      std::vector< std::string > _tempFiles;
+      std::string _command;
+      TileVisitor* _visitor;
+      unsigned int _count;
+};
+
+
+
 class TaskRunner : public osg::Referenced
 {
 public:
@@ -779,8 +519,7 @@ public:
     }
 
     virtual void run(const Profile* mapProfile)
-    {
-        OE_NOTICE << "TaskRunner processing " << _tasks.getKeys().size() << " keys" << std::endl;
+    {        
         for (TileKeyList::iterator itr = _tasks.getKeys().begin(); itr != _tasks.getKeys().end(); ++itr)
         {
             _handler->handleTile( (*itr) );
@@ -799,16 +538,16 @@ class MultiprocessTileVisitor: public TileVisitor
 {
 public:
     MultiprocessTileVisitor():
-      _numThreads( 1.5 * OpenThreads::GetNumberOfProcessors() ),
-      _batchSize(1000)
+      _numThreads( OpenThreads::GetNumberOfProcessors() ),
+      _batchSize(200)
       {
           osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
       }
 
       MultiprocessTileVisitor( TileHandler* handler ):
       TileVisitor( handler ),
-      _numThreads( 1.5 * OpenThreads::GetNumberOfProcessors() ),
-      _batchSize(1000)
+      _numThreads( OpenThreads::GetNumberOfProcessors() ),
+      _batchSize(200)
       {
       }
 
@@ -817,8 +556,7 @@ public:
 
       virtual void run(const Profile* mapProfile)
       {                             
-          // Start up the task service
-          OE_NOTICE << "Starting " << _numThreads << std::endl;
+          // Start up the task service          
           _taskService = new TaskService( "MTTileHandler", _numThreads, 5000 );
           
           // Produce the tiles
@@ -831,42 +569,40 @@ public:
           _taskService->add( new PoisonPill() );
 
           // Wait for everything to finish
-          _taskService->waitforThreadsToComplete();
-
-          OE_NOTICE << "All threads have completed" << std::endl;
+          _taskService->waitforThreadsToComplete();          
       }
 
 protected:
 
     virtual bool handleTile( const TileKey& key )        
-    {
+    {        
         _batch.push_back( key );
 
         if (_batch.size() == _batchSize)
         {
             processBatch();
-        }        
+        }         
         return true;
     }
 
     void processBatch()
-    {
-        static int batchNumber = 0;        
-        
+    {       
         TaskList tasks( 0 );
         for (unsigned int i = 0; i < _batch.size(); i++)
         {
             tasks.getKeys().push_back( _batch[i] );
         }
-        std::stringstream filename;
-        filename << "c:/temp/batch" << batchNumber << ".tiles";
-        batchNumber++;
+        // Save the task file out.
+        std::string filename = getTempName("batch", ".tiles");        
+        tasks.save( filename );        
 
-        tasks.save( filename.str() );        
         std::stringstream command;
-        command << "osgearth_cache2 --seed --tiles " << filename.str() << " gdal_tiff.earth";
-        OE_NOTICE << "Adding command " << command.str() << std::endl;
-        _taskService->add( new ExecuteTask( command.str() ) );
+        command << "osgearth_cache2 --tiles " << filename << " --seed  gdal_tiff.earth";        
+        osg::ref_ptr< ExecuteTask > task = new ExecuteTask( command.str(), this, tasks.getKeys().size() );
+        // Add the task file as a temp file to the task to make sure it gets deleted
+        task->addTempFile( filename );
+
+        _taskService->add(task);
         _batch.clear();
     }
 
@@ -973,6 +709,9 @@ seed( osg::ArgumentParser& args )
         bounds.push_back( b );
     }    
 
+    std::string tileList;
+    while (args.read( "--tiles", tileList ) );
+
     //Read the cache override directory
     std::string cachePath;
     while (args.read("--cache-path", cachePath));
@@ -1049,10 +788,8 @@ seed( osg::ArgumentParser& args )
     }
     else
     {
-        std::string tileList;
-        if (args.read( "--tiles", tileList ) )
-        {
-            OE_NOTICE << "Read task list" << tileList << std::endl;
+        if (!tileList.empty())
+        {        
             TaskList tasks( mapNode->getMap()->getProfile() );
             tasks.load( tileList );
 
@@ -1066,10 +803,14 @@ seed( osg::ArgumentParser& args )
             LayerSeeder visitor( mapNode->getMap()->getImageLayerAt( 0 ) );    
             */
 
+            osg::ref_ptr< ProgressCallback > progress = new ConsoleProgressCallback();
+
             // Multithread cache seeder    
             //MultithreadedTileVisitor visitor;
             //ZMQTileVisitor visitor;
             MultiprocessTileVisitor visitor;
+            //TileVisitor visitor;
+            visitor.setProgressCallback( progress );
             visitor.setTileHandler( new CacheTileHandler( mapNode->getMap()->getImageLayerAt( 0 ) ) );    
 
             // Multithread TMS packager    

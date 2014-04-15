@@ -70,8 +70,13 @@ namespace osgEarth
 
         void setTileHandler( TileHandler* handler );
 
+        void setProgressCallback( ProgressCallback* progress );
 
-    protected:
+        void incrementProgress( unsigned int progress );
+
+    protected:        
+
+        void estimate();
 
         virtual bool handleTile( const TileKey& key );
 
@@ -83,6 +88,15 @@ namespace osgEarth
         std::vector< GeoExtent > _extents;
 
         osg::ref_ptr< TileHandler > _tileHandler;
+
+        osg::ref_ptr< ProgressCallback > _progress;
+
+        osg::ref_ptr< const Profile > _profile;
+
+        OpenThreads::Mutex _progressMutex;
+
+        unsigned int _total;
+        unsigned int _processed;
     };
 
 

@@ -17,16 +17,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TileVisitor>
+#include <osgEarth/CacheEstimator>
 
 using namespace osgEarth;
 
-TileVisitor::TileVisitor()
+TileVisitor::TileVisitor():
+_total(0),
+_processed(0)
 {
 }
 
 
 TileVisitor::TileVisitor(TileHandler* handler):
-_tileHandler( handler )
+_tileHandler( handler ),
+_total(0),
+_processed(0)
 {
 }
 
@@ -57,8 +62,17 @@ void TileVisitor::setTileHandler( TileHandler* handler )
     _tileHandler = handler;
 }
 
+void TileVisitor::setProgressCallback( ProgressCallback* progress )
+{
+    _progress = progress;
+}
+
 void TileVisitor::run( const Profile* mapProfile )
 {
+    _profile = mapProfile;
+
+    estimate();
+
     std::vector<TileKey> keys;
     mapProfile->getRootKeys(keys);
 
@@ -66,6 +80,21 @@ void TileVisitor::run( const Profile* mapProfile )
     {
         processKey( keys[i] );
     }
+}
+
+void TileVisitor::estimate()
+{
+    //Estimate the number of tiles
+    _total = 0;    
+    CacheEstimator est;
+    est.setMinLevel( _minLevel );
+    est.setMaxLevel( _maxLevel );
+    est.setProfile( _profile ); 
+    for (unsigned int i = 0; i < _extents.size(); i++)
+    {                
+        est.addExtent( _extents[ i ] );
+    } 
+    _total = est.getNumTiles();
 }
 
 void TileVisitor::processKey( const TileKey& key )
@@ -94,13 +123,26 @@ void TileVisitor::processKey( const TileKey& key )
     }       
 }
 
+void TileVisitor::incrementProgress(unsigned int amount)
+{
+    {
+        OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_progressMutex );
+        _processed += amount;
+    }
+    _progress->reportProgress( _processed, _total );
+}
+
 bool TileVisitor::handleTile( const TileKey& key )
 {
+    bool result = false;
     if (_tileHandler.valid() )
     {
-        return _tileHandler->handleTile( key );
+        result = _tileHandler->handleTile( key );
     }
-    return false;
+
+    incrementProgress(1);
+    
+    return result;
 }
 
 

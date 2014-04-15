@@ -31,6 +31,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarth/StringUtils>
 
 #include <iostream>
 #include <sstream>
@@ -46,8 +47,6 @@ int seed( osg::ArgumentParser& args );
 int purge( osg::ArgumentParser& args );
 int usage( const std::string& msg );
 int message( const std::string& msg );
-std::string prettyPrintTime( double seconds );
-std::string prettyPrintSize( double mb );
 
 
 int
@@ -420,42 +419,4 @@ purge( osg::ArgumentParser& args )
     }
 
     return 0;
-}
-
-/**
- * Gets the total number of seconds formatted as H:M:S
- */
-std::string prettyPrintTime( double seconds )
-{
-    int hours = (int)floor(seconds / (3600.0) );
-    seconds -= hours * 3600.0;
-
-    int minutes = (int)floor(seconds/60.0);
-    seconds -= minutes * 60.0;
-
-    std::stringstream buf;
-    buf << hours << ":" << minutes << ":" << seconds;
-    return buf.str();
-}
-
-/**
- * Gets a pretty printed version of the given size in MB.
- */
-std::string prettyPrintSize( double mb )
-{
-    std::stringstream buf;
-    // Convert to terabytes
-    if ( mb > 1024 * 1024 )
-    {
-        buf << (mb / (1024.0*1024.0)) << " TB";
-    }
-    else if (mb > 1024)
-    {
-        buf << (mb / 1024.0) << " GB";
-    }
-    else 
-    {
-        buf << mb << " MB";
-    }
-    return buf.str();
 }

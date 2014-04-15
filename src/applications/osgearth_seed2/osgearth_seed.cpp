@@ -508,8 +508,10 @@ public:
 };
 
 
-
-class TaskRunner : public osg::Referenced
+/**
+ * Given a list of tasks and a TileHandler, run through them and call the handler for each TileKey.
+ */
+class TaskRunner
 {
 public:
     TaskRunner(TileHandler* handler, const TaskList& tasks):
@@ -538,7 +540,7 @@ class MultiprocessTileVisitor: public TileVisitor
 {
 public:
     MultiprocessTileVisitor():
-      _numThreads( OpenThreads::GetNumberOfProcessors() ),
+      _numProcesses( OpenThreads::GetNumberOfProcessors() ),
       _batchSize(200)
       {
           osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
@@ -546,23 +548,31 @@ public:
 
       MultiprocessTileVisitor( TileHandler* handler ):
       TileVisitor( handler ),
-      _numThreads( OpenThreads::GetNumberOfProcessors() ),
+      _numProcesses( OpenThreads::GetNumberOfProcessors() ),
       _batchSize(200)
       {
       }
 
-      unsigned int getNumThreads() const { return _numThreads; }
-      void setNumThreads( unsigned int numThreads) { _numThreads = numThreads; }
+      unsigned int getNumProcesses() const { return _numProcesses; }
+      void setNumProcesses( unsigned int numProcesses) { _numProcesses = numProcesses; }
+
+      unsigned int getBatchSize() const { return _batchSize; }
+      void setBatchSize( unsigned int batchSize ) { _batchSize = batchSize; }
+
+      void setBaseCommand(const std::string& baseCommand)
+      {
+          _baseCommand = baseCommand;
+      }
 
       virtual void run(const Profile* mapProfile)
       {                             
           // Start up the task service          
-          _taskService = new TaskService( "MTTileHandler", _numThreads, 5000 );
+          _taskService = new TaskService( "MPTileHandler", _numProcesses, 5000 );
           
           // Produce the tiles
           TileVisitor::run( mapProfile );
 
-          // Process any remaining tasks
+          // Process any remaining tasks in the final batch
           processBatch();
           
           // Send a poison pill to kill all the threads
@@ -597,7 +607,9 @@ protected:
         tasks.save( filename );        
 
         std::stringstream command;
-        command << "osgearth_cache2 --tiles " << filename << " --seed  gdal_tiff.earth";        
+        //command << "osgearth_cache2 --seed  gdal_tiff.earth --tiles " << filename;
+        command << _baseCommand << " --tiles " << filename;
+        OE_NOTICE << "Running command " << command.str() << std::endl;
         osg::ref_ptr< ExecuteTask > task = new ExecuteTask( command.str(), this, tasks.getKeys().size() );
         // Add the task file as a temp file to the task to make sure it gets deleted
         task->addTempFile( filename );
@@ -609,10 +621,12 @@ protected:
     TileKeyList _batch;
 
     unsigned int _batchSize;
-    unsigned int _numThreads;    
+    unsigned int _numProcesses;    
 
     // The work queue to pass seed operations to
     osg::ref_ptr<osgEarth::TaskService> _taskService;
+
+    std::string _baseCommand;
 };
 
 
@@ -807,8 +821,21 @@ seed( osg::ArgumentParser& args )
 
             // Multithread cache seeder    
             //MultithreadedTileVisitor visitor;
-            //ZMQTileVisitor visitor;
+            //ZMQTileVisitor visitor;            
+            //Get the first argument that is not an option, that is the earth file name.
+            std::string earthFile;
+            for(int pos=1;pos<args.argc();++pos)
+            {
+                if (!args.isOption(pos))
+                {
+                    earthFile  = args[ pos ];
+                }
+            }
             MultiprocessTileVisitor visitor;
+            std::stringstream baseCommand;
+            baseCommand << "osgearth_cache2 --seed " << earthFile;            
+            visitor.setBaseCommand(baseCommand.str());
+
             //TileVisitor visitor;
             visitor.setProgressCallback( progress );
             visitor.setTileHandler( new CacheTileHandler( mapNode->getMap()->getImageLayerAt( 0 ) ) );    

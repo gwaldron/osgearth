@@ -4,8 +4,22 @@ Demonstrates the simplest possible use of the GDAL driver to load a GeoTIFF imag
 -->
 
 <map version="2">
-    <image driver="gdal" name="world-tiff" cache_enabled="false">
-        <url>../data/world.tif</url>
-        <caching_policy usage="no_cache"/>
-    </image>
+     <image name="gdal" driver="gdal">
+        <url>c:/geodata/bluemarble.tiff</url>        
+    </image>   
+    
+    <external>
+        <viewpoints>
+            <viewpoint name="Boston Overview" heading="24.261" height="0" lat="42.34425" long="-71.076262" pitch="-21.6" range="3450"/>
+            <viewpoint name="Boston Downtown 1" heading="117" lat="42.3568" long="-71.0585" height="0" pitch="-20.4" range="1500" />
+            <viewpoint name="Boston Downtown 2" heading="-128.5" lat="42.3582" long="-71.0546" height="0" pitch="-19" range="1620" />
+            <viewpoint name="Boston Street Level" heading="-145.85" lat="42.36460" long="-71.053612" pitch="-10.1" range="85.034"/>
+            <viewpoint name="DEM" heading="6.541268112696436" height="-0.1722855400294066" lat="39.1480865866931" long="-108.5342388278337" pitch="-64.40525228586714" range="79622.58553183527" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
+            <viewpoint name="gap" heading="45.5653767370558" height="1408.300463184714" lat="39.19875689627971" long="-108.514799541407" pitch="-31.13244630742334" range="5555.948034514549" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
+            <viewpoint name="fucked" heading="-2.385244898572451" height="1591.160555421375" lat="-41.9983656472149" long="-71.71741445816063" pitch="-4.042677651949951" range="14172.4705818478" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
+            <viewpoint name="double fucked" heading="-8.233701442464541" height="3467.82967279572" lat="61.38835840333626" long="-141.6733987983587" pitch="-4.080905693678586" range="12446.83586230553" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
+        </viewpoints>
+        <sky driver="simple" hours="14.0"/>
+    </external>    
+
 </map>

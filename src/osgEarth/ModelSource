@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/GeoData>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
@@ -147,6 +148,12 @@ namespace osgEarth
         /** Get the options used to create this model source */
         const ModelSourceOptions& getOptions() const { return _options; }
 
+        /**
+         * Gets the list of areas with data for this ModelSource
+         */
+        const DataExtentList& getDataExtents() const { return _dataExtents; }
+        DataExtentList& getDataExtents() { return _dataExtents; }
+
     protected:
         /**
          * Fire the callbacks. The implementation class should call this whenever it adds
@@ -164,6 +171,7 @@ namespace osgEarth
         optional<double> _minRange;
         optional<double> _maxRange;
         optional<int>    _renderOrder;
+        DataExtentList   _dataExtents;
 
         friend class Map;
         friend class MapEngine;

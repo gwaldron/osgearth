@@ -201,14 +201,21 @@ public:
                     // assuming we successfully opened the layer, build a spatial index if requested.
                     if ( _options.buildSpatialIndex() == true )
                     {
-                        OE_INFO << LC << "Building spatial index for " << getName() << std::endl;
-                        std::stringstream buf;
-                        const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
-                        buf << "CREATE SPATIAL INDEX ON " << name; 
-                        std::string bufStr;
-                        bufStr = buf.str();
-                        OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
-                        OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
+                        if ( (_options.forceRebuildSpatialIndex() == true) || (OGR_L_TestCapability(_layerHandle, OLCFastSpatialFilter) == 0) )
+                        {
+                            OE_INFO << LC << "Building spatial index for " << getName() << std::endl;
+                            std::stringstream buf;
+                            const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
+                            buf << "CREATE SPATIAL INDEX ON " << name;
+                            std::string bufStr;
+                            bufStr = buf.str();
+                            OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
+                            OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
+                        }
+                        else
+                        {
+                            OE_INFO << LC << "Use existing spatial index for " << getName() << std::endl;
+                        }
                     }
 
                     //Get the feature count

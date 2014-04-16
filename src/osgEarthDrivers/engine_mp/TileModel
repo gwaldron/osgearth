@@ -17,8 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef OSGEARTH_ENGINE_MP_TILE_MODEL
-#define OSGEARTH_ENGINE_MP_TILE_MODEL 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL 1
 
 #include "Common"
 #include <osgEarth/Common>
@@ -27,21 +27,24 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Locators>
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/MapInfo>
 #include <osgTerrain/Locator>
 #include <osgTerrain/Layer>
 #include <osg/Image>
 #include <osg/StateSet>
 #include <osg/Texture2D>
 #include <osg/State>
+#include <osg/NodeVisitor>
 #include <map>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
 
     class TileModel : public osg::Referenced
     {
     public:
+        void resizeGLObjectBuffers(unsigned maxSize);
         void releaseGLObjects(osg::State* state) const;
 
     public:
@@ -61,7 +64,7 @@ namespace osgEarth_engine_mp
         class ElevationData
         {
         public:
-            ElevationData() { }
+            ElevationData() : _fallbackData(true) { }
             ElevationData(const ElevationData& rhs);
 
             virtual ~ElevationData() { }
@@ -71,7 +74,6 @@ namespace osgEarth_engine_mp
                 GeoLocator*       locator,
                 bool              fallbackData);
 
-            //osgTerrain::HeightFieldLayer* getHFLayer() const { return _hfLayer.get(); }
             osg::HeightField* getHeightField() const { return _hf.get(); }
             GeoLocator* getLocator() const { return _locator.get(); }
             bool isFallbackData() const { return _fallbackData; }
@@ -84,15 +86,11 @@ namespace osgEarth_engine_mp
             
             osg::HeightField* getNeighbor(int xoffset, int yoffset) const
             {
-                //int index = getNeighborIndex(xoffset, yoffset);
-                //return _neighbors[index];
                 return _neighbors.getNeighbor(xoffset, yoffset);
             }
 
             void setNeighbor(int xoffset, int yoffset, osg::HeightField* hf )
             {
-                //int index = getNeighborIndex(xoffset, yoffset);
-                //_neighbors[index] = hf;
                 _neighbors.setNeighbor(xoffset, yoffset, hf);
             }
 
@@ -107,17 +105,9 @@ namespace osgEarth_engine_mp
             }
 
         private:
-            //static int getNeighborIndex(int xoffset, int yoffset)
-            //{
-            //    int index = 3*(yoffset+1)+(xoffset+1);
-            //    if (index > 4) index--;
-            //    return index;
-            //}
-            //osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
             osg::ref_ptr<osg::HeightField> _hf;
             osg::ref_ptr<GeoLocator>       _locator;
             bool                           _fallbackData;
-            //osg::ref_ptr<osg::HeightField> _neighbors[8];
             osg::ref_ptr<osg::HeightField> _parent;
 
             HeightFieldNeighborhood _neighbors;
@@ -127,7 +117,9 @@ namespace osgEarth_engine_mp
         class ColorData
         {
         public:
-            ColorData() { }
+            ColorData() : _fallbackData(true) { }
+
+            /** Copy ctor - shallow */
             ColorData(const ColorData& rhs);
 
             /** dtor */
@@ -138,9 +130,9 @@ namespace osgEarth_engine_mp
                 unsigned                    order,
                 osg::Image*                 image,
                 GeoLocator*                 locator,
-                const osgEarth::TileKey&    tileKey,
                 bool                        fallbackData =false );
     
+            void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;
 
 
@@ -156,21 +148,24 @@ namespace osgEarth_engine_mp
                 return _locator.get();
             }
 
-            //osg::Image* getImage() const { 
-            //    return _image.get(); }
-
-            osg::Texture2D* getTexture() const {
+            osg::Texture* getTexture() const {
                 return _texture.get();
             }
-
-            const osgEarth::TileKey& getTileKey() const {
-                return _tileKey; }
 
             const osgEarth::ImageLayer* getMapLayer() const {
                 return _layer.get(); }
 
             bool isFallbackData() const {
-                return _fallbackData; }
+                return _fallbackData;
+            }
+            void setIsFallbackData(bool value) {
+                _fallbackData = value;
+            }
+
+            bool hasAlpha() const {
+                return _hasAlpha;
+            }
+
 
             osg::BoundingSphere computeBound() const {
                 osg::BoundingSphere bs;
@@ -187,11 +182,10 @@ namespace osgEarth_engine_mp
 
             osg::ref_ptr<const osgEarth::ImageLayer> _layer;
             osg::ref_ptr<GeoLocator>                 _locator;
-            osg::ref_ptr<osg::Image>                 _image;
-            osg::ref_ptr<osg::Texture2D>             _texture;
-            osgEarth::TileKey                        _tileKey;
+            osg::ref_ptr<osg::Texture>               _texture;
             bool                                     _fallbackData;
             unsigned                                 _order;
+            bool                                     _hasAlpha;
         };
 
         class ColorDataRef : public osg::Referenced
@@ -206,7 +200,8 @@ namespace osgEarth_engine_mp
 
 
     public:
-        TileModel() { }
+        TileModel( const osgEarth::Revision& mapModelRevision, const MapInfo& mapInfo )
+            : _revision(mapModelRevision), _mapInfo(mapInfo) { }
         TileModel(const TileModel& rhs);
         virtual ~TileModel() { }
 
@@ -216,6 +211,12 @@ namespace osgEarth_engine_mp
          */
         TileModel* createQuadrant(unsigned q) const;
 
+        /** Map revision used to build this model */
+        const Revision& getMapRevision() const { return _revision; }
+
+        /** Whether this tile contains any real data (versus being comprised entirely of fallback data) */
+        bool hasRealData() const;
+
         /** Parent model pointer. */
         void setParentTileModel(const TileModel* parent);
         const TileModel* getParentTileModel() const { return _parentModel.get(); }
@@ -223,7 +224,8 @@ namespace osgEarth_engine_mp
         /** Whether there is a heightfield */
         bool hasElevation() const { return _elevationData.getHeightField() != 0L; }
 
-        osg::ref_ptr<const Map>      _map; // observer_ptr?
+        MapInfo                      _mapInfo;
+        Revision                     _revision;
         TileKey                      _tileKey;
         osg::ref_ptr<GeoLocator>     _tileLocator;
         ColorDataByUID               _colorData;
@@ -241,8 +243,12 @@ namespace osgEarth_engine_mp
             }
             return false;
         }
+
+        bool requiresUpdateTraverse() const;
+
+        void updateTraverse(osg::NodeVisitor&) const;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_MODEL
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL

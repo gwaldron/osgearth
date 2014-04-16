@@ -31,9 +31,20 @@ _session     ( session ),
 _profile     ( profile ),
 _extent      ( workingExtent, workingExtent ),
 _isGeocentric( false ),
-_index       ( index )
+_index       ( index ),
+_shaderPolicy( osgEarth::SHADERPOLICY_GENERATE )
 {
-    _resourceCache = new ResourceCache( session ? session->getDBOptions() : 0L );
+    if ( session )
+    {
+        if ( session->getResourceCache() )
+        {
+            _resourceCache = session->getResourceCache();
+        }
+        else
+        {
+            _resourceCache = new ResourceCache( session->getDBOptions() );
+        }
+    }
 
     // attempt to establish a working extent if we don't have one:
 
@@ -59,11 +70,17 @@ _isGeocentric         ( rhs._isGeocentric ),
 _extent               ( rhs._extent ),
 _referenceFrame       ( rhs._referenceFrame ),
 _inverseReferenceFrame( rhs._inverseReferenceFrame ),
-_optimizerHints       ( rhs._optimizerHints ),
 _resourceCache        ( rhs._resourceCache.get() ),
-_index                ( rhs._index )
+_index                ( rhs._index ),
+_shaderPolicy         ( rhs._shaderPolicy )
 {
     //nop
+}
+
+void
+FilterContext::setProfile(const FeatureProfile* value)
+{
+    _profile = value;
 }
 
 const osgDB::Options*
@@ -116,8 +133,6 @@ FilterContext::fromMap( const osg::Vec3d& point ) const
 {
     osg::Vec3d world;
     _extent->getSRS()->transformToWorld( point, world );
-    //if ( _isGeocentric )
-    //    _extent->getSRS()->transformToECEF( point, world );
     return toLocal(world);
 }
 

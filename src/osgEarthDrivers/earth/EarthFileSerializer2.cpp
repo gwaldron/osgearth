@@ -48,8 +48,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     ConfigSet images = conf.children( "image" );
     for( ConfigSet::const_iterator i = images.begin(); i != images.end(); i++ )
     {
-        Config layerDriverConf = *i;
-        layerDriverConf.add( "default_tile_size", "256" );
+        Config layerDriverConf = *i;        
 
         ImageLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value("name");
@@ -66,8 +65,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         ConfigSet heightfields = conf.children( tagName );
         for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); i++ )
         {
-            Config layerDriverConf = *i;
-            layerDriverConf.add( "default_tile_size", "15" );
+            Config layerDriverConf = *i;            
 
             ElevationLayerOptions layerOpt( layerDriverConf );
             layerOpt.name() = layerDriverConf.value( "name" );
@@ -85,23 +83,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         ModelLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value( "name" );
         layerOpt.driver() = ModelSourceOptions( layerDriverConf );
-
-        map->addModelLayer( new ModelLayer(layerOpt) );
-        //map->addModelLayer( new ModelLayer( layerDriverConf.value("name"), ModelSourceOptions(*i) ) );
-    }
-
-    // Overlay layers (just an alias for Model Layer with overlay=true)
-    ConfigSet overlays = conf.children( "overlay" );
-    for( ConfigSet::const_iterator i = overlays.begin(); i != overlays.end(); i++ )
-    {
-        Config layerDriverConf = *i;
-        if ( !layerDriverConf.hasValue("driver") )
-            layerDriverConf.set("driver", "feature_geom");
-
-        ModelLayerOptions layerOpt( layerDriverConf );
-        layerOpt.name() = layerDriverConf.value( "name" );
-        layerOpt.driver() = ModelSourceOptions( layerDriverConf );
-        layerOpt.overlay() = true; // forced on when "overlay" specified
 
         map->addModelLayer( new ModelLayer(layerOpt) );
     }
@@ -167,8 +148,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         //Config layerConf = layer->getInitialOptions().getConfig();
         Config layerConf = layer->getImageLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
-        layerConf.remove("default_tile_size");
+        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());        
         mapConf.add( "image", layerConf );
     }
 
@@ -178,8 +158,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         //Config layerConf = layer->getInitialOptions().getConfig();
         Config layerConf = layer->getElevationLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
-        layerConf.remove("default_tile_size");
+        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());        
         mapConf.add( "elevation", layerConf );
     }
 

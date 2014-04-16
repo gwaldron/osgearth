@@ -21,6 +21,7 @@
 #define OSGEARTH_MODEL_LAYER_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/AlphaEffect>
 #include <osgEarth/Layer>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
@@ -76,11 +77,10 @@ namespace osgEarth
         const optional<bool>& visible() const { return _visible; }
 
         /**
-         * Whether to drape the model geometry over the terrain as a projected overlay.
-         * Defaults to false
+         * The opacity of this layer
          */
-        optional<bool>& overlay() { return _overlay; }
-        const optional<bool>& overlay() const { return _overlay; }
+        optional<float>& opacity() { return _opacity; }
+        const optional<float>& opacity() const { return _opacity; }
 
     public:
         virtual Config getConfig() const;
@@ -91,10 +91,10 @@ namespace osgEarth
         void setDefaults();
 
         optional<std::string>        _name;
-        optional<bool>               _overlay;
         optional<ModelSourceOptions> _driver;
         optional<bool>               _enabled;
         optional<bool>               _visible;
+        optional<float>              _opacity;
         optional<bool>               _lighting;
     };
 
@@ -104,7 +104,7 @@ namespace osgEarth
     struct ModelLayerCallback : public osg::Referenced
     {
         virtual void onVisibleChanged( class ModelLayer* layer ) { }
-        virtual void onOverlayChanged( class ModelLayer* layer ) { }
+        virtual void onOpacityChanged( class ModelLayer* layer ) { }
         virtual ~ModelLayerCallback() { }
     };
 
@@ -180,13 +180,16 @@ namespace osgEarth
         /** Whether this layer is used at all. */
         bool getEnabled() const;
 
-        /** Whether this layer is drawn as normal geometry or as a draped overlay. */
-        bool getOverlay() const;
-        void setOverlay( bool overlay );
-
         /** whether to apply lighting to the model layer's root node */
         void setLightingEnabled( bool value );
         bool isLightingEnabled() const;
+
+        /**
+         * Sets the opacity of this image layer.
+         * @param opacity Opacity [0..1] -> [transparent..opaque]
+         */
+        void setOpacity( float opacity );
+        float getOpacity() const;
 
     public:
 
@@ -202,7 +205,8 @@ namespace osgEarth
         ModelLayerOptions            _runtimeOptions;
         Revision                     _modelSourceRev;
         ModelLayerCallbackList       _callbacks;
-        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
+        osg::ref_ptr<AlphaEffect>    _alphaEffect;
+        //UpdateLightingUniformsHelper _updateLightingUniformsHelper;
 
         typedef std::set< osg::observer_ptr<osg::Node> > NodeObserverSet;
         NodeObserverSet _nodeSet;

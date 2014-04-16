@@ -186,19 +186,7 @@ namespace
             densificationThreshold = *_options.densificationThreshold();
 
             // Scan the geometry to see if it includes line data, since that will require buffering:
-            bool hasLines = false;
-            for( FeatureList::const_iterator i = featureList.begin(); i != featureList.end(); ++i )
-            {
-                Feature* feature = (*i).get();
-                Geometry* geom = feature->getGeometry();
-                if ( geom && 
-                     ( geom->getComponentType() == Geometry::TYPE_LINESTRING ||
-                       geom->getComponentType() == Geometry::TYPE_RING ) )
-                {
-                    hasLines = true;
-                    break;
-                }
-            }
+            bool hasLines = style.has<LineSymbol>() && !style.has<PolygonSymbol>();
 
             // If the geometry is lines, we need to buffer them before they will work with stenciling
             if ( hasLines )

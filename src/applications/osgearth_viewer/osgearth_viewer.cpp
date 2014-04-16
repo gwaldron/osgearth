@@ -19,15 +19,16 @@
 
 #include <osg/Notify>
 #include <osgViewer/Viewer>
+#include <osgViewer/ViewerEventHandlers>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/ModelNode>
+
+#include <osgEarth/Units>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
 
 int
 usage(const char* name)
@@ -66,6 +67,9 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
+
+        viewer.addEventHandler(new osgViewer::RecordCameraPathHandler);
+
 
         // configure the near/far so we don't clip things that are up close
         viewer.getCamera()->setNearFarRatio(0.00002);

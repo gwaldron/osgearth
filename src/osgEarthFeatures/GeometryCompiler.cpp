@@ -26,6 +26,7 @@
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
+#include <osgEarthFeatures/Session>
 #include <osgEarth/AutoScale>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
@@ -79,18 +80,46 @@ namespace
 
 //-----------------------------------------------------------------------
 
-GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
-ConfigOptions      ( conf ),
-_maxGranularity_deg( 1.0 ),
-_mergeGeometry     ( false ),
-_clustering        ( false ),
-_instancing        ( false ),
-_ignoreAlt         ( false ),
+GeometryCompilerOptions GeometryCompilerOptions::s_defaults(true);
+
+void
+GeometryCompilerOptions::setDefaults(const GeometryCompilerOptions& defaults)
+{
+   s_defaults = defaults;
+}
+
+// defaults.
+GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
+_maxGranularity_deg    ( 1.0 ),
+_mergeGeometry         ( false ),
+_clustering            ( false ),
+_instancing            ( false ),
+_ignoreAlt             ( false ),
 _useVertexBufferObjects( true ),
-_shaderPolicy      ( SHADERPOLICY_GENERATE )
+_useTextureArrays      ( true ),
+_shaderPolicy          ( SHADERPOLICY_GENERATE ),
+_geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
+_optimizeStateSharing  ( true )
+{
+   //nop
+}
+
+//-----------------------------------------------------------------------
+
+GeometryCompilerOptions::GeometryCompilerOptions(const ConfigOptions& conf) :
+ConfigOptions          ( conf ),
+_maxGranularity_deg    ( s_defaults.maxGranularity().value() ),
+_mergeGeometry         ( s_defaults.mergeGeometry().value() ),
+_clustering            ( s_defaults.clustering().value() ),
+_instancing            ( s_defaults.instancing().value() ),
+_ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
+_useVertexBufferObjects( s_defaults.useVertexBufferObjects().value() ),
+_useTextureArrays      ( s_defaults.useTextureArrays().value() ),
+_shaderPolicy          ( s_defaults.shaderPolicy().value() ),
+_geoInterp             ( s_defaults.geoInterp().value() ),
+_optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() )
 {
     fromConfig(_conf);
-    _useVertexBufferObjects = !Registry::capabilities().preferDisplayListsForStaticGeometry();
 }
 
 void
@@ -105,6 +134,8 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
+    conf.getIfSet   ( "use_texture_arrays", _useTextureArrays );
+    conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
 
     conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -124,6 +155,8 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
+    conf.addIfSet   ( "use_texture_arrays", _useTextureArrays );
+    conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
 
     conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -338,7 +371,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // instance substitution (replaces marker)
-    else if ( model || icon )
+    else if ( model )
     {
         const InstanceSymbol* instance = model ? (const InstanceSymbol*)model : (const InstanceSymbol*)icon;
 
@@ -365,9 +398,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             localCX = clamp.push( workingSet, localCX );
-
-            // don't set this; we changed the input data.
-            //altRequired = false;
         }
 
         SubstituteModelFilter sub( style );
@@ -409,6 +439,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         ExtrudeGeometryFilter extrude;
         extrude.setStyle( style );
 
+        // Activate texture arrays if the GPU supports them and if the user
+        // hasn't disabled them.        
+        extrude.useTextureArrays() =
+            Registry::capabilities().supportsTextureArrays() &&
+            _options.useTextureArrays() == true;
+
         // apply per-feature naming if requested.
         if ( _options.featureName().isSet() )
             extrude.setFeatureNameExpr( *_options.featureName() );
@@ -420,25 +456,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         {
             resultGroup->addChild( node );
         }
-    }
-
-    // polygonized lines.
-    else if ( line != 0L && line->stroke()->widthUnits() != Units::PIXELS )
-    {
-        if ( altRequired )
-        {
-            AltitudeFilter clamp;
-            clamp.setPropertiesFromStyle( style );
-            sharedCX = clamp.push( workingSet, sharedCX );
-            altRequired = false;
-        }
-
-        PolygonizeLinesFilter filter( style );
-        osg::Node* node = filter.push( workingSet, sharedCX );
-        if ( node )
-        {
-            resultGroup->addChild( node );
-        }
+        
     }
 
     // simple geometry
@@ -457,12 +475,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.maxGranularity() = *_options.maxGranularity();
         if ( _options.geoInterp().isSet() )
             filter.geoInterp() = *_options.geoInterp();
-        if ( _options.mergeGeometry().isSet() )
-            filter.mergeGeometry() = *_options.mergeGeometry();
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
-        if ( _options.useVertexBufferObjects().isSet())
-            filter.useVertexBufferObjects() = *_options.useVertexBufferObjects();
 
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
@@ -471,7 +485,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    if ( text )
+    if ( text || icon )
     {
         if ( altRequired )
         {
@@ -489,20 +503,14 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
-    // Common state set cache?
-    osg::ref_ptr<StateSetCache> sscache;
-    if ( sharedCX.getSession() )
-        sscache = sharedCX.getSession()->getStateSetCache();
-    else 
-        sscache = new StateSetCache();
-
-    // Generate shaders, if necessary
     if (Registry::capabilities().supportsGLSL())
     {
         if ( _options.shaderPolicy() == SHADERPOLICY_GENERATE )
         {
-            ShaderGenerator gen( 0L );  // no ss cache because we will optimize later
-            resultGroup->accept( gen );
+            // no ss cache because we will optimize later.
+            ShaderGenerator gen;
+            gen.setProgramName( "osgEarth.GeometryCompiler" );
+            gen.run( resultGroup.get() );
         }
         else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
         {
@@ -513,30 +521,17 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // Optimize stateset sharing.
-    sscache->optimize( resultGroup.get() );
-    
-    // todo: this helps a lot, but is currently broken for non-triangle
-    // geometries. (gw, 12-17-2012)
-#if 0
-        osgUtil::Optimizer optimizer;
-        optimizer.optimize(
-            resultGroup.get(),
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM );
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-#endif
-
-#if 0
-    // if necessary, modify the bounding boxes of the underlying Geometry
-    // drawables so they will work with clamping.
-    if (altitude &&
-        (altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) &&
-        altitude->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+    if ( _options.optimizeStateSharing() == true )
     {
-        OverlayGeometryAdjuster adjuster( -10000.0f, 10000.0f );
-        resultGroup->accept( adjuster );
-    }
-#endif
+        // Common state set cache?
+        osg::ref_ptr<StateSetCache> sscache;
+        if ( sharedCX.getSession() )
+            sscache = sharedCX.getSession()->getStateSetCache();
+        else 
+            sscache = new StateSetCache();
 
+        sscache->optimize( resultGroup.get() );
+    }
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
 

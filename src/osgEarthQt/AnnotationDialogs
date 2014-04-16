@@ -283,6 +283,7 @@ namespace osgEarth { namespace QtGui
         ls->stroke()->stipple() = 0x0F0F;
         ls->tessellation() = 20;
         _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
+        _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->technique() = osgEarth::Symbology::AltitudeSymbol::TECHNIQUE_GPU;
       }
     }
 

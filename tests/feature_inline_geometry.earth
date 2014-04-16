@@ -1,0 +1,67 @@
+<!--
+osgEarth Sample
+
+This demonstrates how to use the OGR feature driver to define inline feature geometry.
+
+You can define an inline geometry in WKT format.
+* See: http://en.wikipedia.org/wiki/Well-known_text#Geometric_objects
+
+Notice the different interpolation types for each layer, and the difference in the
+display. The options are:
+ "rhumb_line" - maintains a constant bearing between two points (default), or
+ "great_circle" - takes the shortest elliptical distance between two points.
+
+-->
+
+<map name="Feature Geometry Demo" type="geocentric" version="2">
+
+    <options>
+        <lighting>false</lighting>
+    </options>
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    
+    <model name="great_circle" driver="feature_geom">
+	    <features driver="ogr">
+			<geometry>
+				POLYGON((-120 30, -120 50, -70 50, -70 30))
+			</geometry>
+		</features>
+        
+        <geo_interpolation>great_circle</geo_interpolation>
+        
+        <styles>
+            <style type="text/css">
+                default {
+                   fill: #ffff006f;
+				   altitude-clamping: terrain-drape;
+                }                    
+            </style>
+        </styles>
+        
+    </model>
+    
+    <model name="rhumb_line" driver="feature_geom">
+	    <features driver="ogr">
+			<geometry>
+				POLYGON((-68 30, -68 50, -20 50, -20 30))
+			</geometry>
+		</features>
+        
+        <geo_interpolation>rhumb_line</geo_interpolation>
+        
+        <styles>
+            <style type="text/css">
+                default {
+                   fill: #ff00ff6f;
+				   altitude-clamping: terrain-drape;
+                }                    
+            </style>
+        </styles>
+        
+    </model>
+  
+</map>

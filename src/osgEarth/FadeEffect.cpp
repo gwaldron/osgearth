@@ -50,7 +50,7 @@ FadeOptions::getConfig() const
 
 namespace
 {
-    char* FadeEffectVertexShader =
+    const char* FadeEffectVertexShader =
         "#version " GLSL_VERSION_STR "\n"
 #ifdef OSG_GLES2_AVAILABLE
         "precision mediump float; \n"
@@ -70,7 +70,7 @@ namespace
         "    oe_fadeeffect_opacity = clamp(t, 0.0, 1.0) * clamp(r, 0.0, 1.0); \n"
         "} \n";
 
-    char* FadeEffectFragmentShader = 
+    const char* FadeEffectFragmentShader = 
         "#version " GLSL_VERSION_STR "\n"
 #ifdef OSG_GLES2_AVAILABLE
         "precision mediump float; \n"
@@ -163,7 +163,7 @@ FadeEffect::getAttenuationDistance() const
 
 namespace
 {
-    char* FadeLODFragmentShader = 
+    const char* FadeLODFragmentShader = 
         "#version " GLSL_VERSION_STR "\n"
 #ifdef OSG_GLES_AVAILABLE
         "precision mediump float; \n"
@@ -245,73 +245,3 @@ FadeLOD::traverse( osg::NodeVisitor& nv )
     }
 }
 
-
-#if 0
-void 
-FadeLOD::setMinPixelExtent( float value )
-{
-    osg::Vec4f value;
-    _params->get( value );
-    value[0] = value;
-    _params->set( value );
-}
-
-float 
-FadeLOD::getMinPixelExtent() const
-{
-    osg::Vec4f value;
-    _params->get( value );
-    return value[0];
-}
-
-void 
-FadeLOD::setMaxPixelExtent( float value )
-{
-    osg::Vec4f value;
-    _params->get( value );
-    value[1] = value;
-    _params->set( value );
-}
-
-float 
-FadeLOD::getMaxPixelExtent() const
-{
-    osg::Vec4f value;
-    _params->get( value );
-    return value[1];
-}
-
-void
-FadeLOD::setMinFadeExtent( float value )
-{
-    osg::Vec4f value;
-    _params->get( value );
-    value[2] = value;
-    _params->set( value );
-}
-
-float
-FadeLOD::getMinFadeExtent() const
-{
-    osg::Vec4f value;
-    _params->get( value );
-    return value[2];
-}
-
-void
-FadeLOD::setMaxFadeExtent( float value )
-{
-    osg::Vec4f value;
-    _params->get( value );
-    value[3] = value;
-    _params->set( value );
-}
-
-float
-FadeLOD::getMaxFadeExtent() const
-{
-    osg::Vec4f value;
-    _params->get( value );
-    return value[3];
-}
-#endif

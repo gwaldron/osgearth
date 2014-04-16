@@ -6,7 +6,7 @@
 # GEOS_INCLUDE_DIR, where to find the headers
 
 FIND_PATH(GEOS_INCLUDE_DIR geos.h
-  $ENV{GDAL_DIR}
+  $ENV{GEOS_DIR}
   NO_DEFAULT_PATH
     PATH_SUFFIXES include
 )

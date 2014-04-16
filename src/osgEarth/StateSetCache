@@ -32,8 +32,15 @@ namespace osgEarth
     class OSGEARTH_EXPORT StateSetCache : public osg::Referenced
     {
     public:
-        StateSetCache() { }
-        virtual ~StateSetCache() { }
+        /**
+         * Constructs a new cache.
+         */
+        StateSetCache();
+
+        /**
+         * Caps the size of the cache.
+         */
+        void setMaxSize(unsigned maxSize);
 
         /**
          * Check whether a StateSet is eligible for sharing.
@@ -85,7 +92,12 @@ namespace osgEarth
          */
         void clear();
 
+        void dumpStats();
+
     protected: 
+
+        virtual ~StateSetCache();
+
         struct CompareStateSets {
             bool operator()(
                 const osg::ref_ptr<osg::StateSet>& lhs,
@@ -107,6 +119,17 @@ namespace osgEarth
         StateAttributeSet _stateAttributeCache;
 
         mutable Threading::Mutex _mutex;
+
+        void prune();
+        void pruneIfNecessary();
+        unsigned _maxSize;
+        unsigned _pruneCount;
+
+        //stats
+        unsigned _attrShareAttempts;
+        unsigned _attrsIneligible;
+        unsigned _attrShareHits;
+        unsigned _attrShareMisses;
     };
 }
 

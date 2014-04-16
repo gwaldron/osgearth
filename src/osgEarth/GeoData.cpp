@@ -135,11 +135,31 @@ _altMode( altMode )
 }
 
 GeoPoint::GeoPoint(const SpatialReference* srs,
+                   double x,
+                   double y,
+                   double z) :
+_srs    ( srs ),
+_p      ( x, y, z ),
+_altMode( ALTMODE_ABSOLUTE )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
                    const osg::Vec3d&       xyz,
                    const AltitudeMode&     altMode) :
 _srs(srs),
 _p  (xyz),
 _altMode( altMode )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   const osg::Vec3d&       xyz) :
+_srs(srs),
+_p  (xyz),
+_altMode( ALTMODE_ABSOLUTE )
 {
     //nop
 }
@@ -299,7 +319,7 @@ GeoPoint::transform(const SpatialReference* outSRS) const
 }
 
 bool
-GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain ) 
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainResolver* terrain ) 
 {
     double z;
     if ( transformZ(altMode, terrain, z) )
@@ -312,9 +332,10 @@ GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t
 }
 
 bool
-GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain, double& out_z ) const
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainResolver* terrain, double& out_z ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+        return false;
     
     // already in the target mode? just return z.
     if ( _altMode == altMode ) 
@@ -323,7 +344,8 @@ GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t
         return true;
     }
 
-    if ( !terrain ) return false;
+    if ( !terrain )
+        return false;
 
     // convert to geographic if necessary and sample the MSL height under the point.
     double out_hamsl;
@@ -363,7 +385,11 @@ GeoPoint::transform(const SpatialReference* outSRS, GeoPoint& output) const
 bool
 GeoPoint::toWorld( osg::Vec3d& out_world ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+    {
+        OE_WARN << LC << "Called toWorld() on an invalid point" << std::endl;
+        return false;
+    }
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
         OE_WARN << LC << "ILLEGAL: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
@@ -373,9 +399,13 @@ GeoPoint::toWorld( osg::Vec3d& out_world ) const
 }
 
 bool
-GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain ) const
+GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainResolver* terrain ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+    {
+        OE_WARN << LC << "Called toWorld() on an invalid point" << std::endl;
+        return false;
+    }
     if ( _altMode == ALTMODE_ABSOLUTE )
     {
         return _srs->transformToWorld( _p, out_world );
@@ -383,7 +413,10 @@ GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain )
     else if ( terrain != 0L )
     {
         GeoPoint absPoint = *this;
-        absPoint.makeAbsolute( terrain );
+        if (!absPoint.makeAbsolute( terrain ))
+        {
+            return false;            
+        }
         return absPoint.toWorld( out_world );
     }
     else
@@ -415,7 +448,7 @@ GeoPoint::createLocalToWorld( osg::Matrixd& out_l2w ) const
     if ( !isValid() ) return false;
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocalToorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createLocalToWorld( _p, out_l2w );
@@ -427,12 +460,43 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
     if ( !isValid() ) return false;
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createWorldToLocal with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createWorldToLocal( _p, out_w2l );
 }
 
+bool
+GeoPoint::createWorldUpVector( osg::Vec3d& out_up ) const
+{
+    if ( !isValid() ) return false;
+
+    if ( _srs->isProjected() )
+    {
+        out_up.set(0, 0, 1);
+        return true;
+    }
+    else if ( _srs->isGeographic() )
+    {
+        double coslon = cos( osg::DegreesToRadians(x()) );
+        double coslat = cos( osg::DegreesToRadians(y()) );
+        double sinlon = sin( osg::DegreesToRadians(x()) );
+        double sinlat = sin( osg::DegreesToRadians(y()) );
+
+        out_up.set( coslon*coslat, sinlon*coslat, sinlat );
+        return true;
+    }
+    else
+    {
+        osg::Vec3d ecef;
+        if ( this->toWorld( ecef ) )
+        {
+            out_up = _srs->getEllipsoid()->computeLocalUpVector( ecef.x(), ecef.y(), ecef.z() );
+            return true;
+        }
+    }
+    return false;
+}
 
 double
 GeoPoint::distanceTo(const GeoPoint& rhs) const
@@ -736,6 +800,14 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
 
     }
     return GeoExtent::INVALID;
+}
+
+
+bool
+GeoExtent::transform( const SpatialReference* srs, GeoExtent& output ) const
+{
+    output = transform(srs);
+    return output.isValid();
 }
 
 void

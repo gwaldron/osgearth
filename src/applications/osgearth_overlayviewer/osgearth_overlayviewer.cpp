@@ -21,11 +21,15 @@
 #include <osg/Depth>
 #include <osg/LineWidth>
 #include <osgGA/StateSetManipulator>
+#include <osgGA/AnimationPathManipulator>
 #include <osgViewer/CompositeViewer>
+#include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
+#include <osgEarthSymbology/Color>
 
 #define LC "[viewer] "
 
@@ -37,7 +41,7 @@ using namespace osgEarth::Symbology;
 
 static CheckBoxControl* s_cameraCheck;
 //static CheckBoxControl* s_overlayCheck;
-//static CheckBoxControl* s_intersectionCheck;
+static CheckBoxControl* s_intersectionCheck;
 static CheckBoxControl* s_rttCheck;
 
 namespace
@@ -108,7 +112,7 @@ namespace
 
                     toggle(_parent, "camera", s_cameraCheck->getValue());
                     //toggle(_parent, "overlay", s_overlayCheck->getValue());
-                    //toggle(_parent, "intersection", s_intersectionCheck->getValue());
+                    toggle(_parent, "intersection", s_intersectionCheck->getValue());
                     toggle(_parent, "rtt", s_rttCheck->getValue());
 
                     aa.requestRedraw();
@@ -141,11 +145,11 @@ setupOverlayView( osgViewer::View* view, osg::Group* parent, MapNode* mapNode )
         //    overlayBox->addControl(new LabelControl("Overlay", Color("#00ffff")));
         //}
 
-        //HBox* isectBox = v->addControl(new HBox());
-        //{
-        //    isectBox->addControl(s_intersectionCheck = new CheckBoxControl(true, new Toggle(parent,"intersection")));
-        //    isectBox->addControl(new LabelControl("Intersection",Color("#ff7f00")));
-        //}
+        HBox* isectBox = v->addControl(new HBox());
+        {
+            isectBox->addControl(s_intersectionCheck = new CheckBoxControl(true, new Toggle(parent,"intersection")));
+            isectBox->addControl(new LabelControl("Intersection",Color("#ff7f00")));
+        }
 
         HBox* rttBox = v->addControl(new HBox());
         {
@@ -166,18 +170,41 @@ main(int argc, char** argv)
     osgViewer::CompositeViewer viewer(arguments);
     viewer.setThreadingModel( osgViewer::CompositeViewer::SingleThreaded );
 
+    // query the screen size.
+    osg::GraphicsContext::ScreenIdentifier si;
+    si.readDISPLAY();
+    if ( si.displayNum < 0 ) si.displayNum = 0;
+    osg::GraphicsContext::WindowingSystemInterface* wsi = osg::GraphicsContext::getWindowingSystemInterface();
+    unsigned width, height;
+    wsi->getScreenResolution( si, width, height );
+    unsigned b = 50;
+
     osgViewer::View* mainView = new osgViewer::View();
     mainView->getCamera()->setNearFarRatio(0.00002);
-    mainView->setCameraManipulator( new EarthManipulator() );
-    mainView->setUpViewInWindow( 50, 50, 600, 600 );
+    EarthManipulator* em = new EarthManipulator();
+    em->getSettings()->setMinMaxPitch(-90, 0);
+    mainView->setCameraManipulator( em );
+    //mainView->setUpViewInWindow( 50, 50, 600, 600 );
+    mainView->setUpViewInWindow( b, b, (width/2)-b*2, (height-b*4) );
     viewer.addView( mainView );
 
     osgViewer::View* overlayView = new osgViewer::View();
     overlayView->getCamera()->setNearFarRatio(0.00002);
-    overlayView->setCameraManipulator( new EarthManipulator() );
-    overlayView->setUpViewInWindow( 700, 50, 600, 600 );
+    EarthManipulator* overlayEM = new EarthManipulator();
+    overlayEM->getSettings()->setCameraProjection(overlayEM->PROJ_ORTHOGRAPHIC);
+    overlayView->setCameraManipulator( overlayEM );
+    
+    //overlayView->setUpViewInWindow( 700, 50, 600, 600 );
+    overlayView->setUpViewInWindow( (width/2), b, (width/2)-b*2, (height-b*4) );
     overlayView->addEventHandler(new osgGA::StateSetManipulator(overlayView->getCamera()->getOrCreateStateSet()));
     viewer.addView( overlayView );
+
+    std::string pathfile;
+    double animationSpeed = 1.0;
+    if (arguments.read("-p", pathfile))
+    {
+        mainView->setCameraManipulator( new osgGA::AnimationPathManipulator(pathfile) );
+    }
 
     osg::Node* node = MapNodeHelper().load( arguments, mainView );
     if ( node )
@@ -185,10 +212,10 @@ main(int argc, char** argv)
         mainView->setSceneData( node );
 
         osg::Group* group = new osg::Group();
-        group->addChild( MapNode::findMapNode(node) );
+        group->addChild( MapNode::get(node) );
         overlayView->setSceneData( group );
 
-        setupOverlayView( overlayView, group, MapNode::findMapNode(node) );
+        setupOverlayView( overlayView, group, MapNode::get(node) );
 
         return viewer.run();
     }

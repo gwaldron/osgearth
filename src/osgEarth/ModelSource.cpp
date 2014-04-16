@@ -38,6 +38,10 @@ _depthTestEnabled  ( true )
     fromConfig(_conf);
 }
 
+ModelSourceOptions::~ModelSourceOptions()
+{
+}
+
 void
 ModelSourceOptions::fromConfig( const Config& conf )
 {
@@ -70,8 +74,13 @@ ModelSourceOptions::getConfig() const
 ModelSource::ModelSource( const ModelSourceOptions& options ) :
 _options( options )
 {
-    //TODO: is this really necessary?
-    this->setThreadSafeRefUnref( true );
+   _preMergeOps  = new RefNodeOperationVector();
+   _postMergeOps = new RefNodeOperationVector();
+}
+
+ModelSource::~ModelSource()
+{
+   //nop
 }
 
 
@@ -90,25 +99,53 @@ ModelSource::createNode(const Map*            map,
 
 
 void 
-ModelSource::addPostProcessor( NodeOperation* op )
+ModelSource::addPreMergeOperation( NodeOperation* op )
 {
     if ( op )
     {
-        Threading::ScopedMutexLock lock( _postProcessorsMutex );
-        _postProcessors.push_back( op );
+        _preMergeOps->mutex().writeLock();
+        _preMergeOps->push_back( op );
+        _preMergeOps->mutex().writeUnlock();
     }
 }
 
 
 void
-ModelSource::removePostProcessor( NodeOperation* op )
+ModelSource::removePreMergeOperation( NodeOperation* op )
 {
     if ( op )
     {
-        Threading::ScopedMutexLock lock( _postProcessorsMutex );
-        NodeOperationVector::iterator i = std::find( _postProcessors.begin(), _postProcessors.end(), op );
-        if ( i != _postProcessors.end() )
-            _postProcessors.erase( i );
+        _preMergeOps->mutex().writeLock();
+        NodeOperationVector::iterator i = std::find( _preMergeOps->begin(), _preMergeOps->end(), op );
+        if ( i != _postMergeOps->end() )
+            _preMergeOps->erase( i );
+        _preMergeOps->mutex().writeUnlock();
+    }
+}
+
+
+void 
+ModelSource::addPostMergeOperation( NodeOperation* op )
+{
+    if ( op )
+    {
+        _postMergeOps->mutex().writeLock();
+        _postMergeOps->push_back( op );
+        _postMergeOps->mutex().writeUnlock();
+    }
+}
+
+
+void
+ModelSource::removePostMergeOperation( NodeOperation* op )
+{
+    if ( op )
+    {
+        _postMergeOps->mutex().writeLock();
+        NodeOperationVector::iterator i = std::find( _postMergeOps->begin(), _postMergeOps->end(), op );
+        if ( i != _postMergeOps->end() )
+            _postMergeOps->erase( i );
+        _postMergeOps->mutex().writeUnlock();
     }
 }
 
@@ -118,11 +155,21 @@ ModelSource::firePostProcessors( osg::Node* node )
 {
     if ( node )
     {
-        Threading::ScopedMutexLock lock( _postProcessorsMutex );
-        for( NodeOperationVector::iterator i = _postProcessors.begin(); i != _postProcessors.end(); ++i )
+        // pres:
+        _preMergeOps->mutex().readLock();
+        for( NodeOperationVector::iterator i = _preMergeOps->begin(); i != _preMergeOps->end(); ++i )
         {
             i->get()->operator()( node );
         }
+        _preMergeOps->mutex().readUnlock();
+
+        // posts:
+        _postMergeOps->mutex().readLock();
+        for( NodeOperationVector::iterator i = _postMergeOps->begin(); i != _postMergeOps->end(); ++i )
+        {
+            i->get()->operator()( node );
+        }
+        _postMergeOps->mutex().readUnlock();
     }
 }
 
@@ -131,6 +178,10 @@ ModelSource::firePostProcessors( osg::Node* node )
 #undef  LC
 #define LC "[ModelSourceFactory] "
 #define MODEL_SOURCE_OPTIONS_TAG "__osgEarth::ModelSourceOptions"
+
+ModelSourceFactory::~ModelSourceFactory()
+{
+}
 
 ModelSource*
 ModelSourceFactory::create( const ModelSourceOptions& options )
@@ -145,14 +196,9 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
         rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
 
         modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
-        if ( modelSource )
+        if ( !modelSource )
         {
-            //modelSource->setName( options.getName() );
-            OE_INFO << "Loaded ModelSource driver \"" << options.getDriver() << "\" OK" << std::endl;
-        }
-        else
-        {
-            OE_WARN << "FAIL, unable to load model source driver for \"" << options.getDriver() << "\"" << std::endl;
+            OE_WARN << "FAILED to load model source driver \"" << options.getDriver() << "\"" << std::endl;
         }
     }
     else
@@ -169,4 +215,8 @@ const ModelSourceOptions&
 ModelSourceDriver::getModelSourceOptions( const osgDB::ReaderWriter::Options* options ) const
 {
     return *static_cast<const ModelSourceOptions*>( options->getPluginData( MODEL_SOURCE_OPTIONS_TAG ) );
+}
+
+ModelSourceDriver::~ModelSourceDriver()
+{
 }

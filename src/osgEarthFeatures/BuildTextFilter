@@ -49,8 +49,7 @@ namespace osgEarth { namespace Features
         osg::Node* push( FeatureList& input, FilterContext& context );
 
     protected:
-        osg::ref_ptr<osg::Geode> _geode;
-        Style                    _style;
+        Style _style;
     };
 
 } } // namespace osgEarth::Features

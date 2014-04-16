@@ -51,10 +51,14 @@ namespace PackageQt
 
     void setProgressCallback(osgEarth::ProgressCallback* progress) { _progress = progress ? progress : new osgEarth::ProgressCallback; }
 
+    void cancel(const std::string& message="");
+    bool isCanceled() { return _canceled; }
+
   protected:
     friend class PackageLayerProgressCallback;
 
-    void packageTaskComplete();
+    void packageTaskProgress(int id, double percentComplete);
+    void packageTaskComplete(int id);
 
   private:
 
@@ -62,12 +66,14 @@ namespace PackageQt
     unsigned _maxLevel;
     bool _keepEmpties;
     std::string _errorMessage;
+    bool _canceled;
 
     OpenThreads::Mutex _m;
 
     osg::ref_ptr<osgEarth::TaskService> _taskService;
     int _totalTasks;
-    int _completedTasks;
+    double _percentComplete;
+    std::vector<double> _taskProgress;
     osg::ref_ptr<osgEarth::ProgressCallback> _progress;
   };
 
@@ -101,8 +107,8 @@ namespace PackageQt
   class PackageLayerProgressCallback : public osgEarth::ProgressCallback
   {
   public:
-    PackageLayerProgressCallback(TMSExporter* exporter)
-      : _exporter(exporter)
+    PackageLayerProgressCallback(TMSExporter* exporter, int id)
+      : _exporter(exporter), _id(id)
     {
     }
 
@@ -110,18 +116,35 @@ namespace PackageQt
 
     bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg)
     {
+      if (_exporter)
+        _exporter->packageTaskProgress(_id, current / total);
+
       return false;
     }
 
     void onCompleted()
     {
       if (_exporter)
-        _exporter->packageTaskComplete();
+        _exporter->packageTaskComplete(_id);
     }
+
+    void cancel()
+    {
+      osgEarth::ProgressCallback::cancel();
+      _exporter->cancel(message());
+    }
+
+    bool isCanceled()
+    {
+      return _canceled || _exporter->isCanceled();
+    }
+
 
   private:
     TMSExporter* _exporter;
+    int _id;
   };
 }
 
 #endif //TILER_TOOL_TMSEXPORTER_H
+

@@ -43,7 +43,7 @@ namespace osgEarth { namespace Features
             fromConfig(_conf);
         }
         
-        virtual ~LabelSourceOptions() { }
+        virtual ~LabelSourceOptions();
 
     public:
         virtual Config getConfig() const;
@@ -84,9 +84,9 @@ namespace osgEarth { namespace Features
          *
          * @return A scene graph node
          */
-        virtual osg::Node* createNode(
-            const std::string&  text,
-            const Style&        style ) =0;
+        //virtual osg::Node* createNode(
+        //    const std::string&  text,
+        //    const Style&        style ) =0;
 
 
     public:
@@ -99,7 +99,7 @@ namespace osgEarth { namespace Features
         virtual const char* libraryName() const { return "osgEarth::Features"; }
 
     protected:
-        virtual ~LabelSource() { }
+        virtual ~LabelSource();
     };
 
     //--------------------------------------------------------------------

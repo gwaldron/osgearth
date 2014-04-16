@@ -24,6 +24,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/Notify>
+#include <osg/Timer>
 #include <string.h>
 #include <sstream>
 #include <fstream>
@@ -125,6 +126,18 @@ namespace osgEarth
         StreamObject* sp = (StreamObject*)data;
         sp->write((const char*)ptr, realsize);
         return realsize;
+    }
+
+    TimeStamp
+    getCurlFileTime(void* curl)
+    {
+        long filetime;
+        if (CURLE_OK != curl_easy_getinfo(curl, CURLINFO_FILETIME, &filetime))
+            return TimeStamp(0);
+        else if (filetime < 0)
+            return TimeStamp(0);
+        else
+            return TimeStamp(filetime);
     }
 }
 
@@ -306,9 +319,17 @@ namespace
     static std::string                 s_userAgent = USER_AGENT;
 
     static long                        s_timeout = 0;
+    static long                        s_connectTimeout = 0;
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
+    static Threading::Mutex            s_HTTP_DEBUG_mutex;
+    static int                         s_HTTP_DEBUG_request_count;
+    static double                      s_HTTP_DEBUG_total_duration;
+
+    static osg::ref_ptr< URLRewriter > s_rewriter;
+
+    static osg::ref_ptr< CurlConfigHandler > s_curlConfigHandler;
 }
 
 HTTPClient&
@@ -371,15 +392,30 @@ HTTPClient::initializeImpl()
     curl_easy_setopt( _curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
-    curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);    
+    curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //0=enable.
+    curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
+
+    osg::ref_ptr< CurlConfigHandler > curlConfigHandler = getCurlConfigHandler();
+    if (curlConfigHandler.valid()) {
+        curlConfigHandler->onInitialize(_curl_handle);
+    }
+
     long timeout = s_timeout;
     const char* timeoutEnv = getenv("OSGEARTH_HTTP_TIMEOUT");
     if (timeoutEnv)
-    {        
+    {
         timeout = osgEarth::as<long>(std::string(timeoutEnv), 0);
     }
     OE_DEBUG << LC << "Setting timeout to " << timeout << std::endl;
     curl_easy_setopt( _curl_handle, CURLOPT_TIMEOUT, timeout );
+    long connectTimeout = s_connectTimeout;
+    const char* connectTimeoutEnv = getenv("OSGEARTH_HTTP_CONNECTTIMEOUT");
+    if (connectTimeoutEnv)
+    {
+        connectTimeout = osgEarth::as<long>(std::string(connectTimeoutEnv), 0);
+    }
+    OE_DEBUG << LC << "Setting connect timeout to " << connectTimeout << std::endl;
+    curl_easy_setopt( _curl_handle, CURLOPT_CONNECTTIMEOUT, connectTimeout );
 
     _initialized = true;
 }
@@ -414,6 +450,35 @@ long HTTPClient::getTimeout()
 void HTTPClient::setTimeout( long timeout )
 {
     s_timeout = timeout;
+}
+
+long HTTPClient::getConnectTimeout()
+{
+    return s_connectTimeout;
+}
+
+void HTTPClient::setConnectTimeout( long timeout )
+{
+    s_connectTimeout = timeout;
+}
+URLRewriter* HTTPClient::getURLRewriter()
+{
+    return s_rewriter.get();
+}
+
+void HTTPClient::setURLRewriter( URLRewriter* rewriter )
+{
+    s_rewriter = rewriter;
+}
+
+CurlConfigHandler* HTTPClient::getCurlConfigHandler()
+{
+    return s_curlConfigHandler.get();
+}
+
+void HTTPClient::setCurlConfighandler(CurlConfigHandler* handler)
+{
+    s_curlConfigHandler = handler;
 }
 
 void
@@ -562,49 +627,49 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
 HTTPResponse
 HTTPClient::get( const HTTPRequest&    request,
                  const osgDB::Options* options,
-                 ProgressCallback*     callback)
+                 ProgressCallback*     progress)
 {
-    return getClient().doGet( request, options, callback );
+    return getClient().doGet( request, options, progress );
 }
 
 HTTPResponse 
 HTTPClient::get( const std::string&    url,
                  const osgDB::Options* options,
-                 ProgressCallback*     callback)
+                 ProgressCallback*     progress)
 {
-    return getClient().doGet( url, options, callback);
+    return getClient().doGet( url, options, progress);
 }
 
 ReadResult
 HTTPClient::readImage(const std::string&    location,
                       const osgDB::Options* options,
-                      ProgressCallback*     callback)
+                      ProgressCallback*     progress)
 {
-    return getClient().doReadImage( location, options, callback );
+    return getClient().doReadImage( location, options, progress );
 }
 
 ReadResult
 HTTPClient::readNode(const std::string&    location,
                      const osgDB::Options* options,
-                     ProgressCallback*     callback)
+                     ProgressCallback*     progress)
 {
-    return getClient().doReadNode( location, options, callback );
+    return getClient().doReadNode( location, options, progress );
 }
 
 ReadResult
 HTTPClient::readObject(const std::string&    location,
                        const osgDB::Options* options,
-                       ProgressCallback*     callback)
+                       ProgressCallback*     progress)
 {
-    return getClient().doReadObject( location, options, callback );
+    return getClient().doReadObject( location, options, progress );
 }
 
 ReadResult
 HTTPClient::readString(const std::string&    location,
                        const osgDB::Options* options,
-                       ProgressCallback*     callback)
+                       ProgressCallback*     progress)
 {
-    return getClient().doReadString( location, options, callback );
+    return getClient().doReadString( location, options, progress );
 }
 
 bool
@@ -615,9 +680,13 @@ HTTPClient::download(const std::string& uri,
 }
 
 HTTPResponse
-HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, ProgressCallback* callback) const
+HTTPClient::doGet(const HTTPRequest&    request,
+                  const osgDB::Options* options, 
+                  ProgressCallback*     progress) const
 {
     initialize();
+
+    OE_START_TIMER(http_get);
 
     const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
             options->getAuthenticationMap() :
@@ -672,7 +741,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         }
     }
 
-    const char* proxyEnvAuth = getenv("OSGEARTH_CURL_PROXYAUTH");	
+    const char* proxyEnvAuth = getenv("OSGEARTH_CURL_PROXYAUTH");
     if (proxyEnvAuth)
     {
         proxy_auth = std::string(proxyEnvAuth);
@@ -709,9 +778,18 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, 0 );
     }
 
+    std::string url = request.getURL();
+    // Rewrite the url if the url rewriter is available  
+    osg::ref_ptr< URLRewriter > rewriter = getURLRewriter();
+    if ( rewriter.valid() )
+    {
+        std::string oldURL = url;
+        url = rewriter->rewrite( oldURL );
+        OE_INFO << "Rewrote URL " << oldURL << " to " << url << std::endl;
+    }
 
     const osgDB::AuthenticationDetails* details = authenticationMap ?
-        authenticationMap->getAuthenticationDetails(request.getURL()) :
+        authenticationMap->getAuthenticationDetails( url ) :
         0;
 
     if (details)
@@ -753,25 +831,32 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->_stream );
 
-    //Take a temporary ref to the callback
-    osg::ref_ptr<ProgressCallback> progressCallback = callback;
-    curl_easy_setopt( _curl_handle, CURLOPT_URL, request.getURL().c_str() );
-    if (callback)
+    //Take a temporary ref to the callback (why? dangerous.)
+    //osg::ref_ptr<ProgressCallback> progressCallback = callback;
+    curl_easy_setopt( _curl_handle, CURLOPT_URL, url.c_str() );
+    if (progress)
     {
-        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, progressCallback.get());
+        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, progress);
     }
 
     CURLcode res;
     long response_code = 0L;
+
+    OE_START_TIMER(get_duration);
 
     if ( _simResponseCode < 0 )
     {
         char errorBuf[CURL_ERROR_SIZE];
         errorBuf[0] = 0;
         curl_easy_setopt( _curl_handle, CURLOPT_ERRORBUFFER, (void*)errorBuf );
-
         curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)&sp);
-        res = curl_easy_perform( _curl_handle );
+        
+        osg::ref_ptr< CurlConfigHandler > curlConfigHandler = getCurlConfigHandler();
+        if (curlConfigHandler.valid()) {
+            curlConfigHandler->onGet(_curl_handle);
+        }
+
+        res = curl_easy_perform(_curl_handle);
         curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)0 );
         curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
 
@@ -788,44 +873,32 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
                 return HTTPResponse(0);
             }
         }
-        
-        curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );
+
+        curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );        
     }
     else
     {
         // simulate failure with a custom response code
         response_code = _simResponseCode;
         res = response_code == 408 ? CURLE_OPERATION_TIMEDOUT : CURLE_COULDNT_CONNECT;
-    }
-
-    if ( s_HTTP_DEBUG )
-    {
-        OE_NOTICE << LC << "GET(" << response_code << "): \"" << request.getURL() << "\"" << std::endl;
-    }
+    }    
 
     HTTPResponse response( response_code );
     
     // read the response content type:
     char* content_type_cp;
-    curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
-    if ( content_type_cp == NULL )
+
+    curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );    
+
+    if ( content_type_cp != NULL )
     {
-        OE_WARN << LC
-            << "NULL Content-Type (protocol violation) " 
-            << "URL=" << request.getURL() << std::endl;
-        return HTTPResponse(0L);
-    }
-    response._mimeType = content_type_cp;
+        response._mimeType = content_type_cp;    
+    } 
 
-
-    if ( /*response_code == 200L &&*/ res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
-    {
-        // check for multipart content:
-        //char* content_type_cp;
-        //curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
-
-        std::string content_type( content_type_cp );
-
+    // upon success, parse the data:
+    if ( res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT )
+    {        
+        // check for multipart content
         if (response._mimeType.length() > 9 && 
             ::strstr( response._mimeType.c_str(), "multipart" ) == response._mimeType.c_str() )
         {
@@ -838,7 +911,6 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         {
             // store headers that we care about
             part->_headers[IOMetadata::CONTENT_TYPE] = response._mimeType;
-
             response._parts.push_back( part.get() );
         }
     }
@@ -848,13 +920,65 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
         response._cancelled = true;
     }
 
-    // Store the mime-type, if any. (Note: CURL manages the buffer returned by
-    // this call.)
-    //char* ctbuf = NULL;
-    //if ( curl_easy_getinfo(_curl_handle, CURLINFO_CONTENT_TYPE, &ctbuf) == 0 && ctbuf )
-    //{
-    //    response._mimeType = ctbuf;
-    //}
+    response._duration_s = OE_STOP_TIMER(get_duration);
+
+    if ( progress )
+    {
+        progress->stats()["http_get_time"] += OE_STOP_TIMER(http_get);
+        progress->stats()["http_get_count"] += 1;
+        if ( response._cancelled )
+            progress->stats()["http_cancel_count"] += 1;
+    }
+
+    if ( s_HTTP_DEBUG )
+    {
+        TimeStamp filetime = getCurlFileTime(_curl_handle);
+
+        OE_NOTICE << LC 
+            << "GET(" << response_code << ", " << response._mimeType << ") : \"" 
+            << url << "\" (" << DateTime(filetime).asRFC1123() << ") t="
+            << std::setprecision(4) << response.getDuration() << "s" << std::endl;
+
+        {
+            Threading::ScopedMutexLock lock(s_HTTP_DEBUG_mutex);
+            s_HTTP_DEBUG_request_count++;
+            s_HTTP_DEBUG_total_duration += response.getDuration();
+
+            if ( s_HTTP_DEBUG_request_count % 60 == 0 )
+            {
+                OE_NOTICE << LC << "Average duration = " << s_HTTP_DEBUG_total_duration/(double)s_HTTP_DEBUG_request_count
+                    << std::endl;
+            }
+        }
+
+#if 0
+        // time details - almost 100% of the time is spent in
+        // STARTTRANSFER, which is the time until the first byte is received.
+        double td[7];
+
+        curl_easy_getinfo(_curl_handle, CURLINFO_TOTAL_TIME,         &td[0]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_NAMELOOKUP_TIME,    &td[1]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_CONNECT_TIME,       &td[2]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_APPCONNECT_TIME,    &td[3]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_PRETRANSFER_TIME,   &td[4]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_STARTTRANSFER_TIME, &td[5]);
+        curl_easy_getinfo(_curl_handle, CURLINFO_REDIRECT_TIME,      &td[6]);
+
+        for(int i=0; i<7; ++i)
+        {
+            OE_NOTICE << LC
+                << std::setprecision(4)
+                << "TIMES: total=" <<td[0]
+                << ", lookup=" <<td[1]<<" ("<<(int)((td[1]/td[0])*100)<<"%)"
+                << ", connect=" <<td[2]<<" ("<<(int)((td[2]/td[0])*100)<<"%)"
+                << ", appconn=" <<td[3]<<" ("<<(int)((td[3]/td[0])*100)<<"%)"
+                << ", prexfer=" <<td[4]<<" ("<<(int)((td[4]/td[0])*100)<<"%)"
+                << ", startxfer=" <<td[5]<<" ("<<(int)((td[5]/td[0])*100)<<"%)"
+                << ", redir=" <<td[6]<<" ("<<(int)((td[6]/td[0])*100)<<"%)"
+                << std::endl;
+        }
+#endif
+    }
 
     return response;
 }
@@ -925,6 +1049,13 @@ namespace
             }
         }
 
+        if ( !reader )
+        {
+            OE_WARN << LC << "Cannot find an OSG plugin to read response data (ext="
+                << ext << "; mime-type=" << response.getMimeType()
+                << ")" << std::endl;
+        }
+
         return reader;
     }
 }
@@ -944,8 +1075,7 @@ HTTPClient::doReadImage(const std::string&    location,
     {
         osgDB::ReaderWriter* reader = getReader(location, response);
         if (!reader)
-        {
-            OE_WARN << LC << "Can't find an OSG plugin to read "<<location<<std::endl;
+        {            
             result = ReadResult(ReadResult::RESULT_NO_READER);
         }
 
@@ -966,6 +1096,12 @@ HTTPClient::doReadImage(const std::string&    location,
                 result = ReadResult(ReadResult::RESULT_READER_ERROR);
             }
         }
+        
+        // last-modified (file time)
+        result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
+        
+        // Time of query
+        result.setDuration( response.getDuration() );
     }
     else
     {
@@ -983,7 +1119,7 @@ HTTPClient::doReadImage(const std::string&    location,
                 OE_DEBUG << "Error in HTTPClient for " << location << " but it's recoverable" << std::endl;
                 callback->setNeedsRetry( true );
             }
-        }
+        }        
     }
 
     // set the source name
@@ -1009,7 +1145,6 @@ HTTPClient::doReadNode(const std::string&    location,
         osgDB::ReaderWriter* reader = getReader(location, response);
         if (!reader)
         {
-            OE_WARN << LC << "Can't find an OSG plugin to read "<<location<<std::endl;
             result = ReadResult(ReadResult::RESULT_NO_READER);
         }
 
@@ -1030,6 +1165,9 @@ HTTPClient::doReadNode(const std::string&    location,
                 result = ReadResult(ReadResult::RESULT_READER_ERROR);
             }
         }
+        
+        // last-modified (file time)
+        result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
     }
     else
     {
@@ -1069,7 +1207,6 @@ HTTPClient::doReadObject(const std::string&    location,
         osgDB::ReaderWriter* reader = getReader(location, response);
         if (!reader)
         {
-            OE_WARN << LC << "Can't find an OSG plugin to read "<<location<<std::endl;
             result = ReadResult(ReadResult::RESULT_NO_READER);
         }
 
@@ -1090,6 +1227,9 @@ HTTPClient::doReadObject(const std::string&    location,
                 result = ReadResult(ReadResult::RESULT_READER_ERROR);
             }
         }
+        
+        // last-modified (file time)
+        result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
     }
     else
     {
@@ -1157,6 +1297,9 @@ HTTPClient::doReadString(const std::string&    location,
             }
         }
     }
+
+    // last-modified (file time)
+    result.setLastModifiedTime( getCurlFileTime(_curl_handle) );
 
     return result;
 }

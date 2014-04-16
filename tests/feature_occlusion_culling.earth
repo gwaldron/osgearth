@@ -30,7 +30,7 @@ Demonstrates occlusion culling on feature labels.
                    text-declutter:      true;
 				   text-occlusion-cull: true;	                   
 				   altitude-clamping:   terrain;	                   				   				   
-				   altitude-technique:   scene;
+				   altitude-technique:  scene;
                 }     
             </style>
         </styles>        

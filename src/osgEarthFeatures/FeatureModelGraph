@@ -27,6 +27,8 @@
 #include <osgEarth/OverlayNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/DepthOffset>
+#include <osgDB/Callbacks>
 #include <osg/Node>
 #include <set>
 
@@ -58,11 +60,18 @@ namespace osgEarth { namespace Features
          *      Node factory that will be invoked to compile feature data into nodes
          * @param session
          *      Session under which to create elements in this graph
+         * @param preMergeOperations
+         *      Node operations that will execute in the pager thread after it finishes
+         *      building a node
+         * @param postMergeOperations
+         *      Node operations that will execute after merging a node into the graph
          */
         FeatureModelGraph(
             Session*                         session,
             const FeatureModelSourceOptions& options,
-            FeatureNodeFactory*              factory );
+            FeatureNodeFactory*              factory,
+            RefNodeOperationVector*          preMergeOperations,
+            RefNodeOperationVector*          postMergeOperations);
 
         /**
          * Loads and returns a subnode. Used internally for paging.
@@ -84,7 +93,7 @@ namespace osgEarth { namespace Features
          */
         Session* getSession() { return _session; }
 
-		/**
+        /**
          * UID given to this feature graph when registered with the pseudo-loader
          */
         UID getUID() const { return _uid; }
@@ -93,13 +102,6 @@ namespace osgEarth { namespace Features
          * Mark the feature graph dirty and in need of regeneration 
          */
         void dirty();
-
-        /**
-         * Adds an operation that will run on new nodes that are added by the
-         * paging system. Note, the operation only runs after the pager actually
-         * added the node to the live scene graph.
-         */
-        void addPostMergeOperation( NodeOperation* op );
 
         /**
          * Access to the features levels
@@ -186,6 +188,7 @@ namespace osgEarth { namespace Features
         osg::Group*                      _overlayPlaceholder;
         ClampableNode*                   _clampable;
         DrapeableNode*                   _drapeable;
+        DepthOffsetAdapter               _depthOffsetAdapter;
 
         enum OverlayChange {
             OVERLAY_NO_CHANGE,
@@ -195,10 +198,14 @@ namespace osgEarth { namespace Features
         };
         OverlayChange                    _overlayChange;
 
+        osg::ref_ptr<osgDB::FileLocationCallback> _defaultFileLocationCallback;
+
+        osg::ref_ptr<RefNodeOperationVector> _preMergeOperations;
         osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
 
+        void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);
-        void checkForGlobalAltitudeStyles(const Style& style);
+        void checkForGlobalStyles(const Style& style);
         void changeOverlay();
     };
 

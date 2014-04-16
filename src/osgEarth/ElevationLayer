@@ -121,9 +121,11 @@ namespace osgEarth
             ProgressCallback* progress =0L );
 
         /**
-         * Whether the given key is valid for this layer
+         * Whether this layer contains offsets instead of absolute heights
          */
-        virtual bool isKeyValid(const TileKey& key) const;
+        bool isOffset() const {
+            return _runtimeOptions.offset() == true;
+        }
 
     protected:
         
@@ -162,17 +164,15 @@ namespace osgEarth
     {
     public:
         /**
-         * Creates a heightfield object by sampling this elevation layer vector.
+         * Populates an existing height field (hf must already exist) with height
+         * values from the elevation layers.
          */
-        bool createHeightField(
-            const TileKey&                  key,
-            bool                            fallback,
-            const Profile*                  haeProfile,
-            ElevationInterpolation          interpolation,
-            ElevationSamplePolicy           samplePolicy,
-            osg::ref_ptr<osg::HeightField>& out_result,
-            bool*                           out_isFallback,
-            ProgressCallback*               progress ) const;
+        bool populateHeightField(
+            osg::HeightField*      hf,
+            const TileKey&         key,
+            const Profile*         haeProfile,
+            ElevationInterpolation interpolation,
+            ProgressCallback*      progress ) const;
 
     public:
         /** Default ctor */

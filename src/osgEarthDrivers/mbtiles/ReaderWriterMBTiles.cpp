@@ -61,42 +61,50 @@ public:
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
-        //Set the profile
-        const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
-        setProfile( profile );              
-
-#if 0
-        //Open the database
-        std::string filename = _options.filename().value();
-
-        //Get the absolute filename
-        if (!osgDB::containsServerAddress(filename))
-        {
-            filename = osgEarth::getFullPath(referenceURI, filename);
-        }
-#endif
+                   
 
         int flags = SQLITE_OPEN_READONLY;
-        int rc = sqlite3_open_v2( _options.filename()->c_str(), &_database, flags, 0L );
+        std::string fullFilename = _options.filename()->full();        
+        int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, flags, 0L );
         if ( rc != 0 )
         {                        
             std::stringstream buf;
-            buf << "Failed to open database \"" << *_options.filename() << "\": " << sqlite3_errmsg(_database);
+            buf << "Failed to open database \"" << fullFilename << "\": " << sqlite3_errmsg(_database);
             return Status::Error(buf.str());
         }
 
         //Print out some metadata
-        std::string name, type, version, description, format;
+        std::string name, type, version, description, format, profileStr;
         getMetaData( "name", name );
         getMetaData( "type", type);
         getMetaData( "version", version );
         getMetaData( "description", description );
         getMetaData( "format", format );
+        getMetaData( "profile", profileStr );
         OE_NOTICE << "name=" << name << std::endl
                   << "type=" << type << std::endl
                   << "version=" << version << std::endl
                   << "description=" << description << std::endl
-                  << "format=" << format << std::endl;
+                  << "format=" << format << std::endl
+                  << "profile=" << profileStr << std::endl;
+
+
+
+         //Set the profile
+        const Profile* profile = getProfile();        
+        if (!profile)
+        {
+            if (!profileStr.empty())
+            {
+                profile = Profile::create(profileStr);
+            }
+            else
+            {
+                profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+            }
+            setProfile( profile );                    
+        }
+        
 
         //Determine the tile format and get a reader writer for it.        
         if (_options.format().isSet())
@@ -118,10 +126,13 @@ public:
         OE_DEBUG << LC <<  "_tileFormat = " << _tileFormat << std::endl;
 
         //Get the ReaderWriter
-        _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );
+        _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );                
 
-        computeLevels();
-
+        if (*_options.computeLevels())
+        {
+            computeLevels();
+        }
+        
         _emptyImage = ImageUtils::createEmptyImage( 256, 256 );
         
         return STATUS_OK;
@@ -181,7 +192,7 @@ public:
             if (rr.validImage())
             {
                 result = rr.takeImage();                
-            }
+            }            
         }
         else
         {
@@ -233,6 +244,7 @@ public:
 
     void computeLevels()
     {        
+        osg::Timer_t startTime = osg::Timer::instance()->tick();
         sqlite3_stmt* select = NULL;
         std::string query = "SELECT min(zoom_level), max(zoom_level) from tiles";
         int rc = sqlite3_prepare_v2( _database, query.c_str(), -1, &select, 0L );
@@ -251,9 +263,10 @@ public:
         else
         {
             OE_DEBUG << LC << "SQL QUERY failed for " << query << ": " << std::endl;
-        }
-
+        }        
         sqlite3_finalize( select );        
+        osg::Timer_t endTime = osg::Timer::instance()->tick();
+        OE_NOTICE << "Computing levels took " << osg::Timer::instance()->delta_s(startTime, endTime ) << " s" << std::endl;
     }
 
     // override

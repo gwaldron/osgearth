@@ -10,6 +10,7 @@
 #include "osgPlugins.h"
 
 #include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
 
 #include <osgViewer/api/IOS/GraphicsWindowIOS>
 
@@ -17,9 +18,6 @@
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
-
-#include "EarthMultiTouchManipulator.h"
-#include "GLES2ShaderGenVisitor.h"
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -61,9 +59,11 @@ using namespace osgEarth::Util;
     
     // This chunk inverts the Y axis.
     osgEarth::Util::EarthManipulator* manip = new osgEarth::Util::EarthManipulator();
-    osgEarth::Util::EarthManipulator::ActionOptions options;
-    options.add(osgEarth::Util::EarthManipulator::OPTION_SCALE_Y, -1.0);
-    manip->getSettings()->bindMouse(osgEarth::Util::EarthManipulator::ACTION_PAN, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, 0L, options);
+    //osgEarth::Util::EarthManipulator::ActionOptions options;
+    //options.add(osgEarth::Util::EarthManipulator::OPTION_SCALE_Y, -1.0);
+    //manip->getSettings()->bindMouse(osgEarth::Util::EarthManipulator::ACTION_EARTH_DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, 0L, options);
+    manip->getSettings()->setThrowingEnabled(true);
+    manip->getSettings()->setThrowDecayRate(0.1);
     _viewer->setCameraManipulator( manip );
     
     osg::Node* node = osgDB::readNodeFile(osgDB::findDataFile("tests/" + _file));
@@ -115,9 +115,13 @@ using namespace osgEarth::Util;
 {
     [super viewDidLoad];
     
+    std::string fullPath = osgDB::findDataFile("gdal_data/gdal_datum.csv");
+    std::string dataPath = osgDB::getFilePath(fullPath);
+    
+    setenv("GDAL_DATA", dataPath.c_str(), 1);
+    
     osg::setNotifyLevel(osg::DEBUG_FP);
     osgEarth::setNotifyLevel(osg::DEBUG_FP);
-
     
     //get screen scale
     UIScreen* screen = [UIScreen mainScreen];

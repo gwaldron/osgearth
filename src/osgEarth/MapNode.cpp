@@ -33,6 +33,7 @@
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
+#include <osgEarth/ShaderGenerator>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
@@ -58,27 +59,6 @@ namespace
         }
         void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
             _node->onModelLayerMoved( layer, oldIndex, newIndex);
-        }
-#if 0
-        void onMaskLayerAdded( MaskLayer* layer ) {
-            _node->onMaskLayerAdded( layer );
-        }
-        void onMaskLayerRemoved( MaskLayer* layer ) {
-            _node->onMaskLayerRemoved( layer );
-        }
-#endif
-
-        osg::observer_ptr<MapNode> _node;
-    };
-
-    // converys overlay property changes to the OverlayDecorator in MapNode.
-    struct MapModelLayerCallback : public ModelLayerCallback
-    {
-        MapModelLayerCallback(MapNode* mapNode) : _node(mapNode) { }
-
-        virtual void onOverlayChanged(ModelLayer* layer)
-        {
-            _node->onModelLayerOverlayChanged( layer );
         }
 
         osg::observer_ptr<MapNode> _node;
@@ -229,19 +209,15 @@ MapNode::init()
     // Protect the MapNode from the Optimizer
     setDataVariance(osg::Object::DYNAMIC);
 
+    // Protect the MapNode from the ShaderGenerator
+    ShaderGenerator::setIgnoreHint(this, true);
+
     // initialize 0Ls
     _terrainEngine          = 0L;
     _terrainEngineContainer = 0L;
     _overlayDecorator       = 0L;
 
     setName( "osgEarth::MapNode" );
-
-    // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
-    // multi-threaded overlap
-    // TODO: do we need this anymore? there are no more global uniforms in here.. gw
-    //getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
-
-    _modelLayerCallback = new MapModelLayerCallback(this);
 
     _maskLayerNode = 0L;
     _lastNumBlacklistedFilenames = 0;
@@ -288,6 +264,9 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
+        _terrainEngineContainer->getOrCreateStateSet()->addUniform(
+            Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, *terrainOptions.enableLighting()) );
+
         _terrainEngineContainer->getOrCreateStateSet()->setMode( 
             GL_LIGHTING, 
             terrainOptions.enableLighting().value() ? 1 : 0 );
@@ -323,14 +302,20 @@ MapNode::init()
     {
         DrapingTechnique* draping = new DrapingTechnique();
 
+        const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
+
         if ( _mapNodeOptions.overlayBlending().isSet() )
             draping->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
-        if ( _mapNodeOptions.overlayTextureSize().isSet() )
+        if ( envOverlayTextureSize )
+            draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
+        else if ( _mapNodeOptions.overlayTextureSize().isSet() )
             draping->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
         if ( _mapNodeOptions.overlayMipMapping().isSet() )
             draping->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
         if ( _mapNodeOptions.overlayAttachStencil().isSet() )
             draping->setAttachStencil( *_mapNodeOptions.overlayAttachStencil() );
+        if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
+            draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
 
         _overlayDecorator->addTechnique( draping );
     }
@@ -356,25 +341,30 @@ MapNode::init()
     // install a layer callback for processing further map actions:
     _map->addMapCallback( _mapCallback.get()  );
 
-    osg::StateSet* ss = getOrCreateStateSet();
-
+    osg::StateSet* stateset = getOrCreateStateSet();
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        ss->setMode( 
+        stateset->addUniform(Registry::shaderFactory()->createUniformForGLMode(
             GL_LIGHTING, 
-            _mapNodeOptions.enableLighting().value() ? 1 : 0 );
+            _mapNodeOptions.enableLighting().value() ? 1 : 0));
+
+        stateset->setMode( 
+            GL_LIGHTING, 
+            _mapNodeOptions.enableLighting().value() ? 1 : 0);
     }
 
     dirtyBound();
 
-    // Install top-level shader programs:
+#if 0
+    // Install a default lighting shader program.
     if ( Registry::capabilities().supportsGLSL() )
     {
-        VirtualProgram* vp = new VirtualProgram();
-        vp->setName( "MapNode" );
-        Registry::instance()->getShaderFactory()->installLightingShaders( vp );
-        ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
+        VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
+        vp->setName( "osgEarth.MapNode" );
+
+        Registry::shaderFactory()->installLightingShaders( vp );
     }
+#endif
 
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
@@ -452,15 +442,6 @@ MapNode::getTerrainEngine() const
     return _terrainEngine;
 }
 
-void
-MapNode::setCompositorTechnique( TextureCompositorTechnique* tech )
-{
-    if ( _terrainEngine )
-    {
-        _terrainEngine->getTextureCompositor()->setTechnique( tech );
-    }
-}
-
 osg::Group*
 MapNode::getModelLayerGroup() const
 {
@@ -505,13 +486,11 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
     {
         // install a post-processing callback on the ModelLayer's source 
         // so we can update the MapNode on new data that comes in:
-        modelSource->addPostProcessor( new MapNodeObserverInstaller(this) );
+        modelSource->addPostMergeOperation( new MapNodeObserverInstaller(this) );
     }
 
     // create the scene graph:
     osg::Node* node = layer->createSceneGraph( _map.get(), _map->getDBOptions(), 0L );
-
-    layer->addCallback(_modelLayerCallback.get() );
 
     if ( node )
     {
@@ -531,13 +510,6 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
             }
             else
             {
-                if ( layer->getOverlay() )
-                {
-                    DrapeableNode* draper = new DrapeableNode( this );
-                    draper->addChild( node );
-                    node = draper;
-                }
-
                 _models->insertChild( index, node );
             }
 
@@ -565,8 +537,6 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
 {
     if ( layer )
     {
-        layer->removeCallback( _modelLayerCallback.get() );
-
         // look up the node associated with this model layer.
         ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
         if ( i != _modelLayerNodes.end() )
@@ -706,12 +676,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
                 cullData->_cameraAltitude = eye.z();
             }
 
-            // window scale matrix:
-            osg::Matrix  m4 = cv->getWindowMatrix();
-            osg::Matrix3 m3( m4(0,0), m4(1,0), m4(2,0),
-                             m4(0,1), m4(1,1), m4(2,1),
-                             m4(0,2), m4(1,2), m4(2,2) );
-            cullData->_windowScaleMatrix->set( m3 );
+            // window matrix:
+            cullData->_windowMatrixUniform->set( cv->getWindowMatrix() );
 
             // traverse:
             cv->pushStateSet( cullData->_stateSet.get() );
@@ -726,26 +692,6 @@ MapNode::traverse( osg::NodeVisitor& nv )
     else
     {
         osg::Group::traverse( nv );
-    }
-}
-
-void
-MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
-{
-    osg::ref_ptr<osg::Node> node = _modelLayerNodes[ layer ];
-    if ( node.get() )
-    {
-        OverlayNode* overlay = dynamic_cast<OverlayNode*>(node.get());
-        if ( !overlay && layer->getOverlay() )
-        {
-            overlay = new DrapeableNode(this);
-            overlay->addChild( node.get() );
-            _models->replaceChild( node.get(), overlay );
-        }
-        else if ( overlay )
-        {
-            overlay->setActive( layer->getOverlay() );
-        }
     }
 }
 

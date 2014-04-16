@@ -29,7 +29,7 @@
 #include <osgEarthQt/DataManager>
 #include <osgEarthUtil/EarthManipulator>
 
-#include <QtGui/QApplication>
+#include <QApplication>
 
 #include "PackageQtMainWindow"
 #include "SceneController.h"
@@ -62,13 +62,17 @@ int main(int argc, char** argv)
   HTTPClient::setUserAgent( "osgearth_package_qt/1.0" );
 
   //setup log file
-  char *appData = getenv("APPDATA");
+#ifdef _WIN32
+  const char *appData = getenv("APPDATA");
+#else
+  const char *appData = "/tmp";
+#endif
 
-  std::string logDir = std::string(appData) + "\\osgEarthPackageQt";
+  std::string logDir = std::string(appData) + "/osgEarthPackageQt";
   if (!osgDB::fileExists(logDir))
     osgDB::makeDirectory(logDir);
 
-  std::string logPath = logDir + "\\log.txt";
+  std::string logPath = logDir + "/log.txt";
   std::ofstream* log = new std::ofstream( logPath.c_str() );
   std::cout.rdbuf( log->rdbuf() );
   std::cerr.rdbuf( log->rdbuf() );
@@ -110,6 +114,11 @@ int main(int argc, char** argv)
     mainView->getCamera()->setNearFarRatio(0.00002);
     mainView->addEventHandler( new osgGA::StateSetManipulator(mainView->getCamera()->getOrCreateStateSet()) );
     mainView->addEventHandler( new osgViewer::StatsHandler() );
+
+    osgViewer::Viewer* viewer = dynamic_cast<osgViewer::Viewer*>(mainView.get());
+    if(viewer)
+      viewer->setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
+
   }
 
   //create the SceneController, if no earth file is specified a blank

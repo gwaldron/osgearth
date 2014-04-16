@@ -38,6 +38,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
+#define LC "[ReaderWriterArcGIS] "
+
 //#define PROPERTY_URL        "url"
 //#define PROPERTY_PROFILE    "profile"
 
@@ -51,11 +53,37 @@ public:
     {
         //TODO: allow single layers vs. "fused view"
         if ( _layer.empty() )
+		{
             _layer = "_alllayers"; // default to the AGS "fused view"
+		}
+		else
+		{
+			_layer = *_options.layers();
+		}
 
-        //TODO: detect the format
-        if ( _format.empty() )
+        if ( _options.format().isSet() )
+		{
+            _format = *_options.format();
+		}
+        else
+		{
+            _format = _map_service.getTileInfo().getFormat();
+		}
+
+        std::transform( _format.begin(), _format.end(), _format.begin(), tolower );
+        if ( _format.length() > 3 && _format.substr( 0, 3 ) == "png" )
+		{
             _format = "png";
+		}
+
+        if ( _format == "mixed" )
+		{
+            _format = "";
+		}
+        if ( !_format.empty() )
+		{
+            _dot_format = "." + _format;
+		}
     }
 
     // override
@@ -63,6 +91,10 @@ public:
     {
         // add the security token to the URL if necessary:
         URI url = _options.url().value();
+
+		OE_DEBUG << LC << "Initial URL: " << url.full() << std::endl;
+
+		// append token to url in query string is set
         if (_options.token().isSet())
         {
             std::string token = _options.token().value();
@@ -72,10 +104,34 @@ public:
                 url = url.append( sep + std::string("token=") + token );
             }
         }
+		else
+		{
+			OE_DEBUG << LC << "Token not set" << std::endl;
+		}
+
+		// append layers to url in query string is set .. format is show:1,2,3
+		if (_options.layers().isSet())
+        {
+			std::string layers = _options.layers().value();
+			OE_DEBUG << LC << "_Layers: " << layers << std::endl;
+			if (!layers.empty())
+			{
+				std::string sep = url.full().find( "?" ) == std::string::npos ? "?" : "&";
+				url = url.append( sep + std::string("layers=show:") + layers );
+			}
+		}
+		else
+		{
+			OE_DEBUG << LC << "Layer options not set" << std::endl;
+		}
+
+		OE_DEBUG << LC << "_map_service URL: " << url.full() << std::endl;
 
         // read map service metadata from the server
         if ( !_map_service.init(url, dbOptions) )
         {
+			OE_INFO << LC << "_map_service.init failed: " << _map_service.getError() << std::endl;
+
             return Status::Error( Stringify()
                 << "[osgearth] [ArcGIS] map service initialization failed: "
                 << _map_service.getError() );
@@ -126,17 +182,12 @@ public:
         unsigned int tile_x, tile_y;
         key.getTileXY( tile_x, tile_y );
 
-        std::string f = _map_service.getTileInfo().getFormat();
-        std::transform( f.begin(), f.end(), f.begin(), tolower );
-        if ( f.length() > 3 && f.substr( 0, 3 ) == "png" )
-            f = "png";
-
         if ( _map_service.isTiled() )
         {
             buf << _options.url()->full() << "/tile"
                 << "/" << level
                 << "/" << tile_y
-                << "/" << tile_x << "." << f;
+                << "/" << tile_x << _dot_format;
         }
         else
         {
@@ -145,11 +196,11 @@ public:
             buf << std::setprecision(16)
                 << _options.url()->full() << "/export"
                 << "?bbox=" << ex.xMin() << "," << ex.yMin() << "," << ex.xMax() << "," << ex.yMax()
-                << "&format=" << f 
+                << "&format=" << _format 
                 << "&size=256,256"
                 << "&transparent=true"
-                << "&f=image"
-                << "&" << "." << f;
+                << "&f=image";
+                //<< "&" << "." << f;
         }
 
         //Add the token if necessary
@@ -162,6 +213,19 @@ public:
                 str = buf.str();
                 std::string sep = str.find( "?" ) == std::string::npos ? "?" : "&";
                 buf << sep << "token=" << token;
+            }
+        }
+
+		//Add the layers if necessary
+        if (_options.layers().isSet())
+        {
+            std::string layers = _options.layers().value();
+            if (!layers.empty())
+            {
+                std::string str;
+                str = buf.str();
+                std::string sep = str.find( "?" ) == std::string::npos ? "?" : "&";
+				buf << sep << "layers=show:" << layers;
             }
         }
 
@@ -189,7 +253,7 @@ private:
     optional<ProfileOptions> _profileConf;
     std::string _map;
     std::string _layer;
-    std::string _format;
+    std::string _format, _dot_format;
     MapService _map_service;
     osg::ref_ptr<osgDB::Options> _dbOptions;
 };

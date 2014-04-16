@@ -38,9 +38,7 @@
 #include <osg/Object>
 #include <osg/Image>
 #include <osg/Shape>
-#if OSG_MIN_VERSION_REQUIRED(2,9,5)
 #include <osgDB/Options>
-#endif
 #include <osgDB/ReadFile>
 #include <string>
 
@@ -272,6 +270,14 @@ namespace osgEarth
         bool isValid() const { return isOK(); }
 
         /**
+         * TimeStamp indicating the last time the data at this source changed
+         * Default is 0, i.e. the beginning of time itself (1970). It is up to 
+         * the TileSource implementation whether to populate this field. The
+         * Map engine can use it for per-session caching purposes.
+         */
+        virtual TimeStamp getLastModifiedTime() const { return 0; }
+
+        /**
          * Gets the Profile of the TileSource
          */
         virtual const Profile* getProfile() const;
@@ -292,7 +298,7 @@ namespace osgEarth
          * Gets the nodata max value
          */
         virtual float getNoDataMaxValue() {
-            return _options.noDataMaxValue().value(); }        
+            return _options.noDataMaxValue().value(); }
 
         /**
          * Gets the preferred extension for this TileSource
@@ -310,6 +316,12 @@ namespace osgEarth
          * Whether or not the source has data for the given TileKey
          */
         virtual bool hasData(const TileKey& key) const;
+
+        /**
+         * Whether or not the source has data to create fallback tile for 
+         * the given TileKey
+         */
+        virtual bool hasDataForFallback(const TileKey& key) const;
 
         /**
          * Whether the tile source can generate data for the specified LOD.

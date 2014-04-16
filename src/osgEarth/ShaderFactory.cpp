@@ -179,6 +179,9 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
     FunctionLocationMap::const_iterator j = functions.find( LOCATION_FRAGMENT_LIGHTING );
     const OrderedFunctionMap* lighting = j != functions.end() ? &j->second : 0L;
 
+    FunctionLocationMap::const_iterator k = functions.find( LOCATION_FRAGMENT_OUTPUT );
+    const OrderedFunctionMap* output = k != functions.end() ? &k->second : 0L;
+
     std::stringstream buf;
     buf << "#version " << GLSL_VERSION_STR << "\n"
         << GLSL_DEFAULT_PRECISION_FLOAT << "\n";
@@ -192,6 +195,12 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
     if ( lighting )
     {
         for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
+            buf << "void " << i->second << "( inout vec4 color ); \n";
+    }
+
+    if ( output )
+    {
+        for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
             buf << "void " << i->second << "( inout vec4 color ); \n";
     }
 
@@ -213,9 +222,18 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
             buf << INDENT << i->second << "( color ); \n";
     }
 
-    buf << 
-        INDENT "gl_FragColor = color; \n"
-        "} \n";  
+    if ( output )
+    {
+        for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
+            buf << INDENT << i->second << "( color ); \n";
+    }
+    else
+    {
+        // in the absense of any output functions, generate a default output statement
+        // that simply writes to gl_FragColor.
+        buf << INDENT "gl_FragColor = color;\n";
+    }
+    buf << "}\n";
 
     std::string str;
     str = buf.str();

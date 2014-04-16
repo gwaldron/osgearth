@@ -32,7 +32,6 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderGenerator>
 
 #include <osg/BoundingSphere>
 #include <osg/Polytope>
@@ -53,6 +52,17 @@ FeatureNode::FeatureNode(MapNode* mapNode,
 AnnotationNode( mapNode ),
 _feature      ( feature ),
 _draped       ( draped ),
+_options      ( options )
+{
+    init();
+}
+
+FeatureNode::FeatureNode(MapNode* mapNode,
+                         Feature* feature,
+                         const GeometryCompilerOptions& options ) :
+AnnotationNode( mapNode ),
+_feature      ( feature ),
+_draped       ( false ),
 _options      ( options )
 {
     init();
@@ -110,6 +120,8 @@ FeatureNode::init()
             node = AnnotationUtils::installTwoPassAlpha( node );
         }
 
+        //OE_NOTICE << GeometryUtils::geometryToGeoJSON( _feature->getGeometry() ) << std::endl;
+
         _attachPoint = new osg::Group();
         _attachPoint->addChild( node );
 
@@ -131,7 +143,7 @@ FeatureNode::init()
             const RenderSymbol* render = _feature->style()->get<RenderSymbol>();
             if ( render && render->depthOffset().isSet() )
             {
-                clampable->depthOffset() = *render->depthOffset();
+                clampable->setDepthOffsetOptions( *render->depthOffset() );
             }
         }
 
@@ -156,7 +168,9 @@ FeatureNode::init()
 
                 // do an initial clamp to get started.
                 clampMesh( getMapNode()->getTerrain()->getGraph() );
-            }
+            } 
+
+            applyGeneralSymbology( *_feature->style() );
         }
     }
 }
@@ -176,6 +190,15 @@ FeatureNode::setFeature( Feature* feature )
 {
     _feature = feature;
     init();
+}
+
+const Style& FeatureNode::getStyle() const
+{
+    if ( _feature.valid() )
+    {
+        return *_feature->style();
+    }
+    return AnnotationNode::getStyle();
 }
 
 void
@@ -206,7 +229,7 @@ FeatureNode::getAttachPoint()
 
 // This will be called by AnnotationNode when a new terrain tile comes in.
 void
-FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
+FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
 {
     if ( _featurePolytope.contains( tile->getBound() ) )
     {
@@ -233,7 +256,7 @@ FeatureNode::clampMesh( osg::Node* terrainModel )
         }
 
         MeshClamper clamper( terrainModel, getMapNode()->getMapSRS(), getMapNode()->isGeocentric(), relative, scale, offset );
-        this->accept( clamper );
+        getAttachPoint()->accept( clamper );
 
         this->dirtyBound();
     }
@@ -271,7 +294,7 @@ AnnotationNode( mapNode, conf )
 
     if ( srs.valid() && geom.valid() )
     {
-        _draped = conf.value<bool>("draped",false);
+        //_draped = conf.value<bool>("draped",false);
         Feature* feature = new Feature(geom.get(), srs.get(), style);
 
         conf.getIfSet( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );

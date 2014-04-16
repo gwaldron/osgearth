@@ -100,17 +100,33 @@ namespace osgEarth
         optional<bool>& shared() { return _shared; }
         const optional<bool>& shared() const { return _shared; }
 
-        /*
-        optional<int>& sharedUnitBinding() { return _sharedUnitBinding; }
-        const optional<int>& sharedUnitBinding() const { return _sharedUnitBinding; }
-        */
-
         /**
          * Whether to feather out alpha regions for this image layer with the featherAlphaRegions function.
          * Used to get proper blending when you have datasets that abutt exactly with no overlap.
          */
         optional<bool>& featherPixels() { return _featherPixels; }
         const optional<bool>& featherPixels() const { return _featherPixels; }
+
+        /**
+         * The minification filter to be applied to textures. This is the interpolation
+         * mechanism to use when the texture uses fewer screen pixels than are available.
+         */
+        optional<osg::Texture::FilterMode>& minFilter() { return _minFilter; }
+        const optional<osg::Texture::FilterMode>& minFilter() const { return _minFilter; }
+
+        /**
+         * The magnification filter to be applied to textures. This is the interpolation
+         * mechanism to use when the texture uses more screen pixels than are available.
+         */
+        optional<osg::Texture::FilterMode>& magFilter() { return _magFilter; }
+        const optional<osg::Texture::FilterMode>& magFilter() const { return _magFilter; }
+
+        /**
+         * Texture compression mode to use. Default is "unset", which means to 
+         * automatically compute the best compression mode to use.
+         */
+        optional<osg::Texture::InternalFormatMode>& textureCompression() { return _texcomp; }
+        const optional<osg::Texture::InternalFormatMode>& textureCompression() const { return _texcomp; }
 
     public:
 
@@ -131,6 +147,9 @@ namespace osgEarth
         ColorFilterChain      _colorFilters;
         optional<bool>        _shared;
         optional<bool>        _featherPixels;
+        optional<osg::Texture::FilterMode> _minFilter;
+        optional<osg::Texture::FilterMode> _magFilter;
+        optional<osg::Texture::InternalFormatMode> _texcomp;
     };
 
     //--------------------------------------------------------------------
@@ -268,12 +287,17 @@ namespace osgEarth
          * image is in the profile of the key and will be reprojected, mosaiced and
          * cropped automatically.
          */
-        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0, bool forceFallback =false);
+        virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
 
         /**
          * Creates an image that is in the image layer's native profile.
          */
-        GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
+        GeoImage createImageInNativeProfile(const TileKey& key, ProgressCallback* progress);
+
+        /**
+         * Applies the texture compression options to a texture.
+         */
+        void applyTextureCompressionMode(osg::Texture* texture) const;
 
     public: // TerrainLayer override
 
@@ -283,16 +307,16 @@ namespace osgEarth
     protected:
 
         // Creates an image that's in the same profile as the provided key.
-        GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
+        GeoImage createImageInKeyProfile(const TileKey& key, ProgressCallback* progress);
 
         // Fetches an image from the underlying TileSource whose data matches that of the
         // key extent.
-        GeoImage createImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback, bool& out_isFallback);
+        GeoImage createImageFromTileSource(const TileKey& key, ProgressCallback* progress);
 
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
         // returns a single tile. This is called by createImageFromTileSource() if the key profile
         // doesn't match the layer profile.
-        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool& out_isFallback);
+        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
 
 
         virtual void initTileSource();

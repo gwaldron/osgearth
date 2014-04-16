@@ -37,11 +37,29 @@ osg::Object()
     //nop
 }
 
+StringObject::~StringObject()
+{
+}
+
+const std::string& StringObject::getString() const
+{
+    return _str;
+}
+
+void StringObject::setString( const std::string& value )
+{
+    _str = value;
+}
+
 //------------------------------------------------------------------------
 
 URIReadCallback::URIReadCallback()
 {
     //nop
+}
+
+URIReadCallback::~URIReadCallback()
+{
 }
 
 //------------------------------------------------------------------------

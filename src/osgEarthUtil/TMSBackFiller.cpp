@@ -137,4 +137,5 @@ void TMSBackFiller::writeTile( const TileKey& key, osg::Image* image )
     if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
         osgDB::makeDirectoryForFile( filename );
     osgDB::writeImageFile( *image, filename, _options.get() );        
-}     
+}
+     

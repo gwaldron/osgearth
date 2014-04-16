@@ -31,7 +31,7 @@
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <osgDB/ReaderWriter>
+#include <osgDB/Options>
 
 namespace osgEarth
 {
@@ -271,8 +271,8 @@ namespace osgEarth
         /**
          * Gets the user-provided options structure stored in this map.
          */
-        const osgDB::ReaderWriter::Options* getGlobalOptions() const;
-        void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
+        const osgDB::Options* getGlobalOptions() const;
+        void setGlobalOptions( const osgDB::Options* options );
 
         /**
          * Sets the readable name of this map.
@@ -283,44 +283,30 @@ namespace osgEarth
          * Gets the readable name of this map.
          */
         const std::string& getName() const { return _name; }
-
+        
         /**
-         * Creates a heightfield for the region covered by the given TileKey, falling back on
-         * lower resolutions if necessary.
-         *
-         * NOTE: By default, this method will return a heightfield with HAE (height above ellipsoid) 
-         * values, even if the TileKey profile has an MSL vertical datum. That's because this 
-         * method is usually called to produce a renderable height field. You can override this
-         * behavior by passing in convertToHAE=false.
-         *
-         * @param key
-         *      Tile key defining the region (and ideal LOD) for which to return a heightfield
-         * @param fallbackIfNecessary
-         *      If the map can't generate a true heightfield for the key, fall back on lower
-         *      levels of detail until it can make one.
-         * @param out_hf
-         *      Resulting heightfield is written here.
-         * @param out_isFallback
-         *      Output flag telling the caller whether the method had to "fall back" on a 
-         *      lower level of detail.
-         * @param convertToHAE
-         *      Whether to return height-above-ellipsoid values in the heightfield, even if the
-         *      input tile key's SRS specifies a vertical datum (which would normally result in
-         *      a heightfield expressed relative to MSL). This is typical for when you are building
-         *      the actual 3D terrain.
-         * @param samplePolicy
-         *      How to intepolate heightfield samples.
-         * @param progress
-         *      (optional) progress callback.
+         * Creates a flat heightfield (MSL) for the given tilekey.
          */
-        bool getHeightField(
+        osg::HeightField* createReferenceHeightField(
+            const TileKey& key,
+            bool           expressHeightsAsHAE =true) const;
+        
+        /**
+         * Populates a heightfield with data from the elevation layers
+         * in the map. The method will create a new heightfield if you
+         * don't supply one to populate.
+         *
+         * NOTE: By default, this method will populate the heightfield with HAE (height
+         * above ellipsoid) values, even if the TileKey profile has an MSL vertical
+         * datum. That is because this method is usually called to produce a renderable
+         * height field. You can override this behavior by passing in convertToHAE=false.
+         */
+        bool populateHeightField(
+            osg::ref_ptr<osg::HeightField>& hf,
             const TileKey&                  key,
-            bool                            fallbackIfNeessary,
-            osg::ref_ptr<osg::HeightField>& out_hf,
-            bool*                           out_isFallback =0L,            
-            bool                            convertToHAE   =true,
-            ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
-            ProgressCallback*               progress       =0L)  const;
+            bool                            expressHeightsAsHAE =true,
+            ElevationSamplePolicy           samplePolicy        =SAMPLE_FIRST_VALID,
+            ProgressCallback*               progress            =0L) const;
 
         /**
          * Sets the Cache for this Map. Set to NULL for no cache.
@@ -350,7 +336,7 @@ namespace osgEarth
          * Returns true if new Map model data was available and a sync occurred;
          * returns false if nothing changed.
          */    
-        bool sync( class MapFrame& frame ) const;    
+        bool sync( class MapFrame& frame ) const;
 
         enum ModelParts {
             IMAGE_LAYERS     = 1 << 0,
@@ -383,13 +369,23 @@ namespace osgEarth
         ModelLayerVector _modelLayers;
         MaskLayerVector _terrainMaskLayers;
         MapCallbackList _mapCallbacks;
-        osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
+        osg::ref_ptr<const osgDB::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _profileNoVDatum;
         osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _dbOptions;
+
+        struct ElevationLayerCB : public ElevationLayerCallback {
+            osg::observer_ptr<Map> _map;
+            ElevationLayerCB(Map*);
+            void onVisibleChanged(TerrainLayer* layer);
+        };
+        osg::ref_ptr<ElevationLayerCB> _elevationLayerCB;
+        friend struct ElevationLayerCB;
+
+        void notifyElevationLayerVisibleChanged(TerrainLayer*);
 
     private:
         void calculateProfile();

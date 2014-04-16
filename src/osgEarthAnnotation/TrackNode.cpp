@@ -75,7 +75,8 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
             image,                    // image
             osg::Vec2s(0,0),          // offset
             0,                        // tex image unit
-            icon->heading()->eval() );
+            icon->heading()->eval(),
+            icon->scale()->eval() );
 
         if ( imageGeom )
         {
@@ -122,8 +123,9 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
 
     getAttachPoint()->addChild( _geode );
 
-    ShaderGenerator gen( Registry::stateSetCache() );
-    this->accept( gen );
+    ShaderGenerator gen;
+    gen.setProgramName( "osgEarth.TrackNode" );
+    gen.run( this, Registry::stateSetCache() );
 }
 
 void

@@ -27,7 +27,7 @@
 
 #include <QtGui>
 #include <QtCore/QTimer>
-#include <QtGui/QWidget>
+#include <QWidget>
 
 using namespace osgEarth;
 using namespace osgEarth::QtGui;

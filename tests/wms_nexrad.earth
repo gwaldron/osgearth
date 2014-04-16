@@ -8,6 +8,7 @@ US NEXRAD 45 minute radar returns overlaid on imagery.
      
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
+        <cache_policy usage="no_cache"/>
     </image>
     
     <image name="nexrad45min" driver="wms">

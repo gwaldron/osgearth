@@ -55,6 +55,10 @@ Geometry::Geometry( const Vec3dVector* data )
     insert( begin(), data->begin(), data->end() );
 }
 
+Geometry::~Geometry()
+{
+}
+
 int
 Geometry::getTotalPointCount() const
 {
@@ -418,6 +422,10 @@ Geometry( rhs )
     //nop
 }
 
+PointSet::~PointSet()
+{
+}
+
 //----------------------------------------------------------------------------
 
 LineString::LineString( const LineString& rhs ) :
@@ -430,6 +438,10 @@ LineString::LineString( const Vec3dVector* data ) :
 Geometry( data )
 {
     //nop
+}
+
+LineString::~LineString()
+{
 }
 
 double
@@ -478,6 +490,10 @@ Geometry( data )
     open();
 }
 
+Ring::~Ring()
+{
+}
+
 Geometry*
 Ring::cloneAs( const Geometry::Type& newType ) const
 {
@@ -497,6 +513,14 @@ Ring::open()
 {            
     while( size() > 2 && front() == back() )
         erase( end()-1 );
+}
+
+// ensures that the first and last points are idential.
+void 
+Ring::close()
+{
+    if ( size() > 0 && front() != back() )
+        push_back( front() );
 }
 
 // gets the signed area.
@@ -557,6 +581,10 @@ Ring( data )
     //nop
 }
 
+Polygon::~Polygon()
+{
+}
+
 int
 Polygon::getTotalPointCount() const
 {
@@ -592,6 +620,14 @@ Polygon::open()
         (*i)->open();
 }
 
+void
+Polygon::close() 
+{
+    Ring::close();
+    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
+        (*i)->close();
+}
+
 //----------------------------------------------------------------------------
 
 MultiGeometry::MultiGeometry( const MultiGeometry& rhs ) :
@@ -605,6 +641,10 @@ MultiGeometry::MultiGeometry( const GeometryCollection& parts ) :
 _parts( parts )
 {
     //nop
+}
+
+MultiGeometry::~MultiGeometry()
+{
 }
 
 Geometry::Type

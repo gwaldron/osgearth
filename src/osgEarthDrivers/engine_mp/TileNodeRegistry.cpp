@@ -18,7 +18,7 @@
 */
 #include "TileNodeRegistry"
 
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[TileNodeRegistry] "
@@ -30,9 +30,67 @@ using namespace osgEarth;
 //----------------------------------------------------------------------------
 
 TileNodeRegistry::TileNodeRegistry(const std::string& name) :
-_name( name )
+_name              ( name ),
+_revisioningEnabled( false ),
+_frameNumber       ( 0u )
 {
     //nop
+}
+
+
+void
+TileNodeRegistry::setRevisioningEnabled(bool value)
+{
+    _revisioningEnabled = value;
+}
+
+
+void
+TileNodeRegistry::setMapRevision(const Revision& rev,
+                                 bool            setToDirty)
+{
+    if ( _revisioningEnabled )
+    {
+        if ( _maprev != rev || setToDirty )
+        {
+            Threading::ScopedWriteLock exclusive( _tilesMutex );
+
+            if ( _maprev != rev || setToDirty )
+            {
+                _maprev = rev;
+
+                for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+                {
+                    i->second->setMapRevision( _maprev );
+                    if ( setToDirty )
+                        i->second->setDirty();
+                }
+            }
+        }
+    }
+}
+
+
+//NOTE: this method assumes the input extent is the same SRS as
+// the terrain profile SRS.
+void
+TileNodeRegistry::setDirty(const GeoExtent& extent,
+                           unsigned         minLevel,
+                           unsigned         maxLevel)
+{
+    Threading::ScopedWriteLock exclusive( _tilesMutex );
+    
+    bool checkSRS = false;
+    for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+    {
+        const TileKey& key = i->first;
+        if (minLevel <= key.getLOD() && 
+            maxLevel >= key.getLOD() &&
+            extent.intersects(i->first.getExtent(), checkSRS) )
+        {
+            i->second->setDirty();
+        }
+    }
 }
 
 
@@ -43,6 +101,8 @@ TileNodeRegistry::add( TileNode* tile )
     {
         Threading::ScopedWriteLock exclusive( _tilesMutex );
         _tiles[ tile->getKey() ] = tile;
+        if ( _revisioningEnabled )
+            tile->setMapRevision( _maprev );
         OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
     }
 }
@@ -71,6 +131,20 @@ TileNodeRegistry::remove( TileNode* tile )
         Threading::ScopedWriteLock exclusive( _tilesMutex );
         _tiles.erase( tile->getKey() );
         OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
+    }
+}
+
+
+void
+TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
+{
+    if ( tile )
+    {
+        // ref just in case remove() is the last reference
+        osg::ref_ptr<TileNode> tileSafe = tile;
+        remove( tile );
+        if ( destination )
+            destination->add( tileSafe.get() );
     }
 }
 

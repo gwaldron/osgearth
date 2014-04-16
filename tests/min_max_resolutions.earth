@@ -1,25 +1,27 @@
 <!--
 This example demonstrates how to use two image sources and switch between them
 at a given resolution level.
-
-Please note that usage of Yahoo! map data is subject to Yahoo!'s terms of service.
 -->
 
-<map name="Yahoo Levels" type="geocentric" version="2">
-
-    <image name="yahoo" driver="composite">
+<map name="Min Max Resolution Levels" type="geocentric" version="2">
     
-        <!-- this level will be visible at lower resolutions -->
-        <image name="yahoo_sat" driver="yahoo">
-            <dataset>satellite</dataset>            
-			<max_resolution>4891</max_resolution>
-        </image> 
+	<!-- this level will be visible at lower resolutions -->
+	<image name="mapquest_aerial" driver="xyz">
+		<url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
+		<profile>spherical-mercator</profile>
+		<cache_policy usage="no_cache"/>
+		<nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>      
+		<min_resolution>7500</min_resolution>
+	</image> 
 
-        <!-- this level will be visible at higher resolutions -->
-        <image name="yahoo_maps" driver="yahoo">            
-			<min_resolution>2445</min_resolution>
-        </image> 
+	<!-- this level will be visible at higher resolutions -->
+	<image name="mapquest_osm" driver="xyz">
+		<url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
+		<profile>spherical-mercator</profile>       
+		<cache_policy usage="no_cache"/>
+		<max_resolution>2500</max_resolution>
+	</image>
+	
+	<options lighting="false"/>
         
-    </image>
-   
 </map>

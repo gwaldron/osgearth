@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Registry>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -27,6 +28,10 @@ using namespace osgEarth::Symbology;
 
 
 //------------------------------------------------------------------------
+
+LabelSourceOptions::~LabelSourceOptions()
+{
+}
 
 void
 LabelSourceOptions::fromConfig( const Config& conf )
@@ -46,6 +51,11 @@ LabelSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
     return conf;
+}
+
+//------------------------------------------------------------------------
+LabelSource::~LabelSource()
+{
 }
 
 //------------------------------------------------------------------------

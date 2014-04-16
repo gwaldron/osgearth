@@ -18,6 +18,9 @@
  */
 #include <osgEarthSymbology/ModelResource>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Utils>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgUtil/Optimizer>
 
 #define LC "[ModelResource] "
@@ -53,24 +56,29 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
 {
     osg::Node* node = 0L;
 
-    ReadResult r = uri.getNode( dbOptions );
+    ReadResult r = uri.readNode( dbOptions );
     if ( r.succeeded() )
     {
         node = r.releaseNode();
+        
+        OE_INFO << LC << "Loaded " << uri.base() << "(from " << (r.isFromCache()? "cache" : "source") << ")"
+            << std::endl;
 
         osgUtil::Optimizer o;
-        o.optimize( 
-            node, 
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::INDEX_MESH |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+        o.optimize( node,
+            o.DEFAULT_OPTIMIZATIONS |
+            o.INDEX_MESH |
+            o.VERTEX_PRETRANSFORM |
+            o.VERTEX_POSTTRANSFORM );
     }
     else // failing that, fall back on the old encoding format..
     {
         StringVector tok;
         StringTokenizer( *uri, tok, "()" );
         if (tok.size() >= 2)
-            return createNodeFromURI( URI(tok[1]), dbOptions );
+        {
+            node = createNodeFromURI( URI(tok[1]), dbOptions );
+        }
     }
 
     return node;

@@ -63,7 +63,7 @@ public:
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
     {
         unsigned int level, tile_x, tile_y;
-        level = key.getLevelOfDetail() +1;
+        level = key.getLevelOfDetail();
         key.getTileXY( tile_x, tile_y );
 
         unsigned int numCols, numRows;

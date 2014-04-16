@@ -47,22 +47,21 @@
     ScriptResult call(const std::string& function, osgEarth::Features::Feature const* feature=0L, osgEarth::Features::FilterContext const* context=0L);
 
   protected:
-    static v8::Handle<v8::Value> logCallback(const v8::Arguments& args);
-    //static v8::Handle<v8::Value> constructFeatureCallback(const v8::Arguments &args);
-    static v8::Handle<v8::Value> constructBoundsCallback(const v8::Arguments &args);
-    static v8::Handle<v8::Value> constructVec3dCallback(const v8::Arguments &args);
-    static v8::Handle<v8::Value> constructGeoExtentCallback(const v8::Arguments &args);
+    static void logCallback(const v8::FunctionCallbackInfo<v8::Value>& info);
+    //static void constructFeatureCallback(const v8::FunctionCallbackInfo<v8::Value> &info);
+    static void constructBoundsCallback(const v8::FunctionCallbackInfo<v8::Value> &info);
+    static void constructVec3dCallback(const v8::FunctionCallbackInfo<v8::Value> &info);
+    static void constructGeoExtentCallback(const v8::FunctionCallbackInfo<v8::Value> &info);
 
-    static v8::Handle<v8::Value> constructSpatialReferenceCallback(const v8::Arguments &args);
-    //static v8::Handle<v8::Value> constructSymbologyGeometryCallback(const v8::Arguments &args);
+    static void constructSpatialReferenceCallback(const v8::FunctionCallbackInfo<v8::Value> &info);
+    //static void constructSymbologyGeometryCallback(const v8::FunctionCallbackInfo<v8::Value> &info);
 
-    v8::Local<v8::ObjectTemplate> createGlobalObjectTemplate();
+    v8::Handle<v8::Context> createGlobalContext();
 
     /** Compiles and runs javascript in the current context. */
     ScriptResult executeScript(v8::Handle<v8::String> script);
 
   protected:
-    v8::Persistent<v8::ObjectTemplate> _globalTemplate;
     v8::Persistent<v8::Context> _globalContext;
     v8::Isolate* _isolate;
   };

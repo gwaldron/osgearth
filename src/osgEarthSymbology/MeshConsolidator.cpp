@@ -221,9 +221,9 @@ namespace
 //------------------------------------------------------------------------
 
 void
-MeshConsolidator::convertToTriangles( osg::Geometry& geom )
+MeshConsolidator::convertToTriangles( osg::Geometry& geom, bool force )
 {
-    if ( !canOptimize(geom) )
+    if ( !force && !canOptimize(geom) )
         return;
 
     osg::Geometry::PrimitiveSetList& primSets = geom.getPrimitiveSetList();
@@ -318,6 +318,26 @@ namespace
         osg::Vec3Array* newVerts = new osg::Vec3Array();
         newVerts->reserve( numVerts );
 
+        // Determine if we need to use 3D texture coordinates or not.
+        bool use3DTextureCoords = false;
+        for( DrawableList::iterator i = start; i != end; ++i )
+        {
+            for( unsigned a=0; a<texCoordArrayUnits.size(); ++a )
+            {
+                unsigned unit = texCoordArrayUnits[a];
+
+                osg::Vec3Array* texCoords = dynamic_cast<osg::Vec3Array*>(i->get()->asGeometry()->getTexCoordArray( unit ));
+                if (texCoords)
+                {
+                    use3DTextureCoords = true;
+                    break;
+                }
+            }
+
+            if (use3DTextureCoords) break;
+        }
+
+
         osg::Vec4Array* newColors =0L;
         if ( numColors > 0 )
         {
@@ -338,11 +358,22 @@ namespace
             //newNormalsBinding = numNormals==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
         }
 
-        std::vector<osg::Vec2Array*> newTexCoordsArrays;
+        std::vector<osg::Array*> newTexCoordsArrays;
         for( unsigned i=0; i<texCoordArrayUnits.size(); ++i )
         {
-            osg::Vec2Array* newTexCoords = new osg::Vec2Array();
-            newTexCoords->reserve( numVerts );
+            osg::Array* newTexCoords;
+            if (use3DTextureCoords)
+            {
+                osg::Vec3Array* texCoords3D = new osg::Vec3Array;
+                texCoords3D->reserve( numVerts );
+                newTexCoords = texCoords3D;                                    
+            }
+            else
+            {
+                osg::Vec2Array* texCoords2D = new osg::Vec2Array;
+                texCoords2D->reserve( numVerts );
+                newTexCoords = texCoords2D;                                    
+            }                        
             newTexCoordsArrays.push_back( newTexCoords );
         }
 
@@ -406,12 +437,39 @@ namespace
                     for( unsigned a=0; a<texCoordArrayUnits.size(); ++a )
                     {
                         unsigned unit = texCoordArrayUnits[a];
-                        osg::Vec2Array* texCoords = dynamic_cast<osg::Vec2Array*>( geom->getTexCoordArray(unit) );
-                        if ( texCoords )
+
+                        // We are just using 2D texture coordinates so only check for the 2D case
+                        if (!use3DTextureCoords)
                         {
-                            osg::Vec2Array* newTexCoords = newTexCoordsArrays[a];
-                            std::copy( texCoords->begin(), texCoords->end(), std::back_inserter(*newTexCoords) );
+                            osg::Vec2Array* texCoords2D = dynamic_cast<osg::Vec2Array*>( geom->getTexCoordArray(unit) );
+                            if (texCoords2D)
+                            {
+                                osg::Vec2Array* newTexCoords = static_cast< osg::Vec2Array*>( newTexCoordsArrays[a] );
+                                std::copy( texCoords2D->begin(), texCoords2D->end(), std::back_inserter(*newTexCoords) );
+                            }                                                           
                         }
+                        else
+                        {
+                            // We are using 3D coordinates, so check for both 2D and 3D coordinates.  We will consolidate them all into 3D coordinates.
+                            osg::Vec2Array* texCoords2D = dynamic_cast<osg::Vec2Array*>( geom->getTexCoordArray(unit) );
+                            osg::Vec3Array* texCoords3D = dynamic_cast<osg::Vec3Array*>( geom->getTexCoordArray(unit) );
+                            if (texCoords2D || texCoords3D)
+                            {
+                                osg::Vec3Array* newTexCoords = static_cast< osg::Vec3Array*>( newTexCoordsArrays[a] );
+                                if (texCoords3D)
+                                {
+                                    std::copy( texCoords3D->begin(), texCoords3D->end(), std::back_inserter(*newTexCoords) );
+                                }
+                                else
+                                {
+                                    // Convert 2D to 3D coords
+                                    for (osg::Vec2Array::iterator itr = texCoords2D->begin(); itr != texCoords2D->end(); ++itr)
+                                    {                                        
+                                        newTexCoords->push_back( osg::Vec3(itr->x(), itr->y(), 0) );
+                                    }
+                                }
+                            }
+                        }                                                
                     }
                 }
 

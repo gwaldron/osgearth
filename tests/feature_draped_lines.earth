@@ -1,0 +1,41 @@
+<!--
+osgEarth Sample
+
+Demonstrate the Altitude Symbol and GPU-based vertex clamping.
+-->
+
+<map name="Geometry Rasterizer Demo" type="round" version="2">
+  
+    <options>
+        <lighting>false</lighting>
+        <terrain min_lod="16"/>
+    </options>
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+        <cache_policy usage="no_cache"/>
+    </image>
+    
+    <model name="world_boundaries" driver="feature_geom">
+
+        <!-- Configure the OGR feature driver to read the shapefile. -->             
+        <features name="world" driver="ogr">
+            <url>../data/world.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+		
+		<feature_indexing/>	
+                
+        <styles>
+            <style type="text/css">
+                world {
+                   stroke:             #ffff00;
+                   stroke-width:       5px;
+                   altitude-clamping:  terrain-drape;
+                }            
+            </style>
+        </styles>
+        
+    </model>
+  
+</map>

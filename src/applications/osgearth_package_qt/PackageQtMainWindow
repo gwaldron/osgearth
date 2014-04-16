@@ -18,7 +18,6 @@
 */
 
 #include <osgEarthQt/Common>
-#include <osgEarthQt/MultiViewerWidget>
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/LayerManagerWidget>
 #include <osgEarthQt/MapCatalogWidget>
@@ -40,6 +39,8 @@
 #include <QMetaObject>
 #include <QProgressDialog>
 #include <QToolBar>
+#include <QFileDialog>
+#include <QMessageBox>
 
 #include "SceneController.h"
 #include "TMSExporter.h"
@@ -51,8 +52,8 @@ namespace
   class ExportProgressCallback : public osgEarth::ProgressCallback
   {
   public:
-    ExportProgressCallback(QProgressDialog* dialog)
-      : _dialog(dialog)
+    ExportProgressCallback(QMainWindow* parent, QProgressDialog* dialog)
+      : _parent(parent), _dialog(dialog)
     {
     }
 
@@ -65,7 +66,9 @@ namespace
         QMetaObject::invokeMethod(_dialog, "setValue", Qt::QueuedConnection, Q_ARG(int, (current / total) * 100));
 
         if (_dialog->wasCanceled())
+        {
           return true;
+        }
       }
 
       return false;
@@ -73,10 +76,15 @@ namespace
 
     void onCompleted()
     {
+      bool userCanceled = _dialog->wasCanceled();
       QMetaObject::invokeMethod(_dialog, "close", Qt::QueuedConnection);
+
+      if (!userCanceled)
+        QMetaObject::invokeMethod(_parent, "showExportResult", Qt::BlockingQueuedConnection);
     }
 
   private:
+    QMainWindow* _parent;
     QProgressDialog* _dialog;
   };
 
@@ -103,7 +111,7 @@ class PackageQtMainWindow : public QMainWindow
 public:
 
   PackageQtMainWindow(osgEarth::QtGui::ViewerWidget* viewerWidget, PackageQt::SceneController* controller, PackageQt::TMSExporter* exporter)
-        : _viewerWidget(viewerWidget), _controller(controller), _exporter(exporter), _compositeViewerWidget(0L), _lastDir("")
+        : _viewerWidget(viewerWidget), _controller(controller), _exporter(exporter), _lastDir("")
     {
         _manager = new osgEarth::QtGui::DataManager(_controller->mapNode());
 
@@ -199,6 +207,7 @@ private slots:
 
           osgEarth::Drivers::GDALOptions layerOpt;
           layerOpt.url() = osgEarth::URI(filePath.toStdString());
+          layerOpt.tileSize() = 15;
           
           std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
           osg::ref_ptr<osgEarth::ElevationLayer> newLayer = new osgEarth::ElevationLayer(osgEarth::ElevationLayerOptions(fileName, layerOpt));
@@ -222,11 +231,11 @@ private slots:
 	        if (exportDialog.exec() == QDialog::Accepted)
 	        {
             //QProgressDialog* progress = new QProgressDialog(tr("Exporting. Please wait."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
-            QProgressDialog* progress = new QProgressDialog(tr("Processing layers..."), QString(), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
+            QProgressDialog* progress = new QProgressDialog(tr("Processing layers..."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
             progress->setAttribute(Qt::WA_DeleteOnClose, true);
             progress->setWindowTitle(tr("Exporting"));
             progress->setValue(0);
-            _exporter->setProgressCallback(new ExportProgressCallback(progress));
+            _exporter->setProgressCallback(new ExportProgressCallback(this, progress));
 
             progress->setWindowModality(Qt::WindowModal);
             progress->show();
@@ -255,6 +264,14 @@ private slots:
         }
     }
 
+    void showExportResult()
+    {
+      if (_exporter->isCanceled())
+        QMessageBox::warning(this, tr("Error"), tr(_exporter->getErrorMessage().c_str()));
+      else
+        QMessageBox::information(this, tr("Complete"), tr("The export finished successfully"));
+    }
+
     void getBoundingBox(bool checked)
     {
       if (!_controller)
@@ -279,14 +296,7 @@ protected:
     {
         if (_viewerWidget)
         {
-            //_viewerWidget->getViewer()->setSceneData(0);
-            //_viewerWidget->getViewer()->frame();
             _viewerWidget->getViewer()->setDone(true);
-        }
-
-        if (_compositeViewerWidget)
-        {
-            _compositeViewerWidget/*->getViewer()*/->setDone(true);
         }
 
         event->accept();
@@ -405,14 +415,11 @@ private:
 
     osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
     osgEarth::QtGui::ViewerWidget* _viewerWidget;
-    osgEarth::QtGui::MultiViewerWidget* _compositeViewerWidget;
     osgEarth::QtGui::ViewVector _views;
 
     QAction *_openEarthFileAction;
     QAction *_addImageLayerAction;
-    //QAction *_addImageFolderAction;
     QAction *_addElevationLayerAction;
-    //QAction *_addElevationFolderAction;
     QAction *_exportAction;
     QAction *_bboxAction;
     QAction *_bboxClearAction;
@@ -426,3 +433,4 @@ private:
 };
 
 }
+

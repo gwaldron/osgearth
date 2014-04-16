@@ -9,19 +9,24 @@ SET(LIB_NAME osgEarthUtil)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(HEADERS_ROOT
+	ActivityMonitorTool
     AnnotationEvents
     AutoClipPlaneHandler
+    ArcGIS
     Common
     Controls
     ContourMap
     ClampCallback
     DataScanner
+    DateTime
     DetailTexture
     EarthManipulator
+	Ephemeris
     ExampleResources
     Export
     FeatureManipTool
     FeatureQueryTool
+    Fog
     Formatter
     GeodeticGraticule
     HTM
@@ -35,14 +40,18 @@ SET(HEADERS_ROOT
     MouseCoordsTool
     NormalMap
     ObjectLocator
+    Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
-    SkyNode
+	Shadowing
+	SimplexNoise
+    Sky
+#    SkyNode
     SpatialData
     StarData
     TerrainProfile
-	TileIndex
-	TileIndexBuilder
+    TileIndex
+    TileIndexBuilder
     TFS
     TFSPackager
     TMS
@@ -53,25 +62,25 @@ SET(HEADERS_ROOT
     WFS
     WMS
 )
-IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
-    SET(HEADERS_ROOT ${HEADERS_ROOT}
-        ShadowUtils)
-ENDIF()
 SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
 
 SET(SOURCES_ROOT
+	ActivityMonitorTool.cpp
     AnnotationEvents.cpp
+    ArcGIS.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
     ContourMap.cpp
-    DataScanner.cpp
+    DataScanner.cpp    
     DetailTexture.cpp
     EarthManipulator.cpp
+	Ephemeris.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
+    Fog.cpp
     GeodeticGraticule.cpp
     HTM.cpp
     LatLongFormatter.cpp
@@ -83,13 +92,16 @@ SET(SOURCES_ROOT
     MouseCoordsTool.cpp
     NormalMap.cpp
     ObjectLocator.cpp
+    Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
+	Shadowing.cpp
+	SimplexNoise.cpp
     SpatialData.cpp
-    SkyNode.cpp
+    Sky.cpp
     TerrainProfile.cpp
-	TileIndex.cpp
-	TileIndexBuilder.cpp
+    TileIndex.cpp
+    TileIndexBuilder.cpp
     TFS.cpp
     TFSPackager.cpp
     TMS.cpp
@@ -100,10 +112,6 @@ SET(SOURCES_ROOT
     WFS.cpp
     WMS.cpp
 )
-IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
-    SET(SOURCES_ROOT ${SOURCES_ROOT} 
-        ShadowUtils.cpp)
-ENDIF()
 
 SOURCE_GROUP( Sources FILES ${SOURCES_ROOT} )
 

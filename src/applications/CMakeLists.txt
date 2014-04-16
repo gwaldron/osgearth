@@ -13,6 +13,7 @@ IF(NOT OSGCORE_BUNDLED)
 ENDIF(NOT OSGCORE_BUNDLED)
 SET(OPENSCENEGRAPH_APPLICATION_DIR ${PROJECT_SOURCE_DIR})
 
+
 #OpenThreads, osg, osgDB and osgUtil are included elsewhere.
 SET(TARGET_COMMON_LIBRARIES
     osgEarth
@@ -36,7 +37,7 @@ ADD_SUBDIRECTORY(osgearth_backfill)
 ADD_SUBDIRECTORY(osgearth_overlayviewer)
 ADD_SUBDIRECTORY(osgearth_version)
 ADD_SUBDIRECTORY(osgearth_tileindex)
-IF (QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
+IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_package_qt)
 ENDIF()
 
@@ -56,7 +57,6 @@ ADD_SUBDIRECTORY(osgearth_map)
 ADD_SUBDIRECTORY(osgearth_annotation)
 ADD_SUBDIRECTORY(osgearth_tracks)
 
-
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6")
     ADD_SUBDIRECTORY(osgearth_featureeditor)
 ENDIF()
@@ -72,23 +72,20 @@ ADD_SUBDIRECTORY(osgearth_featuremanip)
 ADD_SUBDIRECTORY(osgearth_featurequery)
 ADD_SUBDIRECTORY(osgearth_occlusionculling)
 ADD_SUBDIRECTORY(osgearth_colorfilter)
-ADD_SUBDIRECTORY(osgearth_contour)
-ADD_SUBDIRECTORY(osgearth_verticalscale)
+#ADD_SUBDIRECTORY(osgearth_verticalscale)
 ADD_SUBDIRECTORY(osgearth_sequencecontrol)
 ADD_SUBDIRECTORY(osgearth_minimap)
-ADD_SUBDIRECTORY(osgearth_detailtex)
+#ADD_SUBDIRECTORY(osgearth_detailtex)
 ADD_SUBDIRECTORY(osgearth_sharedlayer)
 ADD_SUBDIRECTORY(osgearth_terraineffects)
+ADD_SUBDIRECTORY(osgearth_mrt)
+ADD_SUBDIRECTORY(osgearth_fog)
+ADD_SUBDIRECTORY(osgearth_shadergen)
 
-IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
-    ADD_SUBDIRECTORY(osgearth_shadow)
-ENDIF()
-
-IF (QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
+IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_qt)
     ADD_SUBDIRECTORY(osgearth_qt_simple)
     ADD_SUBDIRECTORY(osgearth_qt_windows)
     ADD_SUBDIRECTORY(osgearth_demo)
 ENDIF()
 
-#ADD_SUBDIRECTORY(osgearth_silverlining)

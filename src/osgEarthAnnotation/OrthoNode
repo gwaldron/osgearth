@@ -96,10 +96,10 @@ namespace osgEarth { namespace Annotation
         void setOcclusionCulling( bool value );
 
         /**
-         * Gets or sets the maximum elevation that the occlusion culling takes place.
+         * Gets or sets the maximum altitude that the occlusion culling takes place.
          */
-        double getOcclusionCullingMaxElevation() const;
-        void setOcclusionCullingMaxElevation( double occlusionCullingMaxElevation );
+        double getOcclusionCullingMaxAltitude() const;
+        void setOcclusionCullingMaxAltitude( double occlusionCullingMaxAltitude );
 
     public: // AnnotationNode
 
@@ -127,7 +127,7 @@ namespace osgEarth { namespace Annotation
         osg::Group*                    _attachPoint;
         bool                           _horizonCulling;
         bool                           _occlusionCulling;
-        optional< double >             _occlusionCullingMaxRange;
+        optional< double >             _occlusionCullingMaxAltitude;
         GeoPoint                       _mapPosition;
         osg::Vec3d                     _localOffset;
 

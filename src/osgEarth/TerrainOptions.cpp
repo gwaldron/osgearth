@@ -23,76 +23,15 @@
 
 using namespace osgEarth;
 
-//------------------------------------------------------------------------
-
-LoadingPolicy::LoadingPolicy( const Config& conf ) :
-_mode( MODE_STANDARD ),
-_numLoadingThreads( 4 ),
-_numLoadingThreadsPerCore( 2 ),
-_numCompileThreads( 2 ),
-_numCompileThreadsPerCore( 0.5 )
-{
-    fromConfig( conf );
-}
-
-void
-LoadingPolicy::fromConfig( const Config& conf )
-{
-    conf.getIfSet( "mode", "standard", _mode, MODE_SERIAL );
-    conf.getIfSet( "mode", "serial", _mode, MODE_SERIAL );
-    conf.getIfSet( "mode", "parallel", _mode, MODE_PARALLEL );
-    conf.getIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
-    conf.getIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
-    conf.getIfSet( "loading_threads", _numLoadingThreads );
-    conf.getIfSet( "loading_threads_per_logical_processor", _numLoadingThreadsPerCore );
-    conf.getIfSet( "loading_threads_per_core", _numLoadingThreadsPerCore );
-    conf.getIfSet( "compile_threads", _numCompileThreads );
-    conf.getIfSet( "compile_threads_per_core", _numCompileThreadsPerCore );
-}
-
-Config
-LoadingPolicy::getConfig() const
-{
-    Config conf( "loading_policy" );
-    conf.addIfSet( "mode", "standard", _mode, MODE_STANDARD ); // aka MODE_SERIAL
-    conf.addIfSet( "mode", "parallel", _mode, MODE_PARALLEL );
-    conf.addIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
-    conf.addIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
-    conf.addIfSet( "loading_threads", _numLoadingThreads );
-    conf.addIfSet( "loading_threads_per_core", _numLoadingThreadsPerCore );
-    conf.addIfSet( "compile_threads", _numCompileThreads );
-    conf.addIfSet( "compile_threads_per_core", _numCompileThreadsPerCore );
-    return conf;
-}
-
-int osgEarth::computeLoadingThreads(const LoadingPolicy& policy)
-{
-    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
-    if ( env_numTaskServiceThreads )
-    {
-        return ::atoi( env_numTaskServiceThreads );
-    }
-    else if ( policy.numLoadingThreads().isSet() )
-    {
-        return osg::maximum( 1, policy.numLoadingThreads().get() );
-    }
-    else
-    {
-        return (int)osg::maximum( 1.0f, policy.numLoadingThreadsPerCore().get()
-                                  * (float)OpenThreads::GetNumberOfProcessors() );
-    }
-}
-
 //----------------------------------------------------------------------------
 
 TerrainOptions::TerrainOptions( const ConfigOptions& options ) :
 DriverConfigOptions( options ),
 _verticalScale( 1.0f ),
+_verticalOffset( 0.0f ),
 _heightFieldSampleRatio( 1.0f ),
 _minTileRangeFactor( 6.0 ),
 _combineLayers( true ),
-_loadingPolicy( LoadingPolicy() ),
-_compositingTech( COMPOSITING_AUTO ),
 _maxLOD( 23 ),
 _minLOD( 0 ),
 _firstLOD( 0 ),
@@ -101,7 +40,7 @@ _attenuationDistance( 1000000 ),
 _lodTransitionTimeSeconds( 0.5f ),
 _enableMipmapping( true ),
 _clusterCulling( true ),
-_enableBlending( false ),
+_enableBlending( true ),
 _mercatorFastPath( true ),
 _minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
 _magFilter( osg::Texture::LINEAR),
@@ -122,8 +61,8 @@ TerrainOptions::getConfig() const
     else
         conf.updateIfSet( "sample_ratio", _heightFieldSampleRatio );
 
-    conf.updateObjIfSet( "loading_policy", _loadingPolicy );
     conf.updateIfSet( "vertical_scale", _verticalScale );
+    conf.updateIfSet( "vertical_offset", _verticalOffset );
     conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );    
     conf.updateIfSet( "max_lod", _maxLOD );
     conf.updateIfSet( "min_lod", _minLOD );
@@ -137,12 +76,6 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "mercator_fast_path", _mercatorFastPath );
     conf.updateIfSet( "primary_traversal_mask", _primaryTraversalMask );
     conf.updateIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
-
-    conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
-    conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
-    conf.updateIfSet( "compositor", "multitexture",     _compositingTech, COMPOSITING_MULTITEXTURE_GPU );
-    conf.updateIfSet( "compositor", "multitexture_ffp", _compositingTech, COMPOSITING_MULTITEXTURE_FFP );
-    conf.updateIfSet( "compositor", "multipass",        _compositingTech, COMPOSITING_MULTIPASS );
 
     //Save the filter settings
 	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
@@ -169,12 +102,12 @@ TerrainOptions::fromConfig( const Config& conf )
     else
         conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
 
-    conf.getObjIfSet( "loading_policy", _loadingPolicy );
     conf.getIfSet( "vertical_scale", _verticalScale );
+    conf.getIfSet( "vertical_offset", _verticalOffset );
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );    
     conf.getIfSet( "max_lod", _maxLOD ); conf.getIfSet( "max_level", _maxLOD );
     conf.getIfSet( "min_lod", _minLOD ); conf.getIfSet( "min_level", _minLOD );
-    conf.getIfSet( "first_lod", _firstLOD );
+    conf.getIfSet( "first_lod", _firstLOD ); conf.getIfSet( "first_level", _firstLOD );
     conf.getIfSet( "lighting", _enableLighting );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
@@ -184,13 +117,6 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "mercator_fast_path", _mercatorFastPath );
     conf.getIfSet( "primary_traversal_mask", _primaryTraversalMask );
     conf.getIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
-
-    conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
-    conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
-    conf.getIfSet( "compositor", "multitexture",     _compositingTech, COMPOSITING_MULTITEXTURE_GPU );
-    conf.getIfSet( "compositor", "multitexture_gpu", _compositingTech, COMPOSITING_MULTITEXTURE_GPU );
-    conf.getIfSet( "compositor", "multitexture_ffp", _compositingTech, COMPOSITING_MULTITEXTURE_FFP );
-    conf.getIfSet( "compositor", "multipass",        _compositingTech, COMPOSITING_MULTIPASS );
 
     //Load the filter settings
 	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);

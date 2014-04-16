@@ -11,6 +11,7 @@
 		1F8566A817666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */; };
 		1F8566AA17666E67005BCD2B /* libJavaScriptCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566A917666E67005BCD2B /* libJavaScriptCore.a */; };
 		1F8566AC17666EC1005BCD2B /* libicucore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F8566AB17666EC1005BCD2B /* libicucore.dylib */; };
+		1FA5C122177B608000A161FF /* gdal_data in Resources */ = {isa = PBXBuildFile; fileRef = 1FA5C121177B608000A161FF /* gdal_data */; };
 		90283E5615C6FB3E00620EEF /* tests in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5415C6FB3E00620EEF /* tests */; };
 		90283E5715C6FB3E00620EEF /* data in Resources */ = {isa = PBXBuildFile; fileRef = 90283E5515C6FB3E00620EEF /* data */; };
 		90283E5D15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */; };
@@ -182,6 +183,7 @@
 		1F8566A717666C29005BCD2B /* libosgdb_osgearth_scriptengine_javascriptcore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_scriptengine_javascriptcore.a; path = ../../../lib/Release/libosgdb_osgearth_scriptengine_javascriptcore.a; sourceTree = "<group>"; };
 		1F8566A917666E67005BCD2B /* libJavaScriptCore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libJavaScriptCore.a; path = ../../../../3rdParty/all/libJavaScriptCore.a; sourceTree = "<group>"; };
 		1F8566AB17666EC1005BCD2B /* libicucore.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libicucore.dylib; path = usr/lib/libicucore.dylib; sourceTree = SDKROOT; };
+		1FA5C121177B608000A161FF /* gdal_data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = gdal_data; path = ../../../../../3rdParty/gdal_data; sourceTree = "<group>"; };
 		90283E5415C6FB3E00620EEF /* tests */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tests; path = ../../../../tests; sourceTree = "<group>"; };
 		90283E5515C6FB3E00620EEF /* data */ = {isa = PBXFileReference; lastKnownFileType = folder; name = data; path = ../../../../data; sourceTree = "<group>"; };
 		90283E5C15C7091A00620EEF /* libosgdb_osgearth_engine_quadtree.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libosgdb_osgearth_engine_quadtree.a; path = ../../../lib/Release/libosgdb_osgearth_engine_quadtree.a; sourceTree = "<group>"; };
@@ -556,6 +558,7 @@
 			isa = PBXGroup;
 			children = (
 				90DABDDB15CEFF9700D0F609 /* moon_1024x512.jpg */,
+				1FA5C121177B608000A161FF /* gdal_data */,
 				90283E5415C6FB3E00620EEF /* tests */,
 				90283E5515C6FB3E00620EEF /* data */,
 			);
@@ -889,6 +892,7 @@
 				90283E5715C6FB3E00620EEF /* data in Resources */,
 				90B8676715C8894900F5CDC3 /* StartViewerController.xib in Resources */,
 				90DABDDC15CEFF9700D0F609 /* moon_1024x512.jpg in Resources */,
+				1FA5C122177B608000A161FF /* gdal_data in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -42,10 +42,12 @@ the entire map.
 .. parsed-literal::
 
     <map>
-        <options lighting                = "true"
-                 elevation_interpolation = "bilinear"
-                 elevation_tile_size     = "8"
-                 overlay_texture_size    = "4096" >
+        <options lighting                 = "true"
+                 elevation_interpolation  = "bilinear"
+                 elevation_tile_size      = "8"
+                 overlay_texture_size     = "4096"
+                 overlay_blending         = "true"
+                 overlay_resolution_ratio = "3.0" >
 
             <:ref:`profile <Profile>`>
             <:ref:`proxy <ProxySettings>`>
@@ -53,24 +55,35 @@ the entire map.
             <:ref:`cache_policy <CachePolicy>`>
             <:ref:`terrain <TerrainOptions>`>
 
-+------------------------+--------------------------------------------------------------------+
-| Property               | Description                                                        |
-+========================+====================================================================+
-| lighting               | Whether to enable GL_LIGHTING on the entire map. By default this is|
-|                        | unset, meaning it will inherit the lighting mode of the scene.     |
-+------------------------+--------------------------------------------------------------------+
-| elevation_interpolation| Algorithm to use when resampling elevation source data:            |
-|                        |   :nearest:     Nearest neighbor                                   |
-|                        |   :average:     Averages the neighoring values                     |
-|                        |   :bilinear:    Linear interpolation in both axes                  |
-|                        |   :triangulate: Interp follows triangle slope                      |
-+------------------------+--------------------------------------------------------------------+
-| elevation_tile_size    | Forces the number of posts to render for each terrain tile. By     |
-|                        | default, the engine will use the size of the largest available     |
-|                        | source.                                                            |
-+------------------------+--------------------------------------------------------------------+
-| overlay_texture_size   | Sets the texture size to use for draping (projective texturing)    |
-+------------------------+--------------------------------------------------------------------+
++--------------------------+--------------------------------------------------------------------+
+| Property                 | Description                                                        |
++==========================+====================================================================+
+| lighting                 | Whether to enable GL_LIGHTING on the entire map. By default this is|
+|                          | unset, meaning it will inherit the lighting mode of the scene.     |
++--------------------------+--------------------------------------------------------------------+
+| elevation_interpolation  | Algorithm to use when resampling elevation source data:            |
+|                          |   :nearest:     Nearest neighbor                                   |
+|                          |   :average:     Averages the neighoring values                     |
+|                          |   :bilinear:    Linear interpolation in both axes                  |
+|                          |   :triangulate: Interp follows triangle slope                      |
++--------------------------+--------------------------------------------------------------------+
+| elevation_tile_size      | Forces the number of posts to render for each terrain tile. By     |
+|                          | default, the engine will use the size of the largest available     |
+|                          | source.                                                            |
++--------------------------+--------------------------------------------------------------------+
+| overlay_texture_size     | Sets the texture size to use for draping (projective texturing)    |
++--------------------------+--------------------------------------------------------------------+
+| overlay_blending         | Whether overlay geometry blends with the terrain during draping    |
+|                          | (projective texturing                                              |
++--------------------------+--------------------------------------------------------------------+
+| overlay_resolution_ratio | For draped geometry, the ratio of the resolution of the projective |
+|                          | texture near the camera versus the resolution far from the camera. |
+|                          | Increase the value to improve appearance close to the camera while |
+|                          | sacrificing appearance of farther geometry. NOTE: If you're using  |
+|                          | a camera manipulator that support roll, you will probably need to  |
+|                          | set this to 1.0; otherwise you will get draping artifacts! This is |
+|                          | a known issue.                                                     |
++--------------------------+--------------------------------------------------------------------+
 
 
 .. _TerrainOptions:
@@ -85,14 +98,14 @@ These options control the rendering of the terrain surface.
         <options>
             <terrain driver                = "mp"
                      lighting              = "true"
-                     skirt_ratio           = "0.05"
                      min_tile_range_factor = "6"
                      min_lod               = "0"
                      max_lod               = "23"
                      first_lod             = "0"
                      cluster_culling       = "true"
                      mercator_fast_path    = "true"
-                     blending              = "false" >
+                     blending              = "false"
+                     color                 = "#ffffffff" >
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
@@ -104,11 +117,10 @@ These options control the rendering of the terrain surface.
 | lighting              | Whether to enable GL_LIGHTING on the terrain. By default this is   |
 |                       | unset, meaning it will inherit the lighting mode of the scene.     |
 +-----------------------+--------------------------------------------------------------------+
-| skirt_ratio           | Ratio of the height of a terrain tile "skirt" to the extent of the |
-|                       | tile. The *skirt* is geometry that hides gaps between adjacent     |
-|                       | tiles with different levels of detail.                             |
-+-----------------------+--------------------------------------------------------------------+
-| min_tile_range_factor | Ratio of a tile's extent to its visibility range.                  |
+| min_tile_range_factor | Determines how close you need to be to a terrain tile for it to    |
+|                       | display. The value is the ratio of a tile's extent to its          |
+|                       | For example, if a tile is 10km is radius, and the MTRF=6, then the |
+|                       | tile will become visible at a range of about 60km.                 |
 +-----------------------+--------------------------------------------------------------------+
 | min_lod               | The lowest level of detail that the terrain is guaranteed to       |
 |                       | display, even if no source data is available at that LOD. The      |
@@ -132,6 +144,8 @@ These options control the rendering of the terrain surface.
 | blending              | Set this to ``true`` to enable GL blending on the terrain's        |
 |                       | underlying geometry. This lets you make the globe partially        |
 |                       | transparent. This is handy for seeing underground objects.         |
++-----------------------+--------------------------------------------------------------------+
+| color                 | Color on the underlying (untextures) terrain.                      |
 +-----------------------+--------------------------------------------------------------------+
 
 
@@ -159,7 +173,8 @@ An *image layer* is a raster image overlaid on the map's geometry.
                visible        = "true"
                shared         = "false"
                feather_pixels = "false"
-               >
+               min_filter     = "LINEAR"
+               mag_filter     = "LINEAR" >
 
             <:ref:`cache_policy <CachePolicy>`>
             <:ref:`color_filters <ColorFilterChain>`>
@@ -209,6 +224,13 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | feather_pixels        | Whether to feather out alpha regions for this image layer with the |
 |                       | featherAlphaRegions function. Used to get proper blending when you |
 |                       | have datasets that abutt exactly with no overlap.                  |
++-----------------------+--------------------------------------------------------------------+
+| min_filter            | OpenGL texture minification filter to use for this layer.          |
+|                       | Options are NEAREST, LINEAR, NEAREST_MIPMAP_NEAREST,               |
+|                       | NEAREST_MIPMIP_LINEAR, LINEAR_MIPMAP_NEAREST, LINEAR_MIPMAP_LINEAR |
++-----------------------+--------------------------------------------------------------------+
+| mag_filter            | OpenGL texture magnification filter to use for this layer.         |
+|                       | Options are the same as for ``min_filter`` above.                  |
 +-----------------------+--------------------------------------------------------------------+
 
 

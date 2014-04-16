@@ -27,11 +27,15 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(icon, IconSymbol);
+
 IconSymbol::IconSymbol( const Config& conf ) :
-InstanceSymbol( conf ),
-_alignment    ( ALIGN_CENTER_BOTTOM ),
-_heading      ( NumericExpression(0.0) ),
-_declutter    ( false )
+InstanceSymbol        ( conf ),
+_alignment            ( ALIGN_CENTER_BOTTOM ),
+_heading              ( NumericExpression(0.0) ),
+_declutter            ( false ),
+_occlusionCull        ( false ),
+_occlusionCullAltitude( 200000 )
 {
     mergeConfig( conf );
 }
@@ -55,6 +59,7 @@ IconSymbol::getConfig() const
     conf.addObjIfSet( "heading",   _heading );
     conf.addIfSet   ( "declutter", _declutter );	                  
 	conf.addIfSet   ( "icon-occlusion-cull", _occlusionCull );
+    conf.addIfSet   ( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
 
     conf.addNonSerializable( "IconSymbol::image", _image.get() );
     return conf;
@@ -76,6 +81,7 @@ IconSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "heading",   _heading );
     conf.getIfSet   ( "declutter", _declutter );
 	conf.getIfSet   ( "icon-occlusion-cull", _occlusionCull );
+    conf.getIfSet   ( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
 
     _image = conf.getNonSerializable<osg::Image>( "IconSymbol::image" );
 }
@@ -130,6 +136,8 @@ IconSymbol::createResource() const
 void
 IconSymbol::parseSLD(const Config& c, Style& style)
 {
+    IconSymbol defaults;
+
     if ( match(c.key(), "icon") ) {
         style.getOrCreate<IconSymbol>()->url() = c.value();
         style.getOrCreate<IconSymbol>()->url()->setURIContext( c.referrer() );
@@ -148,10 +156,10 @@ IconSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<IconSymbol>()->placement() = ModelSymbol::PLACEMENT_CENTROID;
     }
     else if ( match(c.key(), "icon-density") ) {
-        style.getOrCreate<IconSymbol>()->density() = as<float>(c.value(), 1.0f);
+        style.getOrCreate<IconSymbol>()->density() = as<float>(c.value(), *defaults.density() );
     }
     else if ( match(c.key(), "icon-random-seed") ) {
-        style.getOrCreate<IconSymbol>()->randomSeed() = as<unsigned>(c.value(), 0);
+        style.getOrCreate<IconSymbol>()->randomSeed() = as<unsigned>(c.value(), *defaults.randomSeed());
     }
     else if ( match(c.key(), "icon-scale") ) {
         style.getOrCreate<IconSymbol>()->scale() = NumericExpression(c.value());
@@ -180,9 +188,12 @@ IconSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<IconSymbol>()->heading() = NumericExpression(c.value());
     }
     else if ( match(c.key(), "icon-declutter") ) {
-        style.getOrCreate<IconSymbol>()->declutter() = as<bool>(c.value(), false);
+        style.getOrCreate<IconSymbol>()->declutter() = as<bool>(c.value(), *defaults.declutter());
     }
-	else if ( match(c.key(), "icon-occlusion-cull") ) {
-        style.getOrCreate<IconSymbol>()->occlusionCull() = as<bool>(c.value(), false);
+    else if ( match(c.key(), "icon-occlusion-cull") ) {
+        style.getOrCreate<IconSymbol>()->occlusionCull() = as<bool>(c.value(), *defaults.occlusionCull());
+    }
+    else if ( match(c.key(), "icon-occlusion-cull-altitude") ) {
+        style.getOrCreate<IconSymbol>()->occlusionCullAltitude() = as<float>(c.value(), *defaults.occlusionCullAltitude());
     }
 }

@@ -69,9 +69,13 @@ namespace osgEarth { namespace Symbology
         optional<bool>& declutter() { return _declutter; }
         const optional<bool>& declutter() const { return _declutter; }
 
-		/** Whether to enable occlusion culling on the icon, if applicable */
+        /** Whether to enable occlusion culling on the icon, if applicable */
         optional<bool>& occlusionCull() { return _occlusionCull; }
         const optional<bool>& occlusionCull() const { return _occlusionCull; }
+
+        /** The camera altitude at which to start occlusion culling the icon */
+        optional<double>& occlusionCullAltitude() { return _occlusionCullAltitude; }
+        const optional<double>& occlusionCullAltitude() const { return _occlusionCullAltitude; }
         
     public: // non-serialized properties (for programmatic use only)
 
@@ -92,7 +96,8 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>      _heading;
         optional<bool>                   _declutter;
         mutable osg::ref_ptr<osg::Image> _image;
-		optional<bool>              _occlusionCull;
+        optional<bool>                   _occlusionCull;
+        optional<double>                 _occlusionCullAltitude;
     };
 
 } } // namespace osgEarth::Symbology

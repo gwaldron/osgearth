@@ -33,7 +33,8 @@ In code this would look like this::
     MapOptions mapOptions;
     mapOptions.cache() = cacheOptions;
     
-Or, you can use an environment variable that will apply to all earth files::
+Or, you can use an environment variable that will apply to all earth files. 
+Keep in mind that this will *override* a cache setting in the earth file::
 
    set OSGEARTH_CACHE_PATH=folder_name
 
@@ -47,8 +48,8 @@ Caching Policies
 ----------------
 Once you have a cache set up, osgEarth will use it be default for all your
 imagery and elevation layers. If you want to override this behavior, you can
-use a *cache policy*. A cache policy tells osgEarth how a certain object 
-should treat the cache.
+use a *cache policy*. A cache policy tells osgEarth if and how a certain object 
+should utilize the cache.
 
 In an *earth file* you can do this by using the ``cache_policy`` block. Here 
 we apply it to the entire map::
@@ -72,14 +73,24 @@ The values for cache policy *usage* are:
     :cache_only:        If a cache if set up, ONLY use data in the cache; never go 
                         to the data source.
 
+You can also direct the cache to expire objects. By default, cached data never expires,
+but you can use the ``max_age`` property to tell it how long to treat an object as valid::
+
+    <cache_policy max_age="3600"/>
+    
+Specify the maximum age in seconds. The example above will expire objects that are more
+than one hour old.
+
+
 Environment Variables
 ---------------------
 Sometimes it's more convenient to control caching from the environment,
 especially during development. Here are some environment variables you can use.
 
-    :OSGEARTH_CACHE_PATH:   Root folder for a file system cache.
-    :OSGEARTH_NO_CACHE:     Enables a ``no_cache`` policy for any osgEarth map. (set to 1)
-    :OSGEARTH_CACHE_ONLY:   Enabled a ``cache_only`` policy for any osgEarth map. (set to 1)
+    :OSGEARTH_CACHE_PATH:    Root folder for a file system cache.
+    :OSGEARTH_NO_CACHE:      Enables a ``no_cache`` policy for any osgEarth map. (set to 1)
+    :OSGEARTH_CACHE_ONLY:    Enabled a ``cache_only`` policy for any osgEarth map. (set to 1)
+    :OSGEARTH_CACHE_MAX_AGE: Set the cache to expire objects more than this number of seconds old.
 
 **Note**: environment variables *override* the cache settings in an *earth file*!
 
@@ -92,3 +103,8 @@ this task. ``osgearth_cache`` will take an Earth file and populate any caches
 it finds.
 
     Type ``osgearth_cache --help`` on the command line for usage information.
+
+**Note**: The cache is a transient, "black box" designed to improve
+performance in certain situations. It is not inteded as a distributable data
+repository. In many cases you can move a cache folder from one environment to another
+and it will work, but osgEarth does not *guarantee* such behavior.

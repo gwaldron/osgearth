@@ -17,11 +17,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/PointSymbol>
 #include <osgEarth/ECEF>
 #include <osg/MatrixTransform>
+#include <osg/Point>
+#include <osg/LineWidth>
+#include <osg/LineStipple>
+#include <osgEarth/VirtualProgram>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+
+/********************************************************************************/
+Filter::~Filter()
+{
+}
+
+/********************************************************************************/
+FeatureFilter::~FeatureFilter()
+{
+}
 
 /********************************************************************************/
         
@@ -66,6 +82,10 @@ FeatureFilterRegistry::create( const Config& conf )
 } 
 
 /********************************************************************************/
+
+FeaturesToNodeFilter::~FeaturesToNodeFilter()
+{
+}
 
 void
 FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
@@ -235,4 +255,57 @@ FeaturesToNodeFilter::createDelocalizeGroup() const
         new osg::MatrixTransform( _local2world );
 
     return group;
+}
+
+
+void 
+FeaturesToNodeFilter::applyLineSymbology(osg::StateSet*    stateset, 
+                                         const LineSymbol* line)
+{
+    if ( line && line->stroke().isSet() )
+    {
+        if ( line->stroke()->width().isSet() )
+        {
+            float width = std::max( 1.0f, *line->stroke()->width() );
+            if ( width != 1.0f )
+            {
+                stateset->setAttributeAndModes(new osg::LineWidth(width), 1);
+            }
+        }
+
+        if ( line->stroke()->stipplePattern().isSet() )
+        {
+#if 1
+            stateset->setAttributeAndModes(
+                new osg::LineStipple(
+                    line->stroke()->stippleFactor().value(),
+                    line->stroke()->stipplePattern().value()),
+                osg::StateAttribute::ON );
+#else
+            // goofing around...
+            const char* frag =
+                "#version 110\n"
+                "void oe_stipple_frag(inout vec4 color) {\n"
+                "    float x = mod(gl_FragCoord.x, 5.0);\n"
+                "    float y = mod(gl_FragCoord.y, 5.0);\n"
+                "    if (x < y)\n"
+                "        color.a = 0.0;\n"
+                "}\n";
+
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+            vp->setFunction("oe_stipple_frag", frag, ShaderComp::LOCATION_FRAGMENT_COLORING);
+#endif
+        }
+    }
+}
+
+void 
+FeaturesToNodeFilter::applyPointSymbology(osg::StateSet*     stateset, 
+                                          const PointSymbol* point)
+{
+    if ( point )
+    {
+        float size = std::max( 0.1f, *point->size() );
+        stateset->setAttributeAndModes(new osg::Point(size), 1);
+    }
 }

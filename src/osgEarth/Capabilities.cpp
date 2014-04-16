@@ -38,7 +38,15 @@ struct MyGraphicsContext
 {
     MyGraphicsContext()
     {
-        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
+
+    	osg::GraphicsContext::ScreenIdentifier si;
+	    si.readDISPLAY();
+	    si.setUndefinedScreenDetailsToDefaultScreen();
+
+        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;  
+    	traits->hostName = si.hostName;
+	    traits->displayNum = si.displayNum;
+	    traits->screenNum = si.screenNum;
         traits->x = 0;
         traits->y = 0;
         traits->width = 1;
@@ -111,6 +119,7 @@ _supportsTextureArrays  ( false ),
 _supportsMultiTexture   ( false ),
 _supportsStencilWrap    ( true ),
 _supportsTwoSidedStencil( false ),
+_supportsTexture3D      ( false ),
 _supportsTexture2DLod   ( false ),
 _supportsMipmappedTextureUpdates( false ),
 _supportsDepthPackedStencilBuffer( false ),
@@ -120,7 +129,13 @@ _supportsUniformBufferObjects( false ),
 _supportsNonPowerOfTwoTextures( false ),
 _maxUniformBlockSize    ( 0 ),
 _preferDLforStaticGeom  ( true ),
-_numProcessors          ( 1 )
+_numProcessors          ( 1 ),
+_supportsFragDepthWrite ( false ),
+_supportsS3TC           ( false ),
+_supportsPVRTC          ( false ),
+_supportsARBTC          ( false ),
+_supportsETC            ( false ),
+_supportsRGTC           ( false )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -141,6 +156,16 @@ _numProcessors          ( 1 )
         osg::GraphicsContext* gc = mgc._gc.get();
         unsigned int id = gc->getState()->getContextID();
         const osg::GL2Extensions* GL2 = osg::GL2Extensions::Get( id, true );
+        
+        if ( ::getenv("OSGEARTH_NO_GLSL") )
+        {
+            _supportsGLSL = false;
+            OE_INFO << LC << "Note: GLSL expressly disabled (OSGEARTH_NO_GLSL)" << std::endl;
+        }
+        else
+        {
+            _supportsGLSL = GL2->isGlslSupported();
+        }
 
         OE_INFO << LC << "Detected hardware capabilities:" << std::endl;
 
@@ -164,14 +189,6 @@ _numProcessors          ( 1 )
 
         glGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &_maxGPUAttribs );
         OE_INFO << LC << "  Max GPU attributes = " << _maxGPUAttribs << std::endl;
-
-#if 0
-#if defined(OSG_GLES2_AVAILABLE)
-        int maxVertAttributes = 0;
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertAttributes);
-        _maxGPUTextureCoordSets = maxVertAttributes - 5; //-5 for vertex, normal, color, tangent and binormal
-#endif
-#endif
 
         glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
         OE_INFO << LC << "  Depth buffer bits = " << _depthBits << std::endl;
@@ -202,22 +219,17 @@ _numProcessors          ( 1 )
 #endif
         OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
-        
-        if ( ::getenv("OSGEARTH_NO_GLSL") )
-            _supportsGLSL = false;
-        else
-            _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         if ( _supportsGLSL )
         {
             _GLSLversion = GL2->getLanguageVersion();
-            OE_INFO << LC << "  GLSL Version = " << _GLSLversion << std::endl;
+            OE_INFO << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 
         _supportsTextureArrays = 
             _supportsGLSL &&
-            osg::getGLVersionNumber() >= 2.0 && // hopefully this will detect Intel cards
+            osg::getGLVersionNumber() >= 2.0f && // hopefully this will detect Intel cards
             osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
         OE_INFO << LC << "  Texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
 
@@ -225,7 +237,7 @@ _numProcessors          ( 1 )
         OE_INFO << LC << "  3D textures = " << SAYBOOL(_supportsTexture3D) << std::endl;
 
         _supportsMultiTexture = 
-            osg::getGLVersionNumber() >= 1.3 ||
+            osg::getGLVersionNumber() >= 1.3f ||
             osg::isGLExtensionSupported( id, "GL_ARB_multitexture") ||
             osg::isGLExtensionSupported( id, "GL_EXT_multitexture" );
         OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;
@@ -266,6 +278,13 @@ _numProcessors          ( 1 )
             osg::isGLExtensionSupported( id, "GL_ARB_texture_non_power_of_two" );
         OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
 
+
+        // Writing to gl_FragDepth is not supported under GLES:
+#if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
+        _supportsFragDepthWrite = false;
+#else
+        _supportsFragDepthWrite = true;
+#endif
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
         //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;
@@ -314,6 +333,62 @@ _numProcessors          ( 1 )
         _maxFastTextureSize = _maxTextureSize;
 
         OE_INFO << LC << "  Max Fast Texture Size = " << _maxFastTextureSize << std::endl;
+
+        // tetxure compression
+        OE_INFO << LC << "  Compression = ";
+        _supportsARBTC = osg::isGLExtensionSupported( id, "GL_ARB_texture_compression" );
+        if (_supportsARBTC) OE_INFO_CONTINUE << "ARB ";
+
+        _supportsS3TC = osg::isGLExtensionSupported( id, "GL_EXT_texture_compression_s3tc" );
+        if ( _supportsS3TC ) OE_INFO_CONTINUE << "S3 ";
+
+        _supportsPVRTC = osg::isGLExtensionSupported( id, "GL_IMG_texture_compression_pvrtc" );
+        if ( _supportsPVRTC ) OE_INFO_CONTINUE << "PVR ";
+
+        _supportsETC = osg::isGLExtensionSupported( id, "GL_OES_compressed_ETC1_RGB8_texture" );
+        if ( _supportsETC ) OE_INFO_CONTINUE << "ETC1 ";
+
+        _supportsRGTC = osg::isGLExtensionSupported( id, "GL_EXT_texture_compression_rgtc" );
+        if ( _supportsRGTC ) OE_INFO_CONTINUE << "RG";
+
+        OE_INFO_CONTINUE << std::endl;
     }
 }
 
+bool
+Capabilities::supportsTextureCompression(const osg::Texture::InternalFormatMode& mode) const
+{
+    switch( mode )
+    {
+    case osg::Texture::USE_ARB_COMPRESSION:
+        return _supportsARBTC;
+        break;
+
+    case osg::Texture::USE_S3TC_DXT1a_COMPRESSION:
+    case osg::Texture::USE_S3TC_DXT1c_COMPRESSION:
+    case osg::Texture::USE_S3TC_DXT1_COMPRESSION:
+    case osg::Texture::USE_S3TC_DXT3_COMPRESSION:
+    case osg::Texture::USE_S3TC_DXT5_COMPRESSION:
+        return _supportsS3TC;
+        break;
+
+    case osg::Texture::USE_PVRTC_2BPP_COMPRESSION:
+    case osg::Texture::USE_PVRTC_4BPP_COMPRESSION:
+        return _supportsPVRTC;
+        break;
+
+    case osg::Texture::USE_ETC_COMPRESSION:
+        return _supportsETC;
+        break;
+
+    case osg::Texture::USE_RGTC1_COMPRESSION:
+    case osg::Texture::USE_RGTC2_COMPRESSION:
+        return _supportsRGTC;
+        break;
+
+    default:
+        return false;
+    }
+
+    return false;
+}

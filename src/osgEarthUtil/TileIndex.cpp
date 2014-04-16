@@ -18,6 +18,7 @@
 */
 
 #include <osgEarth/Registry>
+#include <osgEarth/FileUtils>
 #include <osgEarthUtil/TileIndex>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <ogr_api.h>
@@ -116,7 +117,7 @@ void
         osg::ref_ptr< osgEarth::Features::Feature> feature = cursor->nextFeature();
         if (feature.valid())
         {
-            std::string location = getFullPath(_filename, feature->getString("location"));            
+            std::string location = getFullPath(_filename, feature->getString("location"));
             files.push_back( location );
         }
     }    

@@ -112,11 +112,15 @@ ModelNode::init()
                 if ( Registry::capabilities().supportsGLSL() )
                 {
                     // generate shader code for the loaded model:
-                    ShaderGenerator gen( Registry::stateSetCache() );
-                    node->accept( gen );
+                    ShaderGenerator gen;
+                    gen.setProgramName( "osgEarth.ModelNode" );
+                    gen.run( node, Registry::stateSetCache() );
 
                     // do we really need this? perhaps
+#if 0
+                    // better: put your modelnode under the mapnode?
                     node->addCullCallback( new UpdateLightingUniformsHelper() );
+#endif
                 }
 
                 // attach to the transform:
@@ -187,20 +191,16 @@ _dbOptions   ( dbOptions )
         _style.getOrCreate<ModelSymbol>()->url() = StringExpression(uri);
 
     init();
-
-    if ( conf.hasChild( "position" ) )
-        setPosition( GeoPoint(conf.child("position")) );
 }
 
 Config
 ModelNode::getConfig() const
 {
-    Config conf("model");
+    Config conf = LocalizedNode::getConfig();
+    conf.key() = "model";
 
     if ( !_style.empty() )
         conf.addObj( "style", _style );
-
-    conf.addObj( "position", getPosition() );
 
     return conf;
 }

@@ -41,7 +41,7 @@ _dragger( dragger )
 }
 
 void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
-{
+{    
     _dragger->reclamp( key, tile, context.getTerrain() );
 }
 
@@ -50,7 +50,6 @@ Dragger* _dragger;
 
 /**********************************************************/
 Dragger::Dragger( MapNode* mapNode, int modKeyMask, const DragMode& defaultMode ):
-_mapNode( mapNode ),
 _position( mapNode->getMapSRS(), 0,0,0, ALTMODE_RELATIVE),
 _dragging(false),
 _hovered(false),
@@ -58,7 +57,7 @@ _modKeyMask(modKeyMask),
 _defaultMode(defaultMode),
 _elevationDragging(false),
 _verticalMinimum(0.0)
-{
+{    
     setNumChildrenRequiringEventTraversal( 1 );
 
     _autoClampCallback = new ClampDraggerCallback( this );
@@ -87,7 +86,7 @@ Dragger::setMapNode( MapNode* mapNode )
         _mapNode = mapNode;
 
         if ( _mapNode.valid() && _autoClampCallback.valid() )
-        {
+        {            
             _mapNode->getTerrain()->addTerrainCallback( _autoClampCallback.get() );
         }
     }
@@ -133,9 +132,14 @@ void Dragger::updateTransform(osg::Node* patch)
     if ( getMapNode() )
     {
         osg::Matrixd matrix;
-
+        
         GeoPoint mapPoint( _position );
-        mapPoint.makeAbsolute( getMapNode()->getTerrain() );
+        mapPoint = mapPoint.transform( _mapNode->getMapSRS() );
+        if (!mapPoint.makeAbsolute( getMapNode()->getTerrain() ))
+        {
+            OE_WARN << "Failed to clamp dragger" << std::endl;
+            return;            
+        }
 
         mapPoint.createLocalToWorld( matrix );
         setMatrix( matrix );
@@ -173,8 +177,9 @@ void Dragger::traverse(osg::NodeVisitor& nv)
             itr != ev->getEvents().end();
             ++itr)
         {
-            osgGA::GUIEventAdapter* ea = itr->get();
-            if (handle(*ea, *(ev->getActionAdapter()))) ea->setHandled(true);
+            osgGA::GUIEventAdapter* ea = dynamic_cast<osgGA::GUIEventAdapter*>(itr->get());
+            if ( ea && handle(*ea, *(ev->getActionAdapter())))
+                ea->setHandled(true);
         }
     }
     osg::MatrixTransform::traverse(nv);
@@ -370,7 +375,7 @@ void Dragger::setHover( bool hovered)
 }
 
 void Dragger::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
-{    
+{            
     GeoPoint p;
     _position.transform( key.getExtent().getSRS(), p );
     // first verify that the control position intersects the tile:

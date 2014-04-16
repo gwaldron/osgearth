@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(point, PointSymbol);
+
 PointSymbol::PointSymbol( const Config& conf ) :
 Symbol( conf ),
 _fill ( Fill() ), 
@@ -51,13 +53,14 @@ PointSymbol::mergeConfig( const Config& conf )
 void
 PointSymbol::parseSLD(const Config& c, Style& style)
 {
-    if ( match(c.key(), "fill") ) {
+    if ( match(c.key(), "point-fill") ) {
         style.getOrCreate<PointSymbol>()->fill()->color() = Color(c.value());
     }
-    else if ( match(c.key(), "fill-opacity") ) {
+    else if ( match(c.key(), "point-fill-opacity") ) {
         style.getOrCreate<PointSymbol>()->fill()->color().a() = as<float>( c.value(), 1.0f );
     }
     else if ( match(c.key(), "point-size") ) {
         style.getOrCreate<PointSymbol>()->size() = as<float>(c.value(), 1.0f);
     }
 }
+

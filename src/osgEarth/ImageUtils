@@ -22,7 +22,9 @@
 
 #include <osgEarth/Common>
 #include <osg/Image>
+#include <osg/Texture>
 #include <osg/GL>
+#include <vector>
 
 //These formats were not added to OSG until after 2.8.3 so we need to define them to use them.
 #ifndef GL_EXT_texture_compression_rgtc
@@ -67,8 +69,8 @@ namespace osgEarth
          */
         static bool copyAsSubImage(
             const osg::Image* src, 
-            osg::Image* dst, 
-            int dst_start_col, int dst_start_row, int dst_start_img=0 );
+            osg::Image*       dst, 
+            int dst_start_col, int dst_start_row);
 
         /**
          * Resizes an image using nearest-neighbor resampling. Returns a new image, leaving
@@ -87,7 +89,7 @@ namespace osgEarth
             const osg::Image* input, 
             unsigned int new_s, unsigned int new_t,
             osg::ref_ptr<osg::Image>& output,
-            unsigned int mipmapLevel =0 );
+            unsigned int mipmapLevel =0, bool bilinear=false );
 
         /**
          * Crops the input image to the dimensions provided and returns a
@@ -138,7 +140,15 @@ namespace osgEarth
          * Creates and returns a copy of the input image after applying a
          * sharpening filter. Returns a new image, leaving the input image unaltered.
          */
-        static osg::Image* sharpenImage( const osg::Image* image );
+        static osg::Image* createSharpenedImage( const osg::Image* image );
+
+        /**
+         * For each "layer" in the input image (each bitmap in the "r" dimension),
+         * create a new, separate image with r=1. If the input image is r=1, it is
+         * simply placed onto the output vector (no copy).
+         * Returns true upon sucess, false upon failure
+         */
+        static bool flattenImage(osg::Image* image, std::vector<osg::ref_ptr<osg::Image> >& output);
 
         /**
          * Gets whether the input image's dimensions are powers of 2.
@@ -225,13 +235,17 @@ namespace osgEarth
          * to match that or neighboring non-alpha pixels. This facilitates multipass
          * blending or abutting tiles by overlapping them slightly. Specify "maxAlpha"
          * as the maximum value to consider when searching for fully-transparent pixels.
+         *
+         * Returns false if there is no reader or writer for the image's format.
          */
-        static void featherAlphaRegions(osg::Image* image, float maxAlpha =0.0f);
+        static bool featherAlphaRegions(osg::Image* image, float maxAlpha =0.0f);
 
         /**
          * Converts an image (in place) to premultiplied-alpha format.
+         * Returns False is the conversion fails, e.g., if there is no reader
+         * or writer for the image format.
          */
-        static void convertToPremultipliedAlpha(osg::Image* image);
+        static bool convertToPremultipliedAlpha(osg::Image* image);
 
         /**
          * Checks whether the given image is compressed
@@ -242,6 +256,18 @@ namespace osgEarth
          * Generated a bump map image for the input image
          */
         static osg::Image* createBumpMap( const osg::Image* input );
+
+        /**
+         * Is it a floating-point texture format?
+         */
+        static bool isFloatingPointInternalFormat( GLint internalFormat );
+
+        /**
+         * Compute a texture compression format suitable for the image.
+         */
+        static bool computeTextureCompressionMode(
+            const osg::Image* image,
+            osg::Texture::InternalFormatMode& out_mode);
 
         /**
          * Reads color data out of an image, regardles of its internal pixel format.
@@ -262,6 +288,20 @@ namespace osgEarth
             /** Reads a color from the image */
             osg::Vec4 operator()(int s, int t, int r=0, int m=0) const {
                 return (*_reader)(this, s, t, r, m);
+            }
+
+            /** Reads a color from the image */
+            osg::Vec4 operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
+                return (*_reader)(this, s, t, r, m);
+            }
+
+            /** Reads a color from the image by unit coords [0..1] */
+            osg::Vec4 operator()(float s, float t, int r=0, int m=0) const {
+                return (*_reader)(this,
+                    (int)(s * (float)(_image->s()-1)),
+                    (int)(t * (float)(_image->t()-1)),
+                    (int)(r * (float)(_image->r()-1)),
+                    m);
             }
 
             // internals:

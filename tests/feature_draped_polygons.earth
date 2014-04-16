@@ -1,0 +1,81 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to read feature data from a shapefile and "drape" it
+on the map using the overlay technique.
+-->
+
+<map name="Feature Overlay Demo" type="geocentric" version="2">
+    
+    <options>
+        <lighting>false</lighting>
+        <overlay_blending>false</overlay_blending>
+		<terrain min_lod="8"/>
+    </options>
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="countries" driver="feature_geom">
+                          
+        <features name="states" driver="ogr">
+            <url>../data/world.shp</url>
+            <buffer distance="-0.05"/>
+        </features>
+        
+        <styles>
+        
+            <style type="text/css">
+                p1 {
+                   fill:               #ffff8066;
+                   altitude-clamping:  terrain-drape;
+                }       
+                p2 {
+                   fill:               #80ffff66;
+                }   
+                p3 {
+                   fill:               #ff80ff66;
+                }       
+                p4 {
+                   fill:               #ff808066;
+                }     
+                p5 {
+                   fill:               #80ff8066;
+                }                                      
+            </style>
+        
+            <selector class="p1">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY <= 14045470 ]]></expr>
+                </query>
+            </selector>
+        
+            <selector class="p2">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 14045470 and POP_CNTRY <= 43410900 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector class="p3">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector class="p4">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 97228750 and POP_CNTRY <= 258833000 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector class="p5">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 258833000 ]]></expr>
+                </query>
+            </selector>
+            
+        </styles>
+        
+    </model>
+</map>

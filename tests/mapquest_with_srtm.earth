@@ -1,0 +1,30 @@
+<!-- 
+MapQuest - Open Aerial Map
+LOD 1-12 worldwide; 12+ US-only.
+http://developer.mapquest.com/web/products/open/map
+
+NOTE: You are responsible for abiding by the provider's terms of service:
+http://developer.mapquest.com/web/info/terms-of-use
+
+TIP: set your OSG_NUM_HTTP_DATABASE_THREADS to 4 or more!
+-->
+
+<map name="MapQuest Open Aerial" type="geocentric" version="2">
+ 
+    <image name="mapquest_open_aerial" driver="xyz">
+        <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="no_cache"/>
+        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+    
+    <options elevation_tile_size="9">
+        <terrain min_tile_range_factor="8">
+        </terrain>
+    </options>
+    
+</map>

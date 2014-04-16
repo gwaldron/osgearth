@@ -1,6 +1,53 @@
 Release Notes
 =============
 
+Version 2.5 (November 2013)
+---------------------------
+
+Terrain Engine
+
+The terrain engine ("MP") has undergone many performance updates. We focused on geometry
+optimization and GL state optimization, bypassing some the OSG mechnisms and going straight
+to GL to make things as fast as possible.
+
+MP has a new optional "incremental update" feature. By default, when you change the
+map model (add/remove layers etc.) osgEarth will rebuild the terrain in its entirely. With
+incremental update enabled, it will only rebuild tiles that are visible. Tiles not currently
+visible (like those at lower LODs) don't update until they actually become visible.
+
+Caching
+
+Caching got a couple improvements. The cache seeder (osgearth_cache) is now multi-threaded
+(as it the TMS packager utility). The filesystem cache also supports expiration policies
+for cached items, including map tiles.
+
+JavaScript
+
+We updated osgEarth to work with the newest Google V8 JavaScript interpreter API. We also
+now support JavaScriptCore as a JS interpreter for OSX/iOS devices (where V8 is not
+available).
+
+Terrain Effects
+
+A new TerrainEffect API makes it easy to add custom shaders to the terrain. osgEarth has
+several of these built in, including NormalMap, DetailTexture, LODBlending, and ContourMap.
+
+New Drivers
+
+There is a new Bing Maps driver. Bing requires an API key, which you can get at the Bing site.
+
+We also added a new LibNOISE driver. It generates parametric noise that you can use as
+terrain elevation data, or to add fractal detail to existing terrain, or to generate 
+noise patterns for detail texturing.
+
+Other Goodies
+
+* Shared Layers allow access multiple samplers from a custom shader
+* A new "AUTO_SCALE" render bin scales geometry to the screen without using an AutoTransform node.
+* PlaceNodes and LabelNodes now support localized occlusion culling.
+* The Controls utility library works on iOS/GLES now.
+
+
 Version 2.4 (April 2013)
 ------------------------
 

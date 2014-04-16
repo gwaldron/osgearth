@@ -16,23 +16,33 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TILE_NODE
-#define OSGEARTH_ENGINE_MP_TILE_NODE 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE 1
 
 #include "Common"
 #include "TileModel"
 #include <osg/MatrixTransform>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
+    class TileNode;
+
+    /**
+     * Marker that gives access to a TileNode.
+     */
+    class TileNodeContainer
+    {
+    public:
+        virtual TileNode* getTileNode() = 0;
+    };
 
     /**
      * Node that represents a single terrain tile that was compiled from
      * a TileModel (and corresponds to one TileKey). The matrixtransform
      * localizes the TileNode within the terrain.
      */
-    class TileNode : public osg::MatrixTransform
+    class TileNode : public osg::MatrixTransform, public TileNodeContainer
     {
     public:
         /**
@@ -63,26 +73,47 @@ namespace osgEarth_engine_mp
          */
         void setLastTraversalFrame(unsigned frame);
 
+        /**
+         * Tells the tile node the current map revision, which is turn
+         * will determine whether the tile is dirty and needs updating.
+         */
+        void setMapRevision( const Revision& value ) { _maprevision = value; }
+
+        /**
+         * Flags this Tile as dirty, regardless of whether the revisions are in sync.
+         */
+        void setDirty() { _dirty = true; }
+
+        /**
+         * Whether the tile is dirty and was traversed (and if therefore ready for
+         * a dynamic update)
+         */
+        bool isOutOfDate() const { return _outOfDate; }
+
+
+    public: // TileNodeContainer
+
+        TileNode* getTileNode() { return this; }
+
 
     public: // OVERRIDES
 
         virtual void traverse( class osg::NodeVisitor& nv );
 
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
         virtual void releaseGLObjects(osg::State* state) const;
-
-        virtual osg::BoundingSphere computeBound() const;
 
     protected:
 
         virtual ~TileNode() { }
 
         TileKey                            _key;
-        osg::ref_ptr<osg::Uniform>         _bornUniform;
-        mutable osg::ref_ptr<osg::Uniform> _keyUniform;
         osg::ref_ptr<const TileModel>      _model;
         osg::ref_ptr<osg::Uniform>         _tileParentMatrixUniform;
         unsigned                           _lastTraversalFrame;
-        double                             _bornTime;
+        Revision                           _maprevision;
+        bool                               _outOfDate;
+        bool                               _dirty;
     };
 
 
@@ -103,6 +134,6 @@ namespace osgEarth_engine_mp
     };
 
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_NODE
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE

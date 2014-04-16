@@ -130,7 +130,6 @@ namespace osgEarth { namespace Util
         void init();
         void rebuild();
         osg::Node* buildGZDTile( const std::string& name, const GeoExtent& extent );
-        //osg::Node* buildPolarGZDTiles();
 
         virtual osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd ) {
             return node; }

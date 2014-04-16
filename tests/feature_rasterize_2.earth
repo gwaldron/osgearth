@@ -5,7 +5,7 @@ This demonstrates the "agglite" feature rasterizing driver. It "drapes" vector d
 rasterizing it into image tiles.
 -->
 
-<map name="AGGLite Sample" type="geocentric" version="2">
+<map name="Rasterization Example" type="geocentric" version="2">
   
     <options>
         <lighting>false</lighting>
@@ -60,4 +60,8 @@ rasterizing it into image tiles.
         </styles>
         
     </image>
+	
+	<external>
+		<lod_blending/>
+	</external>
 </map>

@@ -23,7 +23,7 @@
 #include <osg/NodeVisitor>
 #include <osg/Uniform>
 
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 using namespace OpenThreads;
 
@@ -35,88 +35,74 @@ using namespace OpenThreads;
 TileNode::TileNode( const TileKey& key, const TileModel* model ) :
 _key               ( key ),
 _model             ( model ),
-_bornTime          ( 0.0 ),
-_lastTraversalFrame( 0 )
+_lastTraversalFrame( 0 ),
+_dirty             ( false ),
+_outOfDate         ( false )
 {
     this->setName( key.str() );
 
-    osg::StateSet* stateset = getOrCreateStateSet();
-
-    // TileKey uniform.
-    _keyUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_tile_key");
-    _keyUniform->setDataVariance( osg::Object::STATIC );
-    _keyUniform->set( osg::Vec4f(0,0,0,0) );
-    stateset->addUniform( _keyUniform );
-
-    // born-on date uniform.
-    _bornUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_tile_birthtime");
-    _bornUniform->set( -1.0f );
-    stateset->addUniform( _bornUniform );
+    // revisions are initially in sync:
+    if ( model )
+    {
+        _maprevision = model->_revision;
+        if ( model->requiresUpdateTraverse() )
+        {
+            this->setNumChildrenRequiringUpdateTraversal(1);
+        }
+    }
 }
 
 
 void
 TileNode::setLastTraversalFrame(unsigned frame)
 {
-  _lastTraversalFrame = frame;
-}
-
-
-osg::BoundingSphere
-TileNode::computeBound() const
-{
-    osg::BoundingSphere bs = osg::MatrixTransform::computeBound();
-    
-    unsigned tw, th;
-    _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
-
-    // swap the Y index.
-    _keyUniform->set( osg::Vec4f(
-        _key.getTileX(),
-        th-_key.getTileY()-1.0,
-        _key.getLOD(),
-        bs.radius()) );
-
-    return bs;
+    _lastTraversalFrame = frame;
 }
 
 
 void
 TileNode::traverse( osg::NodeVisitor& nv )
 {
-    // TODO: not sure we need this.
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    if ( _model.valid() )
     {
-        osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
-        if (ccc)
+        if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
-            if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
-        }
-
-        // reset the "birth" time if necessary - this is the time at which the 
-        // node passes cull
-        const osg::FrameStamp* fs = nv.getFrameStamp();
-        if ( fs )
-        {
-            unsigned frame = fs->getFrameNumber();
-
-            if ( (frame - _lastTraversalFrame > 1) || (_bornTime == 0.0) )
+            osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
+            if (ccc)
             {
-                _bornTime = fs->getReferenceTime();
-                _bornUniform->set( (float)_bornTime );
+                if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
             }
 
-            _lastTraversalFrame = frame;
+            // if this tile is marked dirty, bump the marker so the engine knows it
+            // needs replacing.
+            if ( _dirty || _model->_revision != _maprevision )
+            {
+                _outOfDate = true;
+            }
         }
-    }
+        else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+        {
+            _model->updateTraverse(nv);
+        }
+    }    
 
     osg::MatrixTransform::traverse( nv );
 }
 
-
 void
 TileNode::releaseGLObjects(osg::State* state) const
 {
+    osg::MatrixTransform::releaseGLObjects( state );
+
     if ( _model.valid() )
         _model->releaseGLObjects( state );
+}
+
+void
+TileNode::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::MatrixTransform::resizeGLObjectBuffers( maxSize );
+
+    if ( _model.valid() )
+        const_cast<TileModel*>(_model.get())->resizeGLObjectBuffers( maxSize );
 }

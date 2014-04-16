@@ -320,7 +320,7 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
           if (result.success())
             val = result.asDouble();
           else
-              OE_WARN << LC << "Script error:" << result.message() << std::endl;
+              OE_WARN << LC << "Script error:" << result.message() << std::endl; 
         }
       }
 

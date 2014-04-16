@@ -31,6 +31,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(marker, MarkerSymbol);
+
 MarkerSymbol::MarkerSymbol( const Config& conf ) :
 Symbol     ( conf ),
 _placement ( PLACEMENT_CENTROID ),
@@ -276,3 +278,4 @@ MarkerSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<MarkerSymbol>()->alignment() = MarkerSymbol::ALIGN_RIGHT_BOTTOM;
     }
 }
+

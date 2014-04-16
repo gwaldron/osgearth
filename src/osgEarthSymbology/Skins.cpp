@@ -25,6 +25,8 @@
 #include <osg/BlendFunc>
 #include <osg/Texture2D>
 
+#define LC "[SkinResource] "
+
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
@@ -85,6 +87,7 @@ SkinResource::getConfig() const
 osg::StateSet*
 SkinResource::createStateSet( const osgDB::Options* dbOptions ) const
 {
+    OE_DEBUG << LC << "Creating skin state set for " << imageURI()->full() << std::endl;
     return createStateSet( createImage(dbOptions) );
 }
 
@@ -97,6 +100,7 @@ SkinResource::createStateSet( osg::Image* image ) const
         stateSet = new osg::StateSet();
 
         osg::Texture* tex = new osg::Texture2D( image );
+        tex->setUnRefImageDataAfterApply(true);
         tex->setResizeNonPowerOfTwoHint(false);
         tex->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
         tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
@@ -107,7 +111,7 @@ SkinResource::createStateSet( osg::Image* image ) const
             osg::TexEnv* texenv = new osg::TexEnv();
             texenv = new osg::TexEnv();
             texenv->setMode( *_texEnvMode );
-            stateSet->setTextureAttribute( 0, texenv, osg::StateAttribute::ON );
+            stateSet->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
         }
 
         if ( ImageUtils::hasAlphaChannel( image ) )
@@ -129,6 +133,8 @@ SkinResource::createImage( const osgDB::Options* dbOptions ) const
 }
 
 //---------------------------------------------------------------------------
+
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(skin, SkinSymbol);
 
 SkinSymbol::SkinSymbol( const Config& conf ) :
 _objHeight    ( 0.0f ),
@@ -200,4 +206,83 @@ SkinSymbol::parseSLD(const Config& c, Style& style)
     else if (match(c.key(), "skin-random-seed") ) {
         style.getOrCreate<SkinSymbol>()->randomSeed() = as<unsigned>( c.value(), 0u );
     }
+}
+
+
+//---------------------------------------------------------------------------
+SkinTextureArray::SkinTextureArray()
+{        
+}
+
+osg::Texture2DArray* SkinTextureArray::getTexture()
+{
+    return _texture.get();
+}
+
+int SkinTextureArray::getSkinIndex( const SkinResource* skin )
+{
+    LayerIndex::iterator itr = _layerIndex.find( skin->name());
+    if (itr != _layerIndex.end())
+    {
+        return itr->second;
+    }        
+    return -1;
+}
+
+void SkinTextureArray::build(SkinResourceVector& skins, const osgDB::Options* dbOptions)
+{        
+    _texture = 0;
+    _layerIndex.clear();
+
+    unsigned int maxWidth = 0;
+    unsigned int maxHeight = 0;
+
+    std::vector< osg::ref_ptr< osg::Image > > images;
+
+    for (unsigned int i = 0; i < skins.size(); i++)
+    {
+        osg::ref_ptr< osg::Image > image = skins[i]->createImage( dbOptions );
+        if (image.valid())
+        {
+            if (maxWidth < image->s()) maxWidth = image->s();
+            if (maxHeight < image->t()) maxHeight = image->t();            
+            _layerIndex[ skins[i]->name() ] = i;
+            images.push_back( image.get() );
+        }
+    }
+
+    // Now resize all the images to the largest size.
+    for (unsigned int i = 0; i < images.size(); i++)
+    {
+        osg::ref_ptr< osg::Image> resized;
+        if (images[i]->s() != maxWidth || images[i]->t() != maxHeight)
+        {            
+            OE_DEBUG << "resizing image to " << maxWidth << "x" << maxHeight << std::endl;
+            ImageUtils::resizeImage( images[i].get(), maxWidth, maxHeight, resized, 0, true);
+        }        
+        else
+        {
+             resized = images[i].get();
+        }
+        resized = ImageUtils::convertToRGBA8( resized.get() );
+        images[i] = resized.get();
+    }
+
+    osg::Texture2DArray* texture = new osg::Texture2DArray();
+    texture->setTextureDepth( images.size() );
+    texture->setTextureWidth( maxWidth );
+    texture->setTextureHeight( maxHeight );
+    texture->setSourceFormat( GL_RGBA );
+    texture->setInternalFormat( GL_RGBA8 );
+
+    texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
+    texture->setWrap(osg::Texture::WRAP_S,osg::Texture::REPEAT);
+    texture->setWrap(osg::Texture::WRAP_T,osg::Texture::REPEAT);
+    texture->setResizeNonPowerOfTwoHint(false);
+    for (unsigned int i = 0; i < images.size(); i++)
+    {
+        texture->setImage(i, images[i].get() );
+    }
+    _texture = texture;
 }

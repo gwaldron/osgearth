@@ -46,18 +46,20 @@ void
 AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
 {
     osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(nv);
-    osgGA::EventVisitor::EventList& events = ev->getEvents();
+    osgGA::EventQueue::Events& events = ev->getEvents();
     osgViewer::View* view = static_cast<osgViewer::View*>(ev->getActionAdapter());
 
-    for( osgGA::EventVisitor::EventList::const_iterator e = events.begin(); e != events.end(); ++e )
+    for( osgGA::EventQueue::Events::const_iterator e = events.begin(); e != events.end(); ++e )
     {
-        osgGA::GUIEventAdapter* ea = e->get();
+        osgGA::GUIEventAdapter* ea = dynamic_cast<osgGA::GUIEventAdapter*>(e->get());
+        if ( !ea )
+            continue;
 
         if ( ea->getEventType() == osgGA::GUIEventAdapter::MOVE ||
              ea->getEventType() == osgGA::GUIEventAdapter::DRAG )
         {
             _args.x = ea->getX();
-            _args.y = ea->getY();        
+            _args.y = ea->getY();
         }
 
         else if ( ea->getEventType() == osgGA::GUIEventAdapter::PUSH )

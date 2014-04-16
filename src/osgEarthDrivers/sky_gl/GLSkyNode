@@ -1,0 +1,72 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#include "GLSkyOptions"
+#include <osgEarthUtil/Sky>
+#include <osgEarth/MapNode>
+#include <osgEarth/PhongLightingEffect>
+#include <osg/MatrixTransform>
+
+namespace osg {
+    class EllipsoidModel;
+    class Light;
+    class LightSource;
+}
+
+namespace osgEarth { namespace Drivers { namespace GLSky
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+
+    /**
+     * Node that roots the silverlining adapter.
+     */
+    class GLSkyNode : public SkyNode
+    {
+    public:
+        GLSkyNode(
+            const Profile* profile);
+
+        GLSkyNode(
+            const Profile*      profile,
+            const GLSkyOptions& options);
+
+    public: // SkyNode
+
+        osg::Light* getSunLight() { return _light.get(); }
+
+        void attach(osg::View* view, int lightNum);
+
+        void onSetEphemeris();
+        void onSetDateTime();
+        void onSetReferencePoint();
+
+    protected:
+        virtual ~GLSkyNode();
+
+    private:
+        void initialize(const Profile* profile);
+
+        osg::ref_ptr<osg::Light>          _light;
+        osg::ref_ptr<const Profile>       _profile;
+        osg::ref_ptr<PhongLightingEffect> _lighting;
+        GLSkyOptions                      _options;
+    };
+
+} } } // namespace osgEarth::Drivers::GLSky

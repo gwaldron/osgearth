@@ -18,15 +18,16 @@ This shows how to label point features with an attribute.
         <styles>
             <style type="text/css">              
                 cities {
-                   text-provider:   annotation;
-                   text-content:    [cntry_name];
-                   text-priority:   [pop_cntry];
-                   text-halo:       #3f3f7f;
-                   text-align:      center_center;
-                   text-declutter:  true;
-				   stroke:          #ffff00;
-				   stroke-width:    1;
-				   altitude-offset: 1000;
+					icon: "../data/placemark32.png";
+					icon-placement: centroid;
+					icon-scale: 1.0;
+					icon-occlusion-cull: false;
+					icon-occlusion-cull-altitude: 8000;
+					icon-declutter: true;
+					text-content: [cntry_name];
+					altitude-offset: 100;
+					altitude-clamping: terrain;
+					altitude-technique: scene;
                 }     
             </style>
         </styles>

@@ -325,9 +325,9 @@
 
    <skin name="8stResditentialTileApt" tags="building tile residential apt us concrete">
         <url>residential/tiles/USUAE-8stTile_rep.jpg</url>
-        <image_width>19</image_width>
-        <min_object_height>21</min_object_height>
-        <max_object_height>29</max_object_height>
+        <image_width>15</image_width>
+        <min_object_height>14</min_object_height>
+        <max_object_height>21</max_object_height>
         <tiled>false</tiled>
    </skin>
 

@@ -12,7 +12,7 @@ This one demonstrates how to read feature data from a WFS server
         <url>../data/world.tif</url>
     </image>
     
-    <overlay name="states" driver="feature_geom">          
+    <model name="states" driver="feature_geom">          
                 
         <features name="states" driver="wfs">
             <url> http://demo.opengeo.org/geoserver/wfs</url>     		
@@ -23,13 +23,14 @@ This one demonstrates how to read feature data from a WFS server
         <styles>        
             <style type="text/css">
                 states {
-                   stroke:          #ffff00;
-                   stroke-opacity:  1.0;
-                   stroke-width:    3.0;
+                   stroke:            #ffff00;
+                   stroke-opacity:    1.0;
+                   stroke-width:      3.0;
+				   altitude-clamping: terrain-drape;
                 }                       
             </style>                   
             
         </styles>
         
-    </overlay>
+    </model>
 </map>

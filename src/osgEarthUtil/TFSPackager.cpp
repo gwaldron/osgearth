@@ -133,7 +133,20 @@ public:
           bool traverse = true;
 
           GeoExtent featureExtent(_feature->getSRS(), _feature->getGeometry()->getBounds());
-          if (featureExtent.intersects( tile->getExtent()))
+
+          bool valid = false;
+          // It's a single point, so we do a contains check instead of an intersection check b/c the bounds really aren't valid.
+          if (featureExtent.width() == 0 && featureExtent.height() == 0)
+          {                            
+              valid = tile->getExtent().contains( featureExtent.xMin(), featureExtent.yMin());
+          }
+          else
+          {
+              // Do a normal intersection check
+              valid = featureExtent.intersects( tile->getExtent());
+          }
+
+          if (valid)
           {
               //If the node contains the feature, and it doesn't contain the max number of features add it.  If it's already full then 
               //split it.
@@ -174,9 +187,7 @@ public:
                   tile->traverse( this );
               }
 
-          }
-
-
+          }          
       }
 
       int _levelAdded;
@@ -296,9 +307,14 @@ void
     {
         _srs = features->getFeatureProfile()->getSRS();
     }
+	
+    //Get the extent of the dataset, or use the custom extent value
+    GeoExtent srsExtent = _customExtent;
+    if (!srsExtent.isValid())
+        srsExtent = features->getFeatureProfile()->getExtent();
 
     //Transform to lat/lon extents
-    GeoExtent extent = features->getFeatureProfile()->getExtent().transform( _srs.get() );
+    GeoExtent extent = srsExtent.transform( _srs.get() );
 
     osg::ref_ptr< const osgEarth::Profile > profile = osgEarth::Profile::create(extent.getSRS(), extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), 1, 1);
 
@@ -351,6 +367,16 @@ void
         }
     }   
     OE_NOTICE << "Added=" << added << " Skipped=" << skipped << " Failed=" << failed << std::endl;
+
+#if 1
+    // Print the width of tiles at each level
+    for (int i = 0; i <= highestLevel; ++i)
+    {
+        TileKey tileKey(i, 0, 0, profile);
+        GeoExtent tileExtent = tileKey.getExtent();
+        OE_NOTICE << "Level " << i << " tile size: " << tileExtent.width() << std::endl;
+    }
+#endif
 
     WriteFeaturesVisitor write(features, destination, _method, _srs);
     root->accept( &write );

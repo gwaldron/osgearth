@@ -21,9 +21,11 @@ SET(LIB_NAME osgEarth)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
+    AlphaEffect
     AutoScale
     Bounds
     Cache
+    CacheEstimator
     CacheBin
     CachePolicy
     CacheSeed
@@ -37,6 +39,7 @@ SET(LIB_PUBLIC_HEADERS
     Containers
     Cube
     CullingUtils
+    DateTime
     Decluttering
     DepthOffset
     DPLineSegmentIntersector
@@ -55,6 +58,7 @@ SET(LIB_PUBLIC_HEADERS
     GeoData
     Geoid
     GeoMath
+	GeoTransform
     HeightFieldUtils
     HTTPClient
     ImageLayer
@@ -87,6 +91,7 @@ SET(LIB_PUBLIC_HEADERS
     optional
     OverlayDecorator
     OverlayNode
+	PhongLightingEffect
     Pickers
     PrimitiveIntersector
     Profile
@@ -108,8 +113,6 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TextureCompositor
-    TextureCompositorMulti
-    TextureCompositorTexArray
     TileKey
     TileSource
     TimeControl
@@ -143,12 +146,23 @@ IF (NOT TINYXML_FOUND)
     )
 ENDIF (NOT TINYXML_FOUND)
 
+# auto-generate the VersionGit file to include the git SHA1 variable.
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp" 
+    @ONLY)
+    
+set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")
+
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}
+    ${VERSION_GIT_SOURCE}
+    AlphaEffect.cpp
     AutoScale.cpp
     Bounds.cpp
     Cache.cpp
+    CacheEstimator.cpp
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp
@@ -159,6 +173,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Config.cpp
     Cube.cpp
     CullingUtils.cpp
+    DateTime.cpp
     Decluttering.cpp
     DepthOffset.cpp
     Draggers.cpp
@@ -175,6 +190,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     GeoData.cpp
     Geoid.cpp
     GeoMath.cpp
+	GeoTransform.cpp
     HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageLayer.cpp
@@ -204,6 +220,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Notify.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
+	PhongLightingEffect.cpp
     Pickers.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
@@ -224,8 +241,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TerrainOptions.cpp
     TerrainEngineNode.cpp
     TextureCompositor.cpp
-    TextureCompositorMulti.cpp
-    TextureCompositorTexArray.cpp
     TileKey.cpp
     TileSource.cpp
     TimeControl.cpp

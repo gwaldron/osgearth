@@ -78,6 +78,11 @@ The most common usage of osgearth_cache is to populate a cache in a non-interact
 +-------------------------------------+--------------------------------------------------------------------+
 | ``--seed``                          | Seeds the cache in a .earth file                                   |
 +-------------------------------------+--------------------------------------------------------------------+
+| ``--estimate``                      | Print out an estimation of the number of tiles, disk space and     |
+|                                     | time it will take to perform this seed operation                   |
++-------------------------------------+--------------------------------------------------------------------+
+| ``--threads``                       |The number of threads to use for the seed operation (default=1)     |
++-------------------------------------+--------------------------------------------------------------------+
 | ``--min-level level``               | Lowest LOD level to seed (default=0)                               |
 +-------------------------------------+--------------------------------------------------------------------+
 | ``--max-level level``               | Highest LOD level to seed (default=highest available)              |

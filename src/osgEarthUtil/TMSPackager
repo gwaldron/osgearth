@@ -23,6 +23,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/Profile>
+#include <osgEarth/TaskService>
 
 namespace osgEarth { namespace Util
 {
@@ -39,7 +40,7 @@ namespace osgEarth { namespace Util
          * Constructs a new packager.
          * @param profile    Profile of packaged tile data (required)
          */
-        TMSPackager( const Profile* outProfile, osgDB::Options* imageWriteOptions);
+        TMSPackager( const Profile* outProfile, osgDB::Options* writeOptions);
 
         /** dtor */
         virtual ~TMSPackager() { }
@@ -89,6 +90,13 @@ namespace osgEarth { namespace Util
         bool getSubdivideSingleColorImageTiles() const { return _subdivideSingleColorImageTiles; }
 
         /**
+        * Pixeldepth for elevations
+        * default = 32
+        */
+        void setElevationPixelDepth(unsigned value) { _elevationPixelDepth = value; }
+        unsigned getElevationPixelDepth() const { return _elevationPixelDepth; }
+
+        /**
          * Bounding box to package
          */
         void addExtent( const GeoExtent& value );
@@ -97,11 +105,12 @@ namespace osgEarth { namespace Util
          * Result structure for method calls
          */
         struct Result {
-            Result() : ok(true) { }
-            Result(const std::string& m) : message(m), ok(false) { }
+            Result(int tasks=0) : ok(true), taskCount(tasks) { }
+            Result(const std::string& m) : message(m), ok(false), taskCount(0) { }
             operator bool() const { return ok; }
             bool ok;
             std::string message;
+            int taskCount;
         };
 
         /**
@@ -113,7 +122,8 @@ namespace osgEarth { namespace Util
         Result package(
             ImageLayer*        layer,
             const std::string& rootFolder,
-            const std::string& imageExtension ="png" );
+            osgEarth::ProgressCallback* progress=0L,
+            const std::string& imageExtension="png" );
 
         /**
          * Packages an elevation layer as a TMS repository.
@@ -122,38 +132,69 @@ namespace osgEarth { namespace Util
          */
         Result package( 
             ElevationLayer*    layer,
-            const std::string& rootFolder );
+            const std::string& rootFolder,
+            osgEarth::ProgressCallback* progress=0L );
+
+        /**
+         * Increment the completed count.  Do not use directly
+         */
+        void incrementCompleted();        
+
+        /**
+         * Reports progress to the main ProgressCallback.  Do not use directly.
+         */
+        void reportProgress( const std::string& message );
+
+
+        void cancel(const std::string& msg="");
 
     protected:
 
-        Result packageImageTile(
+        void packageImageTile(
             ImageLayer*          layer,
             const TileKey&       key,
             const std::string&   rootDir,
             const std::string&   extension,
+            TaskService*         service,            
             unsigned&            out_maxLevel );
 
-        Result packageElevationTile(
+        void packageElevationTile(
             ElevationLayer*      layer,
             const TileKey&       key,
             const std::string&   rootDir,
             const std::string&   extension,
+            TaskService*         service,            
             unsigned&            out_maxLevel );
 
         bool shouldPackageKey( 
             const TileKey&     key ) const;
 
+        
+
     protected:
+
+        void resetStats();
+
+        OpenThreads::Mutex _mutex;
+        OpenThreads::Atomic         _completed;
+        unsigned int                _total;
+        unsigned int                _numAdded;
+
 
         bool                        _verbose;
         bool                        _abortOnError;
         bool                        _overwrite;
         bool                        _keepEmptyImageTiles;
         bool                        _subdivideSingleColorImageTiles;
+		unsigned                    _elevationPixelDepth;
         unsigned                    _maxLevel;
         std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;
-        osg::ref_ptr<osgDB::Options>    _imageWriteOptions;
+		    osg::ref_ptr<osgDB::Options>    _writeOptions;
+        std::string                 _errorMessage;
+
+        osg::ref_ptr<osgEarth::TaskService> _taskService;
+        osg::ref_ptr< osgEarth::ProgressCallback > _progress;
     };
 
 } } // namespace osgEarth::Util

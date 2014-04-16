@@ -509,13 +509,19 @@ Profile::createTileKey( double x, double y, unsigned int level ) const
 {
     if ( _extent.contains( x, y ) )
     {
-        int tilesX = (int)_numTilesWideAtLod0 * (1 << (int)level);
-        int tilesY = (int)_numTilesHighAtLod0 * (1 << (int)level);
+        unsigned int tilesX = (unsigned int)_numTilesWideAtLod0 * (1 << (unsigned int)level);
+        unsigned int tilesY = (unsigned int)_numTilesHighAtLod0 * (1 << (unsigned int)level);
+
+        if (((_numTilesWideAtLod0 != 0) && ((tilesX / _numTilesWideAtLod0) != (1 << (unsigned int) level))) ||
+            ((_numTilesHighAtLod0 != 0) && ((tilesY / _numTilesHighAtLod0) != (1 << (unsigned int) level))))
+        {	// check for overflow condition
+            return (TileKey::INVALID);
+        }
 
         double rx = (x - _extent.xMin()) / _extent.width();
-        int tileX = osg::clampBelow( (int)(rx * (double)tilesX), tilesX-1 );
+        int tileX = osg::clampBelow( (unsigned int)(rx * (double)tilesX), tilesX-1 );
         double ry = (y - _extent.yMin()) / _extent.height();
-        int tileY = osg::clampBelow( (int)((1.0-ry) * (double)tilesY), tilesY-1 );
+        int tileY = osg::clampBelow( (unsigned int)((1.0-ry) * (double)tilesY), tilesY-1 );
 
         return TileKey( level, tileX, tileY, this );
     }
@@ -594,7 +600,7 @@ namespace
 }
 
 void
-Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& out_intersectingKeys) const
+Profile::addIntersectingTiles(const GeoExtent& key_ext, unsigned localLOD, std::vector<TileKey>& out_intersectingKeys) const
 {
     // assume a non-crossing extent here.
     if ( key_ext.crossesAntimeridian() )
@@ -603,74 +609,50 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
         return;
     }
 
-#if 0 // works for meracator; does NOT work for cube
+    int tileMinX, tileMaxX;
+    int tileMinY, tileMaxY;
 
-    int precision = 5;
-    double eps = 0.001;
-
-    double keyWidth = round(key_ext.width(), precision);
-    int destLOD = 0;
-    double w, h;
-    getTileDimensions(0, w, h);
-    for(; (round(w,precision) - keyWidth) > eps; w*=0.5, h*=0.5, destLOD++ );
-
-    double destTileWidth, destTileHeight;
-    getTileDimensions( destLOD, destTileWidth, destTileHeight );
-    destTileWidth = round(destTileWidth, precision);
-    destTileHeight = round(destTileHeight, precision);
-
-    int tileMinX = quantize( ((key_ext.xMin() - _extent.xMin()) / destTileWidth), eps );
-    int tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
-
-    int tileMinY = quantize( ((_extent.yMax() - key_ext.yMax()) / destTileHeight), eps );
-    int tileMaxY = (int) ((_extent.yMax() - key_ext.yMin()) / destTileHeight);
-
-#else
-
-    double keyWidth = key_ext.width();
-    double keyHeight = key_ext.height();
-
-    // bail out if the key has a null extent. This might happen is the original key represents an
-    // area in one profile that is out of bounds in this profile.
-    if ( keyWidth <= 0.0 && keyHeight <= 0.0 )
-        return;
-
-    double keySpan = std::min( keyWidth, keyHeight );
-    double keyArea = keyWidth * keyHeight;
-    double keyAvg  = 0.5*(keyWidth+keyHeight);
-
-    int destLOD = 1;
-    double destTileWidth, destTileHeight;
-
-    int currLOD = 0;
-    destLOD = currLOD;
-    getTileDimensions(destLOD, destTileWidth, destTileHeight);
-
-    while( true )
+    // Special path for mercator (does NOT work for cube, e.g.)
+    if ( key_ext.getSRS()->isMercator() )
     {
-        currLOD++;
+        int precision = 5;
+        double eps = 0.001;
+
+        double keyWidth = round(key_ext.width(), precision);
+        int destLOD = 0;
         double w, h;
-        getTileDimensions(currLOD, w, h);
-        
-        if ( w < keyAvg || h < keyAvg ) break;
-        destLOD = currLOD;
-        destTileWidth = w;
-        destTileHeight = h;
+        getTileDimensions(0, w, h);
+        for(; (round(w,precision) - keyWidth) > eps; w*=0.5, h*=0.5, destLOD++ );
+
+        double destTileWidth, destTileHeight;
+        getTileDimensions( destLOD, destTileWidth, destTileHeight );
+        destTileWidth = round(destTileWidth, precision);
+        destTileHeight = round(destTileHeight, precision);
+
+        tileMinX = quantize( ((key_ext.xMin() - _extent.xMin()) / destTileWidth), eps );
+        tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
+
+        tileMinY = quantize( ((_extent.yMax() - key_ext.yMax()) / destTileHeight), eps );
+        tileMaxY = (int) ((_extent.yMax() - key_ext.yMin()) / destTileHeight);
     }
 
+    else
+    {
+        double destTileWidth, destTileHeight;
+        getTileDimensions(localLOD, destTileWidth, destTileHeight);
 
-    //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
-    //OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+        //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
+        //OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
 
-    int tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
-    int tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
+        tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
+        tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
 
-    int tileMinY = (int)((_extent.yMax() - key_ext.yMax()) / destTileHeight); 
-    int tileMaxY = (int)((_extent.yMax() - key_ext.yMin()) / destTileHeight); 
-#endif
+        tileMinY = (int)((_extent.yMax() - key_ext.yMax()) / destTileHeight); 
+        tileMaxY = (int)((_extent.yMax() - key_ext.yMin()) / destTileHeight); 
+    }
 
     unsigned int numWide, numHigh;
-    getNumTiles(destLOD, numWide, numHigh);
+    getNumTiles(localLOD, numWide, numHigh);
 
     // bail out if the tiles are out of bounds.
     if ( tileMinX >= (int)numWide || tileMinY >= (int)numHigh ||
@@ -691,11 +673,9 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& ou
         for (int j = tileMinY; j <= tileMaxY; ++j)
         {
             //TODO: does not support multi-face destination keys.
-            out_intersectingKeys.push_back( TileKey(destLOD, i, j, this) );
+            out_intersectingKeys.push_back( TileKey(localLOD, i, j, this) );
         }
     }
-
-    //OE_INFO << "    Found " << out_intersectingKeys.size() << " keys " << std::endl;
 }
 
 
@@ -705,24 +685,32 @@ Profile::getIntersectingTiles(const TileKey& key, std::vector<TileKey>& out_inte
     OE_DEBUG << "GET ISECTING TILES for key " << key.str() << " -----------------" << std::endl;
 
     //If the profiles are exactly equal, just add the given tile key.
-    if ( isEquivalentTo( key.getProfile() ) )
+    if ( isHorizEquivalentTo( key.getProfile() ) )
     {
         //Clear the incoming list
         out_intersectingKeys.clear();
-
         out_intersectingKeys.push_back(key);
-        return;
     }
-    return getIntersectingTiles(key.getExtent(), out_intersectingKeys);
+    else
+    {
+        // figure out which LOD in the local profile is a best match for the LOD
+        // in the source LOD in terms of resolution.
+        unsigned localLOD = getEquivalentLOD(key.getProfile(), key.getLOD());        
+
+        getIntersectingTiles(key.getExtent(), localLOD, out_intersectingKeys);
+
+        //OE_INFO << LC << "GIT, key="<< key.str() << ", localLOD=" << localLOD
+        //    << ", resulted in " << out_intersectingKeys.size() << " tiles" << std::endl;
+    }
 }
 
 void
-Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<TileKey>& out_intersectingKeys) const
+Profile::getIntersectingTiles(const GeoExtent& extent, unsigned localLOD, std::vector<TileKey>& out_intersectingKeys) const
 {
     GeoExtent ext = extent;
 
     // reproject into the profile's SRS if necessary:
-    if ( ! getSRS()->isEquivalentTo( extent.getSRS() ) )
+    if ( !getSRS()->isHorizEquivalentTo( extent.getSRS() ) )
     {
         // localize the extents and clamp them to legal values
         ext = clampAndTransformExtent( extent );
@@ -735,54 +723,61 @@ Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<TileKey>& out
         GeoExtent first, second;
         if (ext.splitAcrossAntimeridian( first, second ))
         {
-            addIntersectingTiles( first, out_intersectingKeys );
-            addIntersectingTiles( second, out_intersectingKeys );
+            addIntersectingTiles( first, localLOD, out_intersectingKeys );
+            addIntersectingTiles( second, localLOD, out_intersectingKeys );
         }
     }
     else
     {
-        addIntersectingTiles( ext, out_intersectingKeys );
+        addIntersectingTiles( ext, localLOD, out_intersectingKeys );
     }
 }
 
-
-unsigned int
-Profile::getEquivalentLOD( const Profile* profile, unsigned int lod ) const
+unsigned
+Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
 {    
     //If the profiles are equivalent, just use the incoming lod
-    if (profile->isEquivalentTo( this ) ) 
-        return lod;
+    if (rhsProfile->isHorizEquivalentTo( this ) ) 
+        return rhsLOD;
 
     double rhsWidth, rhsHeight;
-    profile->getTileDimensions( lod, rhsWidth, rhsHeight );
+    rhsProfile->getTileDimensions( rhsLOD, rhsWidth, rhsHeight );    
 
     // safety catch
     if ( osg::equivalent(rhsWidth, 0.0) || osg::equivalent(rhsHeight, 0.0) )
     {
         OE_WARN << LC << "getEquivalentLOD: zero dimension" << std::endl;
-        return lod;
+        return rhsLOD;
     }
 
-    double targetWidth = rhsWidth, targetHeight = rhsHeight;
-
-    if ( !profile->getSRS()->isHorizEquivalentTo(getSRS()) )
-    {
-        targetWidth = profile->getSRS()->transformUnits( rhsWidth, getSRS() );
-        targetHeight = profile->getSRS()->transformUnits( rhsHeight, getSRS() );
-    }
+    const SpatialReference* rhsSRS = rhsProfile->getSRS();
+    double rhsTargetHeight = rhsSRS->transformUnits( rhsHeight, getSRS() );    
     
     int currLOD = 0;
     int destLOD = currLOD;
 
-    //Find the LOD that most closely matches the area of the incoming key without going under.
+    double delta = DBL_MAX;
+
+    // Find the LOD that most closely matches the resolution of the incoming key.
+    // We use the closest (under or over) so that you can match back and forth between profiles and be sure to get the same results each time.
     while( true )
     {
+        double prevDelta = delta;
+
         currLOD++;
         double w, h;
         getTileDimensions(currLOD, w, h);
-        if ( w < targetWidth || h < targetHeight ) break;
-        //double a = w * h;
-        //if (a < keyArea) break;
+        delta = osg::absolute( h - rhsTargetHeight );
+        if (delta < prevDelta)
+        {
+            // We're getting closer so keep going
+            destLOD = currLOD;
+        }
+        else
+        {
+            // We are further away from the previous lod so stop.
+            break;
+        }        
         destLOD = currLOD;
     }
     return destLOD;

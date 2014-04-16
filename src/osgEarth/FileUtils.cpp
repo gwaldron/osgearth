@@ -19,16 +19,33 @@
 
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
+#include <osgEarth/DateTime>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 #include <osg/Notify>
+
+#ifdef WIN32
+#  include <windows.h>
+#else
+#  include <stdio.h>
+#  include <stdlib.h>
+#endif
+
+#include <sys/types.h>
+
+#ifdef WIN32
+#  include <sys/utime.h>
+#else
+#  include <utime.h>
+#endif
+
+#include <sys/stat.h>
+#include <time.h>
+
 #include <list>
 #include <sstream>
 
-#ifdef WIN32
-#include <windows.h>
-#endif
 
 using namespace osgEarth;
 
@@ -169,6 +186,28 @@ std::string osgEarth::getTempName(const std::string& prefix, const std::string& 
 }
 
 
+bool
+osgEarth::touchFile(const std::string& path)
+{
+    DateTime now;
+    struct ::utimbuf ut;
+    ut.actime = now.asTimeStamp();
+    ut.modtime = now.asTimeStamp();
+    return 0 == ::utime( path.c_str(), &ut );
+}
+
+
+TimeStamp
+osgEarth::getLastModifiedTime(const std::string& path)
+{
+    struct stat buf;
+    if ( stat(path.c_str(), &buf) == 0 )
+        return buf.st_mtime;
+    else
+        return 0;
+}
+
+
 /**************************************************/
 DirectoryVisitor::DirectoryVisitor()
 {
@@ -214,4 +253,5 @@ CollectFilesVisitor::CollectFilesVisitor()
 void CollectFilesVisitor::handleFile( const std::string& filename )
 {
 	filenames.push_back( filename );        
-}        
+}
+

@@ -54,7 +54,7 @@ namespace osgEarth { namespace Drivers
             return conf;
         }
         virtual void mergeConfig( const Config& conf ) {
-            ConfigOptions::mergeConfig( conf );            
+            ConfigOptions::mergeConfig( conf );
             fromConfig( conf );
         }
 

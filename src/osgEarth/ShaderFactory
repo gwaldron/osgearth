@@ -25,39 +25,70 @@
 namespace osgEarth
 {
     /**
-     * A factory class that generates shader functions for the osgEarth engine.
-     * The default ShaderFactory is stored in the osgEarth registry. You can replace it
-     * if you want to replace osgEarth's default shader templates.
+     * A factory object that generates shader program "scaffolding" for VirtualProgram
+     * attributes. Ths factory generates main() functions for each stage in the shader
+     * pipline. You don't use it directly; instead you just create VirtualProgram
+     * attributes, and those VPs will automatically invoke this factory object to
+     * generate their main() functions.
+     *
+     * The default ShaderFactory is stored in the osgEarth registry. You can replace it,
+     * but this is advanced usage and rarely necessary. If you think you need to alter
+     * the built-in mains, consider whether you can accomplish your goal by using a
+     * VirtualProgram instead!
+     *
+     * The only exception, currently, is if you are looking to replace the built-in
+     * lighting shaders. However we intend to decouple this functionality in the 
+     * future and remove the installLightingShaders() method from the ShaderFactory.
      */
     class OSGEARTH_EXPORT ShaderFactory : public osg::Referenced
     {
     public:
-        /** Creates a vertex shader main(). */
+        /**
+         * Creates a vertex shader main() function for use with VirtualPrograms.
+         * Do not call this function directly; VirtualProgram will call it to
+         * install its main() vertex function.
+         */
         virtual osg::Shader* createVertexShaderMain(
             const ShaderComp::FunctionLocationMap& functions) const;
-
-        /** Creates a fragment shader main(). */
+        
+        /**
+         * Creates a fragment shader main() function for use with VirtualPrograms.
+         * Do not call this function directly; VirtualProgram will call it to
+         * install its main() fragment function.
+         */
         virtual osg::Shader* createFragmentShaderMain(
             const ShaderComp::FunctionLocationMap& functions) const;
 
         /**
          * Gets the uniform/shader name of the sampler corresponding the the provider
          * texture image unit
+         *
+         * @deprecated Only supported by older texture compositors, which will likely
+         *             go away in a future version
          */
         virtual std::string getSamplerName( unsigned texImageUnit ) const;
 
         /**
          * Install lighting shaders in a VirtualProgram.
+         *
+         * Note: this will likely go away in a future version. At this point it makes
+         * more sense to decouple the default lighting shaders from the main shader
+         * factory and simply use a VirtualProgram rather than replacing the ShaderFactory.
          */
         virtual void installLightingShaders(VirtualProgram* vp) const;
 
         /**
-         * Builds a shader that executes an image filter chain.
+         * Builds a shader function that executes an image filter chain.
+         * @param functionName Name to give to the resulting shader function
+         * @param chain        Color filter chain to execute
          */
-        virtual osg::Shader* createColorFilterChainFragmentShader( const std::string& function, const ColorFilterChain& chain ) const;
+        virtual osg::Shader* createColorFilterChainFragmentShader(
+            const std::string&      functionName,
+            const ColorFilterChain& chain ) const;
 
         /**
-         * Gets a uniform corresponding to the given mode and value
+         * Gets a uniform corresponding to the given mode and value. These uniforms are 
+         * named in the form "oe_mode_MODE" (e.g., "oe_mode_GL_LIGHTING").
          */
         virtual osg::Uniform* createUniformForGLMode(
             osg::StateAttribute::GLMode      mode,

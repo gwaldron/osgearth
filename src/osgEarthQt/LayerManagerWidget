@@ -35,6 +35,7 @@
 #include <QSlider>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QMimeData>
 
 namespace osgEarth { namespace QtGui 
 {
@@ -183,7 +184,6 @@ namespace osgEarth { namespace QtGui
 
     private slots:
       void onEnabledCheckStateChanged(int state);
-      void onOverlayCheckStateChanged(int state);
 
     protected slots:
       void onRemoveClicked(bool checked);
@@ -198,7 +198,6 @@ namespace osgEarth { namespace QtGui
       osg::ref_ptr<ModelLayerCallback> _layerCallback;
       osg::ref_ptr<Action> _doubleClick;
       QCheckBox* _visibleCheckBox;
-      QCheckBox* _overlayCheckBox;
     };
 
 

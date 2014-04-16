@@ -36,13 +36,12 @@ namespace
     {
         MemCacheBin( const std::string& id, unsigned maxSize )
             : CacheBin( id ),
-              _lru    ( true, maxSize )
+              _lru    ( true /* MT-safe */, maxSize )
         {
             //nop
         }
 
-        ReadResult readObject(const std::string& key,
-                              double             maxAge )
+        ReadResult readObject(const std::string& key, TimeStamp minTime)
         {
             MemCacheLRU::Record rec;
             _lru.get(key, rec);
@@ -64,22 +63,14 @@ namespace
             }
         }
 
-        ReadResult readImage(const std::string& key,
-                             double             maxAge )
+        ReadResult readImage(const std::string& key, TimeStamp minTime)
         {
-            return readObject( key, maxAge );
+            return readObject( key, minTime );
         }
 
-        ReadResult readString(const std::string& key,
-                              double             maxAge )
+        ReadResult readString(const std::string& key, TimeStamp minTime)
         {
-            return readObject( key, maxAge );
-        }
-
-        ReadResult readConfig(const std::string& key,
-                              double             maxAge )
-        {
-            return readObject( key, maxAge );
+            return readObject( key, minTime );
         }
 
         bool write( const std::string& key, const osg::Object* object, const Config& meta )
@@ -93,9 +84,23 @@ namespace
                 return false;
         }
 
-        bool isCached( const std::string& key, double maxAge ) 
+        bool remove(const std::string& key)
         {
-            return _lru.has(key);
+            _lru.erase(key);
+            return true;
+        }
+
+        bool touch(const std::string& key)
+        {
+            // just doing a get will put it at the front of the LRU list
+            MemCacheLRU::Record dummy;
+            return _lru.get(key, dummy);
+        }
+
+        RecordStatus getRecordStatus( const std::string& key, TimeStamp minTime )
+        {
+            // ignore minTime; MemCache does not support expiration
+            return _lru.has(key) ? STATUS_OK : STATUS_NOT_FOUND;
         }
 
         bool purge()
@@ -104,7 +109,6 @@ namespace
             return true;
         }
 
-    private:
         MemCacheLRU _lru;
     };
     
@@ -127,6 +131,15 @@ MemCache::addBin( const std::string& binID )
 }
 
 CacheBin*
+MemCache::getOrCreateBin(const std::string& binID)
+{
+    CacheBin* bin = getBin(binID);
+    if ( !bin )
+        bin = addBin(binID);
+    return bin;
+}
+
+CacheBin*
 MemCache::getOrCreateDefaultBin()
 {
     if ( !_defaultBin.valid() )
@@ -140,4 +153,13 @@ MemCache::getOrCreateDefaultBin()
     }
 
     return _defaultBin.get();
+}
+
+
+void
+MemCache::dumpStats(const std::string& binID)
+{
+    MemCacheBin* bin = static_cast<MemCacheBin*>(getBin(binID));
+    CacheStats stats = bin->_lru.getStats();
+    OE_INFO << LC << "hit ratio = " << stats._hitRatio << std::endl;
 }

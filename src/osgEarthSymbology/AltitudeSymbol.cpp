@@ -22,12 +22,14 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(altitude, AltitudeSymbol);
+
 AltitudeSymbol::AltitudeSymbol( const Config& conf ) :
 Symbol             ( conf ),
 _clamping          ( CLAMP_NONE ),
 _technique         ( TECHNIQUE_MAP ),
 _binding           ( BINDING_VERTEX ),
-_resolution        ( 0.001f ),
+_resolution        ( 0.0 ), //0.001f ),
 _verticalScale     ( NumericExpression(1.0) ),
 _verticalOffset    ( NumericExpression(0.0) )
 {

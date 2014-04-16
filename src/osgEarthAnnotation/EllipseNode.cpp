@@ -22,6 +22,7 @@
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/MapNode>
+#include <cmath>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -187,7 +188,7 @@ EllipseNode::rebuild()
     GeometryFactory factory;
     Geometry* geom = NULL;
 
-    if (abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
+    if (std::abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
     {
         geom = factory.createEllipse(osg::Vec3d(0,0,0), _radiusMajor, _radiusMinor, _rotationAngle, _numSegments);
     }
@@ -236,15 +237,14 @@ _numSegments ( 0 )
     conf.getIfSet   ( "num_segments", _numSegments );
 
     rebuild();
-
-    if ( conf.hasChild("position") )
-        setPosition( GeoPoint(conf.child("position")) );
 }
 
 Config
 EllipseNode::getConfig() const
 {
-    Config conf( "ellipse" );
+    Config conf = LocalizedNode::getConfig();
+    conf.key() = "ellipse";
+
     conf.addObj( "radius_major", _radiusMajor );
     conf.addObj( "radius_minor", _radiusMinor );
     conf.addObj( "rotation", _rotationAngle );
@@ -252,8 +252,6 @@ EllipseNode::getConfig() const
 
     if ( _numSegments != 0 )
         conf.add( "num_segments", _numSegments );
-
-    conf.addObj( "position", getPosition() );
 
     return conf;
 }

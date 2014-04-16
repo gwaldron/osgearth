@@ -9,28 +9,30 @@ lo-res heightfield underlay.
 -->
 
 <map type="geocentric" version="2">
-      
-    <image name="arcgisonline esri imagery" driver="arcgis">
-        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+
+    <image driver="gdal" name="world-tiff">
+        <url>../data/world.tif</url>
     </image>
 
-    <heightfield name = "mt_fuji" driver = "gdal">
+    <elevation name = "mt_fuji" driver = "gdal">
       <url>..\data\terrain\mt_fuji_90m.tif</url>
-    </heightfield>
+    </elevation>
 
-    <heightfield name = "mt_rainier" driver = "gdal">
+    <elevation name = "mt_rainier" driver = "gdal">
       <url>..\data\terrain\mt_rainier_90m.tif</url>
-    </heightfield>
+    </elevation>
 
-    <heightfield name = "mt_everest" driver = "gdal">
+    <elevation name = "mt_everest" driver = "gdal">
       <url>..\data\terrain\mt_everest_90m.tif</url>
-     </heightfield>
+    </elevation>
 
     <options>
         <lighting>false</lighting>
-        <terrain>
-            <vertical_scale>1.5</vertical_scale>
-        </terrain>
+        <cache_policy usage="no_cache"/>
     </options>
     
+    <external>
+        <contour_map opacity="0.35"/>
+        <vertical_scale scale="2.0"/>
+    </external>
 </map>

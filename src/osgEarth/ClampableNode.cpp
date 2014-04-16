@@ -22,6 +22,7 @@
 #include <osgEarth/DepthOffset>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/MapNode>
+#include <osgEarth/VirtualProgram>
 
 #define LC "[ClampableNode] "
 
@@ -40,84 +41,58 @@ namespace
 //------------------------------------------------------------------------
 
 ClampableNode::ClampableNode( MapNode* mapNode, bool active ) :
-OverlayNode( mapNode, active, &getTechniqueGroup )
+OverlayNode( mapNode, active, &getTechniqueGroup ),
+_updatePending( false )
 {
-    init();
+    _adapter.setGraph( this );
+
+    if ( _adapter.isDirty() )
+        _adapter.recalculate();
 }
 
 void
-ClampableNode::init()
+ClampableNode::setDepthOffsetOptions(const DepthOffsetOptions& options)
 {
-    // auto-bias starts out true, but if you set the depth offset options
-    // it will toggle to false.
-    _autoBias = true;
+    _adapter.setDepthOffsetOptions(options);
+    if ( _adapter.isDirty() && !_updatePending )
+        scheduleUpdate();
+}
 
-    _doDirty  = false;
-
-    osg::StateSet* s = this->getOrCreateStateSet();
-
-    _biasUniform = s->getOrCreateUniform( "oe_clamp_bias", osg::Uniform::FLOAT_VEC2 );
-    _biasUniform->set( osg::Vec2f(*_do.minBias(), *_do.maxBias()) );
-
-    _rangeUniform = s->getOrCreateUniform( "oe_clamp_range", osg::Uniform::FLOAT_VEC2 );
-    _rangeUniform->set( osg::Vec2f(*_do.minRange(), *_do.maxRange()) );
+const DepthOffsetOptions&
+ClampableNode::getDepthOffsetOptions() const
+{
+    return _adapter.getDepthOffsetOptions();
 }
 
 void
-ClampableNode::dirtyDepthOffsetOptions()
+ClampableNode::scheduleUpdate()
 {
-    if ( !_doDirty )
+    if ( !_updatePending && getDepthOffsetOptions().enabled() == true )
     {
-        _doDirty = true;
-        _autoBias = false;
-        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+        ADJUST_UPDATE_TRAV_COUNT(this, 1);
+        _updatePending = true;
     }
-}
-
-void
-ClampableNode::traverse(osg::NodeVisitor& nv)
-{
-    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
-    {
-        applyDepthOffsetOptions();
-        _doDirty = false;
-        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-    }
-    OverlayNode::traverse(nv);
-}
-
-void
-ClampableNode::applyDepthOffsetOptions()
-{
-    if ( _do.enabled() == true )
-    {
-        _biasUniform->set( osg::Vec2f(*_do.minBias(), *_do.maxBias()) );
-        _rangeUniform->set( osg::Vec2f(*_do.minRange(), *_do.maxRange()) );
-        dirtyBound();
-    }
-    else
-    {
-        _biasUniform->set( osg::Vec2f(0.0f, 0.0f) );
-    }
-}
-
-void
-ClampableNode::setAutoCalculateDepthOffset()
-{
-    // prompts OSG to call computeBound() on the next pass which
-    // will recalculate the minimum bias.
-    _autoBias = true;
-    dirtyBound();
 }
 
 osg::BoundingSphere
 ClampableNode::computeBound() const
 {
-    if ( _autoBias && _do.enabled() == true )
+    static Threading::Mutex s_mutex;
     {
-        _do.minBias() = DepthOffsetUtils::recalculate( this );
-        _biasUniform->set( osg::Vec2f(*_do.minBias(), *_do.maxBias()) );
+        Threading::ScopedMutexLock lock(s_mutex);
+        const_cast<ClampableNode*>(this)->scheduleUpdate();
     }
-
     return OverlayNode::computeBound();
+}
+
+void
+ClampableNode::traverse(osg::NodeVisitor& nv)
+{
+    if ( _updatePending && nv.getVisitorType() == nv.UPDATE_VISITOR )
+    {
+        _adapter.recalculate();
+        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        _updatePending = false;
+    }
+    OverlayNode::traverse( nv );
 }

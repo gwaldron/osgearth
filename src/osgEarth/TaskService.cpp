@@ -65,9 +65,10 @@ TaskRequest::wasCanceled() const
 
 //------------------------------------------------------------------------
 
-TaskRequestQueue::TaskRequestQueue() :
+TaskRequestQueue::TaskRequestQueue(unsigned int maxSize) :
 osg::Referenced( true ),
-_done( false )
+_done( false ),
+_maxSize( maxSize )
 {
 }
 
@@ -75,6 +76,16 @@ void
 TaskRequestQueue::clear()
 {
     ScopedLock<Mutex> lock(_mutex);
+    _requests.clear();
+}
+
+void
+TaskRequestQueue::cancel()
+{
+    ScopedLock<Mutex> lock(_mutex);
+    for (TaskRequestPriorityMap::iterator it = _requests.begin(); it != _requests.end(); ++it)
+        (*it).second->cancel();
+
     _requests.clear();
 }
 
@@ -94,31 +105,29 @@ TaskRequestQueue::add( TaskRequest* request )
     if ( !request->getProgressCallback() )
         request->setProgressCallback( new ProgressCallback() );
 
-    ScopedLock<Mutex> lock(_mutex);
+    // Lock on the add mutex so no one else can add.
+    ScopedLock<Mutex> lock( _addMutex );
 
-    // insert by priority.
-    _requests.insert( std::pair<float,TaskRequest*>(request->getPriority(), request) );
-
-#if 0
-    // insert by priority.
-    bool inserted = false;
-    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); i++ )
+    if (_maxSize > 0)
     {
-        if ( request->getPriority() > i->get()->getPriority() )
-        {
-            _requests.insert( i, request );
-            inserted = true;
-            //OE_NOTICE << "TaskRequestQueue size=" << _requests.size() << std::endl;
-            break;
+        if (_requests.size() == _maxSize)    
+        {        
+            //OE_NOTICE << "Waiting on add...." << std::endl;
+            _addCond.wait( &_addMutex );        
+            //OE_NOTICE << "I have awakend!" << std::endl;
         }
     }
 
-    if ( !inserted )
-        _requests.push_back( request );
-#endif
+
+    // Now lock on the main mutex to protect the queue
+    ScopedLock<Mutex> lock2( _mutex );
+    // insert by priority.
+    _requests.insert( std::pair<float,TaskRequest*>(request->getPriority(), request) );
+
+    //OE_NOTICE << "There are now " << _requests.size() << " tasks" << std::endl;
 
     // since there is data in the queue, wake up one waiting task thread.
-    _cond.signal();
+    _cond.signal(); 
 }
 
 TaskRequest* 
@@ -127,9 +136,8 @@ TaskRequestQueue::get()
     ScopedLock<Mutex> lock(_mutex);
 
     while ( !_done && _requests.empty() )
-    {
-        // releases the mutex and waits on the condition.
-        _cond.wait( &_mutex );
+    {                
+        _cond.wait( &_mutex );        
     }
 
     if ( _done )
@@ -142,8 +150,9 @@ TaskRequestQueue::get()
 
     // I'm done, someone else take a turn:
     // (technically this shouldn't be necessary since add() bumps the semaphore once
-    // for each request in the queue)
-    _cond.signal();
+    // for each request in the queue)    
+    _cond.signal();    
+    _addCond.signal();
 
     return next.release();
 }
@@ -185,6 +194,16 @@ TaskThread::run()
 
         if (_request.valid())
         { 
+            PoisonPill* poison = dynamic_cast< PoisonPill* > ( _request.get());
+            if ( poison )
+            {
+                OE_DEBUG << this->getThreadId() << " received poison pill.  Shutting down" << std::endl;
+                // Add the poison pill back to the queue to kill any other threads.  If I'm going down, you're all going down with me!
+                _queue->add( poison );
+                break;
+            }
+            
+
             // discard a completed or canceled request:
             if ( _request->getState() != TaskRequest::STATE_PENDING )
             {
@@ -215,6 +234,7 @@ TaskThread::run()
             // Release the request
             _request = 0;
         }
+        
     }
 }
 
@@ -240,13 +260,13 @@ TaskThread::cancel()
 
 //------------------------------------------------------------------------
 
-TaskService::TaskService( const std::string& name, int numThreads ):
+TaskService::TaskService( const std::string& name, int numThreads, unsigned int maxSize ):
 osg::Referenced( true ),
 _lastRemoveFinishedThreadsStamp(0),
 _name(name),
 _numThreads( 0 )
 {
-    _queue = new TaskRequestQueue();
+    _queue = new TaskRequestQueue( maxSize );
     setNumThreads( numThreads );
 }
 
@@ -261,6 +281,14 @@ TaskService::add( TaskRequest* request )
 {   
     //OE_INFO << LC << "TS [" << _name << "] adding request [" << request->getName() << "]" << std::endl;
     _queue->add( request );
+}
+
+void TaskService::waitforThreadsToComplete()
+{        
+    for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
+    {
+        (*i)->join();
+    }    
 }
 
 TaskService::~TaskService()
@@ -377,6 +405,18 @@ TaskService::removeFinishedThreads()
     if (numRemoved > 0)
     {
         OE_DEBUG << LC << "Removed " << numRemoved << " finished threads " << std::endl;
+    }
+}
+
+void
+TaskService::cancelAll()
+{
+    if (_numThreads > 0)
+    {
+        _numThreads = 0;
+        adjustThreadCount();
+
+        OE_INFO << LC << "Cancelled all threads in TaskService [" << _name << "]" << std::endl;
     }
 }
 

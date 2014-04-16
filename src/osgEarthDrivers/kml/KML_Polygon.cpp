@@ -26,6 +26,12 @@ void
 KML_Polygon::parseStyle(const Config& conf, KMLContext& cx, Style& style)
 {
     KML_Geometry::parseStyle(conf, cx, style);
+
+    // need at minimum a poly symbol.
+    if ( !style.has<PolygonSymbol>() )
+    {
+        style.getOrCreate<PolygonSymbol>()->fill()->color() = osg::Vec4f(1,1,1,1);
+    }
 }
 
 void

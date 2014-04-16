@@ -55,6 +55,12 @@ namespace osgEarth
         optional<MaskSourceOptions>& driver() { return _driver; }
         const optional<MaskSourceOptions>& driver() const { return _driver; }
 
+        /**
+         * Gets or sets the minimum of detail for which this layer should generate data.
+         */
+        optional<unsigned>& minLevel() { return _minLevel; }
+        const optional<unsigned>& minLevel() const { return _minLevel; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -65,6 +71,7 @@ namespace osgEarth
 
         optional<std::string> _name;
         optional<MaskSourceOptions> _driver;
+        optional<unsigned> _minLevel;
     };
 
     /**
@@ -102,6 +109,8 @@ namespace osgEarth
          * Gets the name of this mask layer
          */
         const std::string& getName() const { return *_runtimeOptions.name(); }
+
+        const unsigned getMinLevel() const { return *_runtimeOptions.minLevel(); }
 
         /** 
          * Gets the geometric boundary polygon representing the area of the

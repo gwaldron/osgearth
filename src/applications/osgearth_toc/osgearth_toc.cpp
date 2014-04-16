@@ -21,6 +21,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/ExampleResources>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -29,7 +30,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util::Controls;
 
-osg::Node* createControlPanel( osgViewer::View* );
+void createControlPanel( osgViewer::View* );
 void updateControlPanel();
 
 static osg::ref_ptr<Map> s_activeMap;
@@ -37,6 +38,7 @@ static osg::ref_ptr<Map> s_inactiveMap;
 static Grid* s_masterGrid;
 static Grid* s_imageBox;
 static Grid* s_elevationBox;
+static Grid* s_modelBox;
 static bool s_updateRequired = true;
 
 //------------------------------------------------------------------------
@@ -69,8 +71,15 @@ main( int argc, char** argv )
 {
     osg::ArgumentParser arguments( &argc,argv );
 
+    // configure the viewer.
+    osgViewer::Viewer viewer( arguments );
+
+    // install a motion model
+    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
+
     // Load an earth file 
-    osgEarth::MapNode* mapNode = MapNode::load( arguments );
+    osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer);
+    osgEarth::MapNode* mapNode = osgEarth::MapNode::get(loaded);
     if ( !mapNode ) {
         OE_WARN << "No osgEarth MapNode found in the loaded file(s)." << std::endl;
         return -1;
@@ -83,27 +92,17 @@ main( int argc, char** argv )
     // a Map to hold inactive layers (layers that have been removed from the displayed Map)
     s_inactiveMap = new Map();
     s_inactiveMap->addMapCallback( new MyMapListener() );
-    
-
-    // configure the viewer.
-    osgViewer::Viewer viewer( arguments );
 
     osg::Group* root = new osg::Group();
 
     // install the control panel
-    root->addChild( createControlPanel( &viewer ) );
-    root->addChild( mapNode );
+    createControlPanel( &viewer );
+    root->addChild( loaded );
 
     // update the control panel with the two Maps:
     updateControlPanel();
-    
-    viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );
-    viewer.addEventHandler( new osgViewer::StatsHandler() );
 
     viewer.setSceneData( root );
-
-    // install a proper manipulator
-    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
     // install our control panel updater
     viewer.addUpdateOperation( new UpdateOperation() );
@@ -131,6 +130,26 @@ struct LayerOpacityHandler : public ControlEventHandler
         _layer->setOpacity( value );
     }
     ImageLayer* _layer;
+};
+
+struct ModelLayerVisibleHandler : public ControlEventHandler
+{
+    ModelLayerVisibleHandler( ModelLayer* layer ) : _layer(layer) { }
+    void onValueChanged( Control* control, bool value )
+    {
+        _layer->setVisible( value );
+    }
+    ModelLayer* _layer;
+};
+
+struct ModelLayerOpacityHandler : public ControlEventHandler
+{
+    ModelLayerOpacityHandler( ModelLayer* layer ) : _layer(layer) { }
+    void onValueChanged( Control* control, float value )
+    {
+        _layer->setOpacity( value );
+    }
+    ModelLayer* _layer;
 };
 
 struct AddLayerHandler : public ControlEventHandler
@@ -199,7 +218,7 @@ struct MoveLayerHandler : public ControlEventHandler
 //------------------------------------------------------------------------
 
 
-osg::Node*
+void
 createControlPanel( osgViewer::View* view )
 {
     ControlCanvas* canvas = ControlCanvas::get( view );
@@ -235,9 +254,18 @@ createControlPanel( osgViewer::View* view )
     s_elevationBox->setVertAlign( Control::ALIGN_BOTTOM );
     s_masterGrid->setControl( 1, 0, s_elevationBox );
 
-    canvas->addControl( s_masterGrid );
+    //The image layers
+    s_modelBox = new Grid();
+    s_modelBox->setBackColor(0,0,0,0.5);
+    s_modelBox->setMargin( 10 );
+    s_modelBox->setPadding( 10 );
+    s_modelBox->setChildSpacing( 10 );
+    s_modelBox->setChildVertAlign( Control::ALIGN_CENTER );
+    s_modelBox->setAbsorbEvents( true );
+    s_modelBox->setVertAlign( Control::ALIGN_BOTTOM );
+    s_masterGrid->setControl( 2, 0, s_modelBox );
 
-    return canvas;
+    canvas->addControl( s_masterGrid );
 }
 
 void
@@ -294,6 +322,26 @@ createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, Terrain
 }
 
 void
+createModelLayerItem( Grid* grid, int gridRow, ModelLayer* layer, bool isActive )
+{
+    // a checkbox to enable/disable the layer:
+    CheckBoxControl* enabled = new CheckBoxControl( layer->getVisible() );
+    enabled->addEventHandler( new ModelLayerVisibleHandler(layer) );
+    grid->setControl( 0, gridRow, enabled );
+
+    // the layer name
+    LabelControl* name = new LabelControl( layer->getName() );
+    grid->setControl( 1, gridRow, name );
+
+    // an opacity slider
+    HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, layer->getOpacity() );
+    opacity->setWidth( 125 );
+    opacity->setHeight( 12 );
+    opacity->addEventHandler( new ModelLayerOpacityHandler(layer) );
+    grid->setControl( 2, gridRow, opacity );
+}
+
+void
 updateControlPanel()
 {
     // erase all child controls and just rebuild them b/c we're lazy.
@@ -307,7 +355,7 @@ updateControlPanel()
     s_imageBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:
-    MapFrame mapf( s_activeMap.get() );
+    MapFrame mapf( s_activeMap.get(), Map::ENTIRE_MODEL );
     int layerNum = mapf.imageLayers().size()-1;
     for( ImageLayerVector::const_reverse_iterator i = mapf.imageLayers().rbegin(); i != mapf.imageLayers().rend(); ++i )
         createLayerItem( s_imageBox, row++, layerNum--, mapf.imageLayers().size(), i->get(), true );
@@ -351,4 +399,17 @@ updateControlPanel()
         }
     }
 
+
+
+    //Rebuild the model layers
+    s_modelBox->clearControls();
+
+    row = 0;
+
+    activeLabel = new LabelControl( "Model Layers", 20, osg::Vec4f(1,1,0,1) );
+    s_modelBox->setControl( 1, row++, activeLabel );
+
+    // the active map layers:
+    for( ModelLayerVector::const_reverse_iterator i = mapf.modelLayers().rbegin(); i != mapf.modelLayers().rend(); ++i )
+        createModelLayerItem( s_modelBox, row++, i->get(), true );
 }

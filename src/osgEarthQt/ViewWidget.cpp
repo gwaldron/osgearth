@@ -21,8 +21,7 @@
 #include <osgQt/GraphicsWindowQt>
 #include <osgViewer/View>
 
-#include <QtGui>
-#include <QtGui/QWidget>
+#include <QWidget>
 
 #define LC "[ViewWidget] "
 

@@ -55,6 +55,10 @@ _visible( true )
     //nop
 }
 
+FeatureDrawSet::~FeatureDrawSet()
+{
+}
+
 
 FeatureDrawSet::PrimitiveSets&
 FeatureDrawSet::getOrCreateSlice(osg::Drawable* d)

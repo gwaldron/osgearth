@@ -27,7 +27,6 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
-//#include <osgEarthUtil/SkyNode>
 
 namespace PackageQt
 {
@@ -80,3 +79,4 @@ namespace PackageQt
 }
 
 #endif //TILER_TOOL_SCENECONTROLLER_H
+

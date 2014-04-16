@@ -41,6 +41,7 @@
 #include <QStandardItemModel>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QDrag>
 
 using namespace osgEarth;
 using namespace osgEarth::QtGui;
@@ -93,12 +94,6 @@ namespace
     {
       if (_widget && layer)
         _widget->setLayerVisible(layer->getVisible());
-    }
-
-    void onOverlayChanged(ModelLayer* layer)
-    {
-      if (_widget)
-        _widget->setLayerOverlay(layer->getOverlay());
     }
 
   private:
@@ -580,13 +575,6 @@ void ModelLayerControlWidget::initUi()
     // create name label
     QLabel* label = new QLabel(tr(!_layer->getName().empty() ? _layer->getName().c_str() : "Model Layer"));
     _headerTitleBoxLayout->addWidget(label);
-
-    // create overlay checkbox
-    _contentBoxLayout->addSpacing(16);
-    _overlayCheckBox = new QCheckBox("overlay");
-    _overlayCheckBox->setCheckState(_layer->getOverlay() ? Qt::Checked : Qt::Unchecked);
-    connect(_overlayCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onOverlayCheckStateChanged(int)));
-    _contentBoxLayout->addWidget(_overlayCheckBox);
   }
   else
   {
@@ -603,13 +591,6 @@ void ModelLayerControlWidget::onEnabledCheckStateChanged(int state)
     _layer->setVisible(checked);
 }
 
-void ModelLayerControlWidget::onOverlayCheckStateChanged(int state)
-{
-  bool checked = state == Qt::Checked;
-  if (_layer.valid() && _layer->getOverlay() != checked)
-    _layer->setOverlay(checked);
-}
-
 void ModelLayerControlWidget::onRemoveClicked(bool checked)
 {
   if (_parent && _parent->getMap())
@@ -620,12 +601,6 @@ void ModelLayerControlWidget::setLayerVisible(bool visible)
 {
   if ((_visibleCheckBox->checkState() == Qt::Checked) != visible)
     _visibleCheckBox->setCheckState(visible ? Qt::Checked : Qt::Unchecked);
-}
-
-void ModelLayerControlWidget::setLayerOverlay(bool overlay)
-{
-  if ((_overlayCheckBox->checkState() == Qt::Checked) != overlay)
-    _overlayCheckBox->setCheckState(overlay ? Qt::Checked : Qt::Unchecked);
 }
 
 

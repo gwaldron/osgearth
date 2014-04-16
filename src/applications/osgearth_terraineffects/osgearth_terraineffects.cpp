@@ -21,20 +21,25 @@
  * This sample tests all the various built-in TerrainEffect classes and
  * lets you toggle them and try them together.
  */
-#include <osg/Notify>
-#include <osgViewer/Viewer>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/MapNode>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
 
 #include <osgEarthUtil/ContourMap>
-#include <osgEarthUtil/DetailTexture>
 #include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/VerticalScale>
+
+#include <osgEarthSymbology/Color>
+
+#include <osg/Notify>
+#include <osg/Fog>
+#include <osgViewer/Viewer>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -55,7 +60,6 @@ struct App
     TerrainEngineNode*           engine;
 
     osg::ref_ptr<ContourMap>     contourMap;
-    osg::ref_ptr<DetailTexture>  detailTexture;
     osg::ref_ptr<LODBlending>    lodBlending;
     osg::ref_ptr<NormalMap>      normalMap;
     osg::ref_ptr<VerticalScale>  verticalScale;
@@ -63,10 +67,6 @@ struct App
     App()
     {
         contourMap = new ContourMap();
-
-        detailTexture = new DetailTexture();
-        detailTexture->setImage( osgDB::readImageFile("../data/noise3.png") );
-
         lodBlending = new LODBlending();
         normalMap = new NormalMap();
         verticalScale = new VerticalScale();
@@ -103,20 +103,6 @@ struct ContourMapController {
         ++r;
         grid->setControl(0, r, new ui::LabelControl("   opacity:"));
         grid->setControl(1, r, new ui::HSliderControl(0.0, 1.0, 0.5, new setOpacity(app)));
-        grid->setControl(2, r, new ui::LabelControl(grid->getControl(1, r)));
-    }
-};
-
-struct DetailTextureController {
-    TOGGLE   ( detailTexture );
-    SET_FLOAT( detailTexture, setIntensity );
-    DetailTextureController(App& app, ui::Grid* grid) {
-        int r = grid->getNumRows();
-        grid->setControl(0, r, new ui::LabelControl("DetailTexture"));
-        grid->setControl(1, r, new ui::CheckBoxControl(false, new Toggle(app)));
-        ++r;
-        grid->setControl(0, r, new ui::LabelControl("   intensity:"));
-        grid->setControl(1, r, new ui::HSliderControl(0.0, 1.0, 0.5, new setIntensity(app)));
         grid->setControl(2, r, new ui::LabelControl(grid->getControl(1, r)));
     }
 };
@@ -179,7 +165,6 @@ ui::Control* createUI( App& app )
     grid->getControl(1, 0)->setHorizFill( true, 250 );
 
     ContourMapController    (app, grid);
-    DetailTextureController (app, grid);
     LODBlendingController   (app, grid);
     NormalMapController     (app, grid);
     VerticalScaleController (app, grid);
@@ -211,6 +196,7 @@ int main(int argc, char** argv)
     if ( node )
     {
         MapNode* mapNode = MapNode::get(node);
+
         if ( !mapNode )
             return -1;
 

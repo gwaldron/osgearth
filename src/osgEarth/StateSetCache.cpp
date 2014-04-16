@@ -23,12 +23,58 @@
 
 #define LC "[StateSetCache] "
 
+#define DEFAULT_PRUNE_ACCESS_COUNT 40
+
 using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
 namespace
 {
+    bool isEligible(osg::StateAttribute* attr)
+    {
+        if ( !attr )
+            return false;
+
+        // DYNAMIC means the user intends to change it later. So it needs to
+        // stay independent.
+        if ( attr->getDataVariance() == osg::Object::DYNAMIC )
+            return false;
+
+        // cannot share BIB's. They don't clone well since they have underlying buffer objects
+        // that may be in use. It results in OpenGL invalid enumerant errors and errors such as
+        // "uniform block xxx has no binding"
+        if (dynamic_cast<osg::BufferIndexBinding*>(attr) != 0L)
+            return false;
+
+        return true;
+    }
+
+    bool isEligible(osg::StateSet* stateSet)
+    {
+#if OSG_MIN_VERSION_REQUIRED(3,1,4)
+        if ( !stateSet )
+            return false;
+
+        // DYNAMIC means the user intends to change it later. So it needs to
+        // stay independent.
+        if ( stateSet->getDataVariance() == osg::Object::DYNAMIC )
+            return false;
+
+        const osg::StateSet::AttributeList& attrs = stateSet->getAttributeList();
+        for( osg::StateSet::AttributeList::const_iterator i = attrs.begin(); i != attrs.end(); ++i )
+        {
+            osg::StateAttribute* a = i->second.first.get();
+            if ( !isEligible(a) )
+                return false;
+        }
+
+        return true;
+#else
+        return false;
+#endif
+    }
+
     /**
      * Visitor that calls StateSetCache::share on all attributes found
      * in a scene graph.
@@ -37,15 +83,25 @@ namespace
     {
         StateSetCache* _cache;
 
-        ShareStateAttributes(StateSetCache* cache) :
-            osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-            _cache          ( cache ) { }
+        ShareStateAttributes(StateSetCache* cache)
+            : _cache(cache)
+        {
+            setTraversalMode( TRAVERSE_ALL_CHILDREN );
+            setNodeMaskOverride( ~0 );
+        }
 
         void apply(osg::Node& node)
         {
-            if ( node.getStateSet() && node.getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
+            if (node.getStateSet())
             {
-                applyStateSet( node.getStateSet() );
+                // ref for thread-safety; another thread might replace this stateset
+                // during optimization while we're looking at it.
+                osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
+                if (stateset.valid() && 
+                    stateset->getDataVariance() != osg::Object::DYNAMIC )            
+                {
+                    applyStateSet( stateset.get() );
+                }
             }
             traverse(node);
         }
@@ -56,14 +112,22 @@ namespace
             for( unsigned i=0; i<numDrawables; ++i )
             {
                 osg::Drawable* d = geode.getDrawable(i);
-                if ( d && d->getStateSet() && d->getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
+                if (d && d->getStateSet() )
                 {
-                    applyStateSet( d->getStateSet() );
+                    // ref for thread-safety; another thread might replace this stateset
+                    // during optimization while we're looking at it.
+                    osg::ref_ptr<osg::StateSet> stateset = d->getStateSet();
+                    if (stateset.valid() &&
+                        stateset->getDataVariance() != osg::Object::DYNAMIC)
+                    {
+                        applyStateSet( stateset.get() );
+                    }
                 }
             }
             apply((osg::Node&)geode);
         }
 
+        // assume: stateSet is safely referenced by caller
         void applyStateSet(osg::StateSet* stateSet)
         {
             osg::StateSet::AttributeList& attrs = stateSet->getAttributeList();
@@ -107,25 +171,32 @@ namespace
         unsigned       _shares;
         //std::vector<osg::StateSet*> _misses; // for debugging
 
-        ShareStateSets(StateSetCache* cache) :
-            osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-            _cache    ( cache ),
-            _stateSets( 0 ),
-            _shares   ( 0 ) { }
+        ShareStateSets(StateSetCache* cache)
+            : _cache(cache),
+              _stateSets( 0 ),
+              _shares   ( 0 )
+        {
+            setTraversalMode( TRAVERSE_ALL_CHILDREN );
+            setNodeMaskOverride( ~0 );
+        }
 
         void apply(osg::Node& node)
         {
-            if ( node.getStateSet() && node.getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
+            if (node.getStateSet())
             {
-                _stateSets++;
-                osg::ref_ptr<osg::StateSet> in, shared;
-                in = node.getStateSet();
-                if ( in.valid() && _cache->share(in, shared) )
+                osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
+
+                if ( isEligible(stateset.get()) )
                 {
-                    node.setStateSet( shared.get() );
-                    _shares++;
+                    _stateSets++;
+                    osg::ref_ptr<osg::StateSet> shared;
+                    if ( _cache->share(stateset, shared) )
+                    {
+                        node.setStateSet( shared.get() );
+                        _shares++;
+                    }
+                    //else _misses.push_back(in.get());
                 }
-                //else _misses.push_back(in.get());
             }
             traverse(node);
         }
@@ -136,17 +207,20 @@ namespace
             for( unsigned i=0; i<numDrawables; ++i )
             {
                 osg::Drawable* d = geode.getDrawable(i);
-                if ( d && d->getStateSet() && d->getStateSet()->getDataVariance() != osg::Object::DYNAMIC )
+                if ( d && d->getStateSet())
                 {
-                    _stateSets++;
-                    osg::ref_ptr<osg::StateSet> in, shared;
-                    in = d->getStateSet();
-                    if ( in.valid() && _cache->share(in, shared) )
+                    osg::ref_ptr<osg::StateSet> stateset = d->getStateSet();
+                    if (stateset.valid() && isEligible(stateset.get()))
                     {
-                        d->setStateSet( shared.get() );
-                        _shares++;
+                        _stateSets++;
+                        osg::ref_ptr<osg::StateSet> shared;
+                        if ( _cache->share(stateset, shared) )
+                        {
+                            d->setStateSet( shared.get() );
+                            _shares++;
+                        }
+                        //else _misses.push_back(in.get());
                     }
-                    //else _misses.push_back(in.get());
                 }
             }
             apply((osg::Node&)geode);
@@ -155,6 +229,33 @@ namespace
 }
 
 //------------------------------------------------------------------------
+
+StateSetCache::StateSetCache() :
+_pruneCount       ( 0 ),
+_maxSize          ( DEFAULT_PRUNE_ACCESS_COUNT ),
+_attrShareAttempts( 0 ),
+_attrsIneligible  ( 0 ),
+_attrShareHits    ( 0 ),
+_attrShareMisses  ( 0 )
+{
+    //nop
+}
+
+StateSetCache::~StateSetCache()
+{
+    Threading::ScopedMutexLock lock( _mutex );
+    prune();
+}
+
+void
+StateSetCache::setMaxSize(unsigned value)
+{
+    _maxSize = value;
+    {
+        Threading::ScopedMutexLock lock( _mutex );
+        pruneIfNecessary();
+    }
+}
 
 void
 StateSetCache::optimize(osg::Node* node)
@@ -165,7 +266,6 @@ StateSetCache::optimize(osg::Node* node)
         ShareStateAttributes v1( this );
         node->accept( v1 );
 
-        
 #if OSG_MIN_VERSION_REQUIRED(3,1,4)
         // replace all equivalent static statesets with a single instance
         // only supported in OSG 3.1.4+ because of the Uniform mutex 
@@ -180,48 +280,14 @@ StateSetCache::optimize(osg::Node* node)
 bool
 StateSetCache::eligible(osg::StateSet* stateSet) const
 {
-#if OSG_MIN_VERSION_REQUIRED(3,1,4)
-    if ( !stateSet )
-        return false;
-
-    // DYNAMIC means the user intends to change it later. So it needs to
-    // stay independent.
-    if ( stateSet->getDataVariance() == osg::Object::DYNAMIC )
-        return false;
-
-    const osg::StateSet::AttributeList& attrs = stateSet->getAttributeList();
-    for( osg::StateSet::AttributeList::const_iterator i = attrs.begin(); i != attrs.end(); ++i )
-    {
-        osg::StateAttribute* a = i->second.first.get();
-        if ( !eligible(a) )
-            return false;
-    }
-
-    return true;
-#else
-    return false;
-#endif
+    return isEligible(stateSet);
 }
 
 
 bool
 StateSetCache::eligible(osg::StateAttribute* attr) const
 {
-    if ( !attr )
-        return false;
-
-    // DYNAMIC means the user intends to change it later. So it needs to
-    // stay independent.
-    if ( attr->getDataVariance() == osg::Object::DYNAMIC )
-        return false;
-
-    // cannot share BIB's. They don't clone well since they have underlying buffer objects
-    // that may be in use. It results in OpenGL invalid enumerant errors and errors such as
-    // "uniform block xxx has no binding"
-    if (dynamic_cast<osg::BufferIndexBinding*>(attr) != 0L)
-        return false;
-
-    return true;
+    return isEligible(attr);
 }
 
 
@@ -236,6 +302,9 @@ StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
     if ( !checkEligible || eligible(input.get()) )
     {
         Threading::ScopedMutexLock lock( _mutex );
+
+        pruneIfNecessary();
+
         shareattrs = false;
 
         std::pair<StateSetSet::iterator,bool> result = _stateSetCache.insert( input );
@@ -275,31 +344,87 @@ StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
                      osg::ref_ptr<osg::StateAttribute>& output,
                      bool                               checkEligible)
 {
+    _attrShareAttempts++;
+
     if ( !checkEligible || eligible(input.get()) )
     {
         Threading::ScopedMutexLock lock( _mutex );
+
+        pruneIfNecessary();
 
         std::pair<StateAttributeSet::iterator,bool> result = _stateAttributeCache.insert( input );
         if ( result.second )
         {
             // first use
             output = input.get();
+            _attrShareMisses++;
             return false;
         }
         else
         {
             // found a share!
             output = result.first->get();
+            _attrShareHits++;
             return true;
         }
     }
     else
     {
+        _attrsIneligible++;
         output = input.get();
         return false;
     }
 }
 
+void
+StateSetCache::pruneIfNecessary()
+{
+    // assume an exclusve mutex is taken
+    if ( _pruneCount++ >= _maxSize )
+    {
+        prune();
+        _pruneCount = 0;
+    }
+}
+
+void
+StateSetCache::prune()
+{
+    // assume an exclusive mutex is taken.
+
+    unsigned ss_count = 0, sa_count = 0;
+
+    for( StateSetSet::iterator i = _stateSetCache.begin(); i != _stateSetCache.end(); )
+    {
+        if ( i->get()->referenceCount() <= 1 )
+        {
+            // do not call releaseGLObjects since the attrs themselves might still be shared
+            // TODO: review this.
+            _stateSetCache.erase( i++ );
+            ss_count++;
+        }
+        else
+        {
+            ++i;
+        }
+    }
+
+    for( StateAttributeSet::iterator i = _stateAttributeCache.begin(); i != _stateAttributeCache.end(); )
+    {
+        if ( i->get()->referenceCount() <= 1 )
+        {
+            i->get()->releaseGLObjects( 0L );
+            _stateAttributeCache.erase( i++ );
+            sa_count++;
+        }
+        else
+        {
+            ++i;
+        }
+    }
+
+    OE_DEBUG << LC << "Pruned " << sa_count << " attributes, " << ss_count << " statesets" << std::endl;
+}
 
 void
 StateSetCache::clear()
@@ -308,4 +433,17 @@ StateSetCache::clear()
 
     _stateAttributeCache.clear();
     _stateSetCache.clear();
+}
+
+
+void
+StateSetCache::dumpStats()
+{
+    Threading::ScopedMutexLock lock( _mutex );
+
+    OE_NOTICE << LC << "StateSetCache Dump:" << std::endl
+        << "    attr attempts     = " << _attrShareAttempts << std::endl
+        << "    ineligibles attrs = " << _attrsIneligible << std::endl
+        << "    attr share hits   = " << _attrShareHits << std::endl
+        << "    attr share misses = " << _attrShareMisses << std::endl;
 }

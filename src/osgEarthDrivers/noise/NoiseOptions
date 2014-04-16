@@ -21,15 +21,17 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
+#include <osgEarthUtil/SimplexNoise>
 
-namespace osgEarth { namespace Drivers
+namespace osgEarth { namespace Drivers { namespace Noise
 {
     using namespace osgEarth;
+    using namespace osgEarth::Util;
 
     /**
      * Options for the Noise driver
-     * See http://libnoise.sourceforge.net/docs/classnoise_1_1module_1_1Perlin.html for documentation
-     * on specific noise settings.
+     * See http://libnoise.sourceforge.net/docs/classnoise_1_1module_1_1Perlin.html
+     * for documentation on specific noise settings.
      */
     class NoiseOptions : public TileSourceOptions // NO EXPORT; header only
     {
@@ -150,11 +152,11 @@ namespace osgEarth { namespace Drivers
             _normalMap   (false),
             _scale       (1.0),
             _bias        (0.0),
-            _octaves     (3),
-            _resolution  (1.0),
-            _frequency   (1.0),
-            _persistence (0.5),
-            _lacunarity  (2.0)
+            _octaves     (SimplexNoise::DefaultOctaves),
+            _resolution  (1.0/SimplexNoise::DefaultFrequency),
+            _frequency   (SimplexNoise::DefaultFrequency),
+            _persistence (SimplexNoise::DefaultPersistence),
+            _lacunarity  (SimplexNoise::DefaultLacunarity)
         {
             setDriver( "noise" );
             fromConfig( _conf );
@@ -194,7 +196,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "resolution", _resolution);
             conf.getIfSet( "frequency", _frequency );
             conf.getIfSet( "persistence", _persistence );
-            conf.getIfSet( "lacunarity", _lacunarity );
+            conf.getIfSet( "lacunarity", _lacunarity);
             conf.getIfSet( "seed", _seed );
             conf.getIfSet( "normal_map", _normalMap );
             conf.getIfSet( "scale", _scale );
@@ -214,7 +216,6 @@ namespace osgEarth { namespace Drivers
         optional<double> _bias;
     };
 
-} } // namespace osgEarth::Drivers
+} } } // namespace osgEarth::Drivers::Noise
 
 #endif // OSGEARTH_DRIVER_NOISE_DRIVEROPTIONS
-

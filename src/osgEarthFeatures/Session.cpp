@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/Script>
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
@@ -47,23 +48,43 @@ _dbOptions     ( dbOptions )
     else
         _styles = new StyleSheet();
 
+    // If no script engine was created when the style was set above, create a
+    // default JS one if possible. This enables the use of "inline" scripting 
+    // in StringExpression and NumericExpression style values.
+    if (!_styleScriptEngine.valid())
+      _styleScriptEngine = ScriptEngineFactory::create("javascript", "", true);
+
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
 
-    // a new cache to optimize state changes.
-    //_stateSetCache = new StateSetCache();
-    _stateSetCache = Registry::instance()->getStateSetCache();
+    // A new cache to optimize state changes. Since the cache lives in the Session, any
+    // geometry created under this session takes advantage of it. That's reasonable since
+    // tiles in a particular "layer" will tend to share state.
+    _stateSetCache = new StateSetCache();
 }
 
 Session::~Session()
 {
+    //nop
 }
 
 const osgDB::Options*
 Session::getDBOptions() const
 {
     return _dbOptions.get();
+}
+
+void
+Session::setResourceCache(ResourceCache* cache)
+{
+    _resourceCache = cache;
+}
+
+ResourceCache*
+Session::getResourceCache()
+{
+    return _resourceCache.get();
 }
 
 MapFrame
@@ -76,7 +97,6 @@ void
 Session::removeObject( const std::string& key )
 {
     Threading::ScopedMutexLock lock( _objMapMutex );
-    //Threading::ScopedWriteLock lock( _objMapMutex );
     _objMap.erase( key );
 }
 
@@ -85,21 +105,28 @@ Session::setStyles( StyleSheet* value )
 {
     _styles = value ? value : new StyleSheet();
 
-    // Go ahead and create the script engine for the StyleSheet
+    // Create a script engine for the StyleSheet
     if (_styles && _styles->script())
-      _styleScriptEngine = ScriptEngineFactory::create(Script(_styles->script()->code, _styles->script()->language, _styles->script()->name));
+    {
+      _styleScriptEngine = ScriptEngineFactory::create( Script(
+          _styles->script()->code, 
+          _styles->script()->language, 
+          _styles->script()->name ) );
+    }
     else
+    {
       _styleScriptEngine = 0L;
+    }
 }
 
 ScriptEngine*
 Session::getScriptEngine() const
 {
-  return _styleScriptEngine.get();
+    return _styleScriptEngine.get();
 }
 
 FeatureSource*
 Session::getFeatureSource() const 
 { 
-	return _featureSource.get(); 
+    return _featureSource.get(); 
 }

@@ -16,15 +16,17 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TILE_NODE_REGISTRY
-#define OSGEARTH_ENGINE_MP_TILE_NODE_REGISTRY 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE_REGISTRY
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE_REGISTRY 1
 
 #include "Common"
 #include "TileNode"
+#include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <OpenThreads/Atomic>
 #include <map>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
 
@@ -48,6 +50,40 @@ namespace osgEarth_engine_mp
     public:
         TileNodeRegistry( const std::string& name );
 
+        /* Enabled revisioning on TileNodes, to support incremental update. */
+        void setRevisioningEnabled(bool value);
+
+        /**
+         * Sets the revision of the map model - the registry will assign this
+         * to TileNodes added with add().
+         *
+         * @param rev        Revision of map
+         * @param setToDirty In addition to update the revision, immediately set
+         *                   all tiles to dirty as well, effectively forcing an
+         *                   update.
+         */
+        void setMapRevision( const Revision& rev, bool setToDirty =false );
+
+        /** Map revision that the reg will assign to new tiles. */
+        const Revision& getMapRevision() const { return _maprev; }
+
+        /**
+         * Marks all tiles intersecting the extent as dirty. If incremental
+         * update is enabled, they will automatically reload.
+         *
+         * NOTE: Input extent SRS must match the terrain's SRS exactly.
+         *       The method does not check.
+         */
+        void setDirty(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel);
+
+        /**
+         * Sets the current cull traversal frame number so that tiles have
+         * access to the information. Atomic.
+         */
+        void setTraversalFrame(unsigned frame) { _frameNumber.exchange(frame); }
+
+        unsigned getTraversalFrame() const { return _frameNumber; }
+
         virtual ~TileNodeRegistry() { }
 
         /** Adds a tile to the registry */
@@ -56,8 +92,11 @@ namespace osgEarth_engine_mp
         /** Adds several tiles to the registry */
         void add( const TileNodeVector& tiles );
 
-        /** Moves a tile to the "removed" list */
+        /** Removes a tile */
         void remove( TileNode* tile );
+
+        /** Moves a tile from this registry to another registry */
+        void move( TileNode* tile, TileNodeRegistry* destination );
 
         /** Finds a tile in the registry */
         bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
@@ -74,13 +113,19 @@ namespace osgEarth_engine_mp
         /** Runs an operation against the read-locked tile set. */
         void run( const ConstOperation& op ) const;
 
+        /** Number of tiles in the registry. */
+        unsigned size() const { return _tiles.size(); }
+
     protected:
 
+        bool                              _revisioningEnabled;
+        Revision                          _maprev;
         std::string                       _name;
         TileNodeMap                       _tiles;
+        OpenThreads::Atomic               _frameNumber;
         mutable Threading::ReadWriteMutex _tilesMutex;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_NODE_REGISTRY
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE_REGISTRY

@@ -51,7 +51,7 @@ public:
         _invertY = _options.tmsType() == "google";
     }
 
-
+    // one-time initialization (per source)
     Status initialize(const osgDB::Options* dbOptions)
     {
         _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
@@ -88,6 +88,11 @@ public:
             {
                 return Status::Error( Stringify() << "Failed to read tilemap from " << tmsURI.full() );
             }
+
+            OE_INFO << LC
+                << "TMS tile map datestamp = "
+                << DateTime(_tileMap->getTimeStamp()).asRFC1123()
+                << std::endl;
             
             profile = _tileMap->createProfile();
             if ( profile )
@@ -123,6 +128,15 @@ public:
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
         return STATUS_OK;
+    }
+
+    // TileSource timestamp is the time of the time map metadata.
+    TimeStamp getLastModifiedTime() const
+    {
+        if ( _tileMap.valid() )
+            return _tileMap->getTimeStamp();
+        else
+            return TileSource::getLastModifiedTime();
     }
 
     // reflect a default cache policy based on whether this TMS repo is

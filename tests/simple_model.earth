@@ -11,17 +11,17 @@ needs to be absolutely positioned.
         <cache_policy usage="no_cache"/>
         <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
     </image>
-	
-	<model name = "cow" driver="simple">
-	  <url>../data/red_flag.osg.100,100,100.scale</url>
-	  <location>-74.018 40.717 10</location>	  
-	</model>
+    
+    <model name = "cow" driver="simple">
+      <url>../data/red_flag.osg.100,100,100.scale</url>
+      <location>-74.018 40.717 10</location>	  
+    </model>
     
     <options lighting="false">
         <terrain min_lod="12"/>
     </options>
-	
-	<external>
-        <viewpoint name="Zoom to model" heading="0" height="0" lat="40.717" long="-74.018" pitch="-90" range="6000"/>    
+    
+    <external>
+        <viewpoint name="Zoom to model" lat="40.717" long="-74.018" pitch="-60" range="6000"/>    
     </external>	
 </map>

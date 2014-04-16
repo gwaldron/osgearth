@@ -1,0 +1,88 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_TRITON_TRITON_OPTIONS
+#define OSGEARTH_DRIVER_TRITON_TRITON_OPTIONS 1
+
+#include <osgEarthUtil/Ocean>
+
+namespace osgEarth { namespace Drivers { namespace Triton
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+
+    /**
+     * Options for controlling the ocean surface node.
+     */
+    class /*header-only*/ TritonOptions : public OceanOptions
+    {
+    public:
+
+    public:
+        TritonOptions(const OceanOptions& conf =OceanOptions()) :
+          OceanOptions( conf )
+        {
+            setDriver( "triton" );
+            fromConfig( _conf );
+        }
+
+        virtual ~TritonOptions() { }
+
+        /* User name for license activation */
+        optional<std::string>& user() { return _user; }
+        const optional<std::string>& user() const { return _user; }
+
+        /* License code string */
+        optional<std::string>& licenseCode() { return _licenseCode; }
+        const optional<std::string>& licenseCode() const { return _licenseCode; }
+
+        /* SilverLining resource path */
+        optional<std::string>& resourcePath() { return _resourcePath; }
+        const optional<std::string>& resourcePath() const { return _resourcePath; }
+
+    public:
+        Config getConfig() const {
+            Config conf = OceanOptions::newConfig();
+            conf.addIfSet("user", _user);
+            conf.addIfSet("license_code", _licenseCode);
+            conf.addIfSet("resource_path", _resourcePath);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            OceanOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("user", _user);
+            conf.getIfSet("license_code", _licenseCode);
+            conf.getIfSet("resource_path", _resourcePath);
+        }
+
+    private:
+        optional<std::string> _user;
+        optional<std::string> _licenseCode;
+        optional<std::string> _resourcePath;
+    };
+
+} } } // namespace osgEarth::Drivers::Triton
+
+#endif // OSGEARTH_DRIVER_TRITON_TRITON_OPTIONS

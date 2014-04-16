@@ -133,9 +133,9 @@ namespace
 
             _stateset = new osg::StateSet();
 
-            VirtualProgram* vp = new VirtualProgram();
+            VirtualProgram* vp = VirtualProgram::getOrCreate(_stateset.get());
             vp->setFunction( "oe_autoscale_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
-            _stateset->setAttributeAndModes( vp, osg::StateAttribute::ON );
+            //_stateset->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
             _zp = _stateset->getOrCreateUniform("oe_autoscale_zp", osg::Uniform::FLOAT);
         }

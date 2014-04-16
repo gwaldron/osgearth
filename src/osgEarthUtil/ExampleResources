@@ -21,14 +21,22 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthDrivers/ocean_surface/OceanSurface>
+#include <osgEarthUtil/Sky>
+#include <osgEarthUtil/Ocean>
 #include <osgEarth/Viewpoint>
 
-#include <osg/ArgumentParser>
-#include <osgViewer/View>
+//#include <osg/ArgumentParser>
 
+namespace osgEarth {
+    class MapNode;
+}
+namespace osg {
+    class ArgumentParser;
+}
+namespace osgViewer {
+    class View;
+};
 
 /**
  * This is a collection of resources used by the osgEarth example applications.
@@ -37,7 +45,6 @@ namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Util::Controls;
-    using namespace osgEarth::Drivers;
 
     /**
      * Parses a set of built-in example arguments. Any Controls created by parsing
@@ -135,8 +142,7 @@ namespace osgEarth { namespace Util
     {
     public:
         Control* create( 
-            OceanSurfaceNode* ocean, 
-            osgViewer::View*  view ) const;
+            OceanNode* ocean ) const;
     };
 
 } } // namespace osgEarth::Util

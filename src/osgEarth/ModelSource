@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/GeoData>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
@@ -41,7 +42,7 @@ namespace osgEarth
         ModelSourceOptions( const ConfigOptions& options =ConfigOptions() );
 
         /** dtor */
-        virtual ~ModelSourceOptions() { }
+        virtual ~ModelSourceOptions();
 
     public: // properties
 
@@ -86,7 +87,7 @@ namespace osgEarth
         ModelSource( const ModelSourceOptions& options =ModelSourceOptions() );
 
         /** dtor */
-        virtual ~ModelSource() { }
+        virtual ~ModelSource();
 
         osg::Node* createNode(
             const Map*            map,
@@ -103,20 +104,32 @@ namespace osgEarth
             ProgressCallback*     progress ) =0;
 
         /**
-         * Add a post processing opeation - this will be called on any node
-         * that enters the scene graph by the model source.
+         * Add a post processing operation that will run (possibly in a pager
+         * thread) after a new node has been generated.
          */
-        void addPostProcessor( NodeOperation* cb );
+        void addPreMergeOperation( NodeOperation* cb );
+
+        /**
+         * Add a post processing operation that will run (in the update thread)
+         * after a node merges into the scene graph.
+         */
+        void addPostMergeOperation( NodeOperation* cb );
         
         /**
-         * Remove a post processing operation
+         * Remove a pre-merge processing operation
          */
-        void removePostProcessor( NodeOperation* cb );
+        void removePreMergeOperation( NodeOperation* cb );
+        
+        /**
+         * Remove a post-merge processing operation
+         */
+        void removePostMergeOperation( NodeOperation* cb );
 
         /**
          * The vector of post processor callback operations
          */
-        const NodeOperationVector& postProcessors() const { return _postProcessors; }
+        const NodeOperationVector& preMergeOperations() const { return *_preMergeOps; }
+        const NodeOperationVector& postMergeOperations() const { return *_postMergeOps; }
 
 
     public: // META_Object specialization
@@ -135,6 +148,12 @@ namespace osgEarth
         /** Get the options used to create this model source */
         const ModelSourceOptions& getOptions() const { return _options; }
 
+        /**
+         * Gets the list of areas with data for this ModelSource
+         */
+        const DataExtentList& getDataExtents() const { return _dataExtents; }
+        DataExtentList& getDataExtents() { return _dataExtents; }
+
     protected:
         /**
          * Fire the callbacks. The implementation class should call this whenever it adds
@@ -142,14 +161,17 @@ namespace osgEarth
          */
         void firePostProcessors( osg::Node* node );
 
+    protected:
+
+        osg::ref_ptr<RefNodeOperationVector> _postMergeOps;
+        osg::ref_ptr<RefNodeOperationVector> _preMergeOps;
+
     private:
         const ModelSourceOptions _options;
         optional<double> _minRange;
         optional<double> _maxRange;
         optional<int>    _renderOrder;
-
-        NodeOperationVector       _postProcessors;
-        mutable Threading::Mutex  _postProcessorsMutex;
+        DataExtentList   _dataExtents;
 
         friend class Map;
         friend class MapEngine;
@@ -162,6 +184,8 @@ namespace osgEarth
     {
     protected:
         const ModelSourceOptions& getModelSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+
+        virtual ~ModelSourceDriver();
     };
 
     //--------------------------------------------------------------------
@@ -174,6 +198,8 @@ namespace osgEarth
     {   
     public:
         static ModelSource* create( const ModelSourceOptions& options );
+
+        virtual ~ModelSourceFactory();
     };
 }
 

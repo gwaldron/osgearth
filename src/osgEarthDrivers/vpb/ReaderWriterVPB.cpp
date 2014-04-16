@@ -73,10 +73,10 @@ public:
         osgTerrain::TerrainTile* terrainTile = dynamic_cast<osgTerrain::TerrainTile*>(&group);
         if (terrainTile)
         {
-            OE_DEBUG<<"VPB: Found terrain tile TileID("<<
-                TileKey::getLOD(terrainTile->getTileID())<<", "<<
-                terrainTile->getTileID().x<<", "<<
-                terrainTile->getTileID().y<<")"<<std::endl;
+            //OE_DEBUG<<"VPB: Found terrain tile TileID("<<
+            //    TileKey::getLOD(terrainTile->getTileID())<<", "<<
+            //    terrainTile->getTileID().x<<", "<<
+            //    terrainTile->getTileID().y<<")"<<std::endl;
             
             _terrainTiles.push_back(terrainTile);
         }
@@ -197,61 +197,67 @@ public:
                     srs = csn->getCoordinateSystem();
                 }
 
-                CollectTiles ct;
-                _rootNode->accept(ct);
+                // We default to a global-geodetic profile, so only try to come up with another profile if the 
+                // database is not geocentric.  We do this to avoid small arounding errors where the VPB database
+                // isn't exactly -180,-90 180,90 and will result in unnecessary reprojection.
+                if (!csn->getEllipsoidModel())
+                {                                      
+                    CollectTiles ct;
+                    _rootNode->accept(ct);
 
-                    
-                osgTerrain::Locator* locator = ct.getLocator();
-                if (locator)
-                {
-                    double min_x, max_x, min_y, max_y;
-                    ct.getRange(min_x, min_y, max_x, max_y);
 
-                    OE_DEBUG << LC << "range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<< ")" <<std::endl;
-                    OE_DEBUG << LC << "range("<<osg::RadiansToDegrees(min_x)<<", "<<osg::RadiansToDegrees(min_y)<<", "
-                        <<osg::RadiansToDegrees(max_x)<<", "<<osg::RadiansToDegrees(max_y)<< ")" <<std::endl;
-
-                    srs = locator->getCoordinateSystem();
-
-                    double aspectRatio = (max_x-min_x)/(max_y-min_y);
-                    
-                    OE_DEBUG << LC << "aspectRatio = "<<aspectRatio<<std::endl;
-
-                    if (aspectRatio>1.0)
+                    osgTerrain::Locator* locator = ct.getLocator();
+                    if (locator)
                     {
-                        numTilesWideAtLod0 = static_cast<unsigned int>(floor(aspectRatio+0.499999));
-                        numTilesHighAtLod0 = 1;
-                    }
-                    else
-                    {
-                        numTilesWideAtLod0 = 1;
-                        numTilesHighAtLod0 = static_cast<unsigned int>(floor(1.0/aspectRatio+0.499999));
-                    }
-                    
-                    OE_DEBUG << LC << "computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    OE_DEBUG << LC << "computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
-                    
-                    //if ( _options.valid() )
-                    {
-                        if ( _options.numTilesWideAtLod0().isSet() )
-                            numTilesWideAtLod0 = _options.numTilesWideAtLod0().value();
+                        double min_x, max_x, min_y, max_y;
+                        ct.getRange(min_x, min_y, max_x, max_y);
 
-                        if ( _options.numTilesHighAtLod0().isSet() )
-                            numTilesHighAtLod0 = _options.numTilesHighAtLod0().value();
-                    }
+                        OE_DEBUG << LC << "range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<< ")" <<std::endl;
+                        OE_DEBUG << LC << "range("<<osg::RadiansToDegrees(min_x)<<", "<<osg::RadiansToDegrees(min_y)<<", "
+                            <<osg::RadiansToDegrees(max_x)<<", "<<osg::RadiansToDegrees(max_y)<< ")" <<std::endl;
 
-                    OE_DEBUG << LC << "final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    OE_DEBUG << LC << "final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
-                   
-                    _profile = osgEarth::Profile::create( 
-                        srs,
-                        osg::RadiansToDegrees(min_x), 
-                        osg::RadiansToDegrees(min_y), 
-                        osg::RadiansToDegrees(max_x), 
-                        osg::RadiansToDegrees(max_y),
-                        "",
-                        numTilesWideAtLod0,
-                        numTilesHighAtLod0 );
+                        srs = locator->getCoordinateSystem();
+
+                        double aspectRatio = (max_x-min_x)/(max_y-min_y);
+
+                        OE_DEBUG << LC << "aspectRatio = "<<aspectRatio<<std::endl;
+
+                        if (aspectRatio>1.0)
+                        {
+                            numTilesWideAtLod0 = static_cast<unsigned int>(floor(aspectRatio+0.499999));
+                            numTilesHighAtLod0 = 1;
+                        }
+                        else
+                        {
+                            numTilesWideAtLod0 = 1;
+                            numTilesHighAtLod0 = static_cast<unsigned int>(floor(1.0/aspectRatio+0.499999));
+                        }
+
+                        OE_DEBUG << LC << "computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                        OE_DEBUG << LC << "computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+
+                        //if ( _options.valid() )
+                        {
+                            if ( _options.numTilesWideAtLod0().isSet() )
+                                numTilesWideAtLod0 = _options.numTilesWideAtLod0().value();
+
+                            if ( _options.numTilesHighAtLod0().isSet() )
+                                numTilesHighAtLod0 = _options.numTilesHighAtLod0().value();
+                        }
+
+                        OE_DEBUG << LC << "final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                        OE_DEBUG << LC << "final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+
+                        _profile = osgEarth::Profile::create( 
+                            srs,
+                            osg::RadiansToDegrees(min_x), 
+                            osg::RadiansToDegrees(min_y), 
+                            osg::RadiansToDegrees(max_x), 
+                            osg::RadiansToDegrees(max_y),
+                            "",
+                            numTilesWideAtLod0,
+                            numTilesHighAtLod0 );
+                    }
                 }
                 
             }
@@ -439,18 +445,18 @@ public:
                 _tileFIFO.pop_front();
                 _tileMap.erase(tileToRemove);
 
-                OE_DEBUG << LC << "Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
+//                OE_DEBUG << LC << "Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
             }
 
-            OE_DEBUG << LC << "insertTile ("
-                << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
-                << " tileFIFO.size()=="<<_tileFIFO.size()<<std::endl;
+            //OE_DEBUG << LC << "insertTile ("
+            //    << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
+            //    << " tileFIFO.size()=="<<_tileFIFO.size()<<std::endl;
         }
         else
         {
-            OE_DEBUG << LC << "insertTile ("
-                << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
-                << " ...already in cache!"<<std::endl;
+            //OE_DEBUG << LC << "insertTile ("
+            //    << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
+            //    << " ...already in cache!"<<std::endl;
         }
     }
 
@@ -522,7 +528,7 @@ public:
         if ( !getProfile() )
         {
             setProfile(_vpbDatabase->_profile.get());
-        }
+        }        
 
         return STATUS_OK;
     }

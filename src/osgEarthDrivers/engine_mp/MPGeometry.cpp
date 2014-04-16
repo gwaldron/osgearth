@@ -19,9 +19,13 @@
 #include "MPGeometry"
 
 #include <osg/Version>
+#include <osgUtil/MeshOptimizers>
+#include <iterator>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 using namespace osg;
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[MPGeometry] "
@@ -29,43 +33,53 @@ using namespace osgEarth;
 
 //----------------------------------------------------------------------------
 
-MPGeometry::MPGeometry(const Map* map, int imageUnit) : 
-osg::Geometry    ( ), 
-_map             ( map, Map::IMAGE_LAYERS ),
+//osg::buffered_object<MPGeometry::PerGC> MPGeometry::_perGC;
+
+MPGeometry::MPGeometry(const TileKey& key, const MapFrame& frame, int imageUnit) : 
+osg::Geometry    ( ),
+_frame           ( frame ),
 _imageUnit       ( imageUnit )
 {
-    _opacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "oe_layer_opacity" );
-    _opacityUniform->set( 1.0f );
+    _supportsGLSL = Registry::capabilities().supportsGLSL();
 
-    _layerUIDUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_uid" );
-    _layerUIDUniform->set( 0 );
-
-    _layerOrderUniform = new osg::Uniform( osg::Uniform::INT, "oe_layer_order" );
-    _layerOrderUniform->set( 0 );
-
-    _texMatParentUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_layer_parent_matrix");
+    unsigned tw, th;
+    key.getProfile()->getNumTiles(key.getLOD(), tw, th);
+    _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
 
     _imageUnitParent = _imageUnit + 1; // temp
+
+    // establish uniform name IDs.
+    _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
+    _birthTimeUniformNameID    = osg::Uniform::getNameID( "oe_tile_birthtime" );
+    _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
+    _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
+    _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
+    _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_matrix" );
+
+    // we will set these later (in TileModelCompiler)
+    this->setUseVertexBufferObjects(false);
+    this->setUseDisplayList(false);
 }
 
 
 void
 MPGeometry::renderPrimitiveSets(osg::State& state,
+                                bool        renderColor,
                                 bool        usingVBOs) const
 {
     // check the map frame to see if it's up to date
-    if ( _map.needsSync() )
+    if ( _frame.needsSync() )
     {
         // this lock protects a MapFrame sync when we have multiple DRAW threads.
-        Threading::ScopedMutexLock exclusive( _mapSyncMutex );
+        Threading::ScopedMutexLock exclusive( _frameSyncMutex );
 
-        if ( _map.needsSync() && _map.sync() ) // always double check
+        if ( _frame.needsSync() && _frame.sync() ) // always double check
         {
             // This should only happen is the layer ordering changes;
             // If layers are added or removed, the Tile gets rebuilt and
             // the point is moot.
             std::vector<Layer> reordered;
-            const ImageLayerVector& layers = _map.imageLayers();
+            const ImageLayerVector& layers = _frame.imageLayers();
             reordered.reserve( layers.size() );
             for( ImageLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i )
             {
@@ -79,51 +93,103 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 
     unsigned layersDrawn = 0;
 
+    // access the GL extensions interface for the current GC:
+    const osg::Program::PerContextProgram* pcp = 0L;
+    osg::ref_ptr<osg::GL2Extensions> ext;
+    unsigned contextID;
 
-    osg::ref_ptr<osg::GL2Extensions> ext = osg::GL2Extensions::Get( state.getContextID(), true );
-    const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
+    if (_supportsGLSL)
+    {
+        contextID = state.getContextID();
+        ext = osg::GL2Extensions::Get( contextID, true );
+        pcp = state.getLastAppliedProgramObject();
+    }
 
-    GLint opacityLocation;
-    GLint uidLocation;
-    GLint orderLocation;
-    GLint texMatParentLocation;
+    // cannot store these in the object since there could be multiple GCs (and multiple
+    // PerContextPrograms) at large
+    GLint tileKeyLocation       = -1;
+    GLint birthTimeLocation     = -1;
+    GLint opacityLocation       = -1;
+    GLint uidLocation           = -1;
+    GLint orderLocation         = -1;
+    GLint texMatParentLocation  = -1;
 
-    // yes, it's possible that the PCP is not set up yet.
-    // TODO: can we optimize this so we don't need to get uni locations every time?
+    // The PCP can change (especially in a VirtualProgram environment). So we do need to
+    // requery the uni locations each time unfortunately. TODO: explore optimizations.
     if ( pcp )
     {
-        opacityLocation      = pcp->getUniformLocation( _opacityUniform->getNameID() );
-        uidLocation          = pcp->getUniformLocation( _layerUIDUniform->getNameID() );
-        orderLocation        = pcp->getUniformLocation( _layerOrderUniform->getNameID() );
-        texMatParentLocation = pcp->getUniformLocation( _texMatParentUniform->getNameID() );
+        tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniformNameID );
+        birthTimeLocation    = pcp->getUniformLocation( _birthTimeUniformNameID );
+        opacityLocation      = pcp->getUniformLocation( _opacityUniformNameID );
+        uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
+        orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
+        texMatParentLocation = pcp->getUniformLocation( _texMatParentUniformNameID );
+    }
+    
+    // apply the tilekey uniform once.
+    if ( tileKeyLocation >= 0 )
+    {
+        ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
+    }
+
+    // set the "birth time" - i.e. the time this tile last entered the scene in the current GC.
+    if ( birthTimeLocation >= 0 )
+    {
+        PerContextData& pcd = _pcd[contextID];
+        if ( pcd.birthTime < 0.0f )
+        {
+            const osg::FrameStamp* stamp = state.getFrameStamp();
+            if ( stamp )
+            {
+                pcd.birthTime = stamp->getReferenceTime();
+            }
+        }
+        ext->glUniform1f( birthTimeLocation, pcd.birthTime );
     }
 
     // activate the tile coordinate set - same for all layers
-    state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
+    if ( renderColor )
+    {
+        state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() );
+    }
+
+#ifndef OSG_GLES2_AVAILABLE
+    if ( renderColor )
+    {
+        // emit a default terrain color since we're not binding a color array:
+        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+#endif
 
     if ( _layers.size() > 0 )
     {
         float prev_opacity        = -1.0f;
         float prev_alphaThreshold = -1.0f;
 
-        // first bind any shared layers
-        // TODO: optimize by pre-storing shared indexes
-        for(unsigned i=0; i<_layers.size(); ++i)
+        // first bind any shared layers. We still have to do this even if we are
+        // in !renderColor mode b/c these textures could be used by vertex shaders
+        // to alter the geometry.
+        int sharedLayers = 0;
+        if ( _supportsGLSL )
         {
-            const Layer& layer = _layers[i];
-
-            // a "shared" layer binds to a secondary texture unit so that other layers
-            // can see it and use it.
-            if ( layer._imageLayer->isShared() )
+            for(unsigned i=0; i<_layers.size(); ++i)
             {
-                int sharedUnit = layer._imageLayer->shareImageUnit().get();
-                {
-                    state.setActiveTextureUnit( sharedUnit );
-                    state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
-                    // bind the texture for this layer to the active share unit.
-                    layer._tex->apply( state );
+                const Layer& layer = _layers[i];
 
-                    // no texture LOD blending for shared layers for now. maybe later.
+                // a "shared" layer binds to a secondary texture unit so that other layers
+                // can see it and use it.
+                if ( layer._imageLayer->isShared() )
+                {
+                    ++sharedLayers;
+                    int sharedUnit = layer._imageLayer->shareImageUnit().get();
+                    {
+                        state.setActiveTextureUnit( sharedUnit );
+                        state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
+                        // bind the texture for this layer to the active share unit.
+                        layer._tex->apply( state );
+
+                        // no texture LOD blending for shared layers for now. maybe later.
+                    }
                 }
             }
         }
@@ -131,96 +197,192 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         // track the active image unit.
         int activeImageUnit = -1;
 
-        // interate over all the image layers
-        for(unsigned i=0; i<_layers.size(); ++i)
+        if (renderColor)
         {
-            const Layer& layer = _layers[i];
-
-            if ( layer._imageLayer->getVisible() )
-            {       
-                // activate the visible unit if necessary:
-                if ( activeImageUnit != _imageUnit )
+            // find the first opaque layer, top-down, and start there:
+            unsigned first = 0;
+            for(first = _layers.size()-1; first > 0; --first)
+            {
+                const Layer& layer = _layers[first];
+                if (layer._opaque && 
+                    layer._imageLayer->getVisible() &&
+                    layer._imageLayer->getOpacity() >= 1.0f)
                 {
-                    state.setActiveTextureUnit( _imageUnit );
-                    activeImageUnit = _imageUnit;
+                    break;
                 }
+            }
 
-                // bind the texture for this layer:
-                layer._tex->apply( state );
+            // interate over all the image layers
+            for(unsigned i=first; i<_layers.size(); ++i)
+            {
+                const Layer& layer = _layers[i];
 
-                // if we're using a parent texture for blending, activate that now
-                if ( layer._texParent.valid() )
-                {
-                    state.setActiveTextureUnit( _imageUnitParent );
-                    activeImageUnit = _imageUnitParent;
-                    layer._texParent->apply( state );
-                }
-
-                // bind the texture coordinates for this layer.
-                // TODO: can probably optimize this by sharing or using texture matrixes.
-                // State::setTexCoordPointer does some redundant work under the hood.
-                state.setTexCoordPointer( _imageUnit, layer._texCoords.get() );
-
-                // apply uniform values:
-                if ( pcp )
-                {
-                    // apply opacity:
-                    float opacity = layer._imageLayer->getOpacity();
-                    if ( opacity != prev_opacity )
+                if ( layer._imageLayer->getVisible() )
+                {       
+                    // activate the visible unit if necessary:
+                    if ( activeImageUnit != _imageUnit )
                     {
-                        _opacityUniform->set( opacity );
-                        _opacityUniform->apply( ext, opacityLocation );
-                        prev_opacity = opacity;
+                        state.setActiveTextureUnit( _imageUnit );
+                        activeImageUnit = _imageUnit;
                     }
 
-                    // assign the layer UID:
-                    _layerUIDUniform->set( layer._layerID );
-                    _layerUIDUniform->apply( ext, uidLocation );
+                    // bind the texture for this layer:
+                    layer._tex->apply( state );
 
-                    // assign the layer order:
-                    _layerOrderUniform->set( (int)layersDrawn );
-                    _layerOrderUniform->apply( ext, orderLocation );
-
-                    // assign the parent texture matrix
-                    if ( layer._texParent.valid() )
+                    // in FFP mode, we need to enable the GL mode for texturing:
+                    if (!_supportsGLSL)
                     {
-                        _texMatParentUniform->set( layer._texMatParent );
-                        _texMatParentUniform->apply( ext, texMatParentLocation );
+                        state.applyMode(GL_TEXTURE_2D, true);
                     }
-                }
 
-                // draw the primitive sets.
-                for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
-                {
-                    const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
-                    primitiveset->draw(state, usingVBOs);
-                }
+                    // if we're using a parent texture for blending, activate that now
+                    if ( texMatParentLocation >= 0 && layer._texParent.valid() )
+                    {
+                        state.setActiveTextureUnit( _imageUnitParent );
+                        activeImageUnit = _imageUnitParent;
+                        layer._texParent->apply( state );
+                    }
 
-                ++layersDrawn;
+                    // bind the texture coordinates for this layer.
+                    // TODO: can probably optimize this by sharing or using texture matrixes.
+                    // State::setTexCoordPointer does some redundant work under the hood.
+                    state.setTexCoordPointer( _imageUnit, layer._texCoords.get() );
+
+                    // apply uniform values:
+                    if ( pcp )
+                    {
+                        // apply opacity:
+                        if ( opacityLocation >= 0 )
+                        {
+                            float opacity = layer._imageLayer->getOpacity();
+                            if ( opacity != prev_opacity )
+                            {
+                                ext->glUniform1f( opacityLocation, (GLfloat)opacity );
+                                prev_opacity = opacity;
+                            }
+                        }
+
+                        // assign the layer UID:
+                        if ( uidLocation >= 0 )
+                        {
+                            ext->glUniform1i( uidLocation, (GLint)layer._layerID );
+                        }
+
+                        // assign the layer order:
+                        if ( orderLocation >= 0 )
+                        {
+                            ext->glUniform1i( orderLocation, (GLint)layersDrawn );
+                        }
+
+                        // assign the parent texture matrix
+                        if ( texMatParentLocation >= 0 && layer._texParent.valid() )
+                        {
+                            ext->glUniformMatrix4fv( texMatParentLocation, 1, GL_FALSE, layer._texMatParent.ptr() );
+                        }
+                    }
+
+                    // draw the primitive sets.
+                    for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
+                    {
+                        const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
+                        if ( primitiveset )
+                        {
+                            primitiveset->draw(state, usingVBOs);
+                        }
+                        else
+                        {
+                            OE_WARN << LC << "Strange, MPGeometry had a 0L primset" << std::endl;
+                        }
+                    }
+
+                    ++layersDrawn;
+                }
             }
         }
-
-        // prevent texture leakage
-        glBindTexture( GL_TEXTURE_2D, 0 );
     }
 
     // if we didn't draw anything, draw the raw tiles anyway with no texture.
     if ( layersDrawn == 0 )
     {
-        _opacityUniform->set( 1.0f );
-        _opacityUniform->apply( ext, opacityLocation );
-
-        _layerUIDUniform->set( (int)-1 ); // indicates a non-textured layer
-        _layerUIDUniform->apply( ext, uidLocation );
-
-        _layerOrderUniform->set( (int)0 );
-        _layerOrderUniform->apply( ext, orderLocation );
+        if ( opacityLocation >= 0 )
+            ext->glUniform1f( opacityLocation, (GLfloat)1.0f );
+        if ( uidLocation >= 0 )
+            ext->glUniform1i( uidLocation, (GLint)-1 );
+        if ( orderLocation >= 0 )
+            ext->glUniform1i( orderLocation, (GLint)0 );
 
         // draw the primitives themselves.
         for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
         {
             const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
             primitiveset->draw(state, usingVBOs);
+        }
+    }
+
+    else // at least one textured layer was drawn:
+    {
+        // prevent texture leakage
+        // TODO: find a way to remove this to speed things up
+        if ( renderColor )
+        {
+            glBindTexture( GL_TEXTURE_2D, 0 );
+        }
+    }
+}
+
+
+osg::BoundingBox
+MPGeometry::computeBound() const
+{
+    osg::BoundingBox bbox = osg::Geometry::computeBound();
+    {
+        // update the uniform.
+        Threading::ScopedMutexLock exclusive(_frameSyncMutex);
+        osg::BoundingSphere bs(bbox);
+        osg::Vec4f tk;
+        _tileKeyValue.w() = bs.radius();
+        // debugging:
+        //const_cast<MPGeometry*>(this)->validate();
+    }
+    return bbox;
+}
+
+void
+MPGeometry::validate()
+{
+    unsigned numVerts = getVertexArray()->getNumElements();
+
+    for(unsigned i=0; i < _primitives.size(); ++i)
+    {
+        osg::DrawElements* de = static_cast<osg::DrawElements*>(_primitives[i].get());
+        if ( de->getMode() != GL_TRIANGLES )
+        {
+            OE_WARN << LC << "Invalid primitive set - not GL_TRIANGLES" << std::endl;
+            _primitives.clear();
+        }
+
+        else if ( de->getNumIndices() % 3 != 0 )
+        {
+            OE_WARN << LC << "Invalid primitive set - wrong number of indicies" << std::endl;
+            //_primitives.clear();
+            osg::DrawElementsUShort* deus = static_cast<osg::DrawElementsUShort*>(de);
+            int extra = de->getNumIndices() % 3;
+            deus->resize(de->getNumIndices() - extra);
+            OE_WARN << LC << "   ..removed " << extra << " indices" << std::endl;
+            //return;
+        }
+        else
+        {
+            for( unsigned j=0; j<de->getNumIndices(); ++j ) 
+            {
+                unsigned index = de->index(j);
+                if ( index >= numVerts )
+                {
+                    OE_WARN << LC << "Invalid primitive set - index out of bounds" << std::endl;
+                    _primitives.clear();
+                    return;
+                }
+            }
         }
     }
 }
@@ -247,6 +409,25 @@ MPGeometry::releaseGLObjects(osg::State* state) const
 }
 
 
+void
+MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::Geometry::resizeGLObjectBuffers( maxSize );
+
+    for(unsigned i=0; i<_layers.size(); ++i)
+    {
+        const Layer& layer = _layers[i];
+        if ( layer._tex.valid() )
+            layer._tex->resizeGLObjectBuffers( maxSize );
+    }
+
+    if ( _pcd.size() < maxSize )
+    {
+        _pcd.resize(maxSize);
+    }
+}
+
+
 void 
 MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 {
@@ -264,6 +445,17 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 void 
 MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 {
+    //if (!_supportsGLSL)
+    //{
+    //    osg::Geometry::drawImplementation(renderInfo);
+    //    return;
+    //}
+
+    // See if this is a depth-only camera. If so we can skip all the layers
+    // and just render the primitive sets.
+    bool renderColor =
+        (renderInfo.getCurrentCamera()->getClearMask() & GL_COLOR_BUFFER_BIT) != 0L;
+
     osg::State& state = *renderInfo.getState();
 
     bool usingVertexBufferObjects = _useVertexBufferObjects && state.isVertexBufferObjectSupported();
@@ -280,17 +472,22 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     arrayDispatchers.setUseGLBeginEndAdapter(false);
 #endif
 
-
 #if OSG_MIN_VERSION_REQUIRED(3,1,8)
     arrayDispatchers.activateNormalArray(_normalArray.get());
-    arrayDispatchers.activateColorArray(_colorArray.get());
-    arrayDispatchers.activateSecondaryColorArray(_secondaryColorArray.get());
-    arrayDispatchers.activateFogCoordArray(_fogCoordArray.get());
+    if (renderColor)
+    {
+        arrayDispatchers.activateColorArray(_colorArray.get());
+        arrayDispatchers.activateSecondaryColorArray(_secondaryColorArray.get());
+        arrayDispatchers.activateFogCoordArray(_fogCoordArray.get());
+    }
 #else
     arrayDispatchers.activateNormalArray(_normalData.binding, _normalData.array.get(), _normalData.indices.get());
-    arrayDispatchers.activateColorArray(_colorData.binding, _colorData.array.get(), _colorData.indices.get());
-    arrayDispatchers.activateSecondaryColorArray(_secondaryColorData.binding, _secondaryColorData.array.get(), _secondaryColorData.indices.get());
-    arrayDispatchers.activateFogCoordArray(_fogCoordData.binding, _fogCoordData.array.get(), _fogCoordData.indices.get());
+    if (renderColor)
+    {
+        arrayDispatchers.activateColorArray(_colorData.binding, _colorData.array.get(), _colorData.indices.get());
+        arrayDispatchers.activateSecondaryColorArray(_secondaryColorData.binding, _secondaryColorData.array.get(), _secondaryColorData.indices.get());
+        arrayDispatchers.activateFogCoordArray(_fogCoordData.binding, _fogCoordData.array.get(), _fogCoordData.indices.get());
+    }
 #endif
     
 
@@ -319,13 +516,13 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     if (_normalArray.valid() && _normalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
         state.setNormalPointer(_normalArray.get());
 
-    if (_colorArray.valid() && _colorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+    if (renderColor && _colorArray.valid() && _colorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
         state.setColorPointer(_colorArray.get());
 
-    if (_secondaryColorArray.valid() && _secondaryColorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+    if (renderColor && _secondaryColorArray.valid() && _secondaryColorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
         state.setSecondaryColorPointer(_secondaryColorArray.get());
 
-    if (_fogCoordArray.valid() && _fogCoordArray->getBinding()==osg::Array::BIND_PER_VERTEX)
+    if (renderColor && _fogCoordArray.valid() && _fogCoordArray->getBinding()==osg::Array::BIND_PER_VERTEX)
         state.setFogCoordPointer(_fogCoordArray.get());
 #else
     if( _vertexData.array.valid() )
@@ -334,13 +531,13 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     if (_normalData.binding==BIND_PER_VERTEX && _normalData.array.valid())
         state.setNormalPointer(_normalData.array.get());
 
-    if (_colorData.binding==BIND_PER_VERTEX && _colorData.array.valid())
+    if (renderColor && _colorData.binding==BIND_PER_VERTEX && _colorData.array.valid())
         state.setColorPointer(_colorData.array.get());
 
-    if (_secondaryColorData.binding==BIND_PER_VERTEX && _secondaryColorData.array.valid())
+    if (renderColor && _secondaryColorData.binding==BIND_PER_VERTEX && _secondaryColorData.array.valid())
         state.setSecondaryColorPointer(_secondaryColorData.array.get());
 
-    if (_fogCoordData.binding==BIND_PER_VERTEX && _fogCoordData.array.valid())
+    if (renderColor && _fogCoordData.binding==BIND_PER_VERTEX && _fogCoordData.array.valid())
         state.setFogCoordPointer(_fogCoordData.array.get());
 #endif    
         
@@ -392,7 +589,7 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     state.applyDisablingOfVertexAttributes();
 
     // draw the multipass geometry.
-    renderPrimitiveSets(state, usingVertexBufferObjects);
+    renderPrimitiveSets(state, renderColor, usingVertexBufferObjects);
 
     // unbind the VBO's if any are used.
     state.unbindVertexBufferObject();

@@ -55,13 +55,15 @@ Stroke::Stroke(const Stroke& rhs)
 void
 Stroke::init()
 {
-    _color.set         ( 1.0f, 1.0f, 1.0f, 1.0f );
-    _lineCap.init      ( LINECAP_FLAT );
-    _lineJoin.init     ( LINEJOIN_ROUND );
-    _width.init        ( 1.0f );
-    _widthUnits.init   ( Units::PIXELS );
-    _roundingRatio.init( 0.4f );
-    _minPixels.init    ( 0.0f );
+    _color.set          ( 1.0f, 1.0f, 1.0f, 1.0f );
+    _lineCap.init       ( LINECAP_FLAT );
+    _lineJoin.init      ( LINEJOIN_ROUND );
+    _width.init         ( 1.0f );
+    _widthUnits.init    ( Units::PIXELS );
+    _roundingRatio.init ( 0.4f );
+    _minPixels.init     ( 0.0f );
+    _stipplePattern.init( 0xFFFF );
+    _stippleFactor.init ( 1u );
 }
 
 Config 
@@ -74,7 +76,8 @@ Stroke::getConfig() const {
     conf.addIfSet("linejoin", "mitre", _lineJoin, LINEJOIN_MITRE);
     conf.addIfSet("linejoin", "round", _lineJoin, LINEJOIN_ROUND);
     conf.addIfSet("width", _width);
-    conf.addIfSet("stipple", _stipple);
+    conf.addIfSet("stipple_factor", _stippleFactor);
+    conf.addIfSet("stipple_pattern", _stipplePattern);
     conf.addIfSet("rounding_ratio", _roundingRatio);
     if ( _widthUnits.isSet() )
         conf.add( "width_units", _widthUnits->getAbbr() );
@@ -92,7 +95,9 @@ Stroke::mergeConfig( const Config& conf ) {
     conf.getIfSet("linejoin", "miter", _lineJoin, LINEJOIN_MITRE); // alternate spelling
     conf.getIfSet("linejoin", "round", _lineJoin, LINEJOIN_ROUND);
     conf.getIfSet("width", _width);
-    conf.getIfSet("stipple", _stipple);
+    conf.getIfSet("stipple", _stipplePattern); // back compat
+    conf.getIfSet("stipple_factor", _stippleFactor);
+    conf.getIfSet("stipple_pattern", _stipplePattern);
     conf.getIfSet("rounding_ratio", _roundingRatio);
     if ( conf.hasValue("width_units" ) )
         Units::parse( conf.value("width_units"), _widthUnits.mutable_value() );

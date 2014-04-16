@@ -33,6 +33,8 @@
 
 namespace osgEarth { namespace Symbology
 {
+    class Style;
+    
     /**
      * Abstract base class for all Symbol types.
      */
@@ -45,7 +47,7 @@ namespace osgEarth { namespace Symbology
 
     public: // META_Symbol methods
         virtual bool isSameKindAs(const Symbol* sym) const =0;
-        virtual const char* className() const =0;
+        virtual const char* className() const =0;        
 
     protected:
         URIContext _uriContext;
@@ -57,6 +59,83 @@ namespace osgEarth { namespace Symbology
         virtual ~Symbol() { }
     };
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
+
+    /**
+     * A Factory that can create a Symbol from a Config
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT SymbolFactory : public osg::Referenced
+    {
+    public:
+        virtual Symbol* create( const Config& conf ) = 0;
+
+        virtual void parseSLD(const Config& c, Style& style) const = 0;
+    };    
+
+    typedef std::list< osg::ref_ptr< SymbolFactory > > SymbolFactoryList;
+
+    /**
+     * A registry of Symbol plugins
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT SymbolRegistry : public osg::Referenced
+    {         
+    public:
+        /**
+         * The singleton instance of the factory
+         */
+        static SymbolRegistry* instance();
+
+        /*
+         * Adds a new SymbolFactory to the list
+         */
+        void add( SymbolFactory* factory );
+
+        /**
+         * Creates a Symbol with the registered plugins from the given Config
+         */
+        Symbol* create( const Config& conf );
+
+        /**
+         * Parses the given SLD config into the given Style using all of the registered symbols
+         */
+        void parseSLD(const Config& c, Style& style) const;
+
+    protected:
+        SymbolRegistry();
+        SymbolFactoryList _factories;
+    };
+
+    template<class T>
+    struct SimpleSymbolFactory : public SymbolFactory
+    {
+        SimpleSymbolFactory(const std::string& key):_key(key){}
+
+        virtual Symbol* create(const Config& conf)
+        {
+            if (conf.key() == _key) return new T(conf);            
+            return 0;
+        }
+                
+        virtual void parseSLD(const Config& c, class Style& style) const
+        {
+            T::parseSLD( c, style );
+        }
+
+        std::string _key;
+    };
+
+    template<class T>
+    struct RegisterSymbolProxy
+    {
+        RegisterSymbolProxy( T* factory) { SymbolRegistry::instance()->add( factory ); }
+        RegisterSymbolProxy() { SymbolRegistry::instance()->add( new T ); }
+    };
+
+#define OSGEARTH_REGISTER_SYMBOL( CLASSNAME )\
+    static osgEarth::Symbology::RegisterSymbolProxy<CLASSNAME> s_osgEarthRegisterSymbolProxy_##CLASSNAME;
+
+#define OSGEARTH_REGISTER_SIMPLE_SYMBOL( KEY, CLASSNAME)\
+    static osgEarth::Symbology::RegisterSymbolProxy< osgEarth::Symbology::SimpleSymbolFactory<CLASSNAME> > s_osgEarthRegisterSymbolProxy_##CLASSNAME##KEY(new osgEarth::Symbology::SimpleSymbolFactory<CLASSNAME>(#KEY));
+
 
 } } // namespace osgEarth::Symbology
 

@@ -23,7 +23,6 @@
 #include <osgEarth/CacheBin>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/Containers>
-#include <osgEarth/FileUtils>
 #include <osgEarth/IOTypes>
 #include <osg/Image>
 #include <osg/Node>

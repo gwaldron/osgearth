@@ -99,6 +99,8 @@ struct PrimitiveIntersectorFunctor
     //POINT
     inline void operator () (const osg::Vec3d& p, bool treatVertexDataAsTemporary)
     {
+        if (_limitOneIntersection && _hit) return;
+
         osg::Vec3d n = _d ^ _thickness;
 
         osg::Vec3d v1 = p + _thickness;
@@ -106,12 +108,17 @@ struct PrimitiveIntersectorFunctor
         osg::Vec3d v3 = p - _thickness;
         osg::Vec3d v4 = p + n;
 
-        this->operator()(v1, v2, v3, v4, treatVertexDataAsTemporary);
+        //this->operator()(v1, v2, v3, v4, treatVertexDataAsTemporary);
+        this->triNoBuffer(v1, v2, v3, treatVertexDataAsTemporary);
+        --_index;
+        this->triNoBuffer(v1, v3, v4, treatVertexDataAsTemporary);
     }
 
     //LINE
     inline void operator () (const osg::Vec3d& v1, const osg::Vec3d& v2, bool treatVertexDataAsTemporary)
      {
+        if (_limitOneIntersection && _hit) return;
+
         float thickness =  _thickness.length();
         osg::Vec3d l12 = v2 - v1;
         osg::Vec3d ln = _d ^ l12;
@@ -122,7 +129,12 @@ struct PrimitiveIntersectorFunctor
         osg::Vec3d vq3 = v2 - ln*thickness;
         osg::Vec3d vq4 = v1 - ln*thickness;
 
-        this->operator()(vq1, vq2, vq3, vq4, treatVertexDataAsTemporary);
+        //this->operator()(vq1, vq2, vq3, vq4, treatVertexDataAsTemporary);
+        this->triNoBuffer(vq1, vq2, vq3, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        --_index;
+        this->triNoBuffer(vq1, vq3, vq4, treatVertexDataAsTemporary);
     }
 
     //QUAD
@@ -130,17 +142,59 @@ struct PrimitiveIntersectorFunctor
         const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, const osg::Vec3d& v4, bool treatVertexDataAsTemporary
         )
     {
+        if (_limitOneIntersection && _hit) return;
+
         this->operator()(v1, v2, v3, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
 
         --_index;
-
         this->operator()(v1, v3, v4, treatVertexDataAsTemporary);
     }
 
-    //TRIANGLE
+    //TRIANGLE (buffered)
     inline void operator () (
         const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, bool treatVertexDataAsTemporary
         )
+    {
+        if (_limitOneIntersection && _hit) return;
+
+        // first do a simple test against the unbuffered triangle:
+        this->triNoBuffer(v1, v2, v3, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        // now buffer each edge and test against that.
+        float thickness = _thickness.length();
+        osg::Vec3d ln, buf;
+
+        osg::Vec3d v12 = v2-v1; ln = _d ^ v12; ln.normalize(); buf = ln*thickness;
+        --_index;
+        this->triNoBuffer(v1+buf, v2+buf, v2-buf, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        --_index;
+        this->triNoBuffer(v1+buf, v3-buf, v1-buf, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        osg::Vec3d v23 = v3-v1; ln = _d ^ v23; ln.normalize(); buf = ln*thickness;
+        --_index;
+        this->triNoBuffer(v2+buf, v3+buf, v3-buf, treatVertexDataAsTemporary );
+        if (_limitOneIntersection && _hit) return;
+
+        --_index;
+        this->triNoBuffer(v2+buf, v3-buf, v2-buf, treatVertexDataAsTemporary );
+        if (_limitOneIntersection && _hit) return;
+
+        osg::Vec3d v31 = v1-v3; ln = _d ^ v31; ln.normalize(); buf = ln*thickness;
+        --_index;
+        this->triNoBuffer(v3+buf, v1+buf, v1-buf, treatVertexDataAsTemporary);
+        if (_limitOneIntersection && _hit) return;
+
+        --_index;
+        this->triNoBuffer(v3+buf, v1-buf, v3-buf, treatVertexDataAsTemporary);
+    }
+
+    //TRIANGLE (no buffer applied)
+    inline void triNoBuffer(const osg::Vec3d& v1, const osg::Vec3d& v2, const osg::Vec3d& v3, bool treatVertexDataAsTemporary)
     {
         ++_index;
 
@@ -222,7 +276,7 @@ struct PrimitiveIntersectorFunctor
         osg::Vec3d in = v1*r1+v2*r2+v3*r3;
         if (!in.valid())
         {
-            OE_WARN << LC << "Picked up error in TriangleIntersect" << std::endl;;
+            //OE_WARN << LC << "Picked up error in TriangleIntersect" << std::endl;;
             return;
         }
 
@@ -246,8 +300,8 @@ struct PrimitiveIntersectorFunctor
             _intersections.insert(std::pair<const float,PrimitiveIntersection>(r,PrimitiveIntersection(_index-1,normal,r1,&v1,r2,&v2,r3,&v3)));
         }
         _hit = true;
-
     }
+
 
 };
 
@@ -288,10 +342,24 @@ PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d&
   setThickness(thickness);
 }
 
+PrimitiveIntersector::Intersection::Intersection(const PrimitiveIntersector::Intersection &rhs)
+{
+  ratio = rhs.ratio;
+  nodePath = rhs.nodePath;
+  drawable = rhs.drawable;
+  matrix = rhs.matrix;
+  localIntersectionPoint = rhs.localIntersectionPoint;
+  localIntersectionNormal = rhs.localIntersectionNormal;
+  indexList = rhs.indexList;
+  ratioList = rhs.ratioList;
+  primitiveIndex = rhs.primitiveIndex;
+}
+
 void PrimitiveIntersector::setThickness(double thickness)
 {
   _thicknessVal = thickness;
-  _thickness.set(_start.x()+thickness/2.0, _start.y()+thickness/2.0, _start.z());
+  double halfThickness = 0.5 * thickness;
+  _thickness.set(_start.x()+halfThickness, _start.y()+halfThickness, _start.z()+halfThickness);
 }
 
 osgUtil::Intersector* PrimitiveIntersector::clone(osgUtil::IntersectionVisitor& iv)
@@ -416,7 +484,7 @@ void PrimitiveIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Draw
             hit.matrix = iv.getModelMatrix();
             hit.nodePath = iv.getNodePath();
             hit.drawable = drawable;
-            hit.primitiveIndex = triHit._index;
+            hit.primitiveIndex = findPrimitiveIndex(drawable, triHit._index);
 
             hit.localIntersectionPoint = _start*(1.0-remap_ratio) + _end*remap_ratio;
 
@@ -623,4 +691,63 @@ bool PrimitiveIntersector::intersectAndClip(osg::Vec3d& s, osg::Vec3d& e,const o
     }
 
     return true;
+}
+
+unsigned int PrimitiveIntersector::findPrimitiveIndex(osg::Drawable* drawable, unsigned int index)
+{
+    if (!drawable)
+      return index;
+
+    const osg::Geometry* geom = drawable->asGeometry();
+    if ( geom )
+    {
+        unsigned int primIndex = 0;
+        unsigned int encounteredPrims = 0;
+
+        const osg::Geometry::PrimitiveSetList& primSets = geom->getPrimitiveSetList();
+        for( osg::Geometry::PrimitiveSetList::const_iterator i = primSets.begin(); i != primSets.end(); ++i )
+        {
+            bool simple = false;
+            unsigned int numPrims = 0;
+
+            const osg::PrimitiveSet* pset = i->get();
+            switch( pset->getMode() )
+            {
+            case osg::PrimitiveSet::TRIANGLE_STRIP:
+            case osg::PrimitiveSet::TRIANGLE_FAN:
+                numPrims = osg::maximum(pset->getNumIndices() - 2, 0U);
+                encounteredPrims += numPrims;
+                break;
+            case osg::PrimitiveSet::QUAD_STRIP:
+                numPrims = osg::maximum((pset->getNumIndices() - 2) / 2, 0U);
+                encounteredPrims += numPrims;
+                break;
+            case osg::PrimitiveSet::LINE_STRIP:
+                numPrims = osg::maximum(pset->getNumIndices() - 1, 0U);
+                encounteredPrims += numPrims;
+                break;
+            case osg::PrimitiveSet::LINE_LOOP:
+                numPrims = pset->getNumIndices();
+                encounteredPrims += numPrims;
+                break;
+            default:
+                numPrims = pset->getNumPrimitives();
+                primIndex += osg::minimum(numPrims, index - encounteredPrims);
+                encounteredPrims += numPrims;
+                simple = true;
+            }
+
+            if (encounteredPrims > index)
+                return primIndex;
+
+            // primIndex already incremented above for simple primitives
+            if (!simple)
+                primIndex++;
+        }
+    }
+
+    //Should never reach here
+    OE_DEBUG << LC << "Could not find primitive index!" << std::endl;
+
+    return index;
 }

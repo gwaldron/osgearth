@@ -115,18 +115,24 @@
           <property name="text">
            <string>Max level (no max level = infinity):</string>
           </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
          </widget>
         </item>
         <item>
          <widget class="QSpinBox" name="maxLevelSpinBox">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="minimum">
            <number>1</number>
           </property>
           <property name="maximum">
-           <number>20</number>
+           <number>99</number>
+          </property>
+          <property name="value">
+           <number>10</number>
           </property>
          </widget>
         </item>

@@ -141,8 +141,9 @@ LabelNode::setStyle( const Style& style )
 
     setLightingIfNotSet( false );
 
-    ShaderGenerator gen( Registry::stateSetCache() );
-    this->accept( gen );
+    ShaderGenerator gen;
+    gen.setProgramName( "osgEarth.LabelNode" );
+    gen.run( this, Registry::stateSetCache() );
 }
 
 void

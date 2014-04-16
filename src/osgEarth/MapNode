@@ -162,13 +162,6 @@ namespace osgEarth
         Config& externalConfig() { return _externalConf; }
         const Config& externalConfig() const { return _externalConf; }
 
-        /**
-         * Sets a custom texture compositor technique on the underlying terrain engine.
-         * This method is here b/c just calling getTerrainEngine()->getTextureCompositor()
-         * ->setTechnique() has problems (with init order of the terrain engine). Someday
-         * this needs to be cleaned up.
-         */
-        void setCompositorTechnique( class TextureCompositorTechnique* tech );
 
     public: // special purpose
 
@@ -201,7 +194,7 @@ namespace osgEarth
         Config                     _externalConf;
 
         // keep track of nodes created by model layers
-        typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;
+        typedef std::map<ModelLayer*, osg::ref_ptr< osg::Node > > ModelLayerNodeMap;
         ModelLayerNodeMap        _modelLayerNodes;
         osg::Group*              _maskLayerNode;
         unsigned                 _lastNumBlacklistedFilenames;
@@ -209,14 +202,12 @@ namespace osgEarth
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
 
+
     public: // MapCallback proxy
 
         void onModelLayerAdded( ModelLayer*, unsigned int );
         void onModelLayerRemoved( ModelLayer* );
-		void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
-
-    public:
-        void onModelLayerOverlayChanged( ModelLayer* layer );
+        void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
 
     public:
         struct TileRangeData : public osg::Referenced {
@@ -227,7 +218,6 @@ namespace osgEarth
 
     private:
 
-        osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
         osg::ref_ptr< MapCallback >        _mapCallback;
     
         void init();

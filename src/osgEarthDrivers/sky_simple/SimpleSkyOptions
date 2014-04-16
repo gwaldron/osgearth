@@ -1,0 +1,90 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS
+#define OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS 1
+
+#include <osgEarthUtil/Sky>
+
+namespace osgEarth { namespace Drivers { namespace SimpleSky
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+
+    /**
+     * Options for creating a simple sky.
+     */
+    class SimpleSkyOptions : public SkyOptions
+    {
+    public:
+        SimpleSkyOptions(const ConfigOptions& options =ConfigOptions()) :
+          SkyOptions(options),
+          _atmosphericLighting(true),
+          _exposure           (3.0f)
+        {
+            setDriver( "simple" );
+            fromConfig( _conf );
+        }
+        virtual ~SimpleSkyOptions() { }
+
+    public: // properties
+
+        /** Use advanced atmospheric lighting (instead of simple shading) */
+        optional<bool>& atmosphericLighting() { return _atmosphericLighting; }
+        const optional<bool>& atmosphericLighting() const { return _atmosphericLighting; }
+
+        /** Exposure factor for ground lighting when using advanced lighting.
+          * Default is 3.0; [1..4] is a good range. */
+        optional<float>& exposure() { return _exposure; }
+        const optional<float>& exposure() const { return _exposure; }
+
+        /** replacement star definition file */
+        optional<std::string>& starFile() { return _starFile; }
+        const optional<std::string>& starFile() const { return _starFile; }
+
+    public:
+        Config getConfig() const {
+            Config conf = SkyOptions::getConfig();
+            conf.addIfSet("atmospheric_lighting", _atmosphericLighting);
+            conf.addIfSet("exposure", _exposure);
+            conf.addIfSet("star_file", _starFile);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            SkyOptions::mergeConfig( conf );
+            fromConfig(conf);
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("atmospheric_lighting", _atmosphericLighting);
+            conf.getIfSet("exposure", _exposure);
+            conf.getIfSet("star_file", _starFile);
+        }
+
+        optional<bool>        _atmosphericLighting;
+        optional<float>       _exposure;
+        optional<std::string> _starFile;
+    };
+
+} } } // namespace osgEarth::Drivers::SimpleSky
+
+#endif // OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS
+

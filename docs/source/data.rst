@@ -8,13 +8,17 @@ Help us add useful sources of Free data to this list.
 
 **Raster data**
 
+    * `ReadyMap.org`_ - Free 15m imagery, elevation, and street tiles for osgEarth developers
+    
     * MapQuest_ - MapQuest open aerial imagery and rasterized OpenStreetMap layers
+    
+    * `Bing Maps`_ - Microsoft's worldwide imagery and map data ($)
     
     * `USGS National Map`_ - Elevation, orthoimagery, hydrography, geographic names, boundaries,
       transportation, structures, and land cover products for the US.
     
     * `NASA EOSDIS`_ - NASA's Global Imagery Browse Services (GIBS) replaces the agency's old
-      `JPL OnEarth`_ site for global imagery products like MODIS.
+      JPL OnEarth site for global imagery products like MODIS.
        
     * `NASA BlueMarble`_ - NASA's whole-earth imagery (including topography and bathymetry maps)
     
@@ -45,7 +49,7 @@ Help us add useful sources of Free data to this list.
     
 
 .. _CGIAR:                      http://srtm.csi.cgiar.org/
-.. _CGIAR Europoean mirror:     ftp://xftp.jrc.it/pub/srtmV4/
+.. _CGIAR European mirror:      ftp://xftp.jrc.it/pub/srtmV4/
 .. _DIVA-GIS:                   http://www.diva-gis.org/gData
 .. _GEBCO:                      http://www.gebco.net/
 .. _GLCF:                       http://glcf.umiacs.umd.edu/data/srtm/
@@ -55,9 +59,11 @@ Help us add useful sources of Free data to this list.
 .. _NASA BlueMarble:            http://visibleearth.nasa.gov/view_cat.php?categoryID=1484
 .. _Natural Earth:              http://www.naturalearthdata.com/
 .. _NRL GIDB:                   http://columbo.nrlssc.navy.mil/ogcwms/servlet/WMSServlet
-.. _+SRTM30+:                   ftp://topex.ucsd.edu/pub/srtm30_plus/
+.. _SRTM30+:                    ftp://topex.ucsd.edu/pub/srtm30_plus/
 .. _USGS National Map:          http://nationalmap.gov/viewer.html
 .. _Virtual Terrain Project:    http://vterrain.org/Imagery/WholeEarth/
+.. _Bing Maps:                  http://www.microsoft.com/maps/choose-your-bing-maps-API.aspx
+.. _ReadyMap.org:               http://readymap.org/index_orig.html
 
 ----
 

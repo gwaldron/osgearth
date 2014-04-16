@@ -32,7 +32,7 @@ is randomized, but it is randomized exactly the same way each time.
         <feature_indexing>false</feature_indexing>
         
         <!-- Fade in new tiles over one second. -->
-         <fade_in_duration>1.0</fade_in_duration>
+        <!-- <fade_in_duration>1.0</fade_in_duration> -->
         
         <!-- The stylesheet will describe how to render the feature data. In this case
              we indicate model substitution with density-based scattering. The "density"
@@ -51,7 +51,7 @@ is randomized, but it is randomized exactly the same way each time.
                    model:               "../data/tree.ive";
                    model-placement:     random;
                    model-density:       1000;
-                   model-scale:         1.5;
+                   model-scale:         2.0;
                    altitude-clamping:   terrain;
                    altitude-resolution: 0.001;
                 }            
@@ -59,7 +59,7 @@ is randomized, but it is randomized exactly the same way each time.
                    model:               "../data/tree.ive";
                    model-placement:     random;
                    model-density:       2500;
-                   model-scale:         2;
+                   model-scale:         2.5;
                    model-random-seed:   1;
                    altitude-clamping:   terrain;
                    altitude-resolution: 0.001;
@@ -68,7 +68,7 @@ is randomized, but it is randomized exactly the same way each time.
                    model:               "../data/tree.ive";
                    model-placement:     random;
                    model-density:       5000;
-                   model-scale:         2.5;
+                   model-scale:         1.0
                    model-random-seed:   2;
                    altitude-clamping:   terrain;
                    altitude-resolution: 0.001;
@@ -78,7 +78,7 @@ is randomized, but it is randomized exactly the same way each time.
     </model>
     
     
-    <model name="parks" driver="feature_geom" overlay="true">
+    <model name="parks" driver="feature_geom" enabled="false">
         <features name="parks" driver="ogr">
             <url>../data/parks.shp</url>
             <build_spatial_index>false</build_spatial_index>
@@ -87,7 +87,7 @@ is randomized, but it is randomized exactly the same way each time.
             <style type="text/css">      
                 default {
                    fill:                #00ff007f;
-                   altitide-clamping:   terrain;
+                   altitide-clamping:   terrain-drape;
                 }                
             </style>
         </styles>
@@ -102,7 +102,7 @@ is randomized, but it is randomized exactly the same way each time.
         <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="no_cache"/>
-        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/18/49761/99026.jpg</nodata_image>
+        <nodata_image>http://oatile3.mqcdn.com/tiles/1.0.0/sat/13/636/6210.jpg</nodata_image>
     </image>
     
     <elevation name="ReadyMap.org - Elevation" driver="tms">

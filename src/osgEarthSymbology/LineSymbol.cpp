@@ -22,6 +22,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(line, LineSymbol);
+
 LineSymbol::LineSymbol( const Config& conf ) :
 Symbol       ( conf ),
 _stroke      ( Stroke() ),
@@ -85,5 +87,12 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "stroke-min-pixels") ) {
         style.getOrCreate<LineSymbol>()->stroke()->minPixels() = as<float>(c.value(), 0.0f);
+    }
+    else if ( match(c.key(), "stroke-stipple-factor") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->stippleFactor() = as<unsigned>(c.value(), 1);
+    }
+    else if ( match(c.key(), "stroke-stipple-pattern") ||
+              match(c.key(), "stroke-stipple") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->stipplePattern() = as<unsigned short>(c.value(), 0xFFFF);
     }
 }

@@ -71,7 +71,6 @@ This example demonstrates the use of scripting to style features.
                    text-font:     arial.ttf;
                    text-size:     16;
                    text-remove-duplicate-labels: true;
-                   altitude-clamping: terrain;
                 }     
             </style>
         </styles>

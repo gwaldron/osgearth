@@ -21,8 +21,9 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Progress>
 
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
@@ -40,20 +41,23 @@ namespace
                    unsigned                            order,
                    const MapInfo&                      mapInfo,
                    const MPTerrainEngineOptions&       opt, 
-                   TileModel*                          model )
+                   TileNodeRegistry*                   tiles,
+                   TileModel*                          model)
         {
             _key      = key;
             _layer    = layer;
             _order    = order;
             _mapInfo  = &mapInfo;
             _opt      = &opt;
+            _tiles    = tiles;
             _model    = model;
         }
 
-        bool execute()
+        bool execute(ProgressCallback* progress)
         {
+            bool ok = false;
+
             GeoImage geoImage;
-            bool isFallbackData = false;
 
             bool useMercatorFastPath =
                 _opt->enableMercatorFastPath() != false &&
@@ -61,12 +65,6 @@ namespace
                 _layer->getProfile()                    &&
                 _layer->getProfile()->getSRS()->isSphericalMercator();
 
-            // fetch the image from the layer.
-
-            //bool autoFallback = _key.getLevelOfDetail() <= 1;
-            bool autoFallback = false;
-
-            TileKey imageKey( _key );
             TileSource*    tileSource   = _layer->getTileSource();
             const Profile* layerProfile = _layer->getProfile();
 
@@ -82,29 +80,16 @@ namespace
                 hasDataInExtent = tileSource->hasDataInExtent( ext );
             }
             
-            if (hasDataInExtent)
+            // fetch the image from the layer.
+            if (hasDataInExtent && _layer->isKeyInRange(_key))
             {
-                while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
+                if ( useMercatorFastPath )
                 {
-                    if ( useMercatorFastPath )
-                    {
-                        bool mercFallbackData = false;
-                        geoImage = _layer->createImageInNativeProfile( imageKey, 0L, autoFallback, mercFallbackData );
-                        if ( geoImage.valid() && mercFallbackData )
-                        {
-                            isFallbackData = true;
-                        }
-                    }
-                    else
-                    {
-                        geoImage = _layer->createImage( imageKey, 0L, autoFallback );
-                    }
-
-                    if ( !geoImage.valid() )
-                    {
-                        imageKey = imageKey.createParentKey();
-                        isFallbackData = true;
-                    }
+                    geoImage = _layer->createImageInNativeProfile( _key, progress );
+                }
+                else
+                {
+                    geoImage = _layer->createImage( _key, progress );
                 }
             }
 
@@ -131,23 +116,43 @@ namespace
                     _order,
                     geoImage.getImage(),
                     locator,
-                    _key,
-                    isFallbackData );
+                    false ); // isFallbackData
 
-                return true;
+                ok = true;
             }
 
-            else
+            else // fall back on parent tile.
             {
-                return false;
+                TileKey parentKey = _key.createParentKey();
+                osg::ref_ptr<TileNode> parentNode;
+                _tiles->get(parentKey, parentNode);
+                if ( parentNode.valid() )
+                {
+                    const TileModel* parentModel = parentNode->getTileModel();
+                    if ( parentModel )
+                    {
+                        TileModel::ColorData parentColorData;
+                        if ( parentModel->getColorData(_layer->getUID(), parentColorData) )
+                        {
+                            TileModel::ColorData& colorData = _model->_colorData[_layer->getUID()];
+                            colorData = TileModel::ColorData(parentColorData);
+                            colorData._order = _order;
+                            colorData.setIsFallbackData( true );
+                            ok = true;
+                        }
+                    }
+                }
             }
+
+            return ok;
         }
 
-        TileKey        _key;
-        const MapInfo* _mapInfo;
-        ImageLayer*    _layer;
-        unsigned       _order;
-        TileModel*     _model;
+        TileKey           _key;
+        const MapInfo*    _mapInfo;
+        TileNodeRegistry* _tiles;
+        ImageLayer*       _layer;
+        unsigned          _order;
+        TileModel*        _model;
         const MPTerrainEngineOptions* _opt;
     };
 }
@@ -158,46 +163,37 @@ namespace
 {
     struct BuildElevationData
     {
-        void init(const TileKey& key, const MapFrame& mapf, const MPTerrainEngineOptions& opt, TileModel* model, HeightFieldCache* hfCache) //sourceTileNodeBuilder::SourceRepo& repo)
+        void init(const TileKey& key, const MapFrame& mapf, const MPTerrainEngineOptions& opt, 
+                  TileNodeRegistry* tiles, TileModel* model, HeightFieldCache* hfCache)
         {
-            _key   = key;
-            _mapf  = &mapf;
-            _opt   = &opt;
-            _model = model;
+            _key     = key;
+            _mapf    = &mapf;
+            _opt     = &opt;
+            _tiles   = tiles;
+            _model   = model;
             _hfCache = hfCache;
-            //_repo = &repo;
         }
 
-        void execute()
+        void execute(ProgressCallback* progress)
         {            
             const MapInfo& mapInfo = _mapf->getMapInfo();
+
+            const osgEarth::ElevationInterpolation& interp =
+                _mapf->getMapOptions().elevationInterpolation().get();
 
             // Request a heightfield from the map, falling back on lower resolution tiles
             // if necessary (fallback=true)
             osg::ref_ptr<osg::HeightField> hf;
             bool isFallback = false;
 
-            //if ( _mapf->getHeightField( _key, true, hf, &isFallback ) )
-            if (_hfCache->getOrCreateHeightField( *_mapf, _key, true, hf, &isFallback) )
+            if (_hfCache->getOrCreateHeightField( *_mapf, _key, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
             {
-#if 0
-                // Put it in the repo
-                osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf.get() );
-
-                // Generate a locator.
-                hfLayer->setLocator( GeoLocator::createForKey( _key, mapInfo ) );
-
-                _model->_elevationData = TileModel::ElevationData(hfLayer, isFallback);
-#else
                 _model->_elevationData = TileModel::ElevationData(
                     hf,
                     GeoLocator::createForKey( _key, mapInfo ),
                     isFallback );
-#endif
 
-#if 1
-                if ( *_opt->normalizeEdges() )
-#endif
+                if ( _opt->normalizeEdges().value() == true )
                 {
                     // next, query the neighboring tiles to get adjacency information.
                     for( int x=-1; x<=1; x++ )
@@ -209,13 +205,9 @@ namespace
                                 TileKey nk = _key.createNeighborKey(x, y);
                                 if ( nk.valid() )
                                 {
-                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, true, hf, &isFallback) )
+                                    osg::ref_ptr<osg::HeightField> hf;
+                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
                                     {
-                                        if ( mapInfo.isPlateCarre() )
-                                        {
-                                            HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
-                                        }
-
                                         _model->_elevationData.setNeighbor( x, y, hf.get() );
                                     }
                                 }
@@ -226,13 +218,9 @@ namespace
                     // parent too.
                     if ( _key.getLOD() > 0 )
                     {
-                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), true, hf, &isFallback) )
+                        osg::ref_ptr<osg::HeightField> hf;
+                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
                         {
-                            if ( mapInfo.isPlateCarre() )
-                            {
-                                HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
-                            }
-
                             _model->_elevationData.setParent( hf.get() );
                         }
                     }
@@ -240,24 +228,23 @@ namespace
             }
         }
 
-        TileKey                  _key;
-        const MapFrame*          _mapf;
-        const MPTerrainEngineOptions* _opt;
-        TileModel* _model;
-        osg::ref_ptr< HeightFieldCache> _hfCache;
+        TileKey                        _key;
+        const MapFrame*                _mapf;
+        const MPTerrainEngineOptions*  _opt;
+        TileNodeRegistry*              _tiles;
+        TileModel*                     _model;
+        osg::ref_ptr<HeightFieldCache> _hfCache;
     };
 }
 
 //------------------------------------------------------------------------
 
-TileModelFactory::TileModelFactory(const Map*                          map, 
-                                   TileNodeRegistry*                   liveTiles,
+TileModelFactory::TileModelFactory(TileNodeRegistry*             liveTiles,
                                    const MPTerrainEngineOptions& terrainOptions ) :
-_map           ( map ),
 _liveTiles     ( liveTiles ),
 _terrainOptions( terrainOptions )
 {
-    _hfCache = new HeightFieldCache();
+    _hfCache = new HeightFieldCache(liveTiles, terrainOptions);
 }
 
 HeightFieldCache*
@@ -269,35 +256,31 @@ TileModelFactory::getHeightFieldCache() const
 
 void
 TileModelFactory::createTileModel(const TileKey&           key, 
+                                  const MapFrame&          frame,
                                   osg::ref_ptr<TileModel>& out_model,
-                                  bool&                    out_hasRealData)
+                                  ProgressCallback*        progress)
 {
-    MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
-    
-    const MapInfo& mapInfo = mapf.getMapInfo();
 
-    osg::ref_ptr<TileModel> model = new TileModel();
-    model->_map         = _map;
-    model->_tileKey     = key;
-    model->_tileLocator = GeoLocator::createForKey(key, mapInfo);
+    osg::ref_ptr<TileModel> model = new TileModel( frame.getRevision(), frame.getMapInfo() );
 
-    // init this to false, then search for real data. "Real data" is data corresponding
-    // directly to the key, as opposed to fallback data, which is derived from a lower
-    // LOD key.
-    out_hasRealData = false;
-    
+    model->_tileKey = key;
+    model->_tileLocator = GeoLocator::createForKey(key, frame.getMapInfo());
+
+    OE_START_TIMER(fetch_imagery);
+
     // Fetch the image data and make color layers.
+    unsigned index = 0;
     unsigned order = 0;
-    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+    for( ImageLayerVector::const_iterator i = frame.imageLayers().begin(); i != frame.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
 
         if ( layer->getEnabled() )
         {
             BuildColorData build;
-            build.init( key, layer, order, mapInfo, _terrainOptions, model.get() );
-            
-            bool addedToModel = build.execute();
+            build.init( key, layer, order, frame.getMapInfo(), _terrainOptions, _liveTiles.get(), model.get() );
+
+            bool addedToModel = build.execute(progress);
             if ( addedToModel )
             {
                 // only bump the order if we added something to the data model.
@@ -306,44 +289,38 @@ TileModelFactory::createTileModel(const TileKey&           key,
         }
     }
 
+    if (progress)
+        progress->stats()["fetch_imagery_time"] += OE_STOP_TIMER(fetch_imagery);
+
+    
+    OE_START_TIMER(fetch_elevation);
+
     // make an elevation layer.
     BuildElevationData build;
-    build.init( key, mapf, _terrainOptions, model.get(), _hfCache );
-    build.execute();
+    build.init( key, frame, _terrainOptions, _liveTiles.get(), model.get(), _hfCache.get() );
+    build.execute(progress);
+
+    if (progress)
+        progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);
 
 
-    // Bail out now if there's no data to be had.
+    // If nothing was added, not even a fallback heightfield, something went
+    // horribly wrong. Leave without a tile model. Chances are that a parent tile
+    // not not found in the live-tile registry.
     if ( model->_colorData.size() == 0 && !model->_elevationData.getHeightField() )
     {
         return;
     }
 
-    // OK we are making a tile, so if there's no heightfield yet, make an empty one.
+    // OK we are making a tile, so if there's no heightfield yet, make an empty one (and mark it
+    // as fallback data of course)
     if ( !model->_elevationData.getHeightField() )
     {
         osg::HeightField* hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
         model->_elevationData = TileModel::ElevationData(
             hf,
-            GeoLocator::createForKey(key, mapInfo),
+            GeoLocator::createForKey(key, frame.getMapInfo()),
             true );
-    }
-
-    if (!out_hasRealData)
-    {
-        // Check the results and see if we have any real data.
-        for( TileModel::ColorDataByUID::const_iterator i = model->_colorData.begin(); i != model->_colorData.end(); ++i )
-        {
-            if ( !i->second.isFallbackData() ) 
-            {
-                out_hasRealData = true;
-                break;
-            }
-        }
-    }
-
-    if ( !out_hasRealData && !model->_elevationData.isFallbackData() )
-    {
-        out_hasRealData = true;
     }
 
     // look up the parent model and cache it.

@@ -90,6 +90,62 @@ DateTime::DateTime(int year, int month, int day, double hour)
     else memset( &_tm, 0, sizeof(tm) );
 }
 
+DateTime::DateTime(const std::string& input)
+{
+    bool ok = false;
+    int year, month, day, hour, min, sec;
+
+    if (sscanf(input.c_str(), "%4d-%2d-%2dT%2d:%2d:%2d", &year, &month, &day, &hour, &min, &sec) == 6)
+    {
+        _tm.tm_year = year - 1900;
+        _tm.tm_mon  = month - 1;
+        _tm.tm_mday = day;
+        _tm.tm_hour = hour;
+        _tm.tm_min  = min;
+        _tm.tm_sec  = sec;
+        ok = true;
+    }
+    else if (sscanf(input.c_str(), "%4d-%2d-%2d %2d:%2d:%2d", &year, &month, &day, &hour, &min, &sec) == 6)
+    {
+        _tm.tm_year = year - 1900;
+        _tm.tm_mon  = month - 1;
+        _tm.tm_mday = day;
+        _tm.tm_hour = hour;
+        _tm.tm_min  = min;
+        _tm.tm_sec  = sec;
+        ok = true;
+    }
+    else if (sscanf(input.c_str(), "%4d%2d%2dT%2d%2d%2d", &year, &month, &day, &hour, &min, &sec) == 6)
+    {
+        _tm.tm_year = year - 1900;
+        _tm.tm_mon  = month - 1;
+        _tm.tm_mday = day;
+        _tm.tm_hour = hour;
+        _tm.tm_min  = min;
+        _tm.tm_sec  = sec;
+        ok = true;
+    }
+    else if (sscanf(input.c_str(), "%4d%2d%2d%2d%2d%2d", &year, &month, &day, &hour, &min, &sec) == 6)
+    {
+        _tm.tm_year = year - 1900;
+        _tm.tm_mon  = month - 1;
+        _tm.tm_mday = day;
+        _tm.tm_hour = hour;
+        _tm.tm_min  = min;
+        _tm.tm_sec  = sec;
+        ok = true;
+    }
+
+    if ( ok )
+    {
+        // now go to time_t, and back to tm, to populate the rest of the fields.
+        _time_t =  this->timegm( &_tm );
+        tm* temp = ::gmtime( &_time_t );
+        if ( temp ) _tm = *temp;
+        else memset( &_tm, 0, sizeof(tm) );
+    }
+}
+
 DateTime::DateTime(const DateTime& rhs) :
 _tm    ( rhs._tm ),
 _time_t( rhs._time_t )

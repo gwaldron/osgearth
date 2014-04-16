@@ -178,6 +178,15 @@ SkyNode::create(MapNode* mapNode)
     return create(options, mapNode);
 }
 
+SkyNode*
+SkyNode::create(const std::string& driver, MapNode* mapNode)
+{
+    SkyOptions options;
+    options.setDriver( driver );
+    return create( options, mapNode );
+}
+
+
 //------------------------------------------------------------------------
 
 const SkyOptions&

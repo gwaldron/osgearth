@@ -26,6 +26,13 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
 
+// environment variables
+#define OSGEARTH_ENV_CACHE_DRIVER  "OSGEARTH_CACHE_DRIVER"
+#define OSGEARTH_ENV_CACHE_PATH    "OSGEARTH_CACHE_PATH"
+#define OSGEARTH_ENV_CACHE_ONLY    "OSGEARTH_CACHE_ONLY"
+#define OSGEARTH_ENV_NO_CACHE      "OSGEARTH_NO_CACHE"
+#define OSGEARTH_ENV_CACHE_MAX_AGE "OSGEARTH_CACHE_MAX_AGE"
+
 namespace osgEarth
 {
     /**

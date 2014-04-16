@@ -224,12 +224,7 @@ namespace
         _metaPath = osgDB::concatPaths( rootPath, name + ".json" );
 
         _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
-#if 0
-#ifdef OSGEARTH_HAVE_ZLIB
-        _rwOptions = Registry::instance()->cloneOrCreateOptions();
-        _rwOptions->setOptionString( "Compressor=zlib" );
-#endif
-#endif
+
         CachePolicy::NO_CACHE.apply(_rwOptions.get());
 
         leveldb::Options options;

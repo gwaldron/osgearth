@@ -33,6 +33,7 @@ namespace osgEarth
 
     /**
      * General-purpose UTC date/time object.
+     * One second resolution, GMT time zone.
      */
     class OSGEARTH_EXPORT DateTime
     {
@@ -52,8 +53,11 @@ namespace osgEarth
         /** DateTime from year, month, date, hours */
         DateTime(int year, int month, int day, double hours);
 
-        /** As a date/time string in RFC 1123 format */
+        /** As a date/time string in RFC 1123 format (e.g., HTTP) */
         const std::string asRFC1123() const;
+
+        /** As a date/time string in ISO 8601 format (lexigraphic order) */
+        const std::string asISO8601() const;
 
     public:
         int    year()  const;
@@ -62,7 +66,6 @@ namespace osgEarth
         double hours() const;
 
         TimeStamp   asTimeStamp() const { return _time_t; }
-        //const ::tm& as_tm()       const { return _tm; }
 
     protected:
         ::tm     _tm;

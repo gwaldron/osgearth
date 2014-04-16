@@ -135,7 +135,19 @@ DateTime::asRFC1123() const
         << "GMT";
 }
 
-
+const std::string
+DateTime::asISO8601() const
+{
+    return Stringify()
+        << std::setw(4) << (_tm.tm_year + 1900) << '-'
+        << std::setfill('0') << std::setw(2) << (_tm.tm_mon + 1) << '-'
+        << std::setfill('0') << std::setw(2) << (_tm.tm_mday)
+        << 'T'
+        << std::setfill('0') << std::setw(2) << _tm.tm_hour << ':'
+        << std::setfill('0') << std::setw(2) << _tm.tm_min << ':'
+        << std::setfill('0') << std::setw(2) << _tm.tm_sec
+        << 'Z';
+}
 
 //------------------------------------------------------------------------
 

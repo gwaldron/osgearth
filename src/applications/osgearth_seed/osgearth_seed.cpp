@@ -44,6 +44,7 @@ using namespace osgEarth::Drivers;
 int list( osg::ArgumentParser& args );
 int seed( osg::ArgumentParser& args );
 int purge( osg::ArgumentParser& args );
+int compact( osg::ArgumentParser& args );
 int usage( const std::string& msg );
 int message( const std::string& msg );
 std::string prettyPrintTime( double seconds );
@@ -61,6 +62,8 @@ main(int argc, char** argv)
         return list( args );
     else if ( args.read( "--purge" ) )
         return purge( args );
+    else if ( args.read( "--compact" ) )
+        return compact( args );
     else
         return usage("");
 }
@@ -90,6 +93,8 @@ usage( const std::string& msg )
         << "        [--threads]                     ; The number of threads to use for the seed operation (default=1)" << std::endl
         << std::endl
         << "    --purge file.earth                  ; Purges a layer cache in a .earth file (interactive)" << std::endl
+        << std::endl
+        << "    --compact file.earth                ; Compacts existing layers in the cache" << std::endl
         << std::endl;
 
     return -1;
@@ -416,6 +421,70 @@ purge( osg::ArgumentParser& args )
         else
         {
             std::cout << "No action taken." << std::endl;
+        }
+    }
+
+    return 0;
+}
+
+
+int
+compact( osg::ArgumentParser& args )
+{
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
+    if ( !node.valid() )
+        return usage( "Failed to read .earth file." );
+
+    MapNode* mapNode = MapNode::findMapNode( node.get() );
+    if ( !mapNode )
+        return usage( "Input file was not a .earth file" );
+
+    Map* map = mapNode->getMap();
+
+    if ( !map->getCache() )
+        return message( "Earth file does not contain a cache." );
+
+    std::vector<Entry> entries;
+
+    ImageLayerVector imageLayers;
+    map->getImageLayers( imageLayers );
+    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+    {
+        ImageLayer* layer = i->get();
+
+        bool useMFP =
+            layer->getProfile() &&
+            layer->getProfile()->getSRS()->isSphericalMercator() &&
+            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
+
+        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
+
+        CacheBin* bin = layer->getCacheBin( cacheProfile );
+        if ( bin )
+        {
+            std::cout << "Compacting, layer=" << layer->getName() << ", bin=" << bin->getID() << "..." << std::endl;
+            bin->compact();
+        }
+    }
+
+    ElevationLayerVector elevationLayers;
+    map->getElevationLayers( elevationLayers );
+    for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
+    {
+        ElevationLayer* layer = i->get();
+
+        bool useMFP =
+            layer->getProfile() &&
+            layer->getProfile()->getSRS()->isSphericalMercator() &&
+            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
+
+        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
+
+        CacheBin* bin = i->get()->getCacheBin( cacheProfile );
+        if ( bin )
+        {
+            std::cout << "Compacting, layer=" << layer->getName() << ", bin=" << bin->getID() << "..." << std::endl;
+            bin->compact();
         }
     }
 

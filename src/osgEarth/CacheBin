@@ -138,6 +138,17 @@ namespace osgEarth
         virtual bool purge() = 0;
 
         /**
+         * Compacts the cache bin (where applicable)
+         */
+        virtual bool compact() { return false; }
+
+        /**
+         * Returns the approximate disk space being used by this cache,
+         * or 0 if unavailable.
+         */
+        virtual unsigned getStorageSize() { return 0u; }
+
+        /**
          * Store this pointer in an options structure
          */
         void apply( osgDB::Options* options ) const {

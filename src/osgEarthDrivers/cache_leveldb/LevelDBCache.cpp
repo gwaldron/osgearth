@@ -19,6 +19,7 @@
 #include "LevelDBCache"
 #include <osg/Object>
 #include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <osgDB/ReaderWriter>
 #include <osgEarth/Cache>
@@ -27,7 +28,10 @@
 #include <osgEarth/URI>
 #include <osgEarth/Registry>
 #include <leveldb/db.h>
+#include <leveldb/write_batch.h>
 #include <string>
+
+#define LEVELDB_CACHE_VERSION 1
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;
@@ -35,6 +39,27 @@ using namespace osgEarth::Drivers::LevelDBCache;
 
 namespace
 {
+    // adapters for all the osg read functions...
+    struct Reader {
+        osgDB::ReaderWriter* _rw;
+        osgDB::Options*      _op;
+        Reader(osgDB::ReaderWriter* rw, osgDB::Options* op) : _rw(rw), _op(op) { }
+        virtual osgDB::ReaderWriter::ReadResult read(std::istream& in) const = 0;
+    };
+    struct ImageReader : public Reader {
+        ImageReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
+        osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readImage(in, _op); }
+    };
+    struct NodeReader : public Reader {
+        NodeReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
+        osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readNode(in, _op); }
+    };
+    struct ObjectReader : public Reader {
+        ObjectReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
+        osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readObject(in, _op); }
+    };
+
+
     /** 
      * Cache that stores data in the local file system.
      */
@@ -63,6 +88,7 @@ namespace
         void init();
 
         std::string _rootPath;
+        bool        _active;
     };
 
     /** 
@@ -96,9 +122,15 @@ namespace
 
         bool purge();
 
+        bool compact();
+        
+        unsigned getStorageSize();
+
         Config readMetadata();
 
         bool writeMetadata( const Config& meta );
+        
+        bool readSlice(const std::string& key, const DateTime& t, std::string& output);
 
     protected:
         bool purgeDirectory( const std::string& dir );
@@ -109,6 +141,8 @@ namespace
 
         std::string getValidKey(const std::string&);
 
+        void open();
+
         bool                              _ok;
         bool                              _binPathExists;
         std::string                       _metaPath;       // full path to the bin's metadata file
@@ -117,6 +151,8 @@ namespace
         osg::ref_ptr<osgDB::Options>      _rwOptions;
         Threading::ReadWriteMutex         _rwmutex;
         leveldb::DB*                      _db;
+
+        ReadResult read(const std::string& key, TimeStamp minTime, const Reader& reader);
     };
 
     void encodeMeta(const Config& meta, std::string& out)
@@ -145,31 +181,67 @@ namespace
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
+#define TIME_FIELD "cache.datetime"
+
 namespace
 {
+
     LevelDBCacheImpl::LevelDBCacheImpl( const CacheOptions& options ) :
-      osgEarth::Cache( options )
+        osgEarth::Cache( options ),
+        _active        ( true )
     {
         LevelDBCacheOptions fsco( options );
-        _rootPath = URI( *fsco.rootPath(), options.referrer() ).full();
-        init();
+        if ( !fsco.rootPath().isSet() )
+        {
+            // read the root path from ENV is necessary:
+            const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
+            if ( cachePath )
+            {
+                fsco.rootPath() = cachePath;
+            }
+        }
+
+        if ( fsco.rootPath().isSet() )
+        {
+            _rootPath = URI( *fsco.rootPath(), options.referrer() ).full();
+            init();
+        }
+        else
+        {
+            _active = false;
+            OE_WARN << LC << "Illegal: no root path set for cache!" << std::endl;
+        }
     }
 
     void
     LevelDBCacheImpl::init()
     {
-        //nop
+        // ensure there's a folder for the cache.
+        if ( !osgDB::fileExists(_rootPath) )
+        {
+            if (osgDB::makeDirectory( _rootPath ) == false)
+            {
+                OE_WARN << LC << "Oh no, failed to create root cache folder \"" << _rootPath << "\""
+                   << std::endl;
+                _active = false;
+            }
+        }
     }
 
     CacheBin*
     LevelDBCacheImpl::addBin( const std::string& name )
     {
-        return _bins.getOrCreate(name, new LevelDBCacheBin( name, _rootPath ));
+        return _active ?
+            _bins.getOrCreate(name, new LevelDBCacheBin( name, _rootPath )) :
+            0L;
     }
 
     CacheBin*
     LevelDBCacheImpl::getOrCreateDefaultBin()
     {
+        if ( !_active )
+            return 0L;
+
         static Threading::Mutex s_defaultBinMutex;
         if ( !_defaultBin.valid() )
         {
@@ -183,6 +255,7 @@ namespace
     }
 
     //------------------------------------------------------------------------
+
 
     std::string
     LevelDBCacheBin::getValidKey(const std::string& key)
@@ -212,6 +285,51 @@ namespace
         return ok;
     }
 
+    std::string dataKey(const std::string& key)
+    {
+        return "data!" + key;
+    }
+
+    std::string dataStart()
+    {
+        return "data!"; // + getID() + "!";
+    }
+
+    std::string dataEnd()
+    {
+        return "data!\xff";
+    }
+
+    std::string metaKey(const std::string& key)
+    {
+        return "meta!" + key;
+    }
+
+    std::string metaStart()
+    {
+        return "meta!";
+    }
+
+    std::string metaEnd()
+    {
+        return "meta!\xff";
+    }
+
+    std::string timeKey(const DateTime& t, const std::string& key)
+    {
+        return "time!" + t.asISO8601() + "!" + key;
+    }
+
+    std::string timeStart()
+    {
+        return "time!";
+    }
+
+    std::string timeEnd()
+    {
+        return "time!\xff";
+    }
+
     LevelDBCacheBin::LevelDBCacheBin(const std::string& binID,
                                      const std::string& rootPath) :
       osgEarth::CacheBin( binID ),
@@ -227,123 +345,100 @@ namespace
 
         CachePolicy::NO_CACHE.apply(_rwOptions.get());
 
-        leveldb::Options options;
-        options.create_if_missing = true;
-        leveldb::Status status = leveldb::DB::Open(options, _binPath, &_db);
-        if ( !status.ok() )
-        {
-           OE_WARN << LC << "Failed to open or create cache bin at " << _binPath << std::endl;
-           if ( _db )
-              delete _db;
-        }
+        open();
     }
 
     LevelDBCacheBin::~LevelDBCacheBin()
     {
         if (_db)
+        {
            delete _db;
+           _db = 0L;
+        }
+    }
+
+    void
+    LevelDBCacheBin::open()
+    {
+        leveldb::Options options;
+        options.create_if_missing = true;
+        leveldb::Status status = leveldb::DB::Open(options, _binPath, &_db);
+        if ( !status.ok() )
+        {
+            OE_WARN << LC << "Failed to open or create cache bin at " << _binPath << std::endl;
+            if ( _db )
+            {
+                delete _db;
+                _db = 0L;
+            }
+        }
     }
 
     ReadResult
-    LevelDBCacheBin::readImage(const std::string& key, TimeStamp minTime)
+    LevelDBCacheBin::readImage(const std::string& key, TimeStamp minTime) {
+        return read(key, minTime, ImageReader(_rw.get(), _rwOptions.get()));
+    }
+
+    ReadResult
+    LevelDBCacheBin::readObject(const std::string& key, TimeStamp minTime) {
+        return read(key, minTime, ObjectReader(_rw.get(), _rwOptions.get()));
+    }
+
+    ReadResult
+    LevelDBCacheBin::readNode(const std::string& key, TimeStamp minTime) {
+        return read(key, minTime, NodeReader(_rw.get(), _rwOptions.get()));
+    }
+
+    ReadResult
+    LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& reader)
     {
         if ( !binValidForReading() ) 
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
 
-        std::string value;
-        leveldb::Status status = _db->Get(leveldb::ReadOptions(), key, &value);
+        Config metadata;
+        leveldb::Status status;
+        leveldb::ReadOptions ro;
 
-        if (!status.ok())
-            return ReadResult(ReadResult::RESULT_NOT_FOUND);
-
-        //TODO: expiry.
-        //if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
-        //    return ReadResult( ReadResult::RESULT_EXPIRED );
-
-        std::istringstream input(value);
-        osgDB::ReaderWriter::ReadResult r = _rw->readImage(input, _rwOptions.get());
-        if ( !r.success() )
-           return ReadResult();
-
-        // read metadata if it exists.
-        Config meta;
-        
-        std::string metakey = key + ".meta";
-        status = _db->Get(leveldb::ReadOptions(), metakey, &value);
-        if (status.ok())
+        // first read the metadata record.
+        std::string metavalue;
+        status = _db->Get( ro, metaKey(key), &metavalue );
+        if ( status.ok() )
         {
-           decodeMeta(value, meta);
+            decodeMeta(metavalue, metadata);
+
+            // Check for expiration:
+            TimeStamp minValidTime = std::max(minTime, getMinValidTime());
+            if ( minValidTime > 0 )
+            {
+                DateTime t( metadata.value(TIME_FIELD) );
+                if ( t.asTimeStamp() < minValidTime )
+                {
+                    OE_DEBUG << LC << "Tile " << key << " found but expired!" << std::endl;
+                    return ReadResult(ReadResult::RESULT_EXPIRED);
+                }
+            }
+        }
+        
+        // next read the data record.
+        std::string datakey = dataKey(key);
+        std::string datavalue;
+        status = _db->Get( ro, datakey, &datavalue );
+        if ( !status.ok() )
+        {
+            // main record not found for some reason.
+            return ReadResult(ReadResult::RESULT_NOT_FOUND);
         }
 
-        return ReadResult( r.getImage(), meta );
-    }
-
-    ReadResult
-    LevelDBCacheBin::readObject(const std::string& key, TimeStamp minTime)
-    {
-        if ( !binValidForReading() ) 
-            return ReadResult(ReadResult::RESULT_NOT_FOUND);
-
-        std::string value;
-        leveldb::Status status = _db->Get(leveldb::ReadOptions(), key, &value);
-
-        if (!status.ok())
-            return ReadResult(ReadResult::RESULT_NOT_FOUND);
-
-        //TODO: expiry.
-        //if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
-        //    return ReadResult( ReadResult::RESULT_EXPIRED );
-
-        std::istringstream input(value);
-        osgDB::ReaderWriter::ReadResult r = _rw->readObject(input, _rwOptions.get());
+        // finally, decode the OSGB stream into an object.
+        std::istringstream datastream(datavalue);
+        osgDB::ReaderWriter::ReadResult r = reader.read(datastream);
         if ( !r.success() )
-           return ReadResult();
-
-        // read metadata if it exists.
-        Config meta;
-        
-        std::string metakey = key + ".meta";
-        status = _db->Get(leveldb::ReadOptions(), metakey, &value);
-        if (status.ok())
         {
-           decodeMeta(value, meta);
+            return ReadResult(ReadResult::RESULT_READER_ERROR);
         }
 
-        return ReadResult( r.getObject(), meta );
-    }
-
-    ReadResult
-    LevelDBCacheBin::readNode(const std::string& key, TimeStamp minTime)
-    {
-        if ( !binValidForReading() ) 
-            return ReadResult(ReadResult::RESULT_NOT_FOUND);
-
-        std::string value;
-        leveldb::Status status = _db->Get(leveldb::ReadOptions(), key, &value);
-
-        if (!status.ok())
-            return ReadResult(ReadResult::RESULT_NOT_FOUND);
-
-        //TODO: expiry.
-        //if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
-        //    return ReadResult( ReadResult::RESULT_EXPIRED );
-
-        std::istringstream input(value);
-        osgDB::ReaderWriter::ReadResult r = _rw->readNode(input, _rwOptions.get());
-        if ( !r.success() )
-           return ReadResult();
-
-        // read metadata if it exists.
-        Config meta;
-        
-        std::string metakey = key + ".meta";
-        status = _db->Get(leveldb::ReadOptions(), metakey, &value);
-        if (status.ok())
-        {
-           decodeMeta(value, meta);
-        }
-
-        return ReadResult( r.getNode(), meta );
+        OE_DEBUG << LC << "Read (" << key << ") from cache bin " << getID() << std::endl;
+        return ReadResult( r.getObject(), metadata );
     }
 
     ReadResult
@@ -364,7 +459,7 @@ namespace
     }
 
     bool
-    LevelDBCacheBin::write( const std::string& key, const osg::Object* object, const Config& meta )
+    LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const Config& meta)
     {
         if ( !binValidForWriting() || !object ) 
             return false;
@@ -372,45 +467,53 @@ namespace
         osgDB::ReaderWriter::WriteResult r;
         bool objWriteOK = false;
 
-        std::string       value;
-        std::stringstream buf;
+        std::string       data;
+        std::stringstream datastream;
 
-         if ( dynamic_cast<const osg::Image*>(object) )
-         {
-               r = _rw->writeImage( *static_cast<const osg::Image*>(object), buf, _rwOptions.get() );
-               objWriteOK = r.success();
-         }
-         else if ( dynamic_cast<const osg::Node*>(object) )
-         {
-               r = _rw->writeNode( *static_cast<const osg::Node*>(object), buf, _rwOptions.get() );
-               objWriteOK = r.success();
-         }
-         else
-         {
-               r = _rw->writeObject( *object, buf );
-               objWriteOK = r.success();
-         }
+        if ( dynamic_cast<const osg::Image*>(object) )
+        {
+            r = _rw->writeImage( *static_cast<const osg::Image*>(object), datastream, _rwOptions.get() );
+            objWriteOK = r.success();
+        }
+        else if ( dynamic_cast<const osg::Node*>(object) )
+        {
+            r = _rw->writeNode( *static_cast<const osg::Node*>(object), datastream, _rwOptions.get() );
+            objWriteOK = r.success();
+        }
+        else
+        {
+            r = _rw->writeObject( *object, datastream );
+            objWriteOK = r.success();
+        }
 
-         if (objWriteOK)
-         {
-            value = buf.str();
-            leveldb::Status status = _db->Put(leveldb::WriteOptions(), key, value);
-            objWriteOK = status.ok();
+        if (objWriteOK)
+        {
+            DateTime now;
+            leveldb::WriteBatch batch;
 
-            // write metadata
-            if ( !meta.empty() && objWriteOK )
+            // write the data:
+            data = datastream.str();
+            batch.Put( dataKey(key), data );
+
+            // write the timestamp index:
+            batch.Put( timeKey(now, key), key );
+
+            // write the metadata:
+            Config metadata(meta);
+            metadata.set( TIME_FIELD, now.asISO8601() );
+            encodeMeta( metadata, data );
+            batch.Put( metaKey(key), data );
+
+            objWriteOK = _db->Write( leveldb::WriteOptions(), &batch ).ok();
+
+            if ( objWriteOK )
             {
-                std::string metakey = key + ".meta";
-                encodeMeta( metakey, value );
-                _db->Put(leveldb::WriteOptions(), metakey, value);
+                OE_DEBUG << LC << "Wrote (" << dataKey(key) << ") to cache bin " << getID() << std::endl;
             }
         }
 
-        if ( objWriteOK )
-        {
-            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin " << getID() << std::endl;
-        }
-        else
+        
+        if ( !objWriteOK )
         {
             OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin " << getID()
                 << "; msg = \"" << r.message() << "\"" << std::endl;
@@ -425,19 +528,32 @@ namespace
         if ( !binValidForReading() ) 
             return STATUS_NOT_FOUND;
 
-        std::string value;
-        leveldb::Status status = _db->Get(leveldb::ReadOptions(), key, &value);
-        if ( !status.ok() )
-           return STATUS_NOT_FOUND;
+        leveldb::Status status;
+        leveldb::ReadOptions ro;
 
-#if 0 // TODO: expiry.
-        TimeStamp oldestValidTime = std::max(minTime, getMinValidTime());
-        struct stat s;
-        ::stat( path.c_str(), &s );
-        return s.st_mtime >= oldestValidTime ? STATUS_OK : STATUS_EXPIRED;
-#else
-        return STATUS_OK;
-#endif
+        // read the metadata record.
+        std::string metavalue;
+        status = _db->Get( ro, metaKey(key), &metavalue );
+        if ( status.ok() )
+        {
+            // Check for expiration:
+            TimeStamp minValidTime = std::max(minTime, getMinValidTime());
+            if ( minValidTime > 0 )
+            {
+                Config metadata;
+                decodeMeta(metavalue, metadata);
+                DateTime t( metadata.value(TIME_FIELD) );
+                if ( t.asTimeStamp() < minValidTime )
+                {
+                    return STATUS_EXPIRED;
+                }
+            }
+            return STATUS_OK;
+        }
+        else
+        {
+            return STATUS_NOT_FOUND;
+        }
     }
 
     bool
@@ -446,25 +562,117 @@ namespace
         if ( !binValidForReading() )
            return false;
 
-        leveldb::Status status = _db->Delete(leveldb::WriteOptions(), key);
-        return status.ok();
+        // first read in the time from the metadata record.
+        std::string metavalue;
+        if ( _db->Get(leveldb::ReadOptions(), metaKey(key), &metavalue).ok() == false )
+            return false;
+
+        Config metadata;
+        decodeMeta(metavalue, metadata);
+        DateTime t(metadata.value(TIME_FIELD));
+
+        leveldb::WriteBatch batch;
+        batch.Delete( dataKey(key) );
+        batch.Delete( metaKey(key) );
+        batch.Delete( timeKey(t, key) );
+        
+        leveldb::Status status = _db->Write(leveldb::WriteOptions(), &batch);
+        if ( !status.ok() )
+        {
+            OE_WARN << LC << "Failed to remove (" << key << ") from cache" << std::endl;
+            return false;
+        }
+
+        return true;
     }
 
     bool
     LevelDBCacheBin::touch(const std::string& key)
     {
-        // not yet implemented
-        return false;
+        if ( !binValidForWriting() )
+           return false;
+
+        // first read in the time from the metadata record.
+        std::string metavalue;
+        if ( _db->Get(leveldb::ReadOptions(), metaKey(key), &metavalue).ok() == false )
+            return false;
+
+        Config metadata;
+        decodeMeta(metavalue, metadata);
+        DateTime oldtime(metadata.value(TIME_FIELD));
+        
+        leveldb::WriteBatch batch;
+
+        // In a transaction, update the metadata record with the current time.
+        std::string newtime = DateTime().asISO8601();
+        metadata.set(TIME_FIELD, newtime);
+        encodeMeta(metadata, metavalue);
+        batch.Put(metaKey(key), metavalue);
+
+        // ...remove the old time index record:
+        batch.Delete( timeKey(oldtime, key) );
+
+        // ...and write a new time index record.
+        batch.Put( timeKey(newtime, key), key );
+
+        leveldb::Status status = _db->Write(leveldb::WriteOptions(), &batch);
+        if ( !status.ok() )
+        {
+            OE_WARN << LC << "Failed to touch (" << key << ")" << std::endl;
+        }
+        return status.ok();
     }
 
     bool
     LevelDBCacheBin::purge()
     {
+        if ( !binValidForWriting() )
+           return false;
+
+        delete _db;
+        _db = 0L;
+
+        leveldb::Status status = leveldb::DestroyDB( _binPath, leveldb::Options() );
+        if ( !status.ok() )
+        {
+            OE_WARN << LC << "Failed to purge (" << _binPath << ")" << std::endl;
+            return false;
+        }
+
+        // reopen it.
+        open();
+
+        return true;
+    }
+
+    bool
+    LevelDBCacheBin::compact()
+    {
+        if ( !binValidForWriting() )
+           return false;
+
+        // This could take a while.
+        _db->CompactRange(0L, 0L);
+
+        return false;
+    }
+
+    unsigned
+    LevelDBCacheBin::getStorageSize()
+    {
         if ( !binValidForReading() )
            return false;
 
-        // NYI.
-        return false;
+        leveldb::Range ranges[3];
+        uint64_t       sizes[3];
+
+        ranges[0].start = dataStart(), ranges[0].limit = dataEnd();
+        ranges[1].start = metaStart(), ranges[1].limit = metaEnd();
+        ranges[2].start = timeStart(), ranges[2].limit = timeEnd();
+        sizes[0] = sizes[1] = sizes[2] = 0;
+
+        _db->GetApproximateSizes( ranges, 3, sizes );
+        return sizes[0] + sizes[1] + sizes[2];
     }
 
     Config
@@ -488,10 +696,14 @@ namespace
 
         ScopedWriteLock exclusiveLock( _rwmutex );
 
+        // inject the cache version
+        Config mutableConf(conf);
+        mutableConf.set("leveldb.cache_version", LEVELDB_CACHE_VERSION);
+
         std::fstream output( _metaPath.c_str(), std::ios_base::out );
         if ( output.is_open() )
         {
-            output << conf.toJSON(true);
+            output << mutableConf.toJSON(true);
             output.flush();
             output.close();
             return true;

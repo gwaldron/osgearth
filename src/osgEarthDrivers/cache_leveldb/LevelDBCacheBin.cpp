@@ -46,51 +46,6 @@ namespace
         bufStr = buf.str();
         meta.fromJSON( bufStr );
     }
-
-    std::string dataKey(const std::string& key)
-    {
-        return "data!" + key;
-    }
-
-    std::string dataStart()
-    {
-        return "data!"; // + getID() + "!";
-    }
-
-    std::string dataEnd()
-    {
-        return "data!\xff";
-    }
-
-    std::string metaKey(const std::string& key)
-    {
-        return "meta!" + key;
-    }
-
-    std::string metaStart()
-    {
-        return "meta!";
-    }
-
-    std::string metaEnd()
-    {
-        return "meta!\xff";
-    }
-
-    std::string timeKey(const DateTime& t, const std::string& key)
-    {
-        return "time!" + t.asISO8601() + "!" + key;
-    }
-
-    std::string timeStart()
-    {
-        return "time!";
-    }
-
-    std::string timeEnd()
-    {
-        return "time!\xff";
-    }
 }
 
 //------------------------------------------------------------------------
@@ -101,7 +56,7 @@ namespace
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
-#define TIME_FIELD "cache.datetime"
+#define TIME_FIELD "leveldb.time"
 
 
 LevelDBCacheBin::LevelDBCacheBin(const std::string& binID,
@@ -142,18 +97,83 @@ LevelDBCacheBin::binValidForWriting(bool silent)
     return ok;
 }
 
+#define SEP std::string("!")
+
+std::string
+LevelDBCacheBin::binKey()
+{
+    return "b" + SEP + getID();
+}
+
+std::string
+LevelDBCacheBin::dataKey(const std::string& key)
+{
+    return "d" + SEP + getID() + SEP + key;
+}
+
+std::string
+LevelDBCacheBin::dataBegin()
+{
+    return "d" + SEP + getID() + SEP;
+}
+
+std::string
+LevelDBCacheBin::dataEnd()
+{
+    return "d" + SEP + getID() + SEP + "\xff";
+}
+
+std::string
+LevelDBCacheBin::metaKey(const std::string& key)
+{
+    return "m" + SEP + getID() + SEP + key;
+}
+
+std::string
+LevelDBCacheBin::metaBegin()
+{
+    return "m" + SEP + getID() + SEP;
+}
+
+std::string
+LevelDBCacheBin::metaEnd()
+{
+    return "m" + SEP + getID() + SEP + "\xff";
+}
+
+std::string
+LevelDBCacheBin::timeKey(const DateTime& t, const std::string& key)
+{
+    return "t" + SEP + t.asISO8601() + SEP + getID() + SEP + key;
+}
+
+std::string
+LevelDBCacheBin::timeBegin()
+{
+    return "t" + SEP + getID() + SEP;
+}
+
+std::string
+LevelDBCacheBin::timeEnd()
+{
+    return "t" + SEP + getID() + SEP + "\xff";
+}
+
 ReadResult
-LevelDBCacheBin::readImage(const std::string& key, TimeStamp minTime) {
+LevelDBCacheBin::readImage(const std::string& key, TimeStamp minTime)
+{
     return read(key, minTime, ImageReader(_rw.get(), _rwOptions.get()));
 }
 
 ReadResult
-LevelDBCacheBin::readObject(const std::string& key, TimeStamp minTime) {
+LevelDBCacheBin::readObject(const std::string& key, TimeStamp minTime)
+{
     return read(key, minTime, ObjectReader(_rw.get(), _rwOptions.get()));
 }
 
 ReadResult
-LevelDBCacheBin::readNode(const std::string& key, TimeStamp minTime) {
+LevelDBCacheBin::readNode(const std::string& key, TimeStamp minTime)
+{
     return read(key, minTime, NodeReader(_rw.get(), _rwOptions.get()));
 }
 
@@ -397,20 +417,16 @@ LevelDBCacheBin::purge()
     if ( !binValidForWriting() )
         return false;
 
-    delete _db;
-    _db = 0L;
-
-    leveldb::Status status = leveldb::DestroyDB( _binPath, leveldb::Options() );
-    if ( !status.ok() )
+    leveldb::WriteBatch batch;
+    leveldb::Iterator* i = _db->NewIterator(leveldb::ReadOptions());
+    std::string dataend = dataEnd();
+    for(i->Seek(dataBegin());
+        i->Valid() && i->key().ToString() < dataend;
+        i->Next())
     {
-        OE_WARN << LC << "Failed to purge (" << _binPath << ")" << std::endl;
-        return false;
+        batch.Delete(i->key());
     }
-
-    // reopen it.
-    open();
-
-    return true;
+    return _db->Write(leveldb::WriteOptions(), &batch).ok();
 }
 
 bool
@@ -434,9 +450,9 @@ LevelDBCacheBin::getStorageSize()
     leveldb::Range ranges[3];
     uint64_t       sizes[3];
 
-    ranges[0].start = dataStart(), ranges[0].limit = dataEnd();
-    ranges[1].start = metaStart(), ranges[1].limit = metaEnd();
-    ranges[2].start = timeStart(), ranges[2].limit = timeEnd();
+    ranges[0].start = dataBegin(), ranges[0].limit = dataEnd();
+    ranges[1].start = metaBegin(), ranges[1].limit = metaEnd();
+    ranges[2].start = timeBegin(), ranges[2].limit = timeEnd();
     sizes[0] = sizes[1] = sizes[2] = 0;
 
     _db->GetApproximateSizes( ranges, 3, sizes );
@@ -449,32 +465,38 @@ LevelDBCacheBin::readMetadata()
     if ( !binValidForReading() )
         return Config();
 
-    ScopedReadLock sharedLock( _rwmutex );
-        
-    Config conf;
-    conf.fromJSON( URI(_metaPath).getString(_rwOptions.get()) );
+    ScopedMutexLock exclusiveLock( _rwMutex );
 
-    return conf;
+    std::string binvalue;
+    leveldb::Status status = _db->Get(leveldb::ReadOptions(), binKey(), &binvalue);
+    if ( !status.ok() )
+        return Config();
+
+    Config binMetadata;
+    decodeMeta(binvalue, binMetadata);
+    return binMetadata;
 }
 
 bool
-LevelDBCacheBin::writeMetadata( const Config& conf )
+LevelDBCacheBin::writeMetadata(const Config& conf)
 {
-    if ( !binValidForWriting() ) return false;
+    if ( !binValidForWriting() )
+        return false;
 
-    ScopedWriteLock exclusiveLock( _rwmutex );
+    ScopedMutexLock exclusiveLock( _rwMutex );
 
     // inject the cache version
     Config mutableConf(conf);
     mutableConf.set("leveldb.cache_version", LEVELDB_CACHE_VERSION);
 
-    std::fstream output( _metaPath.c_str(), std::ios_base::out );
-    if ( output.is_open() )
+    std::string value;
+    encodeMeta(mutableConf, value);
+
+    if ( _db->Put(leveldb::WriteOptions(), binKey(), value).ok() == false )
     {
-        output << mutableConf.toJSON(true);
-        output.flush();
-        output.close();
-        return true;
+        OE_WARN << LC << "Failed to write metadata record for bin (" << getID() << ")" << std::endl;
+        return false;
     }
-    return false;
+
+    return true;
 }

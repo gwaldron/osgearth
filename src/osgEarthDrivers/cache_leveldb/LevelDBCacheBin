@@ -24,6 +24,8 @@
 #include <string>
 #include <leveldb/db.h>
 
+#define LEVELDB_CACHE_VERSION 1
+
 namespace osgEarth { namespace Drivers { namespace LevelDBCache
 {   
     using namespace osgEarth;
@@ -78,7 +80,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         std::string                       _binPath;        // full path to the bin's root folder
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options>      _rwOptions;
-        Threading::ReadWriteMutex         _rwmutex;
+        Threading::Mutex                  _rwMutex;
         leveldb::DB*                      _db;
         
         // adapter base for all the osg read functions...
@@ -103,6 +105,19 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         };
 
         ReadResult read(const std::string& key, TimeStamp minTime, const Reader& reader);
+
+        // key generators
+        std::string dataKey(const std::string& key);
+        std::string dataBegin();
+        std::string dataEnd();
+        std::string metaKey(const std::string& key);
+        std::string metaBegin();
+        std::string metaEnd();
+        std::string timeKey(const DateTime& t, const std::string& key);
+        std::string timeBegin();
+        std::string timeEnd();
+        std::string binKey();
+            
     };
 
 

@@ -24,8 +24,6 @@
 #include <osgEarth/Cache>
 #include <leveldb/db.h>
 
-#define LEVELDB_CACHE_VERSION 1
-
 namespace osgEarth { namespace Drivers { namespace LevelDBCache
 {    
     /** 
@@ -35,6 +33,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
     {
     public:
         META_Object( osgEarth, LevelDBCacheImpl );
+        virtual ~LevelDBCacheImpl();
         LevelDBCacheImpl() { } // unused
         LevelDBCacheImpl( const LevelDBCacheImpl& rhs, const osg::CopyOp& op ) { } // unused
 

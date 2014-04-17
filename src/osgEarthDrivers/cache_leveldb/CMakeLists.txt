@@ -3,8 +3,8 @@ INCLUDE_DIRECTORIES( ${LEVELDB_INCLUDE_DIR} )
 
 SET(TARGET_H
     LevelDBCacheOptions
-	LevelDBCache
-	LevelDBCacheBin
+    LevelDBCache
+    LevelDBCacheBin
 )
 SET(TARGET_SRC 
     LevelDBCache.cpp

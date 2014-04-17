@@ -275,17 +275,45 @@ list( osg::ArgumentParser& args )
 
         const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
 
-        if ( layer->getCacheBinMetadata( cacheProfile, meta ) )
+        CacheBin* bin = layer->getCacheBin(cacheProfile);
+        if ( bin )
         {
-            Config conf = meta.getConfig();
-            std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
-                << conf.toJSON(true) << std::endl;
+            Config conf = bin->readMetadata();
+            std::cout 
+                << "Layer \"" << layer->getName() << "\", cache metadata = "
+                << conf.toJSON(true)
+                << std::endl;
+
+            unsigned size = bin->getStorageSize();
+            if ( size > 0 )
+            {
+                std::cout << "Storage size (approx) = " << size << " bytes" 
+                    << std::endl;
+            }
         }
         else
         {
             std::cout << "Layer \"" << layer->getName() << "\": no cache information" 
                 << std::endl;
         }
+
+#if 0
+        if ( layer->getCacheBinMetadata( cacheProfile, meta ) )
+        {
+            Config conf = meta.getConfig();
+            std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
+                << conf.toJSON(true) << std::endl;
+
+            CacheBin* bin = layer->getCacheBin(cacheProfile);
+            if ( bin )
+            {
+                Config bin->readMetadata(
+            }
+        }
+        else
+        {
+        }
+#endif
     }
 
     return 0;

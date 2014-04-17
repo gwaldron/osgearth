@@ -59,6 +59,15 @@ _active        ( true )
     }
 }
 
+LevelDBCacheImpl::~LevelDBCacheImpl()
+{
+    if ( _db )
+    {
+        delete _db;
+        _db = 0L;
+    }
+}
+
 void
 LevelDBCacheImpl::init()
 {
@@ -118,40 +127,3 @@ LevelDBCacheImpl::getOrCreateDefaultBin()
     }
     return _defaultBin.get();
 }
-
-//------------------------------------------------------------------------
-
-namespace osgEarth { namespace Drivers { namespace LevelDBCache
-{
-    /**
-     * This driver defers loading of the source data to the appropriate OSG plugin. You
-     * must explicity set an override profile when using this driver.
-     *
-     * For example, use this driver to load a simple jpeg file; then set the profile to
-     * tell osgEarth its projection.
-     */
-    class LevelDBCacheDriver : public osgEarth::CacheDriver
-    {
-    public:
-        LevelDBCacheDriver()
-        {
-            supportsExtension( "osgearth_cache_leveldb", "leveldb cache for osgEarth" );
-        }
-
-        virtual const char* className()
-        {
-            return "leveldb cache for osgEarth";
-        }
-
-        virtual ReadResult readObject(const std::string& file_name, const Options* options) const
-        {
-            if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
-                return ReadResult::FILE_NOT_HANDLED;
-
-            return ReadResult( new LevelDBCacheImpl( getCacheOptions(options) ) );
-        }
-    };
-
-    REGISTER_OSGPLUGIN(osgearth_cache_leveldb, LevelDBCacheDriver);
-
-} } } // namespace osgEarth::Drivers::LevelDBCache

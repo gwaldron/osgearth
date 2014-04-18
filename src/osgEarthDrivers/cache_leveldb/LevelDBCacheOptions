@@ -34,7 +34,11 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
     {
     public:
         LevelDBCacheOptions( const ConfigOptions& options =ConfigOptions() )
-            : CacheOptions( options )
+            : CacheOptions    ( options ),
+              _maxSizeMB      ( 0 ),
+              _sizeCheckPeriod( 100 ),
+              _sizePurgePeriod( 75 ),
+              _blockSize      ( 262144 ) // 256K
         {
             setDriver( "leveldb" );
             fromConfig( _conf ); 
@@ -48,10 +52,33 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         optional<std::string>& rootPath() { return _path; }
         const optional<std::string>& rootPath() const { return _path; }
 
+        /** Maximum size of the cache in megabytes. Note: this is not
+         *  a guarantee - merely a guideline. */
+        optional<unsigned>& maxSizeMB() { return _maxSizeMB; }
+        const optional<unsigned>& maxSizeMB() const { return _maxSizeMB; }
+
+        //--- Advanced options ---
+
+        /** Number of writes between cap checks */
+        optional<unsigned>& sizeCheckPeriod() { return _sizeCheckPeriod; }
+        const optional<unsigned>& sizeCheckPeriod() const { return _sizeCheckPeriod; }
+
+        /** Number of writer between cap purges */
+        optional<unsigned>& sizePurgePeriod() { return _sizePurgePeriod; }
+        const optional<unsigned>& sizePurgePeriod() const { return _sizePurgePeriod; }
+
+        /** Leveldb block size */
+        optional<unsigned>& blockSize() { return _blockSize; }
+        const optional<unsigned>& blockSize() const { return _blockSize; }
+
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.addIfSet( "path", _path );
+            conf.addIfSet( "max_size_mb", _maxSizeMB );
+            conf.addIfSet( "size_check_period", _sizeCheckPeriod );
+            conf.addIfSet( "size_purge_period", _sizePurgePeriod );
+            conf.addIfSet( "block_size", _blockSize );
             return conf;
         }
         virtual void mergeConfig( const Config& conf ) {
@@ -62,9 +89,17 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "path", _path );
+            conf.getIfSet( "max_size_mb", _maxSizeMB );
+            conf.getIfSet( "size_check_period", _sizeCheckPeriod );
+            conf.getIfSet( "size_purge_period", _sizePurgePeriod );
+            conf.getIfSet( "block_size", _blockSize );
         }
 
         optional<std::string> _path;
+        optional<unsigned>    _maxSizeMB;
+        optional<unsigned>    _sizeCheckPeriod;
+        optional<unsigned>    _sizePurgePeriod;
+        optional<unsigned>    _blockSize;
     };
 
 } } } // namespace osgEarth::Drivers::LevelDBCache

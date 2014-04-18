@@ -22,6 +22,8 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/TimeControl>
 #include <osgEarth/URI>
+#include <osgEarth/MemCache>
+#include <osgEarth/CacheBin>
 #include <osgDB/WriteFile>
 #include <osg/Version>
 #include <OpenThreads/ScopedLock>

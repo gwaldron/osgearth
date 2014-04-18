@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_DRIVER_CACHE_LEVELDB_BIN
 #define OSGEARTH_DRIVER_CACHE_LEVELDB_BIN 1
 
+#include "Tracker"
 #include <osgEarth/Common>
 #include <osgEarth/Cache>
 #include <string>
@@ -27,7 +28,7 @@
 #define LEVELDB_CACHE_VERSION 1
 
 namespace osgEarth { namespace Drivers { namespace LevelDBCache
-{   
+{
     using namespace osgEarth;
 
     /** 
@@ -36,7 +37,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
     class LevelDBCacheBin : public osgEarth::CacheBin
     {
     public:
-        LevelDBCacheBin(const std::string& name, leveldb::DB* db);
+        LevelDBCacheBin(const std::string& name, leveldb::DB* db, Tracker* tracker);
 
         virtual ~LevelDBCacheBin();
 
@@ -67,6 +68,8 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         Config readMetadata();
 
         bool writeMetadata( const Config& meta );
+
+        bool purgeOldest(unsigned maxnum);
         
     protected:
 
@@ -82,6 +85,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         osg::ref_ptr<osgDB::Options>      _rwOptions;
         Threading::Mutex                  _rwMutex;
         leveldb::DB*                      _db;
+        osg::ref_ptr<Tracker>             _tracker;
         
         // adapter base for all the osg read functions...
         struct Reader {
@@ -106,6 +110,8 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
 
         ReadResult read(const std::string& key, TimeStamp minTime, const Reader& reader);
 
+        void postWrite();
+
         // key generators
         std::string dataKey(const std::string& key);
         std::string dataBegin();
@@ -117,7 +123,8 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         std::string timeBegin();
         std::string timeEnd();
         std::string binKey();
-            
+        std::string timeBeginGlobal();
+        std::string timeEndGlobal();
     };
 
 

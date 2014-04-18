@@ -5,6 +5,7 @@ SET(TARGET_H
     LevelDBCacheOptions
     LevelDBCache
     LevelDBCacheBin
+	Tracker
 )
 SET(TARGET_SRC 
     LevelDBCache.cpp

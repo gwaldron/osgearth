@@ -257,6 +257,10 @@ list( osg::ArgumentParser& args )
         << "Cache config: " << std::endl
         << cache->getCacheOptions().getConfig().toJSON(true) << std::endl;
 
+    std::cout 
+        << "Cache size (total) = "
+        << cache->getApproximateSize() << " bytes" << std::endl;
+
     MapFrame mapf( mapNode->getMap() );
 
     TerrainLayerVector layers;
@@ -472,49 +476,13 @@ compact( osg::ArgumentParser& args )
     if ( !map->getCache() )
         return message( "Earth file does not contain a cache." );
 
-    std::vector<Entry> entries;
+    unsigned presize = map->getCache()->getApproximateSize();
+    std::cout << "Size = " << presize << "; compacting..." << std::endl;
 
-    ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
-    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
-    {
-        ImageLayer* layer = i->get();
+    map->getCache()->compact();
 
-        bool useMFP =
-            layer->getProfile() &&
-            layer->getProfile()->getSRS()->isSphericalMercator() &&
-            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
-
-        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
-
-        CacheBin* bin = layer->getCacheBin( cacheProfile );
-        if ( bin )
-        {
-            std::cout << "Compacting, layer=" << layer->getName() << ", bin=" << bin->getID() << "..." << std::endl;
-            bin->compact();
-        }
-    }
-
-    ElevationLayerVector elevationLayers;
-    map->getElevationLayers( elevationLayers );
-    for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
-    {
-        ElevationLayer* layer = i->get();
-
-        bool useMFP =
-            layer->getProfile() &&
-            layer->getProfile()->getSRS()->isSphericalMercator() &&
-            mapNode->getMapNodeOptions().getTerrainOptions().enableMercatorFastPath() == true;
-
-        const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
-
-        CacheBin* bin = i->get()->getCacheBin( cacheProfile );
-        if ( bin )
-        {
-            std::cout << "Compacting, layer=" << layer->getName() << ", bin=" << bin->getID() << "..." << std::endl;
-            bin->compact();
-        }
-    }
+    unsigned postsize = map->getCache()->getApproximateSize();
+    std::cout << "Done. New size = " << postsize << std::endl;
 
     return 0;
 }

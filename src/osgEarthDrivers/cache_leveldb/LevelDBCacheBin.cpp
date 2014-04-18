@@ -60,9 +60,11 @@ namespace
 
 
 LevelDBCacheBin::LevelDBCacheBin(const std::string& binID,
-                                 leveldb::DB*       db) :
+                                 leveldb::DB*       db,
+                                 Tracker*           tracker) :
 osgEarth::CacheBin( binID ),
-_db               ( db )
+_db               ( db ),
+_tracker          ( tracker )
 {
     // reader to parse data:
     _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
@@ -159,6 +161,18 @@ LevelDBCacheBin::timeEnd()
     return "t" + SEP + getID() + SEP + "\xff";
 }
 
+std::string
+LevelDBCacheBin::timeBeginGlobal()
+{
+    return "t" + SEP;
+}
+
+std::string
+LevelDBCacheBin::timeEndGlobal()
+{
+    return "t" + SEP + "\xff";
+}
+
 ReadResult
 LevelDBCacheBin::readImage(const std::string& key, TimeStamp minTime)
 {
@@ -182,6 +196,8 @@ LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& r
 {
     if ( !binValidForReading() ) 
         return ReadResult(ReadResult::RESULT_NOT_FOUND);
+
+    ++_tracker->reads;
 
     Config metadata;
     leveldb::Status status;
@@ -226,6 +242,8 @@ LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& r
     }
 
     OE_DEBUG << LC << "Read (" << key << ") from cache bin " << getID() << std::endl;
+
+    ++_tracker->hits;
     return ReadResult( r.getObject(), metadata );
 }
 
@@ -296,6 +314,9 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
 
         if ( objWriteOK )
         {
+            ++_tracker->writes;
+            postWrite();
+
             OE_DEBUG << LC << "Wrote (" << dataKey(key) << ") to cache bin " << getID() << std::endl;
         }
     }
@@ -308,6 +329,35 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
     }
 
     return objWriteOK;
+}
+
+void
+LevelDBCacheBin::postWrite()
+{
+    if ( _tracker->hasSizeLimit() )
+    {
+        if ( _tracker->isOverLimit() )
+        {
+            if ( _tracker->isTimeToPurge() )
+            {
+                unsigned num = _tracker->numToPurge();
+                this->purgeOldest(num * 3);
+
+                //off_t size = _tracker->calcSize();
+                //OE_INFO << LC
+                //    << "Purged " << num << " records, new cache size="
+                //    << (size/1048576) << " MB" << std::endl;
+            }
+        }
+        else
+        {
+            if ( _tracker->isTimeToCheckSize() )
+            {
+                off_t size = _tracker->calcSize();
+                //OE_INFO << LC << "Cache size = " << (size/1048576) << " MB" << std::endl;
+            }
+        }
+    }
 }
 
 CacheBin::RecordStatus
@@ -450,9 +500,9 @@ LevelDBCacheBin::getStorageSize()
     leveldb::Range ranges[3];
     uint64_t       sizes[3];
 
-    ranges[0].start = dataBegin(), ranges[0].limit = dataEnd();
-    ranges[1].start = metaBegin(), ranges[1].limit = metaEnd();
-    ranges[2].start = timeBegin(), ranges[2].limit = timeEnd();
+    ranges[0] = leveldb::Range(dataBegin(), dataEnd());
+    ranges[1] = leveldb::Range(metaBegin(), metaEnd());
+    ranges[2] = leveldb::Range(timeBegin(), timeEnd());
     sizes[0] = sizes[1] = sizes[2] = 0;
 
     _db->GetApproximateSizes( ranges, 3, sizes );
@@ -498,5 +548,45 @@ LevelDBCacheBin::writeMetadata(const Config& conf)
         return false;
     }
 
+    return true;
+}
+
+bool
+LevelDBCacheBin::purgeOldest(unsigned maxnum)
+{
+    if ( !binValidForWriting() )
+        return false;
+
+    leveldb::WriteBatch batch;
+
+    leveldb::Iterator* it = _db->NewIterator(leveldb::ReadOptions());
+
+    unsigned count = 0;
+    std::string limit = timeEndGlobal();
+
+    for(it->Seek(timeBeginGlobal());
+        count < maxnum && it->Valid() && it->key().ToString() < limit;
+        it->Next(), ++count )
+    {
+        if ( !it->status().ok() )
+            break;
+
+        std::string key = it->value().ToString();
+        batch.Delete( dataKey(key) );
+        batch.Delete( metaKey(key) );
+        batch.Delete( it->key() );
+
+        OE_DEBUG << LC << "Deleted time key " << it->key().ToString() << std::endl;
+    }
+
+    delete it;
+    leveldb::Status status = _db->Write(leveldb::WriteOptions(), &batch);
+    if ( !status.ok() )
+    {
+        OE_WARN << LC << "Failed to purge old records from cache" << std::endl;
+        return false;
+    }
+
+    OE_DEBUG << LC << "Purged " << count << " oldest record(s)" << std::endl;
     return true;
 }

@@ -20,6 +20,7 @@
 #include <osgEarth/VerticalDatum>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/MemCache>
 #include <osg/Version>
 #include <iterator>
 

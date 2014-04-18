@@ -23,6 +23,12 @@
 #include <osgDB/Registry>
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
+
+#include <sys/stat.h>
+#ifndef _WIN32
+#   include <unistd.h>
+#endif
 
 #define LC "[LevelDBCache] "
 
@@ -34,22 +40,27 @@ using namespace osgEarth::Drivers::LevelDBCache;
 
 LevelDBCacheImpl::LevelDBCacheImpl( const CacheOptions& options ) :
 osgEarth::Cache( options ),
+_options       ( options ),
 _active        ( true )
 {
-    LevelDBCacheOptions local( options );
-    if ( !local.rootPath().isSet() )
+    _tracker = new Tracker(options);
+
+    if ( _options.rootPath().isSet() )
+    {
+        _rootPath = URI( *_options.rootPath(), options.referrer() ).full();
+    }
+    else
     {
         // read the root path from ENV is necessary:
         const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
         if ( cachePath )
         {
-            local.rootPath() = cachePath;
+            _rootPath = cachePath;
         }
     }
-
-    if ( local.rootPath().isSet() )
+    
+    if ( !_rootPath.empty() )
     {
-        _rootPath = URI( *local.rootPath(), options.referrer() ).full();
         init();
     }
     else
@@ -90,6 +101,8 @@ LevelDBCacheImpl::open()
 {
     leveldb::Options options;
     options.create_if_missing = true;
+    options.block_size        = _options.blockSize().value();
+
     leveldb::Status status = leveldb::DB::Open(options, _rootPath, &_db);
     if ( !status.ok() )
     {
@@ -106,7 +119,7 @@ CacheBin*
 LevelDBCacheImpl::addBin( const std::string& name )
 {
     return _db ?
-        _bins.getOrCreate(name, new LevelDBCacheBin(name, _db)) :
+        _bins.getOrCreate(name, new LevelDBCacheBin(name, _db, _tracker.get())) :
         0L;
 }
 
@@ -122,8 +135,25 @@ LevelDBCacheImpl::getOrCreateDefaultBin()
         Threading::ScopedMutexLock lock( s_defaultBinMutex );
         if ( !_defaultBin.valid() ) // double-check
         {
-            _defaultBin = new LevelDBCacheBin("_default", _db);
+            _defaultBin = new LevelDBCacheBin("_default", _db, _tracker.get());
         }
     }
     return _defaultBin.get();
+}
+
+off_t
+LevelDBCacheImpl::getApproximateSize() const
+{
+    return _tracker->calcSize();
+}
+
+bool
+LevelDBCacheImpl::compact()
+{
+    if ( !_db )
+        return false;
+
+    _db->CompactRange(0L, 0L);
+
+    return true;
 }

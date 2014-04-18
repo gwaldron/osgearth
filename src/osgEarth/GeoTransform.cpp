@@ -102,6 +102,8 @@ GeoTransform::setPosition(const GeoPoint& position)
         _position.altitudeMode() == ALTMODE_RELATIVE &&
         !_autoRecomputeReady)
     {
+        // by using the adapter, there's no need to remove
+        // the callback then this object destructs.
         terrain->addTerrainCallback(
            new TerrainCallbackAdapter<GeoTransform>(this) );
 

@@ -87,7 +87,10 @@ namespace osgEarth
 
 
     /**
-     * Convenience adapter for hooking a callback into a class.
+     * Convenience adapter for hooking a callback into a class. The
+     * class must be derived from osg::Referenced. When the class
+     * destructs, the callback will automatically remove itself from
+     * the Terrain object.
      */
     template<typename T>
     class TerrainCallbackAdapter : public TerrainCallback
@@ -99,7 +102,10 @@ namespace osgEarth
                          TerrainCallbackContext& context)
         {
             osg::ref_ptr<T> t;
-            if (_t.lock(t)) t->onTileAdded(key, tile, context);
+            if (_t.lock(t))
+                t->onTileAdded(key, tile, context);
+            else
+                context.remove();
         }
     protected:
         virtual ~TerrainCallbackAdapter() { }

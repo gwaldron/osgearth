@@ -333,10 +333,10 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
         i->get()->onTileAdded( key, node, context );
 
         // if the callback set the "remove" flag, discard the callback.
-        if ( !context._remove )
-            ++i;
-        else
+        if ( context.markedForRemoval() )
             i = _callbacks.erase( i );
+        else
+            ++i;
     }
 }
 

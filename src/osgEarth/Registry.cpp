@@ -62,10 +62,6 @@ _cacheDriver        ( "filesystem" )
     // set up GDAL and OGR.
     OGRRegisterAll();
     GDALAllRegister();
-    
-    // support Chinese character in the file name and attributes in ESRI's shapefile
-    CPLSetConfigOption("GDAL_FILENAME_IS_UTF8","NO");
-    CPLSetConfigOption("SHAPE_ENCODING","");
 
     // global initialization for CURL (not thread safe)
     HTTPClient::globalInit();

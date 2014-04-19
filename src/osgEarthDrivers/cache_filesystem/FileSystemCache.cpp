@@ -162,6 +162,15 @@ namespace
     Cache( options )
     {
         FileSystemCacheOptions fsco( options );
+
+        // read the root path from ENV is necessary:
+        if ( !fsco.rootPath().isSet())
+        {           
+            const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
+            if ( cachePath )
+                fsco.rootPath() = cachePath;
+        }
+
         _rootPath = URI( *fsco.rootPath(), options.referrer() ).full();
         init();
     }

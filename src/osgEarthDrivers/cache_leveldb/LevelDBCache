@@ -19,53 +19,54 @@
 #ifndef OSGEARTH_DRIVER_CACHE_LEVELDB
 #define OSGEARTH_DRIVER_CACHE_LEVELDB 1
 
+#include "LevelDBCacheOptions"
+#include "Tracker"
 #include <osgEarth/Common>
 #include <osgEarth/Cache>
-#include <string>
+#include <leveldb/db.h>
 
 namespace osgEarth { namespace Drivers { namespace LevelDBCache
-{
-    using namespace osgEarth;
-    
-    /**
-     * Serializable options for the LevelDBCache.
+{    
+    /** 
+     * Cache that stores data in a LEVELDB database in the local filesystem.
      */
-    class LevelDBCacheOptions : public CacheOptions
+    class LevelDBCacheImpl : public osgEarth::Cache
     {
     public:
-        LevelDBCacheOptions( const ConfigOptions& options =ConfigOptions() )
-            : CacheOptions( options )
-        {
-            setDriver( "leveldb" );
-            fromConfig( _conf ); 
-        }
+        META_Object( osgEarth, LevelDBCacheImpl );
+        virtual ~LevelDBCacheImpl();
+        LevelDBCacheImpl() { } // unused
+        LevelDBCacheImpl( const LevelDBCacheImpl& rhs, const osg::CopyOp& op ) { } // unused
 
-        /** dtor */
-        virtual ~LevelDBCacheOptions() { }
+        /**
+         * Constructs a new leveldb cache object.
+         * @param options Options structure that comes from a serialized description of 
+         *        the object (see LevelDBCacheOptions)
+         */
+        LevelDBCacheImpl( const osgEarth::CacheOptions& options );
 
-    public:
-        /** Folder containing the cache bins. */
-        optional<std::string>& rootPath() { return _path; }
-        const optional<std::string>& rootPath() const { return _path; }
+    public: // Cache interface
 
-    public:
-        virtual Config getConfig() const {
-            Config conf = ConfigOptions::getConfig();
-            conf.addIfSet( "path", _path );
-            return conf;
-        }
-        virtual void mergeConfig( const Config& conf ) {
-            ConfigOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
+        osgEarth::CacheBin* addBin( const std::string& binID );
 
-    private:
-        void fromConfig( const Config& conf ) {
-            conf.getIfSet( "path", _path );
-        }
+        osgEarth::CacheBin* getOrCreateDefaultBin();
 
-        optional<std::string> _path;
+        off_t getApproximateSize() const;
+
+        bool compact();
+
+    protected:
+
+        void init();
+        void open();
+
+        std::string  _rootPath;
+        bool         _active;
+        leveldb::DB* _db;
+        osg::ref_ptr<Tracker> _tracker;
+        const LevelDBCacheOptions _options;
     };
+
 
 } } } // namespace osgEarth::Drivers::LevelDBCache
 

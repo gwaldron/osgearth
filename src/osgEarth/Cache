@@ -25,11 +25,19 @@
 #include <osgEarth/Config>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
+#include <sys/types.h>
+
+// environment variables
+#define OSGEARTH_ENV_CACHE_DRIVER  "OSGEARTH_CACHE_DRIVER"
+#define OSGEARTH_ENV_CACHE_PATH    "OSGEARTH_CACHE_PATH"
+#define OSGEARTH_ENV_CACHE_ONLY    "OSGEARTH_CACHE_ONLY"
+#define OSGEARTH_ENV_NO_CACHE      "OSGEARTH_NO_CACHE"
+#define OSGEARTH_ENV_CACHE_MAX_AGE "OSGEARTH_CACHE_MAX_AGE"
 
 namespace osgEarth
 {
     /**
-     * Base class for Cache implementation options.
+     * Base class for Cache options.
      */
     class OSGEARTH_EXPORT CacheOptions : public DriverConfigOptions
     {
@@ -45,8 +53,10 @@ namespace osgEarth
 
     public:
         virtual Config getConfig() const {
-            return ConfigOptions::getConfig();
+            Config conf = ConfigOptions::getConfig();
+            return conf;
         }
+
         virtual void mergeConfig( const Config& conf ) {
             ConfigOptions::mergeConfig( conf );            
             fromConfig( conf );
@@ -54,7 +64,7 @@ namespace osgEarth
 
     private:
         void fromConfig( const Config& conf ) {
-            //nop
+            //future
         }
     };
 
@@ -113,6 +123,17 @@ namespace osgEarth
          * Gets an Options structure representing this cache's configuration.
          */
         const CacheOptions& getCacheOptions() const { return _options; }
+
+        /**
+         * Gets the (approximate) size of the cache on disk, or zero if
+         * the size cannot be calculated
+         */
+        virtual off_t getApproximateSize() const { return 0; }
+
+        /**
+         * Compacts the database (if possible).
+         */
+        virtual bool compact() { return false; }
 
         /**
          * Store this to an osgDB::Options

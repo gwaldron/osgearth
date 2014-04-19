@@ -65,13 +65,13 @@ GeoTransform::setPosition(const GeoPoint& position)
     if ( !position.isValid() )
         return false;
 
-    // relative Z requires a terrain resolver:
+    // relative Z or reprojection require a terrain:
     osg::ref_ptr<Terrain> terrain;
-    if (position.altitudeMode() == ALTMODE_RELATIVE)
-    {
-        if ( !_terrain.lock(terrain) )
-            return false;
-    }
+    _terrain.lock(terrain);
+
+    // relative Z requires a terrain:
+    if (position.altitudeMode() == ALTMODE_RELATIVE && !terrain.valid())
+        return false;
 
     GeoPoint p;
 
@@ -81,7 +81,7 @@ GeoTransform::setPosition(const GeoPoint& position)
     else
         p = position;
 
-    // in case the transformation failed
+    // bail if the transformation failed:
     if ( !p.isValid() )
         return false;
 
@@ -102,6 +102,8 @@ GeoTransform::setPosition(const GeoPoint& position)
         _position.altitudeMode() == ALTMODE_RELATIVE &&
         !_autoRecomputeReady)
     {
+        // by using the adapter, there's no need to remove
+        // the callback then this object destructs.
         terrain->addTerrainCallback(
            new TerrainCallbackAdapter<GeoTransform>(this) );
 

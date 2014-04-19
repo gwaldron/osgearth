@@ -44,6 +44,7 @@ using namespace osgEarth::Drivers;
 int list( osg::ArgumentParser& args );
 int seed( osg::ArgumentParser& args );
 int purge( osg::ArgumentParser& args );
+int compact( osg::ArgumentParser& args );
 int usage( const std::string& msg );
 int message( const std::string& msg );
 std::string prettyPrintTime( double seconds );
@@ -61,6 +62,8 @@ main(int argc, char** argv)
         return list( args );
     else if ( args.read( "--purge" ) )
         return purge( args );
+    else if ( args.read( "--compact" ) )
+        return compact( args );
     else
         return usage("");
 }
@@ -90,6 +93,8 @@ usage( const std::string& msg )
         << "        [--threads]                     ; The number of threads to use for the seed operation (default=1)" << std::endl
         << std::endl
         << "    --purge file.earth                  ; Purges a layer cache in a .earth file (interactive)" << std::endl
+        << std::endl
+        << "    --compact file.earth                ; Compacts existing layers in the cache" << std::endl
         << std::endl;
 
     return -1;
@@ -252,6 +257,10 @@ list( osg::ArgumentParser& args )
         << "Cache config: " << std::endl
         << cache->getCacheOptions().getConfig().toJSON(true) << std::endl;
 
+    std::cout 
+        << "Cache size (total) = "
+        << cache->getApproximateSize() << " bytes" << std::endl;
+
     MapFrame mapf( mapNode->getMap() );
 
     TerrainLayerVector layers;
@@ -270,17 +279,45 @@ list( osg::ArgumentParser& args )
 
         const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
 
-        if ( layer->getCacheBinMetadata( cacheProfile, meta ) )
+        CacheBin* bin = layer->getCacheBin(cacheProfile);
+        if ( bin )
         {
-            Config conf = meta.getConfig();
-            std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
-                << conf.toJSON(true) << std::endl;
+            Config conf = bin->readMetadata();
+            std::cout 
+                << "Layer \"" << layer->getName() << "\", cache metadata = "
+                << conf.toJSON(true)
+                << std::endl;
+
+            unsigned size = bin->getStorageSize();
+            if ( size > 0 )
+            {
+                std::cout << "Storage size (approx) = " << size << " bytes" 
+                    << std::endl;
+            }
         }
         else
         {
             std::cout << "Layer \"" << layer->getName() << "\": no cache information" 
                 << std::endl;
         }
+
+#if 0
+        if ( layer->getCacheBinMetadata( cacheProfile, meta ) )
+        {
+            Config conf = meta.getConfig();
+            std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
+                << conf.toJSON(true) << std::endl;
+
+            CacheBin* bin = layer->getCacheBin(cacheProfile);
+            if ( bin )
+            {
+                Config bin->readMetadata(
+            }
+        }
+        else
+        {
+        }
+#endif
     }
 
     return 0;
@@ -418,6 +455,34 @@ purge( osg::ArgumentParser& args )
             std::cout << "No action taken." << std::endl;
         }
     }
+
+    return 0;
+}
+
+
+int
+compact( osg::ArgumentParser& args )
+{
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
+    if ( !node.valid() )
+        return usage( "Failed to read .earth file." );
+
+    MapNode* mapNode = MapNode::findMapNode( node.get() );
+    if ( !mapNode )
+        return usage( "Input file was not a .earth file" );
+
+    Map* map = mapNode->getMap();
+
+    if ( !map->getCache() )
+        return message( "Earth file does not contain a cache." );
+
+    unsigned presize = map->getCache()->getApproximateSize();
+    std::cout << "Size = " << presize << "; compacting..." << std::endl;
+
+    map->getCache()->compact();
+
+    unsigned postsize = map->getCache()->getApproximateSize();
+    std::cout << "Done. New size = " << postsize << std::endl;
 
     return 0;
 }

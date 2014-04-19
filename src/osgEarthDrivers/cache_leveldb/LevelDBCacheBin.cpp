@@ -341,12 +341,12 @@ LevelDBCacheBin::postWrite()
             if ( _tracker->isTimeToPurge() )
             {
                 unsigned num = _tracker->numToPurge();
-                this->purgeOldest(num * 3);
+                this->purgeOldest(num);
 
                 //off_t size = _tracker->calcSize();
-                //OE_INFO << LC
-                //    << "Purged " << num << " records, new cache size="
-                //    << (size/1048576) << " MB" << std::endl;
+                //OE_INFO 
+                //    << LC << "Cache size = " << (size/1048576) << " MB; " 
+                //    << "Hit ratio = " << (float)_tracker->hits/(float)_tracker->reads << std::endl;
             }
         }
         else
@@ -354,7 +354,9 @@ LevelDBCacheBin::postWrite()
             if ( _tracker->isTimeToCheckSize() )
             {
                 off_t size = _tracker->calcSize();
-                //OE_INFO << LC << "Cache size = " << (size/1048576) << " MB" << std::endl;
+                //OE_INFO 
+                //    << LC << "Cache size = " << (size/1048576) << " MB; " 
+                //    << "Hit ratio = " << (float)_tracker->hits/(float)_tracker->reads << std::endl;
             }
         }
     }

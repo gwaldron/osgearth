@@ -103,15 +103,29 @@ LevelDBCacheImpl::open()
     options.create_if_missing = true;
     options.block_size        = _options.blockSize().value();
 
-    leveldb::Status status = leveldb::DB::Open(options, _rootPath, &_db);
-    if ( !status.ok() )
+    leveldb::Status status;
+        
+    status = leveldb::DB::Open(options, _rootPath, &_db);
+    if ( status.ok() )
+        return;
+
+    OE_WARN << LC << "Database problem...attempting to repair..." << std::endl;
+    status = leveldb::RepairDB(_rootPath, options);
+    if ( status.ok() )
     {
-        OE_WARN << LC << "Failed to open or create cache bin at " << _rootPath << std::endl;
-        if ( _db )
+        status = leveldb::DB::Open(options, _rootPath, &_db);
+        if ( status.ok() )
         {
-            delete _db;
-            _db = 0L;
+            OE_WARN << LC << "...repair complete!" << std::endl;
+            return;
         }
+    }
+
+    OE_WARN << LC << "Failed to open or create cache bin at " << _rootPath << std::endl;
+    if ( _db )
+    {
+        delete _db;
+        _db = 0L;
     }
 }
 

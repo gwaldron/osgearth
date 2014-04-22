@@ -59,7 +59,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
 
         RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime);
 
-        bool purge();
+        bool clear();
 
         bool compact();
         
@@ -115,6 +115,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
 
         // key generators
         std::string binDataKeyTuple(const std::string& key);
+        std::string binPhrase();
         std::string dataKey(const std::string& key);
         std::string dataKeyFromTuple(const std::string& tuple);
         std::string dataBegin();

@@ -106,6 +106,12 @@ LevelDBCacheBin::binValidForWriting(bool silent)
 #define SEP std::string("!")
 
 std::string
+LevelDBCacheBin::binPhrase()
+{
+    return SEP + getID() + SEP;
+}
+
+std::string
 LevelDBCacheBin::binKey()
 {
     return "b" + SEP + getID();
@@ -499,21 +505,25 @@ LevelDBCacheBin::touch(const std::string& key)
 }
 
 bool
-LevelDBCacheBin::purge()
+LevelDBCacheBin::clear()
 {
     if ( !binValidForWriting() )
         return false;
-
+    
+    leveldb::WriteOptions wo;
+    std::string binphrase = binPhrase();
     leveldb::WriteBatch batch;
     leveldb::Iterator* i = _db->NewIterator(leveldb::ReadOptions());
-    std::string dataend = dataEnd();
-    for(i->Seek(dataBegin());
-        i->Valid() && i->key().ToString() < dataend;
-        i->Next())
+    for(i->SeekToFirst(); i->Valid(); i->Next())
     {
-        batch.Delete(i->key());
+        std::string key = i->key().ToString();
+        if ( key.find(binphrase) != std::string::npos )
+        {
+            _db->Delete( wo, i->key() );
+        }
     }
-    return _db->Write(leveldb::WriteOptions(), &batch).ok();
+    delete i;
+    return true;
 }
 
 bool
@@ -600,6 +610,7 @@ LevelDBCacheBin::purgeOldest(unsigned maxnum)
     unsigned count = 0;
     std::string limit = timeEndGlobal();
 
+    // note: this will delete records NOT OF THIS BIN as well!
     for(it->Seek(timeBeginGlobal());
         count < maxnum && it->Valid() && it->key().ToString() < limit;
         it->Next(), ++count )

@@ -97,7 +97,7 @@ namespace
 
         RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime);
 
-        bool purge();
+        bool clear();
 
         Config readMetadata();
 
@@ -536,14 +536,14 @@ namespace
     }
 
     bool
-    FileSystemCacheBin::purge()
+    FileSystemCacheBin::clear()
     {
-        if ( !binValidForReading() ) return false;
-        {
-            ScopedWriteLock exclusiveLock( _rwmutex );
-            std::string binDir = osgDB::getFilePath( _metaPath );
-            return purgeDirectory( binDir );
-        }
+        if ( !binValidForReading() )
+            return false;
+
+        ScopedWriteLock exclusiveLock( _rwmutex );
+        std::string binDir = osgDB::getFilePath( _metaPath );
+        return purgeDirectory( binDir );
     }
 
     Config

@@ -30,6 +30,7 @@
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
+#include <osgEarth/ThreadingUtils>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
 #include <iostream>
@@ -257,9 +258,10 @@ list( osg::ArgumentParser& args )
         << "Cache config: " << std::endl
         << cache->getCacheOptions().getConfig().toJSON(true) << std::endl;
 
+    off_t size = cache->getApproximateSize();
     std::cout 
-        << "Cache size (total) = "
-        << cache->getApproximateSize() << " bytes" << std::endl;
+        << "Cache size (total) = " << size << " bytes ("
+        << (size/1048576) << " MB)\n" << std::endl;
 
     MapFrame mapf( mapNode->getMap() );
 
@@ -300,24 +302,6 @@ list( osg::ArgumentParser& args )
             std::cout << "Layer \"" << layer->getName() << "\": no cache information" 
                 << std::endl;
         }
-
-#if 0
-        if ( layer->getCacheBinMetadata( cacheProfile, meta ) )
-        {
-            Config conf = meta.getConfig();
-            std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
-                << conf.toJSON(true) << std::endl;
-
-            CacheBin* bin = layer->getCacheBin(cacheProfile);
-            if ( bin )
-            {
-                Config bin->readMetadata(
-            }
-        }
-        else
-        {
-        }
-#endif
     }
 
     return 0;
@@ -333,9 +317,7 @@ struct Entry
 
 int
 purge( osg::ArgumentParser& args )
-{
-    //return usage( "Sorry, but purge is not yet implemented." );
-    
+{    
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
         return usage( "Failed to read .earth file." );
@@ -350,7 +332,6 @@ purge( osg::ArgumentParser& args )
         return message( "Earth file does not contain a cache." );
 
     std::vector<Entry> entries;
-
 
     ImageLayerVector imageLayers;
     map->getImageLayers( imageLayers );
@@ -426,19 +407,24 @@ purge( osg::ArgumentParser& args )
                     std::cout
                         << std::endl
                         << "Cache METADATA:" << std::endl
-                        << meta.toJSON() 
+                        << meta.toJSON(true) 
                         << std::endl << std::endl;
                 }
 
                 std::cout
-                    << "Are you sure (y/N)? "
+                    << "Purge this bin, are you sure (y/N)? "
                     << std::flush;
 
                 std::getline( std::cin, input );
                 if ( input == "y" || input == "Y" )
                 {
-                    std::cout << "Purging.." << std::flush;
+                    std::cout << "Purging.." << std::endl;
                     entries[k-1]._bin->purge();
+                    Threading::Thread::microSleep(1000000);
+                    entries[k-1]._bin->compact();
+                    Threading::Thread::microSleep(1000000);
+                    entries[k-1]._bin->compact();
+                    std::cout << "done." << std::endl;
                 }
                 else
                 {

@@ -131,9 +131,15 @@ namespace osgEarth
         virtual off_t getApproximateSize() const { return 0; }
 
         /**
-         * Compacts the database (if possible).
+         * Compacts the cache (if applicable).
          */
         virtual bool compact() { return false; }
+
+        /**
+         * Removes all records in the cache (if possible). This could take
+         * some time to complete.
+         */
+        virtual bool clear() { return false; }
 
         /**
          * Store this to an osgDB::Options

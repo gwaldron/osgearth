@@ -207,3 +207,21 @@ LevelDBCacheImpl::compact()
 
     return true;
 }
+
+bool
+LevelDBCacheImpl::clear()
+{
+    if ( !_db )
+        return false;
+
+    // No WriteBatch because it doesn't seem to allow compaction to occur
+    // -- need to figure out why someday.
+
+    leveldb::Iterator* it = _db->NewIterator(leveldb::ReadOptions());
+    for(it->SeekToFirst(); it->Valid(); it->Next())
+    {
+        _db->Delete(leveldb::WriteOptions(), it->key());
+    }
+
+    return true;
+}

@@ -14,20 +14,18 @@ Example usage::
             </cache>
 			...
 			
-Notes::
-
-    The ``leveldb`` cache stores each class of data in its own ``bin``.
-	All ``bins`` are stored in the same directory, in the same database.
-    We do this so we can impose a size limit on the entire database. Each
-    record is timestamped; when the cache reaches the maximum size, it
-    starts removing the oldest records first to make room.
+The ``leveldb`` cache stores each class of data in its own ``bin``.
+All ``bins`` are stored in the same directory, in the same database.
+We do this so we can impose a size limit on the entire database. Each
+record is timestamped; when the cache reaches the maximum size, it
+starts removing the oldest records first to make room.
 	
-	Cache access is asynchronous and multi-threaded, but you may only 
-	access a cache from one process at a time.
+Cache access is asynchronous and multi-threaded, but you may only 
+access a cache from one process at a time.
 	
-	The actual format of cached data files is "black box" and may change
-	without notice. We do not intend for cached files to be used directly
-	or for other purposes.
+The actual format of cached data files is "black box" and may change
+without notice. We do not intend for cached files to be used directly
+or for other purposes.
     
 Properties:
 

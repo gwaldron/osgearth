@@ -14,8 +14,8 @@ Example usage::
             </cache>
 			...
 			
-The ``leveldb`` cache stores each class of data in its own ``bin``.
-All ``bins`` are stored in the same directory, in the same database.
+The ``leveldb`` cache stores each class of data in its own *bin*.
+All bins are stored in the same directory, in the same database.
 We do this so we can impose a size limit on the entire database. Each
 record is timestamped; when the cache reaches the maximum size, it
 starts removing the oldest records first to make room.
@@ -36,4 +36,4 @@ Properties:
                   will always be less than this value, but the driver will do
                   its best to comply.
 
-.. _leveldb: https://code.google.com/p/leveldb/
+.. _leveldb: https://github.com/pelicanmapping/leveldb

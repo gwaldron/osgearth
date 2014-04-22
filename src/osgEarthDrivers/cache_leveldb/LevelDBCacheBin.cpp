@@ -53,8 +53,8 @@ namespace
 #undef  LC
 #define LC "[LevelDBCacheBin] "
 
-//#undef  OE_DEBUG
-//#define OE_DEBUG OE_INFO
+#undef  OE_TEST
+#define OE_TEST OE_NOTICE
 
 #define TIME_FIELD "leveldb.time"
 
@@ -64,12 +64,16 @@ LevelDBCacheBin::LevelDBCacheBin(const std::string& binID,
                                  Tracker*           tracker) :
 osgEarth::CacheBin( binID ),
 _db               ( db ),
-_tracker          ( tracker )
+_tracker          ( tracker ),
+_debug            ( false )
 {
     // reader to parse data:
     _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
     _rwOptions = osgEarth::Registry::instance()->cloneOrCreateOptions();
     CachePolicy::NO_CACHE.apply(_rwOptions.get());
+    
+    if ( ::getenv("OSGEARTH_CACHE_DEBUG") )
+        _debug = true;
 }
 
 LevelDBCacheBin::~LevelDBCacheBin()
@@ -110,7 +114,19 @@ LevelDBCacheBin::binKey()
 std::string
 LevelDBCacheBin::dataKey(const std::string& key)
 {
-    return "d" + SEP + getID() + SEP + key;
+    return "d" + SEP + binDataKeyTuple(key);
+}
+
+std::string
+LevelDBCacheBin::binDataKeyTuple(const std::string& key)
+{
+    return getID() + SEP + key;
+}
+
+std::string
+LevelDBCacheBin::dataKeyFromTuple(const std::string& tuple)
+{
+    return "d" + SEP + tuple;
 }
 
 std::string
@@ -128,7 +144,13 @@ LevelDBCacheBin::dataEnd()
 std::string
 LevelDBCacheBin::metaKey(const std::string& key)
 {
-    return "m" + SEP + getID() + SEP + key;
+    return "m" + SEP + binDataKeyTuple(key);
+}
+
+std::string
+LevelDBCacheBin::metaKeyFromTuple(const std::string& tuple)
+{
+    return "m" + SEP + tuple;
 }
 
 std::string
@@ -146,7 +168,7 @@ LevelDBCacheBin::metaEnd()
 std::string
 LevelDBCacheBin::timeKey(const DateTime& t, const std::string& key)
 {
-    return "t" + SEP + t.asISO8601() + SEP + getID() + SEP + key;
+    return "t" + SEP + t.asCompactISO8601() + SEP + getID() + SEP + key;
 }
 
 std::string
@@ -243,6 +265,14 @@ LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& r
 
     OE_DEBUG << LC << "Read (" << key << ") from cache bin " << getID() << std::endl;
 
+    // if there's a size limit, we need to 'touch' the record.
+    if ( _tracker->hasSizeLimit() )
+    {
+        // Room for optimization here since we already have the 
+        // meta/time records around.
+        touch( key );
+    }
+
     ++_tracker->hits;
     return ReadResult( r.getObject(), metadata );
 }
@@ -302,11 +332,11 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
         batch.Put( dataKey(key), data );
 
         // write the timestamp index:
-        batch.Put( timeKey(now, key), key );
+        batch.Put( timeKey(now, key), binDataKeyTuple(key) );
 
         // write the metadata:
         Config metadata(meta);
-        metadata.set( TIME_FIELD, now.asISO8601() );
+        metadata.set( TIME_FIELD, now.asCompactISO8601() );
         encodeMeta( metadata, data );
         batch.Put( metaKey(key), data );
 
@@ -340,13 +370,15 @@ LevelDBCacheBin::postWrite()
         {
             if ( _tracker->isTimeToPurge() )
             {
-                unsigned num = _tracker->numToPurge();
-                this->purgeOldest(num);
+                this->purgeOldest(_tracker->numToPurge());
 
-                //off_t size = _tracker->calcSize();
-                //OE_INFO 
-                //    << LC << "Cache size = " << (size/1048576) << " MB; " 
-                //    << "Hit ratio = " << (float)_tracker->hits/(float)_tracker->reads << std::endl;
+                if (_debug)
+                {
+                    off_t size = _tracker->calcSize();
+                    OE_INFO 
+                        << LC << "Cache size = " << (size/1048576) << " MB; " 
+                        << "Hit ratio = " << (float)_tracker->hits/(float)_tracker->reads << std::endl;
+                }
             }
         }
         else
@@ -354,9 +386,12 @@ LevelDBCacheBin::postWrite()
             if ( _tracker->isTimeToCheckSize() )
             {
                 off_t size = _tracker->calcSize();
-                //OE_INFO 
-                //    << LC << "Cache size = " << (size/1048576) << " MB; " 
-                //    << "Hit ratio = " << (float)_tracker->hits/(float)_tracker->reads << std::endl;
+                if ( _debug )
+                {
+                    OE_INFO 
+                        << LC << "Cache size = " << (size/1048576) << " MB; " 
+                        << "Hit ratio = " << (float)_tracker->hits/(float)_tracker->reads << std::endl;
+                }
             }
         }
     }
@@ -444,7 +479,7 @@ LevelDBCacheBin::touch(const std::string& key)
     leveldb::WriteBatch batch;
 
     // In a transaction, update the metadata record with the current time.
-    std::string newtime = DateTime().asISO8601();
+    std::string newtime = DateTime().asCompactISO8601();
     metadata.set(TIME_FIELD, newtime);
     encodeMeta(metadata, metavalue);
     batch.Put(metaKey(key), metavalue);
@@ -453,7 +488,7 @@ LevelDBCacheBin::touch(const std::string& key)
     batch.Delete( timeKey(oldtime, key) );
 
     // ...and write a new time index record.
-    batch.Put( timeKey(newtime, key), key );
+    batch.Put( timeKey(newtime, key), binDataKeyTuple(key) );
 
     leveldb::Status status = _db->Write(leveldb::WriteOptions(), &batch);
     if ( !status.ok() )
@@ -499,6 +534,7 @@ LevelDBCacheBin::getStorageSize()
     if ( !binValidForReading() )
         return false;
 
+    //Note: doesn't work..
     leveldb::Range ranges[3];
     uint64_t       sizes[3];
 
@@ -559,8 +595,6 @@ LevelDBCacheBin::purgeOldest(unsigned maxnum)
     if ( !binValidForWriting() )
         return false;
 
-    leveldb::WriteBatch batch;
-
     leveldb::Iterator* it = _db->NewIterator(leveldb::ReadOptions());
 
     unsigned count = 0;
@@ -573,22 +607,23 @@ LevelDBCacheBin::purgeOldest(unsigned maxnum)
         if ( !it->status().ok() )
             break;
 
-        std::string key = it->value().ToString();
-        batch.Delete( dataKey(key) );
-        batch.Delete( metaKey(key) );
-        batch.Delete( it->key() );
+        std::string tuple = it->value().ToString();
 
-        OE_DEBUG << LC << "Deleted time key " << it->key().ToString() << std::endl;
+        // doing this in a WriteBatch did not work. The size of the
+        // database would never go down.
+        leveldb::WriteOptions wo;
+        _db->Delete( wo, dataKeyFromTuple(tuple) );
+        _db->Delete( wo, metaKeyFromTuple(tuple) );
+        _db->Delete( wo, it->key() );
     }
 
     delete it;
-    leveldb::Status status = _db->Write(leveldb::WriteOptions(), &batch);
-    if ( !status.ok() )
+
+    if ( _debug )
     {
-        OE_WARN << LC << "Failed to purge old records from cache" << std::endl;
-        return false;
+        OE_NOTICE << LC << "Purged " << count << " record(s) for "
+            << (_tracker->calcSize()/1048576) << " MB" << std::endl;
     }
 
-    OE_DEBUG << LC << "Purged " << count << " oldest record(s)" << std::endl;
     return true;
 }

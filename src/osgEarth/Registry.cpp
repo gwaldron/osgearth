@@ -104,6 +104,8 @@ _cacheDriver        ( "filesystem" )
     if ( cacheDriver )
     {
         setDefaultCacheDriverName( cacheDriver );
+        OE_INFO << LC << "Cache driver set from environment: "
+            << getDefaultCacheDriverName() << std::endl;
     }
 
     // see if there's a cache in the envvar; if so, create a cache.
@@ -119,11 +121,10 @@ _cacheDriver        ( "filesystem" )
         if ( cache->isOK() )
         {
             setCache( cache.get() );
-            OE_INFO << LC << "CACHE PATH set from environment variable: \"" << cachePath << "\"" << std::endl;
         }
         else
         {
-            OE_WARN << LC << "FAILED to initialize cache from env.var." << std::endl;
+            OE_WARN << LC << "FAILED to initialize cache from environment" << std::endl;
         }
     }
 
@@ -131,7 +132,7 @@ _cacheDriver        ( "filesystem" )
     if ( ::getenv(OSGEARTH_ENV_CACHE_ONLY) )
     {
         _overrideCachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
-        OE_INFO << LC << "CACHE-ONLY MODE set from environment variable" << std::endl;
+        OE_INFO << LC << "CACHE-ONLY MODE set from environment" << std::endl;
     }
 
     // activate no-cache mode from the environment
@@ -139,7 +140,7 @@ _cacheDriver        ( "filesystem" )
     {
         _overrideCachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
         //setOverrideCachePolicy( CachePolicy::NO_CACHE );
-        OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
+        OE_INFO << LC << "NO-CACHE MODE set from environment" << std::endl;
     }
 
     // cache max age?

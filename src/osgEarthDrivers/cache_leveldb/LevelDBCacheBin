@@ -86,6 +86,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         Threading::Mutex                  _rwMutex;
         leveldb::DB*                      _db;
         osg::ref_ptr<Tracker>             _tracker;
+        bool                              _debug;
         
         // adapter base for all the osg read functions...
         struct Reader {
@@ -113,10 +114,13 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         void postWrite();
 
         // key generators
+        std::string binDataKeyTuple(const std::string& key);
         std::string dataKey(const std::string& key);
+        std::string dataKeyFromTuple(const std::string& tuple);
         std::string dataBegin();
         std::string dataEnd();
         std::string metaKey(const std::string& key);
+        std::string metaKeyFromTuple(const std::string& tuple);
         std::string metaBegin();
         std::string metaEnd();
         std::string timeKey(const DateTime& t, const std::string& key);

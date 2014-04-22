@@ -39,7 +39,10 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
     class Tracker : public osg::Referenced
     {
     public:
-        Tracker(const LevelDBCacheOptions& options) : _options( options )
+        Tracker(const LevelDBCacheOptions& options,
+                const std::string&         path ) : 
+            _options(options),                 
+            _path(path)
         {
             _maxBytes = (off_t)(options.maxSizeMB().get() * 1048576);
             _size = (::off_t)0;
@@ -64,7 +67,8 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         }
 
         bool isTimeToPurge() const {
-            return ((unsigned)writes % _options.sizePurgePeriod().value()) == 0;
+            unsigned w = (unsigned)writes;
+            return w == 1 || (w % _options.sizePurgePeriod().value()) == 0;
         }
 
         unsigned numToPurge() const {
@@ -73,12 +77,11 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
 
         ::off_t calcSize()
         {
-            std::string directory = _options.rootPath().value();
             ::off_t total = 0;
-            osgDB::DirectoryContents dir = osgDB::getDirectoryContents( directory );
+            osgDB::DirectoryContents dir = osgDB::getDirectoryContents(_path);
             for(osgDB::DirectoryContents::iterator i = dir.begin(); i != dir.end(); ++i)
             {
-                std::string path = osgDB::concatPaths(directory, *i);
+                std::string path = osgDB::concatPaths(_path, *i);
                 struct stat s;
                 ::stat( path.c_str(), &s );
                 total += s.st_size;
@@ -88,9 +91,10 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         }
 
     private:
+        const std::string         _path;
         const LevelDBCacheOptions _options;
-        ::off_t _maxBytes;
-        ::off_t _size;
+        ::off_t                   _maxBytes;
+        ::off_t                   _size;
     };
 
 } } } // namespace osgEarth::Drivers::LevelDBCache

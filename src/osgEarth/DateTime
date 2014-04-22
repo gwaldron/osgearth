@@ -59,8 +59,12 @@ namespace osgEarth
         /** As a date/time string in RFC 1123 format (e.g., HTTP) */
         const std::string asRFC1123() const;
 
-        /** As a date/time string in ISO 8601 format (lexigraphic order) */
+        /** As a date/time string in ISO 8601 format (lexigraphic order). */
         const std::string asISO8601() const;
+
+        /** As a date/time string in compact ISO 8601 format (lexigraphic
+          * order with no delimiters). */
+        const std::string asCompactISO8601() const;
 
     public:
         int    year()  const;

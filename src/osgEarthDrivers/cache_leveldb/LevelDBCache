@@ -64,7 +64,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         bool         _active;
         leveldb::DB* _db;
         osg::ref_ptr<Tracker> _tracker;
-        const LevelDBCacheOptions _options;
+        LevelDBCacheOptions _options;
     };
 
 

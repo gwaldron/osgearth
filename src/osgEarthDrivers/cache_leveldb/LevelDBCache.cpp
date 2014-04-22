@@ -32,6 +32,8 @@
 
 #define LC "[LevelDBCache] "
 
+#define OSGEARTH_ENV_CACHE_MAX_SIZE_MB "OSGEARTH_CACHE_MAX_SIZE_MB"
+
 #define LEVELDB_CACHE_VERSION 1
 
 using namespace osgEarth;
@@ -43,8 +45,6 @@ osgEarth::Cache( options ),
 _options       ( options ),
 _active        ( true )
 {
-    _tracker = new Tracker(options);
-
     if ( _options.rootPath().isSet() )
     {
         _rootPath = URI( *_options.rootPath(), options.referrer() ).full();
@@ -55,9 +55,33 @@ _active        ( true )
         const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
         if ( cachePath )
         {
-            _rootPath = cachePath;
+            _rootPath = cachePath;           
+            OE_INFO << LC << "Cache location set from environment: \"" 
+                << cachePath << "\"" << std::endl;
         }
     }
+
+    const char* maxsize = ::getenv(OSGEARTH_ENV_CACHE_MAX_SIZE_MB);
+    if ( maxsize )
+    {
+        unsigned mb = as<unsigned>(std::string(maxsize), 0u);
+        if ( mb > 0 )
+        {
+            _options.maxSizeMB() = mb;
+
+            OE_INFO << LC << "Set max cache size from environment: "
+                << (_options.maxSizeMB().value()) << " MB"
+                << std::endl;
+        }
+        else
+        {
+            OE_WARN << LC 
+                << "Env var \"" OSGEARTH_ENV_CACHE_MAX_SIZE_MB "\" set to an invalid value"
+                << std::endl;
+        }
+    }
+
+    _tracker = new Tracker(_options, _rootPath);
     
     if ( !_rootPath.empty() )
     {
@@ -94,6 +118,17 @@ LevelDBCacheImpl::init()
     }
 
     open();
+
+    // Do an initial size check.
+    if ( _db )
+    {
+        _tracker->calcSize();
+    }
+
+    if ( _active )
+    {
+        OE_INFO << LC << "Opened DB at " << _rootPath << std::endl;
+    }
 }
 
 void
@@ -126,6 +161,7 @@ LevelDBCacheImpl::open()
     {
         delete _db;
         _db = 0L;
+        _active = false;
     }
 }
 

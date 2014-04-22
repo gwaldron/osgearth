@@ -7,6 +7,5 @@ Reference Guides
    earthfile
    drivers/index
    symbology
-   cache
    colorfilters
    envvars

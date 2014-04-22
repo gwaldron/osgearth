@@ -59,7 +59,7 @@ SkyNode::baseInit(const SkyOptions& options)
     {
         float hours = osg::clampBetween(options.hours().get(), 0.0f, 24.0f);
         _dateTime = DateTime(_dateTime.year(), _dateTime.month(), _dateTime.day(), (double)hours);
-        // (don't call setDateTime sinec this is called from the CTOR)
+        // (don't call setDateTime since we are called from the CTOR)
     }
 }
 

@@ -42,10 +42,16 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         Tracker(const LevelDBCacheOptions& options,
                 const std::string&         path ) : 
             _options(options),                 
-            _path(path)
+            _path(path),
+            _seed(0)
         {
             _maxBytes = (off_t)(options.maxSizeMB().get() * 1048576);
             _size = (::off_t)0;
+
+            if (_options.key().isSet() && !_options.key()->empty())
+            {
+                _seed = osgEarth::hashString(_options.key().value());
+            }
         }
         virtual ~Tracker() { }
 
@@ -75,6 +81,10 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
             return _options.sizePurgePeriod().value();
         }
 
+        const optional<unsigned>& seed() const {
+            return _seed;
+        }
+
         ::off_t calcSize()
         {
             ::off_t total = 0;
@@ -95,6 +105,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         const LevelDBCacheOptions _options;
         ::off_t                   _maxBytes;
         ::off_t                   _size;
+        optional<unsigned>        _seed;
     };
 
 } } } // namespace osgEarth::Drivers::LevelDBCache

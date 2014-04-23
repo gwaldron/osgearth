@@ -19,6 +19,7 @@
 #include "LevelDBCacheBin"
 #include <osgEarth/Cache>
 #include <osgEarth/Registry>
+#include <osgEarth/Random>
 #include <osgDB/Registry>
 #include <leveldb/write_batch.h>
 #include <string>
@@ -45,6 +46,25 @@ namespace
         std::string bufStr;
         bufStr = buf.str();
         meta.fromJSON( bufStr );
+    }
+
+    void blend(std::string& data, unsigned seed)
+    {
+        osgEarth::Random prng(seed, osgEarth::Random::METHOD_FAST);
+        unsigned paddedSize = data.size();
+        if ( data.size() % 4 > 0 ) paddedSize += 4 - (data.size() % 4);
+        char* buf = new char[paddedSize];
+        memcpy(buf, data.c_str(), data.size());
+        unsigned* ptr = (unsigned*)buf;
+        for(unsigned i=0; i<paddedSize/4; ++i, ++ptr)
+            (*ptr) ^= prng.next(INT_MAX);
+        data = std::string(buf, data.size());
+        delete buf;
+    }
+
+    void unblend(std::string& data, unsigned seed)
+    {
+        blend(data, seed);
     }
 }
 
@@ -261,11 +281,16 @@ LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& r
         return ReadResult(ReadResult::RESULT_NOT_FOUND);
     }
 
+    // blend the data string
+    if ( _tracker->seed().isSet() )
+        unblend(datavalue, _tracker->seed().value());
+
     // finally, decode the OSGB stream into an object.
     std::istringstream datastream(datavalue);
     osgDB::ReaderWriter::ReadResult r = reader.read(datastream);
     if ( !r.success() )
     {
+        OE_WARN << LC << "Read failure - bad key?" << std::endl;
         return ReadResult(ReadResult::RESULT_READER_ERROR);
     }
 
@@ -335,6 +360,8 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
 
         // write the data:
         data = datastream.str();
+        if ( _tracker->seed().isSet() )
+            blend(data, _tracker->seed().value());
         batch.Put( dataKey(key), data );
 
         // write the timestamp index:

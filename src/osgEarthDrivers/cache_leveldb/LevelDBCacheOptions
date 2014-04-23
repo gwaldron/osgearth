@@ -38,7 +38,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
               _maxSizeMB      ( 0 ),
               _sizeCheckPeriod( 100 ),
               _sizePurgePeriod( 75 ),
-              _blockSize      ( 262144 ) // 256K
+              _blockSize      ( 262144 )// 256K
         {
             setDriver( "leveldb" );
             fromConfig( _conf ); 
@@ -71,6 +71,10 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         optional<unsigned>& blockSize() { return _blockSize; }
         const optional<unsigned>& blockSize() const { return _blockSize; }
 
+        /** Obfuscation key string */
+        optional<std::string>& key() { return _key; }
+        const optional<std::string>& key() const { return _key; }
+
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
@@ -79,6 +83,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
             conf.addIfSet( "size_check_period", _sizeCheckPeriod );
             conf.addIfSet( "size_purge_period", _sizePurgePeriod );
             conf.addIfSet( "block_size", _blockSize );
+            conf.addIfSet( "key", _key );
             return conf;
         }
         virtual void mergeConfig( const Config& conf ) {
@@ -93,6 +98,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
             conf.getIfSet( "size_check_period", _sizeCheckPeriod );
             conf.getIfSet( "size_purge_period", _sizePurgePeriod );
             conf.getIfSet( "block_size", _blockSize );
+            conf.getIfSet( "key", _key );
         }
 
         optional<std::string> _path;
@@ -100,6 +106,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
         optional<unsigned>    _sizeCheckPeriod;
         optional<unsigned>    _sizePurgePeriod;
         optional<unsigned>    _blockSize;
+        optional<std::string> _key;
     };
 
 } } } // namespace osgEarth::Drivers::LevelDBCache

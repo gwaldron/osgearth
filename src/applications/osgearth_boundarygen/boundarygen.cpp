@@ -33,6 +33,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osgUtil/Optimizer>
 
 
 int usage( char** argv, const std::string& msg )

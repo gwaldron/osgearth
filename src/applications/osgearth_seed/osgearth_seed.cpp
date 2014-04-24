@@ -30,6 +30,7 @@
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
+#include <osgEarth/ThreadingUtils>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarth/StringUtils>
 
@@ -45,6 +46,7 @@ using namespace osgEarth::Drivers;
 int list( osg::ArgumentParser& args );
 int seed( osg::ArgumentParser& args );
 int purge( osg::ArgumentParser& args );
+int compact( osg::ArgumentParser& args );
 int usage( const std::string& msg );
 int message( const std::string& msg );
 
@@ -60,6 +62,8 @@ main(int argc, char** argv)
         return list( args );
     else if ( args.read( "--purge" ) )
         return purge( args );
+    else if ( args.read( "--compact" ) )
+        return compact( args );
     else
         return usage("");
 }
@@ -89,6 +93,8 @@ usage( const std::string& msg )
         << "        [--threads]                     ; The number of threads to use for the seed operation (default=1)" << std::endl
         << std::endl
         << "    --purge file.earth                  ; Purges a layer cache in a .earth file (interactive)" << std::endl
+        << std::endl
+        << "    --compact file.earth                ; Compacts existing layers in the cache" << std::endl
         << std::endl;
 
     return -1;
@@ -251,6 +257,11 @@ list( osg::ArgumentParser& args )
         << "Cache config: " << std::endl
         << cache->getCacheOptions().getConfig().toJSON(true) << std::endl;
 
+    off_t size = cache->getApproximateSize();
+    std::cout 
+        << "Cache size (total) = " << size << " bytes ("
+        << (size/1048576) << " MB)\n" << std::endl;
+
     MapFrame mapf( mapNode->getMap() );
 
     TerrainLayerVector layers;
@@ -269,11 +280,21 @@ list( osg::ArgumentParser& args )
 
         const Profile* cacheProfile = useMFP ? layer->getProfile() : map->getProfile();
 
-        if ( layer->getCacheBinMetadata( cacheProfile, meta ) )
+        CacheBin* bin = layer->getCacheBin(cacheProfile);
+        if ( bin )
         {
-            Config conf = meta.getConfig();
-            std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
-                << conf.toJSON(true) << std::endl;
+            Config conf = bin->readMetadata();
+            std::cout 
+                << "Layer \"" << layer->getName() << "\", cache metadata = "
+                << conf.toJSON(true)
+                << std::endl;
+
+            unsigned size = bin->getStorageSize();
+            if ( size > 0 )
+            {
+                std::cout << "Storage size (approx) = " << size << " bytes" 
+                    << std::endl;
+            }
         }
         else
         {
@@ -295,9 +316,7 @@ struct Entry
 
 int
 purge( osg::ArgumentParser& args )
-{
-    //return usage( "Sorry, but purge is not yet implemented." );
-    
+{    
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
         return usage( "Failed to read .earth file." );
@@ -312,7 +331,6 @@ purge( osg::ArgumentParser& args )
         return message( "Earth file does not contain a cache." );
 
     std::vector<Entry> entries;
-
 
     ImageLayerVector imageLayers;
     map->getImageLayers( imageLayers );
@@ -388,19 +406,24 @@ purge( osg::ArgumentParser& args )
                     std::cout
                         << std::endl
                         << "Cache METADATA:" << std::endl
-                        << meta.toJSON() 
+                        << meta.toJSON(true) 
                         << std::endl << std::endl;
                 }
 
                 std::cout
-                    << "Are you sure (y/N)? "
+                    << "Purge this bin, are you sure (y/N)? "
                     << std::flush;
 
                 std::getline( std::cin, input );
                 if ( input == "y" || input == "Y" )
                 {
-                    std::cout << "Purging.." << std::flush;
+                    std::cout << "Purging.." << std::endl;
                     entries[k-1]._bin->purge();
+                    Threading::Thread::microSleep(1000000);
+                    entries[k-1]._bin->compact();
+                    Threading::Thread::microSleep(1000000);
+                    entries[k-1]._bin->compact();
+                    std::cout << "done." << std::endl;
                 }
                 else
                 {
@@ -420,3 +443,70 @@ purge( osg::ArgumentParser& args )
 
     return 0;
 }
+
+
+int
+compact( osg::ArgumentParser& args )
+{
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
+    if ( !node.valid() )
+        return usage( "Failed to read .earth file." );
+
+    MapNode* mapNode = MapNode::findMapNode( node.get() );
+    if ( !mapNode )
+        return usage( "Input file was not a .earth file" );
+
+    Map* map = mapNode->getMap();
+
+    if ( !map->getCache() )
+        return message( "Earth file does not contain a cache." );
+
+    unsigned presize = map->getCache()->getApproximateSize();
+    std::cout << "Size = " << presize << "; compacting..." << std::endl;
+
+    map->getCache()->compact();
+
+    unsigned postsize = map->getCache()->getApproximateSize();
+    std::cout << "Done. New size = " << postsize << std::endl;
+
+    return 0;
+}
+
+/**
+ * Gets the total number of seconds formatted as H:M:S
+ */
+std::string prettyPrintTime( double seconds )
+{
+    int hours = (int)floor(seconds / (3600.0) );
+    seconds -= hours * 3600.0;
+
+    int minutes = (int)floor(seconds/60.0);
+    seconds -= minutes * 60.0;
+
+    std::stringstream buf;
+    buf << hours << ":" << minutes << ":" << seconds;
+    return buf.str();
+}
+
+/**
+ * Gets a pretty printed version of the given size in MB.
+ */
+std::string prettyPrintSize( double mb )
+{
+    std::stringstream buf;
+    // Convert to terabytes
+    if ( mb > 1024 * 1024 )
+    {
+        buf << (mb / (1024.0*1024.0)) << " TB";
+    }
+    else if (mb > 1024)
+    {
+        buf << (mb / 1024.0) << " GB";
+    }
+    else 
+    {
+        buf << mb << " MB";
+    }
+    return buf.str();
+}
+>>>>>>> master

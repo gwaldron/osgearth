@@ -21,7 +21,6 @@
 #define OSGEARTH_TERRAIN_LAYER_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/Config>
 #include <osgEarth/Layer>
@@ -32,6 +31,8 @@
 
 namespace osgEarth
 {
+    class Cache;
+    class CacheBin;
     class MemCache;
 
     /**

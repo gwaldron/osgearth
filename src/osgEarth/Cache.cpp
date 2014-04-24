@@ -87,10 +87,6 @@ CacheFactory::create( const CacheOptions& options )
     {
         OE_WARN << LC << "Sorry, but TMS caching is no longer supported; try \"filesystem\" instead" << std::endl;
     }
-//    else if ( options.getDriver() == "tilecache" )
-//    {
-////        result = new DiskCache( options );
-//    }
     else // try to load from a plugin
     {
         osg::ref_ptr<osgDB::Options> rwopt = Registry::instance()->cloneOrCreateOptions();

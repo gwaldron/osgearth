@@ -52,6 +52,7 @@ namespace osgEarth
         const optional<float>& verticalOffset() const { return _verticalOffset; }
 
         /**
+         * @deprecated - Use MapOptions::elevationTileSize instead
          * The sample ratio for height fields. I.e., the terrain engine
          * will sample heightfield grids at this ratio
          * Default = 1.0
@@ -83,20 +84,6 @@ namespace osgEarth
          */
         optional<bool>& clusterCulling() { return _clusterCulling; }
         const optional<bool>& clusterCulling() const { return _clusterCulling; }
-
-        /**
-         * @deprecated - will either go away or be moved into the Quadtree terrain engine
-         * Available techniques for compositing image layers at runtime.
-         */
-        enum CompositingTechnique
-        {
-            COMPOSITING_AUTO,
-            COMPOSITING_TEXTURE_ARRAY,
-            COMPOSITING_MULTITEXTURE_GPU,
-            COMPOSITING_MULTITEXTURE_FFP,
-            COMPOSITING_MULTIPASS,
-            COMPOSITING_USER
-        };
 
         /**
          * The maximum level of detail to which the terrain should subdivide. If you leave this

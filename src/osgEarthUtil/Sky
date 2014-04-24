@@ -107,6 +107,13 @@ namespace osgEarth { namespace Util
         static SkyNode* create(
             const SkyOptions&  options,
             osgEarth::MapNode* mapNode );
+        
+        /**
+         * Creates a new SkyNode with a named driver.
+         */
+        static SkyNode* create(
+            const std::string& driver,
+            osgEarth::MapNode* mapNode );
 
     protected:
         // CTOR (abstract base class)

@@ -26,7 +26,7 @@
 #include <osgEarth/ColorFilter>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/HTTPClient>
-#include <osgEarthDrivers/cache_filesystem/FileSystemCache>
+#include <osgEarth/TerrainEngineNode>
 #include <osg/Notify>
 #include <osg/Version>
 #include <osgDB/Registry>
@@ -36,7 +36,6 @@
 #include <locale>
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
 #define STR_GLOBAL_GEODETIC    "global-geodetic"
@@ -57,7 +56,8 @@ _numGdalMutexGets   ( 0 ),
 _uidGen             ( 0 ),
 _caps               ( 0L ),
 _defaultFont        ( 0L ),
-_terrainEngineDriver( "mp" )
+_terrainEngineDriver( "mp" ),
+_cacheDriver        ( "filesystem" )
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -98,53 +98,60 @@ _terrainEngineDriver( "mp" )
     // set up our default r/w options to NOT cache archives!
     _defaultOptions = new osgDB::Options();
     _defaultOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
-    //_defaultOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
-    //    ((int)_defaultOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
 
-    // see if there's a cache in the envvar
-    const char* cachePath = ::getenv("OSGEARTH_CACHE_PATH");
+    // see if the environment specifies a default caching driver.
+    const char* cacheDriver = ::getenv(OSGEARTH_ENV_CACHE_DRIVER);
+    if ( cacheDriver )
+    {
+        setDefaultCacheDriverName( cacheDriver );
+        OE_INFO << LC << "Cache driver set from environment: "
+            << getDefaultCacheDriverName() << std::endl;
+    }
+
+    // see if there's a cache in the envvar; if so, create a cache.
+    // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
+    // it's used in the driver(s) itself.
+    const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
     if ( cachePath )
     {
-        FileSystemCacheOptions options;
-        options.rootPath() = std::string(cachePath);
+        CacheOptions options;
+        options.setDriver( getDefaultCacheDriverName() );
 
         osg::ref_ptr<Cache> cache = CacheFactory::create(options);
         if ( cache->isOK() )
         {
             setCache( cache.get() );
-            OE_INFO << LC << "CACHE PATH set from environment variable: \"" << cachePath << "\"" << std::endl;
         }
         else
         {
-            OE_WARN << LC << "FAILED to initialize cache from env.var." << std::endl;
+            OE_WARN << LC << "FAILED to initialize cache from environment" << std::endl;
         }
     }
 
     // activate cache-only mode from the environment
-    if ( ::getenv("OSGEARTH_CACHE_ONLY") )
+    if ( ::getenv(OSGEARTH_ENV_CACHE_ONLY) )
     {
         _overrideCachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
-        //setOverrideCachePolicy( CachePolicy::CACHE_ONLY );
-        OE_INFO << LC << "CACHE-ONLY MODE set from environment variable" << std::endl;
+        OE_INFO << LC << "CACHE-ONLY MODE set from environment" << std::endl;
     }
 
     // activate no-cache mode from the environment
-    else if ( ::getenv("OSGEARTH_NO_CACHE") )
+    else if ( ::getenv(OSGEARTH_ENV_NO_CACHE) )
     {
         _overrideCachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
         //setOverrideCachePolicy( CachePolicy::NO_CACHE );
-        OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
+        OE_INFO << LC << "NO-CACHE MODE set from environment" << std::endl;
     }
 
     // cache max age?
-    const char* cacheMaxAge = ::getenv("OSGEARTH_CACHE_MAX_AGE");
+    const char* cacheMaxAge = ::getenv(OSGEARTH_ENV_CACHE_MAX_AGE);
     if ( cacheMaxAge )
     {
         TimeSpan maxAge = osgEarth::as<long>( std::string(cacheMaxAge), INT_MAX );
         _overrideCachePolicy->maxAge() = maxAge;
     }
 
-    const char* teStr = ::getenv("OSGEARTH_TERRAIN_ENGINE");
+    const char* teStr = ::getenv(OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER);
     if ( teStr )
     {
         _terrainEngineDriver = std::string(teStr);
@@ -484,6 +491,12 @@ void
 Registry::setDefaultTerrainEngineDriverName(const std::string& name)
 {
     _terrainEngineDriver = name;
+}
+
+void
+Registry::setDefaultCacheDriverName(const std::string& name)
+{
+    _cacheDriver = name;
 }
 
 void

@@ -42,6 +42,9 @@
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
 
+#include <algorithm>
+#include <iterator>
+
 #define LC "[FeatureModelGraph] "
 
 using namespace osgEarth;
@@ -230,26 +233,33 @@ namespace
 
 FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      const FeatureModelSourceOptions& options,
-                                     FeatureNodeFactory*              factory ) :
-_session           ( session ),
-_options           ( options ),
-_factory           ( factory ),
-_dirty             ( false ),
-_pendingUpdate     ( false ),
-_overlayInstalled  ( 0L ),
-_overlayPlaceholder( 0L ),
-_clampable         ( 0L ),
-_drapeable         ( 0L ),
-_overlayChange     ( OVERLAY_NO_CHANGE )
+                                     FeatureNodeFactory*              factory,
+                                     RefNodeOperationVector*          preMergeOperations,
+                                     RefNodeOperationVector*          postMergeOperations) :
+_session            ( session ),
+_options            ( options ),
+_factory            ( factory ),
+_preMergeOperations ( preMergeOperations ),
+_postMergeOperations( postMergeOperations ),
+_dirty              ( false ),
+_pendingUpdate      ( false ),
+_overlayInstalled   ( 0L ),
+_overlayPlaceholder ( 0L ),
+_clampable          ( 0L ),
+_drapeable          ( 0L ),
+_overlayChange      ( OVERLAY_NO_CHANGE )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
-    // operations that get applied after a new node gets merged into the 
-    // scene graph by the pager.
-    _postMergeOperations = new RefNodeOperationVector();
-
     // an FLC that queues feature data on the high-latency thread.
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
+
+    // set up the callback queues for pre- and post-merge operations.
+    if ( !_preMergeOperations.valid())
+        _preMergeOperations = new RefNodeOperationVector();
+
+    if ( !_postMergeOperations.valid() )
+        _postMergeOperations = new RefNodeOperationVector();
 
     // install the stylesheet in the session if it doesn't already have one.
     if ( !session->styles() )
@@ -342,7 +352,9 @@ _overlayChange     ( OVERLAY_NO_CHANGE )
     // proper fade time for paged nodes.
     if ( _options.fading().isSet() )
     {
-        addPostMergeOperation( new SetupFading() );
+        _postMergeOperations->mutex().writeLock();
+        _postMergeOperations->push_back( new SetupFading() );
+        _postMergeOperations->mutex().writeUnlock();
         OE_INFO << LC << "Added fading post-merge operation" << std::endl;
     }
 
@@ -360,13 +372,6 @@ void
 FeatureModelGraph::dirty()
 {
     _dirty = true;
-}
-
-void
-FeatureModelGraph::addPostMergeOperation( NodeOperation* op )
-{
-    if ( op )
-        _postMergeOperations->push_back( op );
 }
 
 osg::BoundingSphered
@@ -635,6 +640,9 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
         _blacklist.insert( uri );
         OE_DEBUG << LC << "Blacklisting: " << uri << std::endl;
     }
+
+    // Done - run the pre-merge operations.
+    runPreMergeOperations(result);
 
     return result;
 }
@@ -1267,17 +1275,32 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
     osg::Group::traverse(nv);
 }
 
+void
+FeatureModelGraph::runPreMergeOperations(osg::Node* node)
+{
+   if ( _preMergeOperations.valid() )
+   {
+      _preMergeOperations->mutex().readLock();
+      for( NodeOperationVector::iterator i = _preMergeOperations->begin(); i != _preMergeOperations->end(); ++i )
+      {
+         i->get()->operator()( node );
+      }
+      _preMergeOperations->mutex().readUnlock();
+   }
+}
 
 void
 FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 {
-    if ( _postMergeOperations.valid() )
-    {
-        for( NodeOperationVector::iterator i = _postMergeOperations->begin(); i != _postMergeOperations->end(); ++i )
-        {
-            i->get()->operator()( node );
-        }
-    }
+   if ( _postMergeOperations.valid() )
+   {
+      _postMergeOperations->mutex().readLock();
+      for( NodeOperationVector::iterator i = _postMergeOperations->begin(); i != _postMergeOperations->end(); ++i )
+      {
+         i->get()->operator()( node );
+      }
+      _postMergeOperations->mutex().readUnlock();
+   }
 }
 
 

@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <OpenThreads/Condition>
 #include <OpenThreads/Mutex>
-#include <OpenThreads/ReentrantMutex>
+#include <OpenThreads/Thread>
 #include <osg/ref_ptr>
 #include <set>
 #include <map>

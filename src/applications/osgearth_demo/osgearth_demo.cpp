@@ -108,7 +108,7 @@ main(int argc, char** argv)
     win.setCentralWidget( viewerWidget );
     win.setGeometry(100, 100, 1024, 800);
 
-    win.statusBar()->showMessage(QString("osgEarth.   Terrain on Demand.   Copyright 2013 Pelican Mapping.   Please visit http://osgearth.org"));
+    win.statusBar()->showMessage(QString("osgEarth.  Copyright 2014 Pelican Mapping.   Please visit http://osgearth.org"));
 
     win.show();
     app.exec();

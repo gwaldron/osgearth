@@ -56,6 +56,14 @@ namespace osgEarth { namespace Util
         void setVerticalScale( float value );
         float getVerticalScale() const { return _vscale.get(); }
 
+        /** Whether to blend imagery (default=true) */
+        void setBlendImagery( bool value );
+        bool getBlendImagery() const { return _blendImagery.get(); }
+
+        /** Whether to blend elevation (default=true) */
+        void setBlendElevation( bool value );
+        bool getBlendElevation() const { return _blendElevation.get(); }
+
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
@@ -74,6 +82,8 @@ namespace osgEarth { namespace Util
         optional<float>              _delay;
         optional<float>              _duration;
         optional<float>              _vscale;
+        optional<bool>               _blendImagery;
+        optional<bool>               _blendElevation;
         osg::ref_ptr<osg::Uniform>   _delayUniform;
         osg::ref_ptr<osg::Uniform>   _durationUniform;
         osg::ref_ptr<osg::Uniform>   _vscaleUniform;

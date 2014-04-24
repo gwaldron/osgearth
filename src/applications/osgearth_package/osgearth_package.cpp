@@ -151,10 +151,16 @@ makeTMS( osg::ArgumentParser& args )
         bounds.push_back( b );
     }
 
+    // min level to generate
+    unsigned minLevel = 0;
+    args.read( "--min-level", minLevel);
+
+
     // max level to which to generate
     unsigned maxLevel = ~0;
     args.read( "--max-level", maxLevel );
 
+    
     // whether to keep 'empty' tiles
     bool keepEmpties = args.read( "--keep-empties" );
 
@@ -185,8 +191,11 @@ makeTMS( osg::ArgumentParser& args )
     packager.setSubdivideSingleColorImageTiles( continueSingleColor );
     packager.setElevationPixelDepth( elevationPixelDepth );
 
+    packager.setMinLevel( minLevel );
     if( maxLevel != ~0 )
+    {        
         packager.setMaxLevel( maxLevel );
+    }
 
     if( bounds.size() > 0 )
     {

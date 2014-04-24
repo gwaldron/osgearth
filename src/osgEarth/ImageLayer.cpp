@@ -25,6 +25,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/URI>
+#include <osgEarth/MemCache>
 #include <osg/Version>
 #include <osgDB/WriteFile>
 #include <memory.h>

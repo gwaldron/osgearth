@@ -1,0 +1,45 @@
+#ifndef OSGEARTH_ZMQ
+#define OSGEARTH_ZMQ 1
+
+#ifdef OSGEARTH_HAVE_ZEROMQ
+
+#include <osgEarth/Profile>
+#include <osgEarth/TileVisitor>
+
+using namespace osgEarth;
+
+class ZMQTileVisitor : public TileVisitor
+{
+public:
+    ZMQTileVisitor();
+
+    ~ZMQTileVisitor();
+
+    unsigned int getNumWorkers() const;
+    void setNumWorkers( unsigned int numWorkers );
+
+    virtual void run(const Profile* mapProfile);
+
+protected:
+
+    virtual bool handleTile( const TileKey& key );
+
+    void* _sender;
+    void* _context;
+    unsigned int _numWorkers;
+};
+
+
+class ZMQTileHandler
+{
+public:
+    ZMQTileHandler(TileHandler* handler);      
+
+    virtual void run(const Profile* mapProfile);    
+
+    osg::ref_ptr< TileHandler > _handler;
+};
+
+#endif
+
+#endif

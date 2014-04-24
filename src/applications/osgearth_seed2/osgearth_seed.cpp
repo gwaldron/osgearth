@@ -115,38 +115,6 @@ public:
 };
 
 
-/**
- * A TileVisitor that simply emits keys from a list.  Useful for running a list of tasks.
- */
-class TileKeyListVisitor : public TileVisitor
-{
-public:
-    TileKeyListVisitor()     
-    {
-    }
-
-    void setKeys(const TileKeyList& keys)
-    {
-        _keys = keys;
-    }
-
-    virtual void run(const Profile* mapProfile)
-    {
-        resetProgress();        
-
-        for (TileKeyList::iterator itr = _keys.begin(); itr != _keys.end(); ++itr)
-        {
-            if (_tileHandler)
-            {
-                _tileHandler->handleTile( *itr );
-                incrementProgress(1);
-            }
-        }
-    }
-
-    TileKeyList _keys;
-};
-
 int
     main(int argc, char** argv)
 {
@@ -222,7 +190,7 @@ int
     bool estimate = args.read("--estimate");        
 
     unsigned int threads = 1;
-    while (args.read("--threads", threads));
+    while (args.read("--threads", threads));    
 
 
     std::vector< Bounds > bounds;
@@ -397,33 +365,6 @@ int
         visitor->setProgressCallback( progress );
     }
 
-#if 0
-    //Get the first argument that is not an option, that is the earth file name.
-    std::string earthFile;
-    for(int pos=1;pos<args.argc();++pos)
-    {
-        if (!args.isOption(pos))
-        {
-            earthFile  = args[ pos ];
-        }
-    }
-    MultiprocessTileVisitor visitor;
-    std::stringstream baseCommand;
-    baseCommand << "osgearth_cache2 --seed " << earthFile;            
-    visitor.setBaseCommand(baseCommand.str());
-
-    //TileVisitor visitor;
-    visitor.setProgressCallback( progress );
-    visitor.setTileHandler( new CacheTileHandler( mapNode->getMap()->getImageLayerAt( 0 ) ) );    
-
-    // Multithread TMS packager    
-    /*
-    MultithreadedTileVisitor visitor;
-    visitor.setTileHandler( new PackageTileHandler(mapNode->getMap()->getImageLayerAt( 0 ), "out_tms", "jpg") );    
-    */
-#endif
-
-
     visitor->setMinLevel( minLevel );
     visitor->setMaxLevel( maxLevel );        
 
@@ -438,7 +379,7 @@ int
 
     osg::Timer_t start = osg::Timer::instance()->tick();
 
-    //visitor.run( mapNode->getMap()->getProfile() );
+    //visitor.run( mapNode->getMap()->getProfile() );    
     NewCacheSeed seeder;
     seeder.setVisitor(visitor.get());
     seeder.seed(mapNode->getMap());

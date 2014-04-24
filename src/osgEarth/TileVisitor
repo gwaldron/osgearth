@@ -201,6 +201,25 @@ namespace osgEarth
         std::string _baseCommand;
     };
 
+    
+    /**
+    * A TileVisitor that simply emits keys from a list.  Useful for running a list of tasks.
+    */
+    class OSGEARTH_EXPORT TileKeyListVisitor : public TileVisitor
+    {
+    public:
+        TileKeyListVisitor();
+
+        void setKeys(const TileKeyList& keys);
+        
+        virtual void run(const Profile* mapProfile);
+
+    protected:
+        
+        TileKeyList _keys;
+    };
+
+
 
 } // namespace osgEarth
 

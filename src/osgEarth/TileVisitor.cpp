@@ -413,3 +413,28 @@ void MultiprocessTileVisitor::processBatch()
     _taskService->add(task);
     _batch.clear();
 }
+
+
+/*****************************************************************************************/
+TileKeyListVisitor::TileKeyListVisitor()
+{
+}
+
+void TileKeyListVisitor::setKeys(const TileKeyList& keys)
+{
+    _keys = keys;
+}
+
+void TileKeyListVisitor::run(const Profile* mapProfile)
+{
+    resetProgress();        
+
+    for (TileKeyList::iterator itr = _keys.begin(); itr != _keys.end(); ++itr)
+    {
+        if (_tileHandler)
+        {
+            _tileHandler->handleTile( *itr );
+            incrementProgress(1);
+        }
+    }
+}

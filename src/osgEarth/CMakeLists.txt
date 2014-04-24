@@ -58,6 +58,7 @@ SET(LIB_PUBLIC_HEADERS
     GeoData
     Geoid
     GeoMath
+	GeoTransform
     HeightFieldUtils
     HTTPClient
     ImageLayer
@@ -189,6 +190,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     GeoData.cpp
     Geoid.cpp
     GeoMath.cpp
+	GeoTransform.cpp
     HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageLayer.cpp

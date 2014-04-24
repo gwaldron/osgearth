@@ -29,6 +29,8 @@
 #include <osg/Geode>
 #include <osg/NodeCallback>
 
+#define OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER "OSGEARTH_TERRAIN_ENGINE"
+
 namespace osgEarth
 {
     class TerrainEffect;

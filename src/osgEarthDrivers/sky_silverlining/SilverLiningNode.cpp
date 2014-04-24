@@ -80,6 +80,9 @@ _lastAltitude(DBL_MAX)
 
     // SL requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
+
+    // initialize date/time
+    onSetDateTime();
 }
 
 

@@ -143,6 +143,22 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions)
     if ( _features.valid() )
     {
         _features->initialize( dbOptions );
+
+        // Try to fill the DataExtent list using the FeatureProfile
+        const FeatureProfile* featureProfile = _features->getFeatureProfile();
+        if (featureProfile != NULL)
+        {
+            if (featureProfile->getProfile() != NULL)
+            {
+                // Use specified profile's GeoExtent
+                getDataExtents().push_back(DataExtent(featureProfile->getProfile()->getExtent()));
+            }
+            else if (featureProfile->getExtent().isValid() == true)
+            {
+                // Use FeatureProfile's GeoExtent
+                getDataExtents().push_back(DataExtent(featureProfile->getExtent()));
+            }
+        }
     }
     else
     {
@@ -181,14 +197,12 @@ FeatureModelSource::createNodeImplementation(const Map*            map,
     Session* session = new Session( map, _options.styles().get(), _features.get(), dbOptions );
 
     // Graph that will render feature models. May included paged data.
-    FeatureModelGraph* graph = new FeatureModelGraph( session, _options, factory );
-
-    // install any post-merge operations on the FMG so it can call them during paging:
-    const NodeOperationVector& ops = postProcessors();
-    for( NodeOperationVector::const_iterator i = ops.begin(); i != ops.end(); ++i )
-    {
-        graph->addPostMergeOperation( i->get() );
-    }
+    FeatureModelGraph* graph = new FeatureModelGraph( 
+       session,
+       _options,
+       factory,
+       _preMergeOps.get(),
+       _postMergeOps.get() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

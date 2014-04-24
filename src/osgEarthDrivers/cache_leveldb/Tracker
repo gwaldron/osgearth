@@ -1,0 +1,113 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_CACHE_LEVELDB_TRACKER
+#define OSGEARTH_DRIVER_CACHE_LEVELDB_TRACKER 1
+
+#include "LevelDBCacheOptions"
+#include <osgEarth/ThreadingUtils>
+#include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
+#include <osg/Referenced>
+#include <sys/stat.h>
+#ifndef _WIN32
+#   include <unistd.h>
+#endif
+
+namespace osgEarth { namespace Drivers { namespace LevelDBCache
+{
+    typedef OpenThreads::Atomic unsigned_atomic;
+
+    /**
+     * Tracks usage metrics across a LevelDB cache
+     */
+    class Tracker : public osg::Referenced
+    {
+    public:
+        Tracker(const LevelDBCacheOptions& options,
+                const std::string&         path ) : 
+            _options(options),                 
+            _path(path),
+            _seed(0)
+        {
+            _maxBytes = (off_t)(options.maxSizeMB().get() * 1048576);
+            _size = (::off_t)0;
+
+            if (_options.key().isSet() && !_options.key()->empty())
+            {
+                _seed = osgEarth::hashString(_options.key().value());
+            }
+        }
+        virtual ~Tracker() { }
+
+    public:
+        unsigned_atomic reads;
+        unsigned_atomic hits;
+        unsigned_atomic writes;
+
+        bool hasSizeLimit() const {
+            return _options.maxSizeMB().isSet();
+        }
+
+        bool isOverLimit() const { 
+            return _size > _maxBytes; 
+        }
+
+        bool isTimeToCheckSize() const {
+            return ((unsigned)writes % _options.sizeCheckPeriod().value()) == 0;
+        }
+
+        bool isTimeToPurge() const {
+            unsigned w = (unsigned)writes;
+            return w == 1 || (w % _options.sizePurgePeriod().value()) == 0;
+        }
+
+        unsigned numToPurge() const {
+            return _options.sizePurgePeriod().value();
+        }
+
+        const optional<unsigned>& seed() const {
+            return _seed;
+        }
+
+        ::off_t calcSize()
+        {
+            ::off_t total = 0;
+            osgDB::DirectoryContents dir = osgDB::getDirectoryContents(_path);
+            for(osgDB::DirectoryContents::iterator i = dir.begin(); i != dir.end(); ++i)
+            {
+                std::string path = osgDB::concatPaths(_path, *i);
+                struct stat s;
+                ::stat( path.c_str(), &s );
+                total += s.st_size;
+            }
+            _size = total;
+            return total;
+        }
+
+    private:
+        const std::string         _path;
+        const LevelDBCacheOptions _options;
+        ::off_t                   _maxBytes;
+        ::off_t                   _size;
+        optional<unsigned>        _seed;
+    };
+
+} } } // namespace osgEarth::Drivers::LevelDBCache
+
+#endif // OSGEARTH_DRIVER_CACHE_LEVELDB_TRACKER

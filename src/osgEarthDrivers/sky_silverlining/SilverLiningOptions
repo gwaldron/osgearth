@@ -34,7 +34,8 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
     public:
         SilverLiningOptions(const SkyOptions& options =SkyOptions()) :
           SkyOptions(options),
-          _drawClouds(false)
+          _drawClouds(false),
+          _cloudsMaxAltitude(20000)
         {
             setDriver( "silverlining" );
             fromConfig( _conf );

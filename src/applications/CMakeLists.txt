@@ -56,6 +56,7 @@ ADD_SUBDIRECTORY(osgearth_terrainprofile)
 ADD_SUBDIRECTORY(osgearth_map)
 ADD_SUBDIRECTORY(osgearth_annotation)
 ADD_SUBDIRECTORY(osgearth_tracks)
+ADD_SUBDIRECTORY(osgearth_transform)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6")
     ADD_SUBDIRECTORY(osgearth_featureeditor)

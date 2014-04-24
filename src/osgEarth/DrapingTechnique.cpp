@@ -125,6 +125,10 @@ namespace
             if ( eyeClip.y() >= -1.0 && eyeClip.y() <= 1.0 )
                 return;
 
+            // sanity check. 6 faces requires since we need near and far
+            if ( params._visibleFrustumPH._faces.size() < 6 )
+                return;
+
             // discover the max near-plane width.
             double halfWidthNear = 0.0;
             osgShadow::ConvexPolyhedron::Faces::iterator f = params._visibleFrustumPH._faces.begin();

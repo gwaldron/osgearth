@@ -63,7 +63,7 @@ namespace osgEarth { namespace Features
         /**
          * Installs an auto-scaling shader on a stateset.
          */
-        void installShaders(osg::StateSet* stateset) const;
+        void installShaders(osg::Node* node) const;
 
     protected:
         Stroke _stroke;

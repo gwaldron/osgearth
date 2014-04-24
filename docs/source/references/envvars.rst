@@ -7,6 +7,7 @@ Caching:
     :OSGEARTH_CACHE_PATH:   Sets up a cache at the specified folder (path)
     :OSGEARTH_CACHE_ONLY:   Directs osgEarth to ONLY use the cache and no data sources (set to 1)
     :OSGEARTH_NO_CACHE:     Directs osgEarth to NEVER use the cache (set to 1)
+    :OSGEARTH_CACHE_DRIVER: Sets the name of the plugin to use for caching (default is "filesystem")
 
 Threading/Performance:
 
@@ -27,9 +28,8 @@ Debugging:
                                 tile generator to the console.
     :OSGEARTH_MERGE_SHADERS:    Consolidate all shaders within a single shader program; this
                                 is required for GLES (mobile devices) and is therefore useful
-                                for testing. It also makes shader dumps more readable. (set to 1)
-    :OSGEARTH_DUMP_SHADERS:     Prints composited shader code to the console (set to 1).
-                                Setting this will also activate shader merging (above).
+                                for testing. (set to 1).
+    :OSGEARTH_DUMP_SHADERS:     Prints composed shader programs to the console (set to 1).
 
 Rendering:
 

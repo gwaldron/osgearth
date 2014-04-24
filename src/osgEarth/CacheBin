@@ -135,7 +135,18 @@ namespace osgEarth
         /**
          * Purges all entries in the cache bin.
          */
-        virtual bool purge() = 0;
+        virtual bool clear() { return false; }
+
+        /**
+         * Compacts the cache bin (where applicable)
+         */
+        virtual bool compact() { return false; }
+
+        /**
+         * Returns the approximate disk space being used by this cache,
+         * or 0 if unavailable.
+         */
+        virtual unsigned getStorageSize() { return 0u; }
 
         /**
          * Store this pointer in an options structure
@@ -150,6 +161,13 @@ namespace osgEarth
         static CacheBin* get( const osgDB::Options* options ) {
             return options ? const_cast<CacheBin*>(static_cast<const CacheBin*>(options->getPluginData("osgEarth::CacheBin"))) : 0L;
         }
+
+
+    public: //deprecated
+
+        /** @deprecated - use clear */
+        bool purge() { return clear(); } // backwards compatibility
+
 
     protected:
         std::string _binID;

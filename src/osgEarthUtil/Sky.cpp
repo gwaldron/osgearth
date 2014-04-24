@@ -59,7 +59,7 @@ SkyNode::baseInit(const SkyOptions& options)
     {
         float hours = osg::clampBetween(options.hours().get(), 0.0f, 24.0f);
         _dateTime = DateTime(_dateTime.year(), _dateTime.month(), _dateTime.day(), (double)hours);
-        // (don't call setDateTime sinec this is called from the CTOR)
+        // (don't call setDateTime since we are called from the CTOR)
     }
 }
 
@@ -177,6 +177,15 @@ SkyNode::create(MapNode* mapNode)
     SkyOptions options;
     return create(options, mapNode);
 }
+
+SkyNode*
+SkyNode::create(const std::string& driver, MapNode* mapNode)
+{
+    SkyOptions options;
+    options.setDriver( driver );
+    return create( options, mapNode );
+}
+
 
 //------------------------------------------------------------------------
 

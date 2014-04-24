@@ -53,7 +53,7 @@ namespace osgEarth
     /**
     * A TileHandler that writes out a tile from a layer in a TMS structure. packages a tile in a TMS structure
     */
-    class WriteTMSTileHandler : public TileHandler
+    class OSGEARTH_EXPORT WriteTMSTileHandler : public TileHandler
     {
     public:
         WriteTMSTileHandler(TerrainLayer* layer, const std::string& destination, const std::string& extension="jpg" );

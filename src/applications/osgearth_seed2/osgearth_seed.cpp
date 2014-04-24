@@ -53,18 +53,6 @@ using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_cache] "
 
-/**
- * Executes the tasks in the TaskList with the given TileHandler
- */
-void runTasks( const TaskList& tasks, TileHandler* handler )
-{
-    for (TileKeyList::const_iterator itr = tasks.getKeys().begin(); itr != tasks.getKeys().end(); ++itr)
-    {
-        handler->handleTile( (*itr) );
-    }
-}
-
-
 int list( osg::ArgumentParser& args );
 int seed( osg::ArgumentParser& args );
 int purge( osg::ArgumentParser& args );

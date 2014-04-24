@@ -36,6 +36,12 @@ _processed(0)
 {
 }
 
+void TileVisitor::resetProgress()
+{
+    _total = 0;
+    _processed = 0;
+}
+
 void TileVisitor::addExtent( const GeoExtent& extent )
 {
     _extents.push_back( extent );
@@ -71,6 +77,8 @@ void TileVisitor::setProgressCallback( ProgressCallback* progress )
 void TileVisitor::run( const Profile* mapProfile )
 {
     _profile = mapProfile;
+    
+    resetProgress();
 
     estimate();
 
@@ -85,8 +93,7 @@ void TileVisitor::run( const Profile* mapProfile )
 
 void TileVisitor::estimate()
 {
-    //Estimate the number of tiles
-    _total = 0;    
+    //Estimate the number of tiles    
     CacheEstimator est;
     est.setMinLevel( _minLevel );
     est.setMaxLevel( _maxLevel );
@@ -130,7 +137,10 @@ void TileVisitor::incrementProgress(unsigned int amount)
         OpenThreads::ScopedLock< OpenThreads::Mutex > lk(_progressMutex );
         _processed += amount;
     }
-    _progress->reportProgress( _processed, _total );
+    if (_progress.valid())
+    {
+        _progress->reportProgress( _processed, _total );
+    }
 }
 
 bool TileVisitor::handleTile( const TileKey& key )
@@ -271,8 +281,8 @@ const TileKeyList& TaskList::getKeys() const
 
 /*****************************************************************************************/
 MultiprocessTileVisitor::MultiprocessTileVisitor():
-_numProcesses( OpenThreads::GetNumberOfProcessors() ),
-    _batchSize(200)
+    _numProcesses( OpenThreads::GetNumberOfProcessors() ),
+    _batchSize(1000)
 {
     osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
 }
@@ -280,7 +290,7 @@ _numProcesses( OpenThreads::GetNumberOfProcessors() ),
 MultiprocessTileVisitor::MultiprocessTileVisitor( TileHandler* handler ):
 TileVisitor( handler ),
     _numProcesses( OpenThreads::GetNumberOfProcessors() ),
-    _batchSize(200)
+    _batchSize(1000)
 {
 }
 
@@ -312,8 +322,8 @@ void MultiprocessTileVisitor::setBaseCommand(const std::string& baseCommand)
 void MultiprocessTileVisitor::run(const Profile* mapProfile)
 {                             
     // Start up the task service          
-    _taskService = new TaskService( "MPTileHandler", _numProcesses, 5000 );
-
+    _taskService = new TaskService( "MPTileHandler", _numProcesses, 100000 );
+    
     // Produce the tiles
     TileVisitor::run( mapProfile );
 
@@ -388,13 +398,14 @@ void MultiprocessTileVisitor::processBatch()
         tasks.getKeys().push_back( _batch[i] );
     }
     // Save the task file out.
-    std::string filename = getTempName("batch", ".tiles");        
+    std::string tmpPath = getTempPath();
+    std::string filename = getTempName(tmpPath, "batch.tiles");        
     tasks.save( filename );        
 
     std::stringstream command;
     //command << "osgearth_cache2 --seed  gdal_tiff.earth --tiles " << filename;
     command << _baseCommand << " --tiles " << filename;
-    OE_NOTICE << "Running command " << command.str() << std::endl;
+    OE_INFO << "Running command " << command.str() << std::endl;
     osg::ref_ptr< ExecuteTask > task = new ExecuteTask( command.str(), this, tasks.getKeys().size() );
     // Add the task file as a temp file to the task to make sure it gets deleted
     task->addTempFile( filename );

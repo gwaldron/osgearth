@@ -29,7 +29,7 @@ namespace osgEarth
     /**
     * Utility class that traverses a Profile and emits TileKey's based on a collection of extents and min/max levels
     */
-    class OSGEARTH_EXPORT TileVisitor
+    class OSGEARTH_EXPORT TileVisitor : public osg::Referenced
     {
     public:
 
@@ -73,6 +73,8 @@ namespace osgEarth
         void setProgressCallback( ProgressCallback* progress );
 
         void incrementProgress( unsigned int progress );
+
+        void resetProgress();
 
     protected:        
 

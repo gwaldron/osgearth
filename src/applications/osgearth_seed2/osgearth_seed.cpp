@@ -53,80 +53,6 @@ using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_cache] "
 
-
-/******************************************************************************************************************/
-/**
-* Simple example of a single threaded cache seeder.  It's a TileVisitor that calls into the CacheTileHandler
-*/
-class LayerSeeder : public TileVisitor
-{
-public:
-    LayerSeeder(TerrainLayer* layer ):
-      TileVisitor( new CacheTileHandler( layer ) )
-      {
-      }     
-};
-
-
-/**
-* Simple TMS Packager.  It's a TileVisitor that calls into a PackageTileHandler.  
-* It also has an override run method that dumps out a tms.xml file as well.
-*/
-class TMSPackager : public TileVisitor
-{    
-public:
-    TMSPackager(TerrainLayer* layer, const std::string& destination, const std::string& extension="jpg" ):
-      TileVisitor( new WriteTMSTileHandler( layer, destination, extension ) )
-      {
-      }   
-
-      virtual void run(const Profile* mapProfile)
-      {
-          // Run through the tiles
-          TileVisitor::run( mapProfile );
-
-          WriteTMSTileHandler* h = static_cast<WriteTMSTileHandler*>( _tileHandler.get() );
-
-          // Now write out the TMS XML.
-          // create the tile map metadata:
-          osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
-              "",
-              mapProfile,
-              h->getExtension(),
-              h->getWidth(),
-              h->getHeight()
-              );
-
-          // compute a mime type
-          std::string mimeType;
-          std::string extension = h->getExtension();
-          if ( extension == "png" )
-              mimeType = "image/png";
-          else if ( extension == "jpg" || extension == "jpeg" )
-              mimeType = "image/jpeg";
-          else if ( extension == "tif" || extension == "tiff" )
-              mimeType = "image/tiff";
-          else {
-              OE_WARN << LC << "Unable to determine mime-type for extension \"" << extension << "\"" << std::endl;
-          }
-
-          tileMap->setTitle( h->getLayer()->getName() );
-          tileMap->setVersion( "1.0.0" );
-          tileMap->getFormat().setMimeType( mimeType );
-          // TODO:  Compute max level
-          tileMap->generateTileSets( 19 );
-
-          std::string layerFolder = toLegalFileName( h->getLayer()->getName() );
-
-          // write out the tilemap catalog:
-          std::string tileMapFilename = osgDB::concatPaths(h->getDestination() + "/" + layerFolder, "tms.xml");
-          TMS::TileMapReaderWriter::write( tileMap.get(), tileMapFilename );      
-
-      }    
-
-};
-
-
 /**
  * Executes the tasks in the TaskList with the given TileHandler
  */
@@ -146,6 +72,80 @@ int usage( const std::string& msg );
 int message( const std::string& msg );
 int worker( osg::ArgumentParser& args );
 
+
+class NewCacheSeed
+{
+public:
+    NewCacheSeed():
+      _visitor(new TileVisitor())
+    {
+    }
+
+    TileVisitor* getTileVisitor() const
+    {
+        return _visitor;
+    }
+
+    void setVisitor(TileVisitor* visitor)
+    {
+        _visitor = visitor;
+    }
+
+    void seed( Map* map )
+    {
+        // Seed all the map layers
+        for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
+        {
+            osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
+            _visitor->setTileHandler( new CacheTileHandler( layer ) );            
+            //OSG_NOTICE << "Caching image layer " << layer->getName() << std::endl;                 
+            _visitor->run( map->getProfile() );
+        }
+
+        for (unsigned int i = 0; i < map->getNumElevationLayers(); ++i)
+        {
+            osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
+            _visitor->setTileHandler( new CacheTileHandler( layer ) );            
+            //OSG_NOTICE << "Caching elevation layer " << layer->getName() << std::endl;
+            _visitor->run( map->getProfile() );
+        }
+    }
+
+    osg::ref_ptr< TileVisitor > _visitor;
+};
+
+
+/**
+ * A TileVisitor that simply emits keys from a list.  Useful for running a list of tasks.
+ */
+class TileKeyListVisitor : public TileVisitor
+{
+public:
+    TileKeyListVisitor()     
+    {
+    }
+
+    void setKeys(const TileKeyList& keys)
+    {
+        _keys = keys;
+    }
+
+    virtual void run(const Profile* mapProfile)
+    {
+        resetProgress();        
+
+        for (TileKeyList::iterator itr = _keys.begin(); itr != _keys.end(); ++itr)
+        {
+            if (_tileHandler)
+            {
+                _tileHandler->handleTile( *itr );
+                incrementProgress(1);
+            }
+        }
+    }
+
+    TileKeyList _keys;
+};
 
 int
     main(int argc, char** argv)
@@ -248,6 +248,15 @@ int
 
     bool verbose = args.read("--verbose");
 
+    unsigned int batchSize = 0;
+    args.read("--batchsize", batchSize);
+
+    // Read the concurrency level
+    unsigned int concurrency = 0;
+    args.read("-c", concurrency);
+    args.read("--concurrency", concurrency);
+
+
     //Read in the earth file.
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
@@ -306,70 +315,139 @@ int
 
         return 0;
     }
+    
+    osg::ref_ptr< TileVisitor > visitor;
 
+
+    // If we are given a task file, load it up and create a new TileKeyListVisitor
     if (!tileList.empty())
     {        
         TaskList tasks( mapNode->getMap()->getProfile() );
         tasks.load( tileList );
 
-        runTasks( tasks, new CacheTileHandler( mapNode->getMap()->getImageLayerAt( 0 ) ) );            
+        TileKeyListVisitor* v = new TileKeyListVisitor();
+        v->setKeys( tasks.getKeys() );
+        visitor = v;        
+        OE_DEBUG << "Read task list with " << tasks.getKeys().size() << " tasks" << std::endl;
     }
-    else
-    {            
-        // Simple single threaded cache seeder
-        /*
-        LayerSeeder visitor( mapNode->getMap()->getImageLayerAt( 0 ) );    
-        */
+  
 
-        osg::ref_ptr< ProgressCallback > progress = new ConsoleProgressCallback();
-
-        // Multithread cache seeder    
-        //MultithreadedTileVisitor visitor;
-        //ZMQTileVisitor visitor;            
-        //Get the first argument that is not an option, that is the earth file name.
-        std::string earthFile;
-        for(int pos=1;pos<args.argc();++pos)
+    // If we dont' have a visitor create one.
+    if (!visitor.valid())
+    {
+        if (args.read("--mt"))
         {
-            if (!args.isOption(pos))
+            // Create a multithreaded visitor
+            MultithreadedTileVisitor* v = new MultithreadedTileVisitor();
+            if (concurrency > 0)
             {
-                earthFile  = args[ pos ];
+                v->setNumThreads(concurrency);
             }
+            visitor = v;
+            OE_NOTICE << "Multithreaded" << std::endl;
         }
-        MultiprocessTileVisitor visitor;
-        std::stringstream baseCommand;
-        baseCommand << "osgearth_cache2 --seed " << earthFile;            
-        visitor.setBaseCommand(baseCommand.str());
-
-        //TileVisitor visitor;
-        visitor.setProgressCallback( progress );
-        visitor.setTileHandler( new CacheTileHandler( mapNode->getMap()->getImageLayerAt( 0 ) ) );    
-
-        // Multithread TMS packager    
-        /*
-        MultithreadedTileVisitor visitor;
-        visitor.setTileHandler( new PackageTileHandler(mapNode->getMap()->getImageLayerAt( 0 ), "out_tms", "jpg") );    
-        */
-
-
-        visitor.setMinLevel( minLevel );
-        visitor.setMaxLevel( maxLevel );        
-
-
-        for (unsigned int i = 0; i < bounds.size(); i++)
+        else if (args.read("--mp"))
         {
-            GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
-            OE_DEBUG << "Adding extent " << extent.toString() << std::endl;                
-            visitor.addExtent( extent );
-        }    
+            // Create a multiprocess visitor
+            MultiprocessTileVisitor* v = new MultiprocessTileVisitor();
+            if (concurrency > 0)
+            {
+                v->setNumProcesses(concurrency);
+            }
+
+            if (batchSize > 0)
+            {
+                OE_NOTICE << "Setting batch size to " << batchSize << std::endl;
+                v->setBatchSize(batchSize);
+            }
+
+            
+            // Try to find the earth file
+            std::string earthFile;
+            for(int pos=1;pos<args.argc();++pos)
+            {
+                if (!args.isOption(pos))
+                {
+                    earthFile  = args[ pos ];
+                }
+            }
+            std::stringstream baseCommand;
+            baseCommand << "osgearth_cache2 --seed " << earthFile;                     
+            v->setBaseCommand(baseCommand.str());
+            visitor = v;
+            OE_NOTICE << "Multiprocess" << std::endl;
+        }
+        else
+        {
+            // Create a single thread visitor
+            visitor = new TileVisitor();
+            OE_NOTICE << "Single threaded" << std::endl;
+        }        
+    }
+
+    osg::ref_ptr< ProgressCallback > progress = new ConsoleProgressCallback();
+
+    // Multithread cache seeder    
+    //MultithreadedTileVisitor visitor;
+    //ZMQTileVisitor visitor; 
+
+    
+    if (verbose)
+    {
+        visitor->setProgressCallback( progress );
+    }
+
+#if 0
+    //Get the first argument that is not an option, that is the earth file name.
+    std::string earthFile;
+    for(int pos=1;pos<args.argc();++pos)
+    {
+        if (!args.isOption(pos))
+        {
+            earthFile  = args[ pos ];
+        }
+    }
+    MultiprocessTileVisitor visitor;
+    std::stringstream baseCommand;
+    baseCommand << "osgearth_cache2 --seed " << earthFile;            
+    visitor.setBaseCommand(baseCommand.str());
+
+    //TileVisitor visitor;
+    visitor.setProgressCallback( progress );
+    visitor.setTileHandler( new CacheTileHandler( mapNode->getMap()->getImageLayerAt( 0 ) ) );    
+
+    // Multithread TMS packager    
+    /*
+    MultithreadedTileVisitor visitor;
+    visitor.setTileHandler( new PackageTileHandler(mapNode->getMap()->getImageLayerAt( 0 ), "out_tms", "jpg") );    
+    */
+#endif
 
 
-        osg::Timer_t start = osg::Timer::instance()->tick();
+    visitor->setMinLevel( minLevel );
+    visitor->setMaxLevel( maxLevel );        
 
-        visitor.run( mapNode->getMap()->getProfile() );
 
-        osg::Timer_t end = osg::Timer::instance()->tick();
+    for (unsigned int i = 0; i < bounds.size(); i++)
+    {
+        GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
+        OE_DEBUG << "Adding extent " << extent.toString() << std::endl;                
+        visitor->addExtent( extent );
+    }    
 
-        OE_NOTICE << "Completed seeding in " << osgEarth::prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+
+    osg::Timer_t start = osg::Timer::instance()->tick();
+
+    //visitor.run( mapNode->getMap()->getProfile() );
+    NewCacheSeed seeder;
+    seeder.setVisitor(visitor.get());
+    seeder.seed(mapNode->getMap());
+
+    osg::Timer_t end = osg::Timer::instance()->tick();
+
+    if (verbose)
+    {
+        OE_NOTICE << "Completed seeding in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
     }    
 
     return 0;

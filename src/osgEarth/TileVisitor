@@ -103,27 +103,103 @@ namespace osgEarth
     /**
     * A TileVisitor that pushes all of it's generated keys onto a TaskService queue and handles them in background threads.
     */
-    class MultithreadedTileVisitor: public TileVisitor
+    class OSGEARTH_EXPORT MultithreadedTileVisitor: public TileVisitor
     {
     public:
         MultithreadedTileVisitor();
-          
-          MultithreadedTileVisitor( TileHandler* handler );
 
-          unsigned int getNumThreads() const;
-          void setNumThreads( unsigned int numThreads);
+        MultithreadedTileVisitor( TileHandler* handler );
 
-          virtual void run(const Profile* mapProfile);
+        unsigned int getNumThreads() const;
+        void setNumThreads( unsigned int numThreads);
+
+        virtual void run(const Profile* mapProfile);
 
     protected:
 
         virtual bool handleTile( const TileKey& key );
-        
+
         unsigned int _numThreads;
 
         // The work queue to pass seed operations to
         osg::ref_ptr<osgEarth::TaskService> _taskService;
     };
+
+
+    typedef std::vector< TileKey > TileKeyList;
+
+    
+    /**
+     * A list of TileKeys that you can serialize to a file
+     */
+    class OSGEARTH_EXPORT TaskList
+    {    
+    public:
+        TaskList(const Profile* profile);
+
+        /**
+         * Loads the tiles from the given file.
+         */
+        bool load( const std::string &filename);          
+
+        /**
+         * Saves the tiles to the given file.
+         */
+        void save( const std::string& filename);
+
+        /**
+         * Gets the list of keys
+         */
+        TileKeyList& getKeys();
+
+        const TileKeyList& getKeys() const;
+
+    protected:
+        TileKeyList _keys;
+        osg::ref_ptr< const Profile > _profile;
+    };
+
+
+
+
+    /**
+    * A TileVisitor that launches an external process to process tiles.
+    */
+    class OSGEARTH_EXPORT MultiprocessTileVisitor: public TileVisitor
+    {
+    public:
+        MultiprocessTileVisitor();
+
+        MultiprocessTileVisitor( TileHandler* handler );
+
+        unsigned int getNumProcesses() const;
+        void setNumProcesses( unsigned int numProcesses);
+
+        unsigned int getBatchSize() const;
+        void setBatchSize( unsigned int batchSize );
+
+        void setBaseCommand(const std::string& baseCommand);
+
+        virtual void run(const Profile* mapProfile);          
+
+    protected:
+
+        virtual bool handleTile( const TileKey& key );
+
+        void processBatch();
+
+        TileKeyList _batch;
+
+        unsigned int _batchSize;
+        unsigned int _numProcesses;    
+
+        // The work queue to pass seed operations to
+        osg::ref_ptr<osgEarth::TaskService> _taskService;
+
+        std::string _baseCommand;
+    };
+
+
 } // namespace osgEarth
 
 #endif // OSGEARTH_TRAVERSAL_DATA_H

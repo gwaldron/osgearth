@@ -18,6 +18,7 @@
  */
 #include <osgEarth/TileVisitor>
 #include <osgEarth/CacheEstimator>
+#include <osgEarth/FileUtils>
 
 using namespace osgEarth;
 
@@ -219,4 +220,185 @@ bool MultithreadedTileVisitor::handleTile( const TileKey& key )
 {
     _taskService->add( new HandleTileTask(_tileHandler, key ) );
     return true;
+}
+
+/*****************************************************************************************/
+
+TaskList::TaskList(const Profile* profile):
+_profile( profile )
+{
+}
+
+bool TaskList::load( const std::string &filename)
+{          
+    std::ifstream in( filename.c_str(), std::ios::in );
+
+    std::string line;
+    while( getline(in, line) )
+    {            
+        std::vector< std::string > parts;
+        StringTokenizer(line, parts, "," );
+
+
+        _keys.push_back( TileKey(as<unsigned int>(parts[0], 0), 
+            as<unsigned int>(parts[1], 0), 
+            as<unsigned int>(parts[2], 0),
+            _profile ) );
+    }
+
+
+    return true;
+}
+
+void TaskList::save( const std::string& filename )
+{        
+    std::ofstream out( filename.c_str() );
+    for (TileKeyList::iterator itr = _keys.begin(); itr != _keys.end(); ++itr)
+    {
+        out << (*itr).getLevelOfDetail() << ", " << (*itr).getTileX() << ", " << (*itr).getTileY() << std::endl;
+    }
+}
+
+TileKeyList& TaskList::getKeys()
+{
+    return _keys;
+}
+
+const TileKeyList& TaskList::getKeys() const
+{
+    return _keys;
+}
+
+/*****************************************************************************************/
+MultiprocessTileVisitor::MultiprocessTileVisitor():
+_numProcesses( OpenThreads::GetNumberOfProcessors() ),
+    _batchSize(200)
+{
+    osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
+}
+
+MultiprocessTileVisitor::MultiprocessTileVisitor( TileHandler* handler ):
+TileVisitor( handler ),
+    _numProcesses( OpenThreads::GetNumberOfProcessors() ),
+    _batchSize(200)
+{
+}
+
+unsigned int MultiprocessTileVisitor::getNumProcesses() const
+{
+    return _numProcesses; 
+}
+
+void MultiprocessTileVisitor::setNumProcesses( unsigned int numProcesses)
+{
+    _numProcesses = numProcesses; 
+}
+
+unsigned int MultiprocessTileVisitor::getBatchSize() const
+{
+    return _batchSize;
+}
+
+void MultiprocessTileVisitor::setBatchSize( unsigned int batchSize )
+{
+    _batchSize = batchSize;
+}
+
+void MultiprocessTileVisitor::setBaseCommand(const std::string& baseCommand)
+{
+    _baseCommand = baseCommand;
+}
+
+void MultiprocessTileVisitor::run(const Profile* mapProfile)
+{                             
+    // Start up the task service          
+    _taskService = new TaskService( "MPTileHandler", _numProcesses, 5000 );
+
+    // Produce the tiles
+    TileVisitor::run( mapProfile );
+
+    // Process any remaining tasks in the final batch
+    processBatch();
+
+    // Send a poison pill to kill all the threads
+    _taskService->add( new PoisonPill() );
+
+    // Wait for everything to finish
+    _taskService->waitforThreadsToComplete();          
+}
+
+bool MultiprocessTileVisitor::handleTile( const TileKey& key )        
+{        
+    _batch.push_back( key );
+
+    if (_batch.size() == _batchSize)
+    {
+        processBatch();
+    }         
+    return true;
+}
+
+/**
+* Executes a command in an external process
+*/
+class ExecuteTask : public TaskRequest
+{
+public:
+    ExecuteTask(const std::string& command, TileVisitor* visitor, unsigned int count):            
+      _command( command ),
+      _visitor( visitor ),
+      _count( count )
+      {
+      }
+
+      virtual void operator()(ProgressCallback* progress )
+      {         
+          system(_command.c_str());     
+
+          // Cleanup the temp files and increment the progress on the visitor.
+          cleanupTempFiles();
+          _visitor->incrementProgress( _count );
+      }
+
+      void addTempFile( const std::string& filename )
+      {
+          _tempFiles.push_back(filename);
+      }
+
+      void cleanupTempFiles()
+      {
+          for (unsigned int i = 0; i < _tempFiles.size(); i++)
+          {
+              remove( _tempFiles[i].c_str() );
+          }
+      }
+
+
+      std::vector< std::string > _tempFiles;
+      std::string _command;
+      TileVisitor* _visitor;
+      unsigned int _count;
+};
+
+void MultiprocessTileVisitor::processBatch()
+{       
+    TaskList tasks( 0 );
+    for (unsigned int i = 0; i < _batch.size(); i++)
+    {
+        tasks.getKeys().push_back( _batch[i] );
+    }
+    // Save the task file out.
+    std::string filename = getTempName("batch", ".tiles");        
+    tasks.save( filename );        
+
+    std::stringstream command;
+    //command << "osgearth_cache2 --seed  gdal_tiff.earth --tiles " << filename;
+    command << _baseCommand << " --tiles " << filename;
+    OE_NOTICE << "Running command " << command.str() << std::endl;
+    osg::ref_ptr< ExecuteTask > task = new ExecuteTask( command.str(), this, tasks.getKeys().size() );
+    // Add the task file as a temp file to the task to make sure it gets deleted
+    task->addTempFile( filename );
+
+    _taskService->add(task);
+    _batch.clear();
 }

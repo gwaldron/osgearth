@@ -48,6 +48,35 @@ namespace osgEarth
     protected:
         osg::ref_ptr< TerrainLayer > _layer;
     };
+
+
+    /**
+    * A TileHandler that writes out a tile from a layer in a TMS structure. packages a tile in a TMS structure
+    */
+    class WriteTMSTileHandler : public TileHandler
+    {
+    public:
+        WriteTMSTileHandler(TerrainLayer* layer, const std::string& destination, const std::string& extension="jpg" );
+
+        const std::string& getExtension() const;
+        const std::string& getDestination() const;
+        unsigned int getWidth() const;
+        unsigned int getHeight() const;
+        TerrainLayer* getLayer();
+
+    protected:
+        std::string getPathForTile( const TileKey &key );
+
+        virtual bool handleTile( const TileKey& key );
+
+    protected:
+        std::string _extension;
+        std::string _destination;
+        osg::ref_ptr< TerrainLayer > _layer;
+        unsigned int _width;
+        unsigned int _height;
+    };
+
 } // namespace osgEarth
 
 #endif // OSGEARTH_TRAVERSAL_DATA_H

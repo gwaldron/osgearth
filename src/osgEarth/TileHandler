@@ -75,6 +75,9 @@ namespace osgEarth
         void setElevationPixelDepth(unsigned value);
         unsigned getElevationPixelDepth() const;
 
+        osgDB::Options* getOptions() const;
+        void setOptions(osgDB::Options* options);
+
         virtual bool handleTile( const TileKey& key );
         virtual bool hasData( const TileKey& key ) const;
 
@@ -90,6 +93,7 @@ namespace osgEarth
         unsigned int _height;
         unsigned int _maxLevel;
         unsigned int _elevationPixelDepth;
+        osg::ref_ptr< osgDB::Options > _options;
     };
 
 } // namespace osgEarth

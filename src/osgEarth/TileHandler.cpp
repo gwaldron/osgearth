@@ -136,6 +136,16 @@ unsigned WriteTMSTileHandler::getElevationPixelDepth() const
     return _elevationPixelDepth;
 }
 
+osgDB::Options* WriteTMSTileHandler::getOptions() const
+{
+    return _options;
+}
+
+void WriteTMSTileHandler::setOptions(osgDB::Options* options)
+{
+    _options = options;
+}
+
 std::string WriteTMSTileHandler::getPathForTile( const TileKey &key )
 {
     std::string layerFolder = toLegalFileName( _layer->getName() );         
@@ -189,7 +199,7 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
             {
                 _maxLevel = key.getLevelOfDetail();
             }
-            return osgDB::writeImageFile(*final, path);
+            return osgDB::writeImageFile(*final, path, _options.get());
         }            
     }
     else if (elevationLayer )
@@ -209,7 +219,7 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
             {
                 _maxLevel = key.getLevelOfDetail();
             }
-            return osgDB::writeImageFile(*image.get(), path);
+            return osgDB::writeImageFile(*image.get(), path, _options.get());
         }            
     }
     return false;        

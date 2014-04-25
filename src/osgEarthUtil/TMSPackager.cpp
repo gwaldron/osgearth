@@ -714,6 +714,16 @@ void TMSPackager::setExtension( const std::string& extension)
      return _elevationPixelDepth;
  }
 
+osgDB::Options* TMSPackager::getOptions() const
+{
+    return _writeOptions.get();
+}
+
+void TMSPackager::setWriteOptions( osgDB::Options* options )
+{
+    _writeOptions = options;
+}
+
 TileVisitor* TMSPackager::getTileVisitor() const
 {
     return _visitor;
@@ -728,6 +738,7 @@ void TMSPackager::run( TerrainLayer* layer,  const Profile* profile  )
 { 
     _handler = new WriteTMSTileHandler(layer, _destination, _extension);
     _handler->setElevationPixelDepth( _elevationPixelDepth );
+    _handler->setOptions(_writeOptions.get());
     _visitor->setTileHandler( _handler );
     _visitor->run( profile );    
 }

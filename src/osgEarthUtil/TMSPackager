@@ -229,6 +229,9 @@ public:
     void setElevationPixelDepth(unsigned value);
     unsigned getElevationPixelDepth() const;
 
+    osgDB::Options* getOptions() const;
+    void setWriteOptions( osgDB::Options* options );
+
     TileVisitor* getTileVisitor() const;
 
     void setVisitor(TileVisitor* visitor);
@@ -242,10 +245,11 @@ protected:
     std::string _destination;
     std::string _extension;
     unsigned int _elevationPixelDepth;
-
+    osg::ref_ptr<osgDB::Options>    _writeOptions;
 
     osg::ref_ptr< TileVisitor > _visitor;
     osg::ref_ptr< WriteTMSTileHandler > _handler;
+
 };
 
 #endif

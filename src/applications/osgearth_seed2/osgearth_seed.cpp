@@ -45,8 +45,6 @@
 #include <sstream>
 #include <iterator>
 
-#include "ZMQ"
-
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
@@ -58,7 +56,6 @@ int seed( osg::ArgumentParser& args );
 int purge( osg::ArgumentParser& args );
 int usage( const std::string& msg );
 int message( const std::string& msg );
-int worker( osg::ArgumentParser& args );
 
 
 class NewCacheSeed
@@ -176,9 +173,7 @@ int
     else if ( args.read( "--list" ) )
         return list( args );
     else if ( args.read( "--purge" ) )
-        return purge( args );    
-    else if ( args.read( "--worker") )
-        return worker( args );
+        return purge( args );        
     else
     return usage("");
 }
@@ -438,7 +433,6 @@ int
 
     if (tms)
     {
-        OE_NOTICE << "Running TMS" << std::endl;
         NewTMSPackager packager;
         packager.setVisitor(visitor.get());
         packager.run(mapNode->getMap());
@@ -652,26 +646,4 @@ int
     }
 
     return 0;
-}
-
-int worker( osg::ArgumentParser& args )
-{    
-#if OSGEARTH_HAVE_ZEROMQ
-    //Read in the earth file.
-    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
-    if ( !node.valid() )
-        return usage( "Failed to read .earth file." );
-
-    MapNode* mapNode = MapNode::findMapNode( node.get() );
-    if ( !mapNode )
-        return usage( "Input file was not a .earth file" );
-
-    // Startup a ZMQ worker
-    ZMQTileHandler worker( new CacheTileHandler( mapNode->getMap()->getImageLayerAt( 0 ) ) );
-    worker.run( mapNode->getMap()->getProfile() );
-
-    return 0;    
-#else
-    return usage("--worker unsupported.  osgEarth not built with ZeroMQ support");
-#endif
 }

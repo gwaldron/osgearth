@@ -67,6 +67,14 @@ namespace osgEarth
         unsigned int getHeight() const;
         unsigned int getMaxLevel() const;
         TerrainLayer* getLayer();
+
+        /**
+        * Pixeldepth for elevations
+        * default = 32
+        */
+        void setElevationPixelDepth(unsigned value);
+        unsigned getElevationPixelDepth() const;
+
         virtual bool handleTile( const TileKey& key );
         virtual bool hasData( const TileKey& key ) const;
 
@@ -81,6 +89,7 @@ namespace osgEarth
         unsigned int _width;
         unsigned int _height;
         unsigned int _maxLevel;
+        unsigned int _elevationPixelDepth;
     };
 
 } // namespace osgEarth

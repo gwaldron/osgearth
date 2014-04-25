@@ -679,7 +679,8 @@ void TMSPackager::cancel(const std::string& msg)
 TMSPackager::TMSPackager():
 _visitor(new TileVisitor()),
     _extension("jpg"),
-    _destination("out")
+    _destination("out"),
+    _elevationPixelDepth(32)
 {
 }
 
@@ -703,6 +704,16 @@ void TMSPackager::setExtension( const std::string& extension)
     _extension = extension;
 }
 
+ void TMSPackager::setElevationPixelDepth(unsigned value)
+ {
+     _elevationPixelDepth = value;
+ }
+
+ unsigned TMSPackager::getElevationPixelDepth() const
+ {
+     return _elevationPixelDepth;
+ }
+
 TileVisitor* TMSPackager::getTileVisitor() const
 {
     return _visitor;
@@ -716,6 +727,7 @@ void TMSPackager::setVisitor(TileVisitor* visitor)
 void TMSPackager::run( TerrainLayer* layer,  const Profile* profile  )
 { 
     _handler = new WriteTMSTileHandler(layer, _destination, _extension);
+    _handler->setElevationPixelDepth( _elevationPixelDepth );
     _visitor->setTileHandler( _handler );
     _visitor->run( profile );    
 }

@@ -91,7 +91,8 @@ _layer( layer ),
     _extension(extension),
     _width(0),
     _height(0),
-    _maxLevel(0)
+    _maxLevel(0),
+    _elevationPixelDepth(32)
 {
 }
 
@@ -123,6 +124,16 @@ unsigned int WriteTMSTileHandler::getHeight() const
 TerrainLayer* WriteTMSTileHandler::getLayer()
 {
     return _layer; 
+}
+
+void WriteTMSTileHandler::setElevationPixelDepth(unsigned value)
+{
+    _elevationPixelDepth = value;
+}
+
+unsigned WriteTMSTileHandler::getElevationPixelDepth() const
+{
+    return _elevationPixelDepth;
 }
 
 std::string WriteTMSTileHandler::getPathForTile( const TileKey &key )
@@ -193,7 +204,7 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
             }
             // convert the HF to an image
             ImageToHeightFieldConverter conv;
-            osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), 32 );				
+            osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), _elevationPixelDepth );				
             if (key.getLevelOfDetail() > _maxLevel)
             {
                 _maxLevel = key.getLevelOfDetail();

@@ -210,8 +210,7 @@ makeTMS( osg::ArgumentParser& args )
     //TODO:  Single color
     bool continueSingleColor = args.read( "--continue-single-color" );
 
-    // max level to which to generate
-    //TODO:  Support
+    // elevation pixel depth
     unsigned elevationPixelDepth = 32;
     args.read( "--elevation-pixel-depth", elevationPixelDepth );
     
@@ -309,6 +308,7 @@ makeTMS( osg::ArgumentParser& args )
     TMSPackager packager;
     packager.setVisitor(visitor);
     packager.setDestination(rootFolder);    
+    packager.setElevationPixelDepth(elevationPixelDepth);
 
     // Package all the ImageLayer's
     for (unsigned int i = 0; i < map->getNumImageLayers(); i++)

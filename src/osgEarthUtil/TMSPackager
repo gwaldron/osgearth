@@ -226,6 +226,9 @@ public:
 
     void setExtension( const std::string& extension);
 
+    void setElevationPixelDepth(unsigned value);
+    unsigned getElevationPixelDepth() const;
+
     TileVisitor* getTileVisitor() const;
 
     void setVisitor(TileVisitor* visitor);
@@ -238,6 +241,8 @@ protected:
 
     std::string _destination;
     std::string _extension;
+    unsigned int _elevationPixelDepth;
+
 
     osg::ref_ptr< TileVisitor > _visitor;
     osg::ref_ptr< WriteTMSTileHandler > _handler;

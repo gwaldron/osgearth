@@ -23,12 +23,12 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/TileKey>
-#include <osgEarth/Progress>
-#include <OpenThreads/Mutex>
-#include <OpenThreads/Atomic>
+#include <osgEarth/TileVisitor>
+
 
 namespace osgEarth
 {
+#if 0
     class CacheSeed;
 
     class CacheTileOperation : public osg::Operation
@@ -130,6 +130,36 @@ namespace osgEarth
 
         OpenThreads::Mutex _mutex;
     };
+#else
+
+/**
+* Utility class for seeding a cache
+*/
+class OSGEARTH_EXPORT CacheSeed
+{
+public:
+    CacheSeed();
+    
+    /**
+     * Gets the TileVisitor to use when seeding the cache.  Use this to set traversal options like the extents, levels, etc.
+     */
+    TileVisitor* getTileVisitor() const;
+    
+    /**
+     * Sets the TileVisitor to use when seeding the cache.  Must be configured BEFORE you call run
+     */
+    void setVisitor(TileVisitor* visitor);
+    
+    /**
+     Seeds all the layers in the given map.
+     */
+    void run( Map* map );
+
+protected:
+
+    osg::ref_ptr< TileVisitor > _visitor;
+};
+#endif
 }
 
 #endif //OSGEARTH_CACHE_SEED_H

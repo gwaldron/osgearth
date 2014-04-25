@@ -65,6 +65,7 @@ namespace osgEarth
         const std::string& getDestination() const;
         unsigned int getWidth() const;
         unsigned int getHeight() const;
+        unsigned int getMaxLevel() const;
         TerrainLayer* getLayer();
         virtual bool handleTile( const TileKey& key );
         virtual bool hasData( const TileKey& key ) const;
@@ -79,6 +80,7 @@ namespace osgEarth
         osg::ref_ptr< TerrainLayer > _layer;
         unsigned int _width;
         unsigned int _height;
+        unsigned int _maxLevel;
     };
 
 } // namespace osgEarth

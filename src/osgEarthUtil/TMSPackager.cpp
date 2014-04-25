@@ -32,6 +32,7 @@
 using namespace osgEarth::Util;
 using namespace osgEarth;
 
+#if 0
 // A global mutex to make sure that we're not creating directories concurrently.
 // If you don't do this you will get 
 static OpenThreads::Mutex s_dirLock;
@@ -585,6 +586,7 @@ TMSPackager::package(ElevationLayer*    layer,
     {
         testHF = layer->createHeightField( *i );
     }
+
     if ( !testHF.valid() )
         return Result( "Unable to determine heightfield size" );
 
@@ -671,3 +673,86 @@ void TMSPackager::cancel(const std::string& msg)
     _errorMessage = msg;
     _taskService->cancelAll();
 }
+#else
+
+
+TMSPackager::TMSPackager():
+_visitor(new TileVisitor()),
+    _extension("jpg"),
+    _destination("out")
+{
+}
+
+const std::string& TMSPackager::getDestination() const
+{
+    return _destination;
+}
+
+void TMSPackager::setDestination( const std::string& destination)
+{
+    _destination = destination;
+}
+
+const std::string& TMSPackager::getExtension() const
+{
+    return _extension;
+}
+
+void TMSPackager::setExtension( const std::string& extension)
+{
+    _extension = extension;
+}
+
+TileVisitor* TMSPackager::getTileVisitor() const
+{
+    return _visitor;
+}
+
+void TMSPackager::setVisitor(TileVisitor* visitor)
+{
+    _visitor = visitor;
+}    
+
+void TMSPackager::run( TerrainLayer* layer,  const Profile* profile  )
+{ 
+    _handler = new WriteTMSTileHandler(layer, _destination, _extension);
+    _visitor->setTileHandler( _handler );
+    _visitor->run( profile );    
+}
+
+void TMSPackager::writeXML( TerrainLayer* layer, const Profile* profile)
+{
+     // create the tile map metadata:
+    osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
+        "",
+        profile,
+        _extension,
+        _handler->getWidth(),
+        _handler->getHeight()
+        );
+
+    std::string mimeType;
+    if ( _extension == "png" )
+        mimeType = "image/png";
+    else if ( _extension == "jpg" || _extension == "jpeg" )
+        mimeType = "image/jpeg";
+    else if ( _extension == "tif" || _extension == "tiff" )
+        mimeType = "image/tiff";
+    else {
+        OE_WARN << LC << "Unable to determine mime-type for extension \"" << _extension << "\"" << std::endl;
+    }
+
+
+    unsigned int maxLevel = _handler->getMaxLevel();
+    tileMap->setTitle( layer->getName() );
+    tileMap->setVersion( "1.0.0" );
+    tileMap->getFormat().setMimeType( mimeType );
+    tileMap->generateTileSets( std::min(23u, maxLevel+1) );
+    
+
+    // write out the tilemap catalog:
+    std::string tileMapFilename = osgDB::concatPaths( osgDB::concatPaths(_destination, toLegalFileName( layer->getName() )), "tms.xml");
+    TMS::TileMapReaderWriter::write( tileMap.get(), tileMapFilename );
+}
+
+#endif

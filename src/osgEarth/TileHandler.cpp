@@ -90,7 +90,8 @@ _layer( layer ),
     _destination( destination ),
     _extension(extension),
     _width(0),
-    _height(0)      
+    _height(0),
+    _maxLevel(0)
 {
 }
 
@@ -113,6 +114,11 @@ unsigned int WriteTMSTileHandler::getHeight() const
 {
     return _height;
 }
+
+ unsigned int WriteTMSTileHandler::getMaxLevel() const
+ {
+     return _maxLevel;
+ }
 
 TerrainLayer* WriteTMSTileHandler::getLayer()
 {
@@ -167,7 +173,11 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
             if ( _extension == "jpg" && final->getPixelFormat() != GL_RGB )
             {
                 final = ImageUtils::convertToRGB8( final );
-            }                
+            }
+            if (key.getLevelOfDetail() > _maxLevel)
+            {
+                _maxLevel = key.getLevelOfDetail();
+            }
             return osgDB::writeImageFile(*final, path);
         }            
     }
@@ -176,9 +186,18 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
         GeoHeightField hf = elevationLayer->createHeightField( key );
         if (hf.valid())
         {
+            if (_width == 0 || _height == 0)
+            {
+                _width = hf.getHeightField()->getNumColumns();
+                _height = hf.getHeightField()->getNumRows();
+            }
             // convert the HF to an image
             ImageToHeightFieldConverter conv;
             osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), 32 );				
+            if (key.getLevelOfDetail() > _maxLevel)
+            {
+                _maxLevel = key.getLevelOfDetail();
+            }
             return osgDB::writeImageFile(*image.get(), path);
         }            
     }

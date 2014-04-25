@@ -49,109 +49,9 @@ int usage( const std::string& msg );
 int message( const std::string& msg );
 
 
-class NewCacheSeed
-{
-public:
-    NewCacheSeed():
-      _visitor(new TileVisitor())
-    {
-    }
-
-    TileVisitor* getTileVisitor() const
-    {
-        return _visitor;
-    }
-
-    void setVisitor(TileVisitor* visitor)
-    {
-        _visitor = visitor;
-    }
-
-    void run( Map* map )
-    {
-        // Seed all the map layers
-        for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
-        {
-            osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
-            _visitor->setTileHandler( new CacheTileHandler( layer ) );            
-            _visitor->run( map->getProfile() );
-        }
-
-        for (unsigned int i = 0; i < map->getNumElevationLayers(); ++i)
-        {
-            osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
-            _visitor->setTileHandler( new CacheTileHandler( layer ) );                        
-            _visitor->run( map->getProfile() );
-        }
-    }
-
-    osg::ref_ptr< TileVisitor > _visitor;
-};
 
 
-class NewTMSPackager
-{
-public:
-    NewTMSPackager():
-      _visitor(new TileVisitor()),
-          _extension("jpg"),
-          _destination("out")
-      {
-      }
 
-      const std::string& getDestination() const
-      {
-          return _destination;
-      }
-
-      void setDestination( const std::string& destination)
-      {
-          _destination = destination;
-      }
-
-      const std::string& getExtension() const
-      {
-          return _extension;
-      }
-
-      void setExtension( const std::string& extension)
-      {
-          _extension = extension;
-      }
-
-      TileVisitor* getTileVisitor() const
-      {
-          return _visitor;
-      }
-
-      void setVisitor(TileVisitor* visitor)
-      {
-          _visitor = visitor;
-      }
-
-      void run( Map* map )
-      {
-          // Seed all the map layers
-          for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
-          {
-              osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
-              _visitor->setTileHandler( new WriteTMSTileHandler(layer, _destination, _extension));
-              _visitor->run( map->getProfile() );
-          }
-
-          for (unsigned int i = 0; i < map->getNumElevationLayers(); ++i)
-          {
-              osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
-              _visitor->setTileHandler( new WriteTMSTileHandler(layer, _destination, _extension));
-              _visitor->run( map->getProfile() );
-          }
-      }
-
-      std::string _destination;
-      std::string _extension;
-
-      osg::ref_ptr< TileVisitor > _visitor;
-};
 
 
 int
@@ -225,10 +125,7 @@ int
     while (args.read("--max-level", maxLevel));
 
     bool estimate = args.read("--estimate");        
-
-    unsigned int threads = 1;
-    while (args.read("--threads", threads));    
-
+    
 
     std::vector< Bounds > bounds;
     // restrict packaging to user-specified bounds.    
@@ -261,12 +158,6 @@ int
     args.read("-c", concurrency);
     args.read("--concurrency", concurrency);
 
-
-    bool tms = false;
-    if (args.read("--tms"))
-    {        
-        tms = true;
-    }    
 
     //Read in the earth file.
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
@@ -383,11 +274,7 @@ int
                 }
             }
             std::stringstream baseCommand;
-            baseCommand << "osgearth_cache2 --seed ";
-            if (tms)
-            {
-                baseCommand << " --tms ";
-            }
+            baseCommand << "osgearth_cache2 --seed ";            
             baseCommand << earthFile;                     
             v->setBaseCommand(baseCommand.str());
             visitor = v;
@@ -421,22 +308,10 @@ int
 
 
     osg::Timer_t start = osg::Timer::instance()->tick();
-
-    if (tms)
-    {
-        NewTMSPackager packager;
-        packager.setVisitor(visitor.get());
-        packager.run(mapNode->getMap());
-
-        //TODO:  Write out the TMS XML for each layer if we're not a worker
-    }
-    else
-    {
-        OE_NOTICE << "Running seeder" << std::endl;
-        NewCacheSeed seeder;
-        seeder.setVisitor(visitor.get());
-        seeder.run(mapNode->getMap());
-    }
+    
+    CacheSeed seeder;
+    seeder.setVisitor(visitor.get());
+    seeder.run(mapNode->getMap());
 
     osg::Timer_t end = osg::Timer::instance()->tick();
 

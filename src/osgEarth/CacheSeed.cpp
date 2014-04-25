@@ -29,7 +29,7 @@ using namespace osgEarth;
 using namespace OpenThreads;
 
 
-
+#if 0
 
 
 /******************************************************************/
@@ -354,3 +354,39 @@ CacheSeed::addExtent( const GeoExtent& value)
 {
     _extents.push_back( value );
 }
+#else
+
+CacheSeed::CacheSeed():
+_visitor(new TileVisitor())
+{
+}
+
+TileVisitor* CacheSeed::getTileVisitor() const
+{
+    return _visitor;
+}
+
+void CacheSeed::setVisitor(TileVisitor* visitor)
+{
+    _visitor = visitor;
+}
+
+void CacheSeed::run( Map* map )
+{
+    // Seed all the map layers
+    for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
+    {
+        osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
+        _visitor->setTileHandler( new CacheTileHandler( layer ) );            
+        _visitor->run( map->getProfile() );
+    }
+
+    for (unsigned int i = 0; i < map->getNumElevationLayers(); ++i)
+    {
+        osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
+        _visitor->setTileHandler( new CacheTileHandler( layer ) );                        
+        _visitor->run( map->getProfile() );
+    }
+}
+
+#endif

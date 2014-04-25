@@ -28,7 +28,9 @@
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/TileVisitor>
 #include <osgEarthUtil/TMSPackager>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/tms/TMSOptions>
 
 #include <iostream>
@@ -104,25 +106,85 @@ findArgumentWithExtension( osg::ArgumentParser& args, const std::string& ext )
 int
 makeTMS( osg::ArgumentParser& args )
 {
-#if 0 
+    osgDB::Registry::instance()->getReaderWriterForExtension("png");
+    osgDB::Registry::instance()->getReaderWriterForExtension("jpg");
+    osgDB::Registry::instance()->getReaderWriterForExtension("tiff");
+
+    //Read the min level
+    unsigned int minLevel = 0;
+    while (args.read("--min-level", minLevel));
+
+    //Read the max level
+    unsigned int maxLevel = 5;
+    while (args.read("--max-level", maxLevel));
+    
+
+    std::vector< Bounds > bounds;
+    // restrict packaging to user-specified bounds.    
+    double xmin=DBL_MAX, ymin=DBL_MAX, xmax=DBL_MIN, ymax=DBL_MIN;
+    while (args.read("--bounds", xmin, ymin, xmax, ymax ))
+    {        
+        Bounds b;
+        b.xMin() = xmin, b.yMin() = ymin, b.xMax() = xmax, b.yMax() = ymax;
+        bounds.push_back( b );
+    }    
+
+    std::string tileList;
+    while (args.read( "--tiles", tileList ) );
+
+    bool verbose = args.read("--verbose");
+
+    unsigned int batchSize = 0;
+    args.read("--batchsize", batchSize);
+
+    // Read the concurrency level
+    unsigned int concurrency = 0;
+    args.read("-c", concurrency);
+    args.read("--concurrency", concurrency);
+
+    // load up the map
+    osg::ref_ptr<MapNode> mapNode = MapNode::load( args );
+    if( !mapNode.valid() )
+        return usage( "Failed to load a valid .earth file" );
+
+
+    // Read in an index shapefile
+    std::string index;
+    while (args.read("--index", index))
+    {        
+        //Open the feature source
+        OGRFeatureOptions featureOpt;
+        featureOpt.url() = index;        
+
+        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
+        features->initialize();
+        features->getFeatureProfile();
+
+        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+        while (cursor.valid() && cursor->hasMore())
+        {
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+            GeoExtent ext( feature->getSRS(), featureBounds );
+            ext = ext.transform( mapNode->getMapSRS() );
+            bounds.push_back( ext.bounds() );            
+        }
+    }
+
     // see if the user wants to override the type extension (imagery only)
     std::string extension;
     args.read( "--ext", extension );
 
-    // verbosity?
-    bool verbose = !args.read( "--quiet" );
-
     // find a .earth file on the command line
     std::string earthFile = findArgumentWithExtension( args, ".earth" );
-    /*   if ( earthFile.empty() )
-           return usage( "Missing required .earth file" );
-           */
+    
     // folder to which to write the TMS archive.
     std::string rootFolder;
     if( !args.read( "--out", rootFolder ) )
         rootFolder = Stringify() << earthFile << ".tms_repo";
 
     // whether to overwrite existing tile files
+    //TODO:  Support
     bool overwrite = false;
     if( args.read( "--overwrite" ) )
         overwrite = true;
@@ -141,41 +203,18 @@ makeTMS( osg::ArgumentParser& args )
 
     osg::ref_ptr<osgDB::Options> options = new osgDB::Options( dbOptions );
 
-
-    std::vector< Bounds > bounds;
-    // restrict packaging to user-specified bounds.    
-    double xmin = DBL_MAX, ymin = DBL_MAX, xmax = DBL_MIN, ymax = DBL_MIN;
-    while( args.read( "--bounds", xmin, ymin, xmax, ymax ) )
-    {
-        Bounds b;
-        b.xMin() = xmin, b.yMin() = ymin, b.xMax() = xmax, b.yMax() = ymax;
-        bounds.push_back( b );
-    }
-
-    // min level to generate
-    unsigned minLevel = 0;
-    args.read( "--min-level", minLevel);
-
-
-    // max level to which to generate
-    unsigned maxLevel = ~0;
-    args.read( "--max-level", maxLevel );
-
-    
     // whether to keep 'empty' tiles
+    //TODO:  Add support
     bool keepEmpties = args.read( "--keep-empties" );
 
+    //TODO:  Single color
     bool continueSingleColor = args.read( "--continue-single-color" );
 
     // max level to which to generate
+    //TODO:  Support
     unsigned elevationPixelDepth = 32;
     args.read( "--elevation-pixel-depth", elevationPixelDepth );
-
-    // load up the map
-    osg::ref_ptr<MapNode> mapNode = MapNode::load( args );
-    if( !mapNode.valid() )
-        return usage( "Failed to load a valid .earth file" );
-
+    
     // create a folder for the output
     osgDB::makeDirectory( rootFolder );
     if( !osgDB::fileExists( rootFolder ) )
@@ -183,9 +222,115 @@ makeTMS( osg::ArgumentParser& args )
 
     Map* map = mapNode->getMap();
 
+
+    osg::ref_ptr< TileVisitor > visitor;
+
+    // If we are given a task file, load it up and create a new TileKeyListVisitor
+    if (!tileList.empty())
+    {        
+        TaskList tasks( mapNode->getMap()->getProfile() );
+        tasks.load( tileList );
+
+        TileKeyListVisitor* v = new TileKeyListVisitor();
+        v->setKeys( tasks.getKeys() );
+        visitor = v;            
+    }
+
+    // If we dont' have a visitor create one.
+    if (!visitor.valid())
+    {
+        if (args.read("--mt"))
+        {
+            // Create a multithreaded visitor
+            MultithreadedTileVisitor* v = new MultithreadedTileVisitor();
+            if (concurrency > 0)
+            {
+                v->setNumThreads(concurrency);
+            }
+            visitor = v;            
+        }
+        else if (args.read("--mp"))
+        {
+            // Create a multiprocess visitor
+            MultiprocessTileVisitor* v = new MultiprocessTileVisitor();
+            if (concurrency > 0)
+            {
+                v->setNumProcesses(concurrency);
+            }
+
+            if (batchSize > 0)
+            {            
+                v->setBatchSize(batchSize);
+            }
+
+
+            // Try to find the earth file
+            std::string earthFile;
+            for(int pos=1;pos<args.argc();++pos)
+            {
+                if (!args.isOption(pos))
+                {
+                    earthFile  = args[ pos ];
+                }
+            }
+            std::stringstream baseCommand;
+            baseCommand << "osgearth_package2 --tms ";
+            baseCommand << earthFile;                     
+            v->setBaseCommand(baseCommand.str());
+            visitor = v;            
+        }
+        else
+        {
+            // Create a single thread visitor
+            visitor = new TileVisitor();            
+        }        
+    }
+
+    osg::ref_ptr< ProgressCallback > progress = new ConsoleProgressCallback();
+
+    if (verbose)
+    {
+        visitor->setProgressCallback( progress );
+    }
+
+    visitor->setMinLevel( minLevel );
+    visitor->setMaxLevel( maxLevel );        
+
+
+    for (unsigned int i = 0; i < bounds.size(); i++)
+    {
+        GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
+        OE_DEBUG << "Adding extent " << extent.toString() << std::endl;                
+        visitor->addExtent( extent );
+    }    
+
+
+    // Setup a TMSPackager with all the options.
+    TMSPackager packager;
+    packager.setVisitor(visitor);
+    packager.setDestination(rootFolder);    
+
+    // Package all the ImageLayer's
+    for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
+    {
+        ImageLayer* layer = map->getImageLayerAt(i);        
+        packager.run(layer, map->getProfile());
+        packager.writeXML(layer, map->getProfile());
+    }    
+
+    // For elevation layers we need to use tiff
+    packager.setExtension("tif");
+    // Package all the ElevationLayer's
+    for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
+    {
+        ElevationLayer* layer = map->getElevationLayerAt(i);        
+        packager.run(layer, map->getProfile());
+        packager.writeXML(layer, map->getProfile());
+    }
+
+        /*
     // fire up a packager:
     TMSPackager packager( map->getProfile(), options );
-
     packager.setVerbose( verbose );
     packager.setOverwrite( overwrite );
     packager.setKeepEmptyImageTiles( keepEmpties );
@@ -337,7 +482,7 @@ makeTMS( osg::ArgumentParser& args )
             OE_NOTICE << LC << "Wrote earth file to \"" << outEarthFile << "\"" << std::endl;
         }
     }
-#endif
+    */
 
     return 0;
 }

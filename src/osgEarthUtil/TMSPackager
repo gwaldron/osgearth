@@ -20,13 +20,14 @@
 #define OSGEARTHUTIL_TMS_PACKAGER_H
 
 #include <osgEarthUtil/Common>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
 #include <osgEarth/Profile>
-#include <osgEarth/TaskService>
+#include <osgEarth/Map>
+#include <osgEarth/TileHandler>
+#include <osgEarth/TileVisitor>
 
 namespace osgEarth { namespace Util
 {
+#if 0
     /**
      * Utility that reads tiles from an ImageLayer or ElevationLayer and stores
      * the resulting data in a disk-based TMS (Tile Map Service) repository.
@@ -203,6 +204,46 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osgEarth::TaskService> _taskService;
         osg::ref_ptr< osgEarth::ProgressCallback > _progress;
     };
+
+#else
+
+
+/**
+* Utility that reads tiles from an ImageLayer or ElevationLayer and stores
+* the resulting data in a disk-based TMS (Tile Map Service) repository.
+*
+* See: http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification
+*/
+class OSGEARTHUTIL_EXPORT TMSPackager
+{
+public:
+    TMSPackager();      
+    const std::string& getDestination() const;
+
+    void setDestination( const std::string& destination);
+
+    const std::string& getExtension() const;
+
+    void setExtension( const std::string& extension);
+
+    TileVisitor* getTileVisitor() const;
+
+    void setVisitor(TileVisitor* visitor);
+
+    void run( TerrainLayer* layer, const Profile* profile );
+
+    void writeXML( TerrainLayer* layer, const Profile* profile);
+
+protected:
+
+    std::string _destination;
+    std::string _extension;
+
+    osg::ref_ptr< TileVisitor > _visitor;
+    osg::ref_ptr< WriteTMSTileHandler > _handler;
+};
+
+#endif
 
 } } // namespace osgEarth::Util
 

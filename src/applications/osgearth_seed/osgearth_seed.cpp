@@ -112,7 +112,7 @@ int message( const std::string& msg )
 int
 seed( osg::ArgumentParser& args )
 {    
-
+#if 0
     //Read the min level
     unsigned int minLevel = 0;
     while (args.read("--min-level", minLevel));
@@ -233,6 +233,7 @@ seed( osg::ArgumentParser& args )
 
     OE_NOTICE << "Completed seeding in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
 
+#endif
     return 0;
 }
 

@@ -245,8 +245,7 @@ int
             {
                 v->setNumThreads(concurrency);
             }
-            visitor = v;
-            OE_NOTICE << "Multithreaded" << std::endl;
+            visitor = v;            
         }
         else if (args.read("--mp"))
         {
@@ -258,8 +257,7 @@ int
             }
 
             if (batchSize > 0)
-            {
-                OE_NOTICE << "Setting batch size to " << batchSize << std::endl;
+            {                
                 v->setBatchSize(batchSize);
             }
 
@@ -277,14 +275,12 @@ int
             baseCommand << "osgearth_cache2 --seed ";            
             baseCommand << earthFile;                     
             v->setBaseCommand(baseCommand.str());
-            visitor = v;
-            OE_NOTICE << "Multiprocess" << std::endl;
+            visitor = v;            
         }
         else
         {
             // Create a single thread visitor
-            visitor = new TileVisitor();
-            OE_NOTICE << "Single threaded" << std::endl;
+            visitor = new TileVisitor();            
         }        
     }
 

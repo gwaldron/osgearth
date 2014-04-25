@@ -75,6 +75,7 @@ namespace osgEarth
         void incrementProgress( unsigned int progress );
 
         void resetProgress();
+        
 
     protected:        
 
@@ -98,7 +99,7 @@ namespace osgEarth
         OpenThreads::Mutex _progressMutex;
 
         unsigned int _total;
-        unsigned int _processed;
+        unsigned int _processed;        
     };
 
 

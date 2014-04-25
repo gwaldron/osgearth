@@ -33,6 +33,8 @@ namespace osgEarth
     {
     public:
         virtual bool handleTile( const TileKey& key );
+
+        virtual bool hasData( const TileKey& key ) const;
     };
 
 
@@ -44,6 +46,7 @@ namespace osgEarth
     public:
         CacheTileHandler( TerrainLayer* layer );
         virtual bool handleTile( const TileKey& key );
+        virtual bool hasData( const TileKey& key ) const;
 
     protected:
         osg::ref_ptr< TerrainLayer > _layer;
@@ -63,11 +66,12 @@ namespace osgEarth
         unsigned int getWidth() const;
         unsigned int getHeight() const;
         TerrainLayer* getLayer();
+        virtual bool handleTile( const TileKey& key );
+        virtual bool hasData( const TileKey& key ) const;
 
     protected:
+        
         std::string getPathForTile( const TileKey &key );
-
-        virtual bool handleTile( const TileKey& key );
 
     protected:
         std::string _extension;

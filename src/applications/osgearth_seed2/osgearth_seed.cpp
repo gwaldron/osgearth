@@ -103,66 +103,66 @@ public:
 
 class NewTMSPackager
 {
-    public:
+public:
     NewTMSPackager():
       _visitor(new TileVisitor()),
-      _extension("jpg"),
-      _destination("out")
-    {
-    }
+          _extension("jpg"),
+          _destination("out")
+      {
+      }
 
-    const std::string& getDestination() const
-    {
-        return _destination;
-    }
+      const std::string& getDestination() const
+      {
+          return _destination;
+      }
 
-    void setDestination( const std::string& destination)
-    {
-        _destination = destination;
-    }
+      void setDestination( const std::string& destination)
+      {
+          _destination = destination;
+      }
 
-    const std::string& getExtension() const
-    {
-        return _extension;
-    }
+      const std::string& getExtension() const
+      {
+          return _extension;
+      }
 
-    void setExtension( const std::string& extension)
-    {
-        _extension = extension;
-    }
+      void setExtension( const std::string& extension)
+      {
+          _extension = extension;
+      }
 
-    TileVisitor* getTileVisitor() const
-    {
-        return _visitor;
-    }
+      TileVisitor* getTileVisitor() const
+      {
+          return _visitor;
+      }
 
-    void setVisitor(TileVisitor* visitor)
-    {
-        _visitor = visitor;
-    }
+      void setVisitor(TileVisitor* visitor)
+      {
+          _visitor = visitor;
+      }
 
-    void run( Map* map )
-    {
-        // Seed all the map layers
-        for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
-        {
-            osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
-            _visitor->setTileHandler( new WriteTMSTileHandler(layer, _destination, _extension));
-            _visitor->run( map->getProfile() );
-        }
+      void run( Map* map )
+      {
+          // Seed all the map layers
+          for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
+          {
+              osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
+              _visitor->setTileHandler( new WriteTMSTileHandler(layer, _destination, _extension));
+              _visitor->run( map->getProfile() );
+          }
 
-        for (unsigned int i = 0; i < map->getNumElevationLayers(); ++i)
-        {
-            osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
-            _visitor->setTileHandler( new WriteTMSTileHandler(layer, _destination, _extension));
-            _visitor->run( map->getProfile() );
-        }
-    }
+          for (unsigned int i = 0; i < map->getNumElevationLayers(); ++i)
+          {
+              osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
+              _visitor->setTileHandler( new WriteTMSTileHandler(layer, _destination, _extension));
+              _visitor->run( map->getProfile() );
+          }
+      }
 
-    std::string _destination;
-    std::string _extension;
+      std::string _destination;
+      std::string _extension;
 
-    osg::ref_ptr< TileVisitor > _visitor;
+      osg::ref_ptr< TileVisitor > _visitor;
 };
 
 
@@ -416,11 +416,6 @@ int
     }
 
     osg::ref_ptr< ProgressCallback > progress = new ConsoleProgressCallback();
-
-    // Multithread cache seeder    
-    //MultithreadedTileVisitor visitor;
-    //ZMQTileVisitor visitor; 
-
     
     if (verbose)
     {

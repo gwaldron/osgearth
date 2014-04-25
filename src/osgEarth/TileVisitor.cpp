@@ -113,6 +113,12 @@ void TileVisitor::processKey( const TileKey& key )
 
     bool traverseChildren = true;
 
+    // Only process this key if it has a chance of succeeding.
+    if (_tileHandler && !_tileHandler->hasData(key))
+    {        
+        return;
+    }
+
     // Check to see if this key is within valid range.
     if ( _minLevel <= lod && _maxLevel >= lod && intersects( key.getExtent() ) )
     {        

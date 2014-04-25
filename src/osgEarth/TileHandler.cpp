@@ -32,6 +32,11 @@ bool TileHandler::handleTile(const TileKey& key)
     return true;
 }
 
+bool TileHandler::hasData( const TileKey& key ) const
+{
+    return true;
+}
+
 
 /*****************************************************************************************/
 CacheTileHandler::CacheTileHandler( TerrainLayer* layer ):
@@ -63,6 +68,16 @@ bool CacheTileHandler::handleTile( const TileKey& key )
     }
     return false;        
 }   
+
+bool CacheTileHandler::hasData( const TileKey& key ) const
+{
+    TileSource* ts = _layer->getTileSource();
+    if (ts)
+    {
+        return ts->hasData(key);
+    }
+    return true;
+}
 
 
 /*****************************************************************************************/
@@ -168,4 +183,14 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
         }            
     }
     return false;        
-}  
+} 
+
+bool WriteTMSTileHandler::hasData( const TileKey& key ) const
+{
+    TileSource* ts = _layer->getTileSource();
+    if (ts)
+    {
+        return ts->hasData(key);
+    }
+    return true;
+}

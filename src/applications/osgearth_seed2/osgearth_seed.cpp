@@ -19,25 +19,17 @@
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
-#include <osgDB/WriteFile>
 
 #include <osg/io_utils>
-#include <osgEarth/ImageUtils>
 
 #include <osgEarth/Common>
-#include <osgEarth/Map>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
 #include <osgEarth/CacheEstimator>
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
-#include <osgEarthUtil/TMS>
-
-#include <osgEarth/TaskService>
 
 #include <osgEarth/TileVisitor>
 
@@ -46,7 +38,6 @@
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
 
 #define LC "[osgearth_cache] "

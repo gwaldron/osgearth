@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
+#include <osgEarth/FileUtils>
 
 #define LC "[TFSPackager] "
 
@@ -262,7 +263,7 @@ public:
               //OE_NOTICE << "Writing " << features.size() << " features to " << filename << std::endl;
 
               if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
-                  osgDB::makeDirectoryForFile( filename );
+                  osgEarth::makeDirectoryForFile( filename );
 
 
               std::fstream output( filename.c_str(), std::ios_base::out );

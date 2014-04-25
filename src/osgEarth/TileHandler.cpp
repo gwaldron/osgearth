@@ -21,9 +21,11 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/FileUtils>
 
 #include <osgDB/WriteFile>
 #include <osgDB/FileUtils>
+
 
 using namespace osgEarth;
 
@@ -83,8 +85,6 @@ bool CacheTileHandler::hasData( const TileKey& key ) const
 /*****************************************************************************************/
 // A global mutex to make sure that we're not creating directories concurrently.
 // If you don't do this you will get errors when writing from multiple threads
-static OpenThreads::Mutex s_dirLock;
-
 WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer, const std::string& destination, const std::string& extension):
 _layer( layer ),
     _destination( destination ),
@@ -168,10 +168,7 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
     std::string path = getPathForTile( key );
 
     // attempt to create the output folder:        
-    {
-        OpenThreads::ScopedLock< OpenThreads::Mutex > lk( s_dirLock );
-        osgDB::makeDirectoryForFile( path );       
-    }
+    osgEarth::makeDirectoryForFile( path );       
 
     ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
     ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );

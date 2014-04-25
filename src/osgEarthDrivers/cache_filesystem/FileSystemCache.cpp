@@ -243,7 +243,7 @@ namespace
     {
         if ( !_binPathExists )
         {
-            osgDB::makeDirectoryForFile( _metaPath );
+            osgEarth::makeDirectoryForFile( _metaPath );
 
             if ( osgDB::fileExists(_binPath) )
             {
@@ -415,7 +415,7 @@ namespace
 
             // make a home for it..
             if ( !osgDB::fileExists( osgDB::getFilePath(fileURI.full()) ) )
-                osgDB::makeDirectoryForFile( fileURI.full() );
+                osgEarth::makeDirectoryForFile( fileURI.full() );
 
 
             if ( dynamic_cast<const osg::Image*>(object) )

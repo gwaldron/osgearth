@@ -135,7 +135,7 @@ void TMSBackFiller::writeTile( const TileKey& key, osg::Image* image )
 {
     std::string filename = getFilename( key );
     if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
-        osgDB::makeDirectoryForFile( filename );
+        osgEarth::makeDirectoryForFile( filename );
     osgDB::writeImageFile( *image, filename, _options.get() );        
 }
      

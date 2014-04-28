@@ -143,17 +143,18 @@ public:
     /**
      * Gets the TileVisitor to use when seeding the cache.  Use this to set traversal options like the extents, levels, etc.
      */
-    TileVisitor* getTileVisitor() const;
+    TileVisitor* getVisitor() const;
     
     /**
      * Sets the TileVisitor to use when seeding the cache.  Must be configured BEFORE you call run
      */
     void setVisitor(TileVisitor* visitor);
-    
+
     /**
-     Seeds all the layers in the given map.
+     * Seeds a TerrainLayer
      */
-    void run( Map* map );
+    void run(TerrainLayer* layer, const Profile* profile );
+   
 
 protected:
 

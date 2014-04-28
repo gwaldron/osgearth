@@ -361,7 +361,7 @@ _visitor(new TileVisitor())
 {
 }
 
-TileVisitor* CacheSeed::getTileVisitor() const
+TileVisitor* CacheSeed::getVisitor() const
 {
     return _visitor;
 }
@@ -371,22 +371,10 @@ void CacheSeed::setVisitor(TileVisitor* visitor)
     _visitor = visitor;
 }
 
-void CacheSeed::run( Map* map )
+void CacheSeed::run( TerrainLayer* layer, const Profile* profile )
 {
-    // Seed all the map layers
-    for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
-    {
-        osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
-        _visitor->setTileHandler( new CacheTileHandler( layer ) );            
-        _visitor->run( map->getProfile() );
-    }
-
-    for (unsigned int i = 0; i < map->getNumElevationLayers(); ++i)
-    {
-        osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
-        _visitor->setTileHandler( new CacheTileHandler( layer ) );                        
-        _visitor->run( map->getProfile() );
-    }
+    _visitor->setTileHandler( new CacheTileHandler( layer ) );
+    _visitor->run( profile );
 }
 
 #endif

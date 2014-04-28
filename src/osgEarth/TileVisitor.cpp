@@ -320,6 +320,11 @@ void MultiprocessTileVisitor::setBatchSize( unsigned int batchSize )
     _batchSize = batchSize;
 }
 
+const std::string& MultiprocessTileVisitor::getBaseCommand() const
+{
+    return _baseCommand;
+}
+
 void MultiprocessTileVisitor::setBaseCommand(const std::string& baseCommand)
 {
     _baseCommand = baseCommand;

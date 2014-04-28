@@ -49,11 +49,6 @@ int usage( const std::string& msg );
 int message( const std::string& msg );
 
 
-
-
-
-
-
 int
     main(int argc, char** argv)
 {
@@ -157,6 +152,21 @@ int
     unsigned int concurrency = 0;
     args.read("-c", concurrency);
     args.read("--concurrency", concurrency);
+
+    int imageLayerIndex = -1;
+    args.read("--image", imageLayerIndex);
+
+    if (imageLayerIndex >= 0)
+    {
+        OE_NOTICE << "Got image layer index " << imageLayerIndex << std::endl;
+    }
+
+    int elevationLayerIndex = -1;
+    args.read("--elevation", elevationLayerIndex);
+    if (elevationLayerIndex >= 0)
+    {
+        OE_NOTICE << "Got elevation layer index " << elevationLayerIndex << std::endl;
+    }
 
 
     //Read in the earth file.
@@ -272,7 +282,15 @@ int
                 }
             }
             std::stringstream baseCommand;
-            baseCommand << "osgearth_cache2 --seed ";            
+            baseCommand << "osgearth_cache2 --seed ";     
+            if (imageLayerIndex >= 0)
+            {
+                baseCommand << " --image " << imageLayerIndex;
+            }
+            else if (elevationLayerIndex >= 0)
+            {
+                baseCommand << " --elevation " << elevationLayerIndex;
+            }
             baseCommand << earthFile;                     
             v->setBaseCommand(baseCommand.str());
             visitor = v;            
@@ -301,19 +319,107 @@ int
         OE_DEBUG << "Adding extent " << extent.toString() << std::endl;                
         visitor->addExtent( extent );
     }    
-
-
-    osg::Timer_t start = osg::Timer::instance()->tick();
     
+
+    // Initialize the seeder
     CacheSeed seeder;
     seeder.setVisitor(visitor.get());
-    seeder.run(mapNode->getMap());
 
-    osg::Timer_t end = osg::Timer::instance()->tick();
+    osgEarth::Map* map = mapNode->getMap();
 
-    if (verbose)
+    // They want to seed an image layer
+    if (imageLayerIndex >= 0)
     {
-        OE_NOTICE << "Completed seeding in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+        osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt( imageLayerIndex );
+        if (layer)
+        {
+            OE_NOTICE << "Seeding single layer " << layer->getName() << std::endl;
+            osg::Timer_t start = osg::Timer::instance()->tick();        
+            seeder.run(layer, map->getProfile());
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }    
+        }
+        else
+        {
+            std::cout << "Failed to find an image layer at index " << imageLayerIndex << std::endl;
+            return 1;
+        }
+
+    }
+    // They want to seed an elevation layer
+    else if (elevationLayerIndex >= 0)
+    {
+        osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt( elevationLayerIndex );
+        if (layer)
+        {
+            OE_NOTICE << "Seeding single layer " << layer->getName() << std::endl;
+            osg::Timer_t start = osg::Timer::instance()->tick();        
+            seeder.run(layer, map->getProfile());
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }    
+        }
+        else
+        {
+            std::cout << "Failed to find an elevation layer at index " << elevationLayerIndex << std::endl;
+            return 1;
+        }
+    }
+    // They want to seed the entire map
+    else
+    {        
+        MultiprocessTileVisitor* mp = dynamic_cast<MultiprocessTileVisitor*>(seeder.getVisitor());
+        std::string baseCommand;
+        if (mp)
+        {
+            baseCommand = mp->getBaseCommand();
+        }
+        // Seed all the map layers
+        for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
+        {            
+            osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
+            OE_NOTICE << "Seeding layer" << layer->getName() << std::endl;
+            if (mp)
+            {                
+                std::stringstream buf;
+                buf << baseCommand << " --image " << i;
+                OE_NOTICE << "Setting base command to " << buf.str() << std::endl;
+                mp->setBaseCommand(buf.str());
+            }
+
+            osg::Timer_t start = osg::Timer::instance()->tick();
+            seeder.run(layer.get(), map->getProfile());            
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }                
+        }
+
+        for (unsigned int i = 0; i < map->getNumElevationLayers(); ++i)
+        {
+            osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
+            OE_NOTICE << "Seeding layer" << layer->getName() << std::endl;
+            if (mp)
+            {                
+                std::stringstream buf;
+                buf << baseCommand << " --elevation " << i;
+                OE_NOTICE << "Setting base command to " << buf.str() << std::endl;
+                mp->setBaseCommand(buf.str());
+            }
+            osg::Timer_t start = osg::Timer::instance()->tick();
+            seeder.run(layer.get(), map->getProfile());            
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }                
+        }        
     }    
 
     return 0;

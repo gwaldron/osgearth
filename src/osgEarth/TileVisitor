@@ -181,6 +181,8 @@ namespace osgEarth
         unsigned int getBatchSize() const;
         void setBatchSize( unsigned int batchSize );
 
+        const std::string& getBaseCommand() const;
+
         void setBaseCommand(const std::string& baseCommand);
 
         virtual void run(const Profile* mapProfile);          

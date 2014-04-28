@@ -60,6 +60,12 @@ namespace osgEarth { namespace Util
         bool getAbortOnError() const { return _abortOnError; }
 
         /**
+         * Minimum level of detail to package
+         */
+        void setMinLevel( unsigned value ) { _minLevel = value; }
+        unsigned getMinLevel() const { return _minLevel; }
+
+        /**
          * Maximum level of detail of tiles to package
          */
         void setMaxLevel( unsigned value ) { _maxLevel = value; }
@@ -188,6 +194,7 @@ namespace osgEarth { namespace Util
         bool                        _subdivideSingleColorImageTiles;
 		unsigned                    _elevationPixelDepth;
         unsigned                    _maxLevel;
+        unsigned                    _minLevel;
         std::vector<GeoExtent>      _extents;
         osg::ref_ptr<const Profile> _outProfile;
 		    osg::ref_ptr<osgDB::Options>    _writeOptions;

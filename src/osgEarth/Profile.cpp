@@ -695,12 +695,11 @@ Profile::getIntersectingTiles(const TileKey& key, std::vector<TileKey>& out_inte
     {
         // figure out which LOD in the local profile is a best match for the LOD
         // in the source LOD in terms of resolution.
-        unsigned localLOD = getEquivalentLOD(key.getProfile(), key.getLOD());        
-
+        unsigned localLOD = getEquivalentLOD(key.getProfile(), key.getLOD());
         getIntersectingTiles(key.getExtent(), localLOD, out_intersectingKeys);
 
-        //OE_INFO << LC << "GIT, key="<< key.str() << ", localLOD=" << localLOD
-        //    << ", resulted in " << out_intersectingKeys.size() << " tiles" << std::endl;
+        OE_DEBUG << LC << "GIT, key="<< key.str() << ", localLOD=" << localLOD
+            << ", resulted in " << out_intersectingKeys.size() << " tiles" << std::endl;
     }
 }
 

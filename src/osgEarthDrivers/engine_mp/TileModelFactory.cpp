@@ -57,13 +57,24 @@ namespace
         {
             bool ok = false;
 
+            // This will only go true if we are requesting a ROOT TILE but we have to
+            // fall back on lower resolution data to create it.
+            bool isFallback = false;
+
             GeoImage geoImage;
 
+            // The "fast path" preserves mercator tiles without reprojection.
             bool useMercatorFastPath =
                 _opt->enableMercatorFastPath() != false &&
                 _mapInfo->isGeocentric()                &&
                 _layer->getProfile()                    &&
                 _layer->getProfile()->getSRS()->isSphericalMercator();
+
+            // If this is a ROOT tile, we will try to fall back on lower-resolution
+            // data if we can't find something at the optimal LOD.
+            bool isRootKey =
+                (_key.getLOD() == 0) || // should never be
+                (_key.getLOD()-1 == _opt->firstLOD().value());
 
             TileSource*    tileSource   = _layer->getTileSource();
             const Profile* layerProfile = _layer->getProfile();
@@ -86,10 +97,52 @@ namespace
                 if ( useMercatorFastPath )
                 {
                     geoImage = _layer->createImageInNativeProfile( _key, progress );
+
+                    // If this is a root tile, try to find lower-resolution data to
+                    // fulfill the request.
+                    if ( isRootKey && !geoImage.valid() )
+                    {
+                        isFallback = true;
+
+                        for(TileKey fallbackKey = _key.createParentKey();
+                            fallbackKey.valid() && !geoImage.valid();
+                            fallbackKey = fallbackKey.createParentKey())
+                        {
+                            geoImage = _layer->createImageInNativeProfile( fallbackKey, progress );
+                            if ( geoImage.valid() )
+                            {
+                                OE_DEBUG << LC << "Fell back from (" 
+                                    << _key.str() << ") to ("
+                                    << fallbackKey.str() << ") for a root tile request."
+                                    << std::endl;
+                            }
+                        }
+                    }
                 }
                 else
                 {
                     geoImage = _layer->createImage( _key, progress );
+
+                    // If this is a root tile, try to find lower-resolution data to
+                    // fulfill the request.
+                    if ( isRootKey && !geoImage.valid() )
+                    {
+                        isFallback = true;
+
+                        for(TileKey fallbackKey = _key.createParentKey();
+                            fallbackKey.valid() && !geoImage.valid();
+                            fallbackKey = fallbackKey.createParentKey())
+                        {
+                            geoImage = _layer->createImage( fallbackKey, progress );
+                            if ( geoImage.valid() )
+                            {
+                                OE_DEBUG << LC << "Fell back from (" 
+                                    << _key.str() << ") to ("
+                                    << fallbackKey.str() << ") for a root tile request."
+                                    << std::endl;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -108,7 +161,7 @@ namespace
                     _order,
                     geoImage.getImage(),
                     locator,
-                    false ); // isFallbackData
+                    isFallback ); // isFallbackData
 
                 ok = true;
             }

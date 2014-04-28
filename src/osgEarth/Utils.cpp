@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Utils>
+#include <osgEarth/ECEF>
+#include <osgEarth/CullingUtils>
 #include <osg/Version>
 #include <osg/CoordinateSystemNode>
 #include <osg/MatrixTransform>
@@ -41,7 +43,9 @@ void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler*
 #define LC "[PixelAutoTransform] "
 
 PixelAutoTransform::PixelAutoTransform() :
-osg::AutoTransform()
+osg::AutoTransform         (),
+_rotateInScreenSpace       ( false ),
+_screenSpaceRotationRadians( 0.0 )
 {
     // deactivate culling for the first traversal. We will reactivate it later.
     setCullingActive( false );
@@ -129,7 +133,41 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 _matrixDirty = true;
             }
 
-            if (_autoRotateMode==ROTATE_TO_SCREEN)
+            if (_rotateInScreenSpace==true)
+            {
+                osg::Vec3d translation, scale;
+                osg::Quat  rotation, so;
+                osg::RefMatrix& mvm = *(cs->getModelViewMatrix());
+
+                mvm.decompose( translation, rotation, scale, so );
+
+                // this will rotate the object into screen space.
+                osg::Quat toScreen( rotation.inverse() );
+
+                // we need to compensate for the "heading" of the camera, so compute that.
+                osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+
+                const osg::Matrixd& view = cv->getCurrentCamera()->getViewMatrix();
+                osg::Matrixd ivm;
+                ivm.invert(view);
+
+                osg::Vec3d N(0, 0, 6356752);
+                osg::Vec3d E = osg::Vec3d(0,0,0)*ivm;
+                osg::Vec3d b( -view(0,2), -view(1,2), -view(2,2) );
+                osg::Vec3d u = E; u.normalize();
+
+                osg::Vec3d proj_d = b - u*(b*u);
+                osg::Vec3d n = N - E;
+                osg::Vec3d proj_n = n - u*(n*u);
+                osg::Vec3d proj_e = proj_n^u;
+
+                double cameraHeading = atan2(proj_e*proj_d, proj_n*proj_d);
+
+                osg::Quat toRotation( cameraHeading - _screenSpaceRotationRadians, osg::Vec3(0,0,1) );
+
+                setRotation( toRotation * toScreen );
+            }
+            else if (_autoRotateMode==ROTATE_TO_SCREEN)
             {
                 osg::Vec3d translation;
                 osg::Quat rotation;
@@ -231,7 +269,6 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
 
     // finally, skip AT's accept and do Transform.
     Transform::accept(nv);
-
 }
 
 void

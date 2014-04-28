@@ -114,12 +114,28 @@ namespace osgEarth
          */
         void dirty();
 
+        /**
+         * Set up the transform to orient the node based on a 2D screen-space
+         * rotation.
+         */
+        void setRotateInScreenSpace(bool value) { _rotateInScreenSpace = value; }
+        bool getRotateInScreenSpace() const { return _rotateInScreenSpace; }
+        
+        /**
+         * If setRotateInScreenSpace is true, this is the value of the 2D rotation
+         * in radians.
+         */
+        void setScreenSpaceRotation(double radians) { _screenSpaceRotationRadians = radians; }
+        double getScreenSpaceRotation() const { return _screenSpaceRotationRadians; }
+
     public: // override
-        void accept( osg::NodeVisitor& nv );
+        virtual void accept( osg::NodeVisitor& nv );
 
     protected:
         double _minPixels;
         bool   _dirty;
+        bool   _rotateInScreenSpace;
+        double _screenSpaceRotationRadians;
         osg::observer_ptr<osg::Node> _sizingNode;
     };
 

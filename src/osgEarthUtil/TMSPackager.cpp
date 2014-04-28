@@ -678,7 +678,7 @@ void TMSPackager::cancel(const std::string& msg)
 
 TMSPackager::TMSPackager():
 _visitor(new TileVisitor()),
-    _extension("jpg"),
+    _extension(""),
     _destination("out"),
     _elevationPixelDepth(32)
 {
@@ -749,7 +749,7 @@ void TMSPackager::writeXML( TerrainLayer* layer, const Profile* profile)
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
         "",
         profile,
-        _extension,
+        _handler->getExtension(),
         _handler->getWidth(),
         _handler->getHeight()
         );

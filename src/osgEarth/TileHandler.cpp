@@ -163,13 +163,7 @@ std::string WriteTMSTileHandler::getPathForTile( const TileKey &key )
 
 
 bool WriteTMSTileHandler::handleTile( const TileKey& key )
-{
-    // Get the path to write to
-    std::string path = getPathForTile( key );
-
-    // attempt to create the output folder:        
-    osgEarth::makeDirectoryForFile( path );       
-
+{    
     ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
     ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );
 
@@ -186,6 +180,26 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
             }
             // OE_NOTICE << "Created image for " << key.str() << std::endl;
             osg::ref_ptr< const osg::Image > final = geoImage.getImage();
+
+            // Figure out the extension if we haven't already assigned one.
+            if (_extension.empty())
+            {
+                if (!ImageUtils::hasAlphaChannel(final.get()))
+                {
+                    _extension = "jpg";
+                }
+                else
+                {
+                    _extension = "png";
+                }
+                OE_NOTICE << "Selected extension" << _extension << std::endl;
+            }
+
+            // Get the path to write to
+            std::string path = getPathForTile( key );
+
+            // attempt to create the output folder:        
+            osgEarth::makeDirectoryForFile( path );       
 
             // convert to RGB if necessary            
             if ( _extension == "jpg" && final->getPixelFormat() != GL_RGB )
@@ -216,6 +230,14 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
             {
                 _maxLevel = key.getLevelOfDetail();
             }
+
+            // Get the path to write to
+            std::string path = getPathForTile( key );
+
+            // attempt to create the output folder:        
+            osgEarth::makeDirectoryForFile( path );       
+
+
             return osgDB::writeImageFile(*image.get(), path, _options.get());
         }            
     }

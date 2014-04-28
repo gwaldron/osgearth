@@ -59,7 +59,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT WriteTMSTileHandler : public TileHandler
     {
     public:
-        WriteTMSTileHandler(TerrainLayer* layer, const std::string& destination, const std::string& extension="jpg" );
+        WriteTMSTileHandler(TerrainLayer* layer, const std::string& destination, const std::string& extension="" );
 
         const std::string& getExtension() const;
         const std::string& getDestination() const;

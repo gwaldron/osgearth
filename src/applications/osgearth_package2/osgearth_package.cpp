@@ -221,6 +221,12 @@ makeTMS( osg::ArgumentParser& args )
     if( !osgDB::fileExists( rootFolder ) )
         return usage( "Failed to create root output folder" );
 
+    int imageLayerIndex = -1;
+    args.read("--image", imageLayerIndex);
+
+    int elevationLayerIndex = -1;
+    args.read("--elevation", elevationLayerIndex);
+    
     Map* map = mapNode->getMap();
 
 
@@ -278,6 +284,7 @@ makeTMS( osg::ArgumentParser& args )
             }
             std::stringstream baseCommand;
             baseCommand << "osgearth_package2 --tms ";
+
             baseCommand << earthFile;                     
             v->setBaseCommand(baseCommand.str());
             visitor = v;            
@@ -326,63 +333,142 @@ makeTMS( osg::ArgumentParser& args )
 
     std::string outEarthFile = osgDB::concatPaths( rootFolder, osgDB::getSimpleFileName( outEarth ) );
 
-    // Package all the ImageLayer's
-    for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
+    // If we are using a MultiProcessTileVisitor save the base command so we can modify it between layers
+    MultiprocessTileVisitor* mp = dynamic_cast<MultiprocessTileVisitor*>(visitor.get());
+    std::string baseCommand;
+    if (mp)
     {
-        ImageLayer* layer = map->getImageLayerAt(i);        
-        packager.run(layer, map->getProfile());
-        if (writeXML)
-        {
-            packager.writeXML(layer, map->getProfile());
-        }
+        baseCommand = mp->getBaseCommand();
+    }
 
-        // save to the output map if requested:
-        if( outMap.valid() )
-        {
-            std::string layerFolder = toLegalFileName( layer->getName() );
 
-            // new TMS driver info:
-            TMSOptions tms;
-            tms.url() = URI(
-                osgDB::concatPaths( layerFolder, "tms.xml" ),
-                outEarthFile );
-
-            ImageLayerOptions layerOptions( layer->getName(), tms );
-            layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
-            layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
-
-            outMap->addImageLayer( new ImageLayer( layerOptions ) );
-        }
-    }    
-
-    // For elevation layers we need to use tiff
-    packager.setExtension("tif");
-    // Package all the ElevationLayer's
-    for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
+    // Package an individual image layer
+    if (imageLayerIndex >= 0)
     {
-        ElevationLayer* layer = map->getElevationLayerAt(i);        
-        packager.run(layer, map->getProfile());
-        if (writeXML)
+        ImageLayer* layer = map->getImageLayerAt(imageLayerIndex);
+        if (layer)
         {
-            packager.writeXML(layer, map->getProfile());
+            packager.run(layer, map->getProfile());
+            if (writeXML)
+            {
+                packager.writeXML(layer, map->getProfile());
+            }
         }
-
-        // save to the output map if requested:
-        if( outMap.valid() )
+        else
         {
-            std::string layerFolder = toLegalFileName( layer->getName());
+            std::cout << "Failed to find an image layer at index " << imageLayerIndex << std::endl;
+            return 1;
+        }
+    }
+    // Package an individual elevation layer
+    else if (elevationLayerIndex >= 0)
+    {
+        packager.setExtension("tif");
+        ElevationLayer* layer = map->getElevationLayerAt(elevationLayerIndex);
+        if (layer)
+        {
+            packager.run(layer, map->getProfile());
+            if (writeXML)
+            {
+                packager.writeXML(layer, map->getProfile());
+            }
+        }
+        else
+        {
+            std::cout << "Failed to find an elevation layer at index " << elevationLayerIndex << std::endl;
+            return 1;
+        }
+    }
+    else
+    {        
+        // Package all the ImageLayer's
+        for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
+        {
+            if (mp)
+            {                
+                std::stringstream buf;
+                buf << baseCommand << " --image " << i;                
+                mp->setBaseCommand(buf.str());
+            }
+            
 
-            // new TMS driver info:
-            TMSOptions tms;
-            tms.url() = URI(
-                osgDB::concatPaths( layerFolder, "tms.xml" ),
-                outEarthFile );
+            ImageLayer* layer = map->getImageLayerAt(i);        
+            OE_NOTICE << "Packaging " << layer->getName() << std::endl;
+            osg::Timer_t start = osg::Timer::instance()->tick();
+            packager.run(layer, map->getProfile());
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }                
 
-            ElevationLayerOptions layerOptions( layer->getName(), tms );
-            layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
-            layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+            if (writeXML)
+            {
+                packager.writeXML(layer, map->getProfile());
+            }
 
-            outMap->addElevationLayer( new ElevationLayer( layerOptions ) );
+            // save to the output map if requested:
+            if( outMap.valid() )
+            {
+                std::string layerFolder = toLegalFileName( layer->getName() );
+
+                // new TMS driver info:
+                TMSOptions tms;
+                tms.url() = URI(
+                    osgDB::concatPaths( layerFolder, "tms.xml" ),
+                    outEarthFile );
+
+                ImageLayerOptions layerOptions( layer->getName(), tms );
+                layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+                outMap->addImageLayer( new ImageLayer( layerOptions ) );
+            }
+        }    
+
+        // For elevation layers we need to use tiff
+        packager.setExtension("tif");
+        // Package all the ElevationLayer's
+        for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
+        {
+            if (mp)
+            {                
+                std::stringstream buf;
+                buf << baseCommand << " --elevation " << i;                
+                mp->setBaseCommand(buf.str());
+            }
+
+            ElevationLayer* layer = map->getElevationLayerAt(i);        
+            OE_NOTICE << "Packaging " << layer->getName() << std::endl;
+            osg::Timer_t start = osg::Timer::instance()->tick();
+            packager.run(layer, map->getProfile());
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }      
+            if (writeXML)
+            {
+                packager.writeXML(layer, map->getProfile());
+            }
+
+            // save to the output map if requested:
+            if( outMap.valid() )
+            {
+                std::string layerFolder = toLegalFileName( layer->getName());
+
+                // new TMS driver info:
+                TMSOptions tms;
+                tms.url() = URI(
+                    osgDB::concatPaths( layerFolder, "tms.xml" ),
+                    outEarthFile );
+
+                ElevationLayerOptions layerOptions( layer->getName(), tms );
+                layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+                outMap->addElevationLayer( new ElevationLayer( layerOptions ) );
+            }
         }
 
     }

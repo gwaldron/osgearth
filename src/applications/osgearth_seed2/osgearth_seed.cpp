@@ -156,17 +156,8 @@ int
     int imageLayerIndex = -1;
     args.read("--image", imageLayerIndex);
 
-    if (imageLayerIndex >= 0)
-    {
-        OE_NOTICE << "Got image layer index " << imageLayerIndex << std::endl;
-    }
-
     int elevationLayerIndex = -1;
     args.read("--elevation", elevationLayerIndex);
-    if (elevationLayerIndex >= 0)
-    {
-        OE_NOTICE << "Got elevation layer index " << elevationLayerIndex << std::endl;
-    }
 
 
     //Read in the earth file.
@@ -387,8 +378,7 @@ int
             if (mp)
             {                
                 std::stringstream buf;
-                buf << baseCommand << " --image " << i;
-                OE_NOTICE << "Setting base command to " << buf.str() << std::endl;
+                buf << baseCommand << " --image " << i;                
                 mp->setBaseCommand(buf.str());
             }
 
@@ -408,8 +398,7 @@ int
             if (mp)
             {                
                 std::stringstream buf;
-                buf << baseCommand << " --elevation " << i;
-                OE_NOTICE << "Setting base command to " << buf.str() << std::endl;
+                buf << baseCommand << " --elevation " << i;                
                 mp->setBaseCommand(buf.str());
             }
             osg::Timer_t start = osg::Timer::instance()->tick();

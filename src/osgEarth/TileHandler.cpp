@@ -179,21 +179,7 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
                 _height = geoImage.getImage()->t();
             }
             // OE_NOTICE << "Created image for " << key.str() << std::endl;
-            osg::ref_ptr< const osg::Image > final = geoImage.getImage();
-
-            // Figure out the extension if we haven't already assigned one.
-            if (_extension.empty())
-            {
-                if (!ImageUtils::hasAlphaChannel(final.get()))
-                {
-                    _extension = "jpg";
-                }
-                else
-                {
-                    _extension = "png";
-                }
-                OE_NOTICE << "Selected extension" << _extension << std::endl;
-            }
+            osg::ref_ptr< const osg::Image > final = geoImage.getImage();            
 
             // Get the path to write to
             std::string path = getPathForTile( key );

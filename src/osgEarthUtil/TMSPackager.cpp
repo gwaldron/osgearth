@@ -143,13 +143,12 @@ namespace
         virtual void operator()(ProgressCallback* progress )
         {
             bool tileOK = false;
-
-
+            
             std::stringstream message;
 
             GeoHeightField hf = _layer->createHeightField( _key );
             if ( hf.valid() )
-            {
+            {      
                 // convert the HF to an image
                 ImageToHeightFieldConverter conv;
                 osg::ref_ptr<osg::Image> image = conv.convert( hf.getHeightField(), _packager->getElevationPixelDepth() );
@@ -193,6 +192,7 @@ namespace
 
 TMSPackager::TMSPackager(const Profile* outProfile, osgDB::Options* writeOptions) :
 _outProfile         ( outProfile ),
+_minLevel           ( 0 ),
 _maxLevel           ( 99 ),
 _verbose            ( false ),
 _overwrite          ( false ),
@@ -209,12 +209,7 @@ _errorMessage       ("")
     // Pre-load some extensions since the getReaderWriterForExtension function isn't threadsafe and can cause tiles to not be written.
     osgDB::Registry::instance()->getReaderWriterForExtension("png");
     osgDB::Registry::instance()->getReaderWriterForExtension("jpg");
-    osgDB::Registry::instance()->getReaderWriterForExtension("tiff");
-
-    // Only keep 1000 jobs in the queue
-    unsigned int maxSize = 1000;
-    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
-    _taskService = new osgEarth::TaskService("TMS Packager", num, maxSize);
+    osgDB::Registry::instance()->getReaderWriterForExtension("tiff");    
 }
 
 
@@ -254,10 +249,12 @@ TMSPackager::packageImageTile(ImageLayer*                  layer,
 {
     unsigned minLevel = layer->getImageLayerOptions().minLevel().isSet() ?
         *layer->getImageLayerOptions().minLevel() : 0;
+
+    minLevel = osg::maximum( minLevel, _minLevel );
     
     int taskCount = 0;
 
-    bool hasData = layer->getTileSource()->hasData( key );
+    bool hasData = layer->getTileSource()->hasData( key );   
 
     if ( shouldPackageKey(key) )
     {        
@@ -305,8 +302,8 @@ TMSPackager::packageImageTile(ImageLayer*                  layer,
 
         unsigned layerMaxLevel = (options.maxLevel().isSet()? *options.maxLevel() : 99);
         unsigned maxLevel = std::min(_maxLevel, layerMaxLevel);
-        bool subdivide =
-            (options.minLevel().isSet() && lod < *options.minLevel()) ||
+        bool subdivide =            
+            (lod < minLevel) ||
             (tileOK && lod < maxLevel);
 
         // subdivide if necessary:
@@ -334,6 +331,8 @@ TMSPackager::packageElevationTile(ElevationLayer*               layer,
     unsigned minLevel = layer->getElevationLayerOptions().minLevel().isSet() ?
         *layer->getElevationLayerOptions().minLevel() : 0;
 
+    minLevel = osg::maximum( minLevel, _minLevel );    
+
     int taskCount = 0;
 
     bool hasData = layer->getTileSource()->hasData( key );
@@ -342,7 +341,7 @@ TMSPackager::packageElevationTile(ElevationLayer*               layer,
     {
         bool tileOK = false;
         if ( key.getLevelOfDetail() >= minLevel && hasData )
-        {
+        {            
             unsigned w, h;
             key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );
 
@@ -355,7 +354,7 @@ TMSPackager::packageElevationTile(ElevationLayer*               layer,
 
             tileOK = osgDB::fileExists(path) && !_overwrite;
             if ( !tileOK )
-            {
+            {                
 				CreateElevationTileTask* task = new CreateElevationTileTask(this, layer, key, path, _writeOptions, _verbose);
                 service->add( task );
                 _numAdded++;
@@ -383,18 +382,18 @@ TMSPackager::packageElevationTile(ElevationLayer*               layer,
         unsigned layerMaxLevel = (options.maxLevel().isSet()? *options.maxLevel() : 99);
         unsigned maxLevel = std::min(_maxLevel, layerMaxLevel);
         bool subdivide =
-            (options.minLevel().isSet() && lod < *options.minLevel()) ||
+            (lod < minLevel ) ||
             (tileOK && lod < maxLevel);
 
         // subdivide if necessary:
         if ( subdivide )
-        {
+        {            
             for( unsigned q=0; q<4; ++q )
             {
                 TileKey childKey = key.createChildKey(q);                
                 packageElevationTile( layer, childKey, rootDir, extension, service, out_maxLevel );
             }
-        }
+        }        
     }    
 }
 
@@ -407,6 +406,11 @@ TMSPackager::package(ImageLayer*        layer,
 {
     if (progress && progress->isCanceled())
         return Result();
+
+     // Initialize the TaskService
+    unsigned int maxSize = 1000;
+    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
+    _taskService = new osgEarth::TaskService("TMS Packager", num, maxSize);
 
     resetStats();
 
@@ -482,7 +486,7 @@ TMSPackager::package(ImageLayer*        layer,
     //Estimate the number of tiles
     _total = 0;    
     CacheEstimator est;
-    est.setMinLevel( 0 );
+    est.setMinLevel( _minLevel );
     est.setMaxLevel( _maxLevel );
     est.setProfile( _outProfile ); 
     for (unsigned int i = 0; i < _extents.size(); i++)
@@ -537,6 +541,11 @@ TMSPackager::package(ElevationLayer*    layer,
                      const std::string& rootFolder,
                      osgEarth::ProgressCallback* progress )
 {
+     // Initialize the TaskService
+    unsigned int maxSize = 1000;
+    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
+    _taskService = new osgEarth::TaskService("TMS Packager", num, maxSize);
+
     if (progress && progress->isCanceled())
         return Result();
 
@@ -582,7 +591,7 @@ TMSPackager::package(ElevationLayer*    layer,
     //Estimate the number of tiles
     _total = 0;    
     CacheEstimator est;
-    est.setMinLevel( 0 );
+    est.setMinLevel( _minLevel );
     est.setMaxLevel( _maxLevel );
     est.setProfile( _outProfile ); 
     for (unsigned int i = 0; i < _extents.size(); i++)

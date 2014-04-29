@@ -282,7 +282,7 @@ int
             {
                 baseCommand << " --elevation " << elevationLayerIndex;
             }
-            baseCommand << earthFile;                     
+            baseCommand << " " << earthFile;                     
             v->setBaseCommand(baseCommand.str());
             visitor = v;            
         }

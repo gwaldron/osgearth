@@ -680,7 +680,9 @@ TMSPackager::TMSPackager():
 _visitor(new TileVisitor()),
     _extension(""),
     _destination("out"),
-    _elevationPixelDepth(32)
+    _elevationPixelDepth(32),
+    _width(0),
+    _height(0)
 {
 }
 
@@ -735,7 +737,59 @@ void TMSPackager::setVisitor(TileVisitor* visitor)
 }    
 
 void TMSPackager::run( TerrainLayer* layer,  const Profile* profile  )
-{ 
+{    
+    // Get a test image from the root keys
+
+    // collect the root tile keys in preparation for packaging:
+    std::vector<TileKey> rootKeys;
+    profile->getRootKeys( rootKeys );
+
+    // fetch one tile to see what the image size should be
+    ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
+    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+    if (imageLayer)
+    {
+        GeoImage testImage;
+        for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testImage.valid(); ++i )
+        {
+            testImage = imageLayer->createImage( *i );
+        }
+        if (testImage.valid())
+        {
+            _width = testImage.getImage()->s();
+            _height = testImage.getImage()->t();
+            // Figure out the extension if we haven't already assigned one.
+            if (_extension.empty())
+            {
+                if (!ImageUtils::hasAlphaChannel(testImage.getImage()))
+                {
+                    _extension = "jpg";
+                }
+                else
+                {
+                    _extension = "png";
+                }
+                OE_INFO << "Selected extension" << _extension << std::endl;
+            }
+
+        }
+    }
+    else if (elevationLayer)
+    {
+        GeoHeightField testHF;
+        for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testHF.valid(); ++i )
+        {
+            testHF = elevationLayer->createHeightField( *i );
+        }
+
+        if (testHF.valid())
+        {
+            _width = testHF.getHeightField()->getNumColumns();
+            _width = testHF.getHeightField()->getNumRows();
+        }
+    }
+
+
     _handler = new WriteTMSTileHandler(layer, _destination, _extension);
     _handler->setElevationPixelDepth( _elevationPixelDepth );
     _handler->setOptions(_writeOptions.get());
@@ -749,9 +803,14 @@ void TMSPackager::writeXML( TerrainLayer* layer, const Profile* profile)
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
         "",
         profile,
+        /*
         _handler->getExtension(),
         _handler->getWidth(),
         _handler->getHeight()
+        */
+        _extension,
+        _width,
+        _height
         );
 
     std::string mimeType;
@@ -766,7 +825,8 @@ void TMSPackager::writeXML( TerrainLayer* layer, const Profile* profile)
     }
 
 
-    unsigned int maxLevel = _handler->getMaxLevel();
+    //TODO:  Fix
+    unsigned int maxLevel = 23;//_handler->getMaxLevel();
     tileMap->setTitle( layer->getName() );
     tileMap->setVersion( "1.0.0" );
     tileMap->getFormat().setMimeType( mimeType );

@@ -247,6 +247,9 @@ protected:
     unsigned int _elevationPixelDepth;
     osg::ref_ptr<osgDB::Options>    _writeOptions;
 
+    unsigned int _width;
+    unsigned int _height;
+
     osg::ref_ptr< TileVisitor > _visitor;
     osg::ref_ptr< WriteTMSTileHandler > _handler;
 

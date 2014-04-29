@@ -44,113 +44,6 @@ using namespace osgEarth::Drivers;
 
 #define LC "[TMSExporter] "
 
-namespace
-{
-  /** Packaging task for a single layer. */
-    /*
-  struct PackageLayer
-  {
-    void init(osgEarth::Map* map, osgEarth::ImageLayer* layer, osgDB::Options* options, const std::string& rootFolder, const std::string& layerFolder, bool verbose, bool overwrite, bool keepEmpties, unsigned int maxLevel, const std::string& extension, osgEarth::ProgressCallback* callback, std::vector< osgEarth::Bounds >& bounds)
-    {
-      _map = map;
-      _imageLayer = layer;
-      _options = options;
-      _rootFolder = rootFolder;
-      _layerFolder = layerFolder;
-      _verbose = verbose;
-      _overwrite = overwrite;
-      _keepEmpties = keepEmpties;
-      _maxLevel = maxLevel;
-      _extension = extension;
-      _bounds = bounds;
-      _callback = callback;
-      _packageResult.ok = false;
-    }
-
-    void init(osgEarth::Map* map, osgEarth::ElevationLayer* layer, osgDB::Options* options, const std::string& rootFolder, const std::string& layerFolder, bool verbose, bool overwrite, bool keepEmpties, unsigned int maxLevel, const std::string& extension, osgEarth::ProgressCallback* callback, std::vector< osgEarth::Bounds >& bounds)
-    {
-      _map = map;
-      _elevationLayer = layer;
-      _options = options;
-      _rootFolder = rootFolder;
-      _layerFolder = layerFolder;
-      _verbose = verbose;
-      _overwrite = overwrite;
-      _keepEmpties = keepEmpties;
-      _maxLevel = maxLevel;
-      _extension = extension;
-      _bounds = bounds;
-      _callback = callback;
-      _packageResult.ok = false;
-    }
-
-    void execute()
-    {
-      if (_callback->isCanceled())
-        return;
-
-      TMSPackager packager( _map->getProfile(), _options);
-
-      packager.setVerbose( _verbose );
-      packager.setOverwrite( _overwrite );
-      packager.setKeepEmptyImageTiles( _keepEmpties );
-
-      if ( _maxLevel != ~0 )
-        packager.setMaxLevel( _maxLevel );
-
-      if (_bounds.size() > 0)
-      {
-        for (unsigned int i = 0; i < _bounds.size(); ++i)
-        {
-          Bounds b = _bounds[i];            
-          if ( b.isValid() )
-            packager.addExtent( osgEarth::GeoExtent(_map->getProfile()->getSRS(), b) );
-        }
-      }
-
-      std::string layerRoot = osgDB::concatPaths( _rootFolder, _layerFolder );
-
-      if (_imageLayer.valid())
-      {
-        if (_verbose)
-          OE_NOTICE << LC << "Packaging image layer \"" << _layerFolder << "\"" << std::endl;
-
-        _packageResult = packager.package( _imageLayer.get(), layerRoot, _callback, _extension );
-      }
-      else if (_elevationLayer.valid())
-      {
-        if (_verbose)
-          OE_NOTICE << LC << "Packaging elevation layer \"" << _layerFolder << "\"" << std::endl;
-
-        _packageResult = packager.package( _elevationLayer.get(), layerRoot, _callback );
-      }
-
-      if (!_packageResult.ok)
-      {
-        _callback->message() = _packageResult.message;
-        _callback->cancel();
-      }
-    }
-
-    osg::ref_ptr<osgEarth::Map> _map;
-    osg::ref_ptr<osgEarth::ImageLayer> _imageLayer;
-    osg::ref_ptr<osgEarth::ElevationLayer> _elevationLayer;
-    osg::ref_ptr<osgDB::Options> _options;
-    std::string _rootFolder;
-    std::string _layerFolder;
-    bool _verbose;
-    bool _overwrite;
-    bool _keepEmpties;
-    unsigned int _maxLevel;
-    std::string _extension;
-    std::vector< osgEarth::Bounds > _bounds;
-    osg::ref_ptr<osgEarth::ProgressCallback> _callback;
-    TMSPackager::Result _packageResult;
-  };
-  */
-}
-
-
 TMSExporter::TMSExporter()
 : _dbOptions(""), _maxLevel(~0), _keepEmpties(false), _errorMessage(""), _canceled(false)
 {  
@@ -179,9 +72,14 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
   
   // Create the TMS packager.
   TMSPackager packager;
-  
-  // Make the output directory if it doesn't exist
-  
+
+  /*
+  MultithreadedTileVisitor* v = new MultithreadedTileVisitor();
+  v->setNumThreads(16);
+  packager.setVisitor( v );
+  */
+
+  // Make the output directory if it doesn't exist  
   osgDB::makeDirectory(path);
   packager.setDestination(path);
 
@@ -281,24 +179,6 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
 }
 
 #if 0
-void TMSExporter::packageTaskProgress(int id, double complete)
-{
-
-  if (_progress.valid())
-  {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _mutex );
-    _progress->reportProgress(complete
-
-    /*
-    _percentComplete += complete - _taskProgress[id];
-    _taskProgress[id] = complete;
-
-    if ( _progress->isCanceled() || _progress->reportProgress(_percentComplete, _totalTasks) )
-        cancel(_progress->message());
-        */
-  }
-}
-
 void TMSExporter::packageTaskComplete(int id)
 {
     /*

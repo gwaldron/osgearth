@@ -132,34 +132,7 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
 
                 _matrixDirty = true;
             }
-#if 1
-            if (_rotateInScreenSpace==true)
-            {
-                // first rotate the object to its user-set heading.
-                osg::Quat objRotate( _screenSpaceRotationRadians, osg::Vec3(0,0,-1) );
 
-                osg::Quat camRotate( r, osg::Vec3(0,1,0) );
-
-                // next rotate into the camera's reference frame.
-                osg::Vec3d pos, scale;
-                osg::Quat  rotation, so;
-                osg::RefMatrix& mvm = *(cv->getModelViewMatrix());
-                mvm.decompose( pos, rotation, scale, so );
-
-                osg::Vec3d cen, up, eye;
-                cv->getCurrentCamera()->getViewMatrix().getLookAt(eye, cen, up);
-                osg::Vec3d look = cen-eye;
-                osg::Quat camRotate;
-                camRotate.makeRotate( pos, look );
-
-                OE_INFO
-                    << "eye="<<eye.x()<<", "<<eye.y()<<", "<<eye.z()<<"; "
-                    << "obj="<<pos.x()<<", "<<pos.y()<<", "<<pos.z()
-                    << std::endl;
-
-                setRotation( camRotate ); // * objRotate );
-            }
-#else
             if (_rotateInScreenSpace==true)
             {
                 osg::Vec3d translation, scale;
@@ -200,17 +173,11 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 while( finalRot > osg::PI )
                     finalRot -= osg::PI*2.0;
 
-                OE_INFO
-                    <<   "cam="<<osg::RadiansToDegrees(cameraHeading)
-                    << ", obj="<<osg::RadiansToDegrees(objHeading)
-                    << ", rot="<<osg::RadiansToDegrees(finalRot)
-                    << std::endl;
-
                 osg::Quat toRotation( finalRot, osg::Vec3(0,0,1) );
 
                 setRotation( toRotation * toScreen );
             }
-#endif
+
             else if (_autoRotateMode==ROTATE_TO_SCREEN)
             {
                 osg::Vec3d translation;

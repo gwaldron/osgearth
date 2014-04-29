@@ -24,6 +24,7 @@
 #include <osg/Geometry>
 #include <osg/Point>
 #include <osg/TriangleIndexFunctor>
+#include <osg/ComputeBoundsVisitor>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarth/SpatialReference>
 #include <osgDB/WriteFile>
@@ -38,6 +39,14 @@ bool presortCompare (osg::Vec3d i, osg::Vec3d j)
     return i.y() < j.y();
 
   return i.x() < j.x();
+}
+
+double BoundaryUtil::_tolerance = 0.1;
+
+void
+BoundaryUtil::setTolerance(double value)
+{
+    _tolerance = value;
 }
 
 /* Use the vertices of the given node to calculate a boundary via the
@@ -258,9 +267,18 @@ namespace
     // custom comparator for VertexSet.
     struct VertexSetComp 
     {
+        int d;
+
+        VertexSetComp()
+        {
+            double meters = BoundaryUtil::getTolerance();
+            for(d=0; meters<1.0; ++d, meters*=10.0);
+            OE_INFO << "Decimal places = " << d << std::endl;
+        }
+
         bool operator()(const osg::Vec3d& lhs, const osg::Vec3d& rhs) const
         {
-            const int d = 3;
+            //const int d = 2;
             osg::Vec3d a(round(lhs.x(),d), round(lhs.y(),d), 0.0); //round(lhs.z(),d));
             osg::Vec3d b(round(rhs.x(),d), round(rhs.y(),d), 0.0); //round(rhs.z(),d));
             if      ( a.x() < b.x() ) return true;
@@ -291,13 +309,13 @@ namespace
     struct TopologyGraph
     {
         TopologyGraph()
-          : _minY( _verts.end() ), _combines(0), _srs(0L) { }
+          : _minY( _verts.end() ), _totalVerts(0), _srs(0L) { }
 
-        unsigned    _combines;   // total number of duplicate verts
-        VertexSet   _verts;      // set of unique verts in the topology (rotated into XY plane)
-        EdgeMap     _edgeMap;    // maps each vert to all the verts with which it shares an edge
-        Index       _minY;       // points to the vert with the minimum Y coordinate (in XY plane)
-        osg::Matrix _world2flat; // matrix that transforms into a localized XY plane
+        unsigned     _totalVerts;  // total number of verts encountered
+        VertexSet    _verts;       // set of unique verts in the topology (rotated into XY plane)
+        EdgeMap      _edgeMap;     // maps each vert to all the verts with which it shares an edge
+        Index        _minY;        // points to the vert with the minimum Y coordinate (in XY plane)
+        osg::Matrixd _world2plane; // matrix that transforms into a localized XY plane
         const osgEarth::SpatialReference* _srs;
     };
 
@@ -333,41 +351,39 @@ namespace
             UniqueMap::iterator i = _uniqueMap.find( v );
             if ( i == _uniqueMap.end() )
             {
-              // no, so transform it into world coordinates, and rotate it into the XY plane
-              osg::Vec3d vert = (*_vertexList)[v];
-              osg::Vec3d world = vert * _local2world;
-              osg::Vec3d local = world;
-              if ( _topology->_srs )
-              {
-                  const osgEarth::SpatialReference* ecef = _topology->_srs->getECEF();
-                  ecef->transform(world, _topology->_srs, local);
-              }
-              else
-              {
-                  local = world * _topology->_world2flat;
-              }
+                // no, so transform it into world coordinates, and rotate it into the XY plane
+                osg::Vec3d vert = (*_vertexList)[v];
+                osg::Vec3d world = vert * _local2world;
+                osg::Vec3d plane = world;
+                if ( _topology->_srs )
+                {
+                    const osgEarth::SpatialReference* ecef = _topology->_srs->getECEF();
+                    ecef->transform(world, _topology->_srs, plane);
+                }
+                else
+                {
+                    plane = world * _topology->_world2plane;
+                }
 
-              // insert it into the unique vert list
-              std::pair<VertexSet::iterator,bool> f = _topology->_verts.insert( local );
-              if ( f.second ) // insert succedded
-              {
-                  // this is a new location, so check it to see if it is the new "southernmost" point:
-                  if ( _topology->_minY == _topology->_verts.end() || local.y() < _topology->_minY->y() )
-                  {
-                      _topology->_minY = f.first;
-                  }
-              }
+                // insert it into the unique vert list
+                std::pair<VertexSet::iterator,bool> f = _topology->_verts.insert( plane );
+                if ( f.second ) // insert succedded
+                {
+                    // this is a new location, so check it to see if it is the new "southernmost" point:
+                    if ( _topology->_minY == _topology->_verts.end() || plane.y() < _topology->_minY->y() )
+                    {
+                        _topology->_minY = f.first;
+                    }
+                }
 
-              // store in the uniqueness map so we don't process the same index again
-              _uniqueMap[ v ] = f.first;
-             
-              // return the index of the vert.
-              return f.first;
+                // store in the uniqueness map so we don't process the same index again
+                _uniqueMap[ v ] = f.first;
+
+                // return the index of the vert.
+                return f.first;
             }
             else
             {
-                // return the index of the vert.
-                _topology->_combines++;
                 return i->second;
             }
         }
@@ -414,12 +430,13 @@ namespace
             osg::Vec3Array* vertexList = dynamic_cast<osg::Vec3Array*>(geometry->getVertexArray());
             if ( vertexList )
             {
-                osg::TriangleIndexFunctor<TopologyBuilder> _builder;
-                _builder._topology = &_topology;
-                _builder._vertexList = vertexList;
+                osg::TriangleIndexFunctor<TopologyBuilder> builder;
+                builder._topology = &_topology;
+                builder._vertexList = vertexList;
                 if ( !_matrixStack.empty() )
-                  _builder._local2world = _matrixStack.back();
-                geometry->accept( _builder );
+                    builder._local2world = _matrixStack.back();
+                _topology._totalVerts += vertexList->size();
+                geometry->accept( builder );
             }
         }
 
@@ -430,17 +447,31 @@ namespace
     void dumpPointCloud(TopologyGraph& t)
     {
         osg::Vec3Array* v = new osg::Vec3Array();
-        int index = 0;
-        int minyindex = 0;
+        osg::DrawElementsUInt* lines = new osg::DrawElementsUInt(GL_LINES);
+        unsigned index = 0;
+        unsigned minyindex = 0;
+        std::map<Index,unsigned, IndexLess> order;
         for(Index i = t._verts.begin(); i != t._verts.end(); ++i, ++index)
         {
             v->push_back( *i );
             if ( i == t._minY )
                 minyindex = index;
+            order[i] = index;
+        }
+        index = 0;
+        for(Index i = t._verts.begin(); i != t._verts.end(); ++i, ++index)
+        {
+            IndexSet& edges = t._edgeMap[i];
+            for(IndexSet::iterator j=edges.begin(); j!=edges.end(); ++j)
+            {
+                lines->push_back(order[i]);
+                lines->push_back(order[*j]);
+            }
         }
         osg::Geometry* g = new osg::Geometry();
         g->setVertexArray(v);
         g->addPrimitiveSet(new osg::DrawArrays(GL_POINTS, 0, v->size()));
+        g->addPrimitiveSet(lines);
         g->getOrCreateStateSet()->setAttributeAndModes(new osg::Point(3));
         osg::Geode* n = new osg::Geode();
         n->addDrawable(g);
@@ -466,6 +497,9 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     if ( geocentric )
     {
         // define the XY plane based on the normal to the center of the dataset:
+        //osg::ComputeBoundsVisitor cbv;
+        //node->accept(cbv);
+        //cbv._bb.
         osg::BoundingSphere bs = node->getBound();
         center = bs.center();
         normal = center;
@@ -481,8 +515,8 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     // set up a transform that will localize geometry into an XY plane
     if ( geocentric ) //normal != osg::Vec3(0,0,1) )
     {
-        topology._world2flat.makeRotate(normal, osg::Vec3d(0,0,1));
-        topology._world2flat.preMultTranslate(-center);
+        topology._world2plane.makeRotate(normal, osg::Vec3d(0,0,1));
+        topology._world2plane.preMultTranslate(-center);
 
         // if this is set, use mercator projection instead of a simple geolocation
         //topology._srs = osgEarth::SpatialReference::get("spherical-mercator");
@@ -493,7 +527,7 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     node->accept( buildTopoVisitor );
 
     OE_DEBUG << "Found " << topology._verts.size() << " unique verts" << std::endl;
-    //dumpPointCloud(topology);
+    dumpPointCloud(topology);
 
     // starting with the minimum-Y vertex (which is guaranteed to be in the boundary)
     // traverse the outside of the point set. Do this by sorting all the edges by
@@ -510,6 +544,11 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     {
         // store this vertex in the result set:
         _result->push_back( *vptr );
+
+        if ( _result->size() == 56 )
+        {
+            int asd=0;
+        }
 
         // pull up the next 2D vertex (XY plane):
         osg::Vec2d vert ( vptr->x(), vptr->y() );
@@ -602,10 +641,10 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     }
     else
     {
-        osg::Matrix flat2world;
-        flat2world.invert( topology._world2flat );
+        osg::Matrix plane2world;
+        plane2world.invert( topology._world2plane );
         for( osg::Vec3dArray::iterator i = _result->begin(); i != _result->end(); ++i )
-            (*i) = (*i) * flat2world;
+            (*i) = (*i) * plane2world;
     }
 
     return _result.release();

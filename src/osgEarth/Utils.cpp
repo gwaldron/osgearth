@@ -60,24 +60,24 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
     {
         // re-activate culling now that the first cull traversal has taken place.
         this->setCullingActive( true );
-        osg::CullStack* cs = dynamic_cast<osg::CullStack*>(&nv);
-        if ( cs )
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        if ( cv )
         {
             osg::Viewport::value_type width  = _previousWidth;
             osg::Viewport::value_type height = _previousHeight;
 
-            osg::Viewport* viewport = cs->getViewport();
+            osg::Viewport* viewport = cv->getViewport();
             if (viewport)
             {
                 width = viewport->width();
                 height = viewport->height();
             }
 
-            osg::Vec3d eyePoint = cs->getEyeLocal(); 
-            osg::Vec3d localUp = cs->getUpLocal(); 
+            osg::Vec3d eyePoint = cv->getEyeLocal(); 
+            osg::Vec3d localUp = cv->getUpLocal(); 
             osg::Vec3d position = getPosition();
 
-            const osg::Matrix& projection = *(cs->getProjectionMatrix());
+            const osg::Matrix& projection = *(cv->getProjectionMatrix());
 
             bool doUpdate = _firstTimeToInitEyePoint || _dirty;
             if ( !_firstTimeToInitEyePoint )
@@ -113,7 +113,7 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                         getNumChildren() > 0 ? getChild(0)->getBound().radius() : 
                         0.48;
 
-                    double pixels = cs->pixelSize( getPosition(), radius );
+                    double pixels = cv->pixelSize( getPosition(), radius );
 
                     double scaledMinPixels = _minPixels * _minimumScale;
                     double scale = pixels < scaledMinPixels ? scaledMinPixels / pixels : 1.0;
@@ -132,12 +132,39 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
 
                 _matrixDirty = true;
             }
+#if 1
+            if (_rotateInScreenSpace==true)
+            {
+                // first rotate the object to its user-set heading.
+                osg::Quat objRotate( _screenSpaceRotationRadians, osg::Vec3(0,0,-1) );
 
+                osg::Quat camRotate( r, osg::Vec3(0,1,0) );
+
+                // next rotate into the camera's reference frame.
+                osg::Vec3d pos, scale;
+                osg::Quat  rotation, so;
+                osg::RefMatrix& mvm = *(cv->getModelViewMatrix());
+                mvm.decompose( pos, rotation, scale, so );
+
+                osg::Vec3d cen, up, eye;
+                cv->getCurrentCamera()->getViewMatrix().getLookAt(eye, cen, up);
+                osg::Vec3d look = cen-eye;
+                osg::Quat camRotate;
+                camRotate.makeRotate( pos, look );
+
+                OE_INFO
+                    << "eye="<<eye.x()<<", "<<eye.y()<<", "<<eye.z()<<"; "
+                    << "obj="<<pos.x()<<", "<<pos.y()<<", "<<pos.z()
+                    << std::endl;
+
+                setRotation( camRotate ); // * objRotate );
+            }
+#else
             if (_rotateInScreenSpace==true)
             {
                 osg::Vec3d translation, scale;
                 osg::Quat  rotation, so;
-                osg::RefMatrix& mvm = *(cs->getModelViewMatrix());
+                osg::RefMatrix& mvm = *(cv->getModelViewMatrix());
 
                 mvm.decompose( translation, rotation, scale, so );
 
@@ -145,14 +172,15 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 osg::Quat toScreen( rotation.inverse() );
 
                 // we need to compensate for the "heading" of the camera, so compute that.
-                osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+                // From (http://goo.gl/9bjM4t).
+                // GEOCENTRIC ONLY!
 
                 const osg::Matrixd& view = cv->getCurrentCamera()->getViewMatrix();
-                osg::Matrixd ivm;
-                ivm.invert(view);
+                osg::Matrixd viewInverse;
+                viewInverse.invert(view);
 
-                osg::Vec3d N(0, 0, 6356752);
-                osg::Vec3d E = osg::Vec3d(0,0,0)*ivm;
+                osg::Vec3d N(0, 0, 6356752); // north pole, more or less
+                osg::Vec3d E = osg::Vec3d(0,0,0)*viewInverse;
                 osg::Vec3d b( -view(0,2), -view(1,2), -view(2,2) );
                 osg::Vec3d u = E; u.normalize();
 
@@ -163,10 +191,26 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
 
                 double cameraHeading = atan2(proj_e*proj_d, proj_n*proj_d);
 
-                osg::Quat toRotation( cameraHeading - _screenSpaceRotationRadians, osg::Vec3(0,0,1) );
+                while (cameraHeading < 0.0)
+                    cameraHeading += osg::PI*2.0;
+                double objHeading = _screenSpaceRotationRadians;
+                while ( objHeading < 0.0 )
+                    objHeading += osg::PI*2.0;
+                double finalRot = cameraHeading - objHeading;
+                while( finalRot > osg::PI )
+                    finalRot -= osg::PI*2.0;
+
+                OE_INFO
+                    <<   "cam="<<osg::RadiansToDegrees(cameraHeading)
+                    << ", obj="<<osg::RadiansToDegrees(objHeading)
+                    << ", rot="<<osg::RadiansToDegrees(finalRot)
+                    << std::endl;
+
+                osg::Quat toRotation( finalRot, osg::Vec3(0,0,1) );
 
                 setRotation( toRotation * toScreen );
             }
+#endif
             else if (_autoRotateMode==ROTATE_TO_SCREEN)
             {
                 osg::Vec3d translation;
@@ -174,7 +218,7 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 osg::Vec3d scale;
                 osg::Quat so;
 
-                cs->getModelViewMatrix()->decompose( translation, rotation, scale, so );
+                cv->getModelViewMatrix()->decompose( translation, rotation, scale, so );
 
                 setRotation(rotation.inverse());
             }

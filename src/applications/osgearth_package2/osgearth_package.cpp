@@ -284,8 +284,45 @@ makeTMS( osg::ArgumentParser& args )
             }
             std::stringstream baseCommand;
             baseCommand << "osgearth_package2 --tms ";
+            
+            // Serialize the options into the new process
+            if (!extension.empty())
+            {
+                baseCommand << " --extension " << extension << " ";
+            }
 
-            baseCommand << earthFile;                     
+            if (overwrite)
+            {
+                baseCommand < " --overwrite ";
+            }
+
+            if (!dbOptions.empty())
+            {
+                baseCommand << " --db-options " << dbOptions << " ";
+            }
+
+            if (keepEmpties)
+            {
+                baseCommand << " --keep-empties " << std::endl;
+            }
+ 
+            if (continueSingleColor)
+            {
+                baseCommand << " --continue-single-color ";
+            }
+
+            baseCommand << " --elevation-pixel-depth " << elevationPixelDepth << " ";
+
+            if (imageLayerIndex >= 0)
+            {
+                baseCommand << " --image " << imageLayerIndex;
+            }
+            else if (elevationLayerIndex >= 0)
+            {
+                baseCommand << " --elevation " << elevationLayerIndex;
+            }
+
+            baseCommand << " " << earthFile;                     
             v->setBaseCommand(baseCommand.str());
             visitor = v;            
         }
@@ -344,7 +381,7 @@ makeTMS( osg::ArgumentParser& args )
 
     // Package an individual image layer
     if (imageLayerIndex >= 0)
-    {
+    {        
         ImageLayer* layer = map->getImageLayerAt(imageLayerIndex);
         if (layer)
         {

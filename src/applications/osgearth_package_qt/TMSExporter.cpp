@@ -160,20 +160,45 @@ TMSExporter::TMSExporter()
 int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth, bool overwrite, const std::string& extension)
 {     
   Map* map = mapNode->getMap();
+
+  // new map for an output earth file if necessary.
+  osg::ref_ptr<Map> outMap = 0L;
+  if ( !outEarth.empty() )
+  {
+      // copy the options from the source map first
+      outMap = new Map(map->getInitialMapOptions());
+  }
+
+  // establish the output path of the earth file, if applicable:
+  std::string outEarthName = osgDB::getSimpleFileName(outEarth);
+  if (outEarthName.length() > 0 && osgEarth::toLower(osgDB::getFileExtension(outEarthName)) != "earth")
+    outEarthName += ".earth";
+
+  std::string outEarthFile = osgDB::concatPaths(path, outEarthName);
+
+  
+  // Create the TMS packager.
   TMSPackager packager;
+  
+  // Make the output directory if it doesn't exist
+  
   osgDB::makeDirectory(path);
   packager.setDestination(path);
+
+  // Setup the osgDB options for the packager.
+  osg::ref_ptr<osgDB::Options> options = new osgDB::Options(_dbOptions);
+  packager.setWriteOptions( options.get() );
   
   // Add all the bounds
   for (unsigned int i = 0; i < bounds.size(); i++)
   {
       packager.getTileVisitor()->addExtent( osgEarth::GeoExtent(map->getProfile()->getSRS(), bounds[i]));
   }
-  packager.setExtension(extension);
-  //packager.getTileVisitor()->setProgressCallback(new PackageLayerProgressCallback(this, 0) );  
+  packager.setExtension(extension);  
   packager.getTileVisitor()->setProgressCallback( _progress.get() );
   packager.getTileVisitor()->setMaxLevel(_maxLevel);
 
+  // Compute the total number of layers we are going to operate on.
   unsigned int totalLayers = map->getNumImageLayers() + map->getNumElevationLayers();  
 
   unsigned int layerNum = 1;
@@ -187,6 +212,22 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
       _progress->setStatus(QString::fromStdString( buf.str()));
       packager.run(layer.get(), map->getProfile());
       packager.writeXML(layer.get(), map->getProfile());
+      if (outMap)
+      {
+          std::string layerFolder = toLegalFileName( layer->getName() );
+
+          // new TMS driver info:
+          TMSOptions tms;
+          tms.url() = URI(
+              osgDB::concatPaths( layerFolder, "tms.xml" ),
+              outEarthFile );
+
+          ImageLayerOptions layerOptions( layer->getName(), tms );
+          layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+          layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+          outMap->addImageLayer( new ImageLayer( layerOptions ) );
+      }
       layerNum++;
   }
 
@@ -199,8 +240,39 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
       _progress->setStatus(QString::fromStdString( buf.str()));
       packager.run(layer.get(), map->getProfile());
       packager.writeXML(layer.get(), map->getProfile());
+
+      if( outMap.valid() )
+      {
+          std::string layerFolder = toLegalFileName( layer->getName());
+
+          // new TMS driver info:
+          TMSOptions tms;
+          tms.url() = URI(
+              osgDB::concatPaths( layerFolder, "tms.xml" ),
+              outEarthFile );
+
+          ElevationLayerOptions layerOptions( layer->getName(), tms );
+          layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+          layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+          outMap->addElevationLayer( new ElevationLayer( layerOptions ) );
+      }
+
       layerNum++;
   }
+
+  // Write out an earth file if it was requested
+    // Finally, write an earth file if requested:
+    if( outMap.valid() )
+    {
+        MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
+        osg::ref_ptr<MapNode> outMapNode = new MapNode( outMap.get(), outNodeOptions );
+        if( !osgDB::writeNodeFile( *outMapNode.get(), outEarthFile ) )
+        {
+            OE_WARN << LC << "Error writing earth file to \"" << outEarthFile << "\"" << std::endl;
+        }
+    }
+
 
   // Tell the progress dialog that we're finished and it can close
   _progress->complete();

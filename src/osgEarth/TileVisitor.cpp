@@ -24,7 +24,9 @@ using namespace osgEarth;
 
 TileVisitor::TileVisitor():
 _total(0),
-_processed(0)
+_processed(0),
+_minLevel(0),
+_maxLevel(5)
 {
 }
 
@@ -32,7 +34,9 @@ _processed(0)
 TileVisitor::TileVisitor(TileHandler* handler):
 _tileHandler( handler ),
 _total(0),
-_processed(0)
+_processed(0),
+_minLevel(0),
+_maxLevel(5)
 {
 }
 

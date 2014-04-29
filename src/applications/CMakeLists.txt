@@ -39,9 +39,9 @@ ADD_SUBDIRECTORY(osgearth_backfill)
 ADD_SUBDIRECTORY(osgearth_overlayviewer)
 ADD_SUBDIRECTORY(osgearth_version)
 ADD_SUBDIRECTORY(osgearth_tileindex)
-#IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
-#    ADD_SUBDIRECTORY(osgearth_package_qt)
-#ENDIF()
+IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
+    ADD_SUBDIRECTORY(osgearth_package_qt)
+ENDIF()
 
 
 SET(TARGET_DEFAULT_LABEL_PREFIX "Sample")

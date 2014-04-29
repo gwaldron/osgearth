@@ -47,6 +47,7 @@ using namespace osgEarth::Drivers;
 namespace
 {
   /** Packaging task for a single layer. */
+    /*
   struct PackageLayer
   {
     void init(osgEarth::Map* map, osgEarth::ImageLayer* layer, osgDB::Options* options, const std::string& rootFolder, const std::string& layerFolder, bool verbose, bool overwrite, bool keepEmpties, unsigned int maxLevel, const std::string& extension, osgEarth::ProgressCallback* callback, std::vector< osgEarth::Bounds >& bounds)
@@ -146,200 +147,89 @@ namespace
     osg::ref_ptr<osgEarth::ProgressCallback> _callback;
     TMSPackager::Result _packageResult;
   };
+  */
 }
 
 
-TMSExporter::TMSExporter(const std::string& log)
+TMSExporter::TMSExporter()
 : _dbOptions(""), _maxLevel(~0), _keepEmpties(false), _errorMessage(""), _canceled(false)
-{
-  unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
-  _taskService = new osgEarth::TaskService("TMS Packager", num);
+{  
 }
 
 /** Packages image and elevation layers as a TMS. */
 int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth, bool overwrite, const std::string& extension)
-{
-  if ( !mapNode )
-  {
-    _errorMessage = "Invalid MapNode";
-    if (_progress.valid()) _progress->onCompleted();
-    return 0;
-  }
-
-  // folder to which to write the TMS archive.
-  std::string rootFolder = path;
-
-  osg::ref_ptr<osgDB::Options> options = new osgDB::Options(_dbOptions);
-
-  // create a folder for the output
-  osgDB::makeDirectory(rootFolder);
-  if ( !osgDB::fileExists(rootFolder) )
-  {
-    _errorMessage = "Failed to create root output folder";
-    if (_progress.valid()) _progress->onCompleted();
-    return 0;
-  }
-
+{     
   Map* map = mapNode->getMap();
-
-  // new map for an output earth file if necessary.
-  osg::ref_ptr<Map> outMap = 0L;
-  if ( !outEarth.empty() )
-  {
-      // copy the options from the source map first
-      outMap = new Map(map->getInitialMapOptions());
-  }
-
-  // establish the output path of the earth file, if applicable:
-  std::string outEarthName = osgDB::getSimpleFileName(outEarth);
-  if (outEarthName.length() > 0 && osgEarth::toLower(osgDB::getFileExtension(outEarthName)) != "earth")
-    outEarthName += ".earth";
-
-  std::string outEarthFile = osgDB::concatPaths(rootFolder, outEarthName);
+  TMSPackager packager;
+  osgDB::makeDirectory(path);
+  packager.setDestination(path);
   
-
-  // semaphore and tasks collection for multithreading
-  osgEarth::Threading::MultiEvent semaphore;
-  osgEarth::TaskRequestVector tasks;
-  int taskCount = 0;
-
-
-  // package any image layers that are enabled and visible
-  ImageLayerVector imageLayers;
-  map->getImageLayers( imageLayers );
-
-  unsigned imageCount = 0;
-  for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i, ++imageCount )
+  // Add all the bounds
+  for (unsigned int i = 0; i < bounds.size(); i++)
   {
-      ImageLayer* layer = i->get();
+      packager.getTileVisitor()->addExtent( osgEarth::GeoExtent(map->getProfile()->getSRS(), bounds[i]));
+  }
+  packager.setExtension(extension);
+  //packager.getTileVisitor()->setProgressCallback(new PackageLayerProgressCallback(this, 0) );  
+  packager.getTileVisitor()->setProgressCallback( _progress.get() );
+  packager.getTileVisitor()->setMaxLevel(_maxLevel);
 
-      if ( layer->getEnabled() && layer->getVisible() )
-      {
-          std::string layerFolder = toLegalFileName( layer->getName() );
-          if ( layerFolder.empty() )
-              layerFolder = Stringify() << "image_layer_" << imageCount;
+  unsigned int totalLayers = map->getNumImageLayers() + map->getNumElevationLayers();  
 
-          ParallelTask<PackageLayer>* task = new ParallelTask<PackageLayer>( &semaphore );
-          task->init(map, layer, options, rootFolder, layerFolder, true, overwrite, _keepEmpties, _maxLevel, extension, new PackageLayerProgressCallback(this, taskCount), bounds);
-          tasks.push_back(task);
-          taskCount++;
-      }
+  unsigned int layerNum = 1;
+  
+  // Package each image layer
+  for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
+  {            
+      osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);      
+      std::stringstream buf;
+      buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
+      _progress->setStatus(QString::fromStdString( buf.str()));
+      packager.run(layer.get(), map->getProfile());
+      packager.writeXML(layer.get(), map->getProfile());
+      layerNum++;
   }
 
-  // package any elevation layers that are enabled and visible
-  ElevationLayerVector elevationLayers;
-  map->getElevationLayers( elevationLayers );
-
-  int elevCount = 0;
-  for( ElevationLayerVector::iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i, ++elevCount )
+  // Package each elevation layer
+  for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
   {
-      ElevationLayer* layer = i->get();
-      if ( layer->getEnabled() && layer->getVisible() )
-      {
-          std::string layerFolder = toLegalFileName( layer->getName() );
-          if ( layerFolder.empty() )
-              layerFolder = Stringify() << "elevation_layer_" << elevCount;
-
-          ParallelTask<PackageLayer>* task = new ParallelTask<PackageLayer>( &semaphore );
-          task->init(map, layer, options, rootFolder, layerFolder, true, overwrite, _keepEmpties, _maxLevel, extension, new PackageLayerProgressCallback(this, taskCount), bounds);
-          tasks.push_back(task);
-          taskCount++;
-      }
+      osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);      
+      std::stringstream buf;
+      buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
+      _progress->setStatus(QString::fromStdString( buf.str()));
+      packager.run(layer.get(), map->getProfile());
+      packager.writeXML(layer.get(), map->getProfile());
+      layerNum++;
   }
 
+  // Tell the progress dialog that we're finished and it can close
+  _progress->complete();
 
-  // Run all the tasks in parallel
-  _totalTasks = taskCount;
-  _percentComplete = 0.0;
-
-  semaphore.reset( _totalTasks );
-  _taskProgress = std::vector<double>(_totalTasks, 0.0);
-
-  for( TaskRequestVector::iterator i = tasks.begin(); i != tasks.end(); ++i )
-        _taskService->add( i->get() );
-
-  // Wait for them to complete
-  semaphore.wait();
-
-  if (!_canceled)
-  {
-      // Add successfully packaged layers to the new map object and
-      // write out the .earth file (if requested)
-      if (outMap.valid())
-      {
-        for( TaskRequestVector::iterator i = tasks.begin(); i != tasks.end(); ++i )
-        {
-          PackageLayer* p = dynamic_cast<PackageLayer*>(i->get());
-          if (p)
-          {
-            if (p->_packageResult.ok)
-            {
-              TMSOptions tms;
-              tms.url() = URI(osgDB::concatPaths(p->_layerFolder, "tms.xml"), outEarthFile );
-
-              if (p->_imageLayer.valid())
-              {
-                ImageLayerOptions layerOptions( p->_imageLayer->getName(), tms );
-                layerOptions.mergeConfig( p->_imageLayer->getInitialOptions().getConfig(true) );
-                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
-
-                outMap->addImageLayer( new ImageLayer(layerOptions) );
-              }
-              else
-              {
-                ElevationLayerOptions layerOptions( p->_elevationLayer->getName(), tms );
-                layerOptions.mergeConfig( p->_elevationLayer->getInitialOptions().getConfig(true) );
-                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
-
-                outMap->addElevationLayer( new ElevationLayer(layerOptions) );
-              }
-            }
-            else
-            {
-              OE_WARN << LC << p->_packageResult.message << std::endl;
-            }
-          }
-        }
-      }
-
-      if ( outMap.valid() )
-      {
-          MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
-          osg::ref_ptr<MapNode> outMapNode = new MapNode(outMap.get(), outNodeOptions);
-          if ( !osgDB::writeNodeFile(*outMapNode.get(), outEarthFile) )
-          {
-              OE_WARN << LC << "Error writing earth file to \"" << outEarthFile << "\"" << std::endl;
-          }
-          else
-          {
-              OE_NOTICE << LC << "Wrote earth file to \"" << outEarthFile << "\"" << std::endl;
-          }
-      }
-  }
-
-
-  // Mark the progress callback as completed
-  if (_progress.valid()) _progress->onCompleted();
-
-  return elevCount + imageCount;
+  return 0;
 }
 
+#if 0
 void TMSExporter::packageTaskProgress(int id, double complete)
 {
+
   if (_progress.valid())
   {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _mutex );
+    _progress->reportProgress(complete
 
+    /*
     _percentComplete += complete - _taskProgress[id];
     _taskProgress[id] = complete;
 
     if ( _progress->isCanceled() || _progress->reportProgress(_percentComplete, _totalTasks) )
         cancel(_progress->message());
+        */
   }
 }
 
 void TMSExporter::packageTaskComplete(int id)
 {
+    /*
   if (_progress.valid())
   {
       OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
@@ -350,7 +240,9 @@ void TMSExporter::packageTaskComplete(int id)
       if ( _progress->isCanceled() || _progress->reportProgress(_percentComplete, _totalTasks) )
           cancel(_progress->message());
   }
+  */
 }
+#endif
 
 void TMSExporter::cancel(const std::string& message)
 {

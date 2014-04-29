@@ -46,48 +46,11 @@
 #include "TMSExporter.h"
 #include "ExportDialog"
 #include "WaitDialog"
+#include "ExportProgress.h"
 
 namespace
 {
-  class ExportProgressCallback : public osgEarth::ProgressCallback
-  {
-  public:
-    ExportProgressCallback(QMainWindow* parent, QProgressDialog* dialog)
-      : _parent(parent), _dialog(dialog)
-    {
-    }
-
-    virtual ~ExportProgressCallback() { }
-
-    bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg)
-    {
-      if (_dialog)
-      {
-        QMetaObject::invokeMethod(_dialog, "setValue", Qt::QueuedConnection, Q_ARG(int, (current / total) * 100));
-
-        if (_dialog->wasCanceled())
-        {
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    void onCompleted()
-    {
-      bool userCanceled = _dialog->wasCanceled();
-      QMetaObject::invokeMethod(_dialog, "close", Qt::QueuedConnection);
-
-      if (!userCanceled)
-        QMetaObject::invokeMethod(_parent, "showExportResult", Qt::BlockingQueuedConnection);
-    }
-
-  private:
-    QMainWindow* _parent;
-    QProgressDialog* _dialog;
-  };
-
+ 
   struct SceneBoundsSetCallback : public PackageQt::BoundsSetCallback
   {
     SceneBoundsSetCallback(QAction* toggleAction) : _action(toggleAction) { }
@@ -234,7 +197,8 @@ private slots:
             QProgressDialog* progress = new QProgressDialog(tr("Processing layers..."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
             progress->setAttribute(Qt::WA_DeleteOnClose, true);
             progress->setWindowTitle(tr("Exporting"));
-            progress->setValue(0);
+            progress->setValue(0);                        
+            progress->setAutoClose(false);
             _exporter->setProgressCallback(new ExportProgressCallback(this, progress));
 
             progress->setWindowModality(Qt::WindowModal);

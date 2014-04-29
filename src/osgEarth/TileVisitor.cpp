@@ -175,8 +175,9 @@ bool TileVisitor::handleTile( const TileKey& key )
 class HandleTileTask : public TaskRequest
 {
 public:
-    HandleTileTask( TileHandler* handler, const TileKey& key ):      
+    HandleTileTask( TileHandler* handler, TileVisitor* visitor, const TileKey& key ):      
       _handler( handler ),
+          _visitor(visitor),
           _key( key )
       {
 
@@ -187,11 +188,13 @@ public:
           if (_handler.valid())
           {             
               _handler->handleTile( _key );
+              _visitor->incrementProgress(1);
           }
       }
 
-      osg::ref_ptr < TileHandler > _handler;
+      osg::ref_ptr<TileHandler> _handler;
       TileKey _key;
+      osg::ref_ptr<TileVisitor> _visitor;
 };
 
 MultithreadedTileVisitor::MultithreadedTileVisitor():
@@ -238,7 +241,7 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
 
 bool MultithreadedTileVisitor::handleTile( const TileKey& key )        
 {
-    _taskService->add( new HandleTileTask(_tileHandler, key ) );
+    _taskService->add( new HandleTileTask(_tileHandler, this, key ) );
     return true;
 }
 

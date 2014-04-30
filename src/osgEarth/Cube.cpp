@@ -731,6 +731,13 @@ UnifiedCubeProfile::getIntersectingTiles(const GeoExtent&      remoteExtent,
     }
 }
 
+unsigned
+UnifiedCubeProfile::getEquivalentLOD(const Profile* rhsProfile, unsigned rhsLOD) const
+{    
+    return rhsLOD;
+}
+
+
 UnifiedCubeProfile::~UnifiedCubeProfile()
 {
 }

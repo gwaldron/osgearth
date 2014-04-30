@@ -272,7 +272,7 @@ namespace osgEarth
          * Given another Profile and an LOD in that Profile, determine 
          * the LOD in this Profile that is nearly equivalent.
          */
-        unsigned getEquivalentLOD( const Profile* profile, unsigned lod ) const;
+        virtual unsigned getEquivalentLOD(const Profile* profile, unsigned lod) const;
 
     public:
 

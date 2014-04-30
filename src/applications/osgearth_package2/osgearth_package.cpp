@@ -280,8 +280,13 @@ makeTMS( osg::ArgumentParser& args )
                 if (!args.isOption(pos))
                 {
                     earthFile  = args[ pos ];
+                    break;
                 }
             }
+
+            v->setEarthFile( earthFile );
+
+            /*
             std::stringstream baseCommand;
             baseCommand << "osgearth_package2 --tms ";
             
@@ -313,17 +318,10 @@ makeTMS( osg::ArgumentParser& args )
 
             baseCommand << " --elevation-pixel-depth " << elevationPixelDepth << " ";
 
-            if (imageLayerIndex >= 0)
-            {
-                baseCommand << " --image " << imageLayerIndex;
-            }
-            else if (elevationLayerIndex >= 0)
-            {
-                baseCommand << " --elevation " << elevationLayerIndex;
-            }
-
+            
             baseCommand << " " << earthFile;                     
             v->setBaseCommand(baseCommand.str());
+            */
             visitor = v;            
         }
         else
@@ -369,15 +367,7 @@ makeTMS( osg::ArgumentParser& args )
     }
 
     std::string outEarthFile = osgDB::concatPaths( rootFolder, osgDB::getSimpleFileName( outEarth ) );
-
-    // If we are using a MultiProcessTileVisitor save the base command so we can modify it between layers
-    MultiprocessTileVisitor* mp = dynamic_cast<MultiprocessTileVisitor*>(visitor.get());
-    std::string baseCommand;
-    if (mp)
-    {
-        baseCommand = mp->getBaseCommand();
-    }
-
+    
 
     // Package an individual image layer
     if (imageLayerIndex >= 0)
@@ -420,15 +410,7 @@ makeTMS( osg::ArgumentParser& args )
     {        
         // Package all the ImageLayer's
         for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
-        {
-            if (mp)
-            {                
-                std::stringstream buf;
-                buf << baseCommand << " --image " << i;                
-                mp->setBaseCommand(buf.str());
-            }
-            
-
+        {            
             ImageLayer* layer = map->getImageLayerAt(i);        
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();
@@ -467,14 +449,7 @@ makeTMS( osg::ArgumentParser& args )
         packager.setExtension("tif");
         // Package all the ElevationLayer's
         for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
-        {
-            if (mp)
-            {                
-                std::stringstream buf;
-                buf << baseCommand << " --elevation " << i;                
-                mp->setBaseCommand(buf.str());
-            }
-
+        {            
             ElevationLayer* layer = map->getElevationLayerAt(i);        
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();

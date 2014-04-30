@@ -327,15 +327,6 @@ void MultiprocessTileVisitor::setBatchSize( unsigned int batchSize )
     _batchSize = batchSize;
 }
 
-const std::string& MultiprocessTileVisitor::getBaseCommand() const
-{
-    return _baseCommand;
-}
-
-void MultiprocessTileVisitor::setBaseCommand(const std::string& baseCommand)
-{
-    _baseCommand = baseCommand;
-}
 
 void MultiprocessTileVisitor::run(const Profile* mapProfile)
 {                             
@@ -364,6 +355,16 @@ bool MultiprocessTileVisitor::handleTile( const TileKey& key )
         processBatch();
     }         
     return true;
+}
+
+const std::string& MultiprocessTileVisitor::getEarthFile() const
+{
+    return _earthFile;
+}
+
+void MultiprocessTileVisitor::setEarthFile( const std::string& earthFile )
+{
+    _earthFile = earthFile;
 }
 
 /**
@@ -420,10 +421,10 @@ void MultiprocessTileVisitor::processBatch()
     std::string filename = getTempName(tmpPath, "batch.tiles");        
     tasks.save( filename );        
 
-    std::stringstream command;
-    //command << "osgearth_cache2 --seed  gdal_tiff.earth --tiles " << filename;
-    command << _baseCommand << " --tiles " << filename;
-    OE_INFO << "Running command " << command.str() << std::endl;
+    std::stringstream command;    
+    //command << _baseCommand << " --tiles " << filename;
+    command << _tileHandler->getProcessString() << " --tiles " << filename << " " << _earthFile;
+    OE_NOTICE << "Running command " << command.str() << std::endl;
     osg::ref_ptr< ExecuteTask > task = new ExecuteTask( command.str(), this, tasks.getKeys().size() );
     // Add the task file as a temp file to the task to make sure it gets deleted
     task->addTempFile( filename );

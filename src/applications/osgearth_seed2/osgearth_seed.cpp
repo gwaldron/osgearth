@@ -262,7 +262,6 @@ int
                 v->setBatchSize(batchSize);
             }
 
-            
             // Try to find the earth file
             std::string earthFile;
             for(int pos=1;pos<args.argc();++pos)
@@ -270,20 +269,10 @@ int
                 if (!args.isOption(pos))
                 {
                     earthFile  = args[ pos ];
+                    break;
                 }
             }
-            std::stringstream baseCommand;
-            baseCommand << "osgearth_cache2 --seed ";     
-            if (imageLayerIndex >= 0)
-            {
-                baseCommand << " --image " << imageLayerIndex;
-            }
-            else if (elevationLayerIndex >= 0)
-            {
-                baseCommand << " --elevation " << elevationLayerIndex;
-            }
-            baseCommand << " " << earthFile;                     
-            v->setBaseCommand(baseCommand.str());
+            v->setEarthFile( earthFile );            
             visitor = v;            
         }
         else
@@ -326,7 +315,7 @@ int
         {
             OE_NOTICE << "Seeding single layer " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();        
-            seeder.run(layer, map->getProfile());
+            seeder.run(layer, map);
             osg::Timer_t end = osg::Timer::instance()->tick();
             if (verbose)
             {
@@ -348,7 +337,7 @@ int
         {
             OE_NOTICE << "Seeding single layer " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();        
-            seeder.run(layer, map->getProfile());
+            seeder.run(layer, map);
             osg::Timer_t end = osg::Timer::instance()->tick();
             if (verbose)
             {
@@ -363,27 +352,14 @@ int
     }
     // They want to seed the entire map
     else
-    {        
-        MultiprocessTileVisitor* mp = dynamic_cast<MultiprocessTileVisitor*>(seeder.getVisitor());
-        std::string baseCommand;
-        if (mp)
-        {
-            baseCommand = mp->getBaseCommand();
-        }
+    {                
         // Seed all the map layers
         for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
         {            
             osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
-            OE_NOTICE << "Seeding layer" << layer->getName() << std::endl;
-            if (mp)
-            {                
-                std::stringstream buf;
-                buf << baseCommand << " --image " << i;                
-                mp->setBaseCommand(buf.str());
-            }
-
+            OE_NOTICE << "Seeding layer" << layer->getName() << std::endl;            
             osg::Timer_t start = osg::Timer::instance()->tick();
-            seeder.run(layer.get(), map->getProfile());            
+            seeder.run(layer.get(), map);            
             osg::Timer_t end = osg::Timer::instance()->tick();
             if (verbose)
             {
@@ -395,14 +371,8 @@ int
         {
             osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
             OE_NOTICE << "Seeding layer" << layer->getName() << std::endl;
-            if (mp)
-            {                
-                std::stringstream buf;
-                buf << baseCommand << " --elevation " << i;                
-                mp->setBaseCommand(buf.str());
-            }
             osg::Timer_t start = osg::Timer::instance()->tick();
-            seeder.run(layer.get(), map->getProfile());            
+            seeder.run(layer.get(), map);            
             osg::Timer_t end = osg::Timer::instance()->tick();
             if (verbose)
             {

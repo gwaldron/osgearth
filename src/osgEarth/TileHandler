@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
+#include <osgEarth/Map>
 
 #include <osgEarth/TerrainLayer>
 
@@ -32,9 +33,24 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileHandler : public osg::Referenced
     {
     public:
+        /**
+         * Process a tile for the given key
+         */
         virtual bool handleTile( const TileKey& key );
 
+        /**
+         * Callback that tells a TileVisitor if it should attempt to process this key.
+         * If this function returns false no further processing is done on child keys.
+         */
         virtual bool hasData( const TileKey& key ) const;
+
+        /**
+         * Returns the process to run when executing in a MultiProcessTileVisitor.
+         * 
+         * When running in a MultiProcessTileVisitor the actual data processing is done by an external program
+         * that takes a --tiles argument.  This function lets you tie that process to the TileHandler
+         */
+        virtual std::string getProcessString() const;
     };
 
 
@@ -44,12 +60,15 @@ namespace osgEarth
     class OSGEARTH_EXPORT CacheTileHandler : public TileHandler
     {
     public:
-        CacheTileHandler( TerrainLayer* layer );
+        CacheTileHandler( TerrainLayer* layer, Map* map );
         virtual bool handleTile( const TileKey& key );
         virtual bool hasData( const TileKey& key ) const;
 
+        virtual std::string getProcessString() const;
+
     protected:
         osg::ref_ptr< TerrainLayer > _layer;
+        osg::ref_ptr< Map > _map;
     };
 
 

@@ -371,10 +371,10 @@ void CacheSeed::setVisitor(TileVisitor* visitor)
     _visitor = visitor;
 }
 
-void CacheSeed::run( TerrainLayer* layer, const Profile* profile )
+void CacheSeed::run( TerrainLayer* layer, Map* map )
 {
-    _visitor->setTileHandler( new CacheTileHandler( layer ) );
-    _visitor->run( profile );
+    _visitor->setTileHandler( new CacheTileHandler( layer, map ) );
+    _visitor->run( map->getProfile() );
 }
 
 #endif

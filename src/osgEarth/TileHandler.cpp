@@ -38,18 +38,24 @@ bool TileHandler::hasData( const TileKey& key ) const
 {
     return true;
 }
+        
+std::string TileHandler::getProcessString() const
+{
+    return "";
+}
 
 
 /*****************************************************************************************/
-CacheTileHandler::CacheTileHandler( TerrainLayer* layer ):
-_layer( layer )
+CacheTileHandler::CacheTileHandler( TerrainLayer* layer, Map* map ):
+_layer( layer ),
+_map( map )
 {
 }
 
 bool CacheTileHandler::handleTile( const TileKey& key )
 {        
     ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
-    ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );
+    ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );    
 
     // Just call createImage or createHeightField on the layer and the it will be cached!
     if (imageLayer)
@@ -79,6 +85,38 @@ bool CacheTileHandler::hasData( const TileKey& key ) const
         return ts->hasData(key);
     }
     return true;
+}
+
+std::string CacheTileHandler::getProcessString() const
+{
+    ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
+    ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );    
+
+    std::stringstream buf;
+    buf << "osgearth_cache2 --seed ";
+    if (imageLayer)
+    {        
+        for (unsigned int i = 0; i < _map->getNumImageLayers(); i++)
+        {
+            if (imageLayer == _map->getImageLayerAt(i))
+            {
+                buf << " --image " << i << " ";
+                break;
+            }
+        }
+    }
+    else if (elevationLayer)
+    {
+        for (unsigned int i = 0; i < _map->getNumElevationLayers(); i++)
+        {
+            if (elevationLayer == _map->getElevationLayerAt(i))
+            {
+                buf << " --elevation " << i << " ";
+                break;
+            }
+        }
+    }
+    return buf.str();
 }
 
 

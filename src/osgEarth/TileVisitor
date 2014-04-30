@@ -181,11 +181,10 @@ namespace osgEarth
         unsigned int getBatchSize() const;
         void setBatchSize( unsigned int batchSize );
 
-        const std::string& getBaseCommand() const;
-
-        void setBaseCommand(const std::string& baseCommand);
-
         virtual void run(const Profile* mapProfile);          
+
+        const std::string& getEarthFile() const;
+        void setEarthFile( const std::string& earthFile );
 
     protected:
 
@@ -198,10 +197,10 @@ namespace osgEarth
         unsigned int _batchSize;
         unsigned int _numProcesses;    
 
-        // The work queue to pass seed operations to
-        osg::ref_ptr<osgEarth::TaskService> _taskService;
+        std::string _earthFile;
 
-        std::string _baseCommand;
+        // The work queue to pass seed operations to
+        osg::ref_ptr<osgEarth::TaskService> _taskService;        
     };
 
     

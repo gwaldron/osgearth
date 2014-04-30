@@ -41,7 +41,7 @@ bool presortCompare (osg::Vec3d i, osg::Vec3d j)
   return i.x() < j.x();
 }
 
-double BoundaryUtil::_tolerance = 0.1;
+double BoundaryUtil::_tolerance = 0.005;
 
 void
 BoundaryUtil::setTolerance(double value)
@@ -253,44 +253,21 @@ osg::Vec3dArray* BoundaryUtil::hullPresortPoints(osg::Vec3dArray& points)
 
 namespace
 {
-    double round(double input, int decimals)
-    {
-        double d = input;
-        for(int i=0; i<decimals; ++i)
-            d *= 10.0;
-        d = ::floor(d);
-        for(int i=0; i<decimals; ++i)
-            d /= 10.0;
-        return d;
-    }
-
     // custom comparator for VertexSet.
-    struct VertexSetComp 
+    struct VertexLess
     {
-        int d;
-
-        VertexSetComp()
-        {
-            double meters = BoundaryUtil::getTolerance();
-            for(d=0; meters<1.0; ++d, meters*=10.0);
-            OE_INFO << "Decimal places = " << d << std::endl;
-        }
-
         bool operator()(const osg::Vec3d& lhs, const osg::Vec3d& rhs) const
         {
-            //const int d = 2;
-            osg::Vec3d a(round(lhs.x(),d), round(lhs.y(),d), 0.0); //round(lhs.z(),d));
-            osg::Vec3d b(round(rhs.x(),d), round(rhs.y(),d), 0.0); //round(rhs.z(),d));
-            if      ( a.x() < b.x() ) return true;
-            else if ( a.x() > b.x() ) return false;
-            else return a.y() < b.y();
-            //else if ( a.y() < b.y() ) return true;
-            //else if ( a.y() > b.y() ) return false;
-            //else return a.z() < b.z();
+            double dx = lhs.x() - rhs.x();
+            if ( dx < 0.0 && dx < -BoundaryUtil::getTolerance() ) return true;
+            if ( dx > 0.0 && dx >  BoundaryUtil::getTolerance() ) return false;
+
+            double dy = lhs.y() - rhs.y();
+            return (dy < 0.0 && dy < -BoundaryUtil::getTolerance());
         }
     };
 
-    typedef std::set<osg::Vec3d, VertexSetComp> VertexSet; 
+    typedef std::set<osg::Vec3d, VertexLess> VertexSet;
     typedef VertexSet::iterator Index;
 
     // custom comparator for Index so we can use it at a std::map key
@@ -312,6 +289,7 @@ namespace
           : _minY( _verts.end() ), _totalVerts(0), _srs(0L) { }
 
         unsigned     _totalVerts;  // total number of verts encountered
+        VertexSet    _vertsWorld;  // 
         VertexSet    _verts;       // set of unique verts in the topology (rotated into XY plane)
         EdgeMap      _edgeMap;     // maps each vert to all the verts with which it shares an edge
         Index        _minY;        // points to the vert with the minimum Y coordinate (in XY plane)
@@ -355,6 +333,12 @@ namespace
                 osg::Vec3d vert = (*_vertexList)[v];
                 osg::Vec3d world = vert * _local2world;
                 osg::Vec3d plane = world;
+
+                if ( osg::equivalent(vert.x(), 310.0, 1.0) )
+                {
+                    int asd = 0;
+                }
+
                 if ( _topology->_srs )
                 {
                     const osgEarth::SpatialReference* ecef = _topology->_srs->getECEF();
@@ -497,9 +481,6 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     if ( geocentric )
     {
         // define the XY plane based on the normal to the center of the dataset:
-        //osg::ComputeBoundsVisitor cbv;
-        //node->accept(cbv);
-        //cbv._bb.
         osg::BoundingSphere bs = node->getBound();
         center = bs.center();
         normal = center;
@@ -513,7 +494,7 @@ BoundaryUtil::findMeshBoundary( osg::Node* node, bool geocentric )
     TopologyGraph topology;
 
     // set up a transform that will localize geometry into an XY plane
-    if ( geocentric ) //normal != osg::Vec3(0,0,1) )
+    if ( geocentric )
     {
         topology._world2plane.makeRotate(normal, osg::Vec3d(0,0,1));
         topology._world2plane.preMultTranslate(-center);

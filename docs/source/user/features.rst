@@ -358,7 +358,7 @@ Each level describes a level of detail. This is a camera range (between ``min_ra
 and ``max_range``) at which tiles in this level of detail are rendered. But how
 big is each tile? This is calculated based on the *tile range factor*.
 
-The ``tile_range_factor`` determines the size of a tile, based on the ``max_range``
+The ``tile_size_factor`` determines the size of a tile, based on the ``max_range``
 of the LOD. The tile range factor is the multiple of a tile's radius at which the
 LOD's ``max_range`` takes effect. In other words::
 

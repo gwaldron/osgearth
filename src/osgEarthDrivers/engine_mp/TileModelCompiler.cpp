@@ -475,8 +475,15 @@ namespace
 
                 // install the parent color data layer if necessary.
                 if ( d.parentModel.valid() )
-                {
-                    d.parentModel->getColorData( r._layer.getUID(), r._layerParent );
+                {                    
+                    if (!d.parentModel->getColorData( r._layer.getUID(), r._layerParent ))
+                    {
+                        // If we can't get the color data from the parent that means it doesn't exist, perhaps b/c of a min level setting
+                        // So we create a false layer parent with a transparent image so it will fade into the real data.
+                        r._layerParent = r._layer;
+                        r._layerParent._texture = new osg::Texture2D(ImageUtils::createEmptyImage());
+                        r._layerParent._hasAlpha = true;
+                    }
                 }
                 else
                 {

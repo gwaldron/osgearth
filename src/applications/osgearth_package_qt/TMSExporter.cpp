@@ -108,8 +108,8 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
       std::stringstream buf;
       buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
       _progress->setStatus(QString::fromStdString( buf.str()));
-      packager.run(layer.get(), map->getProfile());
-      packager.writeXML(layer.get(), map->getProfile());
+      packager.run(layer.get(), map);
+      packager.writeXML(layer.get(), map);
       if (outMap)
       {
           std::string layerFolder = toLegalFileName( layer->getName() );
@@ -136,8 +136,8 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
       std::stringstream buf;
       buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
       _progress->setStatus(QString::fromStdString( buf.str()));
-      packager.run(layer.get(), map->getProfile());
-      packager.writeXML(layer.get(), map->getProfile());
+      packager.run(layer.get(), map);
+      packager.writeXML(layer.get(), map);
 
       if( outMap.valid() )
       {

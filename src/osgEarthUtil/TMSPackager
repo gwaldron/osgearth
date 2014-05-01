@@ -236,9 +236,9 @@ public:
 
     void setVisitor(TileVisitor* visitor);
 
-    void run( TerrainLayer* layer, const Profile* profile );
+    void run( TerrainLayer* layer, Map* map );
 
-    void writeXML( TerrainLayer* layer, const Profile* profile);
+    void writeXML( TerrainLayer* layer, Map* map);
 
 protected:
 

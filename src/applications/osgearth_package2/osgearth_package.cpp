@@ -265,6 +265,7 @@ makeTMS( osg::ArgumentParser& args )
             if (concurrency > 0)
             {
                 v->setNumProcesses(concurrency);
+                OE_NOTICE << "Set num processes " << concurrency << std::endl;
             }
 
             if (batchSize > 0)
@@ -375,10 +376,10 @@ makeTMS( osg::ArgumentParser& args )
         ImageLayer* layer = map->getImageLayerAt(imageLayerIndex);
         if (layer)
         {
-            packager.run(layer, map->getProfile());
+            packager.run(layer, map);
             if (writeXML)
             {
-                packager.writeXML(layer, map->getProfile());
+                packager.writeXML(layer, map);
             }
         }
         else
@@ -394,10 +395,10 @@ makeTMS( osg::ArgumentParser& args )
         ElevationLayer* layer = map->getElevationLayerAt(elevationLayerIndex);
         if (layer)
         {
-            packager.run(layer, map->getProfile());
+            packager.run(layer, map);
             if (writeXML)
             {
-                packager.writeXML(layer, map->getProfile());
+                packager.writeXML(layer, map );
             }
         }
         else
@@ -414,7 +415,7 @@ makeTMS( osg::ArgumentParser& args )
             ImageLayer* layer = map->getImageLayerAt(i);        
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();
-            packager.run(layer, map->getProfile());
+            packager.run(layer, map);
             osg::Timer_t end = osg::Timer::instance()->tick();
             if (verbose)
             {
@@ -423,7 +424,7 @@ makeTMS( osg::ArgumentParser& args )
 
             if (writeXML)
             {
-                packager.writeXML(layer, map->getProfile());
+                packager.writeXML(layer, map);
             }
 
             // save to the output map if requested:
@@ -453,7 +454,7 @@ makeTMS( osg::ArgumentParser& args )
             ElevationLayer* layer = map->getElevationLayerAt(i);        
             OE_NOTICE << "Packaging " << layer->getName() << std::endl;
             osg::Timer_t start = osg::Timer::instance()->tick();
-            packager.run(layer, map->getProfile());
+            packager.run(layer, map);
             osg::Timer_t end = osg::Timer::instance()->tick();
             if (verbose)
             {
@@ -461,7 +462,7 @@ makeTMS( osg::ArgumentParser& args )
             }      
             if (writeXML)
             {
-                packager.writeXML(layer, map->getProfile());
+                packager.writeXML(layer, map);
             }
 
             // save to the output map if requested:

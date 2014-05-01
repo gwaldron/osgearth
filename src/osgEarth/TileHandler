@@ -78,7 +78,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT WriteTMSTileHandler : public TileHandler
     {
     public:
-        WriteTMSTileHandler(TerrainLayer* layer, const std::string& destination, const std::string& extension="" );
+        WriteTMSTileHandler(TerrainLayer* layer, Map* map, const std::string& destination, const std::string& extension="" );
 
         const std::string& getExtension() const;
         const std::string& getDestination() const;
@@ -99,6 +99,7 @@ namespace osgEarth
 
         virtual bool handleTile( const TileKey& key );
         virtual bool hasData( const TileKey& key ) const;
+        virtual std::string getProcessString() const;
 
     protected:
         
@@ -108,6 +109,7 @@ namespace osgEarth
         std::string _extension;
         std::string _destination;
         osg::ref_ptr< TerrainLayer > _layer;
+        osg::ref_ptr< Map > _map;
         unsigned int _width;
         unsigned int _height;
         unsigned int _maxLevel;

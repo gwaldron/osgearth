@@ -123,8 +123,9 @@ std::string CacheTileHandler::getProcessString() const
 /*****************************************************************************************/
 // A global mutex to make sure that we're not creating directories concurrently.
 // If you don't do this you will get errors when writing from multiple threads
-WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer, const std::string& destination, const std::string& extension):
-_layer( layer ),
+WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer,  Map* map, const std::string& destination, const std::string& extension):
+    _layer( layer ),
+    _map(map),
     _destination( destination ),
     _extension(extension),
     _width(0),
@@ -276,4 +277,55 @@ bool WriteTMSTileHandler::hasData( const TileKey& key ) const
         return ts->hasData(key);
     }
     return true;
+}
+
+std::string WriteTMSTileHandler::getProcessString() const
+{
+    ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
+    ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );    
+
+    std::stringstream buf;
+    buf << "osgearth_package2 --tms ";
+    if (imageLayer)
+    {        
+        for (unsigned int i = 0; i < _map->getNumImageLayers(); i++)
+        {
+            if (imageLayer == _map->getImageLayerAt(i))
+            {
+                buf << " --image " << i << " ";
+                break;
+            }
+        }
+    }
+    else if (elevationLayer)
+    {
+        for (unsigned int i = 0; i < _map->getNumElevationLayers(); i++)
+        {
+            if (elevationLayer == _map->getElevationLayerAt(i))
+            {
+                buf << " --elevation " << i << " ";
+                break;
+            }
+        }
+    }
+
+    // Options
+    buf << " --destination " << _destination << " ";
+    buf << " --ext " << _extension << " ";
+    buf << " --elevation-pixel-depth " << _elevationPixelDepth << " ";
+    buf << " --db-options " << _options.get()->getOptionString() << " ";
+    /*
+    if (_overwrite)
+    {
+    buf << " --overwrite " << 
+    }
+    */
+    /*
+    if (continueSingleColor)
+    {
+    buf << " --continue-single-color ";
+    }
+    */
+    //buf << " --keep-empties " << _keepEmpties << std::endl;
+    return buf.str();
 }

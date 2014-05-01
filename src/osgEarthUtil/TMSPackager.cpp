@@ -736,13 +736,13 @@ void TMSPackager::setVisitor(TileVisitor* visitor)
     _visitor = visitor;
 }    
 
-void TMSPackager::run( TerrainLayer* layer,  const Profile* profile  )
+void TMSPackager::run( TerrainLayer* layer,  Map* map  )
 {    
     // Get a test image from the root keys
 
     // collect the root tile keys in preparation for packaging:
     std::vector<TileKey> rootKeys;
-    profile->getRootKeys( rootKeys );
+    map->getProfile()->getRootKeys( rootKeys );
 
     // fetch one tile to see what the image size should be
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
@@ -790,19 +790,19 @@ void TMSPackager::run( TerrainLayer* layer,  const Profile* profile  )
     }
 
 
-    _handler = new WriteTMSTileHandler(layer, _destination, _extension);
+    _handler = new WriteTMSTileHandler(layer, map, _destination, _extension);
     _handler->setElevationPixelDepth( _elevationPixelDepth );
     _handler->setOptions(_writeOptions.get());
     _visitor->setTileHandler( _handler );
-    _visitor->run( profile );    
+    _visitor->run( map->getProfile() );    
 }
 
-void TMSPackager::writeXML( TerrainLayer* layer, const Profile* profile)
+void TMSPackager::writeXML( TerrainLayer* layer, Map* map)
 {
      // create the tile map metadata:
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
         "",
-        profile,
+        map->getProfile(),
         /*
         _handler->getExtension(),
         _handler->getWidth(),

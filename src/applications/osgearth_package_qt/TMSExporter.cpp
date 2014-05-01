@@ -29,6 +29,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/FileUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarthUtil/TMSPackager>
 #include <osgEarthDrivers/tms/TMSOptions>
@@ -45,12 +46,28 @@ using namespace osgEarth::Drivers;
 #define LC "[TMSExporter] "
 
 TMSExporter::TMSExporter()
-: _dbOptions(""), _maxLevel(~0), _keepEmpties(false), _errorMessage(""), _canceled(false)
+: _dbOptions(""),
+  _maxLevel(~0),
+  _keepEmpties(false),
+  _errorMessage(""),
+  _canceled(false),
+  _concurrency(1),
+  _mode(ProcessingMode::MODE_SINGLE)
 {  
 }
 
+unsigned int TMSExporter::getConcurrency() const
+{
+    return _concurrency;
+}
+
+void TMSExporter::setConcurrency(unsigned int concurrency)
+{
+    _concurrency = concurrency;
+}
+
 /** Packages image and elevation layers as a TMS. */
-int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth, bool overwrite, const std::string& extension)
+int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth, bool overwrite, const std::string& extension)
 {     
   Map* map = mapNode->getMap();
 
@@ -72,12 +89,42 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
   
   // Create the TMS packager.
   TMSPackager packager;
+   
+   std::string tmpEarth;
 
-  /*
-  MultithreadedTileVisitor* v = new MultithreadedTileVisitor();
-  v->setNumThreads(16);
-  packager.setVisitor( v );
-  */
+  // Setup the visitor with the concurrency level and processing mode if it's set.
+  if (_concurrency > 1)
+  {
+      if (_mode == MODE_MULTIPROCESS)
+      {
+          // Write out a temp earth file so the processes can work on it.
+          // Determine the output path.  If we loaded from an earth file write out the temp file right next to it so relative paths will work the same.
+          // Otherwise use the temp path
+          OE_NOTICE << "Earth file path " << earthFilePath << std::endl;
+          if (!earthFilePath.empty())
+          {
+              std::string root = osgDB::getFilePath(earthFilePath);
+              root += "/";
+              tmpEarth = getTempName(root, ".earth");
+          }
+          else
+          {
+              tmpEarth = getTempName(getTempPath(), ".earth");
+          }
+          OE_NOTICE << "Writing to " << tmpEarth << std::endl;
+          osgDB::writeNodeFile(*mapNode, tmpEarth );         
+          MultiprocessTileVisitor* v = new MultiprocessTileVisitor();
+          v->setEarthFile(tmpEarth);
+          v->setNumProcesses(_concurrency);
+          packager.setVisitor(v);
+      }
+      else if (_mode == MODE_MULTITHREADED)
+      {
+          MultithreadedTileVisitor* v = new MultithreadedTileVisitor();          
+          v->setNumThreads(_concurrency);
+          packager.setVisitor(v);          
+      }
+  }
 
   // Make the output directory if it doesn't exist  
   osgDB::makeDirectory(path);
@@ -175,26 +222,14 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& path, std::vecto
   // Tell the progress dialog that we're finished and it can close
   _progress->complete();
 
+  // Remove the temp earth file.
+  if (!tmpEarth.empty())
+  {
+      remove(tmpEarth.c_str());
+  }
+
   return 0;
 }
-
-#if 0
-void TMSExporter::packageTaskComplete(int id)
-{
-    /*
-  if (_progress.valid())
-  {
-      OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-
-      _percentComplete += 1.0 - _taskProgress[id];
-      _taskProgress[id] = 1.0;
-
-      if ( _progress->isCanceled() || _progress->reportProgress(_percentComplete, _totalTasks) )
-          cancel(_progress->message());
-  }
-  */
-}
-#endif
 
 void TMSExporter::cancel(const std::string& message)
 {

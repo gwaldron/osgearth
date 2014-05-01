@@ -56,6 +56,8 @@ namespace PackageQt
     const osg::Vec2d &getBoundsUR() { return _boundsUR; }
     std::string getBoundsString();
 
+    const std::string getEarthFilePath() const { return _earthFilePath; }
+
   private:
 
     osg::ref_ptr<osg::Group> _root;
@@ -75,6 +77,7 @@ namespace PackageQt
     osg::ref_ptr<osgEarth::Annotation::FeatureNode> _bboxNode;
     osg::ref_ptr<osgGA::GUIEventHandler> _guiHandler;
     osg::ref_ptr<BoundsSetCallback> _boundsCallback;
+    std::string _earthFilePath;
   };
 }
 

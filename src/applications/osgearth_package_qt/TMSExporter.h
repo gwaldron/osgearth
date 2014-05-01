@@ -29,13 +29,16 @@
 
 namespace PackageQt
 {
+  /**
+   * Shim between the QT exporter and the TMSPackager
+   */
   class TMSExporter
   {
-  public:
+  public:    
 
-    TMSExporter();
+    TMSExporter();    
 
-    int exportTMS(osgEarth::MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="");
+    int exportTMS(osgEarth::MapNode* mapNode, const std::string& earthFilePath, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="");
 
     std::string getDBOptions() { return _dbOptions; }
     void setDBOptions(const std::string& options) { _dbOptions = options; }
@@ -52,13 +55,17 @@ namespace PackageQt
     void cancel(const std::string& message="");
     bool isCanceled() { return _canceled; }
 
-  protected:
-    //friend class PackageLayerProgressCallback;
+    unsigned int getConcurrency() const;
+    void setConcurrency(unsigned int concurrency);
 
-      /*
-    void packageTaskProgress(int id, double percentComplete);
-    void packageTaskComplete(int id);
-    */
+    enum ProcessingMode {
+        MODE_SINGLE,
+        MODE_MULTITHREADED,
+        MODE_MULTIPROCESS        
+    };
+
+    ProcessingMode getProcessingMode() const { return _mode;}
+    void setProcessingMode(ProcessingMode mode) { _mode = mode; }
 
   private:
 
@@ -67,10 +74,10 @@ namespace PackageQt
     bool _keepEmpties;
     std::string _errorMessage;
     bool _canceled;
+    unsigned int _concurrency;
+    ProcessingMode _mode;
 
-    OpenThreads::Mutex _mutex;   
-
-    double _percentComplete;
+    OpenThreads::Mutex _mutex;       
 
     osg::ref_ptr<ExportProgressCallback> _progress;
   };
@@ -79,15 +86,15 @@ namespace PackageQt
   class TMSExporterWorkerThread : public osg::Referenced, public OpenThreads::Thread
   {
   public:
-    TMSExporterWorkerThread(TMSExporter* exporter, osgEarth::MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="")
-      : OpenThreads::Thread(), _exporter(exporter), _mapNode(mapNode), _path(path), _bounds(bounds), _outEarth(outEarth), _overwrite(overwrite), _extension(extension)
+    TMSExporterWorkerThread(TMSExporter* exporter, osgEarth::MapNode* mapNode, const std::string& earthFilePath, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="")
+      : OpenThreads::Thread(), _exporter(exporter), _mapNode(mapNode), _earthFilePath(earthFilePath), _path(path), _bounds(bounds), _outEarth(outEarth), _overwrite(overwrite), _extension(extension)
     { }
 
     void run()
     {
       if (_exporter)
       {
-        _exporter->exportTMS(_mapNode, _path, _bounds, _outEarth, _overwrite, _extension);        
+        _exporter->exportTMS(_mapNode, _earthFilePath, _path, _bounds, _outEarth, _overwrite, _extension);        
       }
     }
 
@@ -99,6 +106,7 @@ namespace PackageQt
     std::string _outEarth;
     bool _overwrite;
     std::string _extension;
+    std::string _earthFilePath;
   };
 }
 

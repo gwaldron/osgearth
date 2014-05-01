@@ -310,7 +310,7 @@ std::string WriteTMSTileHandler::getProcessString() const
     }
 
     // Options
-    buf << " --destination " << _destination << " ";
+    buf << " --out " << _destination << " ";
     buf << " --ext " << _extension << " ";
     buf << " --elevation-pixel-depth " << _elevationPixelDepth << " ";
     buf << " --db-options " << _options.get()->getOptionString() << " ";

@@ -295,7 +295,7 @@ const TileKeyList& TaskList::getKeys() const
 /*****************************************************************************************/
 MultiprocessTileVisitor::MultiprocessTileVisitor():
     _numProcesses( OpenThreads::GetNumberOfProcessors() ),
-    _batchSize(500)
+    _batchSize(100)
 {
     osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
 }
@@ -303,7 +303,7 @@ MultiprocessTileVisitor::MultiprocessTileVisitor():
 MultiprocessTileVisitor::MultiprocessTileVisitor( TileHandler* handler ):
 TileVisitor( handler ),
     _numProcesses( OpenThreads::GetNumberOfProcessors() ),
-    _batchSize(500)
+    _batchSize(100)
 {
 }
 

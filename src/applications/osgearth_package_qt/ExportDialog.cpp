@@ -45,10 +45,11 @@ void ExportDialog::initUi(const std::string& dir, const std::string& boundsStrin
     _ui.boundsCheckBox->setChecked(true);
   }
 
+  _ui.concurrencySpinBox->setValue(OpenThreads::GetNumberOfProcessors());
+
   QObject::connect(_ui.exportPathBrowseButton, SIGNAL(clicked()), this, SLOT(showExportBrowse()));
   QObject::connect(_ui.earthFileCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateEarthFilePathEdit()));
-	QObject::connect(_ui.maxLevelCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateMaxLevelSpinBox()));
-//  QObject::connect(_ui.extensionCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateExtensionComboBox()));
+  QObject::connect(_ui.maxLevelCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateMaxLevelSpinBox()));
   QObject::connect(_ui.okButton, SIGNAL(clicked()), this, SLOT(validateAndAccept()));
 }
 
@@ -62,16 +63,6 @@ void ExportDialog::showExportBrowse()
 		_ui.exportPathEdit->setText(dir);
 }
 
-//void ExportDialog::showEarthFileBrowse()
-//{
-//  QString path = QFileDialog::getSaveFileName(this, tr("Earth File"),
-//    _ui.earthFilePathEdit->text().length() > 0 ? _ui.earthFilePathEdit->text() : QDir::homePath() + QDir::separator() + "out.earth",
-//    tr("Earth Files (*.earth)"));
-//
-//	if (!path.isNull())
-//		_ui.earthFilePathEdit->setText(path);
-//}
-
 void ExportDialog::updateEarthFilePathEdit()
 {
   _ui.earthFilePathEdit->setEnabled(_ui.earthFileCheckBox->isChecked());
@@ -81,11 +72,6 @@ void ExportDialog::updateMaxLevelSpinBox()
 {
   _ui.maxLevelSpinBox->setEnabled(_ui.maxLevelCheckBox->isChecked());
 }
-
-//void ExportDialog::updateExtensionComboBox()
-//{
-//  _ui.extensionComboBox->setEnabled(_ui.extensionCheckBox->isChecked());
-//}
 
 void ExportDialog::validateAndAccept()
 {

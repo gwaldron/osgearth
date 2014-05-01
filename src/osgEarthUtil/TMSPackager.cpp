@@ -802,12 +802,7 @@ void TMSPackager::writeXML( TerrainLayer* layer, Map* map)
      // create the tile map metadata:
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
         "",
-        map->getProfile(),
-        /*
-        _handler->getExtension(),
-        _handler->getWidth(),
-        _handler->getHeight()
-        */
+        map->getProfile(),        
         _extension,
         _width,
         _height

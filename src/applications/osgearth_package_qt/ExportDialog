@@ -21,6 +21,7 @@
 #define TILER_TOOL_EXPORTDIALOG 1
 
 #include "ui_ExportDialog.h"
+#include "TMSExporter.h"
 
 namespace PackageQt
 {
@@ -39,8 +40,7 @@ namespace PackageQt
       bool maxLevelEnabled() const { return _ui.maxLevelCheckBox->isChecked(); }
       int getMaxLevel() const { return _ui.maxLevelCheckBox->isChecked() ? _ui.maxLevelSpinBox->value() : ~0; }
 
-      //bool overrideExtension() const { return _ui.extensionCheckBox->isChecked(); }
-      //std::string getExtension() const { return _ui.extensionComboBox->currentText().toUtf8().data(); }
+      int getConcurrency() const { return _ui.concurrencySpinBox->value(); }
 
       bool overwriteExisting() const { return _ui.overwriteCheckBox->isChecked(); }
 
@@ -48,12 +48,19 @@ namespace PackageQt
 
       bool useBounds() const { return _ui.boundsCheckBox->isChecked(); }
 
+      TMSExporter::ProcessingMode getProcessingMode() const
+      {          
+          if (_ui.rbModeMT->isChecked()) return TMSExporter::MODE_MULTITHREADED;
+          if (_ui.rbModeMP->isChecked()) return TMSExporter::MODE_MULTIPROCESS;
+          return TMSExporter::MODE_SINGLE;
+      }
+
+
 	  private slots:
-		  void showExportBrowse();
-      void updateEarthFilePathEdit();
-      void updateMaxLevelSpinBox();
-      //void updateExtensionComboBox();
-      void validateAndAccept();
+          void showExportBrowse();
+          void updateEarthFilePathEdit();
+          void updateMaxLevelSpinBox();
+          void validateAndAccept();
 
 	  private:		
 		  Ui::ExportDialog _ui;

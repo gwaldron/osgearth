@@ -206,6 +206,8 @@ private slots:
 
             _exporter->setKeepEmpties(exportDialog.keepEmpties());
             _exporter->setMaxLevel(exportDialog.getMaxLevel());
+            _exporter->setConcurrency(exportDialog.getConcurrency());
+            _exporter->setProcessingMode(exportDialog.getProcessingMode() );
 
             osg::Vec2d ll = _controller->getBoundsLL();
             osg::Vec2d ur = _controller->getBoundsUR();
@@ -213,10 +215,11 @@ private slots:
             std::vector<osgEarth::Bounds> bounds;
             if (exportDialog.useBounds() && (ur - ll).length() > 0.0)
               bounds.push_back(osgEarth::Bounds(ll.x(), ll.y(), ur.x(), ur.y()));
-
+            
             _exportThread = new TMSExporterWorkerThread(
               _exporter, 
               _controller->mapNode(),
+              _controller->getEarthFilePath(),
               exportDialog.getExportPath(),
               bounds,
               (exportDialog.exportEarthFile() ? exportDialog.getEarthFilePath() : ""),

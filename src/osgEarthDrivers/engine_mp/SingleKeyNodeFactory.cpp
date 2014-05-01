@@ -156,6 +156,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
         // this quadtile. So goodbye.
         if ( !model[q].valid() )
         {
+            OE_INFO << LC << "Bailed on key " << key.str() << " due to a NULL model." << std::endl;
             return 0L;
         }
     }
@@ -163,17 +164,30 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
     if (progress)
         progress->stats()["create_tilemodel_time"] += OE_STOP_TIMER(create_model);
 
-    bool subdivide =
-        _options.minLOD().isSet() && 
-        key.getLOD() < _options.minLOD().value();
+    bool makeTile;
 
-    if ( !subdivide )
+    // If this is a request for a root tile, make it no matter what.
+    if ( key.getLOD() == 0 || (key.getLOD()-1) == _options.firstLOD().value() )
     {
+        makeTile = true;
+    }
+
+    // If there's a minLOD set, and we haven't reached it yet, make the tile.
+    else if ( _options.minLOD().isSet() && key.getLOD() < _options.minLOD().value() )
+    {
+        makeTile = true;
+    }
+
+    // Otherwise, only make the tile if at least one quadrant has REAL data
+    // (not fallback data).
+    else
+    {
+        makeTile = false;
         for(unsigned q=0; q<4; ++q)
         {
             if ( model[q]->hasRealData() )
             {
-                subdivide = true;
+                makeTile = true;
                 break;
             }
         }
@@ -186,7 +200,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
 
     osg::ref_ptr<osg::Group> quad;
 
-    if ( subdivide )
+    if ( makeTile )
     {
         if ( _options.incrementalUpdate() == true )
         {

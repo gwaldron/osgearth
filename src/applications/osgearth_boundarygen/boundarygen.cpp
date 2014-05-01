@@ -33,6 +33,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osgUtil/Optimizer>
 
 
 int usage( char** argv, const std::string& msg )
@@ -43,11 +44,12 @@ int usage( char** argv, const std::string& msg )
     << "Generates boundary geometry that you can use with an osgEarth <mask> layer in order\n"
     << "to stitch an external model into the terrain.\n\n"
     << "USAGE: " << argv[0] << " [options] model_file\n"
-    << "           --out file_name     : output file for boundary geometry (default is boundary.txt)\n"
-    << "           --no-geocentric     : skip geocentric reprojection (for flat databases)\n"
-    << "           --convex-hull       : calculate a convex hull instead of a full boundary\n"
-    << "           --verbose           : print progress to console\n"
-    << "           --view              : show result in 3D window\n"
+    << "           --out <file_name>    : output file for boundary geometry (default is boundary.txt)\n"
+    << "           --no-geocentric      : skip geocentric reprojection (for flat databases)\n"
+    << "           --convex-hull        : calculate a convex hull instead of a full boundary\n"
+    << "           --tolerance <meters> : tolerance for combining similar verts along a boundary (default = 0.01)\n"
+    << "           --verbose            : print progress to console\n"
+    << "           --view               : show result in 3D window\n"
     << std::endl;
 
   
@@ -61,6 +63,10 @@ int main(int argc, char** argv)
     std::string outFile;
     if (!arguments.read("--out", outFile))
       outFile = "boundary.txt";
+
+    double tolerance;
+    if (arguments.read("--tolerance", tolerance))
+        BoundaryUtil::setTolerance(tolerance);
 
     bool geocentric = !arguments.read("--no-geocentric");
     bool verbose = arguments.read("--verbose");

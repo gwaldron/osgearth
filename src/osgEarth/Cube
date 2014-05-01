@@ -186,10 +186,12 @@ namespace osgEarth
 
     public: // Profile
 
-        virtual void getIntersectingTiles(
+        void getIntersectingTiles(
             const GeoExtent& extent,
             unsigned localLOD,
             std::vector< TileKey >& out_intersectingKeys ) const;
+
+        unsigned getEquivalentLOD(const Profile* rhsProfile, unsigned rhsLOD) const;
 
     private:
 

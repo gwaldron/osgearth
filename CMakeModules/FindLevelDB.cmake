@@ -56,6 +56,28 @@ FIND_LIBRARY(LEVELDB_LIBRARY
     /usr/freeware    
   PATH_SUFFIXES lib64 lib
 )
+FIND_LIBRARY(LEVELDB_LIBRARY_DEBUG
+  NAMES libleveldbd leveldbd leveldb_staticd
+  PATHS
+    $ENV{LEVELDB_DIR}
+    NO_DEFAULT_PATH
+    PATH_SUFFIXES lib64 lib
+)
+
+FIND_LIBRARY(LEVELDB_LIBRARY_DEBUG
+  NAMES libleveldbd leveldbd leveldb_staticd
+  PATHS
+    ~/Library/Frameworks
+    /Library/Frameworks
+    /usr/local
+    /usr
+    /sw
+    /opt/local
+    /opt/csw
+    /opt
+    /usr/freeware    
+  PATH_SUFFIXES lib64 lib
+)
 
 SET(LEVELDB_FOUND "NO")
 IF(LEVELDB_LIBRARY AND LEVELDB_INCLUDE_DIR)

@@ -74,7 +74,7 @@ std::string CacheTileHandler::getProcessString() const
     ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );    
 
     std::stringstream buf;
-    buf << "osgearth_cache2 --seed ";
+    buf << "osgearth_cache --seed ";
     if (imageLayer)
     {        
         for (unsigned int i = 0; i < _map->getNumImageLayers(); i++)

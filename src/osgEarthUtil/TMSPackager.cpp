@@ -118,7 +118,7 @@ std::string WriteTMSTileHandler::getProcessString() const
     ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );    
 
     std::stringstream buf;
-    buf << "osgearth_package2 --tms ";
+    buf << "osgearth_package --tms ";
     if (imageLayer)
     {        
         for (unsigned int i = 0; i < _map->getNumImageLayers(); i++)

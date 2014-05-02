@@ -29,6 +29,23 @@
 namespace osgEarth
 {
     /**
+    * A TileHandler that caches tiles for the given layer.
+    */
+    class OSGEARTH_EXPORT CacheTileHandler : public TileHandler
+    {
+    public:
+        CacheTileHandler( TerrainLayer* layer, Map* map );
+        virtual bool handleTile( const TileKey& key );
+        virtual bool hasData( const TileKey& key ) const;
+
+        virtual std::string getProcessString() const;
+
+    protected:
+        osg::ref_ptr< TerrainLayer > _layer;
+        osg::ref_ptr< Map > _map;
+    };    
+
+    /**
     * Utility class for seeding a cache
     */
     class OSGEARTH_EXPORT CacheSeed

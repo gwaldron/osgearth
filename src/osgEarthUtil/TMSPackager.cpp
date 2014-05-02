@@ -21,6 +21,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/TaskService>
+#include <osgEarth/FileUtils>
 #include <osgEarth/CacheEstimator>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
@@ -31,6 +32,216 @@
 
 using namespace osgEarth::Util;
 using namespace osgEarth;
+
+WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer,  Map* map, const std::string& destination, const std::string& extension):
+    _layer( layer ),
+    _map(map),
+    _destination( destination ),
+    _extension(extension),
+    _width(0),
+    _height(0),
+    _maxLevel(0),
+    _elevationPixelDepth(32)
+{
+}
+
+const std::string& WriteTMSTileHandler::getExtension() const
+{
+    return _extension; 
+}
+
+const std::string& WriteTMSTileHandler::getDestination() const
+{
+    return _destination;
+}
+
+unsigned int WriteTMSTileHandler::getWidth() const
+{
+    return _width;
+}
+
+unsigned int WriteTMSTileHandler::getHeight() const
+{
+    return _height;
+}
+
+ unsigned int WriteTMSTileHandler::getMaxLevel() const
+ {
+     return _maxLevel;
+ }
+
+TerrainLayer* WriteTMSTileHandler::getLayer()
+{
+    return _layer; 
+}
+
+void WriteTMSTileHandler::setElevationPixelDepth(unsigned value)
+{
+    _elevationPixelDepth = value;
+}
+
+unsigned WriteTMSTileHandler::getElevationPixelDepth() const
+{
+    return _elevationPixelDepth;
+}
+
+osgDB::Options* WriteTMSTileHandler::getOptions() const
+{
+    return _options;
+}
+
+void WriteTMSTileHandler::setOptions(osgDB::Options* options)
+{
+    _options = options;
+}
+
+std::string WriteTMSTileHandler::getPathForTile( const TileKey &key )
+{
+    std::string layerFolder = toLegalFileName( _layer->getName() );         
+    unsigned w, h;
+    key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );         
+
+    return Stringify() 
+        << _destination 
+        << "/" << layerFolder
+        << "/" << key.getLevelOfDetail() 
+        << "/" << key.getTileX() 
+        << "/" << h - key.getTileY() - 1
+        << "." << _extension;
+}
+
+
+bool WriteTMSTileHandler::handleTile( const TileKey& key )
+{    
+    ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
+    ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );
+
+    if (imageLayer)
+    {                
+        GeoImage geoImage = imageLayer->createImage( key );
+
+        if (geoImage.valid())
+        {                
+            if (_width == 0 || _height == 0)
+            {
+                _width = geoImage.getImage()->s();
+                _height = geoImage.getImage()->t();
+            }
+            // OE_NOTICE << "Created image for " << key.str() << std::endl;
+            osg::ref_ptr< const osg::Image > final = geoImage.getImage();            
+
+            // Get the path to write to
+            std::string path = getPathForTile( key );
+
+            // attempt to create the output folder:        
+            osgEarth::makeDirectoryForFile( path );       
+
+            // convert to RGB if necessary            
+            if ( _extension == "jpg" && final->getPixelFormat() != GL_RGB )
+            {
+                final = ImageUtils::convertToRGB8( final );
+            }
+            if (key.getLevelOfDetail() > _maxLevel)
+            {
+                _maxLevel = key.getLevelOfDetail();
+            }
+            return osgDB::writeImageFile(*final, path, _options.get());
+        }            
+    }
+    else if (elevationLayer )
+    {
+        GeoHeightField hf = elevationLayer->createHeightField( key );
+        if (hf.valid())
+        {
+            if (_width == 0 || _height == 0)
+            {
+                _width = hf.getHeightField()->getNumColumns();
+                _height = hf.getHeightField()->getNumRows();
+            }
+            // convert the HF to an image
+            ImageToHeightFieldConverter conv;
+            osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), _elevationPixelDepth );				
+            if (key.getLevelOfDetail() > _maxLevel)
+            {
+                _maxLevel = key.getLevelOfDetail();
+            }
+
+            // Get the path to write to
+            std::string path = getPathForTile( key );
+
+            // attempt to create the output folder:        
+            osgEarth::makeDirectoryForFile( path );       
+
+
+            return osgDB::writeImageFile(*image.get(), path, _options.get());
+        }            
+    }
+    return false;        
+} 
+
+bool WriteTMSTileHandler::hasData( const TileKey& key ) const
+{
+    TileSource* ts = _layer->getTileSource();
+    if (ts)
+    {
+        return ts->hasData(key);
+    }
+    return true;
+}
+
+std::string WriteTMSTileHandler::getProcessString() const
+{
+    ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
+    ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );    
+
+    std::stringstream buf;
+    buf << "osgearth_package2 --tms ";
+    if (imageLayer)
+    {        
+        for (unsigned int i = 0; i < _map->getNumImageLayers(); i++)
+        {
+            if (imageLayer == _map->getImageLayerAt(i))
+            {
+                buf << " --image " << i << " ";
+                break;
+            }
+        }
+    }
+    else if (elevationLayer)
+    {
+        for (unsigned int i = 0; i < _map->getNumElevationLayers(); i++)
+        {
+            if (elevationLayer == _map->getElevationLayerAt(i))
+            {
+                buf << " --elevation " << i << " ";
+                break;
+            }
+        }
+    }
+
+    // Options
+    buf << " --out " << _destination << " ";
+    buf << " --ext " << _extension << " ";
+    buf << " --elevation-pixel-depth " << _elevationPixelDepth << " ";
+    buf << " --db-options " << _options.get()->getOptionString() << " ";
+    /*
+    if (_overwrite)
+    {
+    buf << " --overwrite " << 
+    }
+    */
+    /*
+    if (continueSingleColor)
+    {
+    buf << " --continue-single-color ";
+    }
+    */
+    //buf << " --keep-empties " << _keepEmpties << std::endl;
+    return buf.str();
+}
+
+
+/*****************************************************************************************************/
 
 TMSPackager::TMSPackager():
 _visitor(new TileVisitor()),

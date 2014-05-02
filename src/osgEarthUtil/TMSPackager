@@ -28,6 +28,51 @@
 namespace osgEarth { namespace Util
 {
     /**
+    * A TileHandler that writes out a tile from a layer in a TMS structure. packages a tile in a TMS structure
+    */
+    class OSGEARTHUTIL_EXPORT WriteTMSTileHandler : public TileHandler
+    {
+    public:
+        WriteTMSTileHandler(TerrainLayer* layer, Map* map, const std::string& destination, const std::string& extension="" );
+
+        const std::string& getExtension() const;
+        const std::string& getDestination() const;
+        unsigned int getWidth() const;
+        unsigned int getHeight() const;
+        unsigned int getMaxLevel() const;
+        TerrainLayer* getLayer();
+
+        /**
+        * Pixeldepth for elevations
+        * default = 32
+        */
+        void setElevationPixelDepth(unsigned value);
+        unsigned getElevationPixelDepth() const;
+
+        osgDB::Options* getOptions() const;
+        void setOptions(osgDB::Options* options);
+
+        virtual bool handleTile( const TileKey& key );
+        virtual bool hasData( const TileKey& key ) const;
+        virtual std::string getProcessString() const;
+
+    protected:
+        
+        std::string getPathForTile( const TileKey &key );
+
+    protected:
+        std::string _extension;
+        std::string _destination;
+        osg::ref_ptr< TerrainLayer > _layer;
+        osg::ref_ptr< Map > _map;
+        unsigned int _width;
+        unsigned int _height;
+        unsigned int _maxLevel;
+        unsigned int _elevationPixelDepth;
+        osg::ref_ptr< osgDB::Options > _options;
+    };
+
+    /**
     * Utility that reads tiles from an ImageLayer or ElevationLayer and stores
     * the resulting data in a disk-based TMS (Tile Map Service) repository.
     *

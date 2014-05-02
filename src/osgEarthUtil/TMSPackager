@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2013 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 #ifndef OSGEARTHUTIL_TMS_PACKAGER_H
 #define OSGEARTHUTIL_TMS_PACKAGER_H
 
@@ -27,235 +27,52 @@
 
 namespace osgEarth { namespace Util
 {
-#if 0
     /**
-     * Utility that reads tiles from an ImageLayer or ElevationLayer and stores
-     * the resulting data in a disk-based TMS (Tile Map Service) repository.
-     *
-     * See: http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification
-     */
+    * Utility that reads tiles from an ImageLayer or ElevationLayer and stores
+    * the resulting data in a disk-based TMS (Tile Map Service) repository.
+    *
+    * See: http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification
+    */
     class OSGEARTHUTIL_EXPORT TMSPackager
     {
     public:
-        /**
-         * Constructs a new packager.
-         * @param profile    Profile of packaged tile data (required)
-         */
-        TMSPackager( const Profile* outProfile, osgDB::Options* writeOptions);
+        TMSPackager();      
+        const std::string& getDestination() const;
 
-        /** dtor */
-        virtual ~TMSPackager() { }
+        void setDestination( const std::string& destination);
 
-        /**
-         * Whether to dump out progress messages 
-         * default = false
-         */
-        void setVerbose( bool value ) { _verbose = value; }
-        bool getVerbose() const { return _verbose; }
+        const std::string& getExtension() const;
 
-        /**
-         * Whether to abort if a tile writing error is encountered
-         * default = true
-         */
-        void setAbortOnError( bool value ) { _abortOnError = value; }
-        bool getAbortOnError() const { return _abortOnError; }
+        void setExtension( const std::string& extension);
 
-        /**
-         * Minimum level of detail to package
-         */
-        void setMinLevel( unsigned value ) { _minLevel = value; }
-        unsigned getMinLevel() const { return _minLevel; }
+        void setElevationPixelDepth(unsigned value);
+        unsigned getElevationPixelDepth() const;
 
-        /**
-         * Maximum level of detail of tiles to package
-         */
-        void setMaxLevel( unsigned value ) { _maxLevel = value; }
-        unsigned getMaxLevel() const { return _maxLevel; }
+        osgDB::Options* getOptions() const;
+        void setWriteOptions( osgDB::Options* options );
 
-        /**
-         * Whether to overwrite files that already exist in the repo
-         * default = false
-         */
-        void setOverwrite( bool value ) { _overwrite = value; }
-        bool getOverwrite() const { return _overwrite; }
+        TileVisitor* getTileVisitor() const;
 
-        /**
-         * Whether to package empty image tiles. An empty tile is a tile
-         * that is fully transparent. By default, the packager discards
-         * them and does not subdivide past them.
-         * default = false
-         */
-        void setKeepEmptyImageTiles( bool value ) { _keepEmptyImageTiles = value; }
-        bool getKeepEmptyImageTiles() const { return _keepEmptyImageTiles; }
+        void setVisitor(TileVisitor* visitor);
 
-        /**
-         * Whether to subdivide single color image tiles. An single color tile is a tile
-         * that is filled with a single color. By default, the packager does not subdivide past them.
-         * default = false
-         */
-        void setSubdivideSingleColorImageTiles( bool value ) { _subdivideSingleColorImageTiles = value; }
-        bool getSubdivideSingleColorImageTiles() const { return _subdivideSingleColorImageTiles; }
+        void run( TerrainLayer* layer, Map* map );
 
-        /**
-        * Pixeldepth for elevations
-        * default = 32
-        */
-        void setElevationPixelDepth(unsigned value) { _elevationPixelDepth = value; }
-        unsigned getElevationPixelDepth() const { return _elevationPixelDepth; }
-
-        /**
-         * Bounding box to package
-         */
-        void addExtent( const GeoExtent& value );
-
-        /**
-         * Result structure for method calls
-         */
-        struct Result {
-            Result(int tasks=0) : ok(true), taskCount(tasks) { }
-            Result(const std::string& m) : message(m), ok(false), taskCount(0) { }
-            operator bool() const { return ok; }
-            bool ok;
-            std::string message;
-            int taskCount;
-        };
-
-        /**
-         * Packages an image layer as a TMS repository.
-         * @param layer          Image layer to export
-         * @param rootFolder     Root output folder of TMS repo
-         * @param imageExtension (optional) Force an image type extension (e.g., "jpg")
-         */
-        Result package(
-            ImageLayer*        layer,
-            const std::string& rootFolder,
-            osgEarth::ProgressCallback* progress=0L,
-            const std::string& imageExtension="png" );
-
-        /**
-         * Packages an elevation layer as a TMS repository.
-         * @param layer          Image layer to 
-         * @param rootFolder     Root output folder of TMS repo
-         */
-        Result package( 
-            ElevationLayer*    layer,
-            const std::string& rootFolder,
-            osgEarth::ProgressCallback* progress=0L );
-
-        /**
-         * Increment the completed count.  Do not use directly
-         */
-        void incrementCompleted();        
-
-        /**
-         * Reports progress to the main ProgressCallback.  Do not use directly.
-         */
-        void reportProgress( const std::string& message );
-
-
-        void cancel(const std::string& msg="");
+        void writeXML( TerrainLayer* layer, Map* map);
 
     protected:
 
-        void packageImageTile(
-            ImageLayer*          layer,
-            const TileKey&       key,
-            const std::string&   rootDir,
-            const std::string&   extension,
-            TaskService*         service,            
-            unsigned&            out_maxLevel );
+        std::string _destination;
+        std::string _extension;
+        unsigned int _elevationPixelDepth;
+        osg::ref_ptr<osgDB::Options>    _writeOptions;
 
-        void packageElevationTile(
-            ElevationLayer*      layer,
-            const TileKey&       key,
-            const std::string&   rootDir,
-            const std::string&   extension,
-            TaskService*         service,            
-            unsigned&            out_maxLevel );
+        unsigned int _width;
+        unsigned int _height;
 
-        bool shouldPackageKey( 
-            const TileKey&     key ) const;
+        osg::ref_ptr< TileVisitor > _visitor;
+        osg::ref_ptr< WriteTMSTileHandler > _handler;
 
-        
-
-    protected:
-
-        void resetStats();
-
-        OpenThreads::Mutex _mutex;
-        OpenThreads::Atomic         _completed;
-        unsigned int                _total;
-        unsigned int                _numAdded;
-
-
-        bool                        _verbose;
-        bool                        _abortOnError;
-        bool                        _overwrite;
-        bool                        _keepEmptyImageTiles;
-        bool                        _subdivideSingleColorImageTiles;
-		unsigned                    _elevationPixelDepth;
-        unsigned                    _maxLevel;
-        unsigned                    _minLevel;
-        std::vector<GeoExtent>      _extents;
-        osg::ref_ptr<const Profile> _outProfile;
-		    osg::ref_ptr<osgDB::Options>    _writeOptions;
-        std::string                 _errorMessage;
-
-        osg::ref_ptr<osgEarth::TaskService> _taskService;
-        osg::ref_ptr< osgEarth::ProgressCallback > _progress;
     };
-
-#else
-
-
-/**
-* Utility that reads tiles from an ImageLayer or ElevationLayer and stores
-* the resulting data in a disk-based TMS (Tile Map Service) repository.
-*
-* See: http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification
-*/
-class OSGEARTHUTIL_EXPORT TMSPackager
-{
-public:
-    TMSPackager();      
-    const std::string& getDestination() const;
-
-    void setDestination( const std::string& destination);
-
-    const std::string& getExtension() const;
-
-    void setExtension( const std::string& extension);
-
-    void setElevationPixelDepth(unsigned value);
-    unsigned getElevationPixelDepth() const;
-
-    osgDB::Options* getOptions() const;
-    void setWriteOptions( osgDB::Options* options );
-
-    TileVisitor* getTileVisitor() const;
-
-    void setVisitor(TileVisitor* visitor);
-
-    void run( TerrainLayer* layer, Map* map );
-
-    void writeXML( TerrainLayer* layer, Map* map);
-
-protected:
-
-    std::string _destination;
-    std::string _extension;
-    unsigned int _elevationPixelDepth;
-    osg::ref_ptr<osgDB::Options>    _writeOptions;
-
-    unsigned int _width;
-    unsigned int _height;
-
-    osg::ref_ptr< TileVisitor > _visitor;
-    osg::ref_ptr< WriteTMSTileHandler > _handler;
-
-};
-
-#endif
 
 } } // namespace osgEarth::Util
 

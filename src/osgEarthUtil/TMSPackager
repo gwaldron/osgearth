@@ -37,9 +37,6 @@ namespace osgEarth { namespace Util
 
         const std::string& getExtension() const;
         const std::string& getDestination() const;
-        unsigned int getWidth() const;
-        unsigned int getHeight() const;
-        unsigned int getMaxLevel() const;
         TerrainLayer* getLayer();
 
         /**
@@ -49,8 +46,17 @@ namespace osgEarth { namespace Util
         void setElevationPixelDepth(unsigned value);
         unsigned getElevationPixelDepth() const;
 
-        osgDB::Options* getOptions() const;
-        void setOptions(osgDB::Options* options);
+        /**
+         * The Options to pass to OSG when writing out images.
+         */
+        osgDB::Options* getWriteOptions() const;
+        void setWriteOptions(osgDB::Options* writeOptions);
+
+        /**
+         * Whether to overwrite existing tiles
+         */
+        bool getOverwrite() const;
+        void setOverwrite(bool overwrite);
 
         virtual bool handleTile( const TileKey& key );
         virtual bool hasData( const TileKey& key ) const;
@@ -69,7 +75,8 @@ namespace osgEarth { namespace Util
         unsigned int _height;
         unsigned int _maxLevel;
         unsigned int _elevationPixelDepth;
-        osg::ref_ptr< osgDB::Options > _options;
+        osg::ref_ptr< osgDB::Options > _writeOptions;
+        bool _overwrite;
     };
 
     /**
@@ -93,8 +100,11 @@ namespace osgEarth { namespace Util
         void setElevationPixelDepth(unsigned value);
         unsigned getElevationPixelDepth() const;
 
+        bool getOverwrite() const;
+        void setOverwrite(bool overwrite);
+
         osgDB::Options* getOptions() const;
-        void setWriteOptions( osgDB::Options* options );
+        void setWriteOptions( osgDB::Options* options );        
 
         TileVisitor* getTileVisitor() const;
 
@@ -109,6 +119,7 @@ namespace osgEarth { namespace Util
         std::string _destination;
         std::string _extension;
         unsigned int _elevationPixelDepth;
+        bool _overwrite;
         osg::ref_ptr<osgDB::Options>    _writeOptions;
 
         unsigned int _width;

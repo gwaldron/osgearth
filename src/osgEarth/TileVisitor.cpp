@@ -82,10 +82,13 @@ void TileVisitor::run( const Profile* mapProfile )
 {
     _profile = mapProfile;
     
+    // Reset the progress in case this visitor has been ran before.
     resetProgress();
 
+    // Estimate the number of tiles we're going to actually generate.
     estimate();
 
+    // Get all the root keys and process them.
     std::vector<TileKey> keys;
     mapProfile->getRootKeys(keys);
 
@@ -224,8 +227,8 @@ void MultithreadedTileVisitor::setNumThreads( unsigned int numThreads)
 void MultithreadedTileVisitor::run(const Profile* mapProfile)
 {                   
     // Start up the task service
-    OE_NOTICE << "Starting " << _numThreads << std::endl;
-    _taskService = new TaskService( "MTTileHandler", _numThreads, 5000 );
+    OE_INFO << "Starting " << _numThreads << std::endl;
+    _taskService = new TaskService( "MTTileHandler", _numThreads, 100000 );
 
     // Produce the tiles
     TileVisitor::run( mapProfile );
@@ -236,11 +239,12 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
     // Wait for everything to finish
     _taskService->waitforThreadsToComplete();
 
-    OE_NOTICE << "All threads have completed" << std::endl;
+    OE_INFO << "All threads have completed" << std::endl;
 }
 
 bool MultithreadedTileVisitor::handleTile( const TileKey& key )        
 {
+    // Add the tile to the task queue.
     _taskService->add( new HandleTileTask(_tileHandler, this, key ) );
     return true;
 }

@@ -51,6 +51,9 @@ void ExportDialog::initUi(const std::string& dir, const std::string& boundsStrin
   QObject::connect(_ui.earthFileCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateEarthFilePathEdit()));
   QObject::connect(_ui.maxLevelCheckBox, SIGNAL(toggled(bool)), this, SLOT(updateMaxLevelSpinBox()));
   QObject::connect(_ui.okButton, SIGNAL(clicked()), this, SLOT(validateAndAccept()));
+  QObject::connect(_ui.rbModeMP, SIGNAL(toggled(bool)), this, SLOT(updateMode(bool)));
+  QObject::connect(_ui.rbModeMT, SIGNAL(toggled(bool)), this, SLOT(updateMode(bool)));
+  QObject::connect(_ui.rbModeSingle, SIGNAL(toggled(bool)), this, SLOT(updateMode(bool)));
 }
 
 void ExportDialog::showExportBrowse()
@@ -91,5 +94,11 @@ void ExportDialog::validateAndAccept()
   }
 
   _ui.errorLabel->setText(QString(errMsg.c_str()));
+}
+
+void ExportDialog::updateMode(bool checked)
+{
+    bool multi = _ui.rbModeMP->isChecked() || _ui.rbModeMT->isChecked();
+    _ui.concurrencySpinBox->setEnabled(multi);
 }
 

@@ -61,6 +61,7 @@ namespace PackageQt
           void updateEarthFilePathEdit();
           void updateMaxLevelSpinBox();
           void validateAndAccept();
+          void updateMode(bool checked);
 
 	  private:		
 		  Ui::ExportDialog _ui;

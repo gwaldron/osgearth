@@ -10,7 +10,7 @@ class ExportProgressCallback : public osgEarth::ProgressCallback
 {
 public:
     ExportProgressCallback(QMainWindow* parent, QProgressDialog* dialog);
-        
+
     virtual ~ExportProgressCallback();
 
     bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg);
@@ -22,6 +22,6 @@ public:
 private:
     QMainWindow* _parent;
     QProgressDialog* _dialog;
-  };
+};
 
 #endif

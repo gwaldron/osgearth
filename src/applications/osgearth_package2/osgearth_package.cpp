@@ -357,6 +357,7 @@ makeTMS( osg::ArgumentParser& args )
     packager.setDestination(rootFolder);    
     packager.setElevationPixelDepth(elevationPixelDepth);
     packager.setWriteOptions(options);    
+    packager.setOverwrite(overwrite);
 
 
     // new map for an output earth file if necessary.

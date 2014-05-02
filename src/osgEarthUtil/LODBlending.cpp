@@ -176,7 +176,7 @@ namespace
         "    if ( oe_layer_uid >= 0 ) \n"
         "    { \n"
         "        vec4 texel = texture2D(oe_layer_tex_parent, oe_lodblend_texc.st); \n"
-        "        float enable = step(0.0001, texel.a); \n"          // did we get a parent texel?
+        "        float enable = step(0.09, texel.a); \n"          // did we get a parent texel?
         "        texel.rgb = mix(color.rgb, texel.rgb, enable); \n" // if not, use the incoming color for the blend
         "        texel.a = mix(0.0, color.a, enable); \n"           // ...and blend from alpha=0 for a fade-in effect.
         "        color = mix(color, texel, oe_lodblend_r); \n"

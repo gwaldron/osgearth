@@ -33,60 +33,11 @@
 using namespace osgEarth::Util;
 using namespace osgEarth;
 
-WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer,  Map* map, const std::string& destination, const std::string& extension):
+WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer,  Map* map, TMSPackager* packager):
     _layer( layer ),
     _map(map),
-    _destination( destination ),
-    _extension(extension),
-    _maxLevel(0),
-    _elevationPixelDepth(32),
-    _overwrite(false)
+    _packager(packager)
 {
-}
-
-const std::string& WriteTMSTileHandler::getExtension() const
-{
-    return _extension; 
-}
-
-const std::string& WriteTMSTileHandler::getDestination() const
-{
-    return _destination;
-}
-
-TerrainLayer* WriteTMSTileHandler::getLayer()
-{
-    return _layer; 
-}
-
-void WriteTMSTileHandler::setElevationPixelDepth(unsigned value)
-{
-    _elevationPixelDepth = value;
-}
-
-unsigned WriteTMSTileHandler::getElevationPixelDepth() const
-{
-    return _elevationPixelDepth;
-}
-
-osgDB::Options* WriteTMSTileHandler::getWriteOptions() const
-{
-    return _writeOptions;
-}
-
-void WriteTMSTileHandler::setWriteOptions(osgDB::Options* writeOptions)
-{
-    _writeOptions = writeOptions;
-}
-
-bool WriteTMSTileHandler::getOverwrite() const
-{
-    return _overwrite;
-}
-
-void WriteTMSTileHandler::setOverwrite(bool overwrite)
-{
-    _overwrite = overwrite;
 }
 
 std::string WriteTMSTileHandler::getPathForTile( const TileKey &key )
@@ -96,12 +47,12 @@ std::string WriteTMSTileHandler::getPathForTile( const TileKey &key )
     key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );         
 
     return Stringify() 
-        << _destination 
+        << _packager->getDestination()
         << "/" << layerFolder
         << "/" << key.getLevelOfDetail() 
         << "/" << key.getTileX() 
         << "/" << h - key.getTileY() - 1
-        << "." << _extension;
+        << "." << _packager->getExtension();
 }
 
 
@@ -114,7 +65,7 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
     std::string path = getPathForTile( key );
 
     // Don't write out a new file if we're not overwriting
-    if (osgDB::fileExists(path) && !_overwrite) return true;
+    if (osgDB::fileExists(path) && !_packager->getOverwrite()) return true;
 
     // attempt to create the output folder:        
     osgEarth::makeDirectoryForFile( path );       
@@ -125,21 +76,16 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
         GeoImage geoImage = imageLayer->createImage( key );
 
         if (geoImage.valid())
-        {                
-            if (_width == 0 || _height == 0)
-            {
-                _width = geoImage.getImage()->s();
-                _height = geoImage.getImage()->t();
-            }
+        {                            
             // OE_NOTICE << "Created image for " << key.str() << std::endl;
             osg::ref_ptr< const osg::Image > final = geoImage.getImage();                        
 
             // convert to RGB if necessary            
-            if ( _extension == "jpg" && final->getPixelFormat() != GL_RGB )
+            if ( _packager->getExtension() == "jpg" && final->getPixelFormat() != GL_RGB )
             {
                 final = ImageUtils::convertToRGB8( final );
             }            
-            return osgDB::writeImageFile(*final, path, _writeOptions.get());
+            return osgDB::writeImageFile(*final, path, _packager->getOptions());
         }            
     }
     else if (elevationLayer )
@@ -149,8 +95,8 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
         {
             // convert the HF to an image
             ImageToHeightFieldConverter conv;
-            osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), _elevationPixelDepth );				            
-            return osgDB::writeImageFile(*image.get(), path, _writeOptions.get());
+            osg::ref_ptr< osg::Image > image = conv.convert( hf.getHeightField(), _packager->getElevationPixelDepth() );				            
+            return osgDB::writeImageFile(*image.get(), path, _packager->getOptions());
         }            
     }
     return false;        
@@ -197,21 +143,17 @@ std::string WriteTMSTileHandler::getProcessString() const
     }
 
     // Options
-    buf << " --out " << _destination << " ";
-    buf << " --ext " << _extension << " ";
-    buf << " --elevation-pixel-depth " << _elevationPixelDepth << " ";
-    buf << " --db-options " << _writeOptions.get()->getOptionString() << " ";    
-    if (_overwrite)
+    buf << " --out " << _packager->getDestination() << " ";
+    buf << " --ext " << _packager->getExtension() << " ";
+    buf << " --elevation-pixel-depth " << _packager->getElevationPixelDepth() << " ";
+    if (_packager->getOptions())
+    {
+        buf << " --db-options " << _packager->getOptions()->getOptionString() << " ";    
+    }
+    if (_packager->getOverwrite())
     {
         buf << " --overwrite ";
-    }    
-    /*
-    if (continueSingleColor)
-    {
-    buf << " --continue-single-color ";
-    }
-    */
-    //buf << " --keep-empties " << _keepEmpties << std::endl;
+    }            
     return buf.str();
 }
 
@@ -343,10 +285,7 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
     }
 
 
-    _handler = new WriteTMSTileHandler(layer, map, _destination, _extension);
-    _handler->setElevationPixelDepth( _elevationPixelDepth );
-    _handler->setWriteOptions(_writeOptions.get());
-    _handler->setOverwrite(_overwrite);
+    _handler = new WriteTMSTileHandler(layer, map, this);    
     _visitor->setTileHandler( _handler );    
     _visitor->run( map->getProfile() );    
 }

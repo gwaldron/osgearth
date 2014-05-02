@@ -287,42 +287,6 @@ makeTMS( osg::ArgumentParser& args )
 
             v->setEarthFile( earthFile );
 
-            /*
-            std::stringstream baseCommand;
-            baseCommand << "osgearth_package2 --tms ";
-            
-            // Serialize the options into the new process
-            if (!extension.empty())
-            {
-                baseCommand << " --extension " << extension << " ";
-            }
-
-            if (overwrite)
-            {
-                baseCommand < " --overwrite ";
-            }
-
-            if (!dbOptions.empty())
-            {
-                baseCommand << " --db-options " << dbOptions << " ";
-            }
-
-            if (keepEmpties)
-            {
-                baseCommand << " --keep-empties " << std::endl;
-            }
- 
-            if (continueSingleColor)
-            {
-                baseCommand << " --continue-single-color ";
-            }
-
-            baseCommand << " --elevation-pixel-depth " << elevationPixelDepth << " ";
-
-            
-            baseCommand << " " << earthFile;                     
-            v->setBaseCommand(baseCommand.str());
-            */
             visitor = v;            
         }
         else

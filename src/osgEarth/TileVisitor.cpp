@@ -421,10 +421,9 @@ void MultiprocessTileVisitor::processBatch()
     std::string filename = getTempName(tmpPath, "batch.tiles");        
     tasks.save( filename );        
 
-    std::stringstream command;    
-    //command << _baseCommand << " --tiles " << filename;
+    std::stringstream command;        
     command << _tileHandler->getProcessString() << " --tiles " << filename << " " << _earthFile;
-    OE_NOTICE << "Running command " << command.str() << std::endl;
+    OE_INFO << "Running command " << command.str() << std::endl;
     osg::ref_ptr< ExecuteTask > task = new ExecuteTask( command.str(), this, tasks.getKeys().size() );
     // Add the task file as a temp file to the task to make sure it gets deleted
     task->addTempFile( filename );

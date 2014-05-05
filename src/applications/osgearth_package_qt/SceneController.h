@@ -53,8 +53,7 @@ namespace PackageQt
 
     void setBounds(const osgEarth::GeoPoint& p1, const osgEarth::GeoPoint& p2);
     const osg::Vec2d &getBoundsLL() { return _boundsLL; }
-    const osg::Vec2d &getBoundsUR() { return _boundsUR; }
-    std::string getBoundsString();
+    const osg::Vec2d &getBoundsUR() { return _boundsUR; }   
 
     const std::string getEarthFilePath() const { return _earthFilePath; }
 

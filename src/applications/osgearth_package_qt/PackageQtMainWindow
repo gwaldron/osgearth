@@ -190,7 +190,10 @@ private slots:
     {
         if (_exporter)
         {
-          PackageQt::ExportDialog exportDialog(_lastDir.toStdString(), _controller->getBoundsString());
+            osgEarth::Bounds bounds(_controller->getBoundsLL().x(), _controller->getBoundsLL().y(),
+                                    _controller->getBoundsUR().x(), _controller->getBoundsUR().y());
+          PackageQt::ExportDialog exportDialog(_controller->mapNode(), _lastDir.toStdString(), bounds);
+         
 	        if (exportDialog.exec() == QDialog::Accepted)
 	        {
             //QProgressDialog* progress = new QProgressDialog(tr("Exporting. Please wait."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);

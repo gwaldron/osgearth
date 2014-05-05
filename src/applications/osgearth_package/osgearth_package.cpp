@@ -69,6 +69,9 @@ usage( const std::string& msg = "" )
         << "            [--continue-single-color]       : continues to subdivide single color tiles, subdivision typicall stops on single color images\n"
         << "            [--elevation-pixel-depth]       : pixeldepth for elevations\n"
         << "            [--db-options]                : db options string to pass to the image writer in quotes (e.g., \"JPEG_QUALITY 60\")\n"
+        << "            [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
+        << "            [--mt]                          ; Use multithreading to process the tiles." << std::endl
+        << "            [--concurrency]                 ; The number of threads or proceses to use if --mp or --mt are provided." << std::endl
         << std::endl
         << "         [--quiet]               : suppress progress output" << std::endl;
 

@@ -86,7 +86,9 @@ int
         << "        [--index shapefile]             ; Use the feature extents in a shapefile to set the bounding boxes for seeding" << std::endl
         << "        [--cache-path path]             ; Overrides the cache path in the .earth file" << std::endl
         << "        [--cache-type type]             ; Overrides the cache type in the .earth file" << std::endl
-        << "        [--threads]                     ; The number of threads to use for the seed operation (default=1)" << std::endl
+        << "        [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
+        << "        [--mt]                          ; Use multithreading to process the tiles." << std::endl
+        << "        [--concurrency]                 ; The number of threads or proceses to use if --mp or --mt are provided." << std::endl
         << "        [--verbose]                     ; Displays progress of the seed operation" << std::endl
         << std::endl
         << "    --purge file.earth                  ; Purges a layer cache in a .earth file (interactive)" << std::endl

@@ -81,7 +81,13 @@ The most common usage of osgearth_cache is to populate a cache in a non-interact
 | ``--estimate``                      | Print out an estimation of the number of tiles, disk space and     |
 |                                     | time it will take to perform this seed operation                   |
 +-------------------------------------+--------------------------------------------------------------------+
-| ``--threads``                       |The number of threads to use for the seed operation (default=1)     |
+| ``--mp``                            | Use multiprocessing to process the tiles.  Useful for GDAL         |
+|                                     | sources as this avoids the global GDAL lock                        |
++-------------------------------------+--------------------------------------------------------------------+
+| ``--mt``                            | Use multithreading to process the tiles.                           |
++-------------------------------------+--------------------------------------------------------------------+
+| ``--concurrency``                   | The number of threads or proceses to use if --mp or --mt           |
+|                                     | are provided                                                       | 
 +-------------------------------------+--------------------------------------------------------------------+
 | ``--min-level level``               | Lowest LOD level to seed (default=0)                               |
 +-------------------------------------+--------------------------------------------------------------------+
@@ -136,6 +142,14 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 | ``--db-options``                   | db options string to pass to the image writer                      |
 |                                    | in quotes (e.g., "JPEG_QUALITY 60")                                |
 +------------------------------------+--------------------------------------------------------------------+
+| ``--mp``                            | Use multiprocessing to process the tiles.  Useful for GDAL        |
+|                                     | sources as this avoids the global GDAL lock                       |
++-------------------------------------+-------------------------------------------------------------------+
+| ``--mt``                            | Use multithreading to process the tiles.                          |
++-------------------------------------+-------------------------------------------------------------------+
+| ``--concurrency``                   | The number of threads or proceses to use if --mp or --mt          |
+|                                     | are provided                                                      | 
++-------------------------------------+-------------------------------------------------------------------+
 
 osgearth_tfs
 ------------

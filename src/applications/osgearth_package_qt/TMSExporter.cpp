@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2013 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 
 #include "TMSExporter.h"
 
@@ -46,13 +46,14 @@ using namespace osgEarth::Drivers;
 #define LC "[TMSExporter] "
 
 TMSExporter::TMSExporter()
-: _dbOptions(""),
-  _maxLevel(~0),
-  _keepEmpties(false),
-  _errorMessage(""),
-  _canceled(false),
-  _concurrency(1),
-  _mode(ProcessingMode::MODE_SINGLE)
+    : _dbOptions(""),
+    _maxLevel(~0),
+    _keepEmpties(false),
+    _errorMessage(""),
+    _canceled(false),
+    _concurrency(1),
+    _mode(MODE_SINGLE),
+    _totalTimeS(0.0)
 {  
 }
 
@@ -66,147 +67,155 @@ void TMSExporter::setConcurrency(unsigned int concurrency)
     _concurrency = concurrency;
 }
 
+double TMSExporter::getExportTime()
+{
+    return _totalTimeS;
+}
+
 /** Packages image and elevation layers as a TMS. */
 int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth, bool overwrite, const std::string& extension)
-{     
-  Map* map = mapNode->getMap();
+{   
+    _totalTimeS = 0.0;
+    osg::Timer_t startTime = osg::Timer::instance()->tick();
 
-  // new map for an output earth file if necessary.
-  osg::ref_ptr<Map> outMap = 0L;
-  if ( !outEarth.empty() )
-  {
-      // copy the options from the source map first
-      outMap = new Map(map->getInitialMapOptions());
-  }
+    Map* map = mapNode->getMap();
 
-  // establish the output path of the earth file, if applicable:
-  std::string outEarthName = osgDB::getSimpleFileName(outEarth);
-  if (outEarthName.length() > 0 && osgEarth::toLower(osgDB::getFileExtension(outEarthName)) != "earth")
-    outEarthName += ".earth";
+    // new map for an output earth file if necessary.
+    osg::ref_ptr<Map> outMap = 0L;
+    if ( !outEarth.empty() )
+    {
+        // copy the options from the source map first
+        outMap = new Map(map->getInitialMapOptions());
+    }
 
-  std::string outEarthFile = osgDB::concatPaths(path, outEarthName);
+    // establish the output path of the earth file, if applicable:
+    std::string outEarthName = osgDB::getSimpleFileName(outEarth);
+    if (outEarthName.length() > 0 && osgEarth::toLower(osgDB::getFileExtension(outEarthName)) != "earth")
+        outEarthName += ".earth";
 
-  
-  // Create the TMS packager.
-  TMSPackager packager;
-   
-   std::string tmpEarth;
+    std::string outEarthFile = osgDB::concatPaths(path, outEarthName);
 
-  // Setup the visitor with the concurrency level and processing mode if it's set.
-  if (_concurrency > 1)
-  {
-      if (_mode == MODE_MULTIPROCESS)
-      {
-          // Write out a temp earth file so the processes can work on it.
-          // Determine the output path.  If we loaded from an earth file write out the temp file right next to it so relative paths will work the same.
-          // Otherwise use the temp path
-          OE_NOTICE << "Earth file path " << earthFilePath << std::endl;
-          if (!earthFilePath.empty())
-          {
-              std::string root = osgDB::getFilePath(earthFilePath);
-              root += "/";
-              tmpEarth = getTempName(root, ".earth");
-          }
-          else
-          {
-              tmpEarth = getTempName(getTempPath(), ".earth");
-          }
-          OE_NOTICE << "Writing to " << tmpEarth << std::endl;
-          osgDB::writeNodeFile(*mapNode, tmpEarth );         
-          MultiprocessTileVisitor* v = new MultiprocessTileVisitor();
-          v->setEarthFile(tmpEarth);
-          v->setNumProcesses(_concurrency);
-          packager.setVisitor(v);
-      }
-      else if (_mode == MODE_MULTITHREADED)
-      {
-          MultithreadedTileVisitor* v = new MultithreadedTileVisitor();          
-          v->setNumThreads(_concurrency);
-          packager.setVisitor(v);          
-      }
-  }
 
-  // Make the output directory if it doesn't exist  
-  osgDB::makeDirectory(path);
-  packager.setDestination(path);
+    // Create the TMS packager.
+    TMSPackager packager;
 
-  // Setup the osgDB options for the packager.
-  osg::ref_ptr<osgDB::Options> options = new osgDB::Options(_dbOptions);
-  packager.setWriteOptions( options.get() );
-  
-  // Add all the bounds
-  for (unsigned int i = 0; i < bounds.size(); i++)
-  {
-      packager.getTileVisitor()->addExtent( osgEarth::GeoExtent(map->getProfile()->getSRS(), bounds[i]));
-  }
-  packager.setExtension(extension);  
-  packager.getTileVisitor()->setProgressCallback( _progress.get() );
-  packager.getTileVisitor()->setMaxLevel(_maxLevel);
+    std::string tmpEarth;
 
-  // Compute the total number of layers we are going to operate on.
-  unsigned int totalLayers = map->getNumImageLayers() + map->getNumElevationLayers();  
+    // Setup the visitor with the concurrency level and processing mode if it's set.
+    if (_concurrency > 1)
+    {
+        if (_mode == MODE_MULTIPROCESS)
+        {
+            // Write out a temp earth file so the processes can work on it.
+            // Determine the output path.  If we loaded from an earth file write out the temp file right next to it so relative paths will work the same.
+            // Otherwise use the temp path
+            OE_NOTICE << "Earth file path " << earthFilePath << std::endl;
+            if (!earthFilePath.empty())
+            {
+                std::string root = osgDB::getFilePath(earthFilePath);
+                root += "/";
+                tmpEarth = getTempName(root, ".earth");
+            }
+            else
+            {
+                tmpEarth = getTempName(getTempPath(), ".earth");
+            }
+            OE_NOTICE << "Writing to " << tmpEarth << std::endl;
+            osgDB::writeNodeFile(*mapNode, tmpEarth );         
+            MultiprocessTileVisitor* v = new MultiprocessTileVisitor();
+            v->setEarthFile(tmpEarth);
+            v->setNumProcesses(_concurrency);
+            packager.setVisitor(v);
+        }
+        else if (_mode == MODE_MULTITHREADED)
+        {
+            MultithreadedTileVisitor* v = new MultithreadedTileVisitor();          
+            v->setNumThreads(_concurrency);
+            packager.setVisitor(v);          
+        }
+    }
 
-  unsigned int layerNum = 1;
-  
-  // Package each image layer
-  for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
-  {            
-      osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);      
-      std::stringstream buf;
-      buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
-      _progress->setStatus(buf.str());
-      packager.run(layer.get(), map);
-      packager.writeXML(layer.get(), map);
-      if (outMap)
-      {
-          std::string layerFolder = toLegalFileName( layer->getName() );
+    // Make the output directory if it doesn't exist  
+    osgDB::makeDirectory(path);
+    packager.setDestination(path);
 
-          // new TMS driver info:
-          TMSOptions tms;
-          tms.url() = URI(
-              osgDB::concatPaths( layerFolder, "tms.xml" ),
-              outEarthFile );
+    // Setup the osgDB options for the packager.
+    osg::ref_ptr<osgDB::Options> options = new osgDB::Options(_dbOptions);
+    packager.setWriteOptions( options.get() );
 
-          ImageLayerOptions layerOptions( layer->getName(), tms );
-          layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
-          layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+    // Add all the bounds
+    for (unsigned int i = 0; i < bounds.size(); i++)
+    {
+        packager.getTileVisitor()->addExtent( osgEarth::GeoExtent(map->getProfile()->getSRS(), bounds[i]));
+    }
+    packager.setExtension(extension);  
+    packager.getTileVisitor()->setProgressCallback( _progress.get() );
+    packager.getTileVisitor()->setMaxLevel(_maxLevel);
 
-          outMap->addImageLayer( new ImageLayer( layerOptions ) );
-      }
-      layerNum++;
-  }
+    // Compute the total number of layers we are going to operate on.
+    unsigned int totalLayers = map->getNumImageLayers() + map->getNumElevationLayers();  
 
-  // Package each elevation layer
-  for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
-  {
-      osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);      
-      std::stringstream buf;
-      buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
-      _progress->setStatus(buf.str());
-      packager.run(layer.get(), map);
-      packager.writeXML(layer.get(), map);
+    unsigned int layerNum = 1;
 
-      if( outMap.valid() )
-      {
-          std::string layerFolder = toLegalFileName( layer->getName());
+    // Package each image layer
+    for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
+    {            
+        osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);      
+        std::stringstream buf;
+        buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
+        _progress->setStatus(buf.str());
+        packager.run(layer.get(), map);
+        packager.writeXML(layer.get(), map);
+        if (outMap)
+        {
+            std::string layerFolder = toLegalFileName( layer->getName() );
 
-          // new TMS driver info:
-          TMSOptions tms;
-          tms.url() = URI(
-              osgDB::concatPaths( layerFolder, "tms.xml" ),
-              outEarthFile );
+            // new TMS driver info:
+            TMSOptions tms;
+            tms.url() = URI(
+                osgDB::concatPaths( layerFolder, "tms.xml" ),
+                outEarthFile );
 
-          ElevationLayerOptions layerOptions( layer->getName(), tms );
-          layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
-          layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+            ImageLayerOptions layerOptions( layer->getName(), tms );
+            layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+            layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
-          outMap->addElevationLayer( new ElevationLayer( layerOptions ) );
-      }
+            outMap->addImageLayer( new ImageLayer( layerOptions ) );
+        }
+        layerNum++;
+    }
 
-      layerNum++;
-  }
+    // Package each elevation layer
+    for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
+    {
+        osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);      
+        std::stringstream buf;
+        buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
+        _progress->setStatus(buf.str());
+        packager.run(layer.get(), map);
+        packager.writeXML(layer.get(), map);
 
-  // Write out an earth file if it was requested
+        if( outMap.valid() )
+        {
+            std::string layerFolder = toLegalFileName( layer->getName());
+
+            // new TMS driver info:
+            TMSOptions tms;
+            tms.url() = URI(
+                osgDB::concatPaths( layerFolder, "tms.xml" ),
+                outEarthFile );
+
+            ElevationLayerOptions layerOptions( layer->getName(), tms );
+            layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+            layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+            outMap->addElevationLayer( new ElevationLayer( layerOptions ) );
+        }
+
+        layerNum++;
+    }
+
+    // Write out an earth file if it was requested
     // Finally, write an earth file if requested:
     if( outMap.valid() )
     {
@@ -218,22 +227,26 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
         }
     }
 
+    osg::Timer_t endTime = osg::Timer::instance()->tick();
 
-  // Tell the progress dialog that we're finished and it can close
-  _progress->complete();
+    _totalTimeS = osg::Timer::instance()->delta_s(startTime, endTime );
 
-  // Remove the temp earth file.
-  if (!tmpEarth.empty())
-  {
-      remove(tmpEarth.c_str());
-  }
 
-  return 0;
+    // Tell the progress dialog that we're finished and it can close
+    _progress->complete();
+
+    // Remove the temp earth file.
+    if (!tmpEarth.empty())
+    {
+        remove(tmpEarth.c_str());
+    }
+
+    return 0;
 }
 
 void TMSExporter::cancel(const std::string& message)
 {
-  _canceled = true;
-  _errorMessage = message;
+    _canceled = true;
+    _errorMessage = message;
 }
 

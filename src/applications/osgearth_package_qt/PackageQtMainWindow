@@ -239,7 +239,12 @@ private slots:
       if (_exporter->isCanceled())
         QMessageBox::warning(this, tr("Error"), tr(_exporter->getErrorMessage().c_str()));
       else
-        QMessageBox::information(this, tr("Complete"), tr("The export finished successfully"));
+      {
+          double timeS = _exporter->getExportTime();          
+          std::stringstream message;
+          message << "The export finished successfully in " << osgEarth::prettyPrintTime(timeS);          
+          QMessageBox::information(this, tr("Complete"), QString::fromStdString(message.str()));
+      }
     }
 
     void getBoundingBox(bool checked)

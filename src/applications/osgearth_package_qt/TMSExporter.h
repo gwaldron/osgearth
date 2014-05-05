@@ -58,6 +58,8 @@ namespace PackageQt
     unsigned int getConcurrency() const;
     void setConcurrency(unsigned int concurrency);
 
+    double getExportTime();
+
     enum ProcessingMode {
         MODE_SINGLE,
         MODE_MULTITHREADED,
@@ -80,6 +82,8 @@ namespace PackageQt
     OpenThreads::Mutex _mutex;       
 
     osg::ref_ptr<ExportProgressCallback> _progress;
+
+    double _totalTimeS;
   };
 
 

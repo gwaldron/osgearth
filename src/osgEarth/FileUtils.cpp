@@ -25,6 +25,7 @@
 #include <osgDB/Registry>
 #include <osg/Notify>
 #include <stack>
+#include <errno.h>
 
 #ifdef WIN32
 #  include <windows.h>

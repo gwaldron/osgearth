@@ -154,7 +154,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
       osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);      
       std::stringstream buf;
       buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
-      _progress->setStatus(QString::fromStdString( buf.str()));
+      _progress->setStatus(buf.str());
       packager.run(layer.get(), map);
       packager.writeXML(layer.get(), map);
       if (outMap)
@@ -182,7 +182,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
       osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);      
       std::stringstream buf;
       buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
-      _progress->setStatus(QString::fromStdString( buf.str()));
+      _progress->setStatus(buf.str());
       packager.run(layer.get(), map);
       packager.writeXML(layer.get(), map);
 

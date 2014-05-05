@@ -15,13 +15,14 @@ public:
 
     bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg);
 
-    void setStatus(const QString& status);
+    void setStatus(const std::string& status);
 
     void complete();
 
 private:
     QMainWindow* _parent;
-    QProgressDialog* _dialog;
+    QProgressDialog* _dialog;    
+    std::string _status;
 };
 
 #endif

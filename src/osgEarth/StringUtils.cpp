@@ -79,6 +79,8 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
 
     std::stringstream buf;
     bool quoted = false;
+    char lastQuoteChar = '\0';
+
     for( std::string::const_iterator i = input.begin(); i != input.end(); ++i )
     {
         char c = *i;    
@@ -87,9 +89,10 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
 
         if ( quoted )
         {
-            if ( q != _quotes.end() )
+            if( q != _quotes.end() && lastQuoteChar == c)
             {
                 quoted = false;
+                lastQuoteChar = '\0';
                 if ( q->second )
                     buf << c;
             }
@@ -103,6 +106,7 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
             if ( q != _quotes.end() )
             {
                 quoted = true;
+                lastQuoteChar = c;
                 if ( q->second )
                     buf << c;
             }

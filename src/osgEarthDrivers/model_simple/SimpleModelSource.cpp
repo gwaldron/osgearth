@@ -116,6 +116,12 @@ public:
     osg::Node* createNodeImplementation(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Node> result;
+        
+        // Only support paging if they've enabled it and provided a min/max range and a location.
+        bool usePagedLOD = *_options.paged() &&
+                          (_options.minRange().isSet() || _options.maxRange().isSet()) &&
+                          _options.location().isSet();
+        OE_NOTICE << "usePagedLOD=" << usePagedLOD << std::endl;
 
         if (_options.node() != NULL)
         {
@@ -123,13 +129,17 @@ public:
         }
         else
         {
-            // required if the model includes local refs, like PagedLOD or ProxyNode:
-            osg::ref_ptr<osgDB::Options> localOptions = 
-                Registry::instance()->cloneOrCreateOptions( dbOptions );
+            // Only load the model if it's not paged.
+            if (!usePagedLOD)
+            {
+                // required if the model includes local refs, like PagedLOD or ProxyNode:
+                osg::ref_ptr<osgDB::Options> localOptions = 
+                    Registry::instance()->cloneOrCreateOptions( dbOptions );
 
-            localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
+                localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
-            result = _options.url()->getNode( localOptions.get(), progress );
+                result = _options.url()->getNode( localOptions.get(), progress );                
+            }
         }
 
         if (_options.location().isSet() && map != 0L)
@@ -157,18 +167,40 @@ public:
 
             osg::MatrixTransform* mt = new osg::MatrixTransform;
             mt->setMatrix( matrix );
-            mt->addChild( result.get() );
-            result = mt;
 
             if ( _options.minRange().isSet() || _options.maxRange().isSet() )
-            {
-                osg::LOD* lod = new osg::LOD();
-                lod->addChild(
-                    result.release(),
-                    _options.minRange().isSet() ? (*_options.minRange()) : 0.0f,
-                    _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX );
-                result = lod;
+            {                
+                float minRange = _options.minRange().isSet() ? (*_options.minRange()) : 0.0f;
+                float maxRange = _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX;
+
+                osg::LOD* lod = 0;
+                
+                if (!usePagedLOD)
+                {
+                    // Just use a regular LOD
+                    lod = new osg::LOD();                
+                    lod->addChild(result.release(), minRange, maxRange);                                           
+                }
+                else
+                {
+                    // Use a PagedLOD
+                    osg::PagedLOD* plod =new osg::PagedLOD();                
+                    plod->setFileName(0, _options.url()->full());                                                        
+                    lod = plod;
+                }   
+                lod->setRange(0, minRange, maxRange);                
+                mt->addChild(lod);                
             }
+            else
+            {
+                // Simply add the node to the matrix transform
+                if (result.valid())
+                {            
+                    mt->addChild( result.get() );
+                }            
+            }
+
+            result = mt;
         }
 
         // generate a shader program to render the model.

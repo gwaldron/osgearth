@@ -120,8 +120,7 @@ public:
         // Only support paging if they've enabled it and provided a min/max range and a location.
         bool usePagedLOD = *_options.paged() &&
                           (_options.minRange().isSet() || _options.maxRange().isSet()) &&
-                          _options.location().isSet();
-        OE_NOTICE << "usePagedLOD=" << usePagedLOD << std::endl;
+                          _options.location().isSet();        
 
         if (_options.node() != NULL)
         {

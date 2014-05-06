@@ -176,8 +176,10 @@ osg::Node* SceneController::loadEarthFile(const std::string& url)
   {
     _mapNode = osgEarth::MapNode::findMapNode( _earthNode );
     if (_mapNode.valid())
-    {
+    {        
       _map = _mapNode->getMap();
+      _earthFilePath = url;
+      OE_NOTICE << "Set earth file path to " << _earthFilePath << std::endl;
 
       //const osgEarth::Config& externals = _mapNode->externalConfig();
 
@@ -277,17 +279,3 @@ void SceneController::setBounds(const osgEarth::GeoPoint& p1, const osgEarth::Ge
     }
   }
 }
-
-std::string SceneController::getBoundsString()
-{
-  std::string str = "";
-  if ((_boundsUR - _boundsLL).length() > 0.0)
-  {
-    std::stringstream ss;
-    ss << "LL( " << _boundsLL.y() << ", " << _boundsLL.x() << " ) UR( " << _boundsUR.y() << ", " << _boundsUR.x() << " )";
-    str = ss.str();
-  }
-
-  return str;
-}
-

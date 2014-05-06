@@ -34,6 +34,7 @@ ENDIF()
 SET(TARGET_H
     PackageQtMainWindow
     ExportDialog
+    ExportProgress.h
     WaitDialog
     SceneController.h
     TMSExporter.h
@@ -46,6 +47,7 @@ SET(TARGET_SRC
     ${MOC_SRCS}
     ${LIB_RC_SRCS}
     ExportDialog.cpp
+    ExportProgress.cpp
     SceneController.cpp
     TMSExporter.cpp
     WaitDialog.cpp

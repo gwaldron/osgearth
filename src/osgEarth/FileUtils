@@ -81,6 +81,16 @@ namespace osgEarth
      */
      extern OSGEARTH_EXPORT std::string getTempName(const std::string& prefix="", const std::string& suffix="");
 
+     /** Make a new directory.  Returns true if directory exists or was created.
+      * Note:  This is adapted from osg's makeDirectory function to ensure that it works with concurrent create attempts.
+     */
+     extern OSGEARTH_EXPORT bool makeDirectory( const std::string &directoryPath );
+
+     /** Make a new directory for a given file.
+      * Note:  This is adapted from osg's makeDirectoryForFile to call our custom makeDirectory function.
+     */
+     extern OSGEARTH_EXPORT bool makeDirectoryForFile( const std::string &filePath );
+
      /**
       * Utility class that processes files and directories recursively.
       */

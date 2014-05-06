@@ -25,19 +25,20 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
 #include <osgEarth/Progress>
-#include <osgEarth/TaskService>
+#include "ExportProgress.h"
 
 namespace PackageQt
 {
-  class PackageLayerProgressCallback;
-
+  /**
+   * Shim between the QT exporter and the TMSPackager
+   */
   class TMSExporter
   {
-  public:
+  public:    
 
-    TMSExporter(const std::string& log="log.txt");
+    TMSExporter();    
 
-    int exportTMS(osgEarth::MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="");
+    int exportTMS(osgEarth::MapNode* mapNode, const std::string& earthFilePath, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="");
 
     std::string getDBOptions() { return _dbOptions; }
     void setDBOptions(const std::string& options) { _dbOptions = options; }
@@ -49,16 +50,24 @@ namespace PackageQt
 
     std::string getErrorMessage() { return _errorMessage; }
 
-    void setProgressCallback(osgEarth::ProgressCallback* progress) { _progress = progress ? progress : new osgEarth::ProgressCallback; }
+    void setProgressCallback(ExportProgressCallback* progress) { _progress = progress; }
 
     void cancel(const std::string& message="");
     bool isCanceled() { return _canceled; }
 
-  protected:
-    friend class PackageLayerProgressCallback;
+    unsigned int getConcurrency() const;
+    void setConcurrency(unsigned int concurrency);
 
-    void packageTaskProgress(int id, double percentComplete);
-    void packageTaskComplete(int id);
+    double getExportTime();
+
+    enum ProcessingMode {
+        MODE_SINGLE,
+        MODE_MULTITHREADED,
+        MODE_MULTIPROCESS        
+    };
+
+    ProcessingMode getProcessingMode() const { return _mode;}
+    void setProcessingMode(ProcessingMode mode) { _mode = mode; }
 
   private:
 
@@ -67,29 +76,29 @@ namespace PackageQt
     bool _keepEmpties;
     std::string _errorMessage;
     bool _canceled;
+    unsigned int _concurrency;
+    ProcessingMode _mode;
 
-    OpenThreads::Mutex _m;
+    OpenThreads::Mutex _mutex;       
 
-    osg::ref_ptr<osgEarth::TaskService> _taskService;
-    int _totalTasks;
-    double _percentComplete;
-    std::vector<double> _taskProgress;
-    osg::ref_ptr<osgEarth::ProgressCallback> _progress;
+    osg::ref_ptr<ExportProgressCallback> _progress;
+
+    double _totalTimeS;
   };
 
 
   class TMSExporterWorkerThread : public osg::Referenced, public OpenThreads::Thread
   {
   public:
-    TMSExporterWorkerThread(TMSExporter* exporter, osgEarth::MapNode* mapNode, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="")
-      : OpenThreads::Thread(), _exporter(exporter), _mapNode(mapNode), _path(path), _bounds(bounds), _outEarth(outEarth), _overwrite(overwrite), _extension(extension)
+    TMSExporterWorkerThread(TMSExporter* exporter, osgEarth::MapNode* mapNode, const std::string& earthFilePath, const std::string& path, std::vector< osgEarth::Bounds >& bounds, const std::string& outEarth="", bool overwrite=false, const std::string& extension="")
+      : OpenThreads::Thread(), _exporter(exporter), _mapNode(mapNode), _earthFilePath(earthFilePath), _path(path), _bounds(bounds), _outEarth(outEarth), _overwrite(overwrite), _extension(extension)
     { }
 
     void run()
     {
       if (_exporter)
       {
-        _exporter->exportTMS(_mapNode, _path, _bounds, _outEarth, _overwrite, _extension);
+        _exporter->exportTMS(_mapNode, _earthFilePath, _path, _bounds, _outEarth, _overwrite, _extension);        
       }
     }
 
@@ -101,48 +110,7 @@ namespace PackageQt
     std::string _outEarth;
     bool _overwrite;
     std::string _extension;
-  };
-
-
-  class PackageLayerProgressCallback : public osgEarth::ProgressCallback
-  {
-  public:
-    PackageLayerProgressCallback(TMSExporter* exporter, int id)
-      : _exporter(exporter), _id(id)
-    {
-    }
-
-    virtual ~PackageLayerProgressCallback() { }
-
-    bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg)
-    {
-      if (_exporter)
-        _exporter->packageTaskProgress(_id, current / total);
-
-      return false;
-    }
-
-    void onCompleted()
-    {
-      if (_exporter)
-        _exporter->packageTaskComplete(_id);
-    }
-
-    void cancel()
-    {
-      osgEarth::ProgressCallback::cancel();
-      _exporter->cancel(message());
-    }
-
-    bool isCanceled()
-    {
-      return _canceled || _exporter->isCanceled();
-    }
-
-
-  private:
-    TMSExporter* _exporter;
-    int _id;
+    std::string _earthFilePath;
   };
 }
 

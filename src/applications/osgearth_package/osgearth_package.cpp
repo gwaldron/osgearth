@@ -28,7 +28,9 @@
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/TileVisitor>
 #include <osgEarthUtil/TMSPackager>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/tms/TMSOptions>
 
 #include <iostream>
@@ -67,6 +69,9 @@ usage( const std::string& msg = "" )
         << "            [--continue-single-color]       : continues to subdivide single color tiles, subdivision typicall stops on single color images\n"
         << "            [--elevation-pixel-depth]       : pixeldepth for elevations\n"
         << "            [--db-options]                : db options string to pass to the image writer in quotes (e.g., \"JPEG_QUALITY 60\")\n"
+        << "            [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
+        << "            [--mt]                          ; Use multithreading to process the tiles." << std::endl
+        << "            [--concurrency]                 ; The number of threads or proceses to use if --mp or --mt are provided." << std::endl
         << std::endl
         << "         [--quiet]               : suppress progress output" << std::endl;
 
@@ -104,24 +109,87 @@ findArgumentWithExtension( osg::ArgumentParser& args, const std::string& ext )
 int
 makeTMS( osg::ArgumentParser& args )
 {
+    osgDB::Registry::instance()->getReaderWriterForExtension("png");
+    osgDB::Registry::instance()->getReaderWriterForExtension("jpg");
+    osgDB::Registry::instance()->getReaderWriterForExtension("tiff");
+
+    //Read the min level
+    unsigned int minLevel = 0;
+    while (args.read("--min-level", minLevel));
+
+    //Read the max level
+    unsigned int maxLevel = 5;
+    while (args.read("--max-level", maxLevel));
+    
+
+    std::vector< Bounds > bounds;
+    // restrict packaging to user-specified bounds.    
+    double xmin=DBL_MAX, ymin=DBL_MAX, xmax=DBL_MIN, ymax=DBL_MIN;
+    while (args.read("--bounds", xmin, ymin, xmax, ymax ))
+    {        
+        Bounds b;
+        b.xMin() = xmin, b.yMin() = ymin, b.xMax() = xmax, b.yMax() = ymax;
+        bounds.push_back( b );
+    }    
+
+    std::string tileList;
+    while (args.read( "--tiles", tileList ) );
+
+    bool verbose = args.read("--verbose");
+
+    unsigned int batchSize = 0;
+    args.read("--batchsize", batchSize);
+
+    // Read the concurrency level
+    unsigned int concurrency = 0;
+    args.read("-c", concurrency);
+    args.read("--concurrency", concurrency);
+
+    bool writeXML = true;
+
+    // load up the map
+    osg::ref_ptr<MapNode> mapNode = MapNode::load( args );
+    if( !mapNode.valid() )
+        return usage( "Failed to load a valid .earth file" );
+
+
+    // Read in an index shapefile
+    std::string index;
+    while (args.read("--index", index))
+    {        
+        //Open the feature source
+        OGRFeatureOptions featureOpt;
+        featureOpt.url() = index;        
+
+        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
+        features->initialize();
+        features->getFeatureProfile();
+
+        osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor();
+        while (cursor.valid() && cursor->hasMore())
+        {
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+            osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
+            GeoExtent ext( feature->getSRS(), featureBounds );
+            ext = ext.transform( mapNode->getMapSRS() );
+            bounds.push_back( ext.bounds() );            
+        }
+    }
+
     // see if the user wants to override the type extension (imagery only)
     std::string extension;
     args.read( "--ext", extension );
 
-    // verbosity?
-    bool verbose = !args.read( "--quiet" );
-
     // find a .earth file on the command line
     std::string earthFile = findArgumentWithExtension( args, ".earth" );
-    /*   if ( earthFile.empty() )
-           return usage( "Missing required .earth file" );
-           */
+    
     // folder to which to write the TMS archive.
     std::string rootFolder;
     if( !args.read( "--out", rootFolder ) )
         rootFolder = Stringify() << earthFile << ".tms_repo";
 
     // whether to overwrite existing tile files
+    //TODO:  Support
     bool overwrite = false;
     if( args.read( "--overwrite" ) )
         overwrite = true;
@@ -140,72 +208,123 @@ makeTMS( osg::ArgumentParser& args )
 
     osg::ref_ptr<osgDB::Options> options = new osgDB::Options( dbOptions );
 
-
-    std::vector< Bounds > bounds;
-    // restrict packaging to user-specified bounds.    
-    double xmin = DBL_MAX, ymin = DBL_MAX, xmax = DBL_MIN, ymax = DBL_MIN;
-    while( args.read( "--bounds", xmin, ymin, xmax, ymax ) )
-    {
-        Bounds b;
-        b.xMin() = xmin, b.yMin() = ymin, b.xMax() = xmax, b.yMax() = ymax;
-        bounds.push_back( b );
-    }
-
-    // min level to generate
-    unsigned minLevel = 0;
-    args.read( "--min-level", minLevel);
-
-
-    // max level to which to generate
-    unsigned maxLevel = ~0;
-    args.read( "--max-level", maxLevel );
-
-    
     // whether to keep 'empty' tiles
+    //TODO:  Add support
     bool keepEmpties = args.read( "--keep-empties" );
 
+    //TODO:  Single color
     bool continueSingleColor = args.read( "--continue-single-color" );
 
-    // max level to which to generate
+    // elevation pixel depth
     unsigned elevationPixelDepth = 32;
     args.read( "--elevation-pixel-depth", elevationPixelDepth );
-
-    // load up the map
-    osg::ref_ptr<MapNode> mapNode = MapNode::load( args );
-    if( !mapNode.valid() )
-        return usage( "Failed to load a valid .earth file" );
-
+    
     // create a folder for the output
     osgDB::makeDirectory( rootFolder );
     if( !osgDB::fileExists( rootFolder ) )
         return usage( "Failed to create root output folder" );
 
+    int imageLayerIndex = -1;
+    args.read("--image", imageLayerIndex);
+
+    int elevationLayerIndex = -1;
+    args.read("--elevation", elevationLayerIndex);
+    
     Map* map = mapNode->getMap();
 
-    // fire up a packager:
-    TMSPackager packager( map->getProfile(), options );
 
-    packager.setVerbose( verbose );
-    packager.setOverwrite( overwrite );
-    packager.setKeepEmptyImageTiles( keepEmpties );
-    packager.setSubdivideSingleColorImageTiles( continueSingleColor );
-    packager.setElevationPixelDepth( elevationPixelDepth );
+    osg::ref_ptr< TileVisitor > visitor;
 
-    packager.setMinLevel( minLevel );
-    if( maxLevel != ~0 )
+    // If we are given a task file, load it up and create a new TileKeyListVisitor
+    if (!tileList.empty())
     {        
-        packager.setMaxLevel( maxLevel );
+        TaskList tasks( mapNode->getMap()->getProfile() );
+        tasks.load( tileList );
+
+        TileKeyListVisitor* v = new TileKeyListVisitor();
+        v->setKeys( tasks.getKeys() );
+        visitor = v;     
+        // This process is a lowly worker, and shouldn't write out the XML file.
+        writeXML = false;
     }
 
-    if( bounds.size() > 0 )
+    // If we dont' have a visitor create one.
+    if (!visitor.valid())
     {
-        for( unsigned int i = 0; i < bounds.size(); ++i )
+        if (args.read("--mt"))
         {
-            Bounds b = bounds[i];
-            if( b.isValid() )
-                packager.addExtent( GeoExtent( map->getProfile()->getSRS(), b ) );
+            // Create a multithreaded visitor
+            MultithreadedTileVisitor* v = new MultithreadedTileVisitor();
+            if (concurrency > 0)
+            {
+                v->setNumThreads(concurrency);
+            }
+            visitor = v;            
         }
+        else if (args.read("--mp"))
+        {
+            // Create a multiprocess visitor
+            MultiprocessTileVisitor* v = new MultiprocessTileVisitor();
+            if (concurrency > 0)
+            {
+                v->setNumProcesses(concurrency);
+                OE_NOTICE << "Set num processes " << concurrency << std::endl;
+            }
+
+            if (batchSize > 0)
+            {            
+                v->setBatchSize(batchSize);
+            }
+
+
+            // Try to find the earth file
+            std::string earthFile;
+            for(int pos=1;pos<args.argc();++pos)
+            {
+                if (!args.isOption(pos))
+                {
+                    earthFile  = args[ pos ];
+                    break;
+                }
+            }
+
+            v->setEarthFile( earthFile );
+
+            visitor = v;            
+        }
+        else
+        {
+            // Create a single thread visitor
+            visitor = new TileVisitor();            
+        }        
     }
+
+    osg::ref_ptr< ProgressCallback > progress = new ConsoleProgressCallback();
+
+    if (verbose)
+    {
+        visitor->setProgressCallback( progress );
+    }
+
+    visitor->setMinLevel( minLevel );
+    visitor->setMaxLevel( maxLevel );        
+
+
+    for (unsigned int i = 0; i < bounds.size(); i++)
+    {
+        GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
+        OE_DEBUG << "Adding extent " << extent.toString() << std::endl;                
+        visitor->addExtent( extent );
+    }    
+
+
+    // Setup a TMSPackager with all the options.
+    TMSPackager packager;
+    packager.setVisitor(visitor);
+    packager.setDestination(rootFolder);    
+    packager.setElevationPixelDepth(elevationPixelDepth);
+    packager.setWriteOptions(options);    
+    packager.setOverwrite(overwrite);
 
 
     // new map for an output earth file if necessary.
@@ -216,112 +335,126 @@ makeTMS( osg::ArgumentParser& args )
         outMap = new Map( map->getInitialMapOptions() );
     }
 
-    // establish the output path of the earth file, if applicable:
     std::string outEarthFile = osgDB::concatPaths( rootFolder, osgDB::getSimpleFileName( outEarth ) );
+    
 
-    // package any image layers that are enabled:
-    ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
-
-    unsigned counter = 0;
-
-    for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i, ++counter )
-    {
-        ImageLayer* layer = i->get();
-        if( layer->getImageLayerOptions().enabled() == true )
+    // Package an individual image layer
+    if (imageLayerIndex >= 0)
+    {        
+        ImageLayer* layer = map->getImageLayerAt(imageLayerIndex);
+        if (layer)
         {
-            std::string layerFolder = toLegalFileName( layer->getName() );
-            if( layerFolder.empty() )
-                layerFolder = Stringify() << "image_layer_" << counter;
-
-            if( verbose )
+            packager.run(layer, map);
+            if (writeXML)
             {
-                OE_NOTICE << LC << "Packaging image layer \"" << layerFolder << "\"" << std::endl;
-            }
-
-            osg::ref_ptr< ConsoleProgressCallback > progress = new ConsoleProgressCallback();
-            std::string layerRoot = osgDB::concatPaths( rootFolder, layerFolder );
-            TMSPackager::Result r = packager.package( layer, layerRoot, progress, extension );
-            if( r.ok )
-            {
-                // save to the output map if requested:
-                if( outMap.valid() )
-                {
-                    // new TMS driver info:
-                    TMSOptions tms;
-                    tms.url() = URI(
-                        osgDB::concatPaths( layerFolder, "tms.xml" ),
-                        outEarthFile );
-
-                    ImageLayerOptions layerOptions( layer->getName(), tms );
-                    layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
-                    layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
-
-                    outMap->addImageLayer( new ImageLayer( layerOptions ) );
-                }
-            }
-            else
-            {
-                OE_WARN << LC << r.message << std::endl;
+                packager.writeXML(layer, map);
             }
         }
-        else if( verbose )
+        else
         {
-            OE_NOTICE << LC << "Skipping disabled layer \"" << layer->getName() << "\"" << std::endl;
+            std::cout << "Failed to find an image layer at index " << imageLayerIndex << std::endl;
+            return 1;
         }
     }
-
-    // package any elevation layers that are enabled:
-    counter = 0;
-    ElevationLayerVector elevationLayers;
-    map->getElevationLayers( elevationLayers );
-
-    for( ElevationLayerVector::iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i, ++counter )
+    // Package an individual elevation layer
+    else if (elevationLayerIndex >= 0)
     {
-        ElevationLayer* layer = i->get();
-        if( layer->getElevationLayerOptions().enabled() == true )
+        packager.setExtension("tif");
+        ElevationLayer* layer = map->getElevationLayerAt(elevationLayerIndex);
+        if (layer)
         {
-            std::string layerFolder = toLegalFileName( layer->getName() );
-            if( layerFolder.empty() )
-                layerFolder = Stringify() << "elevation_layer_" << counter;
-
-            if( verbose )
+            packager.run(layer, map);
+            if (writeXML)
             {
-                OE_NOTICE << LC << "Packaging elevation layer \"" << layerFolder << "\"" << std::endl;
-            }
-
-            std::string layerRoot = osgDB::concatPaths( rootFolder, layerFolder );
-            TMSPackager::Result r = packager.package( layer, layerRoot );
-
-            if( r.ok )
-            {
-                // save to the output map if requested:
-                if( outMap.valid() )
-                {
-                    // new TMS driver info:
-                    TMSOptions tms;
-                    tms.url() = URI(
-                        osgDB::concatPaths( layerFolder, "tms.xml" ),
-                        outEarthFile );
-
-                    ElevationLayerOptions layerOptions( layer->getName(), tms );
-                    layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
-                    layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
-
-                    outMap->addElevationLayer( new ElevationLayer( layerOptions ) );
-                }
-            }
-            else
-            {
-                OE_WARN << LC << r.message << std::endl;
+                packager.writeXML(layer, map );
             }
         }
-        else if( verbose )
+        else
         {
-            OE_NOTICE << LC << "Skipping disabled layer \"" << layer->getName() << "\"" << std::endl;
+            std::cout << "Failed to find an elevation layer at index " << elevationLayerIndex << std::endl;
+            return 1;
         }
     }
+    else
+    {        
+        // Package all the ImageLayer's
+        for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
+        {            
+            ImageLayer* layer = map->getImageLayerAt(i);        
+            OE_NOTICE << "Packaging " << layer->getName() << std::endl;
+            osg::Timer_t start = osg::Timer::instance()->tick();
+            packager.run(layer, map);
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }                
 
+            if (writeXML)
+            {
+                packager.writeXML(layer, map);
+            }
+
+            // save to the output map if requested:
+            if( outMap.valid() )
+            {
+                std::string layerFolder = toLegalFileName( layer->getName() );
+
+                // new TMS driver info:
+                TMSOptions tms;
+                tms.url() = URI(
+                    osgDB::concatPaths( layerFolder, "tms.xml" ),
+                    outEarthFile );
+
+                ImageLayerOptions layerOptions( layer->getName(), tms );
+                layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+                outMap->addImageLayer( new ImageLayer( layerOptions ) );
+            }
+        }    
+
+        // For elevation layers we need to use tiff
+        packager.setExtension("tif");
+        // Package all the ElevationLayer's
+        for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
+        {            
+            ElevationLayer* layer = map->getElevationLayerAt(i);        
+            OE_NOTICE << "Packaging " << layer->getName() << std::endl;
+            osg::Timer_t start = osg::Timer::instance()->tick();
+            packager.run(layer, map);
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }      
+            if (writeXML)
+            {
+                packager.writeXML(layer, map);
+            }
+
+            // save to the output map if requested:
+            if( outMap.valid() )
+            {
+                std::string layerFolder = toLegalFileName( layer->getName());
+
+                // new TMS driver info:
+                TMSOptions tms;
+                tms.url() = URI(
+                    osgDB::concatPaths( layerFolder, "tms.xml" ),
+                    outEarthFile );
+
+                ElevationLayerOptions layerOptions( layer->getName(), tms );
+                layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
+                layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
+
+                outMap->addElevationLayer( new ElevationLayer( layerOptions ) );
+            }
+        }
+
+    }
+
+    // Write out an earth file if it was requested
     // Finally, write an earth file if requested:
     if( outMap.valid() )
     {

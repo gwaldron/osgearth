@@ -79,6 +79,8 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
 
     std::stringstream buf;
     bool quoted = false;
+    char lastQuoteChar = '\0';
+
     for( std::string::const_iterator i = input.begin(); i != input.end(); ++i )
     {
         char c = *i;    
@@ -87,9 +89,10 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
 
         if ( quoted )
         {
-            if ( q != _quotes.end() )
+            if( q != _quotes.end() && lastQuoteChar == c)
             {
                 quoted = false;
+                lastQuoteChar = '\0';
                 if ( q->second )
                     buf << c;
             }
@@ -103,6 +106,7 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
             if ( q != _quotes.end() )
             {
                 quoted = true;
+                lastQuoteChar = c;
                 if ( q->second )
                     buf << c;
             }
@@ -387,6 +391,41 @@ osgEarth::toLower( const std::string& input )
     std::transform( output.begin(), output.end(), output.begin(), ::tolower );
     return output;
 }
+
+std::string
+osgEarth::prettyPrintTime( double seconds )
+{
+    int hours = (int)floor(seconds / (3600.0) );
+    seconds -= hours * 3600.0;
+
+    int minutes = (int)floor(seconds/60.0);
+    seconds -= minutes * 60.0;
+
+    std::stringstream buf;
+    buf << hours << ":" << minutes << ":" << seconds;
+    return buf.str();
+}
+
+std::string
+osgEarth::prettyPrintSize( double mb )
+{
+    std::stringstream buf;
+    // Convert to terabytes
+    if ( mb > 1024 * 1024 )
+    {
+        buf << (mb / (1024.0*1024.0)) << " TB";
+    }
+    else if (mb > 1024)
+    {
+        buf << (mb / 1024.0) << " GB";
+    }
+    else 
+    {
+        buf << mb << " MB";
+    }
+    return buf.str();
+}
+
 
 namespace
 {

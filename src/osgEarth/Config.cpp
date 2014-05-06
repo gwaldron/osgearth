@@ -350,7 +350,7 @@ namespace
 std::string
 Config::toJSON( bool pretty ) const
 {
-    Json::Value root = conf2json( *this, pretty );
+    Json::Value root = conf2json( *this, true );
     if ( pretty )
         return Json::StyledWriter().write( root );
     else

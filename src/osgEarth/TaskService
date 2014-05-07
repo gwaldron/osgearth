@@ -205,6 +205,8 @@ namespace osgEarth
 
         void waitforThreadsToComplete();
 
+        bool areThreadsRunning();
+
         void cancelAll();
 
     private:

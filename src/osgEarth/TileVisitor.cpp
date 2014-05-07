@@ -114,6 +114,12 @@ void TileVisitor::estimate()
 
 void TileVisitor::processKey( const TileKey& key )
 {
+    // If we've been cancelled then just return.
+    if (_progress->isCanceled())
+    {        
+        return;
+    }    
+
     unsigned int x, y, lod;
     key.getTileXY(x, y);
     lod = key.getLevelOfDetail();
@@ -152,8 +158,12 @@ void TileVisitor::incrementProgress(unsigned int amount)
     }
     if (_progress.valid())
     {
-        _progress->reportProgress( _processed, _total );
-    }
+        // If report progress returns true then mark the task as being cancelled.
+        if (_progress->reportProgress( _processed, _total ))
+        {
+            _progress->cancel();
+        }
+    }    
 }
 
 bool TileVisitor::handleTile( const TileKey& key )
@@ -164,7 +174,7 @@ bool TileVisitor::handleTile( const TileKey& key )
         result = _tileHandler->handleTile( key );
     }
 
-    incrementProgress(1);
+    incrementProgress(1);    
     
     return result;
 }
@@ -236,9 +246,17 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
     // Send a poison pill to kill all the threads
     _taskService->add( new PoisonPill() );
 
-    // Wait for everything to finish
-    _taskService->waitforThreadsToComplete();
+    OE_INFO << "Waiting on threads to complete" << _taskService->getNumRequests() << " tasks remaining" << std::endl;
 
+    // Wait for everything to finish, checking for cancellation while we wait so we can kill all the existing tasks.
+    while (_taskService->areThreadsRunning())
+    {
+        OpenThreads::Thread::microSleep(10000);
+        if (_progress && _progress->isCanceled())
+        {            
+            _taskService->cancelAll();
+        }
+    }
     OE_INFO << "All threads have completed" << std::endl;
 }
 
@@ -345,9 +363,19 @@ void MultiprocessTileVisitor::run(const Profile* mapProfile)
 
     // Send a poison pill to kill all the threads
     _taskService->add( new PoisonPill() );
+   
+    OE_INFO << "Waiting on threads to complete" << _taskService->getNumRequests() << " tasks remaining" << std::endl;
 
-    // Wait for everything to finish
-    _taskService->waitforThreadsToComplete();          
+    // Wait for everything to finish, checking for cancellation while we wait so we can kill all the existing tasks.
+    while (_taskService->areThreadsRunning())
+    {
+        OpenThreads::Thread::microSleep(10000);
+        if (_progress && _progress->isCanceled())
+        {            
+            _taskService->cancelAll();
+        }
+    }
+    OE_INFO << "All threads have completed" << std::endl;
 }
 
 bool MultiprocessTileVisitor::handleTile( const TileKey& key )        

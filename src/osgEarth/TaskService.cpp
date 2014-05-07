@@ -291,6 +291,19 @@ void TaskService::waitforThreadsToComplete()
     }    
 }
 
+bool TaskService::areThreadsRunning()
+{
+    for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
+    {                
+        if ((*i)->isRunning())
+        {
+            return true;
+        }
+    }    
+    return false;
+}
+
+
 TaskService::~TaskService()
 {
     _queue->setDone();

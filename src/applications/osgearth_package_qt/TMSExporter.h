@@ -47,13 +47,9 @@ namespace PackageQt
 
     bool getKeepEmpties() { return _keepEmpties; }
     void setKeepEmpties(bool keep) { _keepEmpties = keep; }
-
-    std::string getErrorMessage() { return _errorMessage; }
-
+  
+    ExportProgressCallback* getProgressCallback() const { return _progress; }
     void setProgressCallback(ExportProgressCallback* progress) { _progress = progress; }
-
-    void cancel(const std::string& message="");
-    bool isCanceled() { return _canceled; }
 
     unsigned int getConcurrency() const;
     void setConcurrency(unsigned int concurrency);
@@ -74,8 +70,6 @@ namespace PackageQt
     std::string _dbOptions;
     unsigned _maxLevel;
     bool _keepEmpties;
-    std::string _errorMessage;
-    bool _canceled;
     unsigned int _concurrency;
     ProcessingMode _mode;
 

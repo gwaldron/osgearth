@@ -115,7 +115,7 @@ void TileVisitor::estimate()
 void TileVisitor::processKey( const TileKey& key )
 {
     // If we've been cancelled then just return.
-    if (_progress->isCanceled())
+    if (_progress && _progress->isCanceled())
     {        
         return;
     }    

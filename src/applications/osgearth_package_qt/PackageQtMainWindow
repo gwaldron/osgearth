@@ -236,8 +236,15 @@ private slots:
 
     void showExportResult()
     {
-      if (_exporter->isCanceled())
-        QMessageBox::warning(this, tr("Error"), tr(_exporter->getErrorMessage().c_str()));
+      if (_exporter->getProgressCallback()->isCanceled())
+      {        
+          std::string message = "Error exporting package";
+          if (!_exporter->getProgressCallback()->message().empty())
+          {
+              message = _exporter->getProgressCallback()->message();
+          }
+          QMessageBox::warning(this, tr("Error"), tr(message.c_str()));
+      }
       else
       {
           double timeS = _exporter->getExportTime();          

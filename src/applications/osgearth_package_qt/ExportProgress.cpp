@@ -26,6 +26,7 @@ bool ExportProgressCallback::reportProgress(double current, double total, unsign
 
         if (_dialog->wasCanceled())
         {
+            OE_NOTICE << "Returning true from reportProgress" << std::endl;
             return true;
         }
     }
@@ -44,6 +45,9 @@ void ExportProgressCallback::complete()
     bool userCanceled = _dialog->wasCanceled();
     QMetaObject::invokeMethod(_dialog, "close", Qt::QueuedConnection);
 
-    if (!userCanceled)
-    QMetaObject::invokeMethod(_parent, "showExportResult", Qt::BlockingQueuedConnection);    
+    // Only show the cancel message if the user didn't cancel the export
+    //if (!userCanceled)
+    {
+        QMetaObject::invokeMethod(_parent, "showExportResult", Qt::BlockingQueuedConnection);    
+    }
 }

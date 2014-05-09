@@ -49,8 +49,6 @@ TMSExporter::TMSExporter()
     : _dbOptions(""),
     _maxLevel(~0),
     _keepEmpties(false),
-    _errorMessage(""),
-    _canceled(false),
     _concurrency(1),
     _mode(MODE_SINGLE),
     _totalTimeS(0.0)
@@ -120,7 +118,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
             {
                 tmpEarth = getTempName(getTempPath(), ".earth");
             }
-            OE_NOTICE << "Writing to " << tmpEarth << std::endl;
+            OE_INFO << "Writing to " << tmpEarth << std::endl;
             osgDB::writeNodeFile(*mapNode, tmpEarth );         
             MultiprocessTileVisitor* v = new MultiprocessTileVisitor();
             v->setEarthFile(tmpEarth);
@@ -160,9 +158,15 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
     // Package each image layer
     for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
     {            
+        // Don't continue if the export has been canceled
+        if (_progress->isCanceled())
+        {
+            break;
+        }
         osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);      
         std::stringstream buf;
         buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
+        OE_NOTICE << buf.str() << std::endl;
         _progress->setStatus(buf.str());
         packager.run(layer.get(), map);
         packager.writeXML(layer.get(), map);
@@ -188,9 +192,16 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
     // Package each elevation layer
     for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
     {
+        // Don't continue if the export has been canceled
+        if (_progress->isCanceled())
+        {
+            break;
+        }
+
         osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);      
         std::stringstream buf;
         buf << "Packaging " << layer->getName() << " (" << layerNum << " of " << totalLayers << ")";
+        OE_NOTICE << buf.str() << std::endl;
         _progress->setStatus(buf.str());
         packager.run(layer.get(), map);
         packager.writeXML(layer.get(), map);
@@ -215,17 +226,21 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
         layerNum++;
     }
 
-    // Write out an earth file if it was requested
-    // Finally, write an earth file if requested:
-    if( outMap.valid() )
+    // Don't continue if the export has been canceled
+    if (!_progress->isCanceled())
     {
-        MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
-        osg::ref_ptr<MapNode> outMapNode = new MapNode( outMap.get(), outNodeOptions );
-        if( !osgDB::writeNodeFile( *outMapNode.get(), outEarthFile ) )
+        // Write out an earth file if it was requested
+        // Finally, write an earth file if requested:
+        if( outMap.valid() )
         {
-            OE_WARN << LC << "Error writing earth file to \"" << outEarthFile << "\"" << std::endl;
+            MapNodeOptions outNodeOptions = mapNode->getMapNodeOptions();
+            osg::ref_ptr<MapNode> outMapNode = new MapNode( outMap.get(), outNodeOptions );
+            if( !osgDB::writeNodeFile( *outMapNode.get(), outEarthFile ) )
+            {
+                OE_WARN << LC << "Error writing earth file to \"" << outEarthFile << "\"" << std::endl;
+            }
         }
-    }
+    }    
 
     osg::Timer_t endTime = osg::Timer::instance()->tick();
 
@@ -243,10 +258,3 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
 
     return 0;
 }
-
-void TMSExporter::cancel(const std::string& message)
-{
-    _canceled = true;
-    _errorMessage = message;
-}
-

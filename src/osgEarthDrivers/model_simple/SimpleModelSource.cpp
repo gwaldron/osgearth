@@ -116,21 +116,32 @@ public:
     osg::Node* createNodeImplementation(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Node> result;
-
+        
+        // Only support paging if they've enabled it and provided a min/max range
+        bool usePagedLOD = *_options.paged() &&
+                          (_options.minRange().isSet() || _options.maxRange().isSet());
+        
         if (_options.node() != NULL)
         {
             result = _options.node();
         }
         else
         {
-            // required if the model includes local refs, like PagedLOD or ProxyNode:
-            osg::ref_ptr<osgDB::Options> localOptions = 
-                Registry::instance()->cloneOrCreateOptions( dbOptions );
+            // Only load the model if it's not paged or we don't have a location set.
+            if (!usePagedLOD || !_options.location().isSet())
+            {
+                // required if the model includes local refs, like PagedLOD or ProxyNode:
+                osg::ref_ptr<osgDB::Options> localOptions = 
+                    Registry::instance()->cloneOrCreateOptions( dbOptions );
 
-            localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
+                localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
-            result = _options.url()->getNode( localOptions.get(), progress );
+                result = _options.url()->getNode( localOptions.get(), progress );                
+            }
         }
+
+        // Always create a matrix transform
+        osg::MatrixTransform* mt = new osg::MatrixTransform;        
 
         if (_options.location().isSet() && map != 0L)
         {
@@ -153,23 +164,53 @@ public:
                     osg::DegreesToRadians((*_options.orientation()).x()), osg::Vec3(0,0,1),
                     osg::DegreesToRadians((*_options.orientation()).z()), osg::Vec3(0,1,0) );
                 matrix.preMult(rot_mat);
-            }
-
-            osg::MatrixTransform* mt = new osg::MatrixTransform;
-            mt->setMatrix( matrix );
-            mt->addChild( result.get() );
-            result = mt;
-
-            if ( _options.minRange().isSet() || _options.maxRange().isSet() )
-            {
-                osg::LOD* lod = new osg::LOD();
-                lod->addChild(
-                    result.release(),
-                    _options.minRange().isSet() ? (*_options.minRange()) : 0.0f,
-                    _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX );
-                result = lod;
-            }
+            }            
+            mt->setMatrix( matrix );            
         }
+
+        if ( _options.minRange().isSet() || _options.maxRange().isSet() )
+        {                
+            float minRange = _options.minRange().isSet() ? (*_options.minRange()) : 0.0f;
+            float maxRange = _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX;
+
+            osg::LOD* lod = 0;
+
+            if (!usePagedLOD)
+            {
+                // Just use a regular LOD
+                lod = new osg::LOD();                
+                lod->addChild(result.release(), minRange, maxRange);                                           
+            }
+            else
+            {
+                // Use a PagedLOD
+                osg::PagedLOD* plod =new osg::PagedLOD();                
+                plod->setFileName(0, _options.url()->full());     
+
+                // If they want the model to be paged but haven't given us a location we have to load
+                // up the node up front and figure out what it's center and radius are or it won't page in.
+                if (!_options.location().isSet() && result.valid())
+                {                    
+                    osg::Vec3d center = result->getBound().center();
+                    OE_DEBUG << "Radius=" << result->getBound().radius() << " center=" << center.x() << "," << center.y() << "," << center.z() << std::endl;                    
+                    plod->setCenter(result->getBound().center());
+                    plod->setRadius(result->getBound().radius());                    
+                }
+                lod = plod;
+            }   
+            lod->setRange(0, minRange, maxRange);                
+            mt->addChild(lod);                
+        }
+        else
+        {
+            // Simply add the node to the matrix transform
+            if (result.valid())
+            {            
+                mt->addChild( result.get() );
+            }            
+        }
+
+        result = mt;
 
         // generate a shader program to render the model.
         if ( result.valid() )

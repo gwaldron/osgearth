@@ -68,11 +68,11 @@ namespace
             if (r.second == false)
             {
                 obj = r.first->get();
-                OE_NOTICE << "Shared a program; repo size = " << _set.size() << std::endl;
+                OE_DEBUG << "Shared a program; repo size = " << _set.size() << std::endl;
             }
             else
             {
-                OE_NOTICE << "Added a program; repo size = " << _set.size() << std::endl;
+                OE_DEBUG << "Added a program; repo size = " << _set.size() << std::endl;
             }
             _mx.unlock();
         }

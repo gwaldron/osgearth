@@ -82,7 +82,7 @@ ResourceLibrary::mergeConfig( const Config& conf )
 Config
 ResourceLibrary::getConfig() const
 {
-    Config conf;
+    Config conf("resources");
     {
         Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
 

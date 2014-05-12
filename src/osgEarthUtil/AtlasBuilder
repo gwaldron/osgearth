@@ -37,7 +37,7 @@ namespace osgEarth { namespace Util
     public:
         struct Atlas
         {
-            osg::ref_ptr<osg::Image>                           _image;
+            osg::ref_ptr<osg::Image> _image;
             osg::ref_ptr<osgEarth::Symbology::ResourceLibrary> _lib;
         };
 
@@ -45,13 +45,15 @@ namespace osgEarth { namespace Util
         /** Construct a new atlas builder */
         AtlasBuilder(const osgDB::Options* options =0L);
 
-        /** Sets the size of each layer in the output atlas */
+        /** Sets the maximum size of each layer in the output atlas */
         void setSize(unsigned width, unsigned height);
 
         /** Builds an atlas. */
         bool build(
-            osgEarth::Symbology::ResourceLibrary* input,
-            Atlas&                                output) const;
+            const osgEarth::Symbology::ResourceLibrary* input,
+            const std::string&                          newAtlasURI,
+            Atlas&                                      output) const;
+
 
     protected:
         unsigned _width;

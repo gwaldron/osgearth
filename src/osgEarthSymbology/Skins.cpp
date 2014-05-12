@@ -40,7 +40,12 @@ _minObjHeight     ( 0.0f ),
 _maxObjHeight     ( FLT_MAX ),
 _isTiled          ( false ),
 _texEnvMode       ( osg::TexEnv::MODULATE ),
-_maxTexSpan       ( 1024 )
+_maxTexSpan       ( 1024 ),
+_imageBiasS       ( 0.0f ),
+_imageBiasT       ( 0.0f ),
+_imageLayer       ( 0 ),
+_imageScaleS      ( 1.0f ),
+_imageScaleT      ( 1.0f )
 {
     mergeConfig( conf );
 }
@@ -60,6 +65,13 @@ SkinResource::mergeConfig( const Config& conf )
     conf.getIfSet( "texture_mode", "modulate", _texEnvMode, osg::TexEnv::MODULATE );
     conf.getIfSet( "texture_mode", "replace",  _texEnvMode, osg::TexEnv::REPLACE );
     conf.getIfSet( "texture_mode", "blend",    _texEnvMode, osg::TexEnv::BLEND );
+
+    // texture atlas support
+    conf.getIfSet( "image_bias_s",        _imageBiasS );
+    conf.getIfSet( "image_bias_t",        _imageBiasT );
+    conf.getIfSet( "image_layer",         _imageLayer );
+    conf.getIfSet( "image_scale_s",       _imageScaleS );
+    conf.getIfSet( "image_scale_t",       _imageScaleT );
 }
 
 Config
@@ -75,11 +87,18 @@ SkinResource::getConfig() const
     conf.updateIfSet( "max_object_height",   _maxObjHeight );
     conf.updateIfSet( "tiled",               _isTiled );
     conf.updateIfSet( "max_texture_span",    _maxTexSpan );
-
+    
     conf.updateIfSet( "texture_mode", "decal",    _texEnvMode, osg::TexEnv::DECAL );
     conf.updateIfSet( "texture_mode", "modulate", _texEnvMode, osg::TexEnv::MODULATE );
     conf.updateIfSet( "texture_mode", "replace",  _texEnvMode, osg::TexEnv::REPLACE );
     conf.updateIfSet( "texture_mode", "blend",    _texEnvMode, osg::TexEnv::BLEND );
+
+    // texture atlas support
+    conf.updateIfSet( "image_bias_s",        _imageBiasS );
+    conf.updateIfSet( "image_bias_t",        _imageBiasT );
+    conf.updateIfSet( "image_layer",         _imageLayer );
+    conf.updateIfSet( "image_scale_s",       _imageScaleS );
+    conf.updateIfSet( "image_scale_t",       _imageScaleT );
 
     return conf;
 }
@@ -98,12 +117,28 @@ SkinResource::createStateSet( osg::Image* image ) const
     if ( image )
     {
         stateSet = new osg::StateSet();
+        
+        osg::Texture* tex;
 
-        osg::Texture* tex = new osg::Texture2D( image );
+        if ( image->r() > 1 )
+        {
+            tex = new osg::Texture2DArray();
+            std::vector<osg::ref_ptr<osg::Image> > layers;
+            ImageUtils::flattenImage(image, layers);
+            for(unsigned i=0; i<layers.size(); ++i)
+                tex->setImage(i, layers[i].get());
+            tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+            tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+        }
+        else
+        {
+            tex = new osg::Texture2D( image );
+            tex->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
+            tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+        }
+
         tex->setUnRefImageDataAfterApply(true);
         tex->setResizeNonPowerOfTwoHint(false);
-        tex->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
-        tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
         stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
 
         if ( _texEnvMode.isSet() )

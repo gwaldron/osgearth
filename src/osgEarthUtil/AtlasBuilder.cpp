@@ -37,10 +37,16 @@ namespace
     struct TextureAtlasBuilderEx : public osgUtil::Optimizer::TextureAtlasBuilder
     {
         typedef AtlasList AtlasListEx;
-
         const AtlasListEx& getAtlasList()
         {
             return _atlasList;
+        }
+        
+        typedef SourceList SourceListEx;
+        typedef Source SourceEx;
+        const SourceListEx& getSourceList()
+        {
+            return _sourceList;
         }
     };
 }
@@ -62,7 +68,9 @@ AtlasBuilder::setSize(unsigned width, unsigned height)
 }
 
 bool
-AtlasBuilder::build(ResourceLibrary* inputLib, Atlas& out) const
+AtlasBuilder::build(const ResourceLibrary* inputLib,
+                    const std::string&     newAtlasURI,
+                    Atlas&                 out          ) const
 {
     if ( !inputLib )
         return false;
@@ -76,16 +84,42 @@ AtlasBuilder::build(ResourceLibrary* inputLib, Atlas& out) const
     // texels between atlased images
     tab.setMargin( 1 );
 
+    // clone the Resource library so we can re-write the URIs and add 
+    // texture matrix information.
+    out._lib = new ResourceLibrary( inputLib->getConfig() );
+    out._lib->initialize( _options );
+    out._lib->uri().unset();
+
+    // store a mapping from atlasbuilder source to skin.
+    typedef std::map<TextureAtlasBuilderEx::SourceEx*, SkinResource*> SourceSkinMap;
+    SourceSkinMap sourceSkins;
+
     // fetch all the skins from the catalog:
     SkinResourceVector skins;
-    inputLib->getSkins( skins );
-    for(SkinResourceVector::const_iterator i = skins.begin(); i != skins.end(); ++i)
+    out._lib->getSkins( skins );
+    for(SkinResourceVector::iterator i = skins.begin(); i != skins.end(); ++i)
     {
-        const SkinResource* skin = i->get();
+        SkinResource* skin = i->get();
         osg::Image* image = skin->createImage( _options );
         if ( image )
         {
+            // ensure we're not trying to atlas an atlas.
+            if ( image->r() > 1 )
+            {
+                OE_WARN << LC <<
+                    "Found an image with more than one layer. You cannot create an "
+                    "altas from another atlas. Stopping." << std::endl;
+                return false;
+            }
+
             tab.addSource( image );
+
+            // re-write the URI to point at our new atlas:
+            skin->imageURI() = newAtlasURI;
+
+            // save the associate so we can come back later:
+            sourceSkins[tab.getSourceList().back().get()] = skin;
+
             OE_INFO << LC << "Added skin: \"" << skin->name() << "\"" << std::endl;
         }
         else
@@ -98,6 +132,7 @@ AtlasBuilder::build(ResourceLibrary* inputLib, Atlas& out) const
     unsigned numSources = tab.getNumSources();
     OE_INFO << LC << "Added " << numSources << " images ... building atlas ..." << std::endl;
 
+    // build the atlas images.
     tab.buildAtlas();
 
     const TextureAtlasBuilderEx::AtlasListEx& atlasList = tab.getAtlasList();
@@ -117,6 +152,7 @@ AtlasBuilder::build(ResourceLibrary* inputLib, Atlas& out) const
     // combine each of the atlas images into the corresponding "r" slot of the composed image:
     for(int r=0; r<(int)atlasList.size(); ++r)
     {
+        // copy the atlas image into the image array:
         osg::Image* atlasImage = atlasList[r]->_image.get();
 
         ImageUtils::PixelReader read (atlasImage);
@@ -125,8 +161,24 @@ AtlasBuilder::build(ResourceLibrary* inputLib, Atlas& out) const
         for(int s=0; s<atlasImage->s(); ++s)
             for(int t=0; t<atlasImage->t(); ++t)
                 write(read(s, t, 0), s, t, r);
+
+        // for each source in this atlas layer, apply its texture matrix info
+        // to the new catalog.
+        for(int k=0; k<atlasList[r]->_sourceList.size(); ++k)
+        {
+            TextureAtlasBuilderEx::SourceEx* source = atlasList[r]->_sourceList[k].get();
+            SourceSkinMap::iterator n = sourceSkins.find(source);
+            if ( n != sourceSkins.end() )
+            {                
+                SkinResource* skin = n->second;
+                skin->imageLayer()  = r;
+                skin->imageBiasS()  = (float)source->_x/(float)atlasImage->s(); //(float)trans.x();
+                skin->imageBiasT()  = (float)source->_y/(float)atlasImage->t(); //(float)trans.y();
+                skin->imageScaleS() = (float)source->_image->s()/(float)atlasImage->s();
+                skin->imageScaleT() = (float)source->_image->t()/(float)atlasImage->t();
+            }
+        }
     }
 
-    out._lib = 0L;
     return true;
 }

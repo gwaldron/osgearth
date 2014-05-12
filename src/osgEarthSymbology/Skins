@@ -79,6 +79,26 @@ namespace osgEarth { namespace Symbology
         optional<bool>& isTiled() { return _isTiled; }
         const optional<bool>& isTiled() const { return _isTiled; }
 
+        /** Image offset within a source atlas (S dimension [0..1]) */
+        optional<float>& imageBiasS() { return _imageBiasS; }
+        const optional<float>& imageBiasS() const { return _imageBiasS; }
+
+        /** Image offset (pixels) within a source atlas (T dimension [0..1]) */
+        optional<float>& imageBiasT() { return _imageBiasT; }
+        const optional<float>& imageBiasT() const { return _imageBiasT; }
+
+        /** Image layer index within a source atlas (R dimension) */
+        optional<unsigned>& imageLayer() { return _imageLayer; }
+        const optional<unsigned>& imageLayer() const { return _imageLayer; }
+
+        /** Image scalke factor within a source atlas (S dimension) */
+        optional<float>& imageScaleS() { return _imageScaleS; }
+        const optional<float>& imageScaleS() const { return _imageScaleS; }
+
+        /** Image scalke factor within a source atlas (T dimension) */
+        optional<float>& imageScaleT() { return _imageScaleT; }
+        const optional<float>& imageScaleT() const { return _imageScaleT; }
+
         /** GL texture application mode */
         optional<osg::TexEnv::Mode>& texEnvMode() { return _texEnvMode; }
         const optional<osg::TexEnv::Mode>& texEnvMode() const { return _texEnvMode; }
@@ -106,6 +126,11 @@ namespace osgEarth { namespace Symbology
         optional<bool>              _isTiled;
         optional<osg::TexEnv::Mode> _texEnvMode;
         optional<unsigned>          _maxTexSpan;
+        optional<float>             _imageBiasS;
+        optional<float>             _imageBiasT;
+        optional<unsigned>          _imageLayer;
+        optional<float>             _imageScaleS;
+        optional<float>             _imageScaleT;
     };
 
 

@@ -133,9 +133,11 @@ namespace osgEarth { namespace Symbology
         void mergeConfig( const Config& conf );
         Config getConfig() const;
 
+        optional<URI>& uri() { return _uri; }
+        const optional<URI>& uri() const { return _uri; }
+
     protected:
         typedef std::map< const Symbol*, Random > RandomMap;
-
         optional<URI>                      _uri;
         std::string                        _name;
         bool                               _initialized;

@@ -84,8 +84,7 @@ void TileVisitor::run( const Profile* mapProfile )
     
     // Reset the progress in case this visitor has been ran before.
     resetProgress();
-
-    // Estimate the number of tiles we're going to actually generate.
+    
     estimate();
 
     // Get all the root keys and process them.
@@ -113,7 +112,7 @@ void TileVisitor::estimate()
 }
 
 void TileVisitor::processKey( const TileKey& key )
-{
+{        
     // If we've been cancelled then just return.
     if (_progress && _progress->isCanceled())
     {        
@@ -122,21 +121,29 @@ void TileVisitor::processKey( const TileKey& key )
 
     unsigned int x, y, lod;
     key.getTileXY(x, y);
-    lod = key.getLevelOfDetail();
-
-    bool traverseChildren = true;
+    lod = key.getLevelOfDetail();    
 
     // Only process this key if it has a chance of succeeding.
     if (_tileHandler && !_tileHandler->hasData(key))
-    {        
+    {                
         return;
-    }
+    }    
 
-    // Check to see if this key is within valid range.
-    if ( _minLevel <= lod && _maxLevel >= lod && intersects( key.getExtent() ) )
-    {        
-        // Process the key
-        traverseChildren = handleTile( key );        
+    bool traverseChildren = false;
+
+    // If the key intersects the extent attempt to traverse
+    if (intersects( key.getExtent() ))
+    {
+        // If the lod is less than the min level don't do anything but do traverse the children.
+        if (lod < _minLevel)
+        {
+            traverseChildren = true;
+        }
+        else
+        {         
+            // Process the key
+            traverseChildren = handleTile( key );        
+        }
     }
 
     // Traverse the children
@@ -167,7 +174,7 @@ void TileVisitor::incrementProgress(unsigned int amount)
 }
 
 bool TileVisitor::handleTile( const TileKey& key )
-{
+{    
     bool result = false;
     if (_tileHandler.valid() )
     {

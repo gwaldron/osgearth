@@ -21,6 +21,7 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarth/DepthOffset>
+#include <osgEarth/VirtualProgram>
 #include <osgDB/FileNameUtils>
 #include <osgUtil/Optimizer>
 
@@ -113,6 +114,9 @@ public:
                 group->addChild( node );
             }
         }
+
+        VirtualProgram* vp = VirtualProgram::getOrCreate(group->getOrCreateStateSet());
+        vp->setInheritShaders( false );
 
         return group;
     }

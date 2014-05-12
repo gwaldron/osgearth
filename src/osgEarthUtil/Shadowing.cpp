@@ -30,7 +30,9 @@ using namespace osgEarth::Util;
 
 ShadowCaster::ShadowCaster() :
 _size        ( 1024 ),
-_texImageUnit( 7 )
+_texImageUnit( 7 ),
+_blurFactor  ( 0.0f ),
+_color       ( osg::Vec4f(.25f, .25f, .25f, 1.f) )
 {
     _castingGroup = new osg::Group();
 
@@ -38,8 +40,8 @@ _texImageUnit( 7 )
     _ranges.push_back(0.0f);
     _ranges.push_back(250.0f);
     _ranges.push_back(500.0f);
-    _ranges.push_back(1000.0f);
-    _ranges.push_back(5000.0f);
+    _ranges.push_back(1250.0f);
+    //_ranges.push_back(5000.0f);
 
     reinitialize();
 }
@@ -63,6 +65,20 @@ ShadowCaster::setTextureSize(unsigned size)
 {
     _size = size;
     reinitialize();
+}
+
+void
+ShadowCaster::setBlurFactor(float value)
+{
+    _blurFactor = value;
+    _shadowBlurUniform->set(value);
+}
+
+void
+ShadowCaster::setShadowColor(const osg::Vec4f& value)
+{
+    _color = value;
+    _shadowColorUniform->set(value);
 }
 
 void
@@ -119,11 +135,9 @@ ShadowCaster::reinitialize()
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "uniform mat4 oe_shadow_matrix[" << numSlices << "]; \n"
-        "varying float oe_shadow_ambient; \n"
         "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
         "void oe_shadow_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
-        "    oe_shadow_ambient = 0.5; \n"
         "    for(int i=0; i<" << numSlices << "; ++i) \n"
         "        oe_shadow_coord[i] = oe_shadow_matrix[i] * VertexVIEW;\n"
         "} \n";
@@ -133,12 +147,12 @@ ShadowCaster::reinitialize()
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#extension GL_EXT_texture_array : enable \n"
         "uniform sampler2DArray oe_shadow_map; \n"
+        "uniform vec4 oe_shadow_color; \n"
         "uniform float oe_shadow_blur; \n"
-        "varying float oe_shadow_ambient; \n"
         "varying vec3 oe_Normal; \n"
         "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
 
-        // slow. revisit.
+        // slow PCF sampling.
         "float oe_shadow_multisample(in vec3 c, in float refvalue, in float blur) \n"
         "{ \n"
         "    float shadowed = 0.0; \n"
@@ -183,7 +197,7 @@ ShadowCaster::reinitialize()
         "        } \n"
         "    } \n"
 
-        "    vec4 colorInFullShadow = color * oe_shadow_ambient; \n"
+        "    vec4 colorInFullShadow = color * oe_shadow_color; \n"
         "    color = mix(colorInFullShadow, color, factor); \n"
         "    color.a = alpha;\n"
         "}\n";
@@ -206,11 +220,6 @@ ShadowCaster::reinitialize()
         osg::Uniform::FLOAT_MAT4,
         numSlices );
 
-    // default blurring uniform. You can override this from above.
-    _renderStateSet->getOrCreateUniform(
-        "oe_shadow_blur", 
-        osg::Uniform::FLOAT)->set( 0.0f );
-
     // bind the shadow map texture itself:
     _renderStateSet->setTextureAttribute(
         _texImageUnit,
@@ -218,6 +227,20 @@ ShadowCaster::reinitialize()
         osg::StateAttribute::ON );
 
     _renderStateSet->addUniform( new osg::Uniform("oe_shadow_map", _texImageUnit) );
+
+    // blur factor:
+    _shadowBlurUniform = _renderStateSet->getOrCreateUniform(
+        "oe_shadow_blur",
+        osg::Uniform::FLOAT);
+
+    _shadowBlurUniform->set(_blurFactor);
+
+    // shadow color:
+    _shadowColorUniform = _renderStateSet->getOrCreateUniform(
+        "oe_shadow_color",
+        osg::Uniform::FLOAT_VEC4);
+
+    _shadowColorUniform->set(_color);
 }
 
 void

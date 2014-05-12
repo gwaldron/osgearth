@@ -77,6 +77,21 @@ namespace osgEarth { namespace Util
         unsigned getTextureSize() const { return _size; }
         void setTextureSize(unsigned size);
 
+        /**
+         * The ambient color of the shadow. This is blended with the fragment
+         * color to achieve shadowing. Default is 0x7f7f7fff
+         */
+        void setShadowColor(const osg::Vec4f& value);
+        const osg::Vec4f& getShadowColor() const { return _color; }
+
+        /**
+         * The blurring factor to apply to shadow PCF sampling. Using a blurring
+         * factor will incur a GPU performance penalty. Default is 0.0.
+         * Decent values are [0.0 -> 0.001].
+         */
+        void setBlurFactor(float value);
+        float getBlurFactor() const { return _blurFactor; }
+
 
     public: // osg::Node
 
@@ -89,6 +104,8 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<osg::Group>                _castingGroup;
         unsigned                                _size;
+        float                                   _blurFactor;
+        osg::Vec4f                              _color;
         osg::ref_ptr<osg::Light>                _light;
         osg::ref_ptr<osg::Texture2DArray>       _shadowmap;
         osg::ref_ptr<osg::StateSet>             _rttStateSet;
@@ -99,6 +116,8 @@ namespace osgEarth { namespace Util
         int                         _texImageUnit;
         osg::ref_ptr<osg::StateSet> _renderStateSet;
         osg::ref_ptr<osg::Uniform>  _shadowMapTexGenUniform;
+        osg::ref_ptr<osg::Uniform>  _shadowBlurUniform;
+        osg::ref_ptr<osg::Uniform>  _shadowColorUniform;
     };
 
 } } // namespace osgEarth::Util

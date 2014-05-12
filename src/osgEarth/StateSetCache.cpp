@@ -25,6 +25,10 @@
 
 #define DEFAULT_PRUNE_ACCESS_COUNT 40
 
+#if OSG_MIN_VERSION_REQUIRED(3,1,4)
+#   define SHARE_STATESETS 1
+#endif
+
 using namespace osgEarth;
 
 //---------------------------------------------------------------------------
@@ -52,7 +56,7 @@ namespace
 
     bool isEligible(osg::StateSet* stateSet)
     {
-#if OSG_MIN_VERSION_REQUIRED(3,1,4)
+#ifdef SHARE_STATESETS
         if ( !stateSet )
             return false;
 
@@ -266,7 +270,7 @@ StateSetCache::optimize(osg::Node* node)
         ShareStateAttributes v1( this );
         node->accept( v1 );
 
-#if OSG_MIN_VERSION_REQUIRED(3,1,4)
+#ifdef SHARE_STATESETS
         // replace all equivalent static statesets with a single instance
         // only supported in OSG 3.1.4+ because of the Uniform mutex 
         // protection.

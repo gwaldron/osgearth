@@ -64,7 +64,7 @@ namespace osgEarth
             LOCATION_FRAGMENT_OUTPUT = 5
         };
 
-        // set of user functions, ordered by priority.
+        // ordered set of user functions.
         typedef std::multimap<float, std::string> OrderedFunctionMap; // duplicate keys allowed
 
         // user function sets, categorized by function location.
@@ -119,19 +119,19 @@ namespace osgEarth
          * Call this method (rather than setShader directly) to inject "user" functions into the
          * shader program.
          *
-         * name:     Name of the function. This should be the actual function name in the shader source.
-         * source:   The shader source code.
-         * location: Function location relative to the built-ins.
-         * priority: Lets you control the order of functions that you inject at the same location.
-         *           The default priority is 1.0. Note that many of osgEarth's built-in shaders (like
-         *           those that render the terrain) use priority 0.0 so that by default they run before
-         *           user-injected functions.
+         * name:      Name of the function. This should be the actual function name in the shader source.
+         * source:    The shader source code.
+         * location:  Function location relative to the built-ins.
+         * order:     Lets you control the order of functions that you inject at the same location.
+         *            The default order is 1.0. Note that many of osgEarth's built-in shaders (like
+         *            those that render the terrain) use order=0.0 so that by default they run before
+         *            user-injected functions by default.
          */
         void setFunction( 
             const std::string&           name,
             const std::string&           source, 
             ShaderComp::FunctionLocation loc,
-            float                        priority =1.0f );
+            float                        order =1.0f );
 
         /**
          * Whether this VP should inherit shaders from parent state sets. This is

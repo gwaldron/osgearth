@@ -22,6 +22,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/Containers>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/State>
@@ -38,6 +39,63 @@ using namespace osgEarth::ShaderComp;
 //#define OE_TEST OE_NOTICE
 //#define USE_ATTRIB_ALIASES
 //#define DEBUG_APPLY_COUNTS
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    /**
+     * A thread-safe object sharing container for osg::StateAttribute's.
+     */
+    template<typename T>
+    struct SAUniqueRepo
+    {
+        struct SALess {
+            bool operator()(const osg::ref_ptr<T>& lhs, const osg::ref_ptr<T>& rhs) const {
+                int r = lhs->compare(*(rhs.get()));
+                return r < 0;
+            }
+        };
+
+        typedef std::set<osg::ref_ptr<T>, SALess> SAUniqueSet;
+        SAUniqueSet _set;
+        Threading::Mutex _mx;
+
+        void share(osg::ref_ptr<T>& obj)
+        {
+            _mx.lock();
+            std::pair<SAUniqueSet::iterator,bool> r = _set.insert(obj);
+            if (r.second == false)
+            {
+                obj = r.first->get();
+                OE_DEBUG << "Shared a program; repo size = " << _set.size() << std::endl;
+            }
+            else
+            {
+                OE_DEBUG << "Added a program; repo size = " << _set.size() << std::endl;
+            }
+            _mx.unlock();
+        }
+
+        void prune()
+        {
+            _mx.lock();
+            for(SAUniqueSet::iterator i=_set.begin(); i!=_set.end(); )
+            {
+                if ( !i->valid() )
+                    _set.erase( i );
+                else
+                    ++i;
+            }
+            _mx.unlock();
+        }
+    };
+
+    typedef SAUniqueRepo<osg::Program> ProgramSharedRepo;
+
+    // global/static repo.
+    static ProgramSharedRepo s_programRepo;
+}
 
 //------------------------------------------------------------------------
 
@@ -586,7 +644,8 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
 
     for (ProgramMap::const_iterator i = _programCache.begin(); i != _programCache.end(); ++i)
     {
-        i->second->releaseGLObjects(state);
+        if ( i->second->referenceCount() == 1 )
+            i->second->releaseGLObjects(state);
     }
 }
 
@@ -668,7 +727,7 @@ void
 VirtualProgram::setFunction(const std::string& functionName,
                             const std::string& shaderSource,
                             FunctionLocation   location,
-                            float              priority)
+                            float              ordering)
 {
     // set the inherit flag if it's not initialized
     if ( !_inheritSet )
@@ -698,7 +757,7 @@ VirtualProgram::setFunction(const std::string& functionName,
             }
         }
         
-        ofm.insert( std::pair<float,std::string>( priority, functionName ) );
+        ofm.insert( std::pair<float,std::string>( ordering, functionName ) );
 
         // create and add the new shader function.
         osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_CLIP ?
@@ -909,6 +968,10 @@ VirtualProgram::apply( osg::State& state ) const
                         accumAttribAliases, 
                         _template.get(),
                         keyVector);
+
+                    // global sharing.
+                    s_programRepo.share(program);
+                    s_programRepo.prune();
 
                     // finally, put own new program in the cache.
                     _programCache[ keyVector ] = program;

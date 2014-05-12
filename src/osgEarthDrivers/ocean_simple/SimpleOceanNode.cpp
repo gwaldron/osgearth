@@ -174,10 +174,6 @@ SimpleOceanNode::rebuild()
         VirtualProgram* vp = VirtualProgram::getOrCreate( ss );
         vp->setName( "osgEarth SimpleOcean" );
 
-        // install a default lighting shader
-        // TODO: eventually deprecate this.
-        Registry::shaderFactory()->installLightingShaders( vp );
-
         // use the appropriate shader for the active technique:
         std::string vertSource = _options.maskLayer().isSet() ? source_vertMask : source_vertProxy;
         std::string fragSource = _options.maskLayer().isSet() ? source_fragMask : source_fragProxy;

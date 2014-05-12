@@ -355,17 +355,6 @@ MapNode::init()
 
     dirtyBound();
 
-#if 0
-    // Install a default lighting shader program.
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
-        vp->setName( "osgEarth.MapNode" );
-
-        Registry::shaderFactory()->installLightingShaders( vp );
-    }
-#endif
-
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 

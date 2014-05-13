@@ -51,20 +51,20 @@ namespace
     struct SAUniqueRepo
     {
         struct SALess {
-            bool operator()(const osg::ref_ptr<typename T>& lhs, const osg::ref_ptr<typename T>& rhs) const {
+            bool operator()(const osg::ref_ptr<T>& lhs, const osg::ref_ptr<T>& rhs) const {
                 int r = lhs->compare(*(rhs.get()));
                 return r < 0;
             }
         };
 
-        typedef std::set<osg::ref_ptr<typename T>, SALess> SAUniqueSet;
+        typedef std::set<osg::ref_ptr<T>, SALess> SAUniqueSet;
         SAUniqueSet _set;
         Threading::Mutex _mx;
 
-        void share(osg::ref_ptr<typename T>& obj)
+        void share(osg::ref_ptr<T>& obj)
         {
             _mx.lock();
-            std::pair<SAUniqueSet::iterator,bool> r = _set.insert(obj);
+            std::pair<typename SAUniqueSet::iterator,bool> r = _set.insert(obj);
             if (r.second == false)
             {
                 obj = r.first->get();
@@ -80,7 +80,7 @@ namespace
         void prune()
         {
             _mx.lock();
-            for(SAUniqueSet::iterator i=_set.begin(); i!=_set.end(); )
+            for(typename SAUniqueSet::iterator i=_set.begin(); i!=_set.end(); )
             {
                 if ( !i->valid() )
                     _set.erase( i );

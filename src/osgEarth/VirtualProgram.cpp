@@ -64,7 +64,7 @@ namespace
         void share(osg::ref_ptr<T>& obj)
         {
             _mx.lock();
-            std::pair<SAUniqueSet::iterator,bool> r = _set.insert(obj);
+            std::pair<typename SAUniqueSet::iterator,bool> r = _set.insert(obj);
             if (r.second == false)
             {
                 obj = r.first->get();
@@ -80,7 +80,7 @@ namespace
         void prune()
         {
             _mx.lock();
-            for(SAUniqueSet::iterator i=_set.begin(); i!=_set.end(); )
+            for(typename SAUniqueSet::iterator i=_set.begin(); i!=_set.end(); )
             {
                 if ( !i->valid() )
                     _set.erase( i );

@@ -11,8 +11,9 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(HEADERS_ROOT
 	ActivityMonitorTool
     AnnotationEvents
-    AutoClipPlaneHandler
+    AutoClipPlaneHandler	
     ArcGIS
+    AtlasBuilder
     Common
     Controls
     ContourMap
@@ -46,7 +47,6 @@ SET(HEADERS_ROOT
 	Shadowing
 	SimplexNoise
     Sky
-#    SkyNode
     SpatialData
     StarData
     TerrainProfile
@@ -69,6 +69,7 @@ SET(SOURCES_ROOT
 	ActivityMonitorTool.cpp
     AnnotationEvents.cpp
     ArcGIS.cpp
+    AtlasBuilder.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp

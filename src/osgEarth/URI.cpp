@@ -121,8 +121,11 @@ URIContext::apply( osgDB::Options* options )
 {
     if ( options )
     {
-        options->setDatabasePath( _referrer );
-        options->setPluginStringData( "osgEarth::URIContext::referrer", _referrer );
+        if (_referrer.empty() == false)
+        {
+            options->setDatabasePath( _referrer );
+            options->setPluginStringData( "osgEarth::URIContext::referrer", _referrer );
+        }
     }
 }
 

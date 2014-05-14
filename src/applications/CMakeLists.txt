@@ -82,6 +82,7 @@ ADD_SUBDIRECTORY(osgearth_terraineffects)
 ADD_SUBDIRECTORY(osgearth_mrt)
 ADD_SUBDIRECTORY(osgearth_fog)
 ADD_SUBDIRECTORY(osgearth_shadergen)
+ADD_SUBDIRECTORY(osgearth_atlas)
 
 IF (Qt5Widgets_FOUND OR QT4_FOUND AND NOT ANDROID AND OSGEARTH_USE_QT)
     ADD_SUBDIRECTORY(osgearth_qt)

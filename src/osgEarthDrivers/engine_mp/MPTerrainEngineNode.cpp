@@ -723,18 +723,18 @@ MPTerrainEngineNode::updateState()
                 << (useTerrainColor ?
                 "    color = oe_terrain_color; \n" : ""
                 ) <<
-                //"    color = vec4(1,1,1,1); \n"
                 "    vec4 texel; \n"
                 "    if ( oe_layer_uid >= 0 ) { \n"
                 "        texel = texture2D(oe_layer_tex, oe_layer_texc.st); \n"
                 "        texel.a *= oe_layer_opacity; \n"
                 "    } \n"
-                "    else \n"
+                "    else { \n"
                 "        texel = color; \n"
-                "    "
+                "    }\n"
                 << (useBlending ?
-                "    if ( oe_layer_order == 0 ) \n"
+                "    if ( oe_layer_order == 0 ) { \n"
                 "        color = texel*texel.a + color*(1.0-texel.a); \n" // simulate src_alpha, 1-src_alpha blens
+                "    } \n"
                 "    else \n" : ""
                 ) <<
                 "        color = texel; \n"

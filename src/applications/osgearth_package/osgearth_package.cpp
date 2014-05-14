@@ -320,6 +320,7 @@ makeTMS( osg::ArgumentParser& args )
 
     // Setup a TMSPackager with all the options.
     TMSPackager packager;
+    packager.setExtension(extension);
     packager.setVisitor(visitor);
     packager.setDestination(rootFolder);    
     packager.setElevationPixelDepth(elevationPixelDepth);

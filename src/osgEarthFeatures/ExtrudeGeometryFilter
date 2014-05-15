@@ -208,7 +208,8 @@ namespace osgEarth { namespace Features
 
         bool buildOutlineGeometry(const Structure&  structure,
                                   osg::Geometry*    outline,
-                                  const osg::Vec4&  outlineColor);
+                                  const osg::Vec4&  outlineColor,
+                                  float             minCreaseAngleDeg);
 
 #if 0
         bool extrudeGeometry(

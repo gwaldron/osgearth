@@ -415,11 +415,15 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             if ( ++next_corner == corners.end() )
                 next_corner = corners.begin();
             
-            faces.push_back(Face());
-            Face& face = faces.back();
-            face.left  = *this_corner;
-            face.right = *next_corner;
-            face.widthM = next_corner->offsetX - this_corner->offsetX;
+            // only close the shape for polygons.
+            if (next_corner != corners.begin() || structure.isPolygon)
+            {
+                faces.push_back(Face());
+                Face& face = faces.back();
+                face.left  = *this_corner;
+                face.right = *next_corner;
+                face.widthM = next_corner->offsetX - this_corner->offsetX;
+            }
         }
     }
 
@@ -614,10 +618,11 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
 bool
 ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
                                             osg::Geometry*    outline,
-                                            const osg::Vec4&  outlineColor)
+                                            const osg::Vec4&  outlineColor,
+                                            float             minCreaseAngleDeg)
 {
     // minimum angle between adjacent faces for which to draw a post.
-    const float cosMinAngle = cos(osg::DegreesToRadians(45.0));
+    const float cosMinAngle = cos(osg::DegreesToRadians(minCreaseAngleDeg));
 
     osg::Vec3Array* verts = new osg::Vec3Array();
     outline->setVertexArray( verts );
@@ -642,7 +647,7 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( f->left.isFromSource )
             {
                 bool drawPost     = true;
-                bool drawCrossbar = (structure.isPolygon || (f+1) != e->faces.end());
+                bool drawCrossbar = true;
 
                 osg::Vec3d this_vec = f->right.roof - f->left.roof;
                 this_vec.normalize();
@@ -679,6 +684,17 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
 
                 prev_vec = this_vec;
             }
+        }
+
+        if ( !structure.isPolygon )
+        {
+            Faces::const_iterator last = e->faces.end()-1;
+            verts->push_back( last->right.roof );
+            color->push_back( outlineColor );
+            de->addElement( verts->size()-1 );
+            verts->push_back( last->right.base );
+            color->push_back( outlineColor );
+            de->addElement( verts->size()-1 );
         }
     }
 
@@ -1320,7 +1336,8 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             if ( outlines.valid() )
             {
-                buildOutlineGeometry(structure, outlines.get(), outlineColor);
+                float minCreaseAngle = _outlineSymbol->creaseAngle().value();
+                buildOutlineGeometry(structure, outlines.get(), outlineColor, minCreaseAngle);
             }
 
             if ( baselines.valid() )

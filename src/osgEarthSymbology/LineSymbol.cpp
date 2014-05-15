@@ -27,7 +27,8 @@ OSGEARTH_REGISTER_SIMPLE_SYMBOL(line, LineSymbol);
 LineSymbol::LineSymbol( const Config& conf ) :
 Symbol       ( conf ),
 _stroke      ( Stroke() ),
-_tessellation( 0 )
+_tessellation( 0 ),
+_creaseAngle ( 0.0f )
 {
     mergeConfig(conf);
 }
@@ -39,6 +40,7 @@ LineSymbol::getConfig() const
     conf.key() = "line";
     conf.addObjIfSet("stroke",       _stroke);
     conf.addIfSet   ("tessellation", _tessellation);
+    conf.addIfSet   ("crease_angle", _creaseAngle);
     return conf;
 }
 
@@ -47,6 +49,7 @@ LineSymbol::mergeConfig( const Config& conf )
 {
     conf.getObjIfSet("stroke",       _stroke);
     conf.getIfSet   ("tessellation", _tessellation);
+    conf.getIfSet   ("crease_angle", _creaseAngle);
 }
 
 void
@@ -94,5 +97,8 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "stroke-stipple-pattern") ||
               match(c.key(), "stroke-stipple") ) {
         style.getOrCreate<LineSymbol>()->stroke()->stipplePattern() = as<unsigned short>(c.value(), 0xFFFF);
+    }
+    else if ( match(c.key(), "stroke-crease-angle") ) {
+        style.getOrCreate<LineSymbol>()->creaseAngle() = as<float>(c.value(), 45.0);
     }
 }

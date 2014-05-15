@@ -103,6 +103,12 @@ SkinResource::getConfig() const
     return conf;
 }
 
+std::string
+SkinResource::getUniqueID() const
+{
+    return imageURI()->full();
+}
+
 osg::StateSet*
 SkinResource::createStateSet( const osgDB::Options* dbOptions ) const
 {

@@ -38,14 +38,20 @@ ResourceCache::getOrCreateStateSet(SkinResource*                skin,
                                    osg::ref_ptr<osg::StateSet>& output)
 {
     output = 0L;
-    std::string key = skin->getConfig().toJSON(false);
+    //std::string key = skin->getConfig().toJSON(false);
+
+    // Note: we use the imageURI as the basis for the caching key since 
+    // it's the only property used by Skin->createStateSet(). If that
+    // changes, we need to address it here. It might be better it SkinResource
+    // were to provide a unique key.
+    std::string key = skin->getUniqueID();
 
     // exclusive lock (since it's an LRU)
     {
         Threading::ScopedMutexLock exclusive( _skinMutex );
             
         // double check to avoid race condition
-        SkinCache::Record rec;
+        SkinCache::Record rec;       
         if ( _skinCache.get(key, rec) && rec.value().valid() )
         {
             output = rec.value().get();

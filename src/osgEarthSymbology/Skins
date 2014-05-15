@@ -54,6 +54,12 @@ namespace osgEarth { namespace Symbology
          */
         osg::Image* createImage( const osgDB::Options* options ) const;
 
+        /** 
+         * A key string that can uniquely identify this object for the purposes
+         * of creating its state set (e.g., for a cache)
+         */
+        std::string getUniqueID() const;
+
     public:
         /** Source location of the actual texture image.  */
         optional<URI>& imageURI() { return _imageURI; }

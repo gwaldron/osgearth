@@ -26,6 +26,8 @@
 #include <osgEarthSymbology/Expression>
 #include <osgEarthSymbology/Style>
 #include <osg/Geode>
+#include <vector>
+#include <list>
 
 namespace osgEarth { namespace Features 
 {
@@ -97,6 +99,50 @@ namespace osgEarth { namespace Features
 
     protected:
 
+        struct Corner
+        {
+            osg::Vec3d base, roof;
+            float      roofTexU, roofTexV;
+            double     offsetX;
+            float      wallTexHeightAdjusted;
+            bool       isFromSource;
+        };
+        typedef std::list<Corner> Corners; // use a list to prevent iterator invalidation
+
+        struct Face
+        {
+            Corner left;
+            Corner right;
+            double widthM;
+        };
+
+        typedef std::vector<Face> Faces;
+        
+        struct Elevation
+        {
+            Faces  faces;
+            double texHeightAdjustedM;
+
+            unsigned getNumPoints() const {
+                return faces.size() * 6;
+            }
+        };
+        typedef std::vector<Elevation> Elevations;
+
+        struct Structure
+        {
+            Elevations elevations;
+            bool       isPolygon;
+
+            unsigned getNumPoints() const {
+                unsigned c = 0;
+                for(Elevations::const_iterator e = elevations.begin(); e != elevations.end(); ++e ) {
+                    c += e->getNumPoints();
+                }
+                return c;
+            }
+        };
+
         // a set of geodes indexed by stateset pointer, for pre-sorting geodes based on 
         // their texture usage
         typedef std::map<osg::StateSet*, osg::ref_ptr<osg::Geode> > SortedGeodeMap;
@@ -139,7 +185,32 @@ namespace osgEarth { namespace Features
         bool process( 
             FeatureList&     input,
             FilterContext&   context );
+        
+        bool buildStructure(const Geometry*         input,
+                            double                  height,
+                            double                  heightOffset,
+                            bool                    flatten,
+                            const SkinResource*     wallSkin,
+                            const SkinResource*     roofSkin,
+                            Structure&              out_structure,
+                            FilterContext&          cx );
 
+        bool buildWallGeometry(const Structure&     structure,
+                               osg::Geometry*       walls,
+                               const osg::Vec4&     wallColor,
+                               const osg::Vec4&     wallBaseColor,
+                               const SkinResource*  wallSkin);
+
+        bool buildRoofGeometry(const Structure&     structure,
+                               osg::Geometry*       roof,
+                               const osg::Vec4&     roofColor,
+                               const SkinResource*  roofSkin);
+
+        bool buildOutlineGeometry(const Structure&  structure,
+                                  osg::Geometry*    outline,
+                                  const osg::Vec4&  outlineColor);
+
+#if 0
         bool extrudeGeometry(
             const Geometry*      input,
             double               height,
@@ -158,6 +229,7 @@ namespace osgEarth { namespace Features
             const SkinResource*  roofSkin,
             int roofLayer,
             FilterContext&       cx );
+#endif
     };
 
 } } // namespace osgEarth::Features

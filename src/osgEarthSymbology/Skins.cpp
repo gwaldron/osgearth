@@ -122,24 +122,37 @@ SkinResource::createStateSet( osg::Image* image ) const
 
         if ( image->r() > 1 )
         {
-            tex = new osg::Texture2DArray();
+            osg::Texture2DArray* ta = new osg::Texture2DArray();
+            
+            ta->setTextureDepth( image->r() );
+            ta->setTextureWidth( image->s() );
+            ta->setTextureHeight( image->t() );
+            ta->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
+            tex = ta;
+
             std::vector<osg::ref_ptr<osg::Image> > layers;
             ImageUtils::flattenImage(image, layers);
             for(unsigned i=0; i<layers.size(); ++i)
+            {
                 tex->setImage(i, layers[i].get());
+            }
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
             tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+            stateSet->setTextureAttribute( 0, tex, osg::StateAttribute::ON );
         }
         else
         {
             tex = new osg::Texture2D( image );
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
-            tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+            tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );     
+            stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
         }
+        
+        tex->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR_MIPMAP_LINEAR);
+        tex->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
 
         tex->setUnRefImageDataAfterApply(true);
         tex->setResizeNonPowerOfTwoHint(false);
-        stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
 
         if ( _texEnvMode.isSet() )
         {

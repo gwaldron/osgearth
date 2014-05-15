@@ -100,6 +100,13 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     for(SkinResourceVector::iterator i = skins.begin(); i != skins.end(); ++i)
     {
         SkinResource* skin = i->get();
+
+        // skip tiled skins, for now
+        if ( skin->isTiled() == true )
+        {
+            continue;
+        }
+
         osg::Image* image = skin->createImage( _options );
         if ( image )
         {
@@ -137,11 +144,31 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
 
     const TextureAtlasBuilderEx::AtlasListEx& atlasList = tab.getAtlasList();
 
+    // Atlas images are not all the same size. Figure out the largest size
+    unsigned maxS=0, maxT=0;
+
+    for(unsigned r=0; r<atlasList.size(); ++r)
+    {
+        unsigned s = atlasList[r]->_image->s();
+        unsigned t = atlasList[r]->_image->t();
+
+        OE_INFO << LC
+            << "Altas image " << r << ": size = (" << s << ", " << t << ")" << std::endl;
+
+        if ( s > maxS )
+            maxS = s;
+        if ( t > maxT )
+            maxT = t;
+    }
+
+    OE_INFO << LC <<
+        "Final atlas size will be (" << maxS << ", " << maxT << ")" << std::endl;
+
     // create the target multi-layer image.
     out._image = new osg::Image();
     out._image->allocateImage(
-        _width,
-        _height,
+        maxS,
+        maxT,
         atlasList.size(),
         GL_RGBA,
         GL_UNSIGNED_BYTE);
@@ -169,13 +196,13 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             TextureAtlasBuilderEx::SourceEx* source = atlasList[r]->_sourceList[k].get();
             SourceSkinMap::iterator n = sourceSkins.find(source);
             if ( n != sourceSkins.end() )
-            {                
+            {
                 SkinResource* skin = n->second;
                 skin->imageLayer()  = r;
-                skin->imageBiasS()  = (float)source->_x/(float)atlasImage->s(); //(float)trans.x();
-                skin->imageBiasT()  = (float)source->_y/(float)atlasImage->t(); //(float)trans.y();
-                skin->imageScaleS() = (float)source->_image->s()/(float)atlasImage->s();
-                skin->imageScaleT() = (float)source->_image->t()/(float)atlasImage->t();
+                skin->imageBiasS()  = (float)source->_x/(float)maxS;
+                skin->imageBiasT()  = (float)source->_y/(float)maxT;
+                skin->imageScaleS() = (float)source->_image->s()/(float)maxS;
+                skin->imageScaleT() = (float)source->_image->t()/(float)maxT;
             }
         }
     }

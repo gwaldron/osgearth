@@ -1021,7 +1021,7 @@ ShaderGenerator::apply(osg::Texture2DArray* tex, int unit, GenBuffers& buf)
 
     buf.fragHead << "uniform sampler2DArray " SAMPLER << unit << ";\n";
     buf.fragBody << INDENT "texel = texture2DArray(" SAMPLER << unit << ", " TEX_COORD << unit << ".xyz);\n";
-    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D )->set( unit );         
+    buf.stateSet->getOrCreateUniform( Stringify() << SAMPLER << unit, osg::Uniform::SAMPLER_2D_ARRAY )->set( unit );         
 
     return true;
 }

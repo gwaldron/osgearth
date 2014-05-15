@@ -19,13 +19,22 @@
 
 #include <osgEarth/Notify>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/ImageUtils>
 #include <osgEarthUtil/AtlasBuilder>
 #include <osgEarthSymbology/ResourceLibrary>
+#include <osgEarthSymbology/Skins>
 
 #include <osg/ArgumentParser>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
+#include <osgDB/ReadFile>
+#include <osg/Geode>
+#include <osg/Geometry>
+#include <osg/Texture2DArray>
+#include <osgViewer/Viewer>
+#include <osgViewer/ViewerEventHandlers>
+#include <osgText/Text>
 
 #define LC "[atlas] "
 
@@ -44,31 +53,29 @@ usage(const char* msg, const char* name =0L)
         OE_NOTICE
             << name << " will compile an osgEarth resource catalog into a texture atlas."
             << "\nUsage: " << name
-            << "\n      --input catalog.xml      : Input resource catalog file name"
-            << "\n      [--output outfile]       : Output image array file name"
+            << "\n      --build catalog.xml      : Build an atlas from the catalog"
+            << "\n"
+            << "\n      --show  catalog.xml      : Display an atlas built with this tool"
+            << "\n        --layer <num>          : Show layer <num> of the atlas (default = 0)"
+            << "\n        --labels               : Label each atlas entry"
             << std::endl;
     }
 
     return 0;
 }
 
+
 int
-main(int argc, char** argv)
+build(osg::ArgumentParser& arguments)
 {
-    osg::ArgumentParser arguments(&argc,argv);
-
-    // print usage info.
-    if ( arguments.read("--help") )
-        return usage(0L, argv[0]);
-
     // the input resource catalog XML file:
     std::string inCatalogPath;
-    if ( !arguments.read("--input", inCatalogPath) )
-        return usage("Missing required argument --input");
+    if ( !arguments.read("--build", inCatalogPath) )
+        return usage("Missing required argument catalog file");
 
     // the output texture atlas image path:
     std::string inCatalogFile = osgDB::getSimpleFileName(inCatalogPath);
-    std::string outImageFile = osgDB::getNameLessExtension(inCatalogFile) + "_atlas.osgb";
+    std::string outImageFile  = osgDB::getNameLessExtension(inCatalogFile) + "_atlas.osgb";
 
     // the output catalog file describing the texture atlas contents:
     std::string outCatalogFile;
@@ -89,6 +96,10 @@ main(int argc, char** argv)
     osgEarth::Util::AtlasBuilder        builder;
     osgEarth::Util::AtlasBuilder::Atlas atlas;
 
+    unsigned size;
+    if ( arguments.read("--size", size) )
+        builder.setSize( size, size );
+
     if ( !builder.build(lib.get(), outImageFile, atlas) )
         return usage("Failed to build atlas");
 
@@ -108,6 +119,121 @@ main(int argc, char** argv)
     catOut.close();
 
     OE_INFO << LC << "Wrote output catalog to \"" << outCatalogFile<< "\"" << std::endl;
+}
 
+
+int
+show(osg::ArgumentParser& arguments)
+{
+    // find the resource library file:
+    std::string inCatalogFile;
+    if ( !arguments.read("--show", inCatalogFile) )
+        return usage("Missing required catalog file name");
+
+    int layer = 0;
+    arguments.read("--layer", layer);
+
+    bool drawLabels = arguments.read("--labels");
+
+    // open the resource library:
+    osg::ref_ptr<osgEarth::Symbology::ResourceLibrary> lib =
+        new osgEarth::Symbology::ResourceLibrary("temp", osgEarth::URI(inCatalogFile) );
+    if ( lib->initialize(0L) == false )
+        return usage("Failed to load resource catalog");
+
+    // the atlas name is the library name without the extension. Not strictly true
+    // but true if you didn't rename it :)
+    std::string atlasFile = osgDB::getNameLessExtension(inCatalogFile);
+    osg::Image* image = osgDB::readImageFile(atlasFile);
+    if ( !image )
+        return usage("Failed to load atlas image");
+
+    // clamp to max:
+    if ( layer > image->r()-1 )
+    {
+        layer = image->r()-1;
+        OE_WARN << LC << "Maximum layer is " << image->r()-1 << ", displaying layer " << layer 
+            << std::endl;
+    }
+
+    // geometry for the image layer:
+    std::vector<osg::ref_ptr<osg::Image> > images;
+    osgEarth::ImageUtils::flattenImage(image, images);
+    osg::Geode* geode = osg::createGeodeForImage(images[layer].get());
+
+    // geometry for the skins in that layer:
+    osg::Geode* geode2 = new osg::Geode();
+    osg::Geometry* geom = new osg::Geometry();
+    geode2->addDrawable(geom);
+    osg::Vec3Array* v = new osg::Vec3Array();
+    geom->setVertexArray( v );
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0].set(1,1,0,1);
+    geom->setColorArray(c);
+    geom->setColorBinding(geom->BIND_OVERALL);
+    osgEarth::Symbology::SkinResourceVector skins;
+    lib->getSkins(skins);
+    for(unsigned k=0; k<skins.size(); ++k)
+    {
+        if (skins[k]->imageLayer() == layer &&
+            skins[k]->isTiled() == false)
+        {
+            float x = -1.0f + 2.0*skins[k]->imageBiasS().value();
+            float y = -1.0f + 2.0*skins[k]->imageBiasT().value();
+            float s = 2.0*skins[k]->imageScaleS().value();
+            float t = 2.0*skins[k]->imageScaleT().value();
+
+            v->push_back(osg::Vec3(x,     -0.01f, y    ));
+            v->push_back(osg::Vec3(x + s, -0.01f, y    ));
+            v->push_back(osg::Vec3(x + s, -0.01f, y + t));
+            v->push_back(osg::Vec3(x,     -0.01f, y + t));
+
+            geom->addPrimitiveSet(new osg::DrawArrays(GL_LINE_LOOP, v->size()-4, 4));
+
+            if (drawLabels)
+            {
+                osgText::Text* label = new osgText::Text();
+                label->setText(skins[k]->name());
+                label->setPosition(osg::Vec3(x+0.5*s, -0.005f, y+0.5*t));
+                label->setAlignment(label->CENTER_CENTER);
+                label->setAutoRotateToScreen(true);
+                label->setCharacterSizeMode(label->SCREEN_COORDS);
+                label->setCharacterSize(20.0f);
+                label->setFont("arialbd.ttf");
+                geode2->addDrawable(label);
+            }
+        }
+    }
+
+    osg::Group* root = new osg::Group();
+    root->addChild( geode );
+    root->addChild( geode2 );
+
+    root->getOrCreateStateSet()->setMode(GL_LIGHTING, 0);
+    root->getOrCreateStateSet()->setMode(GL_CULL_FACE, 0);
+
+    osgViewer::Viewer viewer;
+    viewer.setSceneData( root );
+    viewer.addEventHandler(new osgViewer::StatsHandler());
+    viewer.run();
     return 0;
+}
+
+
+int
+main(int argc, char** argv)
+{
+    osg::ArgumentParser arguments(&argc,argv);
+
+    // print usage info.
+    if ( arguments.read("--help") )
+        return usage(0L, argv[0]);
+
+    if (arguments.find("--build") >= 0)
+        return build(arguments);
+
+    if (arguments.find("--show") >= 0)
+        return show(arguments);
+
+    return usage(0L, argv[0]);
 }

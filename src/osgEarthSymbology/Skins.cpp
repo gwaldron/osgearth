@@ -262,7 +262,7 @@ SkinSymbol::parseSLD(const Config& c, Style& style)
     }
 }
 
-
+#if 0
 //---------------------------------------------------------------------------
 SkinTextureArray::SkinTextureArray()
 {        
@@ -340,3 +340,4 @@ void SkinTextureArray::build(SkinResourceVector& skins, const osgDB::Options* db
     }
     _texture = texture;
 }
+#endif

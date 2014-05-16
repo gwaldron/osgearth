@@ -32,7 +32,6 @@
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/Texture2DArray>
-#include <osg/TexEnv>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgText/Text>
@@ -201,7 +200,6 @@ show(osg::ArgumentParser& arguments)
     std::vector<osg::ref_ptr<osg::Image> > images;
     osgEarth::ImageUtils::flattenImage(image, images);
     osg::Geode* geode = osg::createGeodeForImage(images[layer].get());
-    geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, new osg::TexEnv(osg::TexEnv::REPLACE), 1);
 
     // geometry for the skins in that layer:
     osg::Geode* geode2 = new osg::Geode();

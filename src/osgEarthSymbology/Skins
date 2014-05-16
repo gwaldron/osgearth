@@ -196,6 +196,7 @@ namespace osgEarth { namespace Symbology
 
     typedef std::vector< osg::ref_ptr<SkinResource> > SkinResourceVector;
 
+#if 0
     /**
      * Utility class that builds a Texture2DArray from a list of SkinResources
      */
@@ -225,6 +226,7 @@ namespace osgEarth { namespace Symbology
         LayerIndex _layerIndex;
         osg::ref_ptr< osg::Texture2DArray > _texture;
     };
+#endif
 
 } } // namespace osgEarth::Symbology
 

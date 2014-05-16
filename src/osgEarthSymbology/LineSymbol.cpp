@@ -99,6 +99,6 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<LineSymbol>()->stroke()->stipplePattern() = as<unsigned short>(c.value(), 0xFFFF);
     }
     else if ( match(c.key(), "stroke-crease-angle") ) {
-        style.getOrCreate<LineSymbol>()->creaseAngle() = as<float>(c.value(), 45.0);
+        style.getOrCreate<LineSymbol>()->creaseAngle() = as<float>(c.value(), 0.0);
     }
 }

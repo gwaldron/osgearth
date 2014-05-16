@@ -148,7 +148,14 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             else
             {
-                osgEarth::ReadResult r = URI(fileName).readString( options );
+                std::string fullFileName = fileName;
+                if ( !osgDB::containsServerAddress( fileName ) )
+                {
+                    fullFileName = osgDB::findDataFile( fileName, options );
+                    if (fullFileName.empty()) return ReadResult::FILE_NOT_FOUND;
+                }
+
+                osgEarth::ReadResult r = URI(fullFileName).readString( options );
                 if ( r.failed() )
                     return ReadResult::ERROR_IN_READING_FILE;
 
@@ -156,7 +163,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 // reference URI as well..
                 osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
 
-                URIContext( fileName ).apply( myOptions.get() );
+                URIContext( fullFileName ).apply( myOptions.get() );
 
                 std::stringstream in( r.getString() );
                 return readNode( in, myOptions.get() );

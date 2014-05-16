@@ -99,6 +99,7 @@ namespace osgEarth { namespace Features
 
     protected:
 
+        // A Corner is one vertex in the source geometry, extrude from base to roof.
         struct Corner
         {
             osg::Vec3d base, roof;
@@ -109,15 +110,16 @@ namespace osgEarth { namespace Features
         };
         typedef std::list<Corner> Corners; // use a list to prevent iterator invalidation
 
+        // A Face joins to Corners.
         struct Face
         {
             Corner left;
             Corner right;
             double widthM;
         };
-
         typedef std::vector<Face> Faces;
         
+        // An Elevation is a series of related Faces.
         struct Elevation
         {
             Faces  faces;
@@ -129,6 +131,7 @@ namespace osgEarth { namespace Features
         };
         typedef std::vector<Elevation> Elevations;
 
+        // A Structure is a collection of related Elevations.
         struct Structure
         {
             Elevations elevations;

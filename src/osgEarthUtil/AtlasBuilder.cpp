@@ -20,6 +20,8 @@
 #include <osgEarthSymbology/Skins>
 #include <osgEarth/ImageUtils>
 #include <osgDB/Options>
+#include <osgDB/FileNameUtils>
+#include <osgDB/ReadFile>
 #include <osgUtil/Optimizer>
 #include <vector>
 #include <string>
@@ -67,6 +69,12 @@ AtlasBuilder::setSize(unsigned width, unsigned height)
     _height = height;
 }
 
+void
+AtlasBuilder::addAuxFilePattern(const std::string& pattern)
+{
+    _auxPatterns.push_back(pattern);
+}
+
 bool
 AtlasBuilder::build(const ResourceLibrary* inputLib,
                     const std::string&     newAtlasURI,
@@ -76,13 +84,18 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         return false;
 
     // prepare an atlaser:
-    TextureAtlasBuilderEx tab;
+    typedef std::vector<TextureAtlasBuilderEx> TABs;
+    TABs tabs(1 + _auxPatterns.size());
+    TABs::iterator maintab = tabs.begin();
 
-    // maximum size of the texture (x,y)
-    tab.setMaximumAtlasSize( (int)_width, (int)_height );
+    for(TABs::iterator tab = tabs.begin(); tab != tabs.end(); ++tab)
+    {
+        // maximum size of the texture (x,y)
+        tab->setMaximumAtlasSize( (int)_width, (int)_height );
 
-    // texels between atlased images
-    tab.setMargin( 1 );
+        // texels between atlased images
+        tab->setMargin( 1 );
+    }
 
     // clone the Resource library so we can re-write the URIs and add 
     // texture matrix information.
@@ -101,7 +114,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     {
         SkinResource* skin = i->get();
 
-        // skip tiled skins, for now
+        // skip tiled skins for now.
         if ( skin->isTiled() == true )
         {
             continue;
@@ -119,13 +132,58 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                 return false;
             }
 
-            tab.addSource( image );
+            maintab->addSource( image );
+
+            // for each aux pattern, either load and resize the aux image or create
+            // an empty placeholder.
+            TABs::iterator tab = maintab;
+            ++tab;
+            for(std::vector<std::string>::const_iterator pattern = _auxPatterns.begin();
+                pattern != _auxPatterns.end();
+                ++pattern, ++tab)
+            {
+                std::string base = osgDB::getNameLessExtension(skin->imageURI()->full());
+                std::string ext  = osgDB::getFileExtension(skin->imageURI()->base());
+                std::string auxFile = base + "_" + (*pattern) + "." + ext;
+
+                // read in the auxiliary image:
+                osg::ref_ptr<osg::Image> auxImage;
+                auxImage = osgDB::readImageFile( auxFile, _options.get() );
+
+                // if that didn't work, try alternate extensions:
+                const char* alternateExtensions[3] = {"png", "jpg", "osgb"};
+                for(int a = 0; a < 3 && !auxImage.valid(); ++a)
+                {
+                    auxFile = base + "_" + (*pattern) + "." + alternateExtensions[a];
+                    auxImage = osgDB::readImageFile( auxFile, _options.get() );
+                }
+
+                if ( auxImage.valid() )
+                {
+                    OE_INFO << LC << "Found aux file: " << auxFile << std::endl;
+                }
+                else
+                {
+                    // failing that, create an empty one as a placeholder.
+                    auxImage = osgEarth::ImageUtils::createEmptyImage(image->s(), image->t());
+                }
+
+                if ( auxImage->s() != image->s() || auxImage->t() != image->t() )
+                {
+                    osg::ref_ptr<osg::Image> temp;
+                    osgEarth::ImageUtils::resizeImage(auxImage.get(), image->s(), image->t(), temp);
+                    auxImage = temp.get();
+                    OE_INFO << "...resized " << auxFile << " to match atlas size" << std::endl;
+                }
+
+                tab->addSource( auxImage.get() );
+            }
 
             // re-write the URI to point at our new atlas:
             skin->imageURI() = newAtlasURI;
 
             // save the associate so we can come back later:
-            sourceSkins[tab.getSourceList().back().get()] = skin;
+            sourceSkins[maintab->getSourceList().back().get()] = skin;
 
             OE_INFO << LC << "Added skin: \"" << skin->name() << "\"" << std::endl;
         }
@@ -136,21 +194,24 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         }
     }
 
-    unsigned numSources = tab.getNumSources();
+    unsigned numSources = maintab->getNumSources();
     OE_INFO << LC << "Added " << numSources << " images ... building atlas ..." << std::endl;
 
     // build the atlas images.
-    tab.buildAtlas();
+    for(TABs::iterator tab = tabs.begin(); tab != tabs.end(); ++tab )
+    {
+        tab->buildAtlas();
+    }
 
-    const TextureAtlasBuilderEx::AtlasListEx& atlasList = tab.getAtlasList();
+    const TextureAtlasBuilderEx::AtlasListEx& mainAtlasList = maintab->getAtlasList();
 
     // Atlas images are not all the same size. Figure out the largest size
     unsigned maxS=0, maxT=0;
 
-    for(unsigned r=0; r<atlasList.size(); ++r)
+    for(unsigned r=0; r<mainAtlasList.size(); ++r)
     {
-        unsigned s = atlasList[r]->_image->s();
-        unsigned t = atlasList[r]->_image->t();
+        unsigned s = mainAtlasList[r]->_image->s();
+        unsigned t = mainAtlasList[r]->_image->t();
 
         OE_INFO << LC
             << "Altas image " << r << ": size = (" << s << ", " << t << ")" << std::endl;
@@ -164,36 +225,49 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     OE_INFO << LC <<
         "Final atlas size will be (" << maxS << ", " << maxT << ")" << std::endl;
 
-    // create the target multi-layer image.
-    out._image = new osg::Image();
-    out._image->allocateImage(
-        maxS,
-        maxT,
-        atlasList.size(),
-        GL_RGBA,
-        GL_UNSIGNED_BYTE);
-
-    // initialize to all zeros
-    memset(out._image->data(), 0, out._image->getTotalSizeInBytesIncludingMipmaps());
-
-    // combine each of the atlas images into the corresponding "r" slot of the composed image:
-    for(int r=0; r<(int)atlasList.size(); ++r)
+    
+    for(TABs::iterator tab = tabs.begin(); tab != tabs.end(); ++tab )
     {
-        // copy the atlas image into the image array:
-        osg::Image* atlasImage = atlasList[r]->_image.get();
+        const TextureAtlasBuilderEx::AtlasListEx& atlasList = tab->getAtlasList();
 
-        ImageUtils::PixelReader read (atlasImage);
-        ImageUtils::PixelWriter write(out._image.get());
+        // create the target multi-layer image.
+        osg::Image* imageArray = new osg::Image();
 
-        for(int s=0; s<atlasImage->s(); ++s)
-            for(int t=0; t<atlasImage->t(); ++t)
-                write(read(s, t, 0), s, t, r);
+        imageArray->allocateImage(
+            maxS,
+            maxT,
+            atlasList.size(),
+            GL_RGBA,
+            GL_UNSIGNED_BYTE);
 
-        // for each source in this atlas layer, apply its texture matrix info
-        // to the new catalog.
-        for(int k=0; k<atlasList[r]->_sourceList.size(); ++k)
+        // initialize to all zeros
+        memset(imageArray->data(), 0, imageArray->getTotalSizeInBytesIncludingMipmaps());
+
+        // combine each of the atlas images into the corresponding "r" slot of the composed image:
+        for(int r=0; r<(int)atlasList.size(); ++r)
         {
-            TextureAtlasBuilderEx::SourceEx* source = atlasList[r]->_sourceList[k].get();
+            // copy the atlas image into the image array:
+            osg::Image* atlasImage = atlasList[r]->_image.get();
+
+            ImageUtils::PixelReader read (atlasImage);
+            ImageUtils::PixelWriter write(imageArray);
+
+            for(int s=0; s<atlasImage->s(); ++s)
+                for(int t=0; t<atlasImage->t(); ++t)
+                    write(read(s, t, 0), s, t, r);
+        }
+
+        out._images.push_back(imageArray);
+    }
+
+    
+    // for each source in this atlas layer, apply its texture matrix info
+    // to the new catalog.
+    for(int r=0; r<(int)mainAtlasList.size(); ++r)
+    {
+        for(int k=0; k<mainAtlasList[r]->_sourceList.size(); ++k)
+        {
+            TextureAtlasBuilderEx::SourceEx* source = mainAtlasList[r]->_sourceList[k].get();
             SourceSkinMap::iterator n = sourceSkins.find(source);
             if ( n != sourceSkins.end() )
             {

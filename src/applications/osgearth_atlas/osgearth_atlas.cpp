@@ -32,9 +32,13 @@
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/Texture2DArray>
+#include <osg/TexEnv>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgText/Text>
+
+#include <string>
+#include <set>
 
 #define LC "[atlas] "
 
@@ -51,19 +55,27 @@ usage(const char* msg, const char* name =0L)
     if ( name )
     {
         OE_NOTICE
+            << "\n"
             << name << " will compile an osgEarth resource catalog into a texture atlas."
+            << "\n"
             << "\nUsage: " << name
+            << "\n"
             << "\n      --build catalog.xml      : Build an atlas from the catalog"
+            << "\n        --aux <pattern>        : Build an auxiliary atlas for files matching the pattern"
+            << "\n                                 \"filename_pattern.ext\", e.g., \"texture.jpg\" will match"
+            << "\n                                 \"texture_NML.jpg\" for pattern = \"NML\""
             << "\n"
             << "\n      --show  catalog.xml      : Display an atlas built with this tool"
             << "\n        --layer <num>          : Show layer <num> of the atlas (default = 0)"
             << "\n        --labels               : Label each atlas entry"
+            << "\n        --aux <pattern>        : Show atlas matching this auxiliary file pattern"
             << std::endl;
     }
 
     return 0;
 }
 
+//----------------------------------------------------------------------
 
 int
 build(osg::ArgumentParser& arguments)
@@ -96,17 +108,36 @@ build(osg::ArgumentParser& arguments)
     osgEarth::Util::AtlasBuilder        builder;
     osgEarth::Util::AtlasBuilder::Atlas atlas;
 
+    // max x/y dimensions:
     unsigned size;
     if ( arguments.read("--size", size) )
         builder.setSize( size, size );
 
+    // auxiliary atlas patterns:
+    std::string pattern;
+    while(arguments.read("--aux", pattern))
+        builder.addAuxFilePattern(pattern);
+
     if ( !builder.build(lib.get(), outImageFile, atlas) )
         return usage("Failed to build atlas");
 
-    // write the atlas image:
-    // TODO: add compression to the stream?
-    osgDB::writeImageFile(*atlas._image.get(), outImageFile);
+    // write the atlas images.
+    osgDB::writeImageFile(*atlas._images.begin()->get(), outImageFile);
     OE_INFO << LC << "Wrote output image to \"" << outImageFile << "\"" << std::endl;
+    
+    // write any aux images.
+    const std::vector<std::string>& auxPatterns = builder.auxFilePatterns();
+    for(unsigned i=0; i<auxPatterns.size(); ++i)
+    {
+        std::string auxAtlasFile =
+            osgDB::getNameLessExtension(outImageFile) +
+            "_" + auxPatterns[i] + "." +
+            osgDB::getFileExtension(outImageFile);
+
+        osgDB::writeImageFile(*atlas._images[i+1].get(), auxAtlasFile);
+        
+        OE_INFO << LC << "Wrote auxiliary image to \"" << auxAtlasFile << "\"" << std::endl;
+    }
 
     // write the new catalog:
     osgEarth::XmlDocument catXML( atlas._lib->getConfig() );
@@ -121,6 +152,7 @@ build(osg::ArgumentParser& arguments)
     OE_INFO << LC << "Wrote output catalog to \"" << outCatalogFile<< "\"" << std::endl;
 }
 
+//----------------------------------------------------------------------
 
 int
 show(osg::ArgumentParser& arguments)
@@ -133,7 +165,11 @@ show(osg::ArgumentParser& arguments)
     int layer = 0;
     arguments.read("--layer", layer);
 
-    bool drawLabels = arguments.read("--labels");
+    bool drawLabels;
+    drawLabels = arguments.read("--labels");
+
+    std::string auxPattern;
+    arguments.read("--aux", auxPattern);
 
     // open the resource library:
     osg::ref_ptr<osgEarth::Symbology::ResourceLibrary> lib =
@@ -144,22 +180,28 @@ show(osg::ArgumentParser& arguments)
     // the atlas name is the library name without the extension. Not strictly true
     // but true if you didn't rename it :)
     std::string atlasFile = osgDB::getNameLessExtension(inCatalogFile);
+
+    // check for an auxiliary pattern:
+    if ( !auxPattern.empty() )
+    {
+        atlasFile =
+            osgDB::getNameLessExtension(atlasFile) +
+            "_" + auxPattern + "." +
+            osgDB::getFileExtension(atlasFile);
+    }
+
     osg::Image* image = osgDB::readImageFile(atlasFile);
     if ( !image )
         return usage("Failed to load atlas image");
 
-    // clamp to max:
     if ( layer > image->r()-1 )
-    {
-        layer = image->r()-1;
-        OE_WARN << LC << "Maximum layer is " << image->r()-1 << ", displaying layer " << layer 
-            << std::endl;
-    }
+        return usage("Specified layer does not exist");
 
     // geometry for the image layer:
     std::vector<osg::ref_ptr<osg::Image> > images;
     osgEarth::ImageUtils::flattenImage(image, images);
     osg::Geode* geode = osg::createGeodeForImage(images[layer].get());
+    geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, new osg::TexEnv(osg::TexEnv::REPLACE), 1);
 
     // geometry for the skins in that layer:
     osg::Geode* geode2 = new osg::Geode();

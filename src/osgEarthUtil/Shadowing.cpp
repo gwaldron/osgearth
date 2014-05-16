@@ -29,19 +29,18 @@ using namespace osgEarth::Util;
 
 
 ShadowCaster::ShadowCaster() :
-_size        ( 1024 ),
+_size        ( 4096 ),
 _texImageUnit( 7 ),
 _blurFactor  ( 0.0f ),
-_color       ( osg::Vec4f(.25f, .25f, .25f, 1.f) )
+_color       ( osg::Vec4f(.3f, .3f, .3f, 1.f) )
 {
     _castingGroup = new osg::Group();
 
     // defaults to 4 slices.
     _ranges.push_back(0.0f);
-    _ranges.push_back(250.0f);
     _ranges.push_back(500.0f);
-    _ranges.push_back(1250.0f);
-    //_ranges.push_back(5000.0f);
+    _ranges.push_back(1750.0f);
+    _ranges.push_back(5000.0f);
 
     reinitialize();
 }
@@ -109,7 +108,6 @@ ShadowCaster::reinitialize()
     {
         osg::Camera* rtt = new osg::Camera();
         rtt->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
-        //rtt->setClearColor( osg::Vec4f(0,0,0,0) );
         rtt->setClearDepth( 1.0 );
         rtt->setClearMask( GL_DEPTH_BUFFER_BIT );
         rtt->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );

@@ -230,6 +230,7 @@ LevelDBCacheBin::readImage(const std::string& key, TimeStamp minTime)
 ReadResult
 LevelDBCacheBin::readObject(const std::string& key, TimeStamp minTime)
 {
+    //OE_INFO << LC << "Read attempt: " << key << " from " << getID() << std::endl;
     return read(key, minTime, ObjectReader(_rw.get(), _rwOptions.get()));
 }
 
@@ -265,7 +266,11 @@ LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& r
             DateTime t( metadata.value(TIME_FIELD) );
             if ( t.asTimeStamp() < minValidTime )
             {
-                OE_DEBUG << LC << "Tile " << key << " found but expired!" << std::endl;
+                if ( _debug )
+                {
+                    OE_NOTICE << LC << "Found (" << key << ") in bin " << getID() << " ... EXPIRED!" << std::endl;
+                }
+
                 return ReadResult(ReadResult::RESULT_EXPIRED);
             }
         }
@@ -293,8 +298,11 @@ LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& r
         OE_WARN << LC << "Read failure - bad key?" << std::endl;
         return ReadResult(ReadResult::RESULT_READER_ERROR);
     }
-
-    OE_DEBUG << LC << "Read (" << key << ") from cache bin " << getID() << std::endl;
+        
+    if ( _debug )
+    {
+        OE_NOTICE << LC << "Read (" << key << ") from bin " << getID() << std::endl;
+    }
 
     // if there's a size limit, we need to 'touch' the record.
     if ( _tracker->hasSizeLimit() )
@@ -379,15 +387,18 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
         {
             ++_tracker->writes;
             postWrite();
-
-            OE_DEBUG << LC << "Wrote (" << dataKey(key) << ") to cache bin " << getID() << std::endl;
+            
+            if ( _debug )
+            {
+                OE_NOTICE << LC << "Wrote (" << dataKey(key) << ") to bin " << getID() << std::endl;
+            }
         }
     }
 
         
     if ( !objWriteOK )
     {
-        OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin " << getID()
+        OE_WARN << LC << "FAILED to write \"" << key << "\" to bin " << getID()
             << "; msg = \"" << r.message() << "\"" << std::endl;
     }
 
@@ -408,7 +419,7 @@ LevelDBCacheBin::postWrite()
                 if (_debug)
                 {
                     off_t size = _tracker->calcSize();
-                    OE_INFO 
+                    OE_NOTICE 
                         << LC << "Cache size = " << (size/1048576) << " MB; " 
                         << "Hit ratio = " << (float)_tracker->hits/(float)_tracker->reads << std::endl;
                 }
@@ -421,7 +432,7 @@ LevelDBCacheBin::postWrite()
                 off_t size = _tracker->calcSize();
                 if ( _debug )
                 {
-                    OE_INFO 
+                    OE_NOTICE 
                         << LC << "Cache size = " << (size/1048576) << " MB; " 
                         << "Hit ratio = " << (float)_tracker->hits/(float)_tracker->reads << std::endl;
                 }
@@ -487,8 +498,12 @@ LevelDBCacheBin::remove(const std::string& key)
     leveldb::Status status = _db->Write(leveldb::WriteOptions(), &batch);
     if ( !status.ok() )
     {
-        OE_WARN << LC << "Failed to remove (" << key << ") from cache" << std::endl;
+        OE_WARN << LC << "Failed to remove (" << key << ") from bin " << getID() << std::endl;
         return false;
+    }
+    else if ( _debug )
+    {
+        OE_NOTICE << LC << "Removed (" << key << ") from bin " << getID() << std::endl;
     }
 
     return true;
@@ -526,7 +541,11 @@ LevelDBCacheBin::touch(const std::string& key)
     leveldb::Status status = _db->Write(leveldb::WriteOptions(), &batch);
     if ( !status.ok() )
     {
-        OE_WARN << LC << "Failed to touch (" << key << ")" << std::endl;
+        OE_WARN << LC << "Failed to touch (" << key << ") in bin " << getID() << std::endl;
+    }
+    else if ( _debug )
+    {
+        OE_NOTICE << LC << "Touched (" << key << ") in bin " << getID() << std::endl;
     }
     return status.ok();
 }
@@ -550,6 +569,12 @@ LevelDBCacheBin::clear()
         }
     }
     delete i;
+
+    if ( _debug )
+    {
+        OE_NOTICE << LC << "Cleared bin " << getID() << std::endl;
+    }
+
     return true;
 }
 

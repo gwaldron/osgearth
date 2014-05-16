@@ -37,7 +37,12 @@ namespace osgEarth { namespace Util
     public:
         struct Atlas
         {
-            osg::ref_ptr<osg::Image> _image;
+            // resulting atlas images. The first one is the master atlas image;
+            // any following ones correspond to images created based on auxiliary
+            // patterns added with addAuxFilePattern.
+            std::vector<osg::ref_ptr<osg::Image> >             _images;
+
+            // resulting resource library for the atlas
             osg::ref_ptr<osgEarth::Symbology::ResourceLibrary> _lib;
         };
 
@@ -47,6 +52,12 @@ namespace osgEarth { namespace Util
 
         /** Sets the maximum size of each layer in the output atlas */
         void setSize(unsigned width, unsigned height);
+
+        /** Adds an auxiliary file pattern that should be built. */
+        void addAuxFilePattern(const std::string& pattern);
+
+        /** List of aux file patterns */
+        const std::vector<std::string>& auxFilePatterns() const { return _auxPatterns; }
 
         /** Builds an atlas. */
         bool build(
@@ -59,6 +70,7 @@ namespace osgEarth { namespace Util
         unsigned _width;
         unsigned _height;
         osg::ref_ptr<const osgDB::Options> _options;
+        std::vector<std::string> _auxPatterns;
     };
 
 } } // namespace osgEarth::Util

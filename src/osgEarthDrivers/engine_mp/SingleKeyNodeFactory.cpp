@@ -156,7 +156,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
         // this quadtile. So goodbye.
         if ( !model[q].valid() )
         {
-            OE_INFO << LC << "Bailed on key " << key.str() << " due to a NULL model." << std::endl;
+            OE_DEBUG << LC << "Bailed on key " << key.str() << " due to a NULL model." << std::endl;
             return 0L;
         }
     }

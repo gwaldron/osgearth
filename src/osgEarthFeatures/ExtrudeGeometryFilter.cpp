@@ -422,6 +422,14 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
                 Face& face = faces.back();
                 face.left  = *this_corner;
                 face.right = *next_corner;
+
+                // recalculate the final offset on the last face
+                if ( next_corner == corners.begin() )
+                {
+                    osg::Vec3d vec = next_corner->roof - this_corner->roof;
+                    face.right.offsetX = face.left.offsetX + vec.length();
+                }
+
                 face.widthM = next_corner->offsetX - this_corner->offsetX;
             }
         }

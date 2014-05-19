@@ -319,8 +319,9 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
           ScriptResult result = engine->run(i->first, this, context);
           if (result.success())
             val = result.asDouble();
-          else
-              OE_WARN << LC << "Script error:" << result.message() << std::endl; 
+          else {
+              OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+          }
         }
       }
 
@@ -352,7 +353,7 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
           if (result.success())
             val = result.asString();
           else
-              OE_WARN << LC << "Script error:" << result.message() << std::endl;
+            OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
         }
       }
 

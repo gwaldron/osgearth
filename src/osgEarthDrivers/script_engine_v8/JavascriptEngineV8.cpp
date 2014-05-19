@@ -105,6 +105,35 @@ JavascriptEngineV8::logCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
   OE_WARN << LC << "javascript message: " << (*value) << std::endl;
 }
 
+ScriptResult 
+JavascriptEngineV8::createErrorResult( std::string prefix, const v8::TryCatch& try_catch )
+{
+    std::ostringstream str;
+
+    v8::String::AsciiValue error( try_catch.Exception() );
+    v8::Handle<v8::Message> message = try_catch.Message();
+
+    str << prefix << ": ";
+
+    if( !message.IsEmpty() ) {
+      //v8::String::AsciiValue filename(message->GetScriptResourceName());
+      int linenum = message->GetLineNumber();
+      str << "line " << linenum << " cols [" << message->GetStartColumn() << "-" << message->GetEndColumn() << "] " << std::string( *error ) << std::endl;
+      v8::String::AsciiValue sourceline( message->GetSourceLine() );
+      str << std::string( *sourceline ) << std::endl;
+      /*
+      v8::String::Utf8Value stack_trace(try_catch.StackTrace());
+      if (stack_trace.length() > 0) {
+      str <<  std::string(*stack_trace) << std::endl;
+      }
+      */
+    }
+    else {
+      str << std::string( *error );
+    }
+    return ScriptResult( EMPTY_STRING, false, str.str() );
+
+}
 ScriptResult
 JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
 {
@@ -121,36 +150,16 @@ JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
   v8::Handle<v8::Script> compiled_script = v8::Script::Compile(script);
   if (compiled_script.IsEmpty())
   {
-    v8::String::AsciiValue error(try_catch.Exception());
-	v8::Handle<v8::Message> message = try_catch.Message();
-	if(!message.IsEmpty()) {
-		//v8::String::AsciiValue filename(message->GetScriptResourceName());
-		int linenum = message->GetLineNumber();
-		std::ostringstream str;
-		str << linenum << ":[" << message->GetStartColumn() << "-" << message->GetEndColumn() << "]:" << std::string(*error) << std::endl;
-		v8::String::AsciiValue sourceline(message->GetSourceLine());
-		str << std::string(*sourceline) << std::endl;
-		/*
-		v8::String::Utf8Value stack_trace(try_catch.StackTrace());
-		if (stack_trace.length() > 0) {
-			str <<  std::string(*stack_trace) << std::endl;
-		}
-		*/
-	    return ScriptResult(EMPTY_STRING, false, std::string("Script compile error: ") + str.str());
-	}
-	else {
-	    return ScriptResult(EMPTY_STRING, false, std::string("Script compile error: ") + std::string(*error));
-	}
+    return createErrorResult( "Script compile error", try_catch );
   }
 
   // Run the script
   v8::Handle<v8::Value> result = compiled_script->Run();
   if (result.IsEmpty())
   {
-    v8::String::AsciiValue error(try_catch.Exception());
-    return ScriptResult(EMPTY_STRING, false, std::string("Script result was empty: ") + std::string(*error));
+    return createErrorResult( "Script result was empty", try_catch );
   }
-
+  
   if (result->IsUndefined())
     return ScriptResult(EMPTY_STRING, false, "Script result was undefined");
 

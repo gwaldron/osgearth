@@ -42,7 +42,7 @@ WriteTMSTileHandler::WriteTMSTileHandler(TerrainLayer* layer,  Map* map, TMSPack
 
 std::string WriteTMSTileHandler::getPathForTile( const TileKey &key )
 {
-    std::string layerFolder = toLegalFileName( _layer->getName() );         
+    std::string layerFolder = toLegalFileName( _packager->getLayerName() );         
     unsigned w, h;
     key.getProfile()->getNumTiles( key.getLevelOfDetail(), w, h );         
 
@@ -211,6 +211,16 @@ void TMSPackager::setWriteOptions( osgDB::Options* options )
     _writeOptions = options;
 }
 
+const std::string& TMSPackager::getLayerName() const
+{
+    return _layerName;
+}
+
+void TMSPackager::setLayerName( const std::string& name)
+{
+    _layerName = name;
+}
+
 bool TMSPackager::getOverwrite() const
 {
     return _overwrite;
@@ -242,6 +252,50 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
     // fetch one tile to see what the image size should be
     ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
+
+    // Come up with a default name for the layer if it doesn't already have one.
+    if (layer->getName().empty())
+    {
+        std::stringstream layerName;
+
+        unsigned int index = 0;
+        if (imageLayer)
+        {            
+            layerName << "image";
+            // Get the index of the layer
+            for (unsigned int i = 0; i < map->getNumImageLayers(); i++)
+            {
+                if (map->getImageLayerAt(i) == imageLayer)
+                {
+                    index = i;
+                    break;
+                }
+            }            
+        }
+        else if (elevationLayer)
+        {
+            layerName << "elevation";
+            // Get the index of the layer
+            for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
+            {
+                if (map->getElevationLayerAt(i) == elevationLayer)
+                {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        layerName << index+1;
+        OE_NOTICE << "Setting layer name to " << layerName.str() << std::endl;
+        setLayerName(layerName.str());
+    }
+    else
+    {
+        setLayerName(layer->getName());
+    }
+
+
+
     if (imageLayer)
     {
         GeoImage testImage;
@@ -317,13 +371,14 @@ void TMSPackager::writeXML( TerrainLayer* layer, Map* map)
 
     //TODO:  Fix
     unsigned int maxLevel = 23;
-    tileMap->setTitle( layer->getName() );
+    tileMap->setTitle( _layerName );
     tileMap->setVersion( "1.0.0" );
     tileMap->getFormat().setMimeType( mimeType );
     tileMap->generateTileSets( std::min(23u, maxLevel+1) );
     
 
     // write out the tilemap catalog:
-    std::string tileMapFilename = osgDB::concatPaths( osgDB::concatPaths(_destination, toLegalFileName( layer->getName() )), "tms.xml");
+    std::string tileMapFilename = osgDB::concatPaths( osgDB::concatPaths(_destination, toLegalFileName( _layerName )), "tms.xml");
+    OE_NOTICE << "Layer name " << _layerName << std::endl;
     TMS::TileMapReaderWriter::write( tileMap.get(), tileMapFilename );
 }

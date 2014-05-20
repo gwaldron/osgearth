@@ -78,7 +78,8 @@ namespace
                 else 
                 {
                     // found an orphaned observer; prune it
-                    _set.erase( i );
+                    SAUniqueSet::iterator j = i++;
+                    _set.erase( j );
                     OE_DEBUG << LC << "Pruned a program; repo size = " << _set.size() << std::endl;
                 }
             }

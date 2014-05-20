@@ -33,7 +33,7 @@ namespace
 {
     struct BaseOp : public osg::Operation
     {
-        BaseOp(Terrain* terrain ) : osg::Operation("",false), _terrain(terrain) { }
+        BaseOp(Terrain* terrain, bool keepByDefault) : osg::Operation("",keepByDefault), _terrain(terrain) { }
         osg::observer_ptr<Terrain> _terrain;
     };
 
@@ -44,13 +44,14 @@ namespace
         unsigned _count;
 
         OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
-            : BaseOp(terrain), _key(key), _node(node), _count(0) { }
+            : BaseOp(terrain, true), _key(key), _node(node), _count(0) { }
 
         void operator()(osg::Object*)
         {
-            ++_count;
-            this->setKeep( false );
+            if ( getKeep() == false )
+                return;
 
+            ++_count;
             osg::ref_ptr<Terrain>   terrain;
             osg::ref_ptr<osg::Node> node;
 
@@ -60,17 +61,18 @@ namespace
                 {
                     //OE_NOTICE << LC << "FIRING onTileAdded for " << _key.str() << " (tries=" << _count << ")" << std::endl;
                     terrain->fireTileAdded( _key, node.get() );
+                    this->setKeep( false );
                 }
                 else
                 {
                     //OE_NOTICE << LC << "Deferring onTileAdded for " << _key.str() << std::endl;
-                    this->setKeep( true );
                 }
             }
             else
             {
                 // nop; tile expired; let it go.
                 //OE_NOTICE << "Tile expired before notification: " << _key.str() << std::endl;
+                this->setKeep( false );
             }
         }
     };

@@ -54,6 +54,12 @@ namespace osgEarth { namespace Symbology
          */
         osg::Image* createImage( const osgDB::Options* options ) const;
 
+        /** 
+         * A key string that can uniquely identify this object for the purposes
+         * of creating its state set (e.g., for a cache)
+         */
+        std::string getUniqueID() const;
+
     public:
         /** Source location of the actual texture image.  */
         optional<URI>& imageURI() { return _imageURI; }
@@ -190,6 +196,7 @@ namespace osgEarth { namespace Symbology
 
     typedef std::vector< osg::ref_ptr<SkinResource> > SkinResourceVector;
 
+#if 0
     /**
      * Utility class that builds a Texture2DArray from a list of SkinResources
      */
@@ -219,6 +226,7 @@ namespace osgEarth { namespace Symbology
         LayerIndex _layerIndex;
         osg::ref_ptr< osg::Texture2DArray > _texture;
     };
+#endif
 
 } } // namespace osgEarth::Symbology
 

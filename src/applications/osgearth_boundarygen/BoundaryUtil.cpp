@@ -334,11 +334,6 @@ namespace
                 osg::Vec3d world = vert * _local2world;
                 osg::Vec3d plane = world;
 
-                if ( osg::equivalent(vert.x(), 310.0, 1.0) )
-                {
-                    int asd = 0;
-                }
-
                 if ( _topology->_srs )
                 {
                     const osgEarth::SpatialReference* ecef = _topology->_srs->getECEF();

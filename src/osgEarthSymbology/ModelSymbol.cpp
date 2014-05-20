@@ -76,6 +76,9 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
     if ( match(c.key(), "model") ) {
         style.getOrCreate<ModelSymbol>()->url() = c.value();
         style.getOrCreate<ModelSymbol>()->url()->setURIContext( c.referrer() );
+    }    
+    else if ( match(c.key(),"model-library") ) {
+        style.getOrCreate<ModelSymbol>()->libraryName() = StringExpression(c.value());
     }
     else if ( match(c.key(), "model-placement") ) {
         if      ( match(c.value(), "vertex") )   

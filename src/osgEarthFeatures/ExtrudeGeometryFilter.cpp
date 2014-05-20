@@ -405,7 +405,33 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             cornerOffset += span;
         }
 
-        // Step 3 - Create faces connecting each pair of Posts.
+        // Step 3 - Calculate the angle of each corner.
+        osg::Vec3d prev_vec;
+        for(Corners::iterator c = corners.begin(); c != corners.end(); ++c)
+        {
+            Corners::const_iterator this_corner = c;
+
+            Corners::const_iterator next_corner = c;
+            if ( ++next_corner == corners.end() )
+                next_corner = corners.begin();
+
+            if ( this_corner == corners.begin() )
+            {
+                Corners::const_iterator prev_corner = corners.end();
+                --prev_corner;
+                prev_vec = this_corner->roof - prev_corner->roof;
+                prev_vec.normalize();
+            }
+
+            osg::Vec3d this_vec = next_corner->roof - this_corner->roof;
+            this_vec.normalize();
+            if ( c != corners.begin() )
+            {
+                c->cosAngle = prev_vec * this_vec;
+            }
+        }
+
+        // Step 4 - Create faces connecting each pair of Posts.
         Faces& faces = elevation.faces;
         for(Corners::const_iterator c = corners.begin(); c != corners.end(); ++c)
         {
@@ -480,9 +506,7 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
     if ( useColor )
     {
         // per-vertex colors are necessary if we are going to use the MeshConsolidator -gw
-        colors = new osg::Vec4Array();
-        colors->reserve( numWallVerts );
-        colors->assign( numWallVerts, wallColor );
+        colors = new osg::Vec4Array( numWallVerts );
         walls->setColorArray( colors );
         walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
     }
@@ -511,6 +535,35 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             (*verts)[vertptr+3] = f->right.base;
             (*verts)[vertptr+4] = f->right.roof;
             (*verts)[vertptr+5] = f->left.roof;
+
+            // Assign wall polygon colors.
+            if (useColor)
+            {
+#if 0
+                // experimental: apply some ambient occlusion to tight inside corners                
+                float bL = f->left.cosAngle > 0.0 ? 1.0 : (1.0+f->left.cosAngle);
+                float bR = f->right.cosAngle > 0.0 ? 1.0 : (1.0+f->right.cosAngle);
+
+                osg::Vec4f leftColor      = Color(wallColor).brightness(bL);
+                osg::Vec4f leftBaseColor  = Color(wallBaseColor).brightness(bL);
+                osg::Vec4f rightColor     = Color(wallColor).brightness(bR);
+                osg::Vec4f rightBaseColor = Color(wallBaseColor).brightness(bR);
+
+                (*colors)[vertptr+0] = leftColor;
+                (*colors)[vertptr+1] = leftBaseColor;
+                (*colors)[vertptr+2] = rightBaseColor;
+                (*colors)[vertptr+3] = rightBaseColor;
+                (*colors)[vertptr+4] = rightColor;
+                (*colors)[vertptr+5] = leftColor;
+#else
+                (*colors)[vertptr+0] = wallColor;
+                (*colors)[vertptr+1] = wallBaseColor;
+                (*colors)[vertptr+2] = wallBaseColor;
+                (*colors)[vertptr+3] = wallBaseColor;
+                (*colors)[vertptr+4] = wallColor;
+                (*colors)[vertptr+5] = wallColor;
+#endif
+            }
 
             // Calculate texture coordinates:
             if (wallSkin)
@@ -848,30 +901,6 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 }
             }
 
-            // calculate the colors:
-            osg::Vec4f wallColor(1,1,1,0), wallBaseColor(1,1,1,0), roofColor(1,1,1,0), outlineColor(1,1,1,1);
-
-            if ( _wallPolygonSymbol.valid() )
-            {
-                wallColor = _wallPolygonSymbol->fill()->color();
-                if ( _extrusionSymbol->wallGradientPercentage().isSet() )
-                {
-                    wallBaseColor = Color(wallColor).brightness( 1.0 - *_extrusionSymbol->wallGradientPercentage() );
-                }
-                else
-                {
-                    wallBaseColor = wallColor;
-                }
-            }
-            if ( _roofPolygonSymbol.valid() )
-            {
-                roofColor = _roofPolygonSymbol->fill()->color();
-            }
-            if ( _outlineSymbol.valid() )
-            {
-                outlineColor = _outlineSymbol->stroke()->color();
-            }
-
             // Build the data model for the structure.
             Structure structure;
 
@@ -888,6 +917,22 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             // Create the walls.
             if ( walls.valid() )
             {
+                osg::Vec4f wallColor(1,1,1,1), wallBaseColor(1,1,1,1);
+
+                if ( _wallPolygonSymbol.valid() )
+                {
+                    wallColor = _wallPolygonSymbol->fill()->color();
+                }
+
+                if ( _extrusionSymbol->wallGradientPercentage().isSet() )
+                {
+                    wallBaseColor = Color(wallColor).brightness( 1.0 - *_extrusionSymbol->wallGradientPercentage() );
+                }
+                else
+                {
+                    wallBaseColor = wallColor;
+                }
+
                 buildWallGeometry(structure, walls.get(), wallColor, wallBaseColor, wallSkin);
 
                 if ( wallSkin )
@@ -900,6 +945,12 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             // tessellate and add the roofs if necessary:
             if ( rooflines.valid() )
             {
+                osg::Vec4f roofColor(1,1,1,1);
+                if ( _roofPolygonSymbol.valid() )
+                {
+                    roofColor = _roofPolygonSymbol->fill()->color();
+                }
+
                 buildRoofGeometry(structure, rooflines.get(), roofColor, roofSkin);
 
                 if ( roofSkin )
@@ -911,6 +962,12 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             if ( outlines.valid() )
             {
+                osg::Vec4f outlineColor(1,1,1,1);
+                if ( _outlineSymbol.valid() )
+                {
+                    outlineColor = _outlineSymbol->stroke()->color();
+                }
+
                 float minCreaseAngle = _outlineSymbol->creaseAngle().value();
                 buildOutlineGeometry(structure, outlines.get(), outlineColor, minCreaseAngle);
             }

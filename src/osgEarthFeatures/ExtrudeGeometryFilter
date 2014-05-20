@@ -107,6 +107,7 @@ namespace osgEarth { namespace Features
             double     offsetX;
             float      wallTexHeightAdjusted;
             bool       isFromSource;
+            float      cosAngle;
         };
         typedef std::list<Corner> Corners; // use a list to prevent iterator invalidation
 

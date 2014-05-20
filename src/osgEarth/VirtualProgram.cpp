@@ -50,43 +50,45 @@ namespace
     template<typename T>
     struct SAUniqueRepo
     {
-        struct SALess {
-            bool operator()(const osg::ref_ptr<T>& lhs, const osg::ref_ptr<T>& rhs) const {
-                int r = lhs->compare(*(rhs.get()));
-                return r < 0;
-            }
-        };
-
-        typedef std::set<osg::ref_ptr<T>, SALess> SAUniqueSet;
-        SAUniqueSet _set;
+        typedef std::list< osg::observer_ptr<T> > SAUniqueSet;
+        SAUniqueSet      _set;
         Threading::Mutex _mx;
 
-        void share(osg::ref_ptr<T>& obj)
+        void share(osg::ref_ptr<T>& out)
         {
             _mx.lock();
-            std::pair<typename SAUniqueSet::iterator,bool> r = _set.insert(obj);
-            if (r.second == false)
-            {
-                obj = r.first->get();
-                OE_DEBUG << "Shared a program; repo size = " << _set.size() << std::endl;
-            }
-            else
-            {
-                OE_DEBUG << "Added a program; repo size = " << _set.size() << std::endl;
-            }
-            _mx.unlock();
-        }
 
-        void prune()
-        {
-            _mx.lock();
-            for(typename SAUniqueSet::iterator i=_set.begin(); i!=_set.end(); )
+            bool found = false;
+            for(SAUniqueSet::iterator i = _set.begin(); !found && i != _set.end(); )
             {
-                if ( !i->valid() )
+                osg::ref_ptr<T> temp;
+                if ( i->lock(temp) )
+                {
+                    if ( temp->compare( *out.get() ) == 0 )
+                    {
+                        out = temp.get();
+                        OE_DEBUG << LC << "Shared a program; repo size = " << _set.size() << std::endl;
+                        found = true;
+                    }
+                    else
+                    {
+                        ++i;
+                    }
+                }
+                else 
+                {
+                    // found an orphaned observer; prune it
                     _set.erase( i );
-                else
-                    ++i;
+                    OE_DEBUG << LC << "Pruned a program; repo size = " << _set.size() << std::endl;
+                }
             }
+
+            if ( !found )
+            {
+                _set.push_back(out.get());
+                OE_DEBUG << LC << "Added a program; repo size = " << _set.size() << std::endl;
+            }
+
             _mx.unlock();
         }
     };
@@ -647,6 +649,8 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
         if ( i->second->referenceCount() == 1 )
             i->second->releaseGLObjects(state);
     }
+
+    _programCache.clear();
 }
 
 osg::Shader*
@@ -971,7 +975,6 @@ VirtualProgram::apply( osg::State& state ) const
 
                     // global sharing.
                     s_programRepo.share(program);
-                    s_programRepo.prune();
 
                     // finally, put own new program in the cache.
                     _programCache[ keyVector ] = program;

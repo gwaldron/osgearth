@@ -359,8 +359,7 @@ makeTMS( osg::ArgumentParser& args )
     }
     // Package an individual elevation layer
     else if (elevationLayerIndex >= 0)
-    {
-        packager.setExtension("tif");
+    {        
         ElevationLayer* layer = map->getElevationLayerAt(elevationLayerIndex);
         if (layer)
         {
@@ -415,8 +414,6 @@ makeTMS( osg::ArgumentParser& args )
             }
         }    
 
-        // For elevation layers we need to use tiff
-        packager.setExtension("tif");
         // Package all the ElevationLayer's
         for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
         {            

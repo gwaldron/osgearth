@@ -271,6 +271,8 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
     }
     else if (elevationLayer)
     {
+        // We must use tif no matter what with elevation layers.  It's the only format that currently can read/write single band imagery.
+        _extension = "tif";
         GeoHeightField testHF;
         for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testHF.valid(); ++i )
         {

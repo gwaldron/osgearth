@@ -272,7 +272,7 @@ TileMap::getURL(const osgEarth::TileKey& tilekey, bool invertY)
         unsigned int numRows, numCols;
         tilekey.getProfile()->getNumTiles(tilekey.getLevelOfDetail(), numCols, numRows);
         y  = numRows - y - 1;
-    }
+    }    
 
     //OE_NOTICE << LC << "KEY: " << tilekey.str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
 
@@ -521,10 +521,15 @@ TileMapReaderWriter::read( const Config& conf )
     const Config* formatConf = tileMapConf->find( ELEM_TILE_FORMAT );
     if ( formatConf )
     {
+        OE_NOTICE << "Read TileFormat " << formatConf->value(ATTR_EXTENSION) << std::endl;
         tileMap->getFormat().setExtension( formatConf->value(ATTR_EXTENSION) );
         tileMap->getFormat().setMimeType ( formatConf->value(ATTR_MIME_TYPE) );
         tileMap->getFormat().setWidth    ( formatConf->value<unsigned>(ATTR_WIDTH,  256) );
         tileMap->getFormat().setHeight   ( formatConf->value<unsigned>(ATTR_HEIGHT, 256) );
+    }
+    else
+    {
+        OE_NOTICE << "No TileFormat" << std::endl;
     }
 
     //Read the tilesets

@@ -192,8 +192,6 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
     // Package each elevation layer
     for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
     {
-        // For elevation layers always use tif extension.
-        packager.setExtension("tif");
         // Don't continue if the export has been canceled
         if (_progress->isCanceled())
         {

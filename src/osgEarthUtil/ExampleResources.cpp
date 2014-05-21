@@ -743,7 +743,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         VBox* vbox = new VBox();
         vbox->setBackColor( Color(Color::Black, 0.8) );
-        vbox->setHorizAlign( Control::ALIGN_LEFT );
+        vbox->setHorizAlign( Control::ALIGN_RIGHT );
         vbox->setVertAlign( Control::ALIGN_BOTTOM );
         view->addEventHandler( new ActivityMonitorTool(vbox) );
         canvas->addControl( vbox );

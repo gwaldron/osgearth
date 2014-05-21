@@ -393,7 +393,11 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         // normal-based shading (since the atmospheric scattering will
         // take over at that point). This provides a nice dawn or dusk
         // "shining" effect on the sides of buildings or terrain.
-        "    const float low = 0.1; \n"
+        // Adjust the "low". Higher value will increase the effect of
+        // normal-based shading at shallower sun angles (i.e. it will
+        // become more prominent. Perhaps it makes sense in the future to
+        // make this a "scattering effect" uniform or something -gw)
+        "    const float low = 0.4; \n"
         "    const float high = 0.9; \n"
         "    float UdotL = clamp(dot(U,L), low, high); \n"
         "    float shadeFactor = 1.0 - (UdotL-low)/(high-low); \n"

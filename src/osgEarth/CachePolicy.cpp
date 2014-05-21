@@ -24,17 +24,18 @@ using namespace osgEarth;
 //------------------------------------------------------------------------
 
 //statics
-CachePolicy CachePolicy::DEFAULT( CachePolicy::USAGE_READ_WRITE );
+CachePolicy CachePolicy::DEFAULT;
 CachePolicy CachePolicy::NO_CACHE( CachePolicy::USAGE_NO_CACHE );
 CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
 
 //------------------------------------------------------------------------
 
 CachePolicy::CachePolicy() :
+_usage  ( USAGE_READ_WRITE ),
 _maxAge ( INT_MAX ),
 _minTime( 0 )
 {
-    _usage = USAGE_READ_WRITE;
+    //nop
 }
 
 CachePolicy::CachePolicy( const Usage& usage ) :
@@ -42,7 +43,7 @@ _usage  ( usage ),
 _maxAge ( INT_MAX ),
 _minTime( 0 )
 {
-    _usage = usage; // explicity init the optional<>
+    _usage = usage; // explicity set the optional<>
 }
 
 CachePolicy::CachePolicy( const Config& conf ) :
@@ -71,7 +72,8 @@ CachePolicy::fromOptions( const osgDB::Options* dbOptions, optional<CachePolicy>
         {
             Config conf;
             conf.fromJSON( jsonString );
-            out = CachePolicy( conf );
+            CachePolicy temp( conf );
+            out->mergeAndOverride( temp );
             return true;
         }
     }
@@ -85,6 +87,28 @@ CachePolicy::apply( osgDB::Options* dbOptions )
     {
         Config conf = getConfig();
         dbOptions->setPluginStringData( "osgEarth::CachePolicy", conf.toJSON() );
+    }
+}
+
+void
+CachePolicy::mergeAndOverride(const CachePolicy& rhs)
+{
+    if ( rhs.usage().isSet() )
+        usage() = rhs.usage().get();
+
+    if ( rhs.minTime().isSet() )
+        minTime() = rhs.minTime().get();
+
+    if ( rhs.maxAge().isSet() )
+        maxAge() = rhs.maxAge().get();
+}
+
+void
+CachePolicy::mergeAndOverride(const optional<CachePolicy>& rhs)
+{
+    if ( rhs.isSet() )
+    {
+        mergeAndOverride( rhs.get() );
     }
 }
 

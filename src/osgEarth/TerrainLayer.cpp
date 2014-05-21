@@ -299,7 +299,9 @@ TerrainLayer::getTileSource() const
             const_cast<TerrainLayer*>(this)->initTileSource();
 
             // read the cache policy hint from the tile source unless user expressly set 
-            // a policy in the initialization options.
+            // a policy in the initialization options. In other words, the hint takes
+            // ultimate priority (even over the Registry override) unless expressly
+            // overridden in the layer options!
             if ( _tileSource.valid() && !_initOptions.cachePolicy().isSet() )
             {
                 CachePolicy hint = _tileSource->getCachePolicyHint( _targetProfileHint.get() );
@@ -699,27 +701,21 @@ TerrainLayer::setDBOptions( const osgDB::Options* dbOptions )
 }
 
 void
-TerrainLayer::initializeCachePolicy( const osgDB::Options* options )
+TerrainLayer::initializeCachePolicy(const osgDB::Options* options)
 {
+    // Start with the cache policy passed in by the Map.
     optional<CachePolicy> cp;
+    CachePolicy::fromOptions(options, cp);
 
+    // if this layer specifies cache policy info, that will override 
+    // whatever the map passed in:
     if ( _initOptions.cachePolicy().isSet() )
-    {
-        // if the initialization options specify a cache policy, attempt to use it
-        osg::ref_ptr<osgDB::Options> temp = Registry::instance()->cloneOrCreateOptions(options);
-        _initOptions.cachePolicy()->apply( temp.get() );
+        cp->mergeAndOverride( _initOptions.cachePolicy() );
 
-        if ( ! Registry::instance()->getCachePolicy(cp, temp.get()) )
-            cp = CachePolicy::DEFAULT;
-    }
-    else 
-    {
-        // otherwise go the normal route.
-        if ( ! Registry::instance()->getCachePolicy(cp, options) )
-            cp = CachePolicy::DEFAULT;
-    }
+    // finally resolve with global overrides:
+    Registry::instance()->resolveCachePolicy( cp );
 
-    setCachePolicy( *cp );
+    setCachePolicy( cp.get() );
 }
 
 void

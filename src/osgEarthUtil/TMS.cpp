@@ -521,7 +521,7 @@ TileMapReaderWriter::read( const Config& conf )
     const Config* formatConf = tileMapConf->find( ELEM_TILE_FORMAT );
     if ( formatConf )
     {
-        OE_NOTICE << "Read TileFormat " << formatConf->value(ATTR_EXTENSION) << std::endl;
+        OE_DEBUG << LC << "Read TileFormat " << formatConf->value(ATTR_EXTENSION) << std::endl;
         tileMap->getFormat().setExtension( formatConf->value(ATTR_EXTENSION) );
         tileMap->getFormat().setMimeType ( formatConf->value(ATTR_MIME_TYPE) );
         tileMap->getFormat().setWidth    ( formatConf->value<unsigned>(ATTR_WIDTH,  256) );
@@ -529,7 +529,7 @@ TileMapReaderWriter::read( const Config& conf )
     }
     else
     {
-        OE_NOTICE << "No TileFormat" << std::endl;
+        OE_WARN << LC << "No TileFormat in TileMap!" << std::endl;
     }
 
     //Read the tilesets

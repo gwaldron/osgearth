@@ -419,8 +419,8 @@ namespace
 
                     // establish the caching policy.
                     optional<CachePolicy> cp;
-                    if ( !Registry::instance()->getCachePolicy( cp, localOptions ) )
-                        cp = CachePolicy::DEFAULT;
+                    CachePolicy::fromOptions(localOptions, cp);
+                    Registry::instance()->resolveCachePolicy( cp );
 
                     // get a cache bin if we need it:
                     CacheBin* bin = 0L;

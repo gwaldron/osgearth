@@ -69,6 +69,10 @@ namespace osgEarth
         /** Stores this cache policy in a DB Options. */
         void apply( osgDB::Options* options );
 
+        /** Merges any set properties in another CP into this one, override existing values. */
+        void mergeAndOverride(const CachePolicy& rhs);
+        void mergeAndOverride(const optional<CachePolicy>& rhs);
+
         /** Gets the oldest timestamp for which to accept a cache record */
         TimeStamp getMinAcceptTime() const;
 

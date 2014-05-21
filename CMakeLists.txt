@@ -51,8 +51,11 @@ SET(THIRD_PARTY_DIR "" CACHE PATH "OSG 3rd-party dependency folder")
 SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
 
 # Attempt to detect the GIT revision number.
-include(GetGitRevisionDescription)
-get_git_head_revision(GIT_REFSPEC OSGEARTH_GIT_SHA1)
+OPTION(OSGEARTH_EMBED_GIT_SHA "Embeds the GIT SHA in the version code" OFF)
+IF (OSGEARTH_EMBED_GIT_SHA)
+  include(GetGitRevisionDescription)
+  get_git_head_revision(GIT_REFSPEC OSGEARTH_GIT_SHA1)
+ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
 # IPHONE_PORT@tom
 # Trying to get CMake to generate an XCode IPhone project, current efforts are to get iphoneos sdk 3.1 working

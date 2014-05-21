@@ -148,13 +148,20 @@ IF (NOT TINYXML_FOUND)
     )
 ENDIF (NOT TINYXML_FOUND)
 
-# auto-generate the VersionGit file to include the git SHA1 variable.
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp" 
-    @ONLY)
+
+SET(VERSION_GIT_SOURCE "")
+IF (OSGEARTH_EMBED_GIT_SHA)
+	ADD_DEFINITIONS(-DOSGEARTH_EMBED_GIT_SHA)
+	
+	# auto-generate the VersionGit file to include the git SHA1 variable.
+	configure_file(
+		"${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
+		"${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp" 
+		@ONLY)
     
-set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")
+	set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")	
+ENDIF (OSGEARTH_EMBED_GIT_SHA)
+
 
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}

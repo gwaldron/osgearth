@@ -22,6 +22,12 @@
 #include <string>
 #include <stdio.h>
 
+#ifdef OSGEARTH_EMBED_GIT_SHA
+#    define GET_SHA osgEarthGitSHA1
+#else
+#    define GET_SHA ""
+#endif
+
 extern "C" {
 
 const char* osgEarthGetVersion()
@@ -36,7 +42,7 @@ const char* osgEarthGetVersion()
                 OSGEARTH_MAJOR_VERSION,
                 OSGEARTH_MINOR_VERSION,
                 OSGEARTH_PATCH_VERSION,
-                osgEarthGitSHA1() );
+                GET_SHA );
         }
         else
         {
@@ -45,7 +51,7 @@ const char* osgEarthGetVersion()
                 OSGEARTH_MINOR_VERSION,
                 OSGEARTH_PATCH_VERSION,
                 OSGEARTH_RC_VERSION,
-                osgEarthGitSHA1() );
+                GET_SHA );
         }
 
         osgearth_version_init = 0;

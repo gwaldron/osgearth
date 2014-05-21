@@ -154,24 +154,24 @@ DrawInstanced::install(osg::StateSet* stateset)
 
     // simple vertex program to position a vertex based on its instance
     // matrix, which is stored in a texture.
-    std::string src_vert = Stringify()
-        << "#version 120 \n"
-        << "#extension GL_EXT_gpu_shader4 : enable \n"
-        << "#extension GL_ARB_draw_instanced: enable \n"
-        << "uniform sampler2D oe_di_postex; \n"
-        << "uniform float oe_di_postex_size; \n"
-        << "void oe_di_setInstancePosition(inout vec4 VertexMODEL) \n"
-        << "{ \n"
-        << "    float index = float(4 * gl_InstanceID) / oe_di_postex_size; \n"
-        << "    float s = fract(index); \n"
-        << "    float t = floor(index)/oe_di_postex_size; \n"
-        << "    float step = 1.0 / oe_di_postex_size; \n"  // step from one vec4 to the next
-        << "    vec4 m0 = texture2D(oe_di_postex, vec2(s, t)); \n"
-        << "    vec4 m1 = texture2D(oe_di_postex, vec2(s+step, t)); \n"
-        << "    vec4 m2 = texture2D(oe_di_postex, vec2(s+step+step, t)); \n"
-        << "    vec4 m3 = texture2D(oe_di_postex, vec2(s+step+step+step, t)); \n"
-        << "    VertexMODEL = VertexMODEL * mat4(m0, m1, m2, m3); \n" // why???
-        << "} \n";
+     std::string src_vert = Stringify() 
+        << "#version 120 \n" 
+        << "#extension GL_EXT_gpu_shader4 : enable \n" 
+        << "#extension GL_ARB_draw_instanced: enable \n" 
+        << "uniform sampler2D oe_di_postex; \n" 
+        << "uniform vec2 oe_di_postex_size; \n" 
+        << "void oe_di_setInstancePosition(inout vec4 VertexMODEL) \n" 
+        << "{ \n" 
+        << "    float index = float(4 * gl_InstanceID) / oe_di_postex_size.x; \n" 
+        << "    float s = fract(index); \n" 
+        << "    float t = floor(index)/oe_di_postex_size.y; \n" 
+        << "    float step = 1.0 / oe_di_postex_size.x; \n"  // step from one vec4 to the next 
+        << "    vec4 m0 = texture2D(oe_di_postex, vec2(s, t)); \n" 
+        << "    vec4 m1 = texture2D(oe_di_postex, vec2(s+step, t)); \n" 
+        << "    vec4 m2 = texture2D(oe_di_postex, vec2(s+step+step, t)); \n" 
+        << "    vec4 m3 = texture2D(oe_di_postex, vec2(s+step+step+step, t)); \n" 
+        << "    VertexMODEL = VertexMODEL * mat4(m0, m1, m2, m3); \n" // why??? 
+        << "} \n"; 
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
@@ -324,7 +324,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
 
             osg::StateSet* stateset = sliceGroup->getOrCreateStateSet();
             stateset->setTextureAttributeAndModes(POSTEX_TEXTURE_UNIT, postex, 1);
-            stateset->getOrCreateUniform("oe_di_postex_size", osg::Uniform::FLOAT)->set((float)texSize.x());
+            stateset->getOrCreateUniform("oe_di_postex_size", osg::Uniform::FLOAT_VEC2)->set(texSize);
 
             // could use PixelWriter but we know the format.
             GLfloat* ptr = reinterpret_cast<GLfloat*>( image->data() );

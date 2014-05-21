@@ -51,7 +51,7 @@ BuildTextFilter::push( FeatureList& input, FilterContext& context )
     LabelSourceOptions options;
     options.setDriver( "annotation" );
 
-    if( !text->provider()->empty() )
+    if( text && !text->provider()->empty() )
         options.setDriver( *text->provider() );
 
 

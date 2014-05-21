@@ -59,7 +59,7 @@ namespace
             _mx.lock();
 
             bool found = false;
-            for(SAUniqueSet::iterator i = _set.begin(); !found && i != _set.end(); )
+            for (typename SAUniqueSet::iterator i = _set.begin(); !found && i != _set.end(); )
             {
                 osg::ref_ptr<T> temp;
                 if ( i->lock(temp) )
@@ -78,7 +78,7 @@ namespace
                 else 
                 {
                     // found an orphaned observer; prune it
-                    SAUniqueSet::iterator j = i++;
+                    typename SAUniqueSet::iterator j = i++;
                     _set.erase( j );
                     OE_DEBUG << LC << "Pruned a program; repo size = " << _set.size() << std::endl;
                 }

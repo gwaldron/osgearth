@@ -65,7 +65,7 @@ ImageLayerOptions::setDefaults()
     _maxRange.init( FLT_MAX );
     _lodBlending.init( false );
     _featherPixels.init( false );
-    _minFilter.init( osg::Texture::LINEAR );
+    _minFilter.init( osg::Texture::LINEAR_MIPMAP_LINEAR );
     _magFilter.init( osg::Texture::LINEAR );
     _texcomp.init( (osg::Texture::InternalFormatMode)~0 );
 }

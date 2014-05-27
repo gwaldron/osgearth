@@ -28,6 +28,7 @@
 #include <osgEarthUtil/Ocean>
 #include <osgEarthUtil/Shadowing>
 #include <osgEarthUtil/ActivityMonitorTool>
+#include <osgEarthUtil/LogarithmicDepthBuffer>
 
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/DetailTexture>
@@ -537,6 +538,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useShadows    = args.read("--shadows");
     bool animateSky    = args.read("--animate-sky");
     bool showActivity  = args.read("--activity");
+    bool useLogDepth   = args.read("--logdepth");
 
     float ambientBrightness = 0.2f;
     args.read("--ambientBrightness", ambientBrightness);
@@ -755,6 +757,14 @@ MapNodeHelper::parse(MapNode*             mapNode,
         mapNode->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
     }
 
+    // Install logarithmic depth buffer on main camera
+    if ( useLogDepth )
+    {
+        OE_INFO << LC << "Activating logarithmic depth buffer on main camera" << std::endl;
+        osgEarth::Util::LogarithmicDepthBuffer logDepth;
+        logDepth.install( view->getCamera() );
+    }
+
     // Scan for images if necessary.
     if ( !imageFolder.empty() )
     {
@@ -860,6 +870,7 @@ MapNodeHelper::configureView( osgViewer::View* view ) const
     view->addEventHandler(new osgViewer::ThreadingHandler());
     view->addEventHandler(new osgViewer::LODScaleHandler());
     view->addEventHandler(new osgGA::StateSetManipulator(view->getCamera()->getOrCreateStateSet()));
+    view->addEventHandler(new osgViewer::RecordCameraPathHandler());
 }
 
 
@@ -875,6 +886,7 @@ MapNodeHelper::usage() const
         << "  --dd                          : display decimal degrees coords under mouse\n"
         << "  --mgrs                        : show MGRS coords under mouse\n"
         << "  --ortho                       : use an orthographic camera\n"
+        << "  --logdepth                    : activates the logarithmic depth buffer\n"
         << "  --autoclip                    : installs an auto-clip plane callback\n"
         << "  --images [path]               : finds and loads image layers from folder [path]\n"
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"

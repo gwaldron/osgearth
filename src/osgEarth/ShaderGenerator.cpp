@@ -599,13 +599,10 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     replacement = ss ? osg::clone(ss, osg::CopyOp::SHALLOW_COPY) : new osg::StateSet();
 
     // new VP:
-    VirtualProgram* vp = 0L;
-    if ( VirtualProgram::get(replacement.get()) )
-        vp =  osg::clone(VirtualProgram::get(replacement.get()), osg::CopyOp::DEEP_COPY_ALL);
-    else
-        vp = VirtualProgram::getOrCreate(replacement.get());
-
-    if ( vp->referenceCount() == 1 )
+    osg::ref_ptr<VirtualProgram> vp = VirtualProgram::cloneOrCreate(replacement.get());
+    
+    // give the VP a name if it needs one.
+    if ( vp->getName().empty() )
         vp->setName( _name );
 
     std::string vertSrc =

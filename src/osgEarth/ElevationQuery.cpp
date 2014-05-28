@@ -91,6 +91,11 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
                     }
                 }            
             }
+            else
+            {
+                // Just use the default max level.  Without any data extents we don't know the actual max
+                layerMaxLevel = (int)(*layer->getTerrainLayerRuntimeOptions().maxLevel());
+            }
 
             // cap the max to the layer's express max level (if set).
             if ( layer->getTerrainLayerRuntimeOptions().maxLevel().isSet() )

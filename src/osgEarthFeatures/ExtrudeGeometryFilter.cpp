@@ -1068,18 +1068,20 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
-            if ( context.featureIndex() )
+            if ( context.featureIndex() || _outlineSymbol.valid())
             {
                 // The MC will recognize the presence of feature indexing tags and
                 // preserve them. The Cache optimizer however will not, so it is
                 // out for now.
+                // The Optimizer also doesn't work with line geometry, so if we have outlines
+                // then we need to use MC.                
                 MeshConsolidator::run( *i->second.get() );
 
                 //VertexCacheOptimizer vco;
                 //i->second->accept( vco );
             }
             else
-            {
+            {                
                 //TODO: try this -- issues: it won't work on lines, and will it screw up
                 // feature indexing?
                 osgUtil::Optimizer o;

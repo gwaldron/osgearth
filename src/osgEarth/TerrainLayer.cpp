@@ -364,6 +364,9 @@ TerrainLayer::isDynamic() const
 CacheBin*
 TerrainLayer::getCacheBin( const Profile* profile )
 {
+    // make sure we've initialized the tile source first.
+    getTileSource();
+
     if ( getCachePolicy() == CachePolicy::NO_CACHE )
     {
         return 0L;
@@ -378,6 +381,9 @@ TerrainLayer::getCacheBin( const Profile* profile )
 CacheBin*
 TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
 {
+    // make sure we've initialized the tile source first.
+    TileSource* tileSource = getTileSource();
+
     // in no-cache mode, there are no cache bins.
     if ( getCachePolicy() == CachePolicy::NO_CACHE )
     {
@@ -419,10 +425,10 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
             if ( meta.isValid() ) // cache exists and is valid.
             {
                 // verify that the cache if compatible with the tile source:
-                if ( getTileSource() && getProfile() )
+                if ( tileSource && getProfile() )
                 {
                     //todo: check the profile too
-                    if ( *meta._sourceDriver != getTileSource()->getOptions().getDriver() )
+                    if ( *meta._sourceDriver != tileSource->getOptions().getDriver() )
                     {
                         OE_WARN << LC << "Cache has an incompatible driver or profile... disabling"
                             << std::endl;
@@ -444,12 +450,12 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
             {
                 // cache does not exist, so try to create it. A valid TileSource is necessary
                 // for this.
-                if ( getTileSource() && getProfile() )
+                if ( tileSource && getProfile() )
                 {
                     // no existing metadata; create some.
                     meta._cacheBinId      = binId;
                     meta._sourceName      = this->getName();
-                    meta._sourceDriver    = getTileSource()->getOptions().getDriver();
+                    meta._sourceDriver    = tileSource->getOptions().getDriver();
                     meta._sourceTileSize  = getTileSize();
                     meta._sourceProfile   = getProfile()->toProfileOptions();
                     meta._cacheProfile    = profile->toProfileOptions();

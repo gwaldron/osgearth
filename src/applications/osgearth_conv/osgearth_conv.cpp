@@ -55,7 +55,26 @@ struct ImageTileCopier : public TileHandler
     ReadWriteTileSource* _dest;
 };
 
-
+/**
+ * Command-line tool that copies the contents of one TileSource
+ * to another. All arguments are Config name/value pairs, so you need
+ * to look in the header file for each driver's Options structure for
+ * options :)
+ *
+ * Example: copy a GDAL file to an MBTiles repo:
+ *
+ *   osgearth_conv
+ *      --in driver gdal
+ *      --in url world.tif
+ *      --out driver mbtiles
+ *      --out filename world.db
+ *
+ * The "in" properties come from the GDALOptions getConfig method. The
+ * "out" properties come from the MBTilesOptions getConfig method.
+ *
+ * Of course, the output driver must support writing (by implementing
+ * the ReadWriteTileSource interface).
+ */
 int
 main(int argc, char** argv)
 {

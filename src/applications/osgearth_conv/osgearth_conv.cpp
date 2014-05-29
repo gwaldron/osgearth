@@ -24,6 +24,7 @@
 #include <osgEarth/TileHandler>
 #include <osgEarth/TileVisitor>
 #include <osg/ArgumentParser>
+#include <iomanip>
 
 using namespace osgEarth;
 
@@ -54,6 +55,32 @@ struct ImageTileCopier : public TileHandler
     TileSource*          _source;
     ReadWriteTileSource* _dest;
 };
+
+
+// Custom progress reporter
+struct ProgressReporter : public osgEarth::ProgressCallback
+{
+    bool reportProgress(double             current, 
+                        double             total, 
+                        unsigned           currentStage,
+                        unsigned           totalStages,
+                        const std::string& msg )
+    {
+        float percentage = current/total*100.0f;
+        std::cout 
+            << std::setprecision(1) << "\r" 
+            << (int)current << "/" << (int)total
+            << " (" << percentage << "%)"
+            << "                        "
+            << std::flush;
+
+        if ( percentage >= 100.0f )
+            std::cout << std::endl;
+
+        return false;
+    }
+};
+
 
 /**
  * Command-line tool that copies the contents of one TileSource
@@ -137,5 +164,17 @@ main(int argc, char** argv)
 
     // Copy.
     TileVisitor visitor( new ImageTileCopier(input, output) );
+
+    unsigned minLevel;
+    if (args.read("--min-level", minLevel))
+        visitor.setMinLevel( minLevel );
+
+    unsigned maxLevel;
+    if (args.read("--max-level", maxLevel))
+        visitor.setMaxLevel( maxLevel );
+
+    std::cout << "Working..." << std::endl;
+    visitor.setProgressCallback( new ProgressReporter() );
+
     visitor.run( input->getProfile() );
 }

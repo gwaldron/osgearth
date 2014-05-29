@@ -68,6 +68,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
     {
         float percentage = current/total*100.0f;
         std::cout 
+            << std::fixed
             << std::setprecision(1) << "\r" 
             << (int)current << "/" << (int)total
             << " (" << percentage << "%)"

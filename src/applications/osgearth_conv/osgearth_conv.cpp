@@ -1,0 +1,122 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#define LC "[osgearth_conv] "
+
+#include <osgEarth/Notify>
+#include <osgEarth/Profile>
+#include <osgEarth/TileSource>
+#include <osgEarth/TileHandler>
+#include <osgEarth/TileVisitor>
+#include <osg/ArgumentParser>
+
+using namespace osgEarth;
+
+
+// TileHandler that copies images from one tilesource to another.
+struct ImageTileCopier : public TileHandler
+{
+    ImageTileCopier(TileSource* source, ReadWriteTileSource* dest)
+        : _source(source), _dest(dest)
+    {
+        //nop
+    }
+
+    bool handleTile(const TileKey& key)
+    {
+        bool ok = false;
+        osg::ref_ptr<osg::Image> image = _source->createImage(key);
+        if ( image.valid() )
+            ok = _dest->storeImage(key, image.get(), 0L);
+        return ok;
+    }
+    
+    bool hasData(const TileKey& key) const
+    {
+        return _source->hasData(key);
+    }
+
+    TileSource*          _source;
+    ReadWriteTileSource* _dest;
+};
+
+
+int
+main(int argc, char** argv)
+{
+    osg::ArgumentParser args(&argc,argv);
+
+    typedef std::map<std::string,std::string> KeyValue;
+    std::string key, value;
+
+    // collect input configuration:
+    Config inConf;
+    while( args.read("--in", key, value) )
+        inConf.set(key, value);
+
+    TileSourceOptions inOptions(inConf);
+    osg::ref_ptr<TileSource> input = TileSourceFactory::openReadOnly(inOptions);
+    if ( !input.valid() )
+    {
+        OE_WARN << LC << "Failed to open input" << std::endl;
+        return -1;
+    }
+
+    TileSource::Status inputStatus = input->startup(0L);
+    if ( inputStatus.isError() )
+    {
+        OE_WARN << LC << "Error initializing input" << std::endl;
+        return -1;
+    }
+
+    // collect output configuration:
+    Config outConf;
+    while( args.read("--out", key, value) )
+        outConf.set(key, value);
+
+    // copy source profile to output config:
+    outConf.add("profile", input->getProfile()->toProfileOptions().getConfig());
+
+    TileSourceOptions outOptions(outConf);
+    osg::ref_ptr<ReadWriteTileSource> output = TileSourceFactory::openReadWrite(outOptions);
+    if ( !output.valid() )
+    {
+        OE_WARN << LC << "Failed to open output" << std::endl;
+        return -1;
+    }
+
+    TileSource::Status outputStatus = output->startup(0L);
+    if ( outputStatus.isError() )
+    {
+        OE_WARN << LC << "Error initializing output" << std::endl;
+        return -1;
+    }
+
+    // Dump out some stuff...
+    OE_NOTICE << LC << "FROM:\n"
+        << inConf.toJSON(true)
+        << std::endl;
+
+    OE_NOTICE << LC << "TO:\n"
+        << outConf.toJSON(true)
+        << std::endl;
+
+    // Copy.
+    TileVisitor visitor( new ImageTileCopier(input, output) );
+    visitor.run( input->getProfile() );
+}

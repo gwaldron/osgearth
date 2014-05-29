@@ -198,7 +198,10 @@ TileSourceOptions::fromConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
+// statics
 TileSource::Status TileSource::STATUS_OK = TileSource::Status();
+
+const char* TileSource::INTERFACE_NAME = "osgEarth::TileSource";
 
 
 TileSource::TileSource( const TileSourceOptions& options ) :
@@ -509,30 +512,49 @@ TileSource::getBlacklist() const
 
 //------------------------------------------------------------------------
 
+//statics
+const char* ReadWriteTileSource::INTERFACE_NAME = "osgEarth::ReadWriteTileSource";
+
+ReadWriteTileSource::ReadWriteTileSource() :
+TileSource()
+{
+    //nop
+}
+
+ReadWriteTileSource::ReadWriteTileSource(const TileSourceOptions& options) :
+TileSource(options)
+{
+    //nop
+}
+
+//------------------------------------------------------------------------
+
 #undef  LC
 #define LC "[TileSourceFactory] "
-#define TILESOURCEOPTIONS_TAG "__osgEarth::TileSourceOptions"
+#define TILESOURCEOPTIONS_TAG   "__osgEarth::TileSourceOptions"
+#define TILESOURCEINTERFACE_TAG "__osgEarth::Interface"
 
 TileSource*
-TileSourceFactory::create( const TileSourceOptions& options )
+TileSourceFactory::openReadOnly(const TileSourceOptions& options)
 {
     TileSource* result = 0L;
 
     std::string driver = options.getDriver();
     if ( driver.empty() )
     {
-        OE_WARN << "ILLEGAL- no driver set for tile source" << std::endl;
+        OE_WARN << LC << "ILLEGAL- no driver set for tile source" << std::endl;
         return 0L;
     }
 
-    osg::ref_ptr<osgDB::Options> rwopt = Registry::instance()->cloneOrCreateOptions();
-    rwopt->setPluginData( TILESOURCEOPTIONS_TAG, (void*)&options );
+    osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions();
+    dbopt->setPluginData      ( TILESOURCEOPTIONS_TAG,   (void*)&options );
+    dbopt->setPluginStringData( TILESOURCEINTERFACE_TAG, TileSource::INTERFACE_NAME );
 
     std::string driverExt = std::string( ".osgearth_" ) + driver;
-    result = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, rwopt.get() ) );
+    result = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, dbopt.get() ) );
     if ( !result )
     {
-        OE_WARN << "WARNING: Failed to load TileSource driver for \"" << driver << "\"" << std::endl;
+        OE_WARN << LC << "Failed to load TileSource driver \"" << driver << "\"" << std::endl;
     }
 
     // apply an Override Profile if provided.
@@ -548,10 +570,42 @@ TileSourceFactory::create( const TileSourceOptions& options )
     return result;
 }
 
+ReadWriteTileSource*
+TileSourceFactory::openReadWrite(const TileSourceOptions& options)
+{
+    ReadWriteTileSource* result = 0L;
+
+    std::string driver = options.getDriver();
+    if ( driver.empty() )
+    {
+        OE_WARN << LC << "ILLEGAL- no driver set for tile source" << std::endl;
+        return 0L;
+    }
+
+    osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions();
+    dbopt->setPluginData      ( TILESOURCEOPTIONS_TAG,   (void*)&options );
+    dbopt->setPluginStringData( TILESOURCEINTERFACE_TAG, ReadWriteTileSource::INTERFACE_NAME );
+
+    std::string driverExt = std::string( ".osgearth_" ) + driver;
+    result = dynamic_cast<ReadWriteTileSource*>( osgDB::readObjectFile( driverExt, dbopt.get() ) );
+    if ( !result )
+    {
+        OE_WARN << LC << "Failed to load ReadWriteTileSource driver \"" << driver << "\"" << std::endl;
+    }
+
+    return result;
+}
+
 //------------------------------------------------------------------------
 
 const TileSourceOptions&
-TileSourceDriver::getTileSourceOptions( const osgDB::ReaderWriter::Options* rwopt ) const
+TileSourceDriver::getTileSourceOptions(const osgDB::Options* dbopt ) const
 {
-    return *static_cast<const TileSourceOptions*>( rwopt->getPluginData( TILESOURCEOPTIONS_TAG ) );
+    return *static_cast<const TileSourceOptions*>( dbopt->getPluginData( TILESOURCEOPTIONS_TAG ) );
+}
+
+const std::string
+TileSourceDriver::getInterfaceName(const osgDB::Options* dbopt) const
+{
+    return dbopt->getPluginStringData(TILESOURCEINTERFACE_TAG);
 }

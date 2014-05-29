@@ -104,7 +104,7 @@ public:
                     opt.L2CacheSize() = 0;
 
                     start = osg::Timer::instance()->tick();
-                    source = osgEarth::TileSourceFactory::create( opt );                               
+                    source = osgEarth::TileSourceFactory::openReadOnly( opt );                               
                     TileSource::Status compStatus = source->startup( 0 );
                     if (compStatus.isOK())
                     {

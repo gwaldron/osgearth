@@ -128,37 +128,7 @@ _options    ( options ),
 _initialized( false ),
 _dynamic    ( false )
 {
-#if 0
-    for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin(); 
-        i != _options._components.end(); )
-
-    {
-        //if ( i->_imageLayerOptions.isSet() )
-        //{
-        //    if ( i->_imageLayerOptions->driver().isSet() )
-        //        i->_tileSourceOptions = i->_imageLayerOptions->driver().value();
-        //}
-
-        if ( i->_tileSourceOptions.isSet() )
-        {
-            if ( !i->_tileSourceInstance->valid() )
-                i->_tileSourceInstance = TileSourceFactory::create( i->_tileSourceOptions.value() );
-            
-            if ( !i->_tileSourceInstance->valid() )
-                OE_WARN << LC << "Could not find a TileSource for driver [" << i->_tileSourceOptions->getDriver() << "]" << std::endl;
-        }
-
-        if ( !i->_tileSourceInstance->valid() )
-        {
-            OE_WARN << LC << "A component has no valid TileSource ... removing." << std::endl;
-            i = _options._components.erase( i );
-        }
-        else
-        {
-            ++i;
-        }
-    }
-#endif
+    //nop
 }
 
 osg::Image*
@@ -415,7 +385,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
         {
             if ( !i->_tileSourceInstance.valid() )
             {
-                i->_tileSourceInstance = TileSourceFactory::create( i->_imageLayerOptions->driver().value() );
+                i->_tileSourceInstance = TileSourceFactory::openReadOnly( i->_imageLayerOptions->driver().value() );
             
                 if ( !i->_tileSourceInstance.valid() )
                 {

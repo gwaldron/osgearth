@@ -530,7 +530,7 @@ TerrainLayer::initTileSource()
     {
         if ( _runtimeOptions->driver().isSet() )
         {
-            _tileSource = TileSourceFactory::create( *_runtimeOptions->driver() );
+            _tileSource = TileSourceFactory::openReadOnly( *_runtimeOptions->driver() );
         }
     }
 

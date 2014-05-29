@@ -214,6 +214,9 @@ namespace osgEarth
 
         static Status STATUS_OK;
 
+        /** interface name, used by the plugin system. */
+        static const char* INTERFACE_NAME;
+
     public:
         struct ImageOperation : public osg::Referenced {
             virtual void operator()( osg::ref_ptr<osg::Image>& in_out_image ) =0;
@@ -404,7 +407,7 @@ namespace osgEarth
         /**
          * Called by subclasses to initialize their profile
          */
-        void setProfile( const Profile* profile );
+        virtual void setProfile( const Profile* profile );
 
         /**
          * Sets the status of this tile source. Called by a subclass to
@@ -445,6 +448,32 @@ namespace osgEarth
         Status         _status;
     };
 
+    class OSGEARTH_EXPORT ReadWriteTileSource : public TileSource
+    {
+    public:
+
+        /** Stores an image in the tile source. */
+        virtual bool storeImage(const TileKey&    key,
+                                osg::Image*       image,
+                                ProgressCallback* progress) { return false; }
+
+        /** Stores a heightfield in the tile source. */
+        virtual bool storeHeightField(const TileKey&    key,
+                                      osg::HeightField* hf,
+                                      ProgressCallback* progress) { return false; }
+                            
+        
+        /** interface name, used by the plugin system. */
+        static const char* INTERFACE_NAME;
+
+    protected:
+        /** Construct with defaults. */
+        ReadWriteTileSource();
+
+        /** Construct with options. */
+        ReadWriteTileSource(const TileSourceOptions& options);
+    };
+
 
     typedef std::vector< osg::ref_ptr<TileSource> > TileSourceVector;
 
@@ -453,19 +482,38 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileSourceDriver : public osgDB::ReaderWriter
     {
     protected:
-        const TileSourceOptions& getTileSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+        const TileSourceOptions& getTileSourceOptions(const osgDB::Options* options) const;
+
+        const std::string getInterfaceName(const osgDB::Options* options) const;
     };
 
     //--------------------------------------------------------------------
 
     /**
-     * Creates TileSource instances and chains them together to create
-     * tile source "pipelines" for data access and processing.
+     * Creates TileSource instances.
      */
     class OSGEARTH_EXPORT TileSourceFactory
     {
     public:
-        static TileSource* create( const TileSourceOptions& options );
+        /**
+         * Creates a TileSource instance (read-only) by loading the plugin
+         * specified in the options.
+         */
+        static TileSource* openReadOnly(const TileSourceOptions& options);
+
+        /**
+         * Creates a TileSource instance (read/write) by loading the plugin
+         * specified in the options. Returns NULL if the tilesource cannot be
+         * created, or if it doesn't support writing.
+         */
+        static ReadWriteTileSource* openReadWrite(const TileSourceOptions& options);
+
+        /**
+         * Backwards compatible openReadOnly function.
+         */
+        static TileSource* create(const TileSourceOptions& options) {
+            return openReadOnly(options);
+        }
     };
 }
 

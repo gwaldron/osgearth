@@ -6,12 +6,14 @@ INCLUDE_DIRECTORIES( ${SQLITE3_INCLUDE_DIR} )
 #)
 
 SET(TARGET_SRC
-    ReaderWriterMBTiles.cpp    
+    MBTilesPlugin.cpp
+	MBTilesTileSource.cpp
 )
 
 # headers to show in IDE
 SET(TARGET_H    
     MBTilesOptions
+	MBTilesTileSource
 )
 
 SET(TARGET_LIBRARIES_VARS SQLITE3_LIBRARY)

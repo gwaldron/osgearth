@@ -24,7 +24,6 @@
 #include <osgEarth/Profile>
 #include <osg/ref_ptr>
 #include <osg/Version>
-#include <osgTerrain/TerrainTile>
 #include <string>
 
 namespace osgEarth
@@ -78,7 +77,7 @@ namespace osgEarth
             return !(*this == rhs);
         }
 
-        /** Sorts tilekeys */
+        /** Sorts tilekeys, ignoring profiles */
         bool operator < (const TileKey& rhs) const {
             if (_lod < rhs._lod) return true;
             if (_lod > rhs._lod) return false;
@@ -97,11 +96,6 @@ namespace osgEarth
          * "lod_x_y"
          */
         const std::string& str() const { return _key; }
-
-        /**
-         * Gets a TileID corresponding to this key.
-         */
-        osgTerrain::TileID getTileId() const;
 
         /**
          * Gets the profile within which this key is interpreted.

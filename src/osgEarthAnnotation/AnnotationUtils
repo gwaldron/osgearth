@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/Style>
 #include <osg/AutoTransform>
+#include <osg/CullStack>
 #include <osg/Drawable>
 #include <osg/Geometry>
 #include <osgText/TextBase>

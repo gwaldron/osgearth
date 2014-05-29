@@ -221,7 +221,7 @@ CompositeTileSource::createImage(const TileKey&    key,
                     //We have data within these extents
                     imageInfo.dataInExtents = true;
 
-                    if ( !source->getBlacklist()->contains( key.getTileId() ) )
+                    if ( !source->getBlacklist()->contains(key) )
                     {                        
                         osg::ref_ptr< ImageLayerPreCacheOperation > preCacheOp;
                         if ( i->_imageLayerOptions.isSet() )
@@ -238,7 +238,7 @@ CompositeTileSource::createImage(const TileKey&    key,
                         {
                             //Add the tile to the blacklist
                             OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
-                            source->getBlacklist()->add( key.getTileId() );
+                            source->getBlacklist()->add( key );
                         }
                         imageInfo.opacity = i->_imageLayerOptions.isSet() ? i->_imageLayerOptions->opacity().value() : 1.0f;
                     }

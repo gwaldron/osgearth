@@ -139,12 +139,12 @@ namespace osgEarth
         /**
          *Adds the given tile to the blacklist
          */
-        void add(const osgTerrain::TileID &tile);
+        void add(const TileKey& key);
 
         /**
          *Removes the given tile from the blacklist
          */
-        void remove(const osgTerrain::TileID& tile);
+        void remove(const TileKey& key);
 
         /**
          *Removes all tiles from the blacklist
@@ -154,7 +154,7 @@ namespace osgEarth
         /**
          *Returns whether the given tile is in the blacklist
          */
-        bool contains(const osgTerrain::TileID &tile) const;
+        bool contains(const TileKey& key) const;
 
         /**
          *Returns the size of the blacklist
@@ -182,9 +182,9 @@ namespace osgEarth
         void write(const std::string &filename) const;
 
     private:
-        typedef std::set< osgTerrain::TileID > BlacklistedTiles;
+        typedef std::set<TileKey> BlacklistedTiles;
         BlacklistedTiles _tiles;
-        osgEarth::Threading::ReadWriteMutex _mutex;
+        mutable osgEarth::Threading::ReadWriteMutex _mutex;
     };
 
     /**

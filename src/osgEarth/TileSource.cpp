@@ -45,19 +45,19 @@ TileBlacklist::TileBlacklist()
 }
 
 void
-TileBlacklist::add(const osgTerrain::TileID &tile)
+TileBlacklist::add(const TileKey& key)
 {
     Threading::ScopedWriteLock lock(_mutex);
-    _tiles.insert(tile);
-    OE_DEBUG << "Added " << tile.level << " (" << tile.x << ", " << tile.y << ") to blacklist" << std::endl;
+    _tiles.insert(key);
+    OE_DEBUG << "Added " << key.str() << " to blacklist" << std::endl;
 }
 
 void
-TileBlacklist::remove(const osgTerrain::TileID &tile)
+TileBlacklist::remove(const TileKey& key)
 {
     Threading::ScopedWriteLock lock(_mutex);
-    _tiles.erase(tile);
-    OE_DEBUG << "Removed " << tile.level << " (" << tile.x << ", " << tile.y << ") from blacklist" << std::endl;
+    _tiles.erase(key);
+    OE_DEBUG << "Removed " << key.str() << " from blacklist" << std::endl;
 }
 
 void
@@ -69,16 +69,16 @@ TileBlacklist::clear()
 }
 
 bool
-TileBlacklist::contains(const osgTerrain::TileID &tile) const
+TileBlacklist::contains(const TileKey& key) const
 {
-    Threading::ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
-    return _tiles.find(tile) != _tiles.end();
+    Threading::ScopedReadLock lock(_mutex);
+    return _tiles.find(key) != _tiles.end();
 }
 
 unsigned int
 TileBlacklist::size() const
 {
-    Threading::ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
+    Threading::ScopedReadLock lock(_mutex);
     return _tiles.size();
 }
 
@@ -86,7 +86,6 @@ TileBlacklist*
 TileBlacklist::read(std::istream &in)
 {
     osg::ref_ptr< TileBlacklist > result = new TileBlacklist();
-
 
     while (!in.eof())
     {
@@ -97,7 +96,7 @@ TileBlacklist::read(std::istream &in)
             int z, x, y;
             if (sscanf(line.c_str(), "%d %d %d", &z, &x, &y) == 3)
             {
-                result->add(osgTerrain::TileID(z, x, y ));
+                result->add(TileKey(z, x, y, 0L));
             }
 
         }
@@ -136,7 +135,7 @@ TileBlacklist::write(std::ostream &output) const
     Threading::ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
     for (BlacklistedTiles::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
     {
-        output << itr->level << " " << itr->x << " " << itr->y << std::endl;
+        output << itr->getLOD() << " " << itr->getTileX() << " " << itr->getTileY() << std::endl;
     }
 }
 

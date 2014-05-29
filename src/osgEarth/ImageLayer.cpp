@@ -628,7 +628,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
 
     // Fail is the image is blacklisted.
-    if ( source->getBlacklist()->contains( key.getTileId() ) )
+    if ( source->getBlacklist()->contains(key) )
     {
         OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
         return GeoImage::INVALID;
@@ -653,7 +653,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // blacklist this tile for future requests.
     if ( result == 0L && (!progress || !progress->isCanceled()) )
     {
-        source->getBlacklist()->add( key.getTileId() );
+        source->getBlacklist()->add( key );
     }
 
     return GeoImage(result.get(), key.getExtent());

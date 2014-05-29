@@ -206,7 +206,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         return 0L;
 
     // If the key is blacklisted, fail.
-    if ( source->getBlacklist()->contains( key.getTileId() ) )
+    if ( source->getBlacklist()->contains( key ))
     {
         OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted " << std::endl;
         return 0L;
@@ -243,7 +243,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // Blacklist the tile if it is the same projection as the source and we can't get it and it wasn't cancelled
         if ( !result && (!progress || !progress->isCanceled()))
         {
-            source->getBlacklist()->add( key.getTileId() );
+            source->getBlacklist()->add( key );
         }
     }
 
@@ -270,10 +270,6 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
     //Determine the intersecting keys
     std::vector< TileKey > intersectingTiles;
     getProfile()->getIntersectingTiles( key, intersectingTiles );
-
-
-    //Maintain a list of heightfield tiles that have been added to the list already.
-    std::set< osgTerrain::TileID > existingTiles; 
 
     // collect heightfield for each intersecting key. Note, we're hitting the
     // underlying tile source here, so there's no vetical datum shifts happening yet.

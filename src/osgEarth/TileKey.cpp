@@ -94,14 +94,6 @@ TileKey::getQuadrant() const
         yeven          ? 1 : 3;
 }
 
-osgTerrain::TileID
-TileKey::getTileId() const
-{
-    //TODO: will this be an issue with multi-face? perhaps not since each face will
-    // exist within its own scene graph.. ?
-    return osgTerrain::TileID(_lod, _x, _y);
-}
-
 void
 TileKey::getPixelExtents(unsigned int& xmin,
                          unsigned int& ymin,

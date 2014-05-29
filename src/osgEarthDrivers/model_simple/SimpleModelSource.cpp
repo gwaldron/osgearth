@@ -24,6 +24,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/FileUtils>
 #include <osgEarth/StateSetCache>
+#include <osg/CullStack>
 #include <osg/LOD>
 #include <osg/ProxyNode>
 #include <osg/Notify>

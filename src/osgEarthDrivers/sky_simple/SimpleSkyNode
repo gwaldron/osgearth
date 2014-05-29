@@ -26,7 +26,6 @@
 namespace osg {
     class EllipsoidModel;
     class Light;
-    class LightSource;
 }
 
 namespace osgEarth { namespace Drivers { namespace SimpleSky
@@ -91,8 +90,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         osg::ref_ptr<osg::MatrixTransform> _starsXform;
 
         osg::ref_ptr<osg::Group> _cullContainer;
-
-        osg::ref_ptr<osg::LightSource> _lightSource;
 
         float _innerRadius, _outerRadius, _sunDistance, _starRadius, _minStarMagnitude;
         osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere, _moon;

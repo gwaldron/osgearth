@@ -10,15 +10,9 @@ Mircosoft Bing Maps example.
 Supported imagery sets are Aerial, AerialWithLabels, and Road.
 -->
 
-<map>
-    <options>
-        <elevation_tile_size>5</elevation_tile_size>        
-        <terrain lighting="false" first_lod="1"/>
-    </options>
-    
-    <image driver="bing">
+<map>    
+    <image name="bing" driver="bing">
         <key>your-api-key-here</key>
         <imagery_set>AerialWithLabels</imagery_set>
-    </image>
-    
+    </image>    
 </map>

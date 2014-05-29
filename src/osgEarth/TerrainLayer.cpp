@@ -485,13 +485,13 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
             newInfo._metadata = meta;
             newInfo._bin      = newBin.get();
 
-            OE_INFO << LC << "Opened cache bin [" << binId << "]" << std::endl;
+            OE_INFO << LC << "Opened cache bin [" << binId << "] for layer [" << getName() << "]" << std::endl;
         }
         else
         {
             // bin creation failed, so disable caching for this layer.
             setCachePolicy( CachePolicy::NO_CACHE );
-            OE_WARN << LC << "Failed to create a caching bin for layer; cache disabled." << std::endl;
+            OE_WARN << LC << "Failed to create a caching bin for layer [" << getName() << "]; cache disabled." << std::endl;
         }
 
         return newBin.get(); // not release()

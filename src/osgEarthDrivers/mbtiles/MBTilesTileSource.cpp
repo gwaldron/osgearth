@@ -180,6 +180,16 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 }    
 
 
+CachePolicy
+MBTilesTileSource::getCachePolicyHint(const Profile* targetProfile) const
+{
+    if ( targetProfile->isHorizEquivalentTo(getProfile()) )
+        return CachePolicy::NO_CACHE;
+    else
+        return CachePolicy::DEFAULT;
+}
+
+
 osg::Image*
 MBTilesTileSource::createImage(const TileKey&    key,
                                ProgressCallback* progress)

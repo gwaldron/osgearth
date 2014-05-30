@@ -42,6 +42,8 @@ namespace osgEarth { namespace Drivers { namespace MBTiles
 
         std::string getExtension() const;
 
+        CachePolicy getCachePolicyHint(const Profile* targetProfile) const;
+
     public: // ReadWriteTileSource interface
 
         bool storeImage(const TileKey&    key,

@@ -28,11 +28,27 @@
 
 using namespace osgEarth;
 
+// documentation
+int usage(char** argv)
+{
+    std::cout
+        << "Converts tiles from one format to another.\n\n"
+        << argv[0]
+        << "\n    --in [prop_name] [prop_value]       : set an input property"
+        << "\n    --out [prop_name] [prop_value]      : set an output property"
+        << "\n    --profile [profile def]             : set an output profile (optional; default = same as input)"
+        << "\n    --min-level [int]                   : minimum level of detail"
+        << "\n    --max-level [int]                   : maximum level of detail"
+        << std::endl;
+        
+    return 0;
+}
+
 
 // TileHandler that copies images from one tilesource to another.
-struct ImageTileCopier : public TileHandler
+struct TileSourceToTileSource : public TileHandler
 {
-    ImageTileCopier(TileSource* source, ReadWriteTileSource* dest)
+    TileSourceToTileSource(TileSource* source, ReadWriteTileSource* dest)
         : _source(source), _dest(dest)
     {
         //nop
@@ -54,6 +70,37 @@ struct ImageTileCopier : public TileHandler
 
     TileSource*          _source;
     ReadWriteTileSource* _dest;
+};
+
+
+// TileHandler that copies images from an ImageLayer to a TileSource.
+// This will automatically handle any mosaicing and reprojection that is
+// necessary to translate from one Profile/SRS to another.
+struct ImageLayerToTileSource : public TileHandler
+{
+    ImageLayerToTileSource(TileSource* source, ReadWriteTileSource* dest)
+        : _source(source), _dest(dest)
+    {
+        _layer = new ImageLayer(ImageLayerOptions(), source);
+    }
+
+    bool handleTile(const TileKey& key)
+    {
+        bool ok = false;
+        GeoImage image = _layer->createImage(key);
+        if ( image.valid() )
+            ok = _dest->storeImage(key, image.getImage(), 0L);
+        return ok;
+    }
+    
+    bool hasData(const TileKey& key) const
+    {
+        return _source->hasData(key);
+    }
+
+    TileSource*              _source;
+    ReadWriteTileSource*     _dest;
+    osg::ref_ptr<ImageLayer> _layer;
 };
 
 
@@ -108,6 +155,9 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser args(&argc,argv);
 
+    if ( argc == 1 )
+        return usage(argv);
+
     typedef std::map<std::string,std::string> KeyValue;
     std::string key, value;
 
@@ -136,9 +186,27 @@ main(int argc, char** argv)
     while( args.read("--out", key, value) )
         outConf.set(key, value);
 
-    // copy source profile to output config:
-    outConf.add("profile", input->getProfile()->toProfileOptions().getConfig());
+    // are we changing profiles?
+    osg::ref_ptr<const Profile> outputProfile = input->getProfile();
+    std::string profileString;
+    bool isSameProfile = true;
 
+    if ( args.read("--profile", profileString) )
+    {
+        outputProfile = Profile::create(profileString);
+        if ( !outputProfile.valid() || !outputProfile->isOK() )
+        {
+            OE_WARN << LC << "Output profile is not recognized" << std::endl;
+            return -1;
+        }
+        isSameProfile = outputProfile->isHorizEquivalentTo(input->getProfile());
+    }
+
+    // set the output profile.
+    ProfileOptions profileOptions = outputProfile->toProfileOptions();
+    outConf.add("profile", profileOptions.getConfig());
+
+    // open the output tile source:
     TileSourceOptions outOptions(outConf);
     osg::ref_ptr<ReadWriteTileSource> output = TileSourceFactory::openReadWrite(outOptions);
     if ( !output.valid() )
@@ -163,19 +231,56 @@ main(int argc, char** argv)
         << outConf.toJSON(true)
         << std::endl;
 
-    // Copy.
-    TileVisitor visitor( new ImageTileCopier(input, output) );
+    TileVisitor visitor;
 
-    unsigned minLevel;
-    if (args.read("--min-level", minLevel))
+    // If the profiles are identical, just use a tile copier.
+    if ( isSameProfile )
+    {
+        OE_NOTICE << LC << "Profiles match - initiating simple tile copy" << std::endl;
+        visitor.setTileHandler( new TileSourceToTileSource(input, output) );
+    }
+    else
+    {
+        OE_NOTICE << LC << "Profiles differ - initiating tile transformation" << std::endl;
+        visitor.setTileHandler( new ImageLayerToTileSource(input, output) );
+    }
+    
+    // Set the level limits:
+    unsigned minLevel = ~0;
+    bool minLevelSet = args.read("--min-level", minLevel);
+
+    unsigned maxLevel = 0;
+    bool maxLevelSet = args.read("--max-level", maxLevel);
+
+    // figure out the max source level:
+    if ( !minLevelSet || !maxLevelSet )
+    {
+        for(DataExtentList::const_iterator i = input->getDataExtents().begin();
+            i != input->getDataExtents().end();
+            ++i)
+        {
+            if ( !maxLevelSet && i->maxLevel().isSet() && i->maxLevel().value() > maxLevel )
+                maxLevel = i->maxLevel().value();
+            if ( !minLevelSet && i->minLevel().isSet() && i->minLevel().value() < minLevel )
+                minLevel = i->minLevel().value();
+        }
+    }
+       
+    if ( minLevel < ~0 )
+    {
         visitor.setMinLevel( minLevel );
+    }
 
-    unsigned maxLevel;
-    if (args.read("--max-level", maxLevel))
+    if ( maxLevel > 0 )
+    {
+        maxLevel = outputProfile->getEquivalentLOD( input->getProfile(), maxLevel );
         visitor.setMaxLevel( maxLevel );
+        OE_INFO << LC << "Set max level to " << maxLevel << std::endl;
+    }
 
     std::cout << "Working..." << std::endl;
+
     visitor.setProgressCallback( new ProgressReporter() );
 
-    visitor.run( input->getProfile() );
+    visitor.run( outputProfile.get() );
 }

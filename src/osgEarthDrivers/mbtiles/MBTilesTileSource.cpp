@@ -66,6 +66,8 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         optionsProfile = Profile::create(_options.profile().get());
         if ( !optionsProfile.valid() || !optionsProfile->isOK() )
             return Status::Error("Cannot create database; required Profile is invalid");
+
+        OE_INFO << LC << "Database does not exist; attempting to create it." << std::endl;
     }
 
     // Try to open (or create) the database.
@@ -86,13 +88,16 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     // the metadata.
     if ( !isNewDatabase )
     {
-        std::string name, type, version, description, profileStr;
+        std::string profileStr;
+        getMetaData( "profile", profileStr );
+
+#if 0
+        std::string name, type, version, description;
         getMetaData( "name", name );
         getMetaData( "type", type);
         getMetaData( "version", version );
         getMetaData( "description", description );
         getMetaData( "format", format );
-        getMetaData( "profile", profileStr );
 
         OE_INFO << LC << "name=" << name << std::endl
             << "type=" << type << std::endl
@@ -100,6 +105,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
             << "description=" << description << std::endl
             << "format=" << format << std::endl
             << "profile=" << profileStr << std::endl;
+#endif
 
         // Set the profile
         const Profile* profile = getProfile();
@@ -129,6 +135,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                 // Spherical mercator is the MBTiles default.
                 profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
             }
+
             setProfile( profile );                    
         }
     }

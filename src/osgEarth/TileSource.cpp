@@ -593,6 +593,16 @@ TileSourceFactory::openReadWrite(const TileSourceOptions& options)
         OE_WARN << LC << "Failed to load ReadWriteTileSource driver \"" << driver << "\"" << std::endl;
     }
 
+    // apply an Override Profile if provided.
+    if ( result && options.profile().isSet() )
+    {
+        const Profile* profile = Profile::create(*options.profile());
+        if ( profile )
+        {
+            result->setProfile( profile );
+        }
+    }
+
     return result;
 }
 

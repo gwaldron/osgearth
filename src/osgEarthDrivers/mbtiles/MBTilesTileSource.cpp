@@ -56,16 +56,13 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     std::string fullFilename = _options.filename()->full();   
     bool isNewDatabase = _readWrite && !osgDB::fileExists(fullFilename);
 
-    // Make sure that the options contain a Profile if this is a NEW database.
-    osg::ref_ptr<const Profile> optionsProfile;
     if ( isNewDatabase )
     {
-        if ( !_options.profile().isSet() )
+        // For a NEW database, the profile MUST be set prior to initialization.
+        if ( getProfile() == 0L )
+        {
             return Status::Error("Cannot create database; required Profile is missing");
-
-        optionsProfile = Profile::create(_options.profile().get());
-        if ( !optionsProfile.valid() || !optionsProfile->isOK() )
-            return Status::Error("Cannot create database; required Profile is invalid");
+        }
 
         OE_INFO << LC << "Database does not exist; attempting to create it." << std::endl;
     }
@@ -123,12 +120,6 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 
             setProfile( profile );                    
         }
-    }
-
-    // Otherwise, this is a NEW database. Set the new profile from the options
-    else
-    {
-        setProfile( optionsProfile.get() );
     }
 
     // Determine the tile format and get a reader writer for it.        

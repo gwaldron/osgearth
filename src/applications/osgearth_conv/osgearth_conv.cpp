@@ -160,6 +160,8 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  *      --max-level [int]     : max level of detail to copy
  *      --threads [n]         : threads to use (may crash. Careful.)
  *
+ *      --extents [minLat] [minLong] [maxLat] [maxLong] : Lat/Long extends to copy (*)
+ *
  * Of course, the output driver must support writing (by implementing
  * the ReadWriteTileSource interface).
  */
@@ -310,6 +312,15 @@ main(int argc, char** argv)
         OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
     }
 
+    // set the extents:
+    double minlat, minlon, maxlat, maxlon;
+    while( args.read("--extents", minlat, minlon, maxlat, maxlon) )
+    {
+        GeoExtent extent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
+        visitor->addExtent( extent );
+    }
+
+    // Ready!!!
     std::cout << "Working..." << std::endl;
 
     visitor->setProgressCallback( new ProgressReporter() );

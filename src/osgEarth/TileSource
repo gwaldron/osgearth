@@ -407,7 +407,7 @@ namespace osgEarth
         /**
          * Called by subclasses to initialize their profile
          */
-        virtual void setProfile( const Profile* profile );
+        void setProfile( const Profile* profile );
 
         /**
          * Sets the status of this tile source. Called by a subclass to

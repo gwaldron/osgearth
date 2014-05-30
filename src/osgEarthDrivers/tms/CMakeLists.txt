@@ -1,8 +1,10 @@
 SET(TARGET_SRC
-  ReaderWriterTMS.cpp
+    TMSPlugin.cpp
+    TMSTileSource.cpp
 )
 SET(TARGET_H
-  TMSOptions
+    TMSOptions
+	TMSTileSource
 )
     
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthUtil)

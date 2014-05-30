@@ -705,49 +705,44 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
         unsigned elevptr = vertptr;
         for(Faces::const_iterator f = e->faces.begin(); f != e->faces.end(); ++f)
         {
-            // Only use source verts; we skip interim verts inserted by the 
-            // structure building since they are co-linear anyway and thus we don't
-            // need them for the roof line.
-            if ( f->left.isFromSource )
+            // Only use source verts for posts.
+            bool drawPost     = f->left.isFromSource;
+            bool drawCrossbar = true;
+
+            osg::Vec3d this_vec = f->right.roof - f->left.roof;
+            this_vec.normalize();
+
+            if (f->left.isFromSource && f != e->faces.begin())
             {
-                bool drawPost     = true;
-                bool drawCrossbar = true;
-
-                osg::Vec3d this_vec = f->right.roof - f->left.roof;
-                this_vec.normalize();
-
-                if (f != e->faces.begin())
-                {
-                    drawPost = (this_vec * prev_vec) < cosMinAngle;
-                }
-
-                if ( drawPost || drawCrossbar )
-                {
-                    verts->push_back( f->left.roof );
-                    color->push_back( outlineColor );
-                }
-
-                if ( drawPost )
-                {
-                    verts->push_back( f->left.base );
-                    color->push_back( outlineColor );
-                    de->addElement(vertptr);
-                    de->addElement(verts->size()-1);
-                }
-
-                if ( drawCrossbar )
-                {
-                    verts->push_back( f->right.roof );
-                    color->push_back( outlineColor );
-
-                    de->addElement(vertptr);
-                    de->addElement(verts->size()-1);
-                }
-
-                vertptr = verts->size();
-
-                prev_vec = this_vec;
+                drawPost = (this_vec * prev_vec) < cosMinAngle;
             }
+
+            if ( drawPost || drawCrossbar )
+            {
+                verts->push_back( f->left.roof );
+                color->push_back( outlineColor );
+            }
+
+            if ( drawPost )
+            {
+                verts->push_back( f->left.base );
+                color->push_back( outlineColor );
+                de->addElement(vertptr);
+                de->addElement(verts->size()-1);
+            }
+
+            if ( drawCrossbar )
+            {
+                verts->push_back( f->right.roof );
+                color->push_back( outlineColor );
+
+                de->addElement(vertptr);
+                de->addElement(verts->size()-1);
+            }
+
+            vertptr = verts->size();
+
+            prev_vec = this_vec;
         }
 
         // Draw an end-post if this isn't a closed polygon.

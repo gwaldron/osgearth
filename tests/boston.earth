@@ -20,6 +20,7 @@ to extruded buildings.
         <features name="buildings" driver="ogr">
             <url>../data/boston_buildings_utm19.shp</url>
             <build_spatial_index>true</build_spatial_index>
+			<resample min_length="5"/>
         </features>
         
 		<!-- Uncomment this for the featuremanip or featurequery demo. -->

@@ -24,6 +24,7 @@
 #include <osgEarth/TileHandler>
 #include <osgEarth/TileVisitor>
 #include <osg/ArgumentParser>
+#include <osg/Timer>
 #include <iomanip>
 
 using namespace osgEarth;
@@ -78,16 +79,16 @@ struct TileSourceToTileSource : public TileHandler
 // necessary to translate from one Profile/SRS to another.
 struct ImageLayerToTileSource : public TileHandler
 {
-    ImageLayerToTileSource(TileSource* source, ReadWriteTileSource* dest)
+    ImageLayerToTileSource(ImageLayer* source, ReadWriteTileSource* dest)
         : _source(source), _dest(dest)
     {
-        _layer = new ImageLayer(ImageLayerOptions(), source);
+        //nop
     }
 
     bool handleTile(const TileKey& key)
     {
         bool ok = false;
-        GeoImage image = _layer->createImage(key);
+        GeoImage image = _source->createImage(key);
         if ( image.valid() )
             ok = _dest->storeImage(key, image.getImage(), 0L);
         return ok;
@@ -95,12 +96,11 @@ struct ImageLayerToTileSource : public TileHandler
     
     bool hasData(const TileKey& key) const
     {
-        return _source->hasData(key);
+        return _source->getTileSource()->hasData(key);
     }
 
-    TileSource*              _source;
-    ReadWriteTileSource*     _dest;
-    osg::ref_ptr<ImageLayer> _layer;
+    osg::ref_ptr<ImageLayer> _source;
+    ReadWriteTileSource* _dest;
 };
 
 
@@ -113,6 +113,8 @@ struct ProgressReporter : public osgEarth::ProgressCallback
                         unsigned           totalStages,
                         const std::string& msg )
     {
+        _mutex.lock();
+
         float percentage = current/total*100.0f;
         std::cout 
             << std::fixed
@@ -125,8 +127,12 @@ struct ProgressReporter : public osgEarth::ProgressCallback
         if ( percentage >= 100.0f )
             std::cout << std::endl;
 
+        _mutex.unlock();
+
         return false;
     }
+
+    Threading::Mutex _mutex;
 };
 
 
@@ -146,6 +152,13 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  *
  * The "in" properties come from the GDALOptions getConfig method. The
  * "out" properties come from the MBTilesOptions getConfig method.
+ *
+ * Other arguments:
+ *
+ *      --profile [profile]   : reproject to the target profile, e.g. "wgs84"
+ *      --min-level [int]     : min level of detail to copy
+ *      --max-level [int]     : max level of detail to copy
+ *      --threads [n]         : threads to use (may crash. Careful.)
  *
  * Of course, the output driver must support writing (by implementing
  * the ReadWriteTileSource interface).
@@ -231,18 +244,37 @@ main(int argc, char** argv)
         << outConf.toJSON(true)
         << std::endl;
 
-    TileVisitor visitor;
+    // create the visitor.
+    osg::ref_ptr<TileVisitor> visitor;
+
+    unsigned numThreads = 1;
+    if (args.read("--threads", numThreads))
+    {
+        MultithreadedTileVisitor* mtv = new MultithreadedTileVisitor();
+        mtv->setNumThreads( numThreads < 1 ? 1 : numThreads );
+        visitor = mtv;
+    }
+    else
+    {
+        visitor = new TileVisitor();
+    }
 
     // If the profiles are identical, just use a tile copier.
     if ( isSameProfile )
     {
         OE_NOTICE << LC << "Profiles match - initiating simple tile copy" << std::endl;
-        visitor.setTileHandler( new TileSourceToTileSource(input, output) );
+        visitor->setTileHandler( new TileSourceToTileSource(input.get(), output.get()) );
     }
     else
     {
         OE_NOTICE << LC << "Profiles differ - initiating tile transformation" << std::endl;
-        visitor.setTileHandler( new ImageLayerToTileSource(input, output) );
+        ImageLayer* layer = new ImageLayer(ImageLayerOptions(), input.get());
+        if ( !layer->getProfile() || !layer->getProfile()->isOK() )
+        {
+            OE_WARN << LC << "Input profile is not valid" << std::endl;
+            return -1;
+        }
+        visitor->setTileHandler( new ImageLayerToTileSource(layer, output.get()) );
     }
     
     // Set the level limits:
@@ -268,19 +300,32 @@ main(int argc, char** argv)
        
     if ( minLevel < ~0 )
     {
-        visitor.setMinLevel( minLevel );
+        visitor->setMinLevel( minLevel );
     }
 
     if ( maxLevel > 0 )
     {
         maxLevel = outputProfile->getEquivalentLOD( input->getProfile(), maxLevel );
-        visitor.setMaxLevel( maxLevel );
-        OE_INFO << LC << "Set max level to " << maxLevel << std::endl;
+        visitor->setMaxLevel( maxLevel );
+        OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
     }
 
     std::cout << "Working..." << std::endl;
 
-    visitor.setProgressCallback( new ProgressReporter() );
+    visitor->setProgressCallback( new ProgressReporter() );
 
-    visitor.run( outputProfile.get() );
+    osg::Timer_t t0 = osg::Timer::instance()->tick();
+
+    visitor->run( outputProfile.get() );
+
+    osg::Timer_t t1 = osg::Timer::instance()->tick();
+
+    std::cout
+        << "Time = " 
+        << std::fixed
+        << std::setprecision(1)
+        << osg::Timer::instance()->delta_s(t0, t1)
+        << " seconds." << std::endl;
+
+    return 0;
 }

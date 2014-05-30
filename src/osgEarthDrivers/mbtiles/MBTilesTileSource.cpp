@@ -297,10 +297,22 @@ MBTilesTileSource::storeImage(const TileKey&    key,
     sqlite3_bind_blob( insert, 4, value.c_str(), value.length(), SQLITE_STATIC );
 
     // run the sql.
-    sqlite3_step( insert );
+    bool ok = true;
+    int tries = 0;
+    do {
+        rc = sqlite3_step(insert);
+    }
+    while (++tries < 100 && (rc == SQLITE_BUSY || rc == SQLITE_LOCKED));
+
+    if (SQLITE_OK != rc && SQLITE_DONE != rc)
+    {
+        OE_WARN << LC << "Failed query: " << query << "(" << rc << ")" << sqlite3_errstr(rc) << "; " << sqlite3_errmsg(_database) << std::endl;
+        ok = false;
+    }
+
     sqlite3_finalize( insert );
 
-    return true;
+    return ok;
 }
 
 bool
@@ -422,9 +434,12 @@ MBTilesTileSource::createTables()
         " tile_row integer,"
         " tile_data blob)";
 
-    if (SQLITE_OK != sqlite3_exec(_database, query.c_str(), 0L, 0L, 0L))
+    char* errorMsg = 0L;
+
+    if (SQLITE_OK != sqlite3_exec(_database, query.c_str(), 0L, 0L, &errorMsg))
     {
-        OE_WARN << LC << "Failed to create table [tiles]" << std::endl;
+        OE_WARN << LC << "Failed to create table [tiles]: " << errorMsg << std::endl;
+        sqlite3_free( errorMsg );
         return false;
     }
 

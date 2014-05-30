@@ -64,6 +64,10 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
+
+        viewer.getCamera()->setNearFarRatio(0.00002);
+        viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
         return viewer.run();
     }
     else

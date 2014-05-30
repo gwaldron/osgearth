@@ -20,6 +20,7 @@
 #include "MBTilesOptions"
 
 #include <osgEarth/TileSource>
+#include <osgEarth/ThreadingUtils>
 
 // forward declare
 struct sqlite3;
@@ -67,6 +68,9 @@ namespace osgEarth { namespace Drivers { namespace MBTiles
         osg::ref_ptr<osgDB::Options> _dbOptions;
         std::string _tileFormat;
         bool _readWrite;
+
+        // because no one knows if/when sqlite3 is threadsafe.
+        mutable Threading::Mutex _mutex; 
     };
 
 } } } // namespace osgEarth::Drivers::MBTiles

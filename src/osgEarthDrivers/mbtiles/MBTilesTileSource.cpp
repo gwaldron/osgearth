@@ -70,10 +70,11 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         OE_INFO << LC << "Database does not exist; attempting to create it." << std::endl;
     }
 
-    // Try to open (or create) the database.
+    // Try to open (or create) the database. We use SQLITE_OPEN_NOMUTEX to do
+    // our own mutexing.
     int flags = _readWrite 
-        ? (SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
-        : SQLITE_OPEN_READONLY;
+        ? (SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX)
+        : (SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX);
      
     int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, flags, 0L );
     if ( rc != 0 )
@@ -90,22 +91,6 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     {
         std::string profileStr;
         getMetaData( "profile", profileStr );
-
-#if 0
-        std::string name, type, version, description;
-        getMetaData( "name", name );
-        getMetaData( "type", type);
-        getMetaData( "version", version );
-        getMetaData( "description", description );
-        getMetaData( "format", format );
-
-        OE_INFO << LC << "name=" << name << std::endl
-            << "type=" << type << std::endl
-            << "version=" << version << std::endl
-            << "description=" << description << std::endl
-            << "format=" << format << std::endl
-            << "profile=" << profileStr << std::endl;
-#endif
 
         // Set the profile
         const Profile* profile = getProfile();
@@ -198,7 +183,9 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 osg::Image*
 MBTilesTileSource::createImage(const TileKey&    key,
                                ProgressCallback* progress)
-{             
+{
+    Threading::ScopedMutexLock exclusiveLock(_mutex);
+
     int z = key.getLevelOfDetail();
     int x = key.getTileX();
     int y = key.getTileY();
@@ -265,7 +252,9 @@ bool
 MBTilesTileSource::storeImage(const TileKey&    key,
                               osg::Image*       image,
                               ProgressCallback* progress)
-{             
+{
+    Threading::ScopedMutexLock exclusiveLock(_mutex);
+
     int z = key.getLOD();
     int x = key.getTileX();
     int y = key.getTileY();
@@ -318,6 +307,8 @@ MBTilesTileSource::storeImage(const TileKey&    key,
 bool
 MBTilesTileSource::getMetaData(const std::string& key, std::string& value)
 {
+    Threading::ScopedMutexLock exclusiveLock(_mutex);
+
     //get the metadata
     sqlite3_stmt* select = NULL;
     std::string query = "SELECT value from metadata where name = ?";
@@ -356,6 +347,8 @@ MBTilesTileSource::getMetaData(const std::string& key, std::string& value)
 bool
 MBTilesTileSource::putMetaData(const std::string& key, const std::string& value)
 {
+    Threading::ScopedMutexLock exclusiveLock(_mutex);
+
     // prep the insert statement.
     sqlite3_stmt* insert = 0L;
     std::string query = Stringify() << "INSERT OR REPLACE INTO metadata (name,value) VALUES (?,?)";
@@ -386,6 +379,8 @@ MBTilesTileSource::putMetaData(const std::string& key, const std::string& value)
 void
 MBTilesTileSource::computeLevels()
 {        
+    Threading::ScopedMutexLock exclusiveLock(_mutex);
+
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     sqlite3_stmt* select = NULL;
     std::string query = "SELECT min(zoom_level), max(zoom_level) from tiles";
@@ -414,6 +409,8 @@ MBTilesTileSource::computeLevels()
 bool
 MBTilesTileSource::createTables()
 {
+    Threading::ScopedMutexLock exclusiveLock(_mutex);
+
     // https://github.com/mapbox/mbtiles-spec/blob/master/1.2/spec.md
 
     std::string query =

@@ -520,7 +520,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
                      osg::Group*          root,
                      Control*             userControl ) const
 {
-    // this is a dubious move.
     if ( !root )
         root = mapNode;
 
@@ -632,7 +631,16 @@ MapNodeHelper::parse(MapNode*             mapNode,
         if ( sky )
         {
             sky->attach( view, 0 );
-            osgEarth::insertGroup(sky, mapNode);
+            if ( mapNode->getNumParents() > 0 )
+            {
+                osgEarth::insertGroup(sky, mapNode->getParent(0));
+            }
+            else
+            {
+                sky->addChild( mapNode );
+                root = sky;
+            }
+                
             Control* c = SkyControlFactory().create(sky, view);
             if ( c )
                 mainContainer->addControl( c );

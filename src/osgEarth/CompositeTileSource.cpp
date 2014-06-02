@@ -287,7 +287,7 @@ osg::HeightField* CompositeTileSource::createHeightField(
     }  
 
     // Populate the heightfield and return it if it's valid
-    if (_elevationLayers.populateHeightField(heightField.get(), key, 0, ElevationInterpolation::INTERP_AVERAGE, progress))
+    if (_elevationLayers.populateHeightField(heightField.get(), key, 0, INTERP_AVERAGE, progress))
     {                
         return heightField.release();
     }
@@ -401,7 +401,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             _dynamic = _dynamic || source->isDynamic();
             
             // gather extents                        
-            const DataExtentList& extents = source->getDataExtents();
+            const DataExtentList& extents = source->getDataExtents();            
             for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
             {                
                 // Convert the data extent to the profile that is actually used by this TileSource
@@ -411,7 +411,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
                 unsigned int maxLevel = profile->getEquivalentLOD( source->getProfile(), *dataExtent.maxLevel() );                                        
                 dataExtent = DataExtent(ext, minLevel, maxLevel);                                
                 getDataExtents().push_back( dataExtent );
-            } 
+            }          
         }
 
         ++i;

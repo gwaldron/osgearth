@@ -21,6 +21,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
+#include <osgEarth/HeightFieldUtils>
 #include <osgDB/FileNameUtils>
 
 #define LC "[CompositeTileSource] "
@@ -44,9 +45,17 @@ CompositeTileSourceOptions::add( const ImageLayerOptions& options )
     _components.push_back( c );
 }
 
+void
+CompositeTileSourceOptions::add( const ElevationLayerOptions& options )
+{
+    Component c;
+    c._elevationLayerOptions = options;
+    _components.push_back( c );
+}
+
 Config 
 CompositeTileSourceOptions::getConfig() const
-{
+{    
     Config conf = TileSourceOptions::newConfig();
 
     for( ComponentVector::const_iterator i = _components.begin(); i != _components.end(); ++i )
@@ -67,17 +76,28 @@ CompositeTileSourceOptions::mergeConfig( const Config& conf )
 
 void 
 CompositeTileSourceOptions::fromConfig( const Config& conf )
-{
-    const ConfigSet& children = conf.children("image");
-    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+{    
+    const ConfigSet& images = conf.children("image");
+    for( ConfigSet::const_iterator i = images.begin(); i != images.end(); ++i )
     {
         add( ImageLayerOptions( *i ) );
     }
 
-    if (conf.children("elevation").size() > 0 || conf.children("heightfield").size() > 0 ||
-        conf.children("model").size() > 0 || conf.children("overlay").size() > 0 )
+    const ConfigSet& elevations = conf.children("elevation");
+    for( ConfigSet::const_iterator i = elevations.begin(); i != elevations.end(); ++i )
     {
-        OE_WARN << LC << "Illegal - composite driver only supports image layers" << std::endl;
+        add( ElevationLayerOptions( *i ) );
+    }
+
+    const ConfigSet& heightfields = conf.children("heightfield");
+    for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); ++i )
+    {
+        add( ElevationLayerOptions( *i ) );
+    }
+
+    if (conf.children("model").size() > 0 || conf.children("overlay").size() > 0 )
+    {
+        OE_WARN << LC << "Illegal - composite driver only supports image and elevation layers" << std::endl;
     }
 }
 
@@ -107,18 +127,7 @@ namespace
     };
 
     // some helper types.    
-    typedef std::vector<ImageInfo> ImageMixVector;
-
-    // same op that occurs in ImageLayer.cpp ... maybe consilidate
-    struct ImageLayerPreCacheOperation : public TileSource::ImageOperation
-    {
-        void operator()( osg::ref_ptr<osg::Image>& image )
-        {
-            _processor.process( image );
-        }
-
-        ImageLayerTileProcessor _processor;
-    };
+    typedef std::vector<ImageInfo> ImageMixVector;   
 }
 
 //-----------------------------------------------------------------------
@@ -134,95 +143,31 @@ _dynamic    ( false )
 osg::Image*
 CompositeTileSource::createImage(const TileKey&    key,
                                  ProgressCallback* progress )
-{
+{    
     ImageMixVector images;
-    images.reserve( _options._components.size() );
+    images.reserve(_imageLayers.size());
 
-    for(CompositeTileSourceOptions::ComponentVector::const_iterator i = _options._components.begin();
-        i != _options._components.end();
-        ++i )
+    // Try to get an image from each of the layers for the given key.
+    for (ImageLayerVector::const_iterator itr = _imageLayers.begin(); itr != _imageLayers.end(); ++itr)
     {
-        if ( progress && progress->isCanceled() )
-            return 0L;
-
+        ImageLayer* layer = itr->get();
         ImageInfo imageInfo;
-        imageInfo.dataInExtents = false;
+        imageInfo.dataInExtents = layer->getTileSource()->hasDataInExtent( key.getExtent() );
+        imageInfo.opacity = layer->getOpacity();
 
-
-
-        TileSource* source = i->_tileSourceInstance.get();
-        if ( source )
+        if (imageInfo.dataInExtents)
         {
-            //TODO:  This duplicates code in ImageLayer::isKeyValid.  Maybe should move that to TileSource::isKeyValid instead
-            int minLevel = 0;
-            int maxLevel = INT_MAX;
-            if (i->_imageLayerOptions->minLevel().isSet())
+            GeoImage image = layer->createImage(key, progress);
+            if (image.valid())
             {
-                minLevel = i->_imageLayerOptions->minLevel().value();
+                imageInfo.image = image.getImage();
             }
-            else if (i->_imageLayerOptions->minResolution().isSet())
-            {
-                minLevel = source->getProfile()->getLevelOfDetailForHorizResolution( 
-                    i->_imageLayerOptions->minResolution().value(), 
-                    source->getPixelsPerTile());
-            }
-
-            if (i->_imageLayerOptions->maxLevel().isSet())
-            {
-                maxLevel = i->_imageLayerOptions->maxLevel().value();
-            }
-            else if (i->_imageLayerOptions->maxResolution().isSet())
-            {
-                maxLevel = source->getProfile()->getLevelOfDetailForHorizResolution( 
-                    i->_imageLayerOptions->maxResolution().value(), 
-                    source->getPixelsPerTile());
-            }
-
-            // check that this source is within the level bounds:
-            if (minLevel > (int)key.getLevelOfDetail() ||
-                maxLevel < (int)key.getLevelOfDetail() )
-            {
-                continue;
-            }
-            
-                //Only try to get data if the source actually has data                
-                if (source->hasDataInExtent( key.getExtent() ) )
-                {
-                    //We have data within these extents
-                    imageInfo.dataInExtents = true;
-
-                    if ( !source->getBlacklist()->contains(key) )
-                    {                        
-                        osg::ref_ptr< ImageLayerPreCacheOperation > preCacheOp;
-                        if ( i->_imageLayerOptions.isSet() )
-                        {
-                            preCacheOp = new ImageLayerPreCacheOperation();
-                            preCacheOp->_processor.init( i->_imageLayerOptions.value(), _dbOptions.get(), true );                        
-                        }
-
-                        imageInfo.image = source->createImage( key, preCacheOp.get(), progress );
-                        imageInfo.opacity = 1.0f;
-
-                        //If the image is not valid and the progress was not cancelled, blacklist
-                        if (!imageInfo.image.valid() && (!progress || !progress->isCanceled()))
-                        {
-                            //Add the tile to the blacklist
-                            OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
-                            source->getBlacklist()->add( key );
-                        }
-                        imageInfo.opacity = i->_imageLayerOptions.isSet() ? i->_imageLayerOptions->opacity().value() : 1.0f;
-                    }
-                }
-                else
-                {
-                    OE_DEBUG << LC << "Source has no data at " << key.str() << std::endl;
-                }
         }
 
-        //Add the ImageInfo to the list
-        images.push_back( imageInfo );
+        images.push_back(imageInfo);
     }
 
+    // Determine the output texture size to use based on the image that were creatd.
     unsigned numValidImages = 0;
     osg::Vec2s textureSize;
     for (unsigned int i = 0; i < images.size(); i++)
@@ -236,60 +181,48 @@ CompositeTileSource::createImage(const TileKey&    key,
             }
             numValidImages++;        
         }
-    }
+    } 
 
-    //Try to fallback on any empty images if we have some valid images but not valid images for ALL layers
+    // Create fallback images if we have some valid data but not for all the layers
     if (numValidImages > 0 && numValidImages < images.size())
-    {        
+    {
         for (unsigned int i = 0; i < images.size(); i++)
         {
             ImageInfo& info = images[i];
+            ImageLayer* layer = _imageLayers[i].get();
             if (!info.image.valid() && info.dataInExtents)
-            {                                
+            {                      
                 TileKey parentKey = key.createParentKey();
 
-                TileSource* source = _options._components[i]._tileSourceInstance;
-                if (source)
-                {                 
-                    osg::ref_ptr< ImageLayerPreCacheOperation > preCacheOp;
-                    if ( _options._components[i]._imageLayerOptions.isSet() )
-                    {
-                        preCacheOp = new ImageLayerPreCacheOperation();
-                        preCacheOp->_processor.init( _options._components[i]._imageLayerOptions.value(), _dbOptions.get(), true );                        
-                    }                
-
-                    osg::ref_ptr< osg::Image > image;
-                    while (!image.valid() && parentKey.valid())
-                    {                        
-                        image = source->createImage( parentKey, preCacheOp.get(), progress );
-                        if (image.valid())
-                        {                     
-                            break;
-                        }
-                        parentKey = parentKey.createParentKey();
-                    }     
-
+                GeoImage image;
+                while (!image.valid() && parentKey.valid())
+                {
+                    image = layer->createImage(parentKey, progress);
                     if (image.valid())
                     {
-                        //We got an image, but now we need to crop it to match the incoming key's extents
-                        GeoImage geoImage( image.get(), parentKey.getExtent());
-                        GeoImage cropped = geoImage.crop( key.getExtent(), true, textureSize.x(), textureSize.y(), *source->_options.bilinearReprojection());
-                        image = cropped.getImage();
+                        break;
                     }
-
-                    info.image = image.get();
+                    parentKey = parentKey.createParentKey();
                 }
+
+                if (image.valid())
+                {                                        
+                    // TODO:  Bilinear options?
+                    GeoImage cropped = image.crop( key.getExtent(), true, textureSize.x(), textureSize.y(), true);
+                    info.image = cropped.getImage();
+                }                    
             }
         }
     }
 
+    // Now finally create the output image.
     //Recompute the number of valid images
     numValidImages = 0;
     for (unsigned int i = 0; i < images.size(); i++)
     {
         ImageInfo& info = images[i];
         if (info.image.valid()) numValidImages++;        
-    }
+    }    
 
     if ( progress && progress->isCanceled() )
     {
@@ -333,121 +266,152 @@ CompositeTileSource::createImage(const TileKey&    key,
         }        
         return result;
     }
+
+
+
+}
+
+osg::HeightField* CompositeTileSource::createHeightField(
+            const TileKey&        key,
+            ProgressCallback*     progress )
+{    
+    unsigned int size = *getOptions().tileSize();    
+    bool hae = false;
+    osg::ref_ptr< osg::HeightField > heightField = new osg::HeightField();
+    heightField->allocate(size, size);
+
+    // Initialize the heightfield to nodata
+    for (unsigned int i = 0; i < heightField->getFloatArray()->size(); i++)
+    {
+        heightField->getFloatArray()->at( i ) = NO_DATA_VALUE;
+    }  
+
+    // Populate the heightfield and return it if it's valid
+    if (_elevationLayers.populateHeightField(heightField.get(), key, 0, INTERP_AVERAGE, progress))
+    {                
+        return heightField.release();
+    }
+    else
+    {        
+        return NULL;
+    }
 }
 
 bool
-CompositeTileSource::add( TileSource* ts )
+CompositeTileSource::add( ImageLayer* layer )
 {
     if ( _initialized )
     {
-        OE_WARN << LC << "Illegal: cannot add a tile source after initialization" << std::endl;
+        OE_WARN << LC << "Illegal: cannot modify TileSource after initialization" << std::endl;
         return false;
     }
 
-    if ( !ts )
+    if ( !layer )
     {
-        OE_WARN << LC << "Illegal: tried to add a NULL tile source" << std::endl;
+        OE_WARN << LC << "Illegal: tried to add a NULL layer" << std::endl;
         return false;
     }
 
+    _imageLayers.push_back( layer );
     CompositeTileSourceOptions::Component comp;
-    comp._tileSourceInstance = ts;
-    _options._components.push_back( comp );
+    comp._layer = layer;
+    comp._imageLayerOptions = layer->getImageLayerOptions();
+    _options._components.push_back( comp );    
 
     return true;
 }
 
 bool
-CompositeTileSource::add( TileSource* ts, const ImageLayerOptions& options )
+CompositeTileSource::add( ElevationLayer* layer )
 {
-    if ( add(ts) )
+    if ( _initialized )
     {
-        _options._components.back()._imageLayerOptions = options;
-        return true;
-    }
-    else
-    {
+        OE_WARN << LC << "Illegal: cannot modify TileSource after initialization" << std::endl;
         return false;
     }
+
+    if ( !layer )
+    {
+        OE_WARN << LC << "Illegal: tried to add a NULL layer" << std::endl;
+        return false;
+    }
+
+    _elevationLayers.push_back( layer );
+    CompositeTileSourceOptions::Component comp;
+    comp._layer = layer;
+    comp._elevationLayerOptions = layer->getElevationLayerOptions();
+    _options._components.push_back( comp );    
+
+    return true;
 }
+
 
 TileSource::Status
 CompositeTileSource::initialize(const osgDB::Options* dbOptions)
 {
     _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
 
-    osg::ref_ptr<const Profile> profile = getProfile();
+    osg::ref_ptr<const Profile> profile = getProfile();    
 
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin();
         i != _options._components.end(); )
-    {
+    {        
         if ( i->_imageLayerOptions.isSet() )
         {
-            if ( !i->_tileSourceInstance.valid() )
+            osg::ref_ptr< ImageLayer > layer = new ImageLayer(*i->_imageLayerOptions);
+            if (!layer->getTileSource())
             {
-                i->_tileSourceInstance = TileSourceFactory::openReadOnly( i->_imageLayerOptions->driver().value() );
-            
-                if ( !i->_tileSourceInstance.valid() )
-                {
-                    OE_WARN << LC << "Could not find a TileSource for driver [" << i->_imageLayerOptions->driver()->getDriver() << "]" << std::endl;
-                }
+                OE_WARN << LC << "Could not find a TileSource for driver [" << i->_imageLayerOptions->driver()->getDriver() << "]" << std::endl;
+            }
+            else
+            {
+                i->_layer = layer;
+                _imageLayers.push_back( layer );
+            }            
+        }
+        else if (i->_elevationLayerOptions.isSet())
+        {
+            osg::ref_ptr< ElevationLayer > layer = new ElevationLayer(*i->_elevationLayerOptions);            
+            if (!layer->getTileSource())
+            {
+                   OE_WARN << LC << "Could not find a TileSource for driver [" << i->_elevationLayerOptions->driver()->getDriver() << "]" << std::endl;
+            }
+            else
+            {
+                i->_layer = layer;
+                _elevationLayers.push_back( layer.get() );                
             }
         }
 
-        if ( !i->_tileSourceInstance.valid() )
+        if ( !i->_layer.valid() )
         {
-            OE_WARN << LC << "A component has no valid TileSource ... removing." << std::endl;
+            OE_WARN << LC << "A component has no valid TerrainLayer ... removing." << std::endl;
             i = _options._components.erase( i );
         }
         else
-        {
-            TileSource* source = i->_tileSourceInstance.get();
-            if ( source )
+        {            
+            TileSource* source = i->_layer->getTileSource();
+
+            // If no profile is specified assume they want to use the profile of the first layer in the list.
+            if (!profile.valid())
             {
-                osg::ref_ptr<const Profile> localOverrideProfile = profile.get();
-
-                const TileSourceOptions& opt = source->getOptions();
-                if ( opt.profile().isSet() )
-                {
-                    localOverrideProfile = Profile::create( opt.profile().value() );
-                    source->setProfile( localOverrideProfile.get() );
-                }
-
-                // initialize the component tile source:
-                TileSource::Status compStatus = source->startup( _dbOptions.get() );
-
-                if ( compStatus == TileSource::STATUS_OK )
-                {
-                    if ( !profile.valid() )
-                    {
-                        // assume the profile of the first source to be the overall profile.
-                        profile = source->getProfile();
-                    }
-                    else if ( !profile->isEquivalentTo( source->getProfile() ) )
-                    {
-                        // if sub-sources have different profiles, print a warning because this is
-                        // not supported!
-                        OE_WARN << LC << "Components with differing profiles are not supported. " 
-                            << "Visual anomalies may result." << std::endl;
-                    }
-                
-                    _dynamic = _dynamic || source->isDynamic();
-
-                    // gather extents
-                    const DataExtentList& extents = source->getDataExtents();
-                    for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-                    {
-                        getDataExtents().push_back( *j );
-                    }
-                }
-
-                else
-                {
-                    // if even one of the components fails to initialize, the entire
-                    // composite tile source is invalid.
-                    return Status::Error("At least one component is invalid");
-                }
+                profile = source->getProfile();
             }
+
+            _dynamic = _dynamic || source->isDynamic();
+            
+            // gather extents                        
+            const DataExtentList& extents = source->getDataExtents();            
+            for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+            {                
+                // Convert the data extent to the profile that is actually used by this TileSource
+                DataExtent dataExtent = *j;                
+                GeoExtent ext = dataExtent.transform(profile->getSRS());
+                unsigned int minLevel = 0;
+                unsigned int maxLevel = profile->getEquivalentLOD( source->getProfile(), *dataExtent.maxLevel() );                                        
+                dataExtent = DataExtent(ext, minLevel, maxLevel);                                
+                getDataExtents().push_back( dataExtent );
+            }          
         }
 
         ++i;

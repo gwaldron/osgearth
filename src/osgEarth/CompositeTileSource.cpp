@@ -21,6 +21,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Progress>
+#include <osgEarth/HeightFieldUtils>
 #include <osgDB/FileNameUtils>
 
 #define LC "[CompositeTileSource] "
@@ -44,9 +45,17 @@ CompositeTileSourceOptions::add( const ImageLayerOptions& options )
     _components.push_back( c );
 }
 
+void
+CompositeTileSourceOptions::add( const ElevationLayerOptions& options )
+{
+    Component c;
+    c._elevationLayerOptions = options;
+    _components.push_back( c );
+}
+
 Config 
 CompositeTileSourceOptions::getConfig() const
-{
+{    
     Config conf = TileSourceOptions::newConfig();
 
     for( ComponentVector::const_iterator i = _components.begin(); i != _components.end(); ++i )
@@ -67,17 +76,28 @@ CompositeTileSourceOptions::mergeConfig( const Config& conf )
 
 void 
 CompositeTileSourceOptions::fromConfig( const Config& conf )
-{
-    const ConfigSet& children = conf.children("image");
-    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+{    
+    const ConfigSet& images = conf.children("image");
+    for( ConfigSet::const_iterator i = images.begin(); i != images.end(); ++i )
     {
         add( ImageLayerOptions( *i ) );
     }
 
-    if (conf.children("elevation").size() > 0 || conf.children("heightfield").size() > 0 ||
-        conf.children("model").size() > 0 || conf.children("overlay").size() > 0 )
+    const ConfigSet& elevations = conf.children("elevation");
+    for( ConfigSet::const_iterator i = elevations.begin(); i != elevations.end(); ++i )
     {
-        OE_WARN << LC << "Illegal - composite driver only supports image layers" << std::endl;
+        add( ElevationLayerOptions( *i ) );
+    }
+
+    const ConfigSet& heightfields = conf.children("heightfield");
+    for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); ++i )
+    {
+        add( ElevationLayerOptions( *i ) );
+    }
+
+    if (conf.children("model").size() > 0 || conf.children("overlay").size() > 0 )
+    {
+        OE_WARN << LC << "Illegal - composite driver only supports image and elevation layers" << std::endl;
     }
 }
 
@@ -335,6 +355,32 @@ CompositeTileSource::createImage(const TileKey&    key,
     }
 }
 
+osg::HeightField* CompositeTileSource::createHeightField(
+            const TileKey&        key,
+            ProgressCallback*     progress )
+{    
+    unsigned int size = *getOptions().tileSize();    
+    bool hae = false;
+    osg::ref_ptr< osg::HeightField > heightField = new osg::HeightField();
+    heightField->allocate(size, size);
+
+    // Initialize the heightfield to nodata
+    for (unsigned int i = 0; i < heightField->getFloatArray()->size(); i++)
+    {
+        heightField->getFloatArray()->at( i ) = NO_DATA_VALUE;
+    }  
+
+    // Populate the heightfield and return it if it's valid
+    if (_elevationLayers.populateHeightField(heightField.get(), key, 0, ElevationInterpolation::INTERP_AVERAGE, progress))
+    {                
+        return heightField.release();
+    }
+    else
+    {        
+        return NULL;
+    }
+}
+
 bool
 CompositeTileSource::add( TileSource* ts )
 {
@@ -376,11 +422,11 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
 {
     _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
 
-    osg::ref_ptr<const Profile> profile = getProfile();
+    osg::ref_ptr<const Profile> profile = getProfile();    
 
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin();
         i != _options._components.end(); )
-    {
+    {        
         if ( i->_imageLayerOptions.isSet() )
         {
             if ( !i->_tileSourceInstance.valid() )
@@ -390,7 +436,20 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
                 if ( !i->_tileSourceInstance.valid() )
                 {
                     OE_WARN << LC << "Could not find a TileSource for driver [" << i->_imageLayerOptions->driver()->getDriver() << "]" << std::endl;
-                }
+                }                
+            }
+        }
+        else if (i->_elevationLayerOptions.isSet())
+        {
+            osg::ref_ptr< ElevationLayer > layer = new ElevationLayer(*i->_elevationLayerOptions);            
+            if (!layer->getTileSource())
+            {
+                   OE_WARN << LC << "Could not find a TileSource for driver [" << i->_elevationLayerOptions->driver()->getDriver() << "]" << std::endl;
+            }
+            else
+            {
+                i->_tileSourceInstance = layer->getTileSource();
+                _elevationLayers.push_back( layer.get() );                
             }
         }
 
@@ -401,51 +460,73 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
         }
         else
         {
-            TileSource* source = i->_tileSourceInstance.get();
-            if ( source )
+            if (i->_elevationLayerOptions.isSet())
             {
-                osg::ref_ptr<const Profile> localOverrideProfile = profile.get();
+                TileSource* source = i->_tileSourceInstance.get();
 
-                const TileSourceOptions& opt = source->getOptions();
-                if ( opt.profile().isSet() )
+                // If no profile is specified assume they want to use the profile of the first layer in the list.
+                if (!profile.valid())
                 {
-                    localOverrideProfile = Profile::create( opt.profile().value() );
-                    source->setProfile( localOverrideProfile.get() );
+                    profile = source->getProfile();
                 }
 
-                // initialize the component tile source:
-                TileSource::Status compStatus = source->startup( _dbOptions.get() );
+                _dynamic = _dynamic || source->isDynamic();
 
-                if ( compStatus == TileSource::STATUS_OK )
+                // gather extents
+                const DataExtentList& extents = source->getDataExtents();
+                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
                 {
-                    if ( !profile.valid() )
-                    {
-                        // assume the profile of the first source to be the overall profile.
-                        profile = source->getProfile();
-                    }
-                    else if ( !profile->isEquivalentTo( source->getProfile() ) )
-                    {
-                        // if sub-sources have different profiles, print a warning because this is
-                        // not supported!
-                        OE_WARN << LC << "Components with differing profiles are not supported. " 
-                            << "Visual anomalies may result." << std::endl;
-                    }
-                
-                    _dynamic = _dynamic || source->isDynamic();
-
-                    // gather extents
-                    const DataExtentList& extents = source->getDataExtents();
-                    for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-                    {
-                        getDataExtents().push_back( *j );
-                    }
+                    getDataExtents().push_back( *j );
                 }
-
-                else
+            }
+            else
+            {
+                TileSource* source = i->_tileSourceInstance.get();
+                if ( source )
                 {
-                    // if even one of the components fails to initialize, the entire
-                    // composite tile source is invalid.
-                    return Status::Error("At least one component is invalid");
+                    osg::ref_ptr<const Profile> localOverrideProfile = profile.get();
+
+                    const TileSourceOptions& opt = source->getOptions();
+                    if ( opt.profile().isSet() )
+                    {
+                        localOverrideProfile = Profile::create( opt.profile().value() );
+                        source->setProfile( localOverrideProfile.get() );
+                    }
+
+                    // initialize the component tile source:
+                    TileSource::Status compStatus = source->startup( _dbOptions.get() );
+
+                    if ( compStatus == TileSource::STATUS_OK )
+                    {
+                        if ( !profile.valid() )
+                        {
+                            // assume the profile of the first source to be the overall profile.
+                            profile = source->getProfile();
+                        }
+                        else if ( !profile->isEquivalentTo( source->getProfile() ) )
+                        {
+                            // if sub-sources have different profiles, print a warning because this is
+                            // not supported!
+                            OE_WARN << LC << "Components with differing profiles are not supported. " 
+                                << "Visual anomalies may result." << std::endl;
+                        }
+
+                        _dynamic = _dynamic || source->isDynamic();
+
+                        // gather extents
+                        const DataExtentList& extents = source->getDataExtents();
+                        for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+                        {
+                            getDataExtents().push_back( *j );
+                        }
+                    }
+
+                    else
+                    {
+                        // if even one of the components fails to initialize, the entire
+                        // composite tile source is invalid.
+                        return Status::Error("At least one component is invalid");
+                    }
                 }
             }
         }

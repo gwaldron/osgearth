@@ -57,7 +57,7 @@ namespace osgEarth
         struct Component {
             optional<ImageLayerOptions> _imageLayerOptions;
             optional<ElevationLayerOptions> _elevationLayerOptions;
-            osg::ref_ptr<TileSource>    _tileSourceInstance;
+            osg::ref_ptr<TerrainLayer>    _layer;
         };
 
         typedef std::vector<Component> ComponentVector;
@@ -82,23 +82,24 @@ namespace osgEarth
         virtual ~CompositeTileSource() { }
 
         /**
-         * Adds a pre-existing tile source instance to the composite. 
+         * Adds a pre-existing ImageLayer to the composite layer.
          * Note: You can only add tile sources BEFORE the tile source is initialized,
          * i.e., before you add it to the map.
          * Returns true upon success; false if the composite tile source is already
          * initialized.
          */
-        bool add( TileSource* tileSource );
-        
+        bool add( ImageLayer* layer );
+
+
         /**
-         * Adds a pre-existing tile source instance to the composite along with
-         * image layer options.
+         * Adds a pre-existing ElevationLayer to the composite layer.
          * Note: You can only add tile sources BEFORE the tile source is initialized,
          * i.e., before you add it to the map.
          * Returns true upon success; false if the composite tile source is already
          * initialized.
          */
-        bool add( TileSource* tileSource, const ImageLayerOptions& options );
+        bool add( ElevationLayer* layer );
+
 
     public: // TileSource overrides
         

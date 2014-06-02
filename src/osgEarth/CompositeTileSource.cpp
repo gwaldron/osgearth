@@ -298,40 +298,53 @@ osg::HeightField* CompositeTileSource::createHeightField(
 }
 
 bool
-CompositeTileSource::add( TileSource* ts )
+CompositeTileSource::add( ImageLayer* layer )
 {
     if ( _initialized )
     {
-        OE_WARN << LC << "Illegal: cannot add a tile source after initialization" << std::endl;
+        OE_WARN << LC << "Illegal: cannot modify TileSource after initialization" << std::endl;
         return false;
     }
 
-    if ( !ts )
+    if ( !layer )
     {
-        OE_WARN << LC << "Illegal: tried to add a NULL tile source" << std::endl;
+        OE_WARN << LC << "Illegal: tried to add a NULL layer" << std::endl;
         return false;
     }
 
+    _imageLayers.push_back( layer );
     CompositeTileSourceOptions::Component comp;
-    comp._tileSourceInstance = ts;
-    _options._components.push_back( comp );
+    comp._layer = layer;
+    comp._imageLayerOptions = layer->getImageLayerOptions();
+    _options._components.push_back( comp );    
 
     return true;
 }
 
 bool
-CompositeTileSource::add( TileSource* ts, const ImageLayerOptions& options )
+CompositeTileSource::add( ElevationLayer* layer )
 {
-    if ( add(ts) )
+    if ( _initialized )
     {
-        _options._components.back()._imageLayerOptions = options;
-        return true;
-    }
-    else
-    {
+        OE_WARN << LC << "Illegal: cannot modify TileSource after initialization" << std::endl;
         return false;
     }
+
+    if ( !layer )
+    {
+        OE_WARN << LC << "Illegal: tried to add a NULL layer" << std::endl;
+        return false;
+    }
+
+    _elevationLayers.push_back( layer );
+    CompositeTileSourceOptions::Component comp;
+    comp._layer = layer;
+    comp._elevationLayerOptions = layer->getElevationLayerOptions();
+    _options._components.push_back( comp );    
+
+    return true;
 }
+
 
 TileSource::Status
 CompositeTileSource::initialize(const osgDB::Options* dbOptions)
@@ -352,7 +365,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             }
             else
             {
-                i->_tileSourceInstance = layer->getTileSource();
+                i->_layer = layer;
                 _imageLayers.push_back( layer );
             }            
         }
@@ -365,19 +378,19 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
             }
             else
             {
-                i->_tileSourceInstance = layer->getTileSource();
+                i->_layer = layer;
                 _elevationLayers.push_back( layer.get() );                
             }
         }
 
-        if ( !i->_tileSourceInstance.valid() )
+        if ( !i->_layer.valid() )
         {
-            OE_WARN << LC << "A component has no valid TileSource ... removing." << std::endl;
+            OE_WARN << LC << "A component has no valid TerrainLayer ... removing." << std::endl;
             i = _options._components.erase( i );
         }
         else
         {            
-            TileSource* source = i->_tileSourceInstance.get();
+            TileSource* source = i->_layer->getTileSource();
 
             // If no profile is specified assume they want to use the profile of the first layer in the list.
             if (!profile.valid())
@@ -396,8 +409,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
                 GeoExtent ext = dataExtent.transform(profile->getSRS());
                 unsigned int minLevel = 0;
                 unsigned int maxLevel = profile->getEquivalentLOD( source->getProfile(), *dataExtent.maxLevel() );                                        
-                dataExtent = DataExtent(ext, minLevel, maxLevel);                
-                //OE_NOTICE << "Adding data extent " << ext.toString() << " " << minLevel << " to " << maxLevel << std::endl;
+                dataExtent = DataExtent(ext, minLevel, maxLevel);                                
                 getDataExtents().push_back( dataExtent );
             } 
         }

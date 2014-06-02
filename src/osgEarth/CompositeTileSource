@@ -124,7 +124,8 @@ namespace osgEarth
         bool                               _dynamic;
         osg::ref_ptr<const osgDB::Options> _dbOptions;              
 
-        ElevationLayerVector _elevationLayers;        
+        ElevationLayerVector _elevationLayers;    
+        ImageLayerVector _imageLayers;
     };
 }
 

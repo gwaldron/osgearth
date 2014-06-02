@@ -296,7 +296,11 @@ MBTilesTileSource::storeImage(const TileKey&    key,
 
     if (SQLITE_OK != rc && SQLITE_DONE != rc)
     {
+#if SQLITE_VERSION_NUMBER >= 3007015
         OE_WARN << LC << "Failed query: " << query << "(" << rc << ")" << sqlite3_errstr(rc) << "; " << sqlite3_errmsg(_database) << std::endl;
+#else
+        OE_WARN << LC << "Failed query: " << query << "(" << rc << ")" << rc << "; " << sqlite3_errmsg(_database) << std::endl;
+#endif        
         ok = false;
     }
 

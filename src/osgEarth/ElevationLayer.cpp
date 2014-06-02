@@ -593,12 +593,14 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     }
                 }
 
+                // If we actually got a layer then we have real data
+                realData = true;
+
                 float elevation;
                 if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
                     elevation != NO_DATA_VALUE)
                 {
-                    resolved = true;
-                    realData = true;
+                    resolved = true;                    
                     hf->setHeight(c, r, elevation);
                 }
             }
@@ -622,11 +624,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     }
                 }
 
+                // If we actually got a layer then we have real data
+                realData = true;
+
                 float elevation = 0.0f;
                 if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
                     elevation != NO_DATA_VALUE)
-                {
-                    realData = true;
+                {                    
                     hf->getHeight(c, r) += elevation;
                 }
             }

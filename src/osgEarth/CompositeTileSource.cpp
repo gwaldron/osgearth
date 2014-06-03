@@ -123,7 +123,8 @@ namespace
 
 //-----------------------------------------------------------------------
 
-CompositeTileSource::CompositeTileSource( const TileSourceOptions& options ) :
+CompositeTileSource::CompositeTileSource(const TileSourceOptions& options) :
+TileSource  ( options ),
 _options    ( options ),
 _initialized( false ),
 _dynamic    ( false )
@@ -385,7 +386,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
         {
             if ( !i->_tileSourceInstance.valid() )
             {
-                i->_tileSourceInstance = TileSourceFactory::openReadOnly( i->_imageLayerOptions->driver().value() );
+                i->_tileSourceInstance = TileSourceFactory::create(i->_imageLayerOptions->driver().value());
             
                 if ( !i->_tileSourceInstance.valid() )
                 {
@@ -414,7 +415,7 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
                 }
 
                 // initialize the component tile source:
-                TileSource::Status compStatus = source->startup( _dbOptions.get() );
+                TileSource::Status compStatus = source->open(TileSource::MODE_READ, _dbOptions.get());
 
                 if ( compStatus == TileSource::STATUS_OK )
                 {

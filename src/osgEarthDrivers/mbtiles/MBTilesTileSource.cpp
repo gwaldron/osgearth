@@ -35,13 +35,12 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers::MBTiles;
 
 
-MBTilesTileSource::MBTilesTileSource(const TileSourceOptions& options, bool readWrite) :
-ReadWriteTileSource( options ),
-_options           ( options ),      
-_database          ( NULL ),
-_minLevel          ( 0 ),
-_maxLevel          ( 20 ),
-_readWrite         ( readWrite )
+MBTilesTileSource::MBTilesTileSource(const TileSourceOptions& options) :
+TileSource( options ),
+_options  ( options ),      
+_database ( NULL ),
+_minLevel ( 0 ),
+_maxLevel ( 20 )
 {
     //nop
 }
@@ -53,8 +52,10 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
     CachePolicy::NO_CACHE.apply( _dbOptions.get() );
     
+    bool readWrite = (MODE_WRITE & (int)getMode()) != 0;
+
     std::string fullFilename = _options.filename()->full();   
-    bool isNewDatabase = _readWrite && !osgDB::fileExists(fullFilename);
+    bool isNewDatabase = readWrite && !osgDB::fileExists(fullFilename);
 
     if ( isNewDatabase )
     {
@@ -69,7 +70,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 
     // Try to open (or create) the database. We use SQLITE_OPEN_NOMUTEX to do
     // our own mutexing.
-    int flags = _readWrite 
+    int flags = readWrite 
         ? (SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX)
         : (SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX);
      
@@ -254,6 +255,9 @@ MBTilesTileSource::storeImage(const TileKey&    key,
                               osg::Image*       image,
                               ProgressCallback* progress)
 {
+    if ( (getMode() & MODE_WRITE) == 0 )
+        return false;
+
     Threading::ScopedMutexLock exclusiveLock(_mutex);
 
     int z = key.getLOD();

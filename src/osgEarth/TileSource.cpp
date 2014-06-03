@@ -203,10 +203,15 @@ TileSource::Status TileSource::STATUS_OK = TileSource::Status();
 
 const char* TileSource::INTERFACE_NAME = "osgEarth::TileSource";
 
+const TileSource::Mode TileSource::MODE_READ   = 0x01;
+const TileSource::Mode TileSource::MODE_WRITE  = 0x02;
+const TileSource::Mode TileSource::MODE_CREATE = 0x04;
 
-TileSource::TileSource( const TileSourceOptions& options ) :
+
+TileSource::TileSource(const TileSourceOptions& options) :
 _options( options ),
-_status ( Status::Error("Not initialized") )
+_status ( Status::Error("Not initialized") ),
+_mode   ( 0 )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -265,9 +270,16 @@ TileSource::initialize(const osgDB::Options* options)
 }
 
 const TileSource::Status&
-TileSource::startup(const osgDB::Options* options)
+TileSource::open(const Mode&           openMode,
+                 const osgDB::Options* options)
 {
+    _mode = openMode;
+
+    // Initialize the underlying data store
     Status status = initialize(options);
+
+    // Check the return status. The TileSource MUST have a valid
+    // Profile after initialization.
     if ( status == STATUS_OK )
     {
         if ( getProfile() != 0L )
@@ -285,7 +297,9 @@ TileSource::startup(const osgDB::Options* options)
     }
 
     if ( _status.isError() )
-        OE_WARN << LC << "Startup failed: " << _status.message() << std::endl;
+    {
+        OE_WARN << LC << "Open failed: " << _status.message() << std::endl;
+    }
 
     return _status;
 }
@@ -354,6 +368,13 @@ TileSource::createHeightField(const TileKey&        key,
 
     //TODO: why not just newHF.release()? -gw
     return newHF.valid() ? new osg::HeightField( *newHF.get() ) : 0L;
+}
+
+osg::Image*
+TileSource::createImage(const TileKey&    key,
+                        ProgressCallback* progress)
+{
+    return 0L;
 }
 
 osg::HeightField*
@@ -512,30 +533,13 @@ TileSource::getBlacklist() const
 
 //------------------------------------------------------------------------
 
-//statics
-const char* ReadWriteTileSource::INTERFACE_NAME = "osgEarth::ReadWriteTileSource";
-
-ReadWriteTileSource::ReadWriteTileSource() :
-TileSource()
-{
-    //nop
-}
-
-ReadWriteTileSource::ReadWriteTileSource(const TileSourceOptions& options) :
-TileSource(options)
-{
-    //nop
-}
-
-//------------------------------------------------------------------------
-
 #undef  LC
 #define LC "[TileSourceFactory] "
-#define TILESOURCEOPTIONS_TAG   "__osgEarth::TileSourceOptions"
-#define TILESOURCEINTERFACE_TAG "__osgEarth::Interface"
+#define TILESOURCE_OPTIONS_TAG   "__osgEarth::TileSourceOptions"
+#define TILESOURCE_INTERFACE_TAG "__osgEarth::Interface"
 
 TileSource*
-TileSourceFactory::openReadOnly(const TileSourceOptions& options)
+TileSourceFactory::create(const TileSourceOptions& options)
 {
     TileSource* result = 0L;
 
@@ -547,8 +551,8 @@ TileSourceFactory::openReadOnly(const TileSourceOptions& options)
     }
 
     osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions();
-    dbopt->setPluginData      ( TILESOURCEOPTIONS_TAG,   (void*)&options );
-    dbopt->setPluginStringData( TILESOURCEINTERFACE_TAG, TileSource::INTERFACE_NAME );
+    dbopt->setPluginData      ( TILESOURCE_OPTIONS_TAG,   (void*)&options );
+    dbopt->setPluginStringData( TILESOURCE_INTERFACE_TAG, TileSource::INTERFACE_NAME );
 
     std::string driverExt = std::string( ".osgearth_" ) + driver;
     result = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, dbopt.get() ) );
@@ -570,6 +574,7 @@ TileSourceFactory::openReadOnly(const TileSourceOptions& options)
     return result;
 }
 
+#if 0
 ReadWriteTileSource*
 TileSourceFactory::openReadWrite(const TileSourceOptions& options)
 {
@@ -605,17 +610,18 @@ TileSourceFactory::openReadWrite(const TileSourceOptions& options)
 
     return result;
 }
+#endif
 
 //------------------------------------------------------------------------
 
 const TileSourceOptions&
 TileSourceDriver::getTileSourceOptions(const osgDB::Options* dbopt ) const
 {
-    return *static_cast<const TileSourceOptions*>( dbopt->getPluginData( TILESOURCEOPTIONS_TAG ) );
+    return *static_cast<const TileSourceOptions*>( dbopt->getPluginData( TILESOURCE_OPTIONS_TAG ) );
 }
 
 const std::string
 TileSourceDriver::getInterfaceName(const osgDB::Options* dbopt) const
 {
-    return dbopt->getPluginStringData(TILESOURCEINTERFACE_TAG);
+    return dbopt->getPluginStringData(TILESOURCE_INTERFACE_TAG);
 }

@@ -530,7 +530,7 @@ TerrainLayer::initTileSource()
     {
         if ( _runtimeOptions->driver().isSet() )
         {
-            _tileSource = TileSourceFactory::openReadOnly( *_runtimeOptions->driver() );
+            _tileSource = TileSourceFactory::create(*_runtimeOptions->driver());
         }
     }
 
@@ -554,11 +554,11 @@ TerrainLayer::initTileSource()
                 << _tileSource->getProfile()->toString() << std::endl;
         }
 
-        // Start up the tile source (if it hasn't already been started)
+        // Open the tile source (if it hasn't already been started)
         TileSource::Status status = _tileSource->getStatus();
         if ( status != TileSource::STATUS_OK )
         {
-            status = _tileSource->startup( _dbOptions.get() );
+            status = _tileSource->open(TileSource::MODE_READ, _dbOptions.get());
         }
 
         if ( status == TileSource::STATUS_OK )

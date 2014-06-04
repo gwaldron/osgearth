@@ -90,6 +90,31 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         std::string profileStr;
         getMetaData( "profile", profileStr );
 
+        // The data format (e.g., png, jpg, etc.)
+        getMetaData( "format", format );
+
+        // Check for bounds and populate DataExtents.
+        std::string boundsStr;
+        if ( getMetaData("bounds", boundsStr) )
+        {
+            std::vector<std::string> tokens;
+            StringTokenizer(",").tokenize(boundsStr, tokens);
+            if (tokens.size() == 4)
+            {
+                GeoExtent extent(
+                    osgEarth::SpatialReference::get("wgs84"),
+                    osgEarth::as<double>(tokens[0], 0.0),
+                    osgEarth::as<double>(tokens[3], 0.0), // south
+                    osgEarth::as<double>(tokens[2], 0.0), // east
+                    osgEarth::as<double>(tokens[1], 0.0)  // north
+                    );
+
+                this->getDataExtents().push_back(DataExtent(extent));
+
+                OE_INFO << LC << "Bounds = " << extent.toString() << std::endl;
+            }
+        }
+
         // Set the profile
         const Profile* profile = getProfile();
         if (!profile)
@@ -119,7 +144,8 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
                 profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
             }
 
-            setProfile( profile );                    
+            setProfile( profile );     
+            OE_INFO << LC << "Profile = " << profileStr << std::endl;
         }
     }
 
@@ -140,7 +166,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         _tileFormat = "png";
     }
 
-    OE_DEBUG << LC <<  "_tileFormat = " << _tileFormat << std::endl;
+    OE_INFO << LC << "Format = " << _tileFormat << std::endl;
 
     //Get the ReaderWriter
     _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );                

@@ -71,6 +71,8 @@ namespace osgEarth
         std::string _password;
     };
 
+    typedef std::map<std::string,std::string> Headers;
+
 
     /**
      * An HTTP request for use with the HTTPClient class.
@@ -90,18 +92,23 @@ namespace osgEarth
         /** Adds an HTTP parameter to the request query string. */
         void addParameter( const std::string& name, const std::string& value );
         void addParameter( const std::string& name, int value );
-        void addParameter( const std::string& name, double value );
+        void addParameter( const std::string& name, double value );        
         
         typedef std::map<std::string,std::string> Parameters;
 
         /** Ready-only access to the parameter list (as built with addParameter) */
-        const Parameters& getParameters() const;
+        const Parameters& getParameters() const;        
+
+        void addHeader( const std::string& name, const std::string& value);
+
+        const Headers& getHeaders() const;
 
         /** Gets a copy of the complete URL (base URL + query string) for this request */
         std::string getURL() const;
         
     private:
         Parameters _parameters;
+        Headers _headers;
         std::string _url;
     };
 
@@ -164,8 +171,7 @@ namespace osgEarth
     private:
         struct Part : public osg::Referenced
         {
-            Part() : _size(0) { }
-            typedef std::map<std::string,std::string> Headers;
+            Part() : _size(0) { }            
             Headers _headers;
             unsigned int _size;
             std::stringstream _stream;

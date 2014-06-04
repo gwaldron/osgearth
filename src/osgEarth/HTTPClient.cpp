@@ -162,6 +162,7 @@ HTTPRequest::HTTPRequest( const std::string& url )
 
 HTTPRequest::HTTPRequest( const HTTPRequest& rhs ) :
 _parameters( rhs._parameters ),
+_headers(rhs._headers),
 _url( rhs._url )
 {
     //nop
@@ -198,6 +199,19 @@ HTTPRequest::getParameters() const
 {
     return _parameters; 
 }
+
+void
+HTTPRequest::addHeader( const std::string& name, const std::string& value )
+{
+    _headers[name] = value;
+}
+
+const Headers&
+HTTPRequest::getHeaders() const
+{
+    return _headers; 
+}
+
 
 std::string
 HTTPRequest::getURL() const
@@ -292,7 +306,7 @@ HTTPResponse::getHeadersAsConfig() const
     Config conf;
     if ( _parts.size() > 0 )
     {
-        for( Part::Headers::const_iterator i = _parts[0]->_headers.begin(); i != _parts[0]->_headers.end(); ++i )
+        for( Headers::const_iterator i = _parts[0]->_headers.begin(); i != _parts[0]->_headers.end(); ++i )
         {
             conf.set(i->first, i->second);
         }
@@ -683,7 +697,7 @@ HTTPResponse
 HTTPClient::doGet(const HTTPRequest&    request,
                   const osgDB::Options* options, 
                   ProgressCallback*     progress) const
-{
+{    
     initialize();
 
     OE_START_TIMER(http_get);
@@ -828,6 +842,25 @@ HTTPClient::doGet(const HTTPRequest&    request,
 #endif
     }
 
+
+    // Set any headers
+    struct curl_slist *headers=NULL;
+    if (!request.getHeaders().empty())
+    {
+        for (HTTPRequest::Parameters::const_iterator itr = request.getHeaders().begin(); itr != request.getHeaders().end(); ++itr)
+        {
+            std::stringstream buf;
+            buf << itr->first << ": " << itr->second;
+            headers = curl_slist_append(headers, buf.str().c_str());
+        }
+        //headers = curl_slist_append(headers, "If-Modified-Since: Fri, 07 May 2010 18:10:01 GMT");
+    //headers = curl_slist_append(headers, "If-Modified-Since: Fri, 07 May 2014 18:10:02 GMT");
+    }    
+
+    // Disable the default Pragma: no-cache that curl adds by default.
+    headers = curl_slist_append(headers, "Pragma: ");
+    curl_easy_setopt(_curl_handle, CURLOPT_HTTPHEADER, headers);
+    
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->_stream );
 
@@ -881,7 +914,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         // simulate failure with a custom response code
         response_code = _simResponseCode;
         res = response_code == 408 ? CURLE_OPERATION_TIMEDOUT : CURLE_COULDNT_CONNECT;
-    }    
+    }        
 
     HTTPResponse response( response_code );
     
@@ -978,6 +1011,12 @@ HTTPClient::doGet(const HTTPRequest&    request,
                 << std::endl;
         }
 #endif
+
+        // Free the headers
+        if (headers)
+        {
+            curl_slist_free_all(headers);
+        }
     }
 
     return response;

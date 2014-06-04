@@ -51,6 +51,16 @@ namespace
             return _sourceList;
         }
     };
+    
+    /** PixelVisitor functor to fill an image with a value */
+    struct SetDefaults
+    {
+        osg::Vec4f _value;
+        bool operator()(osg::Vec4f& inout) {
+            inout = _value;
+            return true;
+        }
+    };
 }
 
 
@@ -70,9 +80,11 @@ AtlasBuilder::setSize(unsigned width, unsigned height)
 }
 
 void
-AtlasBuilder::addAuxFilePattern(const std::string& pattern)
+AtlasBuilder::addAuxFilePattern(const std::string& pattern,
+                                const osg::Vec4f&  defaults)
 {
     _auxPatterns.push_back(pattern);
+    _auxDefaults.push_back(defaults);
 }
 
 bool
@@ -138,13 +150,14 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             // an empty placeholder.
             TABs::iterator tab = maintab;
             ++tab;
-            for(std::vector<std::string>::const_iterator pattern = _auxPatterns.begin();
-                pattern != _auxPatterns.end();
-                ++pattern, ++tab)
+            for(int a=0; a<_auxPatterns.size(); ++a, ++tab)
             {
+                const std::string& pattern      = _auxPatterns[a];
+                const osg::Vec4f&  defaultValue = _auxDefaults[a];
+
                 std::string base = osgDB::getNameLessExtension(skin->imageURI()->full());
                 std::string ext  = osgDB::getFileExtension(skin->imageURI()->base());
-                std::string auxFile = base + "_" + (*pattern) + "." + ext;
+                std::string auxFile = base + "_" + pattern + "." + ext;
 
                 // read in the auxiliary image:
                 osg::ref_ptr<osg::Image> auxImage;
@@ -152,9 +165,9 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
 
                 // if that didn't work, try alternate extensions:
                 const char* alternateExtensions[3] = {"png", "jpg", "osgb"};
-                for(int a = 0; a < 3 && !auxImage.valid(); ++a)
+                for(int b = 0; b < 3 && !auxImage.valid(); ++b)
                 {
-                    auxFile = base + "_" + (*pattern) + "." + alternateExtensions[a];
+                    auxFile = base + "_" + pattern + "." + alternateExtensions[b];
                     auxImage = osgDB::readImageFile( auxFile, _options.get() );
                 }
 
@@ -166,6 +179,9 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                 {
                     // failing that, create an empty one as a placeholder.
                     auxImage = osgEarth::ImageUtils::createEmptyImage(image->s(), image->t());
+                    ImageUtils::PixelVisitor<SetDefaults> filler;
+                    filler._value = defaultValue;
+                    filler.accept(auxImage.get());
                 }
 
                 if ( auxImage->s() != image->s() || auxImage->t() != image->t() )

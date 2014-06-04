@@ -475,6 +475,19 @@ MBTilesTileSource::createTables()
         return false;
     }
 
+    // create an index
+    query =
+        "CREATE UNIQUE INDEX tile_index ON tiles ("
+        " zoom_level, tile_column, tile_row)";
+
+    if (SQLITE_OK != sqlite3_exec(_database, query.c_str(), 0L, 0L, &errorMsg))
+    {
+        OE_WARN << LC << "Failed to create index on table [tiles]: " << errorMsg << std::endl;
+        sqlite3_free( errorMsg );
+        // keep going...
+        // return false; 
+    }
+
     // TODO: support "grids" and "grid_data" tables if necessary.
 
     return true;

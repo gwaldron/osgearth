@@ -498,13 +498,13 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
         "uniform float oe_polyline_min_pixels; \n"
         "uniform vec4 oe_PixelSizeVector; \n"
 
-        "void oe_polyline_scalelines(inout vec4 vertex_model) \n"
+        "void oe_polyline_scalelines(inout vec4 vertex_model4) \n"
         "{ \n"
         "   vec4  center_model = vec4(oe_polyline_center, 1.0); \n"
-        "   vec4  vector_model = vertex_model - (center_model * vertex_model.w); \n"
-        "         vector_model /= vertex_model.w; \n"
+        "   vec4  vertex_model = vertex_model4/vertex_model4.w; \n"
+        "   vec3  vector_model = vertex_model.xyz - center_model.xyz; \n"
         
-        "   float r = length(vector_model.xyz); \n"
+        "   float r = length(vector_model); \n"
 
         "   if ( r > 0.0 && oe_polyline_min_pixels > 0.0 ) \n"
         "   { \n"
@@ -512,7 +512,8 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
         "       float min_scale = max( oe_polyline_min_pixels/pixelSize, 1.0 ); \n"
         "       float scale = max( oe_polyline_scale, min_scale ); \n"
 
-        "       vertex_model = vec4(vertex_model.xyz + vector_model.xyz*scale, vertex_model.w); \n"
+        "       vertex_model.xyz += vector_model*scale; \n"
+        "       vertex_model4 = vec4(vertex_model.xyz, 1.0); \n"
         "    } \n"
         "} \n";
 
@@ -533,6 +534,10 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
 
     // this will install and update the oe_PixelSizeVector uniform.
     node->addCullCallback( new PixelSizeVectorCullCallback(stateset) );
+
+    // DYNAMIC since we will be altering the uniforms and we don't want 
+    // the stateset to get shared via statesetcache optimization.
+    stateset->setDataVariance(osg::Object::DYNAMIC);
 }
 
 

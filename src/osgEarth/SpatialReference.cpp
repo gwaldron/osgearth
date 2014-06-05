@@ -193,8 +193,8 @@ SpatialReference::createFromWKT( const std::string& wkt, const std::string& name
 SpatialReference*
 SpatialReference::create( const std::string& horiz_init, const std::string& vert_init )
 {
-    std::string horiz = toLower(horiz_init);
-    std::string vert  = toLower(vert_init);
+    std::string horiz = horiz_init;
+    std::string vert  = vert_init;
 
     return create( Key(horiz, vert), true );
 }
@@ -223,7 +223,10 @@ SpatialReference::create( const Key& key, bool useCache )
     const std::string& vert  = key.second;
 
     // shortcut for spherical-mercator:
-    if (horiz == "spherical-mercator" || horiz == "epsg:900913" || horiz == "epsg:3785" || horiz == "epsg:102113")
+    if (startsWith(horiz, "spherical-mercator", false) ||
+        startsWith(horiz, "epsg:900913"       , false) ||
+        startsWith(horiz, "epsg:3785"         , false) ||
+        startsWith(horiz, "epsg:102113"       , false) )
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         srs = createFromPROJ4(
@@ -232,11 +235,13 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // ellipsoidal ("world") mercator:
-    else 
-        if (horiz == "world-mercator" ||
-            horiz == "epsg:54004"  || horiz == "epsg:9804"   || horiz == "epsg:3832" ||
-            horiz == "epsg:102100" || horiz == "esri:102100" || horiz == "osgeo:41001" )
-
+    else if (startsWith(horiz, "world-mercator", false) ||
+             startsWith(horiz, "epsg:54004"    , false) ||
+             startsWith(horiz, "epsg:9804"     , false) ||
+             startsWith(horiz, "epsg:3832"     , false) ||
+             startsWith(horiz, "epsg:102100"   , false) ||
+             startsWith(horiz, "esri:102100"   , false) ||
+             startsWith(horiz, "osgeo:41001"   , false) )
     {
         srs = createFromPROJ4(
             "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
@@ -244,7 +249,8 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // common WGS84:
-    else if (horiz == "epsg:4326" || horiz == "wgs84")
+    else if (startsWith(horiz, "epsg:4326", false) ||
+             startsWith(horiz, "wgs84"    , false) )
     {
         srs = createFromPROJ4(
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
@@ -252,7 +258,7 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // WGS84 Plate Carre:
-    else if (horiz == "plate-carre")
+    else if (startsWith(horiz, "plate-carre", false) )
     {
         srs = createFromPROJ4(
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
@@ -262,20 +268,22 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // custom srs for the unified cube
-    else if ( horiz == "unified-cube" )
+    else if ( startsWith(horiz, "unified-cube", false) )
     {
         srs = createCube();
     }
 
-    else if ( horiz.find( "+" ) == 0 )
+    else if ( startsWith(horiz, "+", false) )
     {
         srs = createFromPROJ4( horiz, horiz );
     }
-    else if ( horiz.find( "epsg:" ) == 0 || horiz.find( "osgeo:" ) == 0 )
+    else if ( startsWith(horiz, "epsg:" , false) ||
+              startsWith(horiz, "osgeo:", false) )
     {
         srs = createFromPROJ4( std::string("+init=") + horiz, horiz );
     }
-    else if ( horiz.find( "projcs" ) == 0 || horiz.find( "geogcs" ) == 0 )
+    else if ( startsWith(horiz, "projcs", false) ||
+              startsWith(horiz, "geogcs", false) )
     {
         srs = createFromWKT( horiz, horiz );
     }
@@ -283,6 +291,7 @@ SpatialReference::create( const Key& key, bool useCache )
     // bail out if no SRS exists by this point
     if ( srs == 0L )
     {
+        OE_WARN << LC << "Failed to find horizontal datum \"" << horiz << "\"" << std::endl;
         return 0L;
     }
 

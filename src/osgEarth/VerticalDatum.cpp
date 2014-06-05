@@ -46,7 +46,7 @@ VerticalDatum::get( const std::string& initString )
 
     Threading::ScopedMutexLock exclusive(_vdataCacheMutex);
 
-    std::string s = toLower( initString );
+    std::string s = initString;
     VDatumCache::const_iterator i = _vdatumCache.find( s );
     if ( i != _vdatumCache.end() )
     {

@@ -47,10 +47,8 @@ _maxLevel ( 20 )
 
 TileSource::Status
 MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
-{
-    // disable caching for internal URI operations
-    _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-    CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+{    
+    _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );    
     
     bool readWrite = (MODE_WRITE & (int)getMode()) != 0;
 

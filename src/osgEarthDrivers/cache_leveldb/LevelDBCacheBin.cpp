@@ -89,8 +89,7 @@ _debug            ( false )
 {
     // reader to parse data:
     _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
-    _rwOptions = osgEarth::Registry::instance()->cloneOrCreateOptions();
-    CachePolicy::NO_CACHE.apply(_rwOptions.get());
+    _rwOptions = osgEarth::Registry::instance()->cloneOrCreateOptions();    
     
     if ( ::getenv("OSGEARTH_CACHE_DEBUG") )
         _debug = true;

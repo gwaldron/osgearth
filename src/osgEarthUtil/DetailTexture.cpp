@@ -258,8 +258,7 @@ _octaves     ( 1 )
             _maskLayer = map->getImageLayerByName(*_maskLayerName);
         }
 
-        _dbOptions = Registry::instance()->cloneOrCreateOptions(map->getDBOptions());
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(map->getDBOptions());        
     }
 
     init();

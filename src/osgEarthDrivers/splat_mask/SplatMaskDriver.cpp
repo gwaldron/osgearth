@@ -54,10 +54,8 @@ namespace osgEarth { namespace Drivers { namespace SplatMask
     public: // TileSource interface
 
         Status initialize(const osgDB::Options* dbOptions)
-        {
-            // no caching of source tiles (there are none..)
-            _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-            CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        {            
+            _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );         
             setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
 
             GDALOptions gdal;

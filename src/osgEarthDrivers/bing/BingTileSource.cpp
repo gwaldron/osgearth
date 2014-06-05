@@ -82,7 +82,7 @@ public:
      */
     Status initialize(const osgDB::Options* dbOptions)
     {
-        // Always apply the NO CACHE policy.
+        // Always apply the NO CACHE policy.  Bing doesn't allow caching of their data.
         _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 

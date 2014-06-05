@@ -45,7 +45,7 @@ public:
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
     Status initialize(const osgDB::Options* dbOptions)
     {
-        // no caching of source tiles
+        // no caching of source tiles.  Yahoo TOS does not allow it.
         _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
         CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 

@@ -277,8 +277,7 @@ namespace
 #ifdef OSGEARTH_HAVE_ZLIB
         _rwOptions = Registry::instance()->cloneOrCreateOptions();
         _rwOptions->setOptionString( "Compressor=zlib" );
-#endif
-        CachePolicy::NO_CACHE.apply(_rwOptions.get());
+#endif        
     }
 
     ReadResult

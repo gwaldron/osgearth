@@ -106,10 +106,6 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
             this->getDataExtents().push_back(DataExtent(profile->getExtent(), 0, _tileMap->getMaxLevel()));
         }
     }
-
-    // set up the IO options so that we do not cache TMS tiles:
-    CachePolicy::NO_CACHE.apply( _dbOptions.get() );
-
     return STATUS_OK;
 }
 

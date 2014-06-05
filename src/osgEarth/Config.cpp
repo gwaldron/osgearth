@@ -259,17 +259,6 @@ namespace
         {
             Json::Value::Members members = json.getMemberNames();
 
-            if ( members.size() == 1 )
-            {
-                const Json::Value& value = json[members[0]];
-                if ( value.type() != Json::nullValue && value.type() != Json::objectValue && value.type() != Json::arrayValue )
-                {
-                    conf.key() = members[0];
-                    conf.value() = value.asString();
-                    return;
-                }
-            }
-
             for( Json::Value::Members::const_iterator i = members.begin(); i != members.end(); ++i )
             {
                 const Json::Value& value = json[*i];

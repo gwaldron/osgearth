@@ -41,7 +41,7 @@ namespace
             //nop
         }
 
-        ReadResult readObject(const std::string& key, TimeStamp minTime)
+        ReadResult readObject(const std::string& key )
         {
             MemCacheLRU::Record rec;
             _lru.get(key, rec);
@@ -63,14 +63,14 @@ namespace
             }
         }
 
-        ReadResult readImage(const std::string& key, TimeStamp minTime)
+        ReadResult readImage(const std::string& key)
         {
-            return readObject( key, minTime );
+            return readObject( key );
         }
 
-        ReadResult readString(const std::string& key, TimeStamp minTime)
+        ReadResult readString(const std::string& key)
         {
-            return readObject( key, minTime );
+            return readObject( key );
         }
 
         bool write( const std::string& key, const osg::Object* object, const Config& meta )
@@ -97,7 +97,7 @@ namespace
             return _lru.get(key, dummy);
         }
 
-        RecordStatus getRecordStatus( const std::string& key, TimeStamp minTime )
+        RecordStatus getRecordStatus( const std::string& key )
         {
             // ignore minTime; MemCache does not support expiration
             return _lru.has(key) ? STATUS_OK : STATUS_NOT_FOUND;

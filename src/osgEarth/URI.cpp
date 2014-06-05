@@ -291,7 +291,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readObject(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readObject(key, minTime); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key) { return bin->readObject(key); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
             HTTPRequest req(uri);            
@@ -308,7 +308,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_NODES) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readNode(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readObject(key, minTime); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key ) { return bin->readObject(key); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
             HTTPRequest req(uri);            
@@ -331,8 +331,8 @@ namespace
             if ( r.getImage() ) r.getImage()->setFileName(uri);
             return r;
         }                
-        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime ) { 
-            ReadResult r = bin->readImage(key, minTime);
+        ReadResult fromCache( CacheBin* bin, const std::string& key) { 
+            ReadResult r = bin->readImage(key);
             if ( r.getImage() ) r.getImage()->setFileName( key );
             return r;
         }
@@ -357,7 +357,7 @@ namespace
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
-        ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readString(key, minTime); }
+        ReadResult fromCache( CacheBin* bin, const std::string& key) { return bin->readString(key); }
         ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
         {
             HTTPRequest req(uri);            
@@ -456,20 +456,20 @@ namespace
                     if ( (cp->usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
                     {
                         bin = s_getCacheBin( dbOptions );
-                    }
+                    }                    
 
                     // first try to go to the cache if there is one:
                     if ( bin && cp->isCacheReadable() )
                     {                                                
-                        result = reader.fromCache( bin, uri.cacheKey(), cp->getMinAcceptTime() );                        
+                        result = reader.fromCache( bin, uri.cacheKey() );                        
                         if ( result.succeeded() )
-                        {                            
+                        {                                                        
+                            bool expired = cp->isExpired(result.lastModifiedTime());
                             result.setIsFromCache(true);
                         }
                     }
 
-                    // If it's not cached, or it is cached but is expired then try to hit the server.
-                    // TODO:  Expiration logic
+                    // If it's not cached, or it is cached but is expired then try to hit the server.                    
                     if ( result.empty() || result.isFromCache() )
                     {                        
                         // Need to do this to support nested PLODs and Proxynodes.

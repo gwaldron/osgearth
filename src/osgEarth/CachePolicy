@@ -76,6 +76,11 @@ namespace osgEarth
         /** Gets the oldest timestamp for which to accept a cache record */
         TimeStamp getMinAcceptTime() const;
 
+        /**
+         * Determine whether the given timestamp is considered to be expired based on this CachePolicy
+         */
+        bool isExpired(TimeStamp lastModified) const;
+
         /** dtor */
         virtual ~CachePolicy() { }
 

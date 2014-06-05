@@ -81,13 +81,13 @@ namespace
 
     public: // CacheBin interface
 
-        ReadResult readObject(const std::string& key, TimeStamp minTime);
+        ReadResult readObject(const std::string& key);
 
-        ReadResult readImage(const std::string& key, TimeStamp minTime);
+        ReadResult readImage(const std::string& key);
 
-        ReadResult readNode(const std::string& key, TimeStamp minTime);
+        ReadResult readNode(const std::string& key);
 
-        ReadResult readString(const std::string& key, TimeStamp minTime);
+        ReadResult readString(const std::string& key);
 
         bool write(const std::string& key, const osg::Object* object, const Config& meta);
 
@@ -95,7 +95,7 @@ namespace
 
         bool touch(const std::string& key);
 
-        RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime);
+        RecordStatus getRecordStatus(const std::string& key);
 
         bool clear();
 
@@ -282,7 +282,7 @@ namespace
     }
 
     ReadResult
-    FileSystemCacheBin::readImage(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::readImage(const std::string& key)
     {
         if ( !binValidForReading() ) 
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
@@ -295,9 +295,6 @@ namespace
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
         osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);        
-
-        if ( timeStamp < std::max(minTime, getMinValidTime()) )
-            return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
         {
@@ -319,7 +316,7 @@ namespace
     }
 
     ReadResult
-    FileSystemCacheBin::readObject(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::readObject(const std::string& key)
     {
         if ( !binValidForReading() ) 
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
@@ -332,9 +329,6 @@ namespace
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
         osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
-
-        if ( timeStamp < std::max(minTime, getMinValidTime()) )
-            return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
         {
@@ -356,7 +350,7 @@ namespace
     }
 
     ReadResult
-    FileSystemCacheBin::readNode(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::readNode(const std::string& key)
     {
         if ( !binValidForReading() ) 
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
@@ -369,9 +363,6 @@ namespace
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
         osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
-
-        if ( timeStamp < std::max(minTime, getMinValidTime()) )
-            return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
         {
@@ -393,9 +384,9 @@ namespace
     }
 
     ReadResult
-    FileSystemCacheBin::readString(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::readString(const std::string& key)
     {
-        ReadResult r = readObject(key, minTime);
+        ReadResult r = readObject(key);
         if ( r.succeeded() )
         {
             if ( r.get<StringObject>() )
@@ -471,7 +462,7 @@ namespace
     }
 
     CacheBin::RecordStatus
-    FileSystemCacheBin::getRecordStatus(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::getRecordStatus(const std::string& key)
     {
         if ( !binValidForReading() ) 
             return STATUS_NOT_FOUND;
@@ -481,11 +472,7 @@ namespace
         if ( !osgDB::fileExists(path) )
             return STATUS_NOT_FOUND;
 
-        TimeStamp oldestValidTime = std::max(minTime, getMinValidTime());
-
-        struct stat s;
-        ::stat( path.c_str(), &s );
-        return s.st_mtime >= oldestValidTime ? STATUS_OK : STATUS_EXPIRED;
+        return STATUS_OK;
     }
 
     bool

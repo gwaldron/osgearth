@@ -122,6 +122,12 @@ CachePolicy::getMinAcceptTime() const
 }
 
 bool
+CachePolicy::isExpired(TimeStamp lastModified) const
+{
+    return lastModified < getMinAcceptTime();    
+}
+
+bool
 CachePolicy::operator == (const CachePolicy& rhs) const
 {
     return 

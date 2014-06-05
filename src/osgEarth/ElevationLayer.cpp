@@ -363,7 +363,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     if ( _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
-        ReadResult result = bin->readObject(key.str(), 0);
+        ReadResult result = bin->readObject(key.str() );
         if ( result.succeeded() )
             return GeoHeightField(static_cast<osg::HeightField*>(result.releaseObject()), key.getExtent());
         //_memCache->dumpStats(key.getProfile()->getFullSignature());
@@ -391,16 +391,23 @@ ElevationLayer::createHeightField(const TileKey&    key,
     // Now attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
     bool fromCache = false;
+
+    osg::ref_ptr< osg::HeightField > cachedHF;
+
     if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
-        ReadResult r = cacheBin->readObject( key.str(), getCachePolicy().getMinAcceptTime() );
+        ReadResult r = cacheBin->readObject( key.str() );
         if ( r.succeeded() )
-        {
-            osg::HeightField* cachedHF = r.get<osg::HeightField>();
+        {            
+            bool expired = getCachePolicy().isExpired(r.lastModifiedTime());
+            cachedHF = r.get<osg::HeightField>();
             if ( cachedHF && validateHeightField(cachedHF) )
             {
-                result = cachedHF;
-                fromCache = true;
+                if (!expired)
+                {
+                    result = cachedHF;
+                    fromCache = true;
+                }
             }
         }
     }
@@ -445,6 +452,13 @@ ElevationLayer::createHeightField(const TileKey&    key,
          getCachePolicy().isCacheWriteable() )
     {
         cacheBin->write( key.str(), result );
+    }
+
+    // We have an expired heightfield from the cache and no new data from the TileSource.  So just return the cached data.
+    if (!result.valid() && cachedHF.valid())
+    {
+        OE_DEBUG << LC << "Using cached but expired heightfield for " << key.str() << std::endl;
+        result = cachedHF;
     }
 
     if ( result )

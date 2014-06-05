@@ -66,31 +66,22 @@ namespace osgEarth
         bool getHashKeys() const { return _hashKeys; }
 
         /**
-         * A global minimum valid timestamp for cached records.
-         */
-        void setMinValidTime(TimeStamp minTime) { _minTime = minTime; }
-        TimeStamp getMinValidTime() const { return _minTime; }
-
-        /**
          * Reads an object from the cache bin.
-         * @param key     Lookup key to read
-         * @param minTime Fail if the entry's timestamp is older than this
+         * @param key     Lookup key to read         
          */
-        virtual ReadResult readObject(const std::string& key, TimeStamp minTime) =0;
+        virtual ReadResult readObject(const std::string& key) =0;
 
         /**
          * Reads an image from the cache bin.
-         * @param key     Lookup key to read
-         * @param minTime Fail if the entry's timestamp is older than this
+         * @param key     Lookup key to read         
          */
-        virtual ReadResult readImage(const std::string& key, TimeStamp minTime) =0;
+        virtual ReadResult readImage(const std::string& key) =0;
 
         /**
          * Reads a string buffer from the cache bin.
          * @param key    Lookup key to read.
-         * @param minTime Fail if the entry's timestamp is older than this.
          */
-        virtual ReadResult readString(const std::string& key, TimeStamp minTime) =0;
+        virtual ReadResult readString(const std::string& key) =0;
 
         /**
          * Writes an object (or an image) to the cache bin.
@@ -105,11 +96,9 @@ namespace osgEarth
         /**
          * Gets the status of a key, i.e. not found, valid or expired.
          * Pass in a minTime = 0 to simply check whether the record exists.
-         * @param key     Lookup key to check for
-         * @param minTime Return EXPIRED if the key exists but is older than this
-         *                or older than getMinValidTime().
+         * @param key     Lookup key to check for         
          */
-        virtual RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime) =0;
+        virtual RecordStatus getRecordStatus(const std::string& key) =0;
 
         /**
          * Purge an entry from the cache bin

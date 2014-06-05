@@ -689,10 +689,8 @@ TerrainLayer::isCached(const TileKey& key) const
     CacheBin* bin = const_cast<TerrainLayer*>(this)->getCacheBin( key.getProfile() );
     if ( !bin )
         return false;
-
-    // finally, check the policy details:
-    TimeStamp minTime = this->getCachePolicy().getMinAcceptTime();
-    return bin->getRecordStatus( key.str(), minTime ) == CacheBin::STATUS_OK;
+    
+    return bin->getRecordStatus( key.str() ) == CacheBin::STATUS_OK;
 }
 
 void

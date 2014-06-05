@@ -779,7 +779,7 @@ public:
                 //Try to load the VRT file from the cache so we don't have to build it each time.
                 if (_cacheBin.valid())
                 {                
-                    ReadResult result = _cacheBin->readString( vrtKey, 0 );
+                    ReadResult result = _cacheBin->readString( vrtKey);
                     if (result.succeeded())
                     {                        
                         _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );

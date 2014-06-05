@@ -294,7 +294,9 @@ namespace
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);        
+
+        if ( timeStamp < std::max(minTime, getMinValidTime()) )
             return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
@@ -310,7 +312,9 @@ namespace
             if ( osgDB::fileExists(metafile) )
                 readMeta( metafile, meta );
 
-            return ReadResult( r.getImage(), meta );
+            ReadResult rr( r.getImage(), meta );
+            rr.setLastModifiedTime(timeStamp);
+            return rr;            
         }
     }
 
@@ -327,7 +331,9 @@ namespace
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
+
+        if ( timeStamp < std::max(minTime, getMinValidTime()) )
             return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
@@ -343,7 +349,9 @@ namespace
             if ( osgDB::fileExists(metafile) )
                 readMeta( metafile, meta );
 
-             return ReadResult( r.getObject(), meta );
+            ReadResult rr( r.getObject(), meta );
+            rr.setLastModifiedTime(timeStamp);
+            return rr;            
         }
     }
 
@@ -360,7 +368,9 @@ namespace
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
+
+        if ( timeStamp < std::max(minTime, getMinValidTime()) )
             return ReadResult( ReadResult::RESULT_EXPIRED );
 
         osgDB::ReaderWriter::ReadResult r;
@@ -376,7 +386,9 @@ namespace
             if ( osgDB::fileExists(metafile) )
                 readMeta( metafile, meta );
 
-            return ReadResult( r.getNode(), meta );
+            ReadResult rr( r.getNode(), meta );
+            rr.setLastModifiedTime(timeStamp);
+            return rr;            
         }
     }
 

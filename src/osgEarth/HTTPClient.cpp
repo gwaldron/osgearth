@@ -858,8 +858,6 @@ HTTPClient::doGet(const HTTPRequest&    request,
             buf << itr->first << ": " << itr->second;
             headers = curl_slist_append(headers, buf.str().c_str());
         }
-        //headers = curl_slist_append(headers, "If-Modified-Since: Fri, 07 May 2010 18:10:01 GMT");
-    //headers = curl_slist_append(headers, "If-Modified-Since: Fri, 07 May 2014 18:10:02 GMT");
     }    
 
     // Disable the default Pragma: no-cache that curl adds by default.

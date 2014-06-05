@@ -458,19 +458,21 @@ namespace
                         bin = s_getCacheBin( dbOptions );
                     }                    
 
+
+                    bool expired = false;
                     // first try to go to the cache if there is one:
                     if ( bin && cp->isCacheReadable() )
                     {                                                
                         result = reader.fromCache( bin, uri.cacheKey() );                        
                         if ( result.succeeded() )
-                        {                                                        
-                            bool expired = cp->isExpired(result.lastModifiedTime());
+                        {                                       
+                            expired = cp->isExpired(result.lastModifiedTime());
                             result.setIsFromCache(true);
                         }
                     }
 
                     // If it's not cached, or it is cached but is expired then try to hit the server.                    
-                    if ( result.empty() || result.isFromCache() )
+                    if ( result.empty() || expired )
                     {                        
                         // Need to do this to support nested PLODs and Proxynodes.
                         osg::ref_ptr<osgDB::Options> remoteOptions =
@@ -495,26 +497,27 @@ namespace
                         if ( !gotResultFromCallback )
                         {                            
                             // still no data, go to the source:
-                            if ( (result.empty() || result.isFromCache()) && cp->usage() != CachePolicy::USAGE_CACHE_ONLY )
-                            {
+                            if ( (result.empty() || expired) && cp->usage() != CachePolicy::USAGE_CACHE_ONLY )
+                            {                                
                                 ReadResult remoteResult = reader.fromHTTP( uri.full(), remoteOptions.get(), progress, result.lastModifiedTime() );
                                 if (remoteResult.code() == ReadResult::RESULT_NOT_MODIFIED)
                                 {
-                                    OE_INFO << uri.full() << " not modified, using cached result" << std::endl;
+                                    OE_DEBUG << uri.full() << " not modified, using cached result" << std::endl;
                                     // Touch the cached item to update it's last modified timestamp so it doesn't expire again immediately.
                                     bin->touch( uri.cacheKey() );
                                 }
                                 else
                                 {
-                                    OE_INFO << "Got remote result for " << uri.full() << std::endl;
+                                    OE_DEBUG << "Got remote result for " << uri.full() << std::endl;
                                     result = remoteResult;
+                                    OE_NOTICE << remoteResult.metadata().toJSON() << std::endl;
                                 }
                             }
 
                             // write the result to the cache if possible:
                             if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() )
                             {
-                                OE_INFO << "Writing " << uri.cacheKey() << " to cache" << std::endl;
+                                OE_DEBUG << "Writing " << uri.cacheKey() << " to cache" << std::endl;
                                 bin->write( uri.cacheKey(), result.getObject(), result.metadata() );
                             }
                         }

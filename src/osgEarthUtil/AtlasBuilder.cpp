@@ -26,6 +26,7 @@
 #include <osgUtil/Optimizer>
 #include <vector>
 #include <string>
+#include <stdlib.h> // for ::getenv
 
 #define LC "[AtlasBuilder] "
 
@@ -68,9 +69,12 @@ namespace
 AtlasBuilder::AtlasBuilder(const osgDB::Options* options) :
 _options( options ),
 _width  ( 1024 ),
-_height ( 1024 )
+_height ( 1024 ),
+_debug  ( false )
 {
     //nop
+    if (::getenv("OSGEARTH_ATLAS_DEBUG"))
+        _debug = true;
 }
 
 void
@@ -278,8 +282,11 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             // copy the atlas image into the image array:
             osg::Image* atlasImage = atlasList[r]->_image.get();
 
-            std::string name = Stringify() << "image_" << (int)(tab-tabs.begin()) << "_" << r << ".png";
-            osgDB::writeImageFile(*atlasImage, name);
+            if ( _debug )
+            {
+                std::string name = Stringify() << "image_" << (int)(tab-tabs.begin()) << "_" << r << ".png";
+                osgDB::writeImageFile(*atlasImage, name);
+            }
 
             ImageUtils::PixelReader read (atlasImage);
             ImageUtils::PixelWriter write(imageArray);

@@ -75,6 +75,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const osgDB::Options> _options;
         std::vector<std::string> _auxPatterns;
         std::vector<osg::Vec4f>  _auxDefaults;
+        bool _debug;
     };
 
 } } // namespace osgEarth::Util

@@ -195,6 +195,19 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileSource : public virtual osg::Object
     {
     public:
+        /** Modes: OR these together when you call open(). */
+        typedef unsigned Mode;
+
+        /** Open for reading only */
+        static const Mode MODE_READ;  
+        
+        /** Open for writing */
+        static const Mode MODE_WRITE;
+
+        /** When using MODE_WRITE, create the data store if necessary */
+        static const Mode MODE_CREATE;
+
+
         /** Initialization status */
         struct Status
         {
@@ -227,7 +240,8 @@ namespace osgEarth
         };
 
     public:
-        TileSource( const TileSourceOptions& options =TileSourceOptions() );
+        /** Constructor */
+        TileSource(const TileSourceOptions& options);
 
         /**
          * Gets the status of this tile source.
@@ -262,6 +276,22 @@ namespace osgEarth
             const TileKey&        key,
             HeightFieldOperation* op        =0L,
             ProgressCallback*     progress  =0L );
+
+        /**
+         * Stores an image in the tile source for the given TileKey.
+         * The driver must support writing or this method will return false.
+         */
+        virtual bool storeImage(const TileKey&    key,
+                                osg::Image*       image,
+                                ProgressCallback* progress) { return false; }
+
+        /**
+         * Stores a heightfield in the tile source for the given TileKey.
+         * The driver must support writing or this method will return false.
+         */
+        virtual bool storeHeightField(const TileKey&    key,
+                                      osg::HeightField* hf,
+                                      ProgressCallback* progress) { return false; }
 
     public:
 
@@ -354,10 +384,18 @@ namespace osgEarth
         /**
          * Starts up the tile source.
          */
-        const Status& startup( const osgDB::Options* dbOptions );
+        const Status& open(
+            const Mode&           openMode  =MODE_READ,
+            const osgDB::Options* dbOptions =0L);
 
+        /**
+         * The open mode (passed to startup).
+         */
+        const Mode& getMode() const { return _mode; }
 
-        /** The options used to construct this tile source. */
+        /**
+         * The options used to construct this tile source.
+         */
         const TileSourceOptions& getOptions() const { return _options; }
 
     public:
@@ -371,7 +409,6 @@ namespace osgEarth
 
     protected:
 
-        virtual ~TileSource();
 
         /**
          * Initializes the tile source (called by startup)
@@ -386,7 +423,7 @@ namespace osgEarth
          * The Subclass should override this to report a correct initialization status.
          * The default implementation reports STATUS_OK (for compatibility).
          */
-        virtual Status initialize( const osgDB::Options* dbOptions );
+        virtual Status initialize(const osgDB::Options* dbOptions);
 
         /**
          * Creates an image for the given TileKey.
@@ -394,7 +431,7 @@ namespace osgEarth
          */
         virtual osg::Image* createImage(
             const TileKey&        key,
-            ProgressCallback*     progress ) = 0;
+            ProgressCallback*     progress );
 
         /**
          * Creates a heightfield for the given TileKey
@@ -404,14 +441,20 @@ namespace osgEarth
             const TileKey&        key,
             ProgressCallback*     progress );
 
+    protected:
+        
+        virtual ~TileSource();
+
         /**
-         * Called by subclasses to initialize their profile
+         * Subclass can call this to set a Profile after opening the 
+         * data store.
          */
         void setProfile( const Profile* profile );
 
         /**
-         * Sets the status of this tile source. Called by a subclass to
-         * set the status
+         * Subclass can call this to set the status. Normally you set the
+         * status by returning it from initialize(), but you can call this
+         * later, e.g. in the event of an unrecoverable error.
          */
         void setStatus( Status status );
 
@@ -446,32 +489,7 @@ namespace osgEarth
 
         DataExtentList _dataExtents;
         Status         _status;
-    };
-
-    class OSGEARTH_EXPORT ReadWriteTileSource : public TileSource
-    {
-    public:
-
-        /** Stores an image in the tile source. */
-        virtual bool storeImage(const TileKey&    key,
-                                osg::Image*       image,
-                                ProgressCallback* progress) { return false; }
-
-        /** Stores a heightfield in the tile source. */
-        virtual bool storeHeightField(const TileKey&    key,
-                                      osg::HeightField* hf,
-                                      ProgressCallback* progress) { return false; }
-                            
-        
-        /** interface name, used by the plugin system. */
-        static const char* INTERFACE_NAME;
-
-    protected:
-        /** Construct with defaults. */
-        ReadWriteTileSource();
-
-        /** Construct with options. */
-        ReadWriteTileSource(const TileSourceOptions& options);
+        Mode           _mode;
     };
 
 
@@ -485,6 +503,8 @@ namespace osgEarth
         const TileSourceOptions& getTileSourceOptions(const osgDB::Options* options) const;
 
         const std::string getInterfaceName(const osgDB::Options* options) const;
+
+        TileSource::Mode getOpenMode(const osgDB::Options* options) const;
     };
 
     //--------------------------------------------------------------------
@@ -496,24 +516,10 @@ namespace osgEarth
     {
     public:
         /**
-         * Creates a TileSource instance (read-only) by loading the plugin
+         * Creates a TileSource instance by loading the driver plugin
          * specified in the options.
          */
-        static TileSource* openReadOnly(const TileSourceOptions& options);
-
-        /**
-         * Creates a TileSource instance (read/write) by loading the plugin
-         * specified in the options. Returns NULL if the tilesource cannot be
-         * created, or if it doesn't support writing.
-         */
-        static ReadWriteTileSource* openReadWrite(const TileSourceOptions& options);
-
-        /**
-         * Backwards compatible openReadOnly function.
-         */
-        static TileSource* create(const TileSourceOptions& options) {
-            return openReadOnly(options);
-        }
+        static TileSource* create(const TileSourceOptions& options);
     };
 }
 

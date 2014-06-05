@@ -466,15 +466,18 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                 }
                 else if ( isCacheOnly() )
                 {
-                    OE_WARN << LC << "Failed to open a cache for layer [" << getName() << "] "
-                        << " because cache_only policy is in effect and bin [" << binId << "] cound not be located."
+                    OE_WARN << LC <<
+                        "Failed to open a cache for layer "
+                        "because cache_only policy is in effect and bin [" << binId << "] "
+                        "could not be located."
                         << std::endl;
                     return 0L;
                 }
                 else
                 {
-                    OE_WARN << LC << "Failed to create cache bin [" << binId << "] "
-                        << "for layer [" << getName() << "] because there is no valid tile source."
+                    OE_WARN << LC <<
+                        "Failed to create cache bin [" << binId << "] "
+                        "because there is no valid tile source."
                         << std::endl;
                     return 0L;
                 }
@@ -485,13 +488,14 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
             newInfo._metadata = meta;
             newInfo._bin      = newBin.get();
 
-            OE_INFO << LC << "Opened cache bin [" << binId << "] for layer [" << getName() << "]" << std::endl;
+            OE_INFO << LC <<
+                "Opened cache bin [" << binId << "]" << std::endl;
         }
         else
         {
             // bin creation failed, so disable caching for this layer.
             setCachePolicy( CachePolicy::NO_CACHE );
-            OE_WARN << LC << "Failed to create a caching bin for layer [" << getName() << "]; cache disabled." << std::endl;
+            OE_WARN << LC << "Failed to create a cache bin; cache disabled." << std::endl;
         }
 
         return newBin.get(); // not release()
@@ -530,7 +534,7 @@ TerrainLayer::initTileSource()
     {
         if ( _runtimeOptions->driver().isSet() )
         {
-            _tileSource = TileSourceFactory::openReadOnly( *_runtimeOptions->driver() );
+            _tileSource = TileSourceFactory::create(*_runtimeOptions->driver());
         }
     }
 
@@ -554,11 +558,11 @@ TerrainLayer::initTileSource()
                 << _tileSource->getProfile()->toString() << std::endl;
         }
 
-        // Start up the tile source (if it hasn't already been started)
+        // Open the tile source (if it hasn't already been started)
         TileSource::Status status = _tileSource->getStatus();
         if ( status != TileSource::STATUS_OK )
         {
-            status = _tileSource->startup( _dbOptions.get() );
+            status = _tileSource->open(TileSource::MODE_READ, _dbOptions.get());
         }
 
         if ( status == TileSource::STATUS_OK )

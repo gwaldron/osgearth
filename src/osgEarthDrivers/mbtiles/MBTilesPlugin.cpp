@@ -50,10 +50,7 @@ namespace osgEarth { namespace Drivers { namespace MBTiles
             std::string iname = getInterfaceName(options);
 
             if ( iname == TileSource::INTERFACE_NAME )
-                return new MBTilesTileSource( getTileSourceOptions(options), false );
-
-            if ( iname == ReadWriteTileSource::INTERFACE_NAME )
-                return new MBTilesTileSource( getTileSourceOptions(options), true );
+                return new MBTilesTileSource( getTileSourceOptions(options) );
 
             return ReadResult::FILE_NOT_FOUND;
         }

@@ -73,6 +73,18 @@ namespace
                 return false;
         }
 
+        const osg::StateSet::TextureAttributeList& texattrs = stateSet->getTextureAttributeList();
+        for( osg::StateSet::TextureAttributeList::const_iterator i = texattrs.begin(); i != texattrs.end(); ++i )
+        {
+            const osg::StateSet::AttributeList& texattrlist = *i;
+            for( osg::StateSet::AttributeList::const_iterator i = texattrlist.begin(); i != texattrlist.end(); ++i )
+            {
+                osg::StateAttribute* a = i->second.first.get();
+                if ( !isEligible(a) )
+                    return false;
+            }
+        }
+
         return true;
 #else
         return false;

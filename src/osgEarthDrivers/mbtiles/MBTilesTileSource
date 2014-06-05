@@ -27,28 +27,36 @@ struct sqlite3;
 
 namespace osgEarth { namespace Drivers { namespace MBTiles
 {
-    class MBTilesTileSource : public ReadWriteTileSource
+    /**
+     * TileSource that reads and writes the MapBox MBTiles format.
+     * https://www.mapbox.com/foundations/an-open-platform/#storing-tiles
+     */
+    class MBTilesTileSource : public TileSource
     {
     public:
 
-        /** Constructor (read-write) */
-        MBTilesTileSource(const TileSourceOptions& options, bool readWrite);
+        /** Constructor */
+        MBTilesTileSource(const TileSourceOptions& options);
 
     public: // TileSource interface
 
         Status initialize(const osgDB::Options* dbOptions);
 
-        osg::Image* createImage(const TileKey& key, ProgressCallback* progress);
+        /** Reads and image from the mbtiles db */
+        osg::Image* createImage(
+            const TileKey&    key, 
+            ProgressCallback* progress);
+        
+        /** Stores an image to the mbtiles db */
+        bool storeImage(
+            const TileKey&    key,
+            osg::Image*       image,
+            ProgressCallback* progress);
 
         std::string getExtension() const;
 
         CachePolicy getCachePolicyHint(const Profile* targetProfile) const;
 
-    public: // ReadWriteTileSource interface
-
-        bool storeImage(const TileKey&    key,
-                        osg::Image*       image,
-                        ProgressCallback* progress);
 
     protected:
         void computeLevels();
@@ -69,7 +77,6 @@ namespace osgEarth { namespace Drivers { namespace MBTiles
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options> _dbOptions;
         std::string _tileFormat;
-        bool _readWrite;
 
         // because no one knows if/when sqlite3 is threadsafe.
         mutable Threading::Mutex _mutex; 

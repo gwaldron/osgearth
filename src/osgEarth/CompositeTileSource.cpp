@@ -133,6 +133,7 @@ namespace
 //-----------------------------------------------------------------------
 
 CompositeTileSource::CompositeTileSource( const TileSourceOptions& options ) :
+TileSource  ( options ),
 _options    ( options ),
 _initialized( false ),
 _dynamic    ( false )

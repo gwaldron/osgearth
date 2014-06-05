@@ -538,7 +538,13 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useShadows    = args.read("--shadows");
     bool animateSky    = args.read("--animate-sky");
     bool showActivity  = args.read("--activity");
-    bool useLogDepth   = args.read("--logdepth");    
+    bool useLogDepth   = args.read("--logdepth");
+
+    if (args.read("--verbose"))
+        osgEarth::setNotifyLevel(osg::INFO);
+    
+    if (args.read("--quiet"))
+        osgEarth::setNotifyLevel(osg::FATAL);
 
     float ambientBrightness = 0.2f;
     args.read("--ambientBrightness", ambientBrightness);

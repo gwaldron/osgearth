@@ -104,8 +104,8 @@ public:
                     opt.L2CacheSize() = 0;
 
                     start = osg::Timer::instance()->tick();
-                    source = osgEarth::TileSourceFactory::openReadOnly( opt );                               
-                    TileSource::Status compStatus = source->startup( 0 );
+                    source = osgEarth::TileSourceFactory::create( opt );                               
+                    TileSource::Status compStatus = source->open();
                     if (compStatus.isOK())
                     {
                         _tileSourceCache.insert( files[i], source.get() );                                                

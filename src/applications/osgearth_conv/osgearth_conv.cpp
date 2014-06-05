@@ -49,7 +49,7 @@ int usage(char** argv)
 // TileHandler that copies images from one tilesource to another.
 struct TileSourceToTileSource : public TileHandler
 {
-    TileSourceToTileSource(TileSource* source, ReadWriteTileSource* dest)
+    TileSourceToTileSource(TileSource* source, TileSource* dest)
         : _source(source), _dest(dest)
     {
         //nop
@@ -69,8 +69,8 @@ struct TileSourceToTileSource : public TileHandler
         return _source->hasData(key);
     }
 
-    TileSource*          _source;
-    ReadWriteTileSource* _dest;
+    TileSource* _source;
+    TileSource* _dest;
 };
 
 
@@ -79,7 +79,7 @@ struct TileSourceToTileSource : public TileHandler
 // necessary to translate from one Profile/SRS to another.
 struct ImageLayerToTileSource : public TileHandler
 {
-    ImageLayerToTileSource(ImageLayer* source, ReadWriteTileSource* dest)
+    ImageLayerToTileSource(ImageLayer* source, TileSource* dest)
         : _source(source), _dest(dest)
     {
         //nop
@@ -100,7 +100,7 @@ struct ImageLayerToTileSource : public TileHandler
     }
 
     osg::ref_ptr<ImageLayer> _source;
-    ReadWriteTileSource* _dest;
+    TileSource*              _dest;
 };
 
 
@@ -182,14 +182,14 @@ main(int argc, char** argv)
         inConf.set(key, value);
 
     TileSourceOptions inOptions(inConf);
-    osg::ref_ptr<TileSource> input = TileSourceFactory::openReadOnly(inOptions);
+    osg::ref_ptr<TileSource> input = TileSourceFactory::create(inOptions);
     if ( !input.valid() )
     {
         OE_WARN << LC << "Failed to open input" << std::endl;
         return -1;
     }
 
-    TileSource::Status inputStatus = input->startup(0L);
+    TileSource::Status inputStatus = input->open();
     if ( inputStatus.isError() )
     {
         OE_WARN << LC << "Error initializing input" << std::endl;
@@ -223,14 +223,14 @@ main(int argc, char** argv)
 
     // open the output tile source:
     TileSourceOptions outOptions(outConf);
-    osg::ref_ptr<ReadWriteTileSource> output = TileSourceFactory::openReadWrite(outOptions);
+    osg::ref_ptr<TileSource> output = TileSourceFactory::create(outOptions);
     if ( !output.valid() )
     {
         OE_WARN << LC << "Failed to open output" << std::endl;
         return -1;
     }
 
-    TileSource::Status outputStatus = output->startup(0L);
+    TileSource::Status outputStatus = output->open(TileSource::MODE_WRITE | TileSource::MODE_CREATE);
     if ( outputStatus.isError() )
     {
         OE_WARN << LC << "Error initializing output" << std::endl;

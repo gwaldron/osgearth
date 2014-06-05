@@ -372,8 +372,12 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             Corners::iterator this_corner = c;
 
             Corners::iterator next_corner = c;
-            if ( ++next_corner == corners.end() )
-                next_corner = corners.begin();
+			bool notLastEdge=true;
+			if ( ++next_corner == corners.end() )
+			{
+				notLastEdge=false;
+				next_corner = corners.begin();
+			}
 
             osg::Vec3d base_vec = next_corner->base - this_corner->base;
             double span = base_vec.length();
@@ -389,7 +393,15 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
                 while(nextTexBoundary < cornerOffset+span)
                 {
                     // insert a new fake corner.
-                    Corners::iterator new_corner = corners.insert(next_corner, Corner());
+					Corners::iterator new_corner;
+					if(notLastEdge)
+						new_corner = corners.insert(next_corner, Corner());
+					else
+					{
+						corners.push_back(Corner());
+						new_corner = c;
+						new_corner++;
+					}
                     new_corner->isFromSource = false;
                     double advance = nextTexBoundary-cornerOffset;
                     new_corner->base = this_corner->base + base_vec*advance;

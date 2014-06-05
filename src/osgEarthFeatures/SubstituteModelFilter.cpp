@@ -136,6 +136,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
     // first, go through the features and build the model cache. Apply the model matrix' scale
     // factor to any AutoTransforms directly (cloning them as necessary)
     std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
+	std::map< std::string, URI> URIMap;
 
     // keep track of failed URIs so we don't waste time or warning messages on them
     std::set< URI > missing;
@@ -154,9 +155,13 @@ SubstituteModelFilter::process(const FeatureList&           features,
     {
         Feature* input = f->get();
 
-        // evaluate the instance URI expression:
-        StringExpression uriEx = *symbol->url();
-        URI instanceURI( input->eval(uriEx, &context), uriEx.uriContext() );
+		// evaluate the instance URI expression:
+		const std::string& st = input->eval(uriEx, &context);
+		URI& instanceURI = URIMap[st];
+		if(instanceURI.empty()) // Create a map, to reuse URI's, since they take a long time to create
+		{
+			instanceURI = URI( st, uriEx.uriContext() );
+		}
 
         // find the corresponding marker in the cache
         osg::ref_ptr<InstanceResource> instance;
@@ -185,8 +190,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
             rotationMatrix.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
         }
 
-        // how that we have a marker source, create a node for it
-        std::pair<URI,float> key( instanceURI, scale );
+		// how that we have a marker source, create a node for it
+		std::pair<URI,float> key( instanceURI, iconSymbol? scale : 1.0f );//use 1.0 for models, since we don't want unique models based on scaling
 
         // cache nodes per instance.
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];

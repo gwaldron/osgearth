@@ -99,9 +99,15 @@ namespace osgEarth
         /** Ready-only access to the parameter list (as built with addParameter) */
         const Parameters& getParameters() const;        
 
-        void addHeader( const std::string& name, const std::string& value);
+        void addHeader( const std::string& name, const std::string& value );
 
         const Headers& getHeaders() const;
+
+        /**
+         * Sets the last modified date of any locally cached data for this request.  This will 
+         * automatically add a If-Modified-Since header to the request
+         */
+        void setLastModified( const DateTime &lastModified );
 
         /** Gets a copy of the complete URL (base URL + query string) for this request */
         std::string getURL() const;
@@ -122,6 +128,7 @@ namespace osgEarth
         enum Code {
             NONE         = 0,
             OK           = 200,
+            NOT_MODIFIED = 304,
             BAD_REQUEST  = 400,
             NOT_FOUND    = 404,
             CONFLICT     = 409,
@@ -166,7 +173,7 @@ namespace osgEarth
         const std::string& getMimeType() const;
 
         /** How long did it take to fetch this response (in seconds) */
-        double getDuration() const { return _duration_s; }
+        double getDuration() const { return _duration_s; }        
 
     private:
         struct Part : public osg::Referenced
@@ -224,6 +231,7 @@ namespace osgEarth
         {
             return
                 code == ReadResult::RESULT_OK ||
+                code == ReadResult::RESULT_NOT_MODIFIED ||
                 code == ReadResult::RESULT_SERVER_ERROR ||
                 code == ReadResult::RESULT_TIMEOUT ||
                 code == ReadResult::RESULT_CANCELED;
@@ -289,7 +297,7 @@ namespace osgEarth
          * Reads an image.
          */
         static ReadResult readImage(
-            const std::string&    location,
+            const HTTPRequest&    request,
             const osgDB::Options* dbOptions =0L,
             ProgressCallback*     progress  =0L );
 
@@ -297,7 +305,7 @@ namespace osgEarth
          * Reads an osg::Node.
          */
         static ReadResult readNode(
-            const std::string&    location,
+            const HTTPRequest&    request,
             const osgDB::Options* dbOptions =0L,
             ProgressCallback*     progress  =0L );
 
@@ -305,7 +313,7 @@ namespace osgEarth
          * Reads an object.
          */
         static ReadResult readObject(
-            const std::string&    location,
+            const HTTPRequest&    request,
             const osgDB::Options* dbOptions =0L,
             ProgressCallback*     progress  =0L );
 
@@ -313,7 +321,7 @@ namespace osgEarth
          * Reads a string.
          */
         static ReadResult readString(
-            const std::string&    location,
+            const HTTPRequest&    request,
             const osgDB::Options* dbOptions =0L,
             ProgressCallback*     progress  =0L );
 
@@ -348,28 +356,24 @@ namespace osgEarth
         HTTPResponse doGet( const HTTPRequest&    request,
                             const osgDB::Options* options  =0L,
                             ProgressCallback*     callback =0L ) const;
-
-        HTTPResponse doGet( const std::string&    url,
-                            const osgDB::Options* options  =0L,
-                            ProgressCallback*     callback =0L ) const;
-
+        
         ReadResult doReadObject(
-            const std::string&    location,
+            const HTTPRequest&    request,
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
 
         ReadResult doReadImage(
-            const std::string&    location,
+            const HTTPRequest&    request,
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
 
         ReadResult doReadNode(
-            const std::string&    location,
+            const HTTPRequest&    request,
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
 
         ReadResult doReadString(
-            const std::string&    location,
+            const HTTPRequest&    request,
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
 

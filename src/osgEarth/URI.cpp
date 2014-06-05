@@ -292,7 +292,15 @@ namespace
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readObject(uri, opt); }
         ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readObject(key, minTime); }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readObject(uri, opt, p); }
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
+        {
+            HTTPRequest req(uri);            
+            if (lastModified > 0)
+            {
+                req.setLastModified(lastModified);
+            }
+            return HTTPClient::readObject(req, opt, p);
+        }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readObjectFile(uri, opt)); }
     };
 
@@ -301,7 +309,15 @@ namespace
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_NODES) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readNode(uri, opt); }
         ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readObject(key, minTime); }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readNode(uri, opt, p); }
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
+        {
+            HTTPRequest req(uri);            
+            if (lastModified > 0)
+            {
+                req.setLastModified(lastModified);
+            }
+            return HTTPClient::readNode(req, opt, p);
+        }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readNodeFile(uri, opt)); }
     };
 
@@ -320,8 +336,13 @@ namespace
             if ( r.getImage() ) r.getImage()->setFileName( key );
             return r;
         }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { 
-            ReadResult r = HTTPClient::readImage(uri, opt, p);
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified ) { 
+            HTTPRequest req(uri);            
+            if (lastModified > 0)
+            {
+                req.setLastModified(lastModified);
+            }
+            ReadResult r = HTTPClient::readImage(req, opt, p);
             if ( r.getImage() ) r.getImage()->setFileName( uri );
             return r;
         }
@@ -337,7 +358,15 @@ namespace
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
         ReadResult fromCache( CacheBin* bin, const std::string& key, TimeStamp minTime) { return bin->readString(key, minTime); }
-        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readString(uri, opt, p); }
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified )
+        {
+            HTTPRequest req(uri);            
+            if (lastModified > 0)
+            {
+                req.setLastModified(lastModified);
+            }
+            return HTTPClient::readString(req, opt, p);
+        }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return readStringFile(uri, opt); }
     };
 
@@ -357,7 +386,7 @@ namespace
 
         if ( !inputURI.empty() )
         {
-            // establish our IO options:
+            // establish our IO options:            
             const osgDB::Options* localOptions = dbOptions ? dbOptions : Registry::instance()->getDefaultOptions();
 
             READ_FUNCTOR reader;
@@ -420,7 +449,7 @@ namespace
                     // establish the caching policy.
                     optional<CachePolicy> cp;
                     CachePolicy::fromOptions(localOptions, cp);
-                    Registry::instance()->resolveCachePolicy( cp );
+                    Registry::instance()->resolveCachePolicy( cp );                    
 
                     // get a cache bin if we need it:
                     CacheBin* bin = 0L;
@@ -431,19 +460,25 @@ namespace
 
                     // first try to go to the cache if there is one:
                     if ( bin && cp->isCacheReadable() )
-                    {
-                        result = reader.fromCache( bin, uri.cacheKey(), cp->getMinAcceptTime() );
+                    {                                                
+                        result = reader.fromCache( bin, uri.cacheKey(), cp->getMinAcceptTime() );                        
                         if ( result.succeeded() )
+                        {                            
                             result.setIsFromCache(true);
+                        }
                     }
 
-                    // not in the cache, so proceed to read it from the network.
-                    if ( result.empty() )
-                    {
+                    // If it's not cached, or it is cached but is expired then try to hit the server.
+                    // TODO:  Expiration logic
+                    if ( result.empty() || result.isFromCache() )
+                    {                        
                         // Need to do this to support nested PLODs and Proxynodes.
                         osg::ref_ptr<osgDB::Options> remoteOptions =
                             Registry::instance()->cloneOrCreateOptions( localOptions );
                         remoteOptions->getDatabasePathList().push_front( osgDB::getFilePath(uri.full()) );
+
+                        // Store the existing object from the cache if there is one.
+                        osg::ref_ptr< osg::Object > object = result.getObject();
 
                         // try to use the callback if it's set. Callback ignores the caching policy.
                         if ( cb )
@@ -458,16 +493,28 @@ namespace
                         }
 
                         if ( !gotResultFromCallback )
-                        {
+                        {                            
                             // still no data, go to the source:
-                            if ( result.empty() && cp->usage() != CachePolicy::USAGE_CACHE_ONLY )
+                            if ( (result.empty() || result.isFromCache()) && cp->usage() != CachePolicy::USAGE_CACHE_ONLY )
                             {
-                                result = reader.fromHTTP( uri.full(), remoteOptions.get(), progress );
+                                ReadResult remoteResult = reader.fromHTTP( uri.full(), remoteOptions.get(), progress, result.lastModifiedTime() );
+                                if (remoteResult.code() == ReadResult::RESULT_NOT_MODIFIED)
+                                {
+                                    OE_INFO << uri.full() << " not modified, using cached result" << std::endl;
+                                    // Touch the cached item to update it's last modified timestamp so it doesn't expire again immediately.
+                                    bin->touch( uri.cacheKey() );
+                                }
+                                else
+                                {
+                                    OE_INFO << "Got remote result for " << uri.full() << std::endl;
+                                    result = remoteResult;
+                                }
                             }
 
                             // write the result to the cache if possible:
-                            if ( result.succeeded() && bin && cp->isCacheWriteable() )
+                            if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() )
                             {
+                                OE_INFO << "Writing " << uri.cacheKey() << " to cache" << std::endl;
                                 bin->write( uri.cacheKey(), result.getObject(), result.metadata() );
                             }
                         }

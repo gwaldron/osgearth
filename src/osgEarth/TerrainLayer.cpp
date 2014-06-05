@@ -607,7 +607,7 @@ TerrainLayer::initTileSource()
         // check for a vertical datum override:
         if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
         {
-            std::string vdatum = toLower( *_runtimeOptions->verticalDatum() );
+            std::string vdatum = *_runtimeOptions->verticalDatum();
             if ( _profile->getSRS()->getVertInitString() != vdatum )
             {
                 OE_INFO << LC << "Overriding vdatum with: " << vdatum << std::endl;

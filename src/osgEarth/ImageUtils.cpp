@@ -993,6 +993,16 @@ ImageUtils::isFloatingPointInternalFormat(GLint i)
         (i >= 0x8814 && i <= 0x881F);   // GL_RGBA32F_ARB, et al
 }
 
+bool
+ImageUtils::sameFormat(const osg::Image* lhs, const osg::Image* rhs)
+{
+    return 
+        lhs != 0L &&
+        rhs != 0L &&
+        lhs->getPixelFormat() == rhs->getPixelFormat() &&
+        lhs->getDataType()    == rhs->getDataType();
+}
+
 //------------------------------------------------------------------------
 
 namespace

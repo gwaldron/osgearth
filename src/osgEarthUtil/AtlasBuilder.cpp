@@ -22,6 +22,7 @@
 #include <osgDB/Options>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
 #include <vector>
 #include <string>
@@ -132,9 +133,11 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             continue;
         }
 
-        osg::Image* image = skin->createImage( _options );
-        if ( image )
+        osg::ref_ptr<osg::Image> image = skin->createImage( _options );
+        if ( image.valid() )
         {
+            OE_INFO << LC << "Loaded skin file: " << skin->imageURI()->full() << std::endl;
+
             // ensure we're not trying to atlas an atlas.
             if ( image->r() > 1 )
             {
@@ -143,6 +146,9 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                     "altas from another atlas. Stopping." << std::endl;
                 return false;
             }
+
+            // normalize to RGBA8
+            image = ImageUtils::convertToRGBA8(image);
 
             maintab->addSource( image );
 
@@ -173,12 +179,14 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
 
                 if ( auxImage.valid() )
                 {
-                    OE_INFO << LC << "Found aux file: " << auxFile << std::endl;
+                    OE_INFO << LC << "  Found aux file: " << auxFile << std::endl;
+                    auxImage = ImageUtils::convertToRGBA8(auxImage);
                 }
                 else
                 {
                     // failing that, create an empty one as a placeholder.
-                    auxImage = osgEarth::ImageUtils::createEmptyImage(image->s(), image->t());
+                    auxImage = new osg::Image();
+                    auxImage->allocateImage(image->s(), image->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
                     ImageUtils::PixelVisitor<SetDefaults> filler;
                     filler._value = defaultValue;
                     filler.accept(auxImage.get());
@@ -189,7 +197,12 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
                     osg::ref_ptr<osg::Image> temp;
                     osgEarth::ImageUtils::resizeImage(auxImage.get(), image->s(), image->t(), temp);
                     auxImage = temp.get();
-                    OE_INFO << "...resized " << auxFile << " to match atlas size" << std::endl;
+                    OE_INFO << "  ...resized " << auxFile << " to match atlas size" << std::endl;
+                }
+
+                if ( !ImageUtils::sameFormat(image, auxImage.get()) ) 
+                {
+                    auxImage = ImageUtils::convertToRGBA8(auxImage.get());
                 }
 
                 tab->addSource( auxImage.get() );
@@ -201,7 +214,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             // save the associate so we can come back later:
             sourceSkins[maintab->getSourceList().back().get()] = skin;
 
-            OE_INFO << LC << "Added skin: \"" << skin->name() << "\"" << std::endl;
+            //OE_INFO << LC << "Added skin: \"" << skin->name() << "\"" << std::endl;
         }
         else
         {
@@ -264,6 +277,9 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         {
             // copy the atlas image into the image array:
             osg::Image* atlasImage = atlasList[r]->_image.get();
+
+            std::string name = Stringify() << "image_" << (int)(tab-tabs.begin()) << "_" << r << ".png";
+            osgDB::writeImageFile(*atlasImage, name);
 
             ImageUtils::PixelReader read (atlasImage);
             ImageUtils::PixelWriter write(imageArray);

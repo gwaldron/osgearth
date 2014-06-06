@@ -24,6 +24,7 @@
 #include <osgEarth/URI>
 #include <osgEarthSymbology/Color>
 #include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
 #include <osg/TransferFunction>
 
 #include <cstring>
@@ -68,27 +69,36 @@ public:
         return STATUS_OK;
     }
 
-    double fToC(float f)
-    {
-        return (f - 32.0) * (5.0/9.0);
-    }
-
     void initTransferFunction()
+    {     
+        _transferFunction = loadCLRFile(_options.ramp()->full());
+        if (!_transferFunction.valid())
+        {
+            OE_WARN << LC << "Failed to load transfer function from " << _options.ramp()->full() << std::endl;
+            
+            // Just create a default ramp
+            _transferFunction = new osg::TransferFunction1D();
+            _transferFunction->setColor(0, osg::Vec4(1,0,0,1));
+            _transferFunction->setColor(100, osg::Vec4(0,1,0,1));
+        }
+    }  
+
+    osg::TransferFunction1D* loadCLRFile(const std::string& filename)
     {
-        _transferFunction = new osg::TransferFunction1D();
-        _transferFunction->setColor(fToC(-20), Color("#A99ADB"));
-        _transferFunction->setColor(fToC(-10), Color("#3654B6"));
-        _transferFunction->setColor(fToC(0), Color("#3275C6"));
-        _transferFunction->setColor(fToC(10), Color("#4FA9C3"));
-        _transferFunction->setColor(fToC(20), Color("#5240A4"));
-        _transferFunction->setColor(fToC(30), Color("#264F2F"));
-        _transferFunction->setColor(fToC(40), Color("#197625"));
-        _transferFunction->setColor(fToC(50), Color("#26C233"));
-        _transferFunction->setColor(fToC(60), Color("#BAD111"));
-        _transferFunction->setColor(fToC(70), Color("#F7A003"));
-        _transferFunction->setColor(fToC(80), Color("#CD4B00"));
-        _transferFunction->setColor(fToC(90), Color("#AF211F"));
-        _transferFunction->setColor(fToC(100), Color("#870C0E"));        
+        if (osgDB::fileExists(filename))
+        {
+            osg::TransferFunction1D* transfer = new osg::TransferFunction1D();
+
+            std::ifstream in(filename);
+            float value;
+            unsigned int r, g, b;
+            while(in >> value >> r >> g >> b)
+            {                
+                transfer->setColor(value, osg::Vec4((float)r/255.0, (float)g/255.0, (float)b/255.0, 1.0));
+            }
+            return transfer;
+        }
+        return NULL;        
     }
       
 

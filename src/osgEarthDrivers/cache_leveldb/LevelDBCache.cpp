@@ -175,7 +175,7 @@ LevelDBCacheImpl::addBin( const std::string& name )
 
 CacheBin*
 LevelDBCacheImpl::getOrCreateDefaultBin()
-{
+{    
     if ( !_db )
         return 0L;
 

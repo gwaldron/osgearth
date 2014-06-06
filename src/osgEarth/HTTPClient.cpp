@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Version>
 #include <osgEarth/Progress>
+#include <osgEarth/StringUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
@@ -115,7 +116,18 @@ namespace osgEarth
             if (_stream) _stream->write(ptr, realsize);
         }
 
+        void writeHeader(const char* ptr, size_t realsize)
+        {            
+            std::string header(ptr);            
+            StringTokenizer tok(":");
+            StringVector tized;
+            tok.tokenize(header, tized);            
+            if ( tized.size() >= 2 )
+                _headers[tized[0]] = tized[1];                
+        }
+
         std::ostream* _stream;
+        Headers _headers;
         std::string     _resultMimeType;
     };
 
@@ -125,6 +137,15 @@ namespace osgEarth
         size_t realsize = size* nmemb;
         StreamObject* sp = (StreamObject*)data;
         sp->write((const char*)ptr, realsize);
+        return realsize;
+    }
+
+    static size_t
+    StreamObjectHeaderCallback(void* ptr, size_t size, size_t nmemb, void* data)
+    {
+        size_t realsize = size* nmemb;
+        StreamObject* sp = (StreamObject*)data;                
+        sp->writeHeader((const char*)ptr, realsize);        
         return realsize;
     }
 
@@ -408,6 +429,7 @@ HTTPClient::initializeImpl()
 
     curl_easy_setopt( _curl_handle, CURLOPT_USERAGENT, userAgent.c_str() );
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
+    curl_easy_setopt( _curl_handle, CURLOPT_HEADERFUNCTION, osgEarth::StreamObjectHeaderCallback );
     curl_easy_setopt( _curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
@@ -529,35 +551,6 @@ HTTPClient::readOptions(const osgDB::Options* options, std::string& proxy_host, 
     }
 }
 
-namespace
-{
-    // from: http://www.rosettacode.org/wiki/Tokenizing_A_String#C.2B.2B
-    std::vector<std::string> 
-    tokenize_str(const std::string & str, const std::string & delims=", \t")
-    {
-      using namespace std;
-      // Skip delims at beginning, find start of first token
-      string::size_type lastPos = str.find_first_not_of(delims, 0);
-      // Find next delimiter @ end of token
-      string::size_type pos     = str.find_first_of(delims, lastPos);
-
-      // output vector
-      vector<string> tokens;
-
-      while (string::npos != pos || string::npos != lastPos)
-        {
-          // Found a token, add it to the vector.
-          tokens.push_back(str.substr(lastPos, pos - lastPos));
-          // Skip delims.  Note the "not_of". this is beginning of token
-          lastPos = str.find_first_not_of(delims, pos);
-          // Find next delimiter at end of token.
-          pos     = str.find_first_of(delims, lastPos);
-        }
-
-      return tokens;
-    }
-}
-
 void
 HTTPClient::decodeMultipartStream(const std::string&   boundary,
                                   HTTPResponse::Part*  input,
@@ -605,10 +598,12 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
                     done = true;
                 }
                 else
-                {
-                    std::vector<std::string> tized = tokenize_str( line, ":" );
+                {                    
+                    StringTokenizer tok(":");
+                    StringVector tized;
+                    tok.tokenize(line, tized);            
                     if ( tized.size() >= 2 )
-                        next_part->_headers[tized[0]] = tized[1];
+                        next_part->_headers[tized[0]] = tized[1];                        
                 }
             }
         }
@@ -886,6 +881,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         errorBuf[0] = 0;
         curl_easy_setopt( _curl_handle, CURLOPT_ERRORBUFFER, (void*)errorBuf );
         curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)&sp);
+        curl_easy_setopt( _curl_handle, CURLOPT_HEADERDATA, (void*)&sp);
         
         osg::ref_ptr< CurlConfigHandler > curlConfigHandler = getCurlConfigHandler();
         if (curlConfigHandler.valid()) {
@@ -917,7 +913,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
         // simulate failure with a custom response code
         response_code = _simResponseCode;
         res = response_code == 408 ? CURLE_OPERATION_TIMEDOUT : CURLE_COULDNT_CONNECT;
-    }        
+    }
 
     HTTPResponse response( response_code );    
     
@@ -944,9 +940,13 @@ HTTPClient::doGet(const HTTPRequest&    request,
             decodeMultipartStream( "wcs", part.get(), response._parts );
         }
         else
-        {
-            // store headers that we care about
-            part->_headers[IOMetadata::CONTENT_TYPE] = response._mimeType;
+        {            
+            for (Headers::iterator itr = sp._headers.begin(); itr != sp._headers.end(); ++itr)
+            {                
+                part->_headers[itr->first] = itr->second;                
+            }
+
+            // Write the headers to the metadata
             response._parts.push_back( part.get() );
         }
     }

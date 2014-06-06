@@ -465,7 +465,7 @@ namespace
                     {                                                
                         result = reader.fromCache( bin, uri.cacheKey() );                        
                         if ( result.succeeded() )
-                        {                                       
+                        {                                        
                             expired = cp->isExpired(result.lastModifiedTime());
                             result.setIsFromCache(true);
                         }
@@ -501,7 +501,7 @@ namespace
                             {                                
                                 ReadResult remoteResult = reader.fromHTTP( uri.full(), remoteOptions.get(), progress, result.lastModifiedTime() );
                                 if (remoteResult.code() == ReadResult::RESULT_NOT_MODIFIED)
-                                {
+                                {                                    
                                     OE_DEBUG << uri.full() << " not modified, using cached result" << std::endl;
                                     // Touch the cached item to update it's last modified timestamp so it doesn't expire again immediately.
                                     bin->touch( uri.cacheKey() );
@@ -509,8 +509,7 @@ namespace
                                 else
                                 {
                                     OE_DEBUG << "Got remote result for " << uri.full() << std::endl;
-                                    result = remoteResult;
-                                    OE_NOTICE << remoteResult.metadata().toJSON() << std::endl;
+                                    result = remoteResult;                                    
                                 }
                             }
 

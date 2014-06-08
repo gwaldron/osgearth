@@ -227,10 +227,10 @@ namespace osgEarth { namespace Util { namespace Controls
         bool horizFill() const { return _hfill; }
 
         void setVertFill( bool value, float minHeight =0.0f );
-        const bool vertFill() const { return _vfill; }
+        bool vertFill() const { return _vfill; }
 
         void setVisible( bool value );
-        const bool visible() const { return _visible; }
+        bool visible() const { return _visible; }
         bool parentIsVisible() const;
 
         void setForeColor( const osg::Vec4f& value );
@@ -374,10 +374,10 @@ namespace osgEarth { namespace Util { namespace Controls
         const optional<osg::Vec4f>& haloColor() const { return _haloColor; }
 
         void setTextBackdropType(osgText::Text::BackdropType value);
-        const osgText::Text::BackdropType getTextBackdropType() const { return _backdropType; }
+        osgText::Text::BackdropType getTextBackdropType() const { return _backdropType; }
 
         void setTextBackdropImplementation(osgText::Text::BackdropImplementation value);
-        const osgText::Text::BackdropImplementation getTextBackdropImplementation() const { return _backdropImpl; }
+        osgText::Text::BackdropImplementation getTextBackdropImplementation() const { return _backdropImpl; }
 
         void setTextBackdropOffset(float offsetValue);
         float getTextBackdropOffset() const { return _backdropOffset; }

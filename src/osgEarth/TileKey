@@ -105,7 +105,7 @@ namespace osgEarth
         /**
          * Whether this is a valid key.
          */
-        const bool valid() const { return _profile.valid(); }
+        bool valid() const { return _profile.valid(); }
 
         /**
          * Get the quadrant relative to this key's parent.

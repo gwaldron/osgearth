@@ -40,7 +40,7 @@ namespace osgEarth
         /**
          * Gets this layer's unique ID.
          */
-        const UID getUID() const { return _uid; }
+        UID getUID() const { return _uid; }
 
         /**
          * Sequence controller if the layer has one.

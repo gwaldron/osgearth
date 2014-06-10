@@ -37,6 +37,7 @@ int usage(char** argv)
         << argv[0]
         << "\n    --in [prop_name] [prop_value]       : set an input property"
         << "\n    --out [prop_name] [prop_value]      : set an output property"
+        << "\n    --elevation                         : convert as elevation data (default is image)"
         << "\n    --profile [profile def]             : set an output profile (optional; default = same as input)"
         << "\n    --min-level [int]                   : minimum level of detail"
         << "\n    --max-level [int]                   : maximum level of detail"
@@ -49,8 +50,8 @@ int usage(char** argv)
 // TileHandler that copies images from one tilesource to another.
 struct TileSourceToTileSource : public TileHandler
 {
-    TileSourceToTileSource(TileSource* source, TileSource* dest)
-        : _source(source), _dest(dest)
+    TileSourceToTileSource(TileSource* source, TileSource* dest, bool heightFields)
+        : _source(source), _dest(dest), _heightFields(heightFields)
     {
         //nop
     }
@@ -58,9 +59,18 @@ struct TileSourceToTileSource : public TileHandler
     bool handleTile(const TileKey& key)
     {
         bool ok = false;
-        osg::ref_ptr<osg::Image> image = _source->createImage(key);
-        if ( image.valid() )
-            ok = _dest->storeImage(key, image.get(), 0L);
+        if (_heightFields)
+        {
+            osg::ref_ptr<osg::HeightField> hf = _source->createHeightField(key);
+            if ( hf.valid() )
+                ok = _dest->storeHeightField(key, hf.get(), 0L);
+        }
+        else
+        {
+            osg::ref_ptr<osg::Image> image = _source->createImage(key);
+            if ( image.valid() )
+                ok = _dest->storeImage(key, image.get(), 0L);
+        }
         return ok;
     }
     
@@ -71,6 +81,7 @@ struct TileSourceToTileSource : public TileHandler
 
     TileSource* _source;
     TileSource* _dest;
+    bool        _heightFields;
 };
 
 
@@ -101,6 +112,36 @@ struct ImageLayerToTileSource : public TileHandler
 
     osg::ref_ptr<ImageLayer> _source;
     TileSource*              _dest;
+};
+
+
+// TileHandler that copies images from an ElevationLayer to a TileSource.
+// This will automatically handle any mosaicing and reprojection that is
+// necessary to translate from one Profile/SRS to another.
+struct ElevationLayerToTileSource : public TileHandler
+{
+    ElevationLayerToTileSource(ElevationLayer* source, TileSource* dest)
+        : _source(source), _dest(dest)
+    {
+        //nop
+    }
+
+    bool handleTile(const TileKey& key)
+    {
+        bool ok = false;
+        GeoHeightField hf = _source->createHeightField(key, 0L);
+        if ( hf.valid() )
+            ok = _dest->storeHeightField(key, hf.getHeightField(), 0L);
+        return ok;
+    }
+    
+    bool hasData(const TileKey& key) const
+    {
+        return _source->getTileSource()->hasData(key);
+    }
+
+    osg::ref_ptr<ElevationLayer> _source;
+    TileSource*                  _dest;
 };
 
 
@@ -155,6 +196,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
  *
  * Other arguments:
  *
+ *      --elevation           : convert as elevation data (instead of image data)
  *      --profile [profile]   : reproject to the target profile, e.g. "wgs84"
  *      --min-level [int]     : min level of detail to copy
  *      --max-level [int]     : max level of detail to copy
@@ -200,6 +242,13 @@ main(int argc, char** argv)
     Config outConf;
     while( args.read("--out", key, value) )
         outConf.set(key, value);
+
+    // heightfields?
+    bool heightFields = args.read("--heightfield") || args.read("--hf") || args.read("--elevation");
+    if ( heightFields )
+        OE_INFO << LC << "Converting heightfield tiles" << std::endl;
+    else
+        OE_INFO << LC << "Converting image tiles" << std::endl;
 
     // are we changing profiles?
     osg::ref_ptr<const Profile> outputProfile = input->getProfile();
@@ -265,18 +314,32 @@ main(int argc, char** argv)
     if ( isSameProfile )
     {
         OE_NOTICE << LC << "Profiles match - initiating simple tile copy" << std::endl;
-        visitor->setTileHandler( new TileSourceToTileSource(input.get(), output.get()) );
+        visitor->setTileHandler( new TileSourceToTileSource(input.get(), output.get(), heightFields) );
     }
     else
     {
         OE_NOTICE << LC << "Profiles differ - initiating tile transformation" << std::endl;
-        ImageLayer* layer = new ImageLayer(ImageLayerOptions(), input.get());
-        if ( !layer->getProfile() || !layer->getProfile()->isOK() )
+
+        if (heightFields)
         {
-            OE_WARN << LC << "Input profile is not valid" << std::endl;
-            return -1;
+            ElevationLayer* layer = new ElevationLayer(ElevationLayerOptions(), input.get());
+            if ( !layer->getProfile() || !layer->getProfile()->isOK() )
+            {
+                OE_WARN << LC << "Input profile is not valid" << std::endl;
+                return -1;
+            }
+            visitor->setTileHandler( new ElevationLayerToTileSource(layer, output.get()) );
         }
-        visitor->setTileHandler( new ImageLayerToTileSource(layer, output.get()) );
+        else
+        {
+            ImageLayer* layer = new ImageLayer(ImageLayerOptions(), input.get());
+            if ( !layer->getProfile() || !layer->getProfile()->isOK() )
+            {
+                OE_WARN << LC << "Input profile is not valid" << std::endl;
+                return -1;
+            }
+            visitor->setTileHandler( new ImageLayerToTileSource(layer, output.get()) );
+        }
     }
     
     // Set the level limits:

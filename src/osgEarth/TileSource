@@ -288,10 +288,12 @@ namespace osgEarth
         /**
          * Stores a heightfield in the tile source for the given TileKey.
          * The driver must support writing or this method will return false.
+         * (Note: The default implementation will convert the heightfield to an
+         * image with one 32-bit channel and call storeImage.)
          */
         virtual bool storeHeightField(const TileKey&    key,
                                       osg::HeightField* hf,
-                                      ProgressCallback* progress) { return false; }
+                                      ProgressCallback* progress);
 
     public:
 

@@ -395,6 +395,23 @@ TileSource::createHeightField(const TileKey&        key,
 }
 
 bool
+TileSource::storeHeightField(const TileKey&     key,
+                             osg::HeightField*  hf,
+                              ProgressCallback* progress)
+{
+    if ( _status != STATUS_OK || hf == 0L )
+        return 0L;
+
+    ImageToHeightFieldConverter conv;
+    osg::ref_ptr<osg::Image> image = conv.convert(hf, 32);
+    if (image.valid())
+    {
+        return storeImage(key, image.get(), progress);
+    }
+    return false;
+}
+
+bool
 TileSource::isOK() const 
 {
     return _status == STATUS_OK;

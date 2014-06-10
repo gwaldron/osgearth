@@ -60,6 +60,7 @@ usage(const char* msg, const char* name =0L)
             << "\nUsage: " << name
             << "\n"
             << "\n      --build catalog.xml               : Build an atlas from the catalog"
+            << "\n        --size <x> <y>                  : Maximum size of atlas textures"
             << "\n        --aux <pattern> <r> <g> <b> <a> : Build an auxiliary atlas for files matching the pattern"
             << "\n                                          \"filename_pattern.ext\", e.g., \"texture.jpg\" will match"
             << "\n                                          \"texture_NML.jpg\" for pattern = \"NML\". The RGBA are the"
@@ -109,9 +110,9 @@ build(osg::ArgumentParser& arguments)
     osgEarth::Util::AtlasBuilder::Atlas atlas;
 
     // max x/y dimensions:
-    unsigned size;
-    if ( arguments.read("--size", size) )
-        builder.setSize( size, size );
+    unsigned sizex, sizey;
+    if ( arguments.read("--size", sizex, sizey) )
+        builder.setSize( sizex, sizey );
 
     // auxiliary atlas patterns:
     std::string pattern;

@@ -173,6 +173,12 @@ _cacheDriver        ( "filesystem" )
         _defaultFont = osgText::readFontFile("arial.ttf");
 #endif
     }
+    if ( _defaultFont.valid() )
+    {
+        // mitigates mipmapping issues that cause rendering artifacts
+        // for some fonts/placement
+        _defaultFont->setGlyphImageMargin( 2 );
+    }
 
     // register the system stock Units.
     Units::registerAll( this );

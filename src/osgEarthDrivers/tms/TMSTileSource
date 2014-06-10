@@ -51,7 +51,15 @@ namespace osgEarth { namespace Drivers { namespace TileMapService
         CachePolicy getCachePolicyHint(const Profile* targetProfile) const;
 
         // creates an image from the TMS repo.
-        osg::Image* createImage(const TileKey& key, ProgressCallback* progress);
+        osg::Image* createImage(
+            const             TileKey& key, 
+            ProgressCallback* progress);
+
+        // writes an image to the TMS repo
+        bool storeImage(
+            const TileKey& key, 
+            osg::Image*       image,
+            ProgressCallback* progress);
 
         int getPixelsPerTile() const;
 
@@ -59,10 +67,14 @@ namespace osgEarth { namespace Drivers { namespace TileMapService
 
     private:
 
-        osg::ref_ptr<TMS::TileMap>   _tileMap;
-        bool                         _invertY;
-        const TMSOptions             _options;
-        osg::ref_ptr<osgDB::Options> _dbOptions;
+        osg::ref_ptr<TMS::TileMap>        _tileMap;
+        bool                              _invertY;
+        const TMSOptions                  _options;
+        osg::ref_ptr<osgDB::Options>      _dbOptions;
+        osg::ref_ptr<osgDB::ReaderWriter> _writer;
+        bool                              _forceRGB;
+
+        bool resolveWriter();
     };
 
 } } } // namespace osgEarth::Drivers::TileMapService

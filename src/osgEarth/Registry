@@ -201,6 +201,16 @@ namespace osgEarth
         void endActivity(const std::string& name);
         void getActivities(std::set<std::string>& output);
 
+        /**
+         * Gets the mime-type corresponding to a given extension.
+         */
+        std::string getMimeTypeForExtension(const std::string& extension);
+
+        /**
+         * Gets the file extension corresponding to a given mime-type.
+         */
+        std::string getExtensionForMimeType(const std::string& mimeType);
+
 
     protected:
         virtual ~Registry();
@@ -219,9 +229,9 @@ namespace osgEarth
         Threading::ReadWriteMutex _regMutex;  
         int _numGdalMutexGets;
         
-        typedef std::map< std::string, std::string> MimeTypeExtensionMap;
+        //typedef std::map< std::string, std::string> MimeTypeExtensionMap;
         // maps mime-types to extensions.
-        MimeTypeExtensionMap _mimeTypeExtMap;
+        //MimeTypeExtensionMap _mimeTypeExtMap;
 
         osg::ref_ptr<Cache> _cache;
         optional<CachePolicy> _defaultCachePolicy;

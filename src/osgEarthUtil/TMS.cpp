@@ -39,14 +39,21 @@ using namespace osgEarth::Util::TMS;
 
 #define LC "[TMS] "
 
-static std::string toString(double value, int precision = 25)
+//-----------------------------------------------------------------
+
+namespace
 {
-    std::stringstream out;
-    out << std::fixed << std::setprecision(precision) << value;
-	std::string outStr;
-	outStr = out.str();
-    return outStr;
+    std::string toString(double value, int precision = 7)
+    {
+        std::stringstream out;
+        out << std::fixed << std::setprecision(precision) << value;
+	    std::string outStr;
+	    outStr = out.str();
+        return outStr;
+    }
 }
+
+//-----------------------------------------------------------------
 
 TileFormat::TileFormat():
 _width(0),
@@ -71,7 +78,9 @@ _minLevel(0),
 _maxLevel(0),
 _numTilesHigh(-1),
 _numTilesWide(-1),
-_timestamp(0)
+_timestamp(0),
+_version("1.0"),
+_tileMapService("http://tms.osgeo.org/1.0.0")
 {   
 }
 
@@ -383,27 +392,36 @@ std::string getHorizSRSString(const osgEarth::SpatialReference* srs)
 
 TileMap*
 TileMap::create(const std::string& url,
-                const Profile* profile,
+                const Profile*     profile,
                 const std::string& format,
-                int tile_width,
-                int tile_height)
+                int                tile_width,
+                int                tile_height)
 {
-    //Profile profile(type);
-
     const GeoExtent& ex = profile->getExtent();
 
     TileMap* tileMap = new TileMap();
-    tileMap->setProfileType(profile->getProfileType()); //type);
+    tileMap->setProfileType(profile->getProfileType());
     tileMap->setExtents(ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax());
     tileMap->setOrigin(ex.xMin(), ex.yMin());
     tileMap->_filename = url;
     tileMap->_srs = getHorizSRSString(profile->getSRS());
     tileMap->_vsrs = profile->getSRS()->getVertInitString();
-    //tileMap->_vsrs = profile->getVerticalSRS() ? profile->getVerticalSRS()->getInitString() : "";
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
-    tileMap->_format.setExtension( format );
     profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
+
+    // format can be a mime-type or an extension:
+    std::string::size_type p = format.find('/');
+    if ( p == std::string::npos )
+    {
+        tileMap->_format.setExtension(format);
+        tileMap->_format.setMimeType( Registry::instance()->getMimeTypeForExtension(format) );
+    }
+    else
+    {
+        tileMap->_format.setMimeType(format);
+        tileMap->_format.setExtension( Registry::instance()->getExtensionForMimeType(format) );
+    }
 
     tileMap->generateTileSets();
     tileMap->computeMinMaxLevel();
@@ -601,11 +619,6 @@ tileMapToXmlDocument(const TileMap* tileMap)
     //Create the root XML document
     osg::ref_ptr<XmlDocument> doc = new XmlDocument();
     doc->setName( ELEM_TILEMAP );
-    
-    //Create the root node
-    //osg::ref_ptr<XmlElement> e_tile_map = new XmlElement( ELEM_TILEMAP );
-    //doc->getChildren().push_back( e_tile_map.get() );
-
     doc->getAttrs()[ ATTR_VERSION ] = tileMap->getVersion();
     doc->getAttrs()[ ATTR_TILEMAPSERVICE ] = tileMap->getTileMapService();
   

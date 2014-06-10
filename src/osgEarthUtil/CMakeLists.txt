@@ -50,6 +50,7 @@ SET(HEADERS_ROOT
     Sky
     SpatialData
     StarData
+	StateSetLOD
     TerrainProfile
     TileIndex
     TileIndexBuilder
@@ -102,6 +103,7 @@ SET(SOURCES_ROOT
 	SimplexNoise.cpp
     SpatialData.cpp
     Sky.cpp
+	StateSetLOD.cpp
     TerrainProfile.cpp
     TileIndex.cpp
     TileIndexBuilder.cpp

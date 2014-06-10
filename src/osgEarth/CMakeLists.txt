@@ -105,6 +105,7 @@ SET(LIB_PUBLIC_HEADERS
     SparseTexture2DArray
     SpatialReference
     StateSetCache
+	StateSetLOD
     StringUtils
     TaskService
     Terrain
@@ -243,6 +244,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     SparseTexture2DArray.cpp
     SpatialReference.cpp
     StateSetCache.cpp
+	StateSetLOD.cpp
     StringUtils.cpp
     TaskService.cpp
     Terrain.cpp

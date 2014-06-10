@@ -16,11 +16,10 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthUtil/StateSetLOD>
+#include <osgEarth/StateSetLOD>
 #include <osgEarth/CullingUtils>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 
 #undef  LC
 #define LC "[StateSetLOD] "

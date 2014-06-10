@@ -16,18 +16,16 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTHUTIL_STATESET_LOD
-#define OSGEARTHUTIL_STATESET_LOD
+#ifndef OSGEARTH_STATESET_LOD
+#define OSGEARTH_STATESET_LOD
 
-#include <osgEarthUtil/Common>
+#include <osgEarth/Common>
 #include <osg/Group>
 #include <osg/StateSet>
 #include <vector>
 
-namespace osgEarth { namespace Util 
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Apply statesets based on value ranges. 
      *
@@ -35,7 +33,7 @@ namespace osgEarth { namespace Util
      * distance to the bounding center as the value used to select active
      * statesets. You can change the metric by calling setGetValueFunction().
      */
-    class OSGEARTHUTIL_EXPORT StateSetLOD : public osg::Group
+    class OSGEARTH_EXPORT StateSetLOD : public osg::Group
     {
     public:
         StateSetLOD() { }
@@ -89,6 +87,6 @@ namespace osgEarth { namespace Util
     };
 
 
-} } // namespace osgEarth::Util
+} // namespace osgEarth
 
-#endif //OSGEARTHUTIL_STATESET_LOD
+#endif //OSGEARTH_STATESET_LOD

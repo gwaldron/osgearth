@@ -26,6 +26,7 @@
 
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
+#include <osg/UserDataContainer>
 #include <osgUtil/MeshOptimizers>
 
 #define LC "[DrawInstanced] "
@@ -37,6 +38,8 @@ using namespace osgEarth::DrawInstanced;
 
 #define POSTEX_TEXTURE_UNIT 5
 #define POSTEX_MAX_TEXTURE_SIZE 256
+
+#define TAG_MATRIX_VECTOR "osgEarth::DrawInstanced::MatrixRefVector"
 
 //----------------------------------------------------------------------
 
@@ -123,9 +126,6 @@ ConvertToDrawInstanced::apply( osg::Geode& geode )
         {
             if ( _optimize )
             {
-                //osgUtil::IndexMeshVisitor imv;
-                //imv.makeMesh( *geom );
-
                 // activate VBOs
                 geom->setUseDisplayList( false );
                 geom->setUseVertexBufferObjects( true );
@@ -288,6 +288,23 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             lastNode->accept( cdi );
         }
 
+        // Assign matrix vectors to the nodes, so the application can easily retrieve
+        // the original position data if necessary.
+        MatrixRefVector* nodeMats = new MatrixRefVector();
+        nodeMats->setName(TAG_MATRIX_VECTOR);
+        nodeMats->reserve(lastNode != node ? sliceSize*(numSlices-1) : sliceSize*numSlices);
+        node->getOrCreateUserDataContainer()->addUserObject(nodeMats);
+
+        // ...and a separate one for lastNode if necessary
+        MatrixRefVector* lastNodeMats = 0L;
+        if (lastNode != node)
+        {
+            lastNodeMats = new MatrixRefVector();
+            lastNodeMats->setName(TAG_MATRIX_VECTOR);
+            lastNodeMats->reserve(lastSliceSize);
+            lastNode->getOrCreateUserDataContainer()->addUserObject(lastNodeMats);
+        }
+
         // Next, break the rendering down into "slices". GLSL will only support a limited
         // amount of pre-instance uniform data, so we have to portion the graph out into
         // slices of no more than this chunk size.
@@ -334,6 +351,12 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
                 for(int col=0; col<4; ++col)
                     for(int row=0; row<4; ++row)
                         *ptr++ = mat(row,col);
+
+                // store them int the metadata as well
+                if (currentNode == node)
+                    nodeMats->push_back(mat);
+                else
+                    lastNodeMats->push_back(mat);
             }
 
             // add the node as a child:
@@ -342,4 +365,23 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             parent->addChild( sliceGroup );
         }
     }
+}
+
+
+const DrawInstanced::MatrixRefVector*
+DrawInstanced::getMatrixVector(osg::Node* node)
+{
+    if ( !node )
+        return 0L;
+
+    osg::UserDataContainer* udc = node->getUserDataContainer();
+    if ( !udc )
+        return 0L;
+
+    osg::Object* obj = udc->getUserObject(TAG_MATRIX_VECTOR);
+    if ( !obj )
+        return 0L;
+
+    // cast is safe because of our unique tag
+    return static_cast<const MatrixRefVector*>( obj );
 }

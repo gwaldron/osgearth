@@ -89,7 +89,7 @@ public:
         {
             osg::TransferFunction1D* transfer = new osg::TransferFunction1D();
 
-            std::ifstream in(filename);
+            std::ifstream in(filename.c_str());
             float value;
             unsigned int r, g, b;
             while(in >> value >> r >> g >> b)

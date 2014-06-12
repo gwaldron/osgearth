@@ -48,12 +48,6 @@ _dbOptions     ( dbOptions )
     else
         _styles = new StyleSheet();
 
-    // If no script engine was created when the style was set above, create a
-    // default JS one if possible. This enables the use of "inline" scripting 
-    // in StringExpression and NumericExpression style values.
-    if (!_styleScriptEngine.valid())
-      _styleScriptEngine = ScriptEngineFactory::create("javascript", "", true);
-
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
@@ -104,18 +98,25 @@ void
 Session::setStyles( StyleSheet* value )
 {
     _styles = value ? value : new StyleSheet();
+    _styleScriptEngine = 0L;
 
     // Create a script engine for the StyleSheet
-    if (_styles && _styles->script())
+    if (_styles)
     {
-      _styleScriptEngine = ScriptEngineFactory::create( Script(
-          _styles->script()->code, 
-          _styles->script()->language, 
-          _styles->script()->name ) );
-    }
-    else
-    {
-      _styleScriptEngine = 0L;
+        if (_styles->script())
+        {
+            _styleScriptEngine = ScriptEngineFactory::create( Script(
+                _styles->script()->code, 
+                _styles->script()->language, 
+                _styles->script()->name ) );
+        }
+        else
+        {
+            // If the stylesheet has no script set, create a default JS engine
+            // This enables the use of "inline" scripting in StringExpression
+            // and NumericExpression style values.
+            _styleScriptEngine = ScriptEngineFactory::create("javascript", "", true);
+        }
     }
 }
 

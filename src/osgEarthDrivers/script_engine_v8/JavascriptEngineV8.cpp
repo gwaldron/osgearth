@@ -57,7 +57,7 @@ JavascriptEngineV8::JavascriptEngineV8(const ScriptEngineOptions& options)
     v8::Context::Scope context_scope(globalContext);
 
     // Compile and run the script
-    ScriptResult result = executeScript(v8::String::New(options.script()->getCode().c_str(), options.script()->getCode().length()));
+    ScriptResult result = executeScript(v8::String::New(options.script()->getCode().c_str(), options.script()->getCode().length()), true);
     if (!result.success())
       OE_WARN << LC << "Error reading javascript: " << result.message() << std::endl;
   }
@@ -135,7 +135,7 @@ JavascriptEngineV8::createErrorResult( std::string prefix, const v8::TryCatch& t
 
 }
 ScriptResult
-JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
+JavascriptEngineV8::executeScript(v8::Handle<v8::String> script, bool ignoreUndefinedResult)
 {
   v8::String::Utf8Value utf8_value(script);
   std::string scriptStr(*utf8_value);
@@ -160,7 +160,7 @@ JavascriptEngineV8::executeScript(v8::Handle<v8::String> script)
     return createErrorResult( "Script result was empty", try_catch );
   }
   
-  if (result->IsUndefined())
+  if (result->IsUndefined() && !ignoreUndefinedResult)
     return ScriptResult(EMPTY_STRING, false, "Script result was undefined");
 
   v8::String::AsciiValue ascii(result);
@@ -208,7 +208,6 @@ JavascriptEngineV8::run(const std::string& code, osgEarth::Features::Feature con
   // Compile and run the script
   ScriptResult result = executeScript(v8::String::New(code.c_str(), code.length()));
 
-  //context.Dispose();
 
   return result;
 }

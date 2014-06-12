@@ -89,8 +89,6 @@ using namespace osgEarth::Drivers;
 #define GEOTRSFRM_ROTATION_PARAM2      4
 #define GEOTRSFRM_NS_RES               5
 
-
-
 typedef enum
 {
     LOWEST_RESOLUTION,
@@ -779,7 +777,7 @@ public:
                 //Try to load the VRT file from the cache so we don't have to build it each time.
                 if (_cacheBin.valid())
                 {
-                    ReadResult result = _cacheBin->readString( vrtKey, 0 );
+                    ReadResult result = _cacheBin->readString( vrtKey);
                     if (result.succeeded())
                     {
                         _srcDS = (GDALDataset*)GDALOpen(result.getString().c_str(), GA_ReadOnly );
@@ -1858,10 +1856,10 @@ public:
             int rasterHeight = _warpedDS->GetRasterYSize();
 
             // Convert the doubles to integers.  We floor the mins and ceil the maximums to give the widest window possible.
-            src_min_x = round(src_min_x);
-            src_min_y = round(src_min_y);
-            src_max_x = round(src_max_x);
-            src_max_y = round(src_max_y);
+            src_min_x = osg::round(src_min_x);
+            src_min_y = osg::round(src_min_y);
+            src_max_x = osg::round(src_max_x);
+            src_max_y = osg::round(src_max_y);
 
             // We are now dealing with integer pixel values, so need to add 1 to get the width
             int width  = (int)(src_max_x - src_min_x) + 1;

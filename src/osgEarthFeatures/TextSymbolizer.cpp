@@ -71,7 +71,13 @@ TextSymbolizer::create(Feature*             feature,
     //TODO: resonsider defaults here
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
 
-    t->setCharacterSize( _symbol.valid() && _symbol->size().isSet() ? *_symbol->size() : 16.0f );
+    float size = 16.0f;
+    if (_symbol->size().isSet())
+    {
+        NumericExpression sizeExpr = _symbol->size().value();
+        size = feature ? feature->eval(sizeExpr, context) : sizeExpr.eval();
+    }
+    t->setCharacterSize( size );
 
     t->setColor( _symbol.valid() && _symbol->fill().isSet() ? _symbol->fill()->color() : Color::White );
 

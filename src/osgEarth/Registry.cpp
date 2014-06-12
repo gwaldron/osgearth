@@ -26,6 +26,7 @@
 #include <osgEarth/ColorFilter>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/StringUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osg/Notify>
 #include <osg/Version>
@@ -46,8 +47,6 @@ using namespace OpenThreads;
 
 #define LC "[Registry] "
 
-// from MimeTypes.cpp
-extern const char* builtinMimeTypeExtMappings[];
 
 Registry::Registry() :
 osg::Referenced     ( true ),
@@ -102,57 +101,58 @@ _cacheDriver        ( "filesystem" )
     // set up our default r/w options to NOT cache archives!
     _defaultOptions = new osgDB::Options();
     _defaultOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
-
-    // see if the environment specifies a default caching driver.
-    const char* cacheDriver = ::getenv(OSGEARTH_ENV_CACHE_DRIVER);
-    if ( cacheDriver )
-    {
-        setDefaultCacheDriverName( cacheDriver );
-        OE_INFO << LC << "Cache driver set from environment: "
-            << getDefaultCacheDriverName() << std::endl;
-    }
-
-    // see if there's a cache in the envvar; if so, create a cache.
-    // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
-    // it's used in the driver(s) itself.
-    const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
-    if ( cachePath )
-    {
-        CacheOptions options;
-        options.setDriver( getDefaultCacheDriverName() );
-
-        osg::ref_ptr<Cache> cache = CacheFactory::create(options);
-        if ( cache->isOK() )
-        {
-            setCache( cache.get() );
-        }
-        else
-        {
-            OE_WARN << LC << "FAILED to initialize cache from environment" << std::endl;
-        }
-    }
-
-    // activate cache-only mode from the environment
-    if ( ::getenv(OSGEARTH_ENV_CACHE_ONLY) )
-    {
-        _overrideCachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
-        OE_INFO << LC << "CACHE-ONLY MODE set from environment" << std::endl;
-    }
-
+    
     // activate no-cache mode from the environment
-    else if ( ::getenv(OSGEARTH_ENV_NO_CACHE) )
+    if ( ::getenv(OSGEARTH_ENV_NO_CACHE) )
     {
-        _overrideCachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
-        //setOverrideCachePolicy( CachePolicy::NO_CACHE );
+        _overrideCachePolicy = CachePolicy::NO_CACHE;
         OE_INFO << LC << "NO-CACHE MODE set from environment" << std::endl;
     }
-
-    // cache max age?
-    const char* cacheMaxAge = ::getenv(OSGEARTH_ENV_CACHE_MAX_AGE);
-    if ( cacheMaxAge )
+    else
     {
-        TimeSpan maxAge = osgEarth::as<long>( std::string(cacheMaxAge), INT_MAX );
-        _overrideCachePolicy->maxAge() = maxAge;
+        // activate cache-only mode from the environment
+        if ( ::getenv(OSGEARTH_ENV_CACHE_ONLY) )
+        {
+            _overrideCachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
+            OE_INFO << LC << "CACHE-ONLY MODE set from environment" << std::endl;
+        }
+
+        // see if the environment specifies a default caching driver.
+        const char* cacheDriver = ::getenv(OSGEARTH_ENV_CACHE_DRIVER);
+        if ( cacheDriver )
+        {
+            setDefaultCacheDriverName( cacheDriver );
+            OE_INFO << LC << "Cache driver set from environment: "
+                << getDefaultCacheDriverName() << std::endl;
+        }        
+
+        // cache max age?
+        const char* cacheMaxAge = ::getenv(OSGEARTH_ENV_CACHE_MAX_AGE);
+        if ( cacheMaxAge )
+        {
+            TimeSpan maxAge = osgEarth::as<long>( std::string(cacheMaxAge), INT_MAX );
+            _overrideCachePolicy->maxAge() = maxAge;
+        }
+
+        // see if there's a cache in the envvar; if so, create a cache.
+        // Note: the value of the OSGEARTH_CACHE_PATH is not used here; rather
+        // it's used in the driver(s) itself.
+        const char* cachePath = ::getenv(OSGEARTH_ENV_CACHE_PATH);
+        if ( cachePath )
+        {
+            CacheOptions options;
+            options.setDriver( getDefaultCacheDriverName() );
+
+            osg::ref_ptr<Cache> cache = CacheFactory::create(options);
+            if ( cache->isOK() )
+            {
+                setCache( cache.get() );
+            }
+            else
+            {
+                OE_WARN << LC << "FAILED to initialize cache from environment" << std::endl;
+            }
+        }
     }
 
     const char* teStr = ::getenv(OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER);
@@ -172,6 +172,12 @@ _cacheDriver        ( "filesystem" )
 #ifdef WIN32
         _defaultFont = osgText::readFontFile("arial.ttf");
 #endif
+    }
+    if ( _defaultFont.valid() )
+    {
+        // mitigates mipmapping issues that cause rendering artifacts
+        // for some fonts/placement
+        _defaultFont->setGlyphImageMargin( 2 );
     }
 
     // register the system stock Units.
@@ -311,27 +317,26 @@ Registry::setOverrideCachePolicy( const CachePolicy& value )
 }
 
 bool
-Registry::getCachePolicy( optional<CachePolicy>& cp, const osgDB::Options* options ) const
+Registry::resolveCachePolicy(optional<CachePolicy>& cp) const
 {
+    optional<CachePolicy> new_cp;
+
+    // start with the defaults
+    if ( defaultCachePolicy().isSet() )
+        new_cp = defaultCachePolicy();
+
+    // merge in any set properties from the caller's CP, since they override
+    // the defaults:
+    if ( cp.isSet() )
+        new_cp->mergeAndOverride( cp );
+
+    // finally, merge in any set props from the OVERRIDE CP, which take
+    // priority over everything else.
     if ( overrideCachePolicy().isSet() )
-    {
-        // if there is a system-wide override in place, use it.
-        cp = overrideCachePolicy().value();
-    }
-    else 
-    {
-        // Try to read the cache policy from the db-options
-        CachePolicy::fromOptions( options, cp );
+        new_cp->mergeAndOverride( overrideCachePolicy() );
 
-        if ( !cp.isSet() )
-        {
-            if ( defaultCachePolicy().isSet() )
-            {
-                cp = defaultCachePolicy().value();
-            }
-        }
-    }
-
+    // return the new composited cache policy.
+    cp = new_cp;
     return cp.isSet();
 }
 
@@ -534,6 +539,38 @@ Registry::getActivities(std::set<std::string>& output)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
     output = _activities;
+}
+
+std::string 
+Registry::getExtensionForMimeType(const std::string& mt)
+{            
+    std::string mt_lower = osgEarth::toLower(mt);
+
+    const osgDB::Registry::MimeTypeExtensionMap& exmap = osgDB::Registry::instance()->getMimeTypeExtensionMap();
+    for( osgDB::Registry::MimeTypeExtensionMap::const_iterator i = exmap.begin(); i != exmap.end(); ++i )
+    {
+        if ( i->first == mt_lower )
+        {
+            return i->first;
+        }
+    }
+    return std::string();
+}
+
+std::string 
+Registry::getMimeTypeForExtension(const std::string& ext)
+{            
+    std::string ext_lower = osgEarth::toLower(ext);
+
+    const osgDB::Registry::MimeTypeExtensionMap& exmap = osgDB::Registry::instance()->getMimeTypeExtensionMap();
+    for( osgDB::Registry::MimeTypeExtensionMap::const_iterator i = exmap.begin(); i != exmap.end(); ++i )
+    {
+        if ( i->second == ext_lower )
+        {
+            return i->first;
+        }
+    }
+    return std::string();
 }
 
 

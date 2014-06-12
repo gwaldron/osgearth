@@ -81,13 +81,13 @@ namespace
 
     public: // CacheBin interface
 
-        ReadResult readObject(const std::string& key, TimeStamp minTime);
+        ReadResult readObject(const std::string& key);
 
-        ReadResult readImage(const std::string& key, TimeStamp minTime);
+        ReadResult readImage(const std::string& key);
 
-        ReadResult readNode(const std::string& key, TimeStamp minTime);
+        ReadResult readNode(const std::string& key);
 
-        ReadResult readString(const std::string& key, TimeStamp minTime);
+        ReadResult readString(const std::string& key);
 
         bool write(const std::string& key, const osg::Object* object, const Config& meta);
 
@@ -95,7 +95,7 @@ namespace
 
         bool touch(const std::string& key);
 
-        RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime);
+        RecordStatus getRecordStatus(const std::string& key);
 
         bool clear();
 
@@ -277,12 +277,11 @@ namespace
 #ifdef OSGEARTH_HAVE_ZLIB
         _rwOptions = Registry::instance()->cloneOrCreateOptions();
         _rwOptions->setOptionString( "Compressor=zlib" );
-#endif
-        CachePolicy::NO_CACHE.apply(_rwOptions.get());
+#endif        
     }
 
     ReadResult
-    FileSystemCacheBin::readImage(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::readImage(const std::string& key)
     {
         if ( !binValidForReading() ) 
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
@@ -294,8 +293,7 @@ namespace
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
-            return ReadResult( ReadResult::RESULT_EXPIRED );
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);        
 
         osgDB::ReaderWriter::ReadResult r;
         {
@@ -310,12 +308,14 @@ namespace
             if ( osgDB::fileExists(metafile) )
                 readMeta( metafile, meta );
 
-            return ReadResult( r.getImage(), meta );
+            ReadResult rr( r.getImage(), meta );
+            rr.setLastModifiedTime(timeStamp);
+            return rr;            
         }
     }
 
     ReadResult
-    FileSystemCacheBin::readObject(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::readObject(const std::string& key)
     {
         if ( !binValidForReading() ) 
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
@@ -327,8 +327,7 @@ namespace
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
-            return ReadResult( ReadResult::RESULT_EXPIRED );
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
 
         osgDB::ReaderWriter::ReadResult r;
         {
@@ -343,12 +342,14 @@ namespace
             if ( osgDB::fileExists(metafile) )
                 readMeta( metafile, meta );
 
-             return ReadResult( r.getObject(), meta );
+            ReadResult rr( r.getObject(), meta );
+            rr.setLastModifiedTime(timeStamp);
+            return rr;            
         }
     }
 
     ReadResult
-    FileSystemCacheBin::readNode(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::readNode(const std::string& key)
     {
         if ( !binValidForReading() ) 
             return ReadResult(ReadResult::RESULT_NOT_FOUND);
@@ -360,8 +361,7 @@ namespace
         if ( !osgDB::fileExists(path) )
             return ReadResult( ReadResult::RESULT_NOT_FOUND );
 
-        if ( osgEarth::getLastModifiedTime(path) < std::max(minTime, getMinValidTime()) )
-            return ReadResult( ReadResult::RESULT_EXPIRED );
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
 
         osgDB::ReaderWriter::ReadResult r;
         {
@@ -376,14 +376,16 @@ namespace
             if ( osgDB::fileExists(metafile) )
                 readMeta( metafile, meta );
 
-            return ReadResult( r.getNode(), meta );
+            ReadResult rr( r.getNode(), meta );
+            rr.setLastModifiedTime(timeStamp);
+            return rr;            
         }
     }
 
     ReadResult
-    FileSystemCacheBin::readString(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::readString(const std::string& key)
     {
-        ReadResult r = readObject(key, minTime);
+        ReadResult r = readObject(key);
         if ( r.succeeded() )
         {
             if ( r.get<StringObject>() )
@@ -459,7 +461,7 @@ namespace
     }
 
     CacheBin::RecordStatus
-    FileSystemCacheBin::getRecordStatus(const std::string& key, TimeStamp minTime)
+    FileSystemCacheBin::getRecordStatus(const std::string& key)
     {
         if ( !binValidForReading() ) 
             return STATUS_NOT_FOUND;
@@ -469,11 +471,7 @@ namespace
         if ( !osgDB::fileExists(path) )
             return STATUS_NOT_FOUND;
 
-        TimeStamp oldestValidTime = std::max(minTime, getMinValidTime());
-
-        struct stat s;
-        ::stat( path.c_str(), &s );
-        return s.st_mtime >= oldestValidTime ? STATUS_OK : STATUS_EXPIRED;
+        return STATUS_OK;
     }
 
     bool

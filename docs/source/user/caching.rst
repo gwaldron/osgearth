@@ -81,18 +81,43 @@ but you can use the ``max_age`` property to tell it how long to treat an object 
 Specify the maximum age in seconds. The example above will expire objects that are more
 than one hour old.
 
-
 Environment Variables
 ---------------------
 Sometimes it's more convenient to control caching from the environment,
-especially during development. Here are some environment variables you can use.
+especially during development.
 
-    :OSGEARTH_CACHE_PATH:    Root folder for a file system cache.
+These variables override the cache policy properties:
+
     :OSGEARTH_NO_CACHE:      Enables a ``no_cache`` policy for any osgEarth map. (set to 1)
     :OSGEARTH_CACHE_ONLY:    Enabled a ``cache_only`` policy for any osgEarth map. (set to 1)
     :OSGEARTH_CACHE_MAX_AGE: Set the cache to expire objects more than this number of seconds old.
 
-**Note**: environment variables *override* the cache settings in an *earth file*!
+These are not part of the cache policy, but instead control a particular cache implementation.
+
+    :OSGEARTH_CACHE_PATH:    Root folder for a cache. Setting this will enable caching for
+                             whichever cache driver is active.
+    :OSGEARTH_CACHE_DRIVER:  Set the name of the cache driver to use, e.g. ``filesystem`` or
+                             ``leveldb``.
+
+**Note**: environment variables *override* the cache settings in an *earth file*! See below.
+
+
+Precedence of Cache Policy Settings
+-----------------------------------
+Since you can set caching policies in various places, we need to establish
+precendence. The order of precendece, from highest to lowest, is:
+
+- **Driver policy hints**. Sometimes a driver will tell osgEarth to *never* cache
+  data that it provides, and osgEarth obeys.
+
+- **Environment variables**. These, and anything else stored in the Registry's
+  ``overrideCachePolicy`` will hide settings in the map or in a layer.
+
+- **Layer settings**. This is a cache policy set in a ``ImageLayer`` or ``ElevationLayer``
+  object, or in one of the map layers in an earth file.
+
+- **Map settings**. This is a cache policy set in the ``Map`` object on in the 
+  ``<map><options>`` block in an earth file.
 
 
 Seeding the Cache

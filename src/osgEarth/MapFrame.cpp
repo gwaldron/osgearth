@@ -180,7 +180,7 @@ MapFrame::isCached( const TileKey& key ) const
             continue;
 
         //If the tile is blacklisted, it should also be fast.
-        if ( source->getBlacklist()->contains( key.getTileId() ) )
+        if ( source->getBlacklist()->contains( key ) )
             continue;
 
         //If no data is available on this tile, we'll be fast
@@ -211,7 +211,7 @@ MapFrame::isCached( const TileKey& key ) const
             continue;
 
         //If the tile is blacklisted, it should also be fast.
-        if ( source->getBlacklist()->contains( key.getTileId() ) )
+        if ( source->getBlacklist()->contains( key ) )
             continue;
 
         if ( !source->hasData( key ) )

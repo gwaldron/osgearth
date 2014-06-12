@@ -27,7 +27,7 @@ namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
 
-    class MBTilesOptions : public TileSourceOptions // NO EXPORT; header only
+    class MBTilesTileSourceOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:        
         /**
@@ -50,7 +50,8 @@ namespace osgEarth { namespace Drivers
         optional<bool>& computeLevels() { return _computeLevels;}
         const optional<bool>& computeLevels() const { return _computeLevels;}
     public:
-        MBTilesOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
+        MBTilesTileSourceOptions(const TileSourceOptions& opt =TileSourceOptions()) :
+            TileSourceOptions( opt ),
             _computeLevels( true )
         {
             setDriver( "mbtiles" );

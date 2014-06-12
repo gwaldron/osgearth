@@ -204,6 +204,12 @@ namespace osgEarth
         static osg::Image* convertToRGBA8(const osg::Image* image);
 
         /**
+         * True if the two images are of the same format (pixel format, data type, etc.)
+         * though not necessarily the same size, depth, etc.
+         */
+        static bool sameFormat(const osg::Image* lhs, const osg::Image* rhs);
+
+        /**
          *Compares the image data of two images and determines if they are equivalent
          */
         static bool areEquivalent(const osg::Image *lhs, const osg::Image *rhs);

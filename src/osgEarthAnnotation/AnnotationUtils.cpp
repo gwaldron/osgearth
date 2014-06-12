@@ -32,6 +32,7 @@
 #include <osg/CullFace>
 #include <osg/MatrixTransform>
 #include <osg/LightModel>
+#include <osg/Projection>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;

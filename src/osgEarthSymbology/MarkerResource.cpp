@@ -22,6 +22,7 @@
 
 #include <osg/AutoTransform>
 #include <osg/Depth>
+#include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/TextureRectangle>
 #include <osg/Program>

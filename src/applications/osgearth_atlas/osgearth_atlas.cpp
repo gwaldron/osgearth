@@ -59,15 +59,17 @@ usage(const char* msg, const char* name =0L)
             << "\n"
             << "\nUsage: " << name
             << "\n"
-            << "\n      --build catalog.xml      : Build an atlas from the catalog"
-            << "\n        --aux <pattern>        : Build an auxiliary atlas for files matching the pattern"
-            << "\n                                 \"filename_pattern.ext\", e.g., \"texture.jpg\" will match"
-            << "\n                                 \"texture_NML.jpg\" for pattern = \"NML\""
+            << "\n      --build catalog.xml               : Build an atlas from the catalog"
+            << "\n        --size <x> <y>                  : Maximum size of atlas textures"
+            << "\n        --aux <pattern> <r> <g> <b> <a> : Build an auxiliary atlas for files matching the pattern"
+            << "\n                                          \"filename_pattern.ext\", e.g., \"texture.jpg\" will match"
+            << "\n                                          \"texture_NML.jpg\" for pattern = \"NML\". The RGBA are the"
+            << "\n                                          default values to use when no match is found."
             << "\n"
-            << "\n      --show  catalog.xml      : Display an atlas built with this tool"
-            << "\n        --layer <num>          : Show layer <num> of the atlas (default = 0)"
-            << "\n        --labels               : Label each atlas entry"
-            << "\n        --aux <pattern>        : Show atlas matching this auxiliary file pattern"
+            << "\n      --show  catalog.xml               : Display an atlas built with this tool"
+            << "\n        --layer <num>                   : Show layer <num> of the atlas (default = 0)"
+            << "\n        --labels                        : Label each atlas entry"
+            << "\n        --aux <pattern>                 : Show atlas matching this auxiliary file pattern"
             << std::endl;
     }
 
@@ -108,14 +110,15 @@ build(osg::ArgumentParser& arguments)
     osgEarth::Util::AtlasBuilder::Atlas atlas;
 
     // max x/y dimensions:
-    unsigned size;
-    if ( arguments.read("--size", size) )
-        builder.setSize( size, size );
+    unsigned sizex, sizey;
+    if ( arguments.read("--size", sizex, sizey) )
+        builder.setSize( sizex, sizey );
 
     // auxiliary atlas patterns:
     std::string pattern;
-    while(arguments.read("--aux", pattern))
-        builder.addAuxFilePattern(pattern);
+    float r, g, b, a;
+    while(arguments.read("--aux", pattern, r, g, b, a))
+        builder.addAuxFilePattern(pattern, osg::Vec4f(r,g,b,a));
 
     if ( !builder.build(lib.get(), outImageFile, atlas) )
         return usage("Failed to build atlas");

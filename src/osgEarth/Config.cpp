@@ -164,7 +164,7 @@ namespace
     // Converts a Config to JSON. The "nicer" flag formats the data in a more 
     // readable way than nicer=false. Nicer=true attempts to create JSON "objects",
     // whereas nicer=false makes "$key" and "$children" members.
-    Json::Value conf2json( const Config& conf, bool nicer )
+    Json::Value conf2json(const Config& conf, bool nicer, int depth)
     {
         Json::Value value( Json::objectValue );
 
@@ -207,7 +207,7 @@ namespace
                             if ( c.isSimple() )
                                 value[i->first] = c.value();
                             else
-                                value[i->first] = conf2json(c, nicer);
+                                value[i->first] = conf2json(c, nicer, depth+1);
                         }
                         else
                         {
@@ -215,35 +215,11 @@ namespace
                             Json::Value array_value( Json::arrayValue );
                             for( std::vector<Config>::iterator j = i->second.begin(); j != i->second.end(); ++j )
                             {
-                                array_value.append( conf2json(*j, nicer) );
+                                array_value.append( conf2json(*j, nicer, depth+1) );
                             }
                             value[array_key] = array_value;
                         }
                     }
-
-#if 0
-                    bool hasdupes = false;
-                    std::set<std::string> dupes;
-                    for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c ) {
-                        if ( dupes.find( c->key() ) != dupes.end() ) {
-                            hasdupes = true;
-                            break;
-                        }
-                        else {
-                            dupes.insert(c->key());
-                        }
-                    }
-
-                    for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
-                    {
-                        if ( hasdupes )
-                            children[i++] = conf2json(*c, nicer);
-                        else if ( c->isSimple() )
-                            value[c->key()] = c->value();
-                        else
-                            value[c->key()] = conf2json(*c, nicer);
-                    }
-#endif
                 }
                 else
                 {
@@ -255,7 +231,7 @@ namespace
                         if ( c->isSimple() )
                             value[c->key()] = c->value();
                         else
-                            children[i++] = conf2json(*c, nicer);
+                            children[i++] = conf2json(*c, nicer, depth+1);
                     }
 
                     if ( !children.empty() )
@@ -264,27 +240,24 @@ namespace
                     }
                 }
             }
+
+            // At the root, embed the Config in a single JSON object.
+            if ( depth == 0 )
+            {
+                Json::Value root;
+                root[conf.key()] = value;
+                value = root;
+            }
         }
 
         return value;
     }
 
-    void json2conf( const Json::Value& json, Config& conf )
+    void json2conf(const Json::Value& json, Config& conf, int depth)
     {
         if ( json.type() == Json::objectValue )
         {
             Json::Value::Members members = json.getMemberNames();
-
-            if ( members.size() == 1 )
-            {
-                const Json::Value& value = json[members[0]];
-                if ( value.type() != Json::nullValue && value.type() != Json::objectValue && value.type() != Json::arrayValue )
-                {
-                    conf.key() = members[0];
-                    conf.value() = value.asString();
-                    return;
-                }
-            }
 
             for( Json::Value::Members::const_iterator i = members.begin(); i != members.end(); ++i )
             {
@@ -292,9 +265,17 @@ namespace
 
                 if ( value.isObject() )
                 {
-                    Config element( *i );
-                    json2conf( value, element );
-                    conf.add( element );
+                    if (depth == 0 && members.size() == 1)
+                    {
+                        conf.key() = *i;
+                        json2conf(value, conf, depth+1);
+                    }
+                    else
+                    {
+                        Config element( *i );
+                        json2conf( value, element, depth+1 );
+                        conf.add( element );
+                    }
                 }
                 else if ( value.isArray() && endsWith(*i, "_$set") )
                 {
@@ -302,7 +283,7 @@ namespace
                     for( Json::Value::const_iterator j = value.begin(); j != value.end(); ++j )
                     {
                         Config child( key );
-                        json2conf( *j, child );
+                        json2conf( *j, child, depth+1 );
                         conf.add( child );
                     }
                 }
@@ -316,12 +297,12 @@ namespace
                 }
                 else if ( (*i) == "$children" && value.isArray() )
                 {
-                    json2conf( value, conf );
+                    json2conf( value, conf, depth+1 );
                 }
                 else if ( value.isArray() )
                 {
                     Config element( *i );
-                    json2conf( value, element );
+                    json2conf( value, element, depth+1 );
                     conf.add( element );
                 }
                 else
@@ -335,7 +316,7 @@ namespace
             for( Json::Value::const_iterator j = json.begin(); j != json.end(); ++j )
             {
                 Config child;
-                json2conf( *j, child );
+                json2conf( *j, child, depth+1 );
                 if ( !child.empty() )
                     conf.add( child );
             }
@@ -350,7 +331,7 @@ namespace
 std::string
 Config::toJSON( bool pretty ) const
 {
-    Json::Value root = conf2json( *this, true );
+    Json::Value root = conf2json( *this, true, 0 );
     if ( pretty )
         return Json::StyledWriter().write( root );
     else
@@ -364,7 +345,7 @@ Config::fromJSON( const std::string& input )
     Json::Value root( Json::objectValue );
     if ( reader.parse( input, root ) )
     {
-        json2conf( root, *this );
+        json2conf( root, *this, 0 );
         return true;
     }
     return false;

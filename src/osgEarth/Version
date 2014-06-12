@@ -42,7 +42,9 @@ extern "C" {
 #define OSGEARTH_VERSION_GREATER_OR_EQUAL(MAJOR, MINOR, PATCH) ((OSGEARTH_MAJOR_VERSION>MAJOR) || (OSGEARTH_MAJOR_VERSION==MAJOR && (OSGEARTH_MINOR_VERSION>MINOR || (OSGEARTH_MINOR_VERSION==MINOR && OSGEARTH_PATCH_VERSION>=PATCH))))
 
 /** embedded GIT SHA1 */
-extern OSGEARTH_EXPORT const char* osgEarthGitSHA1();
+#ifdef OSGEARTH_EMBED_GIT_SHA
+    extern OSGEARTH_EXPORT const char* osgEarthGitSHA1();
+#endif
 
 /**
   * osgEarthGetVersion() returns the library version number.

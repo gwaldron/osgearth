@@ -77,7 +77,7 @@ std::string CacheTileHandler::getProcessString() const
     buf << "osgearth_cache --seed ";
     if (imageLayer)
     {        
-        for (unsigned int i = 0; i < _map->getNumImageLayers(); i++)
+        for (int i = 0; i < _map->getNumImageLayers(); i++)
         {
             if (imageLayer == _map->getImageLayerAt(i))
             {
@@ -88,7 +88,7 @@ std::string CacheTileHandler::getProcessString() const
     }
     else if (elevationLayer)
     {
-        for (unsigned int i = 0; i < _map->getNumElevationLayers(); i++)
+        for (int i = 0; i < _map->getNumElevationLayers(); i++)
         {
             if (elevationLayer == _map->getElevationLayerAt(i))
             {

@@ -359,8 +359,7 @@ makeTMS( osg::ArgumentParser& args )
     }
     // Package an individual elevation layer
     else if (elevationLayerIndex >= 0)
-    {
-        packager.setExtension("tif");
+    {        
         ElevationLayer* layer = map->getElevationLayerAt(elevationLayerIndex);
         if (layer)
         {
@@ -399,7 +398,7 @@ makeTMS( osg::ArgumentParser& args )
             // save to the output map if requested:
             if( outMap.valid() )
             {
-                std::string layerFolder = toLegalFileName( layer->getName() );
+                std::string layerFolder = toLegalFileName( packager.getLayerName() );
 
                 // new TMS driver info:
                 TMSOptions tms;
@@ -407,7 +406,7 @@ makeTMS( osg::ArgumentParser& args )
                     osgDB::concatPaths( layerFolder, "tms.xml" ),
                     outEarthFile );
 
-                ImageLayerOptions layerOptions( layer->getName(), tms );
+                ImageLayerOptions layerOptions( packager.getLayerName(), tms );
                 layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
                 layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
@@ -415,8 +414,6 @@ makeTMS( osg::ArgumentParser& args )
             }
         }    
 
-        // For elevation layers we need to use tiff
-        packager.setExtension("tif");
         // Package all the ElevationLayer's
         for (unsigned int i = 0; i < map->getNumElevationLayers(); i++)
         {            
@@ -437,7 +434,7 @@ makeTMS( osg::ArgumentParser& args )
             // save to the output map if requested:
             if( outMap.valid() )
             {
-                std::string layerFolder = toLegalFileName( layer->getName());
+                std::string layerFolder = toLegalFileName( packager.getLayerName() );
 
                 // new TMS driver info:
                 TMSOptions tms;
@@ -445,7 +442,7 @@ makeTMS( osg::ArgumentParser& args )
                     osgDB::concatPaths( layerFolder, "tms.xml" ),
                     outEarthFile );
 
-                ElevationLayerOptions layerOptions( layer->getName(), tms );
+                ElevationLayerOptions layerOptions( packager.getLayerName(), tms );
                 layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
                 layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 

@@ -275,8 +275,12 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
             }
 
             _dirty = false;
-        }
-    }
+
+            // update the LOD Scale based on the auto-scale.
+            cv->setLODScale( 1.0/getScale().x() );
+
+        } // if (cv)
+    } // if is cull visitor
 
     // finally, skip AT's accept and do Transform.
     Transform::accept(nv);

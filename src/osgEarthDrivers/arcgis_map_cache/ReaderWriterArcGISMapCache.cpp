@@ -69,8 +69,7 @@ public:
 
     Status initialize( const osgDB::Options* dbOptions )
     {
-        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );        
 
         //Set the profile to global geodetic.
         setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());

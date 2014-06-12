@@ -77,24 +77,25 @@ namespace osgEarth
         Cache* getCache() const;
         void setCache( Cache* cache );
 
+        /** The default cache policy (used when no policy is set elsewhere) */
+        const optional<CachePolicy>& defaultCachePolicy() const { return _defaultCachePolicy; }
+        void setDefaultCachePolicy( const CachePolicy& policy );
+
         /** The override cache policy (overrides all others if set) */
         const optional<CachePolicy>& overrideCachePolicy() const { return _overrideCachePolicy; }
         void setOverrideCachePolicy( const CachePolicy& policy );
-
-        /** The default cache policy (used when no policy is set) */
-        const optional<CachePolicy>& defaultCachePolicy() const { return _defaultCachePolicy; }
-        void setDefaultCachePolicy( const CachePolicy& policy );
 
         /** The default cache driver. */
         void setDefaultCacheDriverName( const std::string& name );
         const std::string& getDefaultCacheDriverName() const { return _cacheDriver; }
 
         /**
-         * Gets the cache policy. 
-         * First checks for an override policy; then looks in the DB::Options for one,
-         * then checks for the default policy; then returns false as a last resort.
+         * Given a CachePolicy, composites in the default and override cache policies
+         * as necessary to create an effective CachePolicy. First it will populate
+         * any unset properties in "cp" with defaults if they are available. Then it
+         * will override any properties in "cp" with overrides that are available.
          */
-        bool getCachePolicy( optional<CachePolicy>& cp, const osgDB::Options* options =0L ) const;
+        bool resolveCachePolicy(optional<CachePolicy>& cp) const;
 
         /**
          * Whether the given filename is blacklisted
@@ -200,6 +201,16 @@ namespace osgEarth
         void endActivity(const std::string& name);
         void getActivities(std::set<std::string>& output);
 
+        /**
+         * Gets the mime-type corresponding to a given extension.
+         */
+        std::string getMimeTypeForExtension(const std::string& extension);
+
+        /**
+         * Gets the file extension corresponding to a given mime-type.
+         */
+        std::string getExtensionForMimeType(const std::string& mimeType);
+
 
     protected:
         virtual ~Registry();
@@ -218,9 +229,9 @@ namespace osgEarth
         Threading::ReadWriteMutex _regMutex;  
         int _numGdalMutexGets;
         
-        typedef std::map< std::string, std::string> MimeTypeExtensionMap;
+        //typedef std::map< std::string, std::string> MimeTypeExtensionMap;
         // maps mime-types to extensions.
-        MimeTypeExtensionMap _mimeTypeExtMap;
+        //MimeTypeExtensionMap _mimeTypeExtMap;
 
         osg::ref_ptr<Cache> _cache;
         optional<CachePolicy> _defaultCachePolicy;

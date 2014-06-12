@@ -53,10 +53,8 @@ namespace osgEarth { namespace Drivers { namespace Noise
 
         // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
         Status initialize(const osgDB::Options* dbOptions)
-        {
-            // no caching of source tiles (there are none..)
-            _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-            CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        {            
+            _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );            
             setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
 
             // resolve frequency if the user set resolution

@@ -110,7 +110,7 @@ namespace osgEarth
          */
         const std::string& getName() const { return *_runtimeOptions.name(); }
 
-        const unsigned getMinLevel() const { return *_runtimeOptions.minLevel(); }
+        unsigned getMinLevel() const { return *_runtimeOptions.minLevel(); }
 
         /** 
          * Gets the geometric boundary polygon representing the area of the

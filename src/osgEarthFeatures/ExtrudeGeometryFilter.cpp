@@ -705,49 +705,44 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
         unsigned elevptr = vertptr;
         for(Faces::const_iterator f = e->faces.begin(); f != e->faces.end(); ++f)
         {
-            // Only use source verts; we skip interim verts inserted by the 
-            // structure building since they are co-linear anyway and thus we don't
-            // need them for the roof line.
-            if ( f->left.isFromSource )
+            // Only use source verts for posts.
+            bool drawPost     = f->left.isFromSource;
+            bool drawCrossbar = true;
+
+            osg::Vec3d this_vec = f->right.roof - f->left.roof;
+            this_vec.normalize();
+
+            if (f->left.isFromSource && f != e->faces.begin())
             {
-                bool drawPost     = true;
-                bool drawCrossbar = true;
-
-                osg::Vec3d this_vec = f->right.roof - f->left.roof;
-                this_vec.normalize();
-
-                if (f != e->faces.begin())
-                {
-                    drawPost = (this_vec * prev_vec) < cosMinAngle;
-                }
-
-                if ( drawPost || drawCrossbar )
-                {
-                    verts->push_back( f->left.roof );
-                    color->push_back( outlineColor );
-                }
-
-                if ( drawPost )
-                {
-                    verts->push_back( f->left.base );
-                    color->push_back( outlineColor );
-                    de->addElement(vertptr);
-                    de->addElement(verts->size()-1);
-                }
-
-                if ( drawCrossbar )
-                {
-                    verts->push_back( f->right.roof );
-                    color->push_back( outlineColor );
-
-                    de->addElement(vertptr);
-                    de->addElement(verts->size()-1);
-                }
-
-                vertptr = verts->size();
-
-                prev_vec = this_vec;
+                drawPost = (this_vec * prev_vec) < cosMinAngle;
             }
+
+            if ( drawPost || drawCrossbar )
+            {
+                verts->push_back( f->left.roof );
+                color->push_back( outlineColor );
+            }
+
+            if ( drawPost )
+            {
+                verts->push_back( f->left.base );
+                color->push_back( outlineColor );
+                de->addElement(vertptr);
+                de->addElement(verts->size()-1);
+            }
+
+            if ( drawCrossbar )
+            {
+                verts->push_back( f->right.roof );
+                color->push_back( outlineColor );
+
+                de->addElement(vertptr);
+                de->addElement(verts->size()-1);
+            }
+
+            vertptr = verts->size();
+
+            prev_vec = this_vec;
         }
 
         // Draw an end-post if this isn't a closed polygon.
@@ -1068,18 +1063,20 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
-            if ( context.featureIndex() )
+            if ( context.featureIndex() || _outlineSymbol.valid())
             {
                 // The MC will recognize the presence of feature indexing tags and
                 // preserve them. The Cache optimizer however will not, so it is
                 // out for now.
+                // The Optimizer also doesn't work with line geometry, so if we have outlines
+                // then we need to use MC.                
                 MeshConsolidator::run( *i->second.get() );
 
                 //VertexCacheOptimizer vco;
                 //i->second->accept( vco );
             }
             else
-            {
+            {                
                 //TODO: try this -- issues: it won't work on lines, and will it screw up
                 // feature indexing?
                 osgUtil::Optimizer o;

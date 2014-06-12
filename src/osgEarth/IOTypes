@@ -79,7 +79,8 @@ namespace osgEarth
             RESULT_NO_READER,
             RESULT_READER_ERROR,
             RESULT_UNKNOWN_ERROR,
-            RESULT_NOT_IMPLEMENTED
+            RESULT_NOT_IMPLEMENTED,
+            RESULT_NOT_MODIFIED
         };
 
         /** Construct a result with no object */
@@ -106,7 +107,10 @@ namespace osgEarth
         virtual ~ReadResult() { }
 
         /** Whether the read operation succeeded */
-        bool succeeded() const { return _code == RESULT_OK && _result.valid(); }
+        bool succeeded() const
+        {
+            return _code == RESULT_OK && _result.valid();
+        }
 
         /** Whether the read operation failed */
         bool failed() const { return _code != RESULT_OK; }

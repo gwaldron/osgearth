@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/CentroidFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
-#include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>

@@ -43,13 +43,13 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
 
     public: // CacheBin interface
 
-        ReadResult readObject(const std::string& key, TimeStamp minTime);
+        ReadResult readObject(const std::string& key);
 
-        ReadResult readImage(const std::string& key, TimeStamp minTime);
+        ReadResult readImage(const std::string& key);
 
-        ReadResult readNode(const std::string& key, TimeStamp minTime);
+        ReadResult readNode(const std::string& key);
 
-        ReadResult readString(const std::string& key, TimeStamp minTime);
+        ReadResult readString(const std::string& key);
 
         bool write(const std::string& key, const osg::Object* object, const Config& meta);
 
@@ -57,7 +57,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
 
         bool touch(const std::string& key);
 
-        RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime);
+        RecordStatus getRecordStatus(const std::string& key);
 
         bool clear();
 
@@ -109,7 +109,7 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
             osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readObject(in, _op); }
         };
 
-        ReadResult read(const std::string& key, TimeStamp minTime, const Reader& reader);
+        ReadResult read(const std::string& key, const Reader& reader);
 
         void postWrite();
 

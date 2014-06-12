@@ -28,6 +28,7 @@
 #include <osgEarthUtil/Ocean>
 #include <osgEarthUtil/Shadowing>
 #include <osgEarthUtil/ActivityMonitorTool>
+#include <osgEarthUtil/LogarithmicDepthBuffer>
 
 #include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/DetailTexture>
@@ -47,6 +48,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/WriteFile>
 #include <osgGA/StateSetManipulator>
+#include <osgGA/AnimationPathManipulator>
 #include <osgViewer/View>
 #include <osgViewer/ViewerEventHandlers>
 
@@ -518,7 +520,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
                      osg::Group*          root,
                      Control*             userControl ) const
 {
-    // this is a dubious move.
     if ( !root )
         root = mapNode;
 
@@ -537,6 +538,13 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useShadows    = args.read("--shadows");
     bool animateSky    = args.read("--animate-sky");
     bool showActivity  = args.read("--activity");
+    bool useLogDepth   = args.read("--logdepth");
+
+    if (args.read("--verbose"))
+        osgEarth::setNotifyLevel(osg::INFO);
+    
+    if (args.read("--quiet"))
+        osgEarth::setNotifyLevel(osg::FATAL);
 
     float ambientBrightness = 0.2f;
     args.read("--ambientBrightness", ambientBrightness);
@@ -549,6 +557,13 @@ MapNodeHelper::parse(MapNode*             mapNode,
 
     std::string imageExtensions;
     args.read("--image-extensions", imageExtensions);
+    
+    // animation path:
+    std::string animpath;
+    if ( args.read("--path", animpath) )
+    {
+        view->setCameraManipulator( new osgGA::AnimationPathManipulator(animpath) );
+    }
 
     // install a canvas for any UI controls we plan to create:
     ControlCanvas* canvas = ControlCanvas::get(view, false);
@@ -622,7 +637,16 @@ MapNodeHelper::parse(MapNode*             mapNode,
         if ( sky )
         {
             sky->attach( view, 0 );
-            osgEarth::insertGroup(sky, mapNode);
+            if ( mapNode->getNumParents() > 0 )
+            {
+                osgEarth::insertGroup(sky, mapNode->getParent(0));
+            }
+            else
+            {
+                sky->addChild( mapNode );
+                root = sky;
+            }
+                
             Control* c = SkyControlFactory().create(sky, view);
             if ( c )
                 mainContainer->addControl( c );
@@ -743,7 +767,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         VBox* vbox = new VBox();
         vbox->setBackColor( Color(Color::Black, 0.8) );
-        vbox->setHorizAlign( Control::ALIGN_LEFT );
+        vbox->setHorizAlign( Control::ALIGN_RIGHT );
         vbox->setVertAlign( Control::ALIGN_BOTTOM );
         view->addEventHandler( new ActivityMonitorTool(vbox) );
         canvas->addControl( vbox );
@@ -753,6 +777,14 @@ MapNodeHelper::parse(MapNode*             mapNode,
     if ( useAutoClip )
     {
         mapNode->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
+    }
+
+    // Install logarithmic depth buffer on main camera
+    if ( useLogDepth )
+    {
+        OE_INFO << LC << "Activating logarithmic depth buffer on main camera" << std::endl;
+        osgEarth::Util::LogarithmicDepthBuffer logDepth;
+        logDepth.install( view->getCamera() );
     }
 
     // Scan for images if necessary.
@@ -860,6 +892,7 @@ MapNodeHelper::configureView( osgViewer::View* view ) const
     view->addEventHandler(new osgViewer::ThreadingHandler());
     view->addEventHandler(new osgViewer::LODScaleHandler());
     view->addEventHandler(new osgGA::StateSetManipulator(view->getCamera()->getOrCreateStateSet()));
+    view->addEventHandler(new osgViewer::RecordCameraPathHandler());
 }
 
 
@@ -875,9 +908,11 @@ MapNodeHelper::usage() const
         << "  --dd                          : display decimal degrees coords under mouse\n"
         << "  --mgrs                        : show MGRS coords under mouse\n"
         << "  --ortho                       : use an orthographic camera\n"
+        << "  --logdepth                    : activates the logarithmic depth buffer\n"
         << "  --autoclip                    : installs an auto-clip plane callback\n"
         << "  --images [path]               : finds and loads image layers from folder [path]\n"
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
         << "  --out-earth [file]            : write the loaded map to an earth file\n"
-        << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n";
+        << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n"
+        << "  --path [file]                 : load and playback an animation path\n";
 }

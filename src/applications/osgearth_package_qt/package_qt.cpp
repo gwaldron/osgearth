@@ -72,10 +72,12 @@ int main(int argc, char** argv)
   if (!osgDB::fileExists(logDir))
     osgDB::makeDirectory(logDir);
 
+  /*
   std::string logPath = logDir + "/log.txt";
   std::ofstream* log = new std::ofstream( logPath.c_str() );
   std::cout.rdbuf( log->rdbuf() );
   std::cerr.rdbuf( log->rdbuf() );
+
 
   if (getenv("OSGEARTH_PACKAGE_LOGGING") != 0)
   {
@@ -89,6 +91,7 @@ int main(int argc, char** argv)
   {
     osgEarth::setNotifyLevel( osg::INFO );
   }
+  */
 
   osg::DisplaySettings::instance()->setMinimumNumStencilBits(8);
 
@@ -137,11 +140,13 @@ int main(int argc, char** argv)
   int ret = app.exec();
 
   //TODO: move somewhere smarter
+  /*
   if (log)
   {
       log->close();
       delete log;
   }
+  */
 
   return ret;
 }

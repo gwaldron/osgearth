@@ -137,10 +137,7 @@ public:
                 << _map_service.getError() );
         }
 
-        // create a local i/o options with caching disabled (since the TerrainLayer
-        // will implement the caching for us)
-        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );        
 
         // establish a profile if we don't already have one:
         if ( !getProfile() )

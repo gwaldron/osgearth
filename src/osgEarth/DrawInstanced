@@ -21,6 +21,7 @@
 #define OSGEARTH_DRAW_INSTANCED_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Containers>
 #include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
 #include <osg/Geode>
@@ -32,6 +33,20 @@ namespace osgEarth
 {
     namespace DrawInstanced
     {
+        /**
+         * Referenced-counted vector of instance matrices. These are stored
+         * in the node that's been instanced so the app can recover the 
+         * original positioning data.
+         */
+        class MatrixRefVector : public osgEarth::MixinVector<osg::Matrixf,osg::Object>
+        {
+        public:
+            META_Object(osgEarth,MatrixRefVector);
+            MatrixRefVector() : osgEarth::MixinVector<osg::Matrixf,osg::Object>() { }
+        protected:
+            MatrixRefVector(const MatrixRefVector& rhs, const osg::CopyOp& op) { }
+        };
+
         /**
          * Visitor that converts all the primitive sets in a graph to use
          * instanced draw calls.
@@ -75,6 +90,13 @@ namespace osgEarth
          */
         extern OSGEARTH_EXPORT void convertGraphToUseDrawInstanced( 
             osg::Group* graph );
+
+        /**
+         * Gets the vector of instance matrices attached to a node,
+         * or NULL if not found.
+         */
+        extern OSGEARTH_EXPORT const MatrixRefVector* getMatrixVector(
+            osg::Node* node );
     }
 }
 

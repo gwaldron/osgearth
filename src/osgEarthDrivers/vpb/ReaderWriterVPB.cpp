@@ -370,8 +370,7 @@ public:
             return; //return 0;
         }        
 
-        osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions();
-        CachePolicy::NO_CACHE.apply( localOptions.get() );
+        osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions();        
         localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
 
         ReadResult r = URI(filename).readNode( localOptions.get(), progress );
@@ -520,8 +519,7 @@ public:
 
     Status initialize( const osgDB::Options* dbOptions )
     {
-        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );        
 
         _vpbDatabase->initialize( _dbOptions.get() );
 

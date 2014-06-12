@@ -150,7 +150,7 @@ _fallbackData( fallbackData )
     }
 
     _texture->setUnRefImageDataAfterApply(true);
-    _texture->setMaxAnisotropy( 16.0f );
+    _texture->setMaxAnisotropy( 4.0f );
     _texture->setResizeNonPowerOfTwoHint(false);
     _texture->setFilter( osg::Texture::MAG_FILTER, magFilter );
     _texture->setFilter( osg::Texture::MIN_FILTER, minFilter  );

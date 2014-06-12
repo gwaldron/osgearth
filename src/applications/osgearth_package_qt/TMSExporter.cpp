@@ -172,7 +172,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
         packager.writeXML(layer.get(), map);
         if (outMap)
         {
-            std::string layerFolder = toLegalFileName( layer->getName() );
+            std::string layerFolder = toLegalFileName( packager.getLayerName() );
 
             // new TMS driver info:
             TMSOptions tms;
@@ -180,7 +180,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
                 osgDB::concatPaths( layerFolder, "tms.xml" ),
                 outEarthFile );
 
-            ImageLayerOptions layerOptions( layer->getName(), tms );
+            ImageLayerOptions layerOptions( packager.getLayerName(), tms );
             layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
             layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 
@@ -208,7 +208,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
 
         if( outMap.valid() )
         {
-            std::string layerFolder = toLegalFileName( layer->getName());
+            std::string layerFolder = toLegalFileName( packager.getLayerName() );
 
             // new TMS driver info:
             TMSOptions tms;
@@ -216,7 +216,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
                 osgDB::concatPaths( layerFolder, "tms.xml" ),
                 outEarthFile );
 
-            ElevationLayerOptions layerOptions( layer->getName(), tms );
+            ElevationLayerOptions layerOptions( packager.getLayerName(), tms );
             layerOptions.mergeConfig( layer->getInitialOptions().getConfig( true ) );
             layerOptions.cachePolicy() = CachePolicy::NO_CACHE;
 

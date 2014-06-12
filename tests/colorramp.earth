@@ -1,0 +1,20 @@
+<!--
+osgEarth Sample - Color ramping
+
+Demonstrates how to apply a color ramp to an elevation ( or any other type of single band ) datasource.
+-->
+<map name="readymap.org" type="geocentric">
+
+    <!-- Elevation as a true elevation source -->       
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+
+    <!--Displays the same elevation using an elevaton contour-->
+    <image name="color ramp" driver="colorramp">
+    	<elevation name="readymap_elevation" driver="tms">
+            <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        </elevation>
+        <ramp>..\data\colorramps\elevation.clr</ramp>
+    </image>
+</map>

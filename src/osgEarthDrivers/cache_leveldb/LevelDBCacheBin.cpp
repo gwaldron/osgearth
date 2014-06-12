@@ -89,8 +89,7 @@ _debug            ( false )
 {
     // reader to parse data:
     _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
-    _rwOptions = osgEarth::Registry::instance()->cloneOrCreateOptions();
-    CachePolicy::NO_CACHE.apply(_rwOptions.get());
+    _rwOptions = osgEarth::Registry::instance()->cloneOrCreateOptions();    
     
     if ( ::getenv("OSGEARTH_CACHE_DEBUG") )
         _debug = true;
@@ -222,26 +221,26 @@ LevelDBCacheBin::timeEndGlobal()
 }
 
 ReadResult
-LevelDBCacheBin::readImage(const std::string& key, TimeStamp minTime)
+LevelDBCacheBin::readImage(const std::string& key)
 {
-    return read(key, minTime, ImageReader(_rw.get(), _rwOptions.get()));
+    return read(key, ImageReader(_rw.get(), _rwOptions.get()));    
 }
 
 ReadResult
-LevelDBCacheBin::readObject(const std::string& key, TimeStamp minTime)
+LevelDBCacheBin::readObject(const std::string& key)
 {
     //OE_INFO << LC << "Read attempt: " << key << " from " << getID() << std::endl;
-    return read(key, minTime, ObjectReader(_rw.get(), _rwOptions.get()));
+    return read(key, ObjectReader(_rw.get(), _rwOptions.get()));
 }
 
 ReadResult
-LevelDBCacheBin::readNode(const std::string& key, TimeStamp minTime)
+LevelDBCacheBin::readNode(const std::string& key)
 {
-    return read(key, minTime, NodeReader(_rw.get(), _rwOptions.get()));
+    return read(key, NodeReader(_rw.get(), _rwOptions.get()));
 }
 
 ReadResult
-LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& reader)
+LevelDBCacheBin::read(const std::string& key, const Reader& reader)
 {
     if ( !binValidForReading() ) 
         return ReadResult(ReadResult::RESULT_NOT_FOUND);
@@ -255,25 +254,12 @@ LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& r
     // first read the metadata record.
     std::string metavalue;
     status = _db->Get( ro, metaKey(key), &metavalue );
+    TimeStamp lastModified;
     if ( status.ok() )
-    {
+    {        
         decodeMeta(metavalue, metadata);
-
-        // Check for expiration:
-        TimeStamp minValidTime = std::max(minTime, getMinValidTime());
-        if ( minValidTime > 0 )
-        {
-            DateTime t( metadata.value(TIME_FIELD) );
-            if ( t.asTimeStamp() < minValidTime )
-            {
-                if ( _debug )
-                {
-                    OE_NOTICE << LC << "Found (" << key << ") in bin " << getID() << " ... EXPIRED!" << std::endl;
-                }
-
-                return ReadResult(ReadResult::RESULT_EXPIRED);
-            }
-        }
+        DateTime t( metadata.value(TIME_FIELD));
+        lastModified = t.asTimeStamp();
     }
         
     // next read the data record.
@@ -313,13 +299,15 @@ LevelDBCacheBin::read(const std::string& key, TimeStamp minTime, const Reader& r
     }
 
     ++_tracker->hits;
-    return ReadResult( r.getObject(), metadata );
+    ReadResult rr(r.getObject(), metadata);
+    rr.setLastModifiedTime(lastModified);    
+    return rr;
 }
 
 ReadResult
-LevelDBCacheBin::readString(const std::string& key, TimeStamp minTime)
+LevelDBCacheBin::readString(const std::string& key)
 {
-    ReadResult r = readObject(key, minTime);
+    ReadResult r = readObject(key);
     if ( r.succeeded() )
     {
         if ( r.get<StringObject>() )
@@ -442,7 +430,7 @@ LevelDBCacheBin::postWrite()
 }
 
 CacheBin::RecordStatus
-LevelDBCacheBin::getRecordStatus(const std::string& key, TimeStamp minTime)
+LevelDBCacheBin::getRecordStatus(const std::string& key)
 {
     if ( !binValidForReading() ) 
         return STATUS_NOT_FOUND;
@@ -454,19 +442,7 @@ LevelDBCacheBin::getRecordStatus(const std::string& key, TimeStamp minTime)
     std::string metavalue;
     status = _db->Get( ro, metaKey(key), &metavalue );
     if ( status.ok() )
-    {
-        // Check for expiration:
-        TimeStamp minValidTime = std::max(minTime, getMinValidTime());
-        if ( minValidTime > 0 )
-        {
-            Config metadata;
-            decodeMeta(metavalue, metadata);
-            DateTime t( metadata.value(TIME_FIELD) );
-            if ( t.asTimeStamp() < minValidTime )
-            {
-                return STATUS_EXPIRED;
-            }
-        }
+    {        
         return STATUS_OK;
     }
     else
@@ -511,7 +487,7 @@ LevelDBCacheBin::remove(const std::string& key)
 
 bool
 LevelDBCacheBin::touch(const std::string& key)
-{
+{    
     if ( !binValidForWriting() )
         return false;
 

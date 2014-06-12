@@ -80,6 +80,9 @@ namespace osgEarth { namespace Util
         osgDB::Options* getOptions() const;
         void setWriteOptions( osgDB::Options* options );        
 
+        const std::string& getLayerName() const;
+        void setLayerName( const std::string& name);
+
         TileVisitor* getTileVisitor() const;
 
         void setVisitor(TileVisitor* visitor);
@@ -93,6 +96,7 @@ namespace osgEarth { namespace Util
         std::string _destination;
         std::string _extension;
         unsigned int _elevationPixelDepth;
+        std::string _layerName;
         bool _overwrite;
         osg::ref_ptr<osgDB::Options>    _writeOptions;
 

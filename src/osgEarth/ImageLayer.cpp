@@ -65,7 +65,7 @@ ImageLayerOptions::setDefaults()
     _maxRange.init( FLT_MAX );
     _lodBlending.init( false );
     _featherPixels.init( false );
-    _minFilter.init( osg::Texture::LINEAR );
+    _minFilter.init( osg::Texture::LINEAR_MIPMAP_LINEAR );
     _magFilter.init( osg::Texture::LINEAR );
     _texcomp.init( (osg::Texture::InternalFormatMode)~0 );
 }
@@ -522,7 +522,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     if ( _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
-        ReadResult result = bin->readObject(key.str(), 0);
+        ReadResult result = bin->readObject(key.str() );
         if ( result.succeeded() )
             return GeoImage(static_cast<osg::Image*>(result.releaseObject()), key.getExtent());
         //_memCache->dumpStats(key.getProfile()->getFullSignature());
@@ -548,22 +548,42 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         return GeoImage::INVALID;
     }
 
+    osg::ref_ptr< osg::Image > cachedImage;        
+
     // First, attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
     if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
-        ReadResult r = cacheBin->readImage( key.str(), getCachePolicy().getMinAcceptTime() );
+        ReadResult r = cacheBin->readImage( key.str() );
         if ( r.succeeded() )
         {
-            ImageUtils::normalizeImage( r.getImage() );
-            return GeoImage( r.releaseImage(), key.getExtent() );
+            cachedImage = r.releaseImage();
+            ImageUtils::normalizeImage( cachedImage.get() );            
+            bool expired = getCachePolicy().isExpired(r.lastModifiedTime());
+            if (!expired)
+            {
+                OE_DEBUG << "Got cached image for " << key.str() << std::endl;                
+                return GeoImage( cachedImage.get(), key.getExtent() );                        
+            }
+            else
+            {
+                OE_DEBUG << "Expired image for " << key.str() << std::endl;                
+            }
         }
     }
     
     // The data was not in the cache. If we are cache-only, fail sliently
     if ( isCacheOnly() )
     {
-        return GeoImage::INVALID;
+        // If it's cache only and we have an expired but cached image, just return it.
+        if (cachedImage.valid())
+        {
+            return GeoImage( cachedImage.get(), key.getExtent() );            
+        }
+        else
+        {
+            return GeoImage::INVALID;
+        }
     }
 
     // Get an image from the underlying TileSource.
@@ -602,7 +622,13 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     }
     else
     {
-        OE_DEBUG << LC << key.str() << "result INVALID" << std::endl;
+        OE_DEBUG << LC << key.str() << "result INVALID" << std::endl;        
+        // We couldn't get an image from the source.  So see if we have an expired cached image
+        if (cachedImage.valid())
+        {
+            OE_DEBUG << LC << "Using cached but expired image for " << key.str() << std::endl;
+            result = GeoImage( cachedImage.get(), key.getExtent());
+        }
     }
 
     return result;
@@ -628,7 +654,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
 
     // Fail is the image is blacklisted.
-    if ( source->getBlacklist()->contains( key.getTileId() ) )
+    if ( source->getBlacklist()->contains(key) )
     {
         OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
         return GeoImage::INVALID;
@@ -653,7 +679,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // blacklist this tile for future requests.
     if ( result == 0L && (!progress || !progress->isCanceled()) )
     {
-        source->getBlacklist()->add( key.getTileId() );
+        source->getBlacklist()->add( key );
     }
 
     return GeoImage(result.get(), key.getExtent());

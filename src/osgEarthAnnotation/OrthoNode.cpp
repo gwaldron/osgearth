@@ -30,6 +30,7 @@
 #include <osg/OcclusionQueryNode>
 #include <osg/Point>
 #include <osg/Depth>
+#include <osg/Switch>
 
 #define LC "[OrthoNode] "
 

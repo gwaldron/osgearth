@@ -206,7 +206,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         return 0L;
 
     // If the key is blacklisted, fail.
-    if ( source->getBlacklist()->contains( key.getTileId() ) )
+    if ( source->getBlacklist()->contains( key ))
     {
         OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted " << std::endl;
         return 0L;
@@ -243,7 +243,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         // Blacklist the tile if it is the same projection as the source and we can't get it and it wasn't cancelled
         if ( !result && (!progress || !progress->isCanceled()))
         {
-            source->getBlacklist()->add( key.getTileId() );
+            source->getBlacklist()->add( key );
         }
     }
 
@@ -270,10 +270,6 @@ ElevationLayer::assembleHeightFieldFromTileSource(const TileKey&    key,
     //Determine the intersecting keys
     std::vector< TileKey > intersectingTiles;
     getProfile()->getIntersectingTiles( key, intersectingTiles );
-
-
-    //Maintain a list of heightfield tiles that have been added to the list already.
-    std::set< osgTerrain::TileID > existingTiles; 
 
     // collect heightfield for each intersecting key. Note, we're hitting the
     // underlying tile source here, so there's no vetical datum shifts happening yet.
@@ -367,7 +363,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     if ( _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
-        ReadResult result = bin->readObject(key.str(), 0);
+        ReadResult result = bin->readObject(key.str() );
         if ( result.succeeded() )
             return GeoHeightField(static_cast<osg::HeightField*>(result.releaseObject()), key.getExtent());
         //_memCache->dumpStats(key.getProfile()->getFullSignature());
@@ -395,16 +391,23 @@ ElevationLayer::createHeightField(const TileKey&    key,
     // Now attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
     bool fromCache = false;
+
+    osg::ref_ptr< osg::HeightField > cachedHF;
+
     if ( cacheBin && getCachePolicy().isCacheReadable() )
     {
-        ReadResult r = cacheBin->readObject( key.str(), getCachePolicy().getMinAcceptTime() );
+        ReadResult r = cacheBin->readObject( key.str() );
         if ( r.succeeded() )
-        {
-            osg::HeightField* cachedHF = r.get<osg::HeightField>();
+        {            
+            bool expired = getCachePolicy().isExpired(r.lastModifiedTime());
+            cachedHF = r.get<osg::HeightField>();
             if ( cachedHF && validateHeightField(cachedHF) )
             {
-                result = cachedHF;
-                fromCache = true;
+                if (!expired)
+                {
+                    result = cachedHF;
+                    fromCache = true;
+                }
             }
         }
     }
@@ -449,6 +452,13 @@ ElevationLayer::createHeightField(const TileKey&    key,
          getCachePolicy().isCacheWriteable() )
     {
         cacheBin->write( key.str(), result );
+    }
+
+    // We have an expired heightfield from the cache and no new data from the TileSource.  So just return the cached data.
+    if (!result.valid() && cachedHF.valid())
+    {
+        OE_DEBUG << LC << "Using cached but expired heightfield for " << key.str() << std::endl;
+        result = cachedHF;
     }
 
     if ( result )
@@ -597,12 +607,14 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     }
                 }
 
+                // If we actually got a layer then we have real data
+                realData = true;
+
                 float elevation;
                 if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
                     elevation != NO_DATA_VALUE)
                 {
-                    resolved = true;
-                    realData = true;
+                    resolved = true;                    
                     hf->setHeight(c, r, elevation);
                 }
             }
@@ -626,11 +638,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     }
                 }
 
+                // If we actually got a layer then we have real data
+                realData = true;
+
                 float elevation = 0.0f;
                 if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
                     elevation != NO_DATA_VALUE)
-                {
-                    realData = true;
+                {                    
                     hf->getHeight(c, r) += elevation;
                 }
             }

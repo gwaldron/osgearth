@@ -625,10 +625,32 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 #endif
         if ( visibleOverlayBS.valid() )
         {
-            osg::BoundingBox visibleOverlayBB;
-            visibleOverlayBB.expandBy( visibleOverlayBS );
+            // form an axis-aligned polytope around the bounding sphere of the
+            // overlay geometry. Use that to cut the camera frustum polytope.
+            // This will minimize the coverage area and also ensure inclusion
+            // of geometry that falls outside the camera frustum but inside
+            // the overlay area.
             osg::Polytope visibleOverlayPT;
-            visibleOverlayPT.setToBoundingBox( visibleOverlayBB );
+
+            osg::Vec3d tangent(0,0,1);
+            if (fabs(worldUp*tangent) > 0.9999)
+                tangent.set(0,1,0);
+
+            osg::Vec3d westVec  = worldUp^tangent; westVec.normalize();
+            osg::Vec3d southVec = worldUp^westVec; southVec.normalize();
+            osg::Vec3d eastVec  = -westVec;
+            osg::Vec3d northVec = -southVec;
+
+            osg::Vec3d westPt  = visibleOverlayBS.center() + westVec*visibleOverlayBS.radius();
+            osg::Vec3d eastPt  = visibleOverlayBS.center() + eastVec*visibleOverlayBS.radius();
+            osg::Vec3d northPt = visibleOverlayBS.center() + northVec*visibleOverlayBS.radius();
+            osg::Vec3d southPt = visibleOverlayBS.center() + southVec*visibleOverlayBS.radius();
+
+            visibleOverlayPT.add(osg::Plane(-westVec,  westPt));
+            visibleOverlayPT.add(osg::Plane(-eastVec,  eastPt));
+            visibleOverlayPT.add(osg::Plane(-southVec, southPt));
+            visibleOverlayPT.add(osg::Plane(-northVec, northPt));
+
             visiblePH.cut( visibleOverlayPT );
         }
 

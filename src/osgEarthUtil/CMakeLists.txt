@@ -51,6 +51,7 @@ SET(HEADERS_ROOT
     SpatialData
     StarData
     TerrainProfile
+	TextureSplatter
     TileIndex
     TileIndexBuilder
     TFS
@@ -103,6 +104,7 @@ SET(SOURCES_ROOT
     SpatialData.cpp
     Sky.cpp
     TerrainProfile.cpp
+	TextureSplatter.cpp
     TileIndex.cpp
     TileIndexBuilder.cpp
     TFS.cpp

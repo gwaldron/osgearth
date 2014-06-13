@@ -35,6 +35,7 @@
 #include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
 #include <osgEarthUtil/ContourMap>
+#include <osgEarthUtil/TextureSplatter>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -593,6 +594,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
     const Config& contourMapConf  = externals.child("contour_map");
+    const Config& texSplatConf    = externals.child("texture_splatter");
 
     // backwards-compatibility: read viewpoints at the top level:
     const ConfigSet& old_viewpoints = externals.children("viewpoint");
@@ -831,6 +833,13 @@ MapNodeHelper::parse(MapNode*             mapNode,
         {
             mapNode->getTerrainEngine()->addEffect( effect.get() );
         }
+    }
+
+    // Install a texture splatter
+    if ( !texSplatConf.empty() )
+    {
+        osg::ref_ptr<TextureSplatter> effect = new TextureSplatter(texSplatConf, mapNode->getMap());
+        mapNode->getTerrainEngine()->addEffect( effect.get() );
     }
 
     // Install elevation morphing

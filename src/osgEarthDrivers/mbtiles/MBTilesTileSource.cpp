@@ -76,7 +76,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     if ( rc != 0 )
     {                        
         return Status::Error( Stringify()
-            << "Cannot open database \"" << fullFilename << "\": " << sqlite3_errmsg(_database) );
+            << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(_database) );
     }
 
     std::string format;
@@ -132,8 +132,7 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 
                 if ( !profile )
                 {
-                    return Status::Error( Stringify()
-                        << "Cannot open database; profile unknown: " << profileStr );
+                    return Status::Error( Stringify() << "Profile not recognized: " << profileStr );
                 }
             }
             else
@@ -158,16 +157,24 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         //Try to get it from the database metadata
         _tileFormat = format;
     }
-    else
+
+    if ( _tileFormat.empty() )
     {
-        // default to PNG. Might want to assess this later
-        _tileFormat = "png";
+        return Status::Error("Required format property is missing");
     }
 
     OE_INFO << LC << "Format = " << _tileFormat << std::endl;
 
-    //Get the ReaderWriter
-    _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat );                
+    // Get the ReaderWriter
+    _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat ); 
+    if ( !_rw.valid() )
+    {
+        _rw = osgDB::Registry::instance()->getReaderWriterForMimeType( _tileFormat );
+        if ( !_rw.valid() )
+        {
+            return Status::Error("No plugin is available for format \"" + _tileFormat + "\"");
+        }
+    }
 
     // optionally compute existing levels:
     if ( !isNewDatabase && _options.computeLevels()==true)

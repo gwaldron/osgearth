@@ -56,7 +56,7 @@ std::string WriteTMSTileHandler::getPathForTile( const TileKey &key )
 }
 
 
-bool WriteTMSTileHandler::handleTile( const TileKey& key )
+bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
 {    
     ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
     ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );
@@ -65,7 +65,8 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
     std::string path = getPathForTile( key );
 
     // Don't write out a new file if we're not overwriting
-    if (osgDB::fileExists(path) && !_packager->getOverwrite()) return true;
+    if (osgDB::fileExists(path) && !_packager->getOverwrite())
+        return true;
 
     // attempt to create the output folder:        
     osgEarth::makeDirectoryForFile( path );       
@@ -76,7 +77,15 @@ bool WriteTMSTileHandler::handleTile( const TileKey& key )
         GeoImage geoImage = imageLayer->createImage( key );
 
         if (geoImage.valid())
-        {                            
+        {                 
+            // mask out areas not included in the request:
+            for(std::vector<GeoExtent>::const_iterator g = tv.getExtents().begin();
+                g != tv.getExtents().end();
+                ++g)
+            {
+                geoImage.applyAlphaMask( *g );
+            }
+
             // OE_NOTICE << "Created image for " << key.str() << std::endl;
             osg::ref_ptr< const osg::Image > final = geoImage.getImage();                        
 
@@ -307,20 +316,30 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
         {
             _width = testImage.getImage()->s();
             _height = testImage.getImage()->t();
+
+            bool alphaChannelRequired =
+                ImageUtils::hasAlphaChannel(testImage.getImage()) ||
+                _visitor->getExtents().size() > 0;
+
             // Figure out the extension if we haven't already assigned one.
             if (_extension.empty())
             {
-                if (!ImageUtils::hasAlphaChannel(testImage.getImage()))
-                {
-                    _extension = "jpg";
-                }
-                else
+                if (alphaChannelRequired)
                 {
                     _extension = "png";
                 }
-                OE_INFO << "Selected extension" << _extension << std::endl;
+                else
+                {
+                    _extension = "jpg";
+                }
+            }
+            else if (_extension == "jpg" && alphaChannelRequired)
+            {
+                _extension = "png";
+                OE_NOTICE << LC << "Extension changed to PNG since output requires an alpha channel" << std::endl;
             }
 
+            OE_INFO << LC << "Output extension: " << _extension << std::endl;
         }
     }
     else if (elevationLayer)

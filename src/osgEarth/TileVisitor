@@ -38,31 +38,31 @@ namespace osgEarth
         TileVisitor(TileHandler* handler);
 
         /**
-        * Sets the minimum level to generate
+        * Sets the minimum level to visit
         */
         void setMinLevel(const unsigned int& minLevel) {_minLevel = minLevel;}
 
         /**
-        * Gets the minimum level to generate
+        * Gets the minimum level to visit
         */
         const unsigned int getMinLevel() const {return _minLevel;}
 
         /**
-        * Sets the maximum level to generate
+        * Sets the maximum level to visit
         */
         void setMaxLevel(const unsigned int& maxLevel) {_maxLevel = maxLevel;}
 
         /**
-        * Gets the maximum level to cache to.
+        * Gets the maximum level to visit
         */
         const unsigned int getMaxLevel() const {return _maxLevel;}
-
-        std::vector< GeoExtent >& getExtents() { return _extents; }    
+  
 
         /**
-        *Adds an extent to cache
+        * Extents to visit
         */
-        void addExtent( const GeoExtent& extent );    
+        void addExtent( const GeoExtent& extent ); 
+        const std::vector< GeoExtent >& getExtents() const { return _extents; }  
 
         virtual void run(const Profile* mapProfile);
 

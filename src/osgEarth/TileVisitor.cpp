@@ -178,7 +178,7 @@ bool TileVisitor::handleTile( const TileKey& key )
     bool result = false;
     if (_tileHandler.valid() )
     {
-        result = _tileHandler->handleTile( key );
+        result = _tileHandler->handleTile( key, *this );
     }
 
     incrementProgress(1);    

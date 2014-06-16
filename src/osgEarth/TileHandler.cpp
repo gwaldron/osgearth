@@ -17,14 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/TileHandler>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/ElevationLayer>
-#include <osgEarth/ImageToHeightFieldConverter>
-#include <osgEarth/ImageUtils>
-#include <osgEarth/FileUtils>
-
-#include <osgDB/WriteFile>
-#include <osgDB/FileUtils>
+#include <osgEarth/TileVisitor>
 
 
 using namespace osgEarth;
@@ -32,6 +25,11 @@ using namespace osgEarth;
 bool TileHandler::handleTile(const TileKey& key)
 {
     return true;
+}
+
+bool TileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
+{
+    return handleTile(key);
 }
 
 bool TileHandler::hasData( const TileKey& key ) const

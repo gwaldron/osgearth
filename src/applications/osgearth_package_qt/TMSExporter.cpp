@@ -147,6 +147,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
         packager.getTileVisitor()->addExtent( osgEarth::GeoExtent(map->getProfile()->getSRS(), bounds[i]));
     }
     packager.setExtension(extension);  
+    packager.setOverwrite(overwrite);
     packager.getTileVisitor()->setProgressCallback( _progress.get() );
     packager.getTileVisitor()->setMaxLevel(_maxLevel);
 

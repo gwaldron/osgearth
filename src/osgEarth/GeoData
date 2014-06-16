@@ -618,6 +618,11 @@ namespace osgEarth
             bool topBorder=true);
 
         /**
+         * Sets alpha to Zero for any pixels that do NOT intersect the masking extent.
+         */
+        void applyAlphaMask(const GeoExtent& maskingExtent);
+
+        /**
          * Returns the underlying OSG image and releases the reference pointer.
          */
         osg::Image* takeImage();

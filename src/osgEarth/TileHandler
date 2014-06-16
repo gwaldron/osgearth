@@ -27,6 +27,8 @@
 
 namespace osgEarth
 {
+    class TileVisitor;
+
     /**
     * TileHandler is an interface for operations on a TileKey
     */
@@ -37,6 +39,11 @@ namespace osgEarth
          * Process a tile for the given key
          */
         virtual bool handleTile( const TileKey& key );
+
+        /**
+         * Process a tile - also provides a reference to the calling TileVisitor
+         */
+        virtual bool handleTile(const TileKey& key, const TileVisitor& tv);
 
         /**
          * Callback that tells a TileVisitor if it should attempt to process this key.

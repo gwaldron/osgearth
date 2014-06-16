@@ -39,7 +39,7 @@ namespace osgEarth { namespace Util
 
         TerrainLayer* getLayer();
 
-        virtual bool handleTile( const TileKey& key );
+        virtual bool handleTile( const TileKey& key, const TileVisitor& tv );
         virtual bool hasData( const TileKey& key ) const;
         virtual std::string getProcessString() const;
 

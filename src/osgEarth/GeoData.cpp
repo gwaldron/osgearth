@@ -1764,6 +1764,45 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     return GeoImage(resultImage, destExtent);
 }
 
+void
+GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
+{
+    if ( !valid() )
+        return;
+
+    GeoExtent maskingExtentLocal = maskingExtent.transform(_extent.getSRS());
+
+    // if the image is completely contains by the mask, no work to do.
+    if ( maskingExtentLocal.contains(getExtent()))
+        return;
+
+    // TODO: find a more performant way about this 
+    ImageUtils::PixelReader read (_image.get());
+    ImageUtils::PixelWriter write(_image.get());
+
+    double sInterval = _extent.width()/(double)_image->s();
+    double tInterval = _extent.height()/(double)_image->t();
+
+    for( int t=0; t<_image->t(); ++t )
+    {
+        double y = _extent.south() + tInterval*(double)t;
+
+        for( int s=0; s<_image->s(); ++s )
+        {
+            double x = _extent.west() + sInterval*(double)s;
+
+            for( int r=0; r<_image->r(); ++r )
+            {
+                if ( !maskingExtentLocal.contains(x, y) )
+                {
+                    osg::Vec4f pixel = read(s,t,r);
+                    write(osg::Vec4f(pixel.r(), pixel.g(), pixel.b(), 0.0f), s, t, r);
+                }
+            }
+        }
+    }
+}
+
 osg::Image*
 GeoImage::takeImage()
 {

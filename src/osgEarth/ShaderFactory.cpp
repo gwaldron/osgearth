@@ -71,21 +71,21 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
     if ( modelStage )
     {
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
-            buf << "void " << i->second << "(inout vec4 VertexMODEL); \n";
+            buf << "void " << i->second._name << "(inout vec4 VertexMODEL); \n";
     }
 
     // prototypes for view stage methods:
     if ( viewStage )
     {
         for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
-            buf << "void " << i->second << "(inout vec4 VertexVIEW); \n";
+            buf << "void " << i->second._name << "(inout vec4 VertexVIEW); \n";
     }
 
     // prototypes for clip stage methods:
     if ( clipStage )
     {
         for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
-            buf << "void " << i->second << "(inout vec4 VertexCLIP); \n";
+            buf << "void " << i->second._name << "(inout vec4 VertexCLIP); \n";
     }
 
     // main:
@@ -104,7 +104,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
 
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
         {
-            buf << INDENT << i->second << "(vertex); \n";
+            buf << INDENT << i->second._name << "(vertex); \n";
         }
 
         buf << INDENT << "oe_Normal = normalize(gl_NormalMatrix * oe_Normal); \n";
@@ -121,7 +121,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
 
         for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
         {
-            buf << INDENT << i->second << "(vertex); \n";
+            buf << INDENT << i->second._name << "(vertex); \n";
         }
     }
 
@@ -139,7 +139,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
 
         for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
         {
-            buf << INDENT << i->second << "(vertex); \n";
+            buf << INDENT << i->second._name << "(vertex); \n";
         }
     }
 
@@ -186,19 +186,19 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
     if ( coloring )
     {
         for( OrderedFunctionMap::const_iterator i = coloring->begin(); i != coloring->end(); ++i )
-            buf << "void " << i->second << "( inout vec4 color ); \n";
+            buf << "void " << i->second._name << "( inout vec4 color ); \n";
     }
 
     if ( lighting )
     {
         for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
-            buf << "void " << i->second << "( inout vec4 color ); \n";
+            buf << "void " << i->second._name << "( inout vec4 color ); \n";
     }
 
     if ( output )
     {
         for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
-            buf << "void " << i->second << "( inout vec4 color ); \n";
+            buf << "void " << i->second._name << "( inout vec4 color ); \n";
     }
 
     buf << 
@@ -215,20 +215,20 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
         if ( coloring && (pass == coloringPass) )
         {
             for( OrderedFunctionMap::const_iterator i = coloring->begin(); i != coloring->end(); ++i )
-                buf << INDENT << i->second << "( color ); \n";
+                buf << INDENT << i->second._name << "( color ); \n";
         }
 
         if ( lighting && (pass == lightingPass) )
         {
             for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
-                buf << INDENT << i->second << "( color ); \n";
+                buf << INDENT << i->second._name << "( color ); \n";
         }
     }
 
     if ( output )
     {
         for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
-            buf << INDENT << i->second << "( color ); \n";
+            buf << INDENT << i->second._name << "( color ); \n";
     }
     else
     {

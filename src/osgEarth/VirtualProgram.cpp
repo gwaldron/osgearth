@@ -250,11 +250,10 @@ namespace
     void addToAccumulatedMap(VirtualProgram::ShaderMap&         accumShaderMap,
                              const std::string&                 shaderID,
                              const VirtualProgram::ShaderEntry& newEntry)
-    {
-        const osg::StateAttribute::OverrideValue& ov = newEntry.second;
+    {        
 
         // see if we're trying to disable a previous entry:
-        if ((ov & osg::StateAttribute::ON) == 0 ) //TODO: check for higher override
+        if ((newEntry._overrideValue & osg::StateAttribute::ON) == 0 ) //TODO: check for higher override
         {
             // yes? remove it!
             accumShaderMap.erase( shaderID );
@@ -266,9 +265,9 @@ namespace
             VirtualProgram::ShaderEntry& accumEntry = accumShaderMap[ shaderID ]; 
 
             // make sure we can add the new one:
-            if ((accumEntry.first.get() == 0L ) ||                           // empty slot, fill it
-                ((ov & osg::StateAttribute::PROTECTED) != 0) ||              // new entry is protected
-                ((accumEntry.second & osg::StateAttribute::OVERRIDE) == 0) ) // old entry does NOT override
+            if ((accumEntry._shader.get() == 0L ) ||                                   // empty slot, fill it
+                ((accumEntry._overrideValue & osg::StateAttribute::PROTECTED) != 0) || // new entry is protected
+                ((accumEntry._overrideValue & osg::StateAttribute::OVERRIDE) == 0) )   // old entry does NOT override
             {
                 accumEntry = newEntry;
             }
@@ -417,7 +416,7 @@ namespace
         // based on its accumlated function set.
         for( VirtualProgram::ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
         {
-            outputKeyVector.push_back( i->second.first.get() );
+            outputKeyVector.push_back( i->second._shader.get() );
         }
 
         // finally, add the mains (AFTER building the key vector .. we don't want or
@@ -580,11 +579,14 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
 
             const ShaderEntry& lhsEntry = lhsIter->second;
             const ShaderEntry& rhsEntry = rhsIter->second;
-            int shaderComp = lhsEntry.first->compare( *rhsEntry.first.get() );
+
+            int shaderComp = lhsEntry._shader->compare( *rhsEntry._shader.get() );
             if ( shaderComp != 0 ) return shaderComp;
 
-            if ( lhsEntry.second < rhsEntry.second ) return -1;
-            if ( lhsEntry.second > rhsEntry.second ) return 1;
+            if ( lhsEntry._overrideValue < rhsEntry._overrideValue ) return -1;
+            if ( lhsEntry._overrideValue > rhsEntry._overrideValue ) return 1;
+
+            //todo: compare accept member??
 
             lhsIter++;
             rhsIter++;
@@ -666,7 +668,7 @@ VirtualProgram::getShader( const std::string& shaderID ) const
     Threading::ScopedReadLock readonly( _dataModelMutex );
 
     ShaderMap::const_iterator i = _shaderMap.find(shaderID);
-    return i != _shaderMap.end() ? i->second.first.get() : 0L;
+    return i != _shaderMap.end() ? i->second._shader.get() : 0L;
 }
 
 
@@ -694,7 +696,11 @@ VirtualProgram::setShader(const std::string&                 shaderID,
     // lock the data model and insert the new shader.
     {
         Threading::ScopedWriteLock exclusive( _dataModelMutex );
-        _shaderMap[shaderID] = ShaderEntry(shader, ov);
+
+        ShaderEntry& entry = _shaderMap[shaderID];
+        entry._shader        = shader;
+        entry._overrideValue = ov;
+        entry._accept        = 0L;
     }
 
     return shader;
@@ -727,7 +733,11 @@ VirtualProgram::setShader(osg::Shader*                       shader,
     // lock the data model while changing it.
     {
         Threading::ScopedWriteLock exclusive( _dataModelMutex );
-        _shaderMap[shader->getName()] = ShaderEntry(shader, ov);
+        
+        ShaderEntry& entry = _shaderMap[shader->getName()];
+        entry._shader        = shader;
+        entry._overrideValue = ov;
+        entry._accept        = 0L;
     }
 
     return shader;
@@ -735,10 +745,20 @@ VirtualProgram::setShader(osg::Shader*                       shader,
 
 
 void
-VirtualProgram::setFunction(const std::string& functionName,
-                            const std::string& shaderSource,
-                            FunctionLocation   location,
-                            float              ordering)
+VirtualProgram::setFunction(const std::string&           functionName,
+                            const std::string&           shaderSource,
+                            ShaderComp::FunctionLocation location,
+                            float                        ordering)
+{
+    setFunction(functionName, shaderSource, location, 0L, ordering);
+}
+
+void
+VirtualProgram::setFunction(const std::string&           functionName,
+                            const std::string&           shaderSource,
+                            ShaderComp::FunctionLocation location,
+                            ShaderComp::AcceptCallback*  accept,
+                            float                        ordering)
 {
     // set the inherit flag if it's not initialized
     if ( !_inheritSet )
@@ -755,7 +775,8 @@ VirtualProgram::setFunction(const std::string& functionName,
         // if there's already a function by this name, remove it
         for( OrderedFunctionMap::iterator i = ofm.begin(); i != ofm.end(); )
         {
-            if ( i->second.compare(functionName) == 0 )
+            ShaderComp::Function& f = i->second;
+            if ( f._name.compare(functionName) == 0 )
             {
                 OrderedFunctionMap::iterator j = i;
                 ++j;
@@ -768,7 +789,10 @@ VirtualProgram::setFunction(const std::string& functionName,
             }
         }
         
-        ofm.insert( std::pair<float,std::string>( ordering, functionName ) );
+        ShaderComp::Function function;
+        function._name   = functionName;
+        function._accept = accept;
+        ofm.insert( OrderedFunction(ordering, function) ); //std::make_pair(ordering, function) );
 
         // create and add the new shader function.
         osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_CLIP ?
@@ -780,7 +804,10 @@ VirtualProgram::setFunction(const std::string& functionName,
         // pre-processes the shader's source to include GLES uniforms as necessary
         ShaderPreProcessor::run( shader );
 
-        _shaderMap[functionName] = ShaderEntry(shader, osg::StateAttribute::ON);
+        ShaderEntry& entry = _shaderMap[functionName];
+        entry._shader        = shader;
+        entry._overrideValue = osg::StateAttribute::ON;
+        entry._accept        = accept;
 
     } // release lock
 }
@@ -798,7 +825,7 @@ VirtualProgram::removeShader( const std::string& shaderID )
         OrderedFunctionMap& ofm = i->second;
         for( OrderedFunctionMap::iterator j = ofm.begin(); j != ofm.end(); ++j )
         {
-            if ( j->second == shaderID )
+            if ( j->second._name.compare(shaderID) == 0 )
             {
                 ofm.erase( j );
 
@@ -882,7 +909,10 @@ VirtualProgram::apply( osg::State& state ) const
 
                     for( ShaderMap::const_iterator i = vpShaderMap.begin(); i != vpShaderMap.end(); ++i )
                     {
-                        addToAccumulatedMap( accumShaderMap, i->first, i->second );
+                        if ( i->second.accept(state) )
+                        {
+                            addToAccumulatedMap( accumShaderMap, i->first, i->second );
+                        }
                     }
 
                     const AttribBindingList& abl = vp->getAttribBindingList();
@@ -903,7 +933,10 @@ VirtualProgram::apply( osg::State& state ) const
 
         for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
         {
-            addToAccumulatedMap( accumShaderMap, i->first, i->second );
+            if ( i->second.accept(state) )
+            {
+                addToAccumulatedMap( accumShaderMap, i->first, i->second );
+            }
         }
 
         const AttribBindingList& abl = this->getAttribBindingList();
@@ -929,7 +962,7 @@ VirtualProgram::apply( osg::State& state ) const
         for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
         {
             ShaderEntry& entry = i->second;
-            vec.push_back( entry.first.get() );
+            vec.push_back( entry._shader.get() );
         }
         
         // see if there's already a program associated with this list:
@@ -1113,13 +1146,16 @@ VirtualProgram::accumulateFunctions(const osg::State&                state,
 
                         for( OrderedFunctionMap::const_iterator k = source.begin(); k != source.end(); ++k )
                         {
-                            // remove/override an existing function with the same name
-                            for( OrderedFunctionMap::iterator exists = dest.begin(); exists != dest.end(); ++exists )
+                            if ( k->second.accept(state) )
                             {
-                                if ( exists->second.compare( k->second ) == 0 )
+                                // remove/override an existing function with the same name
+                                for( OrderedFunctionMap::iterator exists = dest.begin(); exists != dest.end(); ++exists )
                                 {
-                                    dest.erase(exists);
-                                    break;
+                                    if ( exists->second._name.compare( k->second._name ) == 0 )
+                                    {
+                                        dest.erase(exists);
+                                        break;
+                                    }
                                 }
                             }
                             dest.insert( *k );
@@ -1141,16 +1177,19 @@ VirtualProgram::accumulateFunctions(const osg::State&                state,
 
             for( OrderedFunctionMap::const_iterator k = source.begin(); k != source.end(); ++k )
             {
-                // remove/override an existing function with the same name
-                for( OrderedFunctionMap::iterator exists = dest.begin(); exists != dest.end(); ++exists )
+                if ( k->second.accept(state) )
                 {
-                    if ( exists->second.compare( k->second ) == 0 )
+                    // remove/override an existing function with the same name
+                    for( OrderedFunctionMap::iterator exists = dest.begin(); exists != dest.end(); ++exists )
                     {
-                        dest.erase(exists);
-                        break;
+                        if ( exists->second._name.compare( k->second._name ) == 0 )
+                        {
+                            dest.erase(exists);
+                            break;
+                        }
                     }
+                    dest.insert( *k );
                 }
-                dest.insert( *k );
             }
         }
     }

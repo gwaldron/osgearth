@@ -64,8 +64,34 @@ namespace osgEarth
             LOCATION_FRAGMENT_OUTPUT = 5
         };
 
+        /**
+         * Callback that accepts a user-injected shader function (set with
+         * setFunction) for inclusing in the program at render time.
+         */
+        class AcceptCallback : public osg::Referenced
+        {
+        public:
+            // implement this to accept or reject based on the state
+            virtual bool operator()(const osg::State& state) =0;
+        protected:
+            virtual ~AcceptCallback() { }
+        };
+
+        // User function (used internally)
+        struct Function
+        {
+            std::string                  _name;
+            osg::ref_ptr<AcceptCallback> _accept;
+            
+            bool accept(const osg::State& state) const {
+                return (!_accept.valid()) || (_accept->operator()(state) == true);
+            }
+        };
+
+        typedef std::pair<float, Function> OrderedFunction;
+
         // ordered set of user functions.
-        typedef std::multimap<float, std::string> OrderedFunctionMap; // duplicate keys allowed
+        typedef std::multimap<float, Function> OrderedFunctionMap; // duplicate keys allowed
 
         // user function sets, categorized by function location.
         typedef std::map<FunctionLocation, OrderedFunctionMap> FunctionLocationMap;
@@ -117,7 +143,6 @@ namespace osgEarth
         */
         static VirtualProgram* cloneOrCreate(const osg::StateSet* src, osg::StateSet* dest);
 
-
     public:
         /**
          * Adds a custom shader function to the program.
@@ -136,7 +161,14 @@ namespace osgEarth
         void setFunction( 
             const std::string&           name,
             const std::string&           source, 
-            ShaderComp::FunctionLocation loc,
+            ShaderComp::FunctionLocation location,
+            float                        order =1.0f );
+
+        void setFunction( 
+            const std::string&           name,
+            const std::string&           source, 
+            ShaderComp::FunctionLocation location,
+            ShaderComp::AcceptCallback*  acceptCallback,
             float                        order =1.0f );
 
         /**
@@ -224,7 +256,17 @@ namespace osgEarth
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
     public:
-        typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
+        struct ShaderEntry
+        {
+            ShaderEntry() : _overrideValue(0) { }
+            bool accept(const osg::State& state) const {
+                return (!_accept.valid()) || (_accept->operator()(state) == true);
+            }
+            osg::ref_ptr<osg::Shader>                _shader;
+            osg::StateAttribute::OverrideValue       _overrideValue;
+            osg::ref_ptr<ShaderComp::AcceptCallback> _accept;
+        };
+        //typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
         typedef std::map< std::string, ShaderEntry > ShaderMap;
         typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
         typedef std::map< std::string, std::string > AttribAliasMap;

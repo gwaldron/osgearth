@@ -20,6 +20,9 @@
 
 #define LC "[DuktapeEngine] "
 
+// defining this will setup and tear down a complete duktape heap/context
+// for each and every invocation. Good for testing memory usage until we
+// complete the feature set.
 #define MAXIMUM_ISOLATION
 
 using namespace osgEarth;
@@ -32,6 +35,9 @@ namespace
 {
     extern "C"
     {
+        /**
+         * C binding for "get_feature_attr(feature, attrName)" JS method
+         */
         int oeduk_get_feature_attr(duk_context* ctx)
         {
             Feature*    feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));

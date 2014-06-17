@@ -20,15 +20,19 @@
 
 #define LC "[DuktapeEngine] "
 
+#define MAXIMUM_ISOLATION
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers::Duktape;
+
+//............................................................................
 
 namespace
 {
     extern "C"
     {
-        int oeduk_getFeatureAttr(duk_context* ctx)
+        int oeduk_get_feature_attr(duk_context* ctx)
         {
             Feature*    feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
             const char* key     = duk_require_string(ctx, 1);
@@ -39,14 +43,57 @@ namespace
     }
 }
 
+//............................................................................
+
+DuktapeEngine::Context::Context()
+{
+    _ctx = 0L;
+}
+
+void
+DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
+{
+    if ( _ctx == 0L )
+    {
+        // new allocation heap.
+        _ctx = duk_create_heap_default();
+
+        // if there is a static script, evaluate it first
+        if ( options.script().isSet() )
+        {
+            duk_eval_string_noresult(_ctx, options.script()->getCode().c_str());
+        }
+
+        // new value stack:
+        duk_push_global_object( _ctx );
+
+        // install C bindings.
+        duk_push_c_function( _ctx, oeduk_get_feature_attr, 2/*numargs*/);
+        duk_put_prop_string( _ctx, -2, "get_feature_attr" );
+    }
+}
+
+DuktapeEngine::Context::~Context()
+{
+    if ( _ctx )
+    {
+        duk_destroy_heap(_ctx);
+        _ctx = 0L;
+    }
+}
+
+//............................................................................
 
 DuktapeEngine::DuktapeEngine(const ScriptEngineOptions& options) :
-ScriptEngine(options)
+ScriptEngine(options),
+_options( options )
 {
+    //nop
 }
 
 DuktapeEngine::~DuktapeEngine()
 {
+    //nop
 }
 
 ScriptResult
@@ -67,16 +114,18 @@ DuktapeEngine::run(const std::string&   code,
 {
     if (code.empty())
         return ScriptResult(EMPTY_STRING, false, "Script is empty.");
-    
-    // new allocation heap.
-    duk_context* ctx = duk_create_heap_default();
 
-    // new value stack:
-    duk_push_global_object( ctx );
-
-    // install C bindings.
-    duk_push_c_function( ctx, oeduk_getFeatureAttr, 2/*numargs*/);
-    duk_put_prop_string( ctx, -2, "osgEarthGetFeatureAttr" );
+#ifdef MAXIMUM_ISOLATION
+    // brand new context every time
+    Context c;
+    c.initialize( _options );
+    duk_context* ctx = c._ctx;
+#else
+    // cache the Context on a per-thread basis
+    Context& c = _contexts.get();
+    c.initialize( _options );
+    duk_context* ctx = c._ctx;
+#endif
 
     if (feature)
     {
@@ -88,16 +137,19 @@ DuktapeEngine::run(const std::string&   code,
     // run the script:
     duk_eval_string(ctx, code.c_str());
 
-    // read the result from the top of the stack:
-    std::string resultString = duk_get_string(ctx, -1);
+    // convert the return value to a string and read it back:
+    const char* resultVal = duk_to_string(ctx, -1);
+    std::string resultString;
+    if ( resultVal )
+        resultString = resultVal;
 
-    // pop the value stack.
+    // pop the return value:
     duk_pop(ctx);
-    
-    // clean up.
-    duk_destroy_heap(ctx);
 
-    return ScriptResult(resultString);
+    // force a garbage collection to keep memory in check
+    duk_gc(ctx, 0);
+
+    return ScriptResult(resultString, resultVal? true : false);
 }
 
 ScriptResult

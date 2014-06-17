@@ -20,10 +20,10 @@
 #ifndef OSGEARTHDRIVERS_DUKTAPE_ENGINE_H
 #define OSGEARTHDRIVERS_DUKTAPE_ENGINE_H 1
 
-#include <osgEarth/StringUtils>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Script>
 #include <osgEarthFeatures/ScriptEngine>
+#include <osgEarthFeatures/Script>
+#include <osgEarthFeatures/Feature>
+#include <osgEarth/ThreadingUtils>
 #include <duktape.h>
 
 namespace osgEarth { namespace Drivers { namespace Duktape
@@ -61,7 +61,17 @@ namespace osgEarth { namespace Drivers { namespace Duktape
     protected:
         virtual ~DuktapeEngine();
 
-        duk_context* _ctx;
+        struct Context
+        {
+            Context();
+            ~Context();
+            void initialize(const ScriptEngineOptions&);
+            duk_context* _ctx;
+        };
+
+        Threading::PerThread<Context> _contexts;
+
+        const ScriptEngineOptions _options;
     };
 
 } } } // namespace osgEarth::Drivers::Duktape

@@ -28,6 +28,8 @@
 
 namespace osgEarth { namespace Drivers { namespace Duktape
 {
+    using namespace osgEarth::Features;
+
     class DuktapeEngine : public osgEarth::Features::ScriptEngine
     {
     public:

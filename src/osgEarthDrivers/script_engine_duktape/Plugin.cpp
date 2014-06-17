@@ -23,6 +23,7 @@
 
 #include "DuktapeEngine"
 
+#define LC "[Duktape] "
 
 namespace osgEarth { namespace Drivers { namespace Duktape
 {
@@ -31,7 +32,8 @@ namespace osgEarth { namespace Drivers { namespace Duktape
     public:
         DuktapeScriptEngineDriver()
         {
-            supportsExtension( "osgearth_scriptengine_duktape", "osgEarth Duktape JavaScript Engine" );
+            supportsExtension(
+                "osgearth_scriptengine_javascript", "osgEarth Duktape JavaScript Engine" );
         }
 
         const char* className()
@@ -44,10 +46,11 @@ namespace osgEarth { namespace Drivers { namespace Duktape
           if ( !acceptsExtension(osgDB::getLowerCaseFileExtension(filename)) )
                 return ReadResult::FILE_NOT_HANDLED;
 
-            return ReadResult( new DuktapeScriptEngine(getScriptEngineOptions(dbOptions)) );
+          OE_INFO << LC << "Loaded Dduktape JavaScript engine" << std::endl;
+          return ReadResult( new DuktapeEngine(getScriptEngineOptions(dbOptions)) );
         }
     };
 
-    REGISTER_OSGPLUGIN(osgearth_scriptengine_duktape, DuktapeScriptEngineDriver)
+    REGISTER_OSGPLUGIN(osgearth_scriptengine_javascript, DuktapeScriptEngineDriver)
 
 } } } // namespace osgEarth::Drivers::Duktape

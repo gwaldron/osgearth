@@ -24,16 +24,29 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers::Duktape;
 
+namespace
+{
+    extern "C"
+    {
+        int oeduk_getFeatureAttr(duk_context* ctx)
+        {
+            Feature*    feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
+            const char* key     = duk_require_string(ctx, 1);
+            std::string value = feature->getString(key);
+            duk_push_string(ctx, value.c_str());
+            return 1;
+        }
+    }
+}
+
 
 DuktapeEngine::DuktapeEngine(const ScriptEngineOptions& options) :
 ScriptEngine(options)
 {
-    _ctx = duk_create_heap_default();
 }
 
 DuktapeEngine::~DuktapeEngine()
 {
-    duk_destroy_heap(_ctx);
 }
 
 ScriptResult
@@ -54,22 +67,41 @@ DuktapeEngine::run(const std::string&   code,
 {
     if (code.empty())
         return ScriptResult(EMPTY_STRING, false, "Script is empty.");
+    
+    // new allocation heap.
+    duk_context* ctx = duk_create_heap_default();
+
+    // new value stack:
+    duk_push_global_object( ctx );
+
+    // install C bindings.
+    duk_push_c_function( ctx, oeduk_getFeatureAttr, 2/*numargs*/);
+    duk_put_prop_string( ctx, -2, "osgEarthGetFeatureAttr" );
 
     if (feature)
     {
-        JSStringRef featureStr = JSStringCreateWithUTF8CString("feature");
-        JSObjectRef jsFeature = JSObjectMake(_ctx, JSFeature_class(_ctx), const_cast<osgEarth::Features::Feature*>(feature));
-        JSObjectSetProperty(_ctx, JSContextGetGlobalObject(_ctx), featureStr, jsFeature, kJSPropertyAttributeNone, NULL);
+        // set a global object "feature" = native pointer
+        duk_push_pointer(ctx, (void*)feature);
+        duk_put_prop_string(ctx, -2, "feature");
     }
 
-    // Compile and run the script
-    ScriptResult result = executeScript(code);
+    // run the script:
+    duk_eval_string(ctx, code.c_str());
 
-    return result;
+    // read the result from the top of the stack:
+    std::string resultString = duk_get_string(ctx, -1);
+
+    // pop the value stack.
+    duk_pop(ctx);
+    
+    // clean up.
+    duk_destroy_heap(ctx);
+
+    return ScriptResult(resultString);
 }
 
 ScriptResult
-JavaScriptCoreEngine::call(const std::string& function, osgEarth::Features::Feature const* feature, osgEarth::Features::FilterContext const* context)
+DuktapeEngine::call(const std::string& function, osgEarth::Features::Feature const* feature, osgEarth::Features::FilterContext const* context)
 {
-    return ScriptResult("");
+    return ScriptResult("", false);
 }

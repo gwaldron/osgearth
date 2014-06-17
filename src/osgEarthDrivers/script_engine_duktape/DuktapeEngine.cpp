@@ -21,8 +21,8 @@
 #define LC "[DuktapeEngine] "
 
 using namespace osgEarth;
-using namespace osgEarth::Drivers;
 using namespace osgEarth::Features;
+using namespace osgEarth::Drivers::Duktape;
 
 
 DuktapeEngine::DuktapeEngine(const ScriptEngineOptions& options) :
@@ -69,7 +69,7 @@ DuktapeEngine::run(const std::string&   code,
 }
 
 ScriptResult
-    JavaScriptCoreEngine::call(const std::string& function, osgEarth::Features::Feature const* feature, osgEarth::Features::FilterContext const* context)
+JavaScriptCoreEngine::call(const std::string& function, osgEarth::Features::Feature const* feature, osgEarth::Features::FilterContext const* context)
 {
     return ScriptResult("");
 }

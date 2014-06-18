@@ -10,7 +10,7 @@ SET(TARGET_SRC
     DuktapeEngine.cpp
 )
 
-SET(TARGET_COMMON_LIBRARIES DUKTAPE_LIBRARY osgEarthFeatures osgEarthSymbology)
+SET(TARGET_COMMON_LIBRARIES ${DUKTAPE_LIBRARY} osgEarthFeatures osgEarthSymbology)
 
 SETUP_PLUGIN(osgearth_scriptengine_javascript)
 

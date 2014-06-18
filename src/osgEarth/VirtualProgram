@@ -282,7 +282,7 @@ namespace osgEarth
             const osg::State&                        state,
             std::vector<osg::ref_ptr<osg::Shader> >& output);
 
-    public:
+    protected:
         // thread-safe functions map getter
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;
 

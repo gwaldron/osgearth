@@ -266,12 +266,21 @@ namespace osgEarth
             osg::StateAttribute::OverrideValue       _overrideValue;
             osg::ref_ptr<ShaderComp::AcceptCallback> _accept;
         };
-        //typedef std::pair< osg::ref_ptr<osg::Shader>, osg::StateAttribute::OverrideValue > ShaderEntry;
+
         typedef std::map< std::string, ShaderEntry > ShaderMap;
         typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
         typedef std::map< std::string, std::string > AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias > AttribAliasVector;
+
+    public:
+        /**
+         * Populates the output collection with all the osg::Shader objects that
+         * are applicable for the given State.
+         */
+        static void getShaders(
+            const osg::State&                        state,
+            std::vector<osg::ref_ptr<osg::Shader> >& output);
 
     public:
         // thread-safe functions map getter
@@ -310,8 +319,19 @@ namespace osgEarth
         bool _inheritSet;
 
         bool hasLocalFunctions() const;
-        void accumulateFunctions( const osg::State& state, ShaderComp::FunctionLocationMap& result ) const;
+
+        void accumulateFunctions(            const osg::State&                state,
+            ShaderComp::FunctionLocationMap& result ) const;
+
         const AttribAliasMap& getAttribAliases() const { return _attribAliases; }
+
+        // utility function
+        static void accumulateShaders(
+            const osg::State&  state,
+            unsigned           mask,
+            ShaderMap&         accumShaderMap,
+            AttribBindingList& accumAttribBindings,
+            AttribAliasMap&    accumAttribAliases);
     };
 
 } // namespace osgEarth

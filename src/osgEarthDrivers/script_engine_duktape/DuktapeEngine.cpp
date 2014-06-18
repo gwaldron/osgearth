@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "DuktapeEngine"
+#include <sstream>
 
 #define LC "[DuktapeEngine] "
 
@@ -33,6 +34,37 @@ using namespace osgEarth::Drivers::Duktape;
 
 namespace
 {
+    // Creates the feature object for ECMA5.
+    // TODO: for ECMA6 we might use a Proxy object and C callback? Maybe,
+    // but this is pretty quick.
+    // TODO: this will cause a Syntax Error for a property key or value that
+    // has an invalid encoding -- need to fix that.
+    std::string createFeatureScaffoldEcma5(Feature const* feature)
+    {
+        std::stringstream buf;
+        buf << "var feature = {";
+
+        const AttributeTable& attrs = feature->getAttrs();
+        int n=0;
+        for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
+        {
+            if ( !a->first.empty() )
+            {
+                if ( n > 0 ) buf << ", ";
+                buf << a->first << ":\"" << a->second.getString() << "\"";
+                ++n;
+            }
+        }
+        buf << "};";
+
+        // This adds a meta-property "attributes" that allows you to use
+        // the idiom: feature.attributes[prop]
+        buf << "Object.defineProperty(feature, 'attributes', {get:function() {return feature;}});";
+
+        std::string str = buf.str();
+        return str;
+    }
+
     extern "C"
     {
         /**
@@ -67,7 +99,13 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
         // if there is a static script, evaluate it first
         if ( options.script().isSet() )
         {
-            duk_eval_string_noresult(_ctx, options.script()->getCode().c_str());
+            bool ok = (duk_peval_string(_ctx, options.script()->getCode().c_str()) == 0);
+            if ( !ok )
+            {
+                const char* err = duk_safe_to_string(_ctx, -1);
+                OE_WARN << LC << err << std::endl;
+            }
+            duk_pop(_ctx);
         }
 
         // new value stack:
@@ -75,7 +113,7 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
 
         // install C bindings.
         duk_push_c_function( _ctx, oeduk_get_feature_attr, 2/*numargs*/);
-        duk_put_prop_string( _ctx, -2, "get_feature_attr" );
+        duk_put_prop_string( _ctx, -2, "c_get_feature_attr" );
     }
 }
 
@@ -133,21 +171,30 @@ DuktapeEngine::run(const std::string&   code,
     duk_context* ctx = c._ctx;
 #endif
 
+    std::string e = code;
+
     if (feature)
     {
         // set a global object "feature" = native pointer
-        duk_push_pointer(ctx, (void*)feature);
-        duk_put_prop_string(ctx, -2, "feature");
+        //duk_push_pointer(ctx, (void*)feature);
+        //duk_put_prop_string(ctx, -2, "c_feature");
+        
+        e = createFeatureScaffoldEcma5(feature) + "\n" + e;
     }
 
-    // run the script:
-    duk_eval_string(ctx, code.c_str());
-
-    // convert the return value to a string and read it back:
-    const char* resultVal = duk_to_string(ctx, -1);
     std::string resultString;
+
+    // run the script. On error, the top of stack will hold the error
+    // message instead of the return value.
+    bool ok = (duk_peval_string(ctx, e.c_str()) == 0);
+    const char* resultVal = duk_to_string(ctx, -1);
     if ( resultVal )
         resultString = resultVal;
+
+    if ( !ok )
+    {
+        OE_WARN << LC << "Error: source =\n" << e << std::endl;
+    }
 
     // pop the return value:
     duk_pop(ctx);
@@ -155,7 +202,9 @@ DuktapeEngine::run(const std::string&   code,
     // force a garbage collection to keep memory in check
     duk_gc(ctx, 0);
 
-    return ScriptResult(resultString, resultVal? true : false);
+    return ok ?
+        ScriptResult(resultString, true) :
+        ScriptResult("", false, resultString);
 }
 
 ScriptResult

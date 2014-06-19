@@ -34,6 +34,25 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers::MBTiles;
 
+//......................................................................
+
+namespace
+{
+    osgDB::ReaderWriter* getReaderWriter(const std::string& format)
+    {
+        osgDB::ReaderWriter* rw = 0L;
+
+        // Get a ReaderWriter for the tile format. Try both mime-type and extension.
+        rw = osgDB::Registry::instance()->getReaderWriterForMimeType( format );
+        if ( rw == 0L )
+        {
+            rw = osgDB::Registry::instance()->getReaderWriterForExtension( format ); 
+        }
+        return rw;
+    }
+}
+
+//......................................................................
 
 MBTilesTileSource::MBTilesTileSource(const TileSourceOptions& options) :
 TileSource( options ),
@@ -59,8 +78,19 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     {
         // For a NEW database, the profile MUST be set prior to initialization.
         if ( getProfile() == 0L )
-        {
             return Status::Error("Cannot create database; required Profile is missing");
+
+        // For a NEW database the format is required.
+        if ( _options.format().isSet() )
+        {
+            _tileFormat = _options.format().value();
+            _rw = getReaderWriter( _tileFormat );
+            if ( !_rw.valid() )
+                return Status::Error("No plugin to load format \"" + _tileFormat + "\"");
+        }
+        else
+        {
+            return Status::Error("Cannot create database; required format is missing");
         }
 
         OE_INFO << LC << "Database does not exist; attempting to create it." << std::endl;
@@ -78,18 +108,41 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         return Status::Error( Stringify()
             << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(_database) );
     }
+    
+    // New database setup:
+    if ( isNewDatabase )
+    {
+        // create necessary db tables:
+        createTables();
 
-    std::string format;
+        // write profile to metadata:
+        std::string profileJSON = getProfile()->toProfileOptions().getConfig().toJSON(false);
+        putMetaData("profile", profileJSON);
 
-    // If the database pre-existed, read in the profile information from
-    // the metadata.
-    if ( !isNewDatabase )
+        // write format to metadata:
+        putMetaData("format", _tileFormat);
+    }
+
+    // If the database pre-existed, read in the information from the metadata.
+    else // !isNewDatabase
     {
         std::string profileStr;
         getMetaData( "profile", profileStr );
 
-        // The data format (e.g., png, jpg, etc.)
-        getMetaData( "format", format );
+        // The data format (e.g., png, jpg, etc.). Any format passed in 
+        // in the options is superceded by the one in the database metadata.
+        std::string metaDataFormat;
+        getMetaData( "format", metaDataFormat );
+        if ( !metaDataFormat.empty() )
+            _tileFormat = metaDataFormat;
+
+        // By this point, we require a valid tile format.
+        if ( _tileFormat.empty() )
+            return Status::Error("Required format not in metadata, nor specified in the options.");
+
+        _rw = getReaderWriter( _tileFormat );
+        if ( !_rw.valid() )
+            return Status::Error("No plugin to load format \"" + _tileFormat + "\"");
 
         // Check for bounds and populate DataExtents.
         std::string boundsStr;
@@ -144,60 +197,14 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
             setProfile( profile );     
             OE_INFO << LC << "Profile = " << profileStr << std::endl;
         }
-    }
 
-    // Determine the tile format and get a reader writer for it.        
-    if (_options.format().isSet())
-    {
-        //Get an explicitly defined format
-        _tileFormat = _options.format().value();
-    }
-    else if (!format.empty())
-    {
-        //Try to get it from the database metadata
-        _tileFormat = format;
-    }
-
-    if ( _tileFormat.empty() )
-    {
-        return Status::Error("Required format property is missing");
-    }
-
-    OE_INFO << LC << "Format = " << _tileFormat << std::endl;
-
-    // Get the ReaderWriter
-    _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _tileFormat ); 
-    if ( !_rw.valid() )
-    {
-        _rw = osgDB::Registry::instance()->getReaderWriterForMimeType( _tileFormat );
-        if ( !_rw.valid() )
+        if ( _options.computeLevels() == true )
         {
-            return Status::Error("No plugin is available for format \"" + _tileFormat + "\"");
+            computeLevels();
         }
     }
 
-    // optionally compute existing levels:
-    if ( !isNewDatabase && _options.computeLevels()==true)
-    {
-        computeLevels();
-    }
-
     _emptyImage = ImageUtils::createEmptyImage( 256, 256 );
-
-    // New database setup:
-    if ( isNewDatabase )
-    {
-        // create necessary db tables:
-        createTables();
-
-        // write profile to metadata:
-        std::string profileJSON = getProfile()->toProfileOptions().getConfig().toJSON(false);
-        putMetaData("profile", profileJSON);
-
-        // write format to metadata:
-        if ( !_tileFormat.empty() )
-            putMetaData("format", _tileFormat);
-    }
 
     return STATUS_OK;
 }    

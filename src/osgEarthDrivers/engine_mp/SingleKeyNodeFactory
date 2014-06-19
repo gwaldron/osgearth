@@ -71,6 +71,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::ref_ptr<TileNodeRegistry>      _deadTiles;
         const MPTerrainEngineOptions&       _options;
         UID                                 _engineUID;
+
+        unsigned getMinimumRequiredLevel();
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

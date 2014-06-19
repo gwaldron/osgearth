@@ -24,11 +24,12 @@ using namespace osgEarth;
 
 
 MapFrame::MapFrame( const Map* map, Map::ModelParts parts, const std::string& name ) :
-_initialized( false ),
-_map        ( map ),
-_name       ( name ),
-_mapInfo    ( map ),
-_parts      ( parts )
+_initialized    ( false ),
+_map            ( map ),
+_name           ( name ),
+_mapInfo        ( map ),
+_parts          ( parts ),
+_highestMinLevel( 0 )
 {
     sync();
 }
@@ -40,6 +41,7 @@ _map                 ( src._map.get() ),
 _name                ( name ),
 _mapInfo             ( src._mapInfo ),
 _parts               ( src._parts ),
+_highestMinLevel     ( src._highestMinLevel ),
 _mapDataModelRevision( src._mapDataModelRevision ),
 _imageLayers         ( src._imageLayers ),
 _elevationLayers     ( src._elevationLayers ),
@@ -58,6 +60,11 @@ MapFrame::sync()
     if ( _map.valid() )
     {
         changed = _map->sync( *this );
+
+        if ( changed )
+        {
+            refreshComputedValues();
+        }
     }
     else
     {
@@ -79,6 +86,30 @@ MapFrame::needsSync() const
         (_map->getDataModelRevision() != _mapDataModelRevision || !_initialized);
 }
 
+void
+MapFrame::refreshComputedValues()
+{
+    // cache the min LOD based on all image/elev layers
+    _highestMinLevel = 0;
+
+    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); 
+        i != _imageLayers.end();
+        ++i)
+    {
+        const optional<unsigned>& minLevel = i->get()->getTerrainLayerRuntimeOptions().minLevel();
+        if ( minLevel.isSet() && minLevel.value() > _highestMinLevel )
+            _highestMinLevel = minLevel.value();
+    }
+
+    for(ElevationLayerVector::const_iterator i = _elevationLayers.begin(); 
+        i != _elevationLayers.end();
+        ++i)
+    {
+        const optional<unsigned>& minLevel = i->get()->getTerrainLayerRuntimeOptions().minLevel();
+        if ( minLevel.isSet() && minLevel.value() > _highestMinLevel )
+            _highestMinLevel = minLevel.value();
+    }
+}
 
 bool
 MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,

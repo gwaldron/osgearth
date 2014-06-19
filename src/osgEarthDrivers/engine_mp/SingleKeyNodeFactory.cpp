@@ -51,6 +51,16 @@ _engineUID       ( engineUID )
     //nop
 }
 
+unsigned
+SingleKeyNodeFactory::getMinimumRequiredLevel()
+{
+    // highest required level in the map:
+    unsigned minLevel = _frame.getHighestMinLevel();
+
+    return _options.minLOD().isSet() ?
+        std::max( _options.minLOD().value(), minLevel ) :
+        minLevel;
+}
 
 osg::Node*
 SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary)
@@ -172,8 +182,8 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
         makeTile = true;
     }
 
-    // If there's a minLOD set, and we haven't reached it yet, make the tile.
-    else if ( _options.minLOD().isSet() && key.getLOD() < _options.minLOD().value() )
+    // If there's a minimum LOD set, and we haven't reached it yet, make the tile.
+    else if ( key.getLOD() <= getMinimumRequiredLevel() )
     {
         makeTile = true;
     }

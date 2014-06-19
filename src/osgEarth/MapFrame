@@ -99,6 +99,9 @@ namespace osgEarth
         /** Access to the map's options */
         const MapOptions& getMapOptions() const;
 
+        /** The highest set minLevel() amongst all image and elevation layers */
+        unsigned getHighestMinLevel() const { return _highestMinLevel; }
+
         /**
          * Equivalent to the Map::populateHeightField() method, but operates on the
          * elevation stack snapshot in this MapFrame.
@@ -121,8 +124,11 @@ namespace osgEarth
         ElevationLayerVector _elevationLayers;
         ModelLayerVector _modelLayers;
         MaskLayerVector _maskLayers;
+        unsigned _highestMinLevel;
 
         friend class Map;
+
+        void refreshComputedValues();
     };
 
 }

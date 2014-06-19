@@ -43,12 +43,6 @@ will be missing:
       If you plan to use vector feature data in osgEarth, you probably want this.
     
     * Minizip_ - ZIP file extractor; include this if you want to read KMZ files.
-    
-    * V8_ - Google's JavaScript engine. Include this if you're a Windows user and you want
-      to embed JavaScript code in your earth files. Get the latest version.
-      
-    * JavaScriptCore_ - Apple's JavaScript engine. Include this if you're an OSX or IOS user
-      and you want to embed JavaScript code in your earth files.
       
     * QT_ - Cross-platform UI framework. Point the ``QT_QMAKE_EXECUTABLE`` CMake variable
       to the ``qmake.exe`` you want to use and CMake will populate all the other QT variables.
@@ -56,6 +50,18 @@ will be missing:
     * LevelDB_ - Google's embedded key/value store. Include this if you want to build
       osgEarth's optional "leveldb" cache driver.
 
+    * Duktape_ - Embedded JavaScript engine. Include this is you want to embed JavaScript
+      code in your earth files to control feature styling.
+    
+**Deprecated dependencies**: osgEarth can still use these, but they will probably go away
+in the future:
+
+    * V8_ - Google's JavaScript engine. Include this if you're a Windows user and you want
+      to embed JavaScript code in your earth files. We recommend you use Duktape instead.
+      
+    * JavaScriptCore_ - Apple's JavaScript engine. Include this if you're an OSX or IOS user
+      and you want to embed JavaScript code in your earth files. We receommend you use
+      Duktape instead.
       
 **Optional: get pre-built dependencies**
 
@@ -108,3 +114,4 @@ Here are a few tips.
 .. _Mike Weiblen:   http://mew.cx/osg/
 .. _the forum:      http://forum.osgearth.org
 .. _LevelDB:        https://github.com/pelicanmapping/leveldb
+.. _Duktape:        http://duktape.org

@@ -320,7 +320,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
     {
         ImageLayer* layer = i->get();
 
-        if ( layer->getEnabled() )
+        if ( layer->getEnabled() && layer->isKeyInRange(key) )
         {
             BuildColorData build;
             build.init( key, layer, order, frame.getMapInfo(), _terrainOptions, _liveTiles.get(), model.get() );

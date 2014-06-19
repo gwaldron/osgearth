@@ -217,7 +217,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             {
                 const Layer& layer = _layers[i];
 
-                if ( layer._imageLayer->getVisible() )
+                if ( layer._imageLayer->getVisible() && layer._imageLayer->getOpacity() > 0.0f )
                 {       
                     // activate the visible unit if necessary:
                     if ( activeImageUnit != _imageUnit )

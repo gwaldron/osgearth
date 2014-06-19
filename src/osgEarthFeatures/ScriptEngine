@@ -63,17 +63,34 @@ namespace osgEarth { namespace Features
   class OSGEARTHFEATURES_EXPORT ScriptEngine : public osg::Object
   {
   public:
-    ScriptEngine(const ScriptEngineOptions& options =ScriptEngineOptions()) : _script(options.script()) {}
+    ScriptEngine(const ScriptEngineOptions& options =ScriptEngineOptions()) :
+        _script(options.script()) {}
 
     virtual ~ScriptEngine() { }
 
+    /** Whether the engine supports the specified scripting language */
     virtual bool supported(std::string lang) =0;
-    virtual bool supported(Script* script) =0;
 
-    virtual ScriptResult run(Script* script, Feature const* feature=0L, FilterContext const* context=0L) =0;
+    /** Whether the engine can run the specified script */
+    virtual bool supported(Script* script)
+    {
+        return script ? supported(script->getLanguage()) : false;
+    }
+
+    /** Runs a code snippet. */
     virtual ScriptResult run(const std::string& code, Feature const* feature=0L, FilterContext const* context=0L) =0;
 
-    virtual ScriptResult call(const std::string& function, Feature const* feature=0L, FilterContext const* context=0L) =0;
+    /** Runs a script */
+    virtual ScriptResult run(Script* script, Feature const* feature=0L, FilterContext const* context=0L)
+    {
+        return script ? run(script->getCode(), feature, context) : ScriptResult("", false);
+    }
+
+    /** deprecated */
+    virtual ScriptResult call(const std::string& function, Feature const* feature=0L, FilterContext const* context=0L)
+    {
+        return ScriptResult("", false, "ScriptResult::call not implemented");
+    }
 
   public:
     // META_Object specialization:
@@ -84,7 +101,8 @@ namespace osgEarth { namespace Features
     virtual const char* libraryName() const { return "osgEarth::Features"; }
 
   protected:
-    optional<Script>  _script;
+    // common script to be included in each call to run()
+    optional<Script> _script;
   };
 
   typedef std::list< osg::ref_ptr<ScriptEngine> > ScriptEngineList;

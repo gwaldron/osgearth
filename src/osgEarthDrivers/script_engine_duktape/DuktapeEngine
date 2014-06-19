@@ -30,32 +30,25 @@ namespace osgEarth { namespace Drivers { namespace Duktape
 {
     using namespace osgEarth::Features;
 
+    /**
+     * JavaScript engine built on the Duktape embeddable Javascript
+     * interpreter. http://duktape.org
+     */
     class DuktapeEngine : public osgEarth::Features::ScriptEngine
     {
     public:
-        DuktapeEngine(const ScriptEngineOptions& options =ScriptEngineOptions());
+        /** Construct the engine */
+        DuktapeEngine(const ScriptEngineOptions& options);
 
+        /** Report language support */
         bool supported(std::string lang) { 
             return osgEarth::toLower(lang).compare("javascript") == 0;
         }
 
-        bool supported(Script* script) {
-            return script && supported(script->getLanguage());
-        }
-
+        /** Run a javascript code snippet. */
         ScriptResult run(
-            Script* script, 
-            osgEarth::Features::Feature const* feature,
-            osgEarth::Features::FilterContext const* context);
-
-        ScriptResult run(
-            const std::string& code, 
-            osgEarth::Features::Feature const* feature,
-            osgEarth::Features::FilterContext const* context);
-
-        ScriptResult call(
-            const std::string& function,
-            osgEarth::Features::Feature const* feature,
+            const std::string&                       code, 
+            osgEarth::Features::Feature const*       feature,
             osgEarth::Features::FilterContext const* context);
 
     protected:

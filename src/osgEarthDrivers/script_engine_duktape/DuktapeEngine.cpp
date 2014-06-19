@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "DuktapeEngine"
+#include <osgEarth/JsonUtils>
 #include <sstream>
 
 #define LC "[DuktapeEngine] "
@@ -34,28 +35,42 @@ using namespace osgEarth::Drivers::Duktape;
 
 namespace
 {
+    std::string jsonEncode(duk_context* ctx, const char* str)
+    {
+        duk_push_string(ctx, str);
+        std::string result = duk_json_encode(ctx, -1);
+        duk_pop(ctx);
+        return result;
+    }
+
     // Creates the feature object for ECMA5.
     // TODO: for ECMA6 we might use a Proxy object and C callback? Maybe,
     // but this is pretty quick.
     // TODO: this will cause a Syntax Error for a property key or value that
     // has an invalid encoding -- need to fix that.
-    std::string createFeatureScaffoldEcma5(Feature const* feature)
+    std::string createFeatureScaffoldEcma5(duk_context* ctx, Feature const* feature)
     {
-        std::stringstream buf;
-        buf << "var feature = {";
+        // push a new object:
+        duk_push_object(ctx);
 
+        // add each property to the object:
         const AttributeTable& attrs = feature->getAttrs();
-        int n=0;
         for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
         {
             if ( !a->first.empty() )
             {
-                if ( n > 0 ) buf << ", ";
-                buf << a->first << ":\"" << a->second.getString() << "\"";
-                ++n;
+                duk_push_string(ctx, a->second.getString().c_str());
+                duk_put_prop_string(ctx, -2, a->first.c_str());
             }
         }
-        buf << "};";
+
+        std::stringstream buf;
+        
+        buf << "var feature = "
+            << duk_json_encode(ctx, -1) << ";";
+
+        // pop the encoding result and the object.
+        duk_pop_2(ctx);
 
         // This adds a meta-property "attributes" that allows you to use
         // the idiom: feature.attributes[prop]
@@ -65,6 +80,9 @@ namespace
         return str;
     }
 
+#if 0
+    // not used at the moment, but let's keep this here as a reference
+    // example for C callback usage:
     extern "C"
     {
         /**
@@ -79,6 +97,7 @@ namespace
             return 1;
         }
     }
+#endif
 }
 
 //............................................................................
@@ -111,9 +130,9 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
         // new value stack:
         duk_push_global_object( _ctx );
 
-        // install C bindings.
-        duk_push_c_function( _ctx, oeduk_get_feature_attr, 2/*numargs*/);
-        duk_put_prop_string( _ctx, -2, "c_get_feature_attr" );
+        //// install C bindings.
+        //duk_push_c_function( _ctx, oeduk_get_feature_attr, 2/*numargs*/);
+        //duk_put_prop_string( _ctx, -2, "c_get_feature_attr" );
     }
 }
 
@@ -129,8 +148,8 @@ DuktapeEngine::Context::~Context()
 //............................................................................
 
 DuktapeEngine::DuktapeEngine(const ScriptEngineOptions& options) :
-ScriptEngine(options),
-_options( options )
+ScriptEngine( options ),
+_options    ( options )
 {
     //nop
 }
@@ -138,17 +157,6 @@ _options( options )
 DuktapeEngine::~DuktapeEngine()
 {
     //nop
-}
-
-ScriptResult
-DuktapeEngine::run(Script*              script, 
-                   Feature const*       feature,
-                   FilterContext const* context)
-{
-    if (!script)
-        return ScriptResult(EMPTY_STRING, false, "Script is null.");
-
-    return run(script->getCode(), feature, context);
 }
 
 ScriptResult
@@ -171,7 +179,7 @@ DuktapeEngine::run(const std::string&   code,
     duk_context* ctx = c._ctx;
 #endif
 
-    std::string e = code;
+    std::string finalCode = code;
 
     if (feature)
     {
@@ -179,21 +187,21 @@ DuktapeEngine::run(const std::string&   code,
         //duk_push_pointer(ctx, (void*)feature);
         //duk_put_prop_string(ctx, -2, "c_feature");
         
-        e = createFeatureScaffoldEcma5(feature) + "\n" + e;
+        finalCode = createFeatureScaffoldEcma5(ctx, feature) + "\n" + finalCode;
     }
 
     std::string resultString;
 
     // run the script. On error, the top of stack will hold the error
     // message instead of the return value.
-    bool ok = (duk_peval_string(ctx, e.c_str()) == 0);
+    bool ok = (duk_peval_string(ctx, finalCode.c_str()) == 0);
     const char* resultVal = duk_to_string(ctx, -1);
     if ( resultVal )
         resultString = resultVal;
 
     if ( !ok )
     {
-        OE_WARN << LC << "Error: source =\n" << e << std::endl;
+        OE_WARN << LC << "Error: source =\n" << finalCode << std::endl;
     }
 
     // pop the return value:
@@ -205,10 +213,4 @@ DuktapeEngine::run(const std::string&   code,
     return ok ?
         ScriptResult(resultString, true) :
         ScriptResult("", false, resultString);
-}
-
-ScriptResult
-DuktapeEngine::call(const std::string& function, osgEarth::Features::Feature const* feature, osgEarth::Features::FilterContext const* context)
-{
-    return ScriptResult("", false);
 }

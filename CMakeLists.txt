@@ -122,10 +122,13 @@ FIND_PACKAGE(LevelDB)
 FIND_PACKAGE(SilverLining)
 FIND_PACKAGE(Triton)
 
+# JavaScript Engines:
 SET(V8_DIR "" CACHE PATH "set to base V8 install path")
 FIND_PACKAGE(V8)
-
 FIND_PACKAGE(JavaScriptCore)
+
+SET(DUKTAPE_DIR "" CACHE PATH "set to base DUKTAPE install path")
+FIND_PACKAGE(Duktape)
 
 FIND_PACKAGE(Qt5Core QUIET)
 FIND_PACKAGE(Qt5Widgets QUIET)

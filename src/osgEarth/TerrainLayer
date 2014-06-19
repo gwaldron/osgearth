@@ -457,6 +457,9 @@ namespace osgEarth
          * TODO: is it legal to set this at any time?
          */
         void setCache( Cache* cache );
+
+        // read the tile source's cache policy hint and apply as necessary
+        void refreshTileSourceCachePolicyHint();
     };
 
     typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;

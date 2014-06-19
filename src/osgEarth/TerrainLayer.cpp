@@ -278,6 +278,26 @@ TerrainLayer::setTargetProfileHint( const Profile* profile )
         CacheBinMetadata meta;
         getCacheBinMetadata( profile, meta );
     }
+
+    // If the tilesource was already initialized, re-read the 
+    // cache policy hint since it may change due to the target
+    // profile change.
+    refreshTileSourceCachePolicyHint();
+}
+
+void
+TerrainLayer::refreshTileSourceCachePolicyHint()
+{
+    if ( _tileSource.valid() && !_initOptions.cachePolicy().isSet() )
+    {
+        CachePolicy hint = _tileSource->getCachePolicyHint( _targetProfileHint.get() );
+
+        if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
+        {
+            setCachePolicy( hint );
+            OE_INFO << LC << "Caching disabled (by policy hint)" << std::endl;
+        }
+    }
 }
 
 TileSource* 
@@ -302,16 +322,7 @@ TerrainLayer::getTileSource() const
             // a policy in the initialization options. In other words, the hint takes
             // ultimate priority (even over the Registry override) unless expressly
             // overridden in the layer options!
-            if ( _tileSource.valid() && !_initOptions.cachePolicy().isSet() )
-            {
-                CachePolicy hint = _tileSource->getCachePolicyHint( _targetProfileHint.get() );
-
-                if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
-                {
-                    const_cast<TerrainLayer*>(this)->setCachePolicy( hint );
-                    OE_INFO << LC << "Caching disabled (by policy hint)" << std::endl;
-                }
-            }
+            const_cast<TerrainLayer*>(this)->refreshTileSourceCachePolicyHint();
 
             // Unless the user has already configured an expiration policy, use the "last modified"
             // timestamp of the TileSource to set a minimum valid cache entry timestamp.

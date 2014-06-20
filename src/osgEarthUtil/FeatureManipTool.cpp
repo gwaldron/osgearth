@@ -23,6 +23,7 @@
 #include <osgEarth/ECEF>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/GeoMath>
 #include <osgViewer/View>
 #include <osg/Depth>
 

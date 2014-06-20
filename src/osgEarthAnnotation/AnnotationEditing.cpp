@@ -18,7 +18,7 @@
 */
 
 #include <osgEarthAnnotation/AnnotationEditing>
-
+#include <osgEarth/GeoMath>
 #include <osg/io_utils>
 
 using namespace osgEarth::Annotation;

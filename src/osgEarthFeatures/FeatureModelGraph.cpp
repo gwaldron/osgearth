@@ -1221,6 +1221,12 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
             _depthOffsetAdapter.setGraph( this );
             _depthOffsetAdapter.setDepthOffsetOptions( *render->depthOffset() );
         }
+
+        // apply render order when draping:
+        if ( _drapeable && render && render->order().isSet() )
+        {
+            _drapeable->setRenderOrder( render->order()->eval() );
+        }
     }
 }
 

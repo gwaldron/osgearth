@@ -77,12 +77,12 @@ namespace osgEarth
     protected:
         /** dtor */
         virtual ~OverlayNode();
+        osg::ref_ptr<osg::Group> _overlayProxyContainer;
 
     private:
         bool                          _active;
         bool                          _dirty;
         bool                          _newActive;
-        osg::ref_ptr<osg::Group>      _overlayProxyContainer;
         osg::observer_ptr<MapNode>    _mapNode;
         TechniqueProvider             _getGroup;
 

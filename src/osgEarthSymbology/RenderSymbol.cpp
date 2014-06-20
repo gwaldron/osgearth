@@ -28,7 +28,8 @@ RenderSymbol::RenderSymbol(const Config& conf) :
 Symbol          ( conf ),
 _depthTest      ( true ),
 _lighting       ( true ),
-_backfaceCulling( true )
+_backfaceCulling( true ),
+_order          ( 0 )
 {
     mergeConfig(conf);
 }
@@ -42,6 +43,7 @@ RenderSymbol::getConfig() const
     conf.addIfSet   ( "lighting",         _lighting );
     conf.addObjIfSet( "depth_offset",     _depthOffset );
     conf.addIfSet   ( "backface_culling", _backfaceCulling );
+    conf.addObjIfSet( "order",            _order );
     return conf;
 }
 
@@ -52,6 +54,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "lighting",         _lighting );
     conf.getObjIfSet( "depth_offset",     _depthOffset );
     conf.getIfSet   ( "backface_culling", _backfaceCulling );
+    conf.getObjIfSet( "order",            _order );
 }
 
 void
@@ -86,5 +89,8 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "render-backface-culling") ) {
         style.getOrCreate<RenderSymbol>()->backfaceCulling() = as<bool>(c.value(), *defaults.backfaceCulling() );
+    }
+    else if ( match(c.key(), "render-order") ) {
+        style.getOrCreate<RenderSymbol>()->order() = !c.value().empty() ? NumericExpression(c.value()) : *defaults.order();
     }
 }

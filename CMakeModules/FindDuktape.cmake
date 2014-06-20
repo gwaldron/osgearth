@@ -42,11 +42,11 @@ FIND_LIBRARY(DUKTAPE_LIBRARY_RELEASE
 FIND_LIBRARY(DUKTAPE_LIBRARY_DEBUG
 	NAMES duktaped
 	PATHS
-	${V8_DIR}
-	${V8_DIR}/lib
-	${V8_DIR}/build/Debug/lib
-	$ENV{V8_DIR}
-	$ENV{V8_DIR}/lib
+	${DUKTAPE_DIR}
+	${DUKTAPE_DIR}/lib
+	${DUKTAPE_DIR}/build/Debug/lib
+	$ENV{DUKTAPE_DIR}
+	$ENV{DUKTAPE_DIR}/lib
 	~/Library/Frameworks
 	/Library/Frameworks
 	/usr/local/lib

@@ -77,6 +77,7 @@ namespace osgEarth { namespace Drivers { namespace MBTiles
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options> _dbOptions;
         std::string _tileFormat;
+        bool _forceRGB;
 
         // because no one knows if/when sqlite3 is threadsafe.
         mutable Threading::Mutex _mutex; 

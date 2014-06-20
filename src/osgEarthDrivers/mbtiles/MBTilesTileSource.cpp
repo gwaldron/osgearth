@@ -59,7 +59,8 @@ TileSource( options ),
 _options  ( options ),      
 _database ( NULL ),
 _minLevel ( 0 ),
-_maxLevel ( 20 )
+_maxLevel ( 20 ),
+_forceRGB ( false )
 {
     //nop
 }
@@ -204,7 +205,17 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         }
     }
 
-    _emptyImage = ImageUtils::createEmptyImage( 256, 256 );
+    // do we require RGB? for jpeg?
+    _forceRGB =
+        osgEarth::endsWith(_tileFormat, "jpg", false) ||
+        osgEarth::endsWith(_tileFormat, "jpeg", false);
+
+    // make an empty image.
+    int size = 256;
+    _emptyImage = new osg::Image();
+    _emptyImage->allocateImage(size, size, 1, _forceRGB? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE);
+    unsigned char *data = _emptyImage->data(0,0);
+    memset(data, 0, (_forceRGB?3:4) * size * size);
 
     return STATUS_OK;
 }    
@@ -298,6 +309,27 @@ MBTilesTileSource::storeImage(const TileKey&    key,
 
     Threading::ScopedMutexLock exclusiveLock(_mutex);
 
+    // encode the data stream:
+    std::stringstream buf;
+    osgDB::ReaderWriter::WriteResult wr;
+    if ( _forceRGB && ImageUtils::hasAlphaChannel(image) )
+    {
+        osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB8(image);
+        wr = _rw->writeImage(*(rgb.get()), buf);
+    }
+    else
+    {
+        wr = _rw->writeImage(*image, buf);
+    }
+
+    if ( wr.error() )
+    {
+        OE_WARN << LC << "Image encoding failed: " << wr.message() << std::endl;
+        return false;
+    }
+
+    std::string value = buf.str();
+
     int z = key.getLOD();
     int x = key.getTileX();
     int y = key.getTileY();
@@ -322,10 +354,7 @@ MBTilesTileSource::storeImage(const TileKey&    key,
     sqlite3_bind_int( insert, 2, x );
     sqlite3_bind_int( insert, 3, y );
 
-    // encode and bind data:
-    std::stringstream buf;
-    osgDB::ReaderWriter::WriteResult wr = _rw->writeImage(*image, buf);
-    std::string value = buf.str();
+    // bind the data blob:
     sqlite3_bind_blob( insert, 4, value.c_str(), value.length(), SQLITE_STATIC );
 
     // run the sql.

@@ -43,6 +43,13 @@ namespace osgEarth { namespace Drivers
         const optional<std::string>& format() const { return _format; }
 
         /**
+         * Whether to compress the data. This isn't necessary for formats that
+         * are already compressed, like JPEG
+         */
+        optional<bool>& compress() { return _compress; }
+        const optional<bool>& compress() const { return _compress; }
+
+        /**
          * Whether or not to automatically compute the valid levels of the MBTiles file.  By default this is true and will
          * scan the table to determine the min/max.  This can take time when first loading the file so if you know the levels of your file 
          * up front you can set this to false and just use the min_level max_level settings of the tile source.
@@ -64,6 +71,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("filename", _filename);            
             conf.updateIfSet("format", _format);            
             conf.updateIfSet("compute_levels", _computeLevels);
+            conf.updateIfSet("compress", _compress);
             return conf;
         }
 
@@ -76,12 +84,14 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "filename", _filename );
             conf.getIfSet( "format", _format );
             conf.getIfSet( "compute_levels", _computeLevels );
+            conf.getIfSet( "compress", _compress );
         }
 
     private:
         optional<URI>         _filename;        
         optional<std::string> _format;
         optional<bool>        _computeLevels;
+        optional<bool>        _compress;
     };
 
 } } // namespace osgEarth::Drivers

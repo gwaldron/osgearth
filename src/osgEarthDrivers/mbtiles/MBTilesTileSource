@@ -21,6 +21,7 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/ThreadingUtils>
+#include <osgDB/ObjectWrapper>
 
 // forward declare
 struct sqlite3;
@@ -76,6 +77,7 @@ namespace osgEarth { namespace Drivers { namespace MBTiles
 
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options> _dbOptions;
+        osg::ref_ptr<osgDB::BaseCompressor> _compressor;
         std::string _tileFormat;
         bool _forceRGB;
 

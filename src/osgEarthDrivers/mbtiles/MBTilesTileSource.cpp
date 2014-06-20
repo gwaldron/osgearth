@@ -122,6 +122,17 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
 
         // write format to metadata:
         putMetaData("format", _tileFormat);
+
+        // compression?
+        if ( _options.compress().isSetTo(true) )
+        {
+            _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
+            if ( _compressor.valid() )
+            {
+                putMetaData("compression", "zlib");
+                OE_INFO << LC << "Data will be compressed (zlib)" << std::endl;
+            }
+        }
     }
 
     // If the database pre-existed, read in the information from the metadata.
@@ -144,6 +155,18 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         _rw = getReaderWriter( _tileFormat );
         if ( !_rw.valid() )
             return Status::Error("No plugin to load format \"" + _tileFormat + "\"");
+
+        // check for compression.
+        std::string compression;
+        getMetaData("compression", compression);
+        if ( !compression.empty() )
+        {
+            _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor(compression);
+            if ( !_compressor.valid() )
+                return Status::Error("Cannot find compressor \"" + compression + "\"");
+            else
+                OE_INFO << LC << "Data is compressed (" << compression << ")" << std::endl;
+        }
 
         // Check for bounds and populate DataExtents.
         std::string boundsStr;
@@ -267,10 +290,10 @@ MBTilesTileSource::createImage(const TileKey&    key,
     }
 
     bool valid = true;        
+
     sqlite3_bind_int( select, 1, z );
     sqlite3_bind_int( select, 2, x );
     sqlite3_bind_int( select, 3, y );
-
 
     osg::Image* result = NULL;
     rc = sqlite3_step( select );
@@ -278,16 +301,36 @@ MBTilesTileSource::createImage(const TileKey&    key,
     {                     
         // the pointer returned from _blob gets freed internally by sqlite, supposedly
         const char* data = (const char*)sqlite3_column_blob( select, 0 );
-        int imageBufLen = sqlite3_column_bytes( select, 0 );
+        int dataLen = sqlite3_column_bytes( select, 0 );
 
-        // deserialize the image from the buffer:
-        std::string imageString( data, imageBufLen );
-        std::stringstream imageBufStream( imageString );
-        osgDB::ReaderWriter::ReadResult rr = _rw->readImage( imageBufStream );
-        if (rr.validImage())
+        std::string dataBuffer( data, dataLen );
+
+        // decompress if necessary:
+        if ( _compressor.valid() )
         {
-            result = rr.takeImage();                
-        }            
+            std::istringstream inputStream(dataBuffer);
+            std::string value;
+            if ( !_compressor->decompress(inputStream, value) )
+            {
+                OE_WARN << LC << "Decompression failed" << std::endl;
+                valid = false;
+            }
+            else
+            {
+                dataBuffer = value;
+            }
+        }
+
+        // decode the raw image data:
+        if ( valid )
+        {
+            std::istringstream inputStream(dataBuffer);
+            osgDB::ReaderWriter::ReadResult rr = _rw->readImage( inputStream );
+            if (rr.validImage())
+            {
+                result = rr.takeImage();                
+            }
+        }
     }
     else
     {
@@ -329,6 +372,18 @@ MBTilesTileSource::storeImage(const TileKey&    key,
     }
 
     std::string value = buf.str();
+    
+    // compress if necessary:
+    if ( _compressor.valid() )
+    {
+        std::ostringstream output;
+        if ( !_compressor->compress(output, value) )
+        {
+            OE_WARN << LC << "Compressor failed" << std::endl;
+            return false;
+        }
+        value = output.str();
+    }
 
     int z = key.getLOD();
     int x = key.getTileX();

@@ -25,8 +25,10 @@
 
 #define DEFAULT_PRUNE_ACCESS_COUNT 40
 
+#if 0 // do not share ssets. there are issues.
 #if OSG_MIN_VERSION_REQUIRED(3,1,4)
 #   define SHARE_STATESETS 1
+#endif
 #endif
 
 using namespace osgEarth;

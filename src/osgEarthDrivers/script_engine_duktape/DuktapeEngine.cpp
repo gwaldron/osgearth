@@ -141,8 +141,10 @@ DuktapeEngine::run(const std::string&   code,
     duk_context* ctx = c._ctx;
 #endif
 
-    // encode the feature in the global object:
-    updateFeature(ctx, feature);
+	if(feature) {
+		// encode the feature in the global object:
+		updateFeature(ctx, feature);
+	}
 
 
     // run the script. On error, the top of stack will hold the error

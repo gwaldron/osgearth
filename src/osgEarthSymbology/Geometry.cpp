@@ -153,7 +153,9 @@ Geometry::buffer(double distance,
 {
 #ifdef OSGEARTH_HAVE_GEOS   
 
-    geom::Geometry* inGeom = GEOSUtils::importGeometry( this );
+    GEOSContext gc;
+
+    geom::Geometry* inGeom = gc.importGeometry( this );
     if ( inGeom )
     {
         buffer::BufferParameters::EndCapStyle geosEndCap =
@@ -186,11 +188,11 @@ Geometry::buffer(double distance,
         {
             if (params._singleSided)
             {
-                outGeom = bufBuilder.bufferLineSingleSided(inGeom, distance, params._leftSide );
+                outGeom = bufBuilder.bufferLineSingleSided(inGeom, distance, params._leftSide);
             }
             else
             {
-                outGeom = bufBuilder.buffer(inGeom, distance );
+                outGeom = bufBuilder.buffer(inGeom, distance);
             }
         }
         catch( const util::TopologyException& ex )
@@ -199,14 +201,19 @@ Geometry::buffer(double distance,
             outGeom = 0L;
         }
 
+        bool sharedFactory = 
+            inGeom && outGeom &&
+            inGeom->getFactory() == outGeom->getFactory();
+
         if ( outGeom )
         {
-            output = GEOSUtils::exportGeometry( outGeom );
-            outGeom->getFactory()->destroyGeometry( outGeom );
+            output = gc.exportGeometry( outGeom );
+            gc.disposeGeometry( outGeom );
         }
 
-        inGeom->getFactory()->destroyGeometry( inGeom );
+        gc.disposeGeometry( inGeom );
     }
+
     return output.valid();
 
 #else // OSGEARTH_HAVE_GEOS
@@ -222,18 +229,19 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
 {
 #ifdef OSGEARTH_HAVE_GEOS
 
-    geom::GeometryFactory* f = new geom::GeometryFactory();
+    GEOSContext gc;
 
     //Create the GEOS Geometries
-    geom::Geometry* inGeom = GEOSUtils::importGeometry( this );
-    geom::Geometry* cropGeom = GEOSUtils::importGeometry( cropPoly );
+    geom::Geometry* inGeom   = gc.importGeometry( this );
+    geom::Geometry* cropGeom = gc.importGeometry( cropPoly );
 
     if ( inGeom )
     {    
         geom::Geometry* outGeom = 0L;
         try {
             outGeom = overlay::OverlayOp::overlayOp(
-                inGeom, cropGeom,
+                inGeom,
+                cropGeom,
                 overlay::OverlayOp::opINTERSECTION );
         }
         catch( ... ) {
@@ -243,8 +251,9 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
 
         if ( outGeom )
         {
-            output = GEOSUtils::exportGeometry( outGeom );
-            f->destroyGeometry( outGeom );
+            output = gc.exportGeometry( outGeom );
+            gc.disposeGeometry( outGeom );
+
             if ( output.valid() && !output->isValid() )
             {
                 output = 0L;
@@ -253,10 +262,9 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
     }
 
     //Destroy the geometry
-    f->destroyGeometry( cropGeom );
-    f->destroyGeometry( inGeom );
+    gc.disposeGeometry( cropGeom );
+    gc.disposeGeometry( inGeom );
 
-    delete f;
     return output.valid();
 
 #else // OSGEARTH_HAVE_GEOS
@@ -272,18 +280,19 @@ Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output
 {
 #ifdef OSGEARTH_HAVE_GEOS
 
-    geom::GeometryFactory* f = new geom::GeometryFactory();
+    GEOSContext gc;
 
     //Create the GEOS Geometries
-    geom::Geometry* inGeom = GEOSUtils::importGeometry( this );
-    geom::Geometry* diffGeom = GEOSUtils::importGeometry( diffPolygon );
+    geom::Geometry* inGeom   = gc.importGeometry( this );
+    geom::Geometry* diffGeom = gc.importGeometry( diffPolygon );
 
     if ( inGeom )
     {    
         geom::Geometry* outGeom = 0L;
         try {
             outGeom = overlay::OverlayOp::overlayOp(
-                inGeom, diffGeom,
+                inGeom,
+                diffGeom,
                 overlay::OverlayOp::opDIFFERENCE );
         }
         catch( ... ) {
@@ -293,8 +302,9 @@ Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output
 
         if ( outGeom )
         {
-            output = GEOSUtils::exportGeometry( outGeom );
-            f->destroyGeometry( outGeom );
+            output = gc.exportGeometry( outGeom );
+            gc.disposeGeometry( outGeom );
+
             if ( output.valid() && !output->isValid() )
             {
                 output = 0L;
@@ -303,10 +313,9 @@ Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output
     }
 
     //Destroy the geometry
-    f->destroyGeometry( diffGeom );
-    f->destroyGeometry( inGeom );
+    gc.disposeGeometry( diffGeom );
+    gc.disposeGeometry( inGeom );
 
-    delete f;
     return output.valid();
 
 #else // OSGEARTH_HAVE_GEOS

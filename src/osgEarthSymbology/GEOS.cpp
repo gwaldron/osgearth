@@ -43,190 +43,207 @@ using namespace geos;
 using namespace geos::operation;
 
 
-static
-geom::CoordinateSequence*
-vec3dArray2CoordSeq( const Symbology::Geometry* input, bool close, const geom::CoordinateSequenceFactory* factory )
-{   
-    bool needToClose = close && input->size() > 2 && input->front() != input->back();
-
-    std::vector<geos::geom::Coordinate>* coords = new std::vector<geom::Coordinate>();
-    coords->reserve( input->size() + (needToClose ? 1 : 0) );
-    for( osg::Vec3dArray::const_iterator i = input->begin(); i != input->end(); ++i )
-    {
-        coords->push_back( geom::Coordinate( i->x(), i->y() ) ); //, i->z() ));
-    }
-    if ( needToClose )
-    {
-        coords->push_back( coords->front() );
-    }
-    geom::CoordinateSequence* seq = factory->create( coords );
-
-    return seq;
-}
-
-static geom::Geometry*
-import( const Symbology::Geometry* input, const geom::GeometryFactory* f )
+namespace
 {
-    geom::Geometry* output = 0L;
+    geom::CoordinateSequence*
+    vec3dArray2CoordSeq( const Symbology::Geometry* input, bool close, const geom::CoordinateSequenceFactory* factory )
+    {   
+        bool needToClose = close && input->size() > 2 && input->front() != input->back();
 
-    if ( input->getType() == Symbology::Geometry::TYPE_UNKNOWN )
-    {
-        output = 0L;
-    }
-    else if ( input->getType() == Symbology::Geometry::TYPE_MULTI )
-    {
-        const Symbology::MultiGeometry* multi = static_cast<const Symbology::MultiGeometry*>( input );
-
-        Symbology::Geometry::Type compType = multi->getComponentType();
-
-        std::vector<geom::Geometry*>* children = new std::vector<geom::Geometry*>();
-        for( Symbology::GeometryCollection::const_iterator i = multi->getComponents().begin(); i != multi->getComponents().end(); ++i ) 
+        std::vector<geos::geom::Coordinate>* coords = new std::vector<geom::Coordinate>();
+        coords->reserve( input->size() + (needToClose ? 1 : 0) );
+        for( osg::Vec3dArray::const_iterator i = input->begin(); i != input->end(); ++i )
         {
-            geom::Geometry* child = import( i->get(), f );
-            if ( child )
-                children->push_back( child );
+            coords->push_back( geom::Coordinate( i->x(), i->y() ) ); //, i->z() ));
         }
-        if ( children->size() > 0 )
+        if ( needToClose )
         {
-            if ( compType == Symbology::Geometry::TYPE_POLYGON )
-                output = f->createMultiPolygon( children );
-            else if ( compType == Symbology::Geometry::TYPE_LINESTRING )
-                output = f->createMultiLineString( children );
-            else if ( compType == Symbology::Geometry::TYPE_POINTSET )
-                output = f->createMultiPoint( children );
+            coords->push_back( coords->front() );
+        }
+        geom::CoordinateSequence* seq = factory->create( coords );
+
+        return seq;
+    }
+
+    geom::Geometry*
+    import( const Symbology::Geometry* input, const geom::GeometryFactory* f )
+    {
+        geom::Geometry* output = 0L;
+
+        if ( input->getType() == Symbology::Geometry::TYPE_UNKNOWN )
+        {
+            output = 0L;
+        }
+        else if ( input->getType() == Symbology::Geometry::TYPE_MULTI )
+        {
+            const Symbology::MultiGeometry* multi = static_cast<const Symbology::MultiGeometry*>( input );
+
+            Symbology::Geometry::Type compType = multi->getComponentType();
+
+            std::vector<geom::Geometry*>* children = new std::vector<geom::Geometry*>();
+            for( Symbology::GeometryCollection::const_iterator i = multi->getComponents().begin(); i != multi->getComponents().end(); ++i ) 
+            {
+                geom::Geometry* child = import( i->get(), f );
+                if ( child )
+                    children->push_back( child );
+            }
+            if ( children->size() > 0 )
+            {
+                if ( compType == Symbology::Geometry::TYPE_POLYGON )
+                    output = f->createMultiPolygon( children );
+                else if ( compType == Symbology::Geometry::TYPE_LINESTRING )
+                    output = f->createMultiLineString( children );
+                else if ( compType == Symbology::Geometry::TYPE_POINTSET )
+                    output = f->createMultiPoint( children );
+                else
+                    output = f->createGeometryCollection( children );
+            }
             else
-                output = f->createGeometryCollection( children );
+                delete children;
         }
         else
-            delete children;
-    }
-    else
-    {
-        // any other type will at least contain points:
-        geom::CoordinateSequence* seq = 0L;
-        try
         {
-            switch( input->getType() )
+            // any other type will at least contain points:
+            geom::CoordinateSequence* seq = 0L;
+            try
             {
-            case Symbology::Geometry::TYPE_UNKNOWN: break;
-            case Symbology::Geometry::TYPE_MULTI: break;
-            case Symbology::Geometry::TYPE_POINTSET:
-                seq = vec3dArray2CoordSeq( input, false, f->getCoordinateSequenceFactory() );
-                if ( seq ) output = f->createPoint( seq );
-                break;
-
-            case Symbology::Geometry::TYPE_LINESTRING:
-                seq = vec3dArray2CoordSeq( input, false, f->getCoordinateSequenceFactory() );
-                if ( seq ) output = f->createLineString( seq );
-                break;
-
-            case Symbology::Geometry::TYPE_RING:
-                seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
-                if ( seq ) output = f->createLinearRing( seq );
-                break;
-
-            case Symbology::Geometry::TYPE_POLYGON:
-                seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
-                geom::LinearRing* shell = 0L;
-                if ( seq )
-                    shell = f->createLinearRing( seq );
-
-                if ( shell )
+                switch( input->getType() )
                 {
-                    const Symbology::Polygon* poly = static_cast<const Symbology::Polygon*>(input);
-                    std::vector<geom::Geometry*>* holes = poly->getHoles().size() > 0 ? new std::vector<geom::Geometry*>() : 0L;
-                    for( Symbology::RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
+                case Symbology::Geometry::TYPE_UNKNOWN: 
+                    break;
+                case Symbology::Geometry::TYPE_MULTI: break;
+
+                case Symbology::Geometry::TYPE_POINTSET:
+                    seq = vec3dArray2CoordSeq( input, false, f->getCoordinateSequenceFactory() );
+                    if ( seq ) output = f->createPoint( seq );
+                    break;
+
+                case Symbology::Geometry::TYPE_LINESTRING:
+                    seq = vec3dArray2CoordSeq( input, false, f->getCoordinateSequenceFactory() );
+                    if ( seq ) output = f->createLineString( seq );
+                    break;
+
+                case Symbology::Geometry::TYPE_RING:
+                    seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
+                    if ( seq ) output = f->createLinearRing( seq );
+                    break;
+
+                case Symbology::Geometry::TYPE_POLYGON:
+                    seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
+                    geom::LinearRing* shell = 0L;
+                    if ( seq )
+                        shell = f->createLinearRing( seq );
+
+                    if ( shell )
                     {
-                        geom::Geometry* hole = import( r->get(), f );
-                        if ( hole ) holes->push_back( hole );
+                        const Symbology::Polygon* poly = static_cast<const Symbology::Polygon*>(input);
+                        std::vector<geom::Geometry*>* holes = poly->getHoles().size() > 0 ? new std::vector<geom::Geometry*>() : 0L;
+                        for( Symbology::RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
+                        {
+                            geom::Geometry* hole = import( r->get(), f );
+                            if ( hole ) holes->push_back( hole );
+                        }
+                        if ( holes && holes->size() == 0 )
+                        {
+                            delete holes;
+                            holes = 0L;
+                        }
+                        output = f->createPolygon( shell, holes );
                     }
-                    if ( holes && holes->size() == 0 )
-                    {
-                        delete holes;
-                        holes = 0L;
-                    }
-                    output = f->createPolygon( shell, holes );
-                }
                 
-                break;
+                    break;
+                }
+            }
+            catch( util::IllegalArgumentException )
+            {
+                // catch GEOS exceptions..
+                //if ( seq )
+                //    delete seq;
+
+                OE_NOTICE << "GEOS::import: Removed degenerate geometry" << std::endl;
             }
         }
-        catch( util::IllegalArgumentException )
-        {
-            // catch GEOS exceptions..
-            //if ( seq )
-            //    delete seq;
 
-            OE_NOTICE << "GEOS::import: Removed degenerate geometry" << std::endl;
-        }
+        return output;
     }
 
-    return output;
+    Symbology::Geometry*
+    exportPolygon( const geom::Polygon* input )
+    {
+        Symbology::Polygon* output = 0L;
+
+        const geom::LineString* outerRing = input->getExteriorRing();
+        if ( outerRing )
+        {
+            // leaks here:
+            const geom::CoordinateSequence* s = outerRing->getCoordinatesRO();
+
+            output = new Symbology::Polygon( s->getSize() );
+
+            for( unsigned int j=0; j<s->getSize(); j++ ) 
+            {
+                const geom::Coordinate& c = s->getAt( j );
+                output->push_back( osg::Vec3d( c.x, c.y, 0 ) ); 
+            }
+            output->rewind( Symbology::Ring::ORIENTATION_CCW );
+
+            for( unsigned k=0; k < input->getNumInteriorRing(); k++ )
+            {
+                const geom::LineString* inner = input->getInteriorRingN( k );
+                const geom::CoordinateSequence* s = inner->getCoordinatesRO();
+                Symbology::Ring* hole = new Symbology::Ring( s->getSize() );
+                for( unsigned int m = 0; m<s->getSize(); m++ )
+                {
+                    const geom::Coordinate& c = s->getAt( m );
+                    hole->push_back( osg::Vec3d( c.x, c.y, 0 ) );
+                }
+                hole->rewind( Symbology::Ring::ORIENTATION_CW );
+                output->getHoles().push_back( hole );
+            }
+        }
+        return output;
+    }
+}
+
+
+GEOSContext::GEOSContext()
+{
+    // double-precison:
+    geos::geom::PrecisionModel* pm = new geos::geom::PrecisionModel(geom::PrecisionModel::FLOATING);
+
+    // Factory will clone the PM
+    _factory = new geos::geom::GeometryFactory( pm );
+
+    // Delete the template.
+    delete pm;
+}
+
+GEOSContext::~GEOSContext()
+{
+    delete _factory;
 }
 
 geom::Geometry*
-GEOSUtils::importGeometry( const Symbology::Geometry* input )
+GEOSContext::importGeometry(const Symbology::Geometry* input)
 {
     geom::Geometry* output = 0L;
     if ( input && input->isValid() )
     {
-        geom::PrecisionModel* pm = new geom::PrecisionModel( geom::PrecisionModel::FLOATING );
-        const geom::GeometryFactory* f = new geom::GeometryFactory( pm );
-
-        output = import( input, f );
+        output = import( input, _factory );
 
         // if output is ok, it will have a pointer to f. this is probably a leak.
         // TODO: Check whether this is a leak!! -gw
-        if ( !output )
-            delete f;
+        //if ( !output )
+        //    delete f;
     }
     return output;
 }
 
-static Symbology::Geometry*
-exportPolygon( const geom::Polygon* input )
-{
-    Symbology::Polygon* output = 0L;
-    const geom::LineString* outerRing = input->getExteriorRing();
-    if ( outerRing )
-    {
-        const geom::CoordinateSequence* s = outerRing->getCoordinates();
-        output = new Symbology::Polygon( s->getSize() );
-        for( unsigned int j=0; j<s->getSize(); j++ ) 
-        {
-            const geom::Coordinate& c = s->getAt( j );
-            output->push_back( osg::Vec3d( c.x, c.y, 0 ) ); 
-        }
-        output->rewind( Symbology::Ring::ORIENTATION_CCW );
 
-        for( unsigned k=0; k < input->getNumInteriorRing(); k++ )
-        {
-            const geom::LineString* inner = input->getInteriorRingN( k );
-            const geom::CoordinateSequence* s = inner->getCoordinates();
-            Symbology::Ring* hole = new Symbology::Ring( s->getSize() );
-            for( unsigned int m = 0; m<s->getSize(); m++ )
-            {
-                const geom::Coordinate& c = s->getAt( m );
-                hole->push_back( osg::Vec3d( c.x, c.y, 0 ) );
-            }
-            hole->rewind( Symbology::Ring::ORIENTATION_CW );
-            output->getHoles().push_back( hole );
-        }
-    }
-    return output;
-}
 
 Symbology::Geometry*
-GEOSUtils::exportGeometry( const geom::Geometry* input )
+GEOSContext::exportGeometry(const geom::Geometry* input)
 {
-    //// first verify that the input is valid.
-    //valid::IsValidOp validator( input );
-    //if ( !validator.isValid() )
-    //{
-    //    OE_NOTICE << "GEOS: discarding invalid geometry" << std::endl;
-    //    return 0L;
-    //}
-
     Symbology::GeometryCollection parts;
 
     if ( dynamic_cast<const geom::Point*>( input ) )
@@ -284,7 +301,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
 
     if ( parts.size() == 1 )
     {
-        osg::ref_ptr<Symbology::Geometry> part = parts.front();
+        osg::ref_ptr<Symbology::Geometry> part = parts.front().get();
         parts.clear();
         return part.release();
     }
@@ -295,6 +312,19 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     else
     {
         return 0L;
+    }
+}
+
+
+void
+GEOSContext::disposeGeometry(geom::Geometry* input)
+{
+    if (input)
+    {
+        geom::GeometryFactory* f = const_cast<geom::GeometryFactory*>(input->getFactory());
+        _factory->destroyGeometry(input);
+        if ( f != _factory )
+            delete f;
     }
 }
 

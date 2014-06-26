@@ -95,8 +95,12 @@ main(int argc, char** argv)
     }
 
     // mouse coordinate readout:
+    ControlCanvas* canvas = new ControlCanvas();
+    root->addChild( canvas );
+
     LabelControl* readout = new LabelControl();
-    ControlCanvas::get( &viewer, true )->addControl( readout );
+    canvas->addControl( readout );
+
     MouseCoordsTool* tool = new MouseCoordsTool( mapNode );
     tool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
     viewer.addEventHandler( tool );

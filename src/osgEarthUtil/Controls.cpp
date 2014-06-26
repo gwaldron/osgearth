@@ -2165,119 +2165,97 @@ Grid::draw( const ControlContext& cx )
 
 // ---------------------------------------------------------------------------
 
-namespace osgEarth { namespace Util { namespace Controls
+ControlCanvas::EventCallback::EventCallback(ControlCanvas* canvas) : 
+_canvas   ( canvas ),
+_firstTime( true ),
+_width    ( 0 ),
+_height   ( 0 )
 {
-    // This handler keeps an eye on the viewport and informs the control surface when it changes.
-    // We need this info since controls position from the upper-left corner.
-    struct ViewportHandler : public osgGA::GUIEventHandler
+    //nop
+}
+
+
+void
+ControlCanvas::EventCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(nv);
+
+    osg::ref_ptr<ControlCanvas> canvas;
+    if ( _canvas.lock(canvas) )
     {
-        ViewportHandler( ControlCanvas* cs ) : _cs(cs), _width(0), _height(0), _first(true) { }
-
-        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+        if ( _firstTime )
         {
-            if ( ea.getEventType() == osgGA::GUIEventAdapter::RESIZE || _first )
+            handleResize( ev->getActionAdapter()->asView(), canvas.get() );
+        }
+
+        const osgGA::EventQueue::Events& events = ev->getEvents();
+        if ( events.size() > 0 )
+        {
+            osg::ref_ptr<ControlCanvas> canvas;
+            if ( _canvas.lock(canvas) )
             {
-                osg::Camera* cam = aa.asView()->getCamera();
-                if ( cam && cam->getViewport() )
+                osgGA::GUIActionAdapter* aa = ev->getActionAdapter();
+
+                for(osgGA::EventQueue::Events::const_iterator e = events.begin(); e != events.end(); ++e)
                 {
-                    const osg::Viewport* vp = cam->getViewport();
-                    if ( _first || vp->width() != _width || vp->height() != _height )
+                    if (!_firstTime && e->get()->getEventType() == osgGA::GUIEventAdapter::RESIZE)
                     {
-                        _cs->setProjectionMatrix(osg::Matrix::ortho2D( 0, vp->width()-1, 0, vp->height()-1 ) );
-
-                        ControlContext cx;
-                        cx._view = aa.asView();
-                        cx._vp = new osg::Viewport( 0, 0, vp->width(), vp->height() );
-                        
-                        osg::View* view = aa.asView();
-                        osg::GraphicsContext* gc = view->getCamera()->getGraphicsContext();
-                        if ( !gc && view->getNumSlaves() > 0 )
-                            gc = view->getSlave(0)._camera->getGraphicsContext();
-
-                        if ( gc )
-                            cx._viewContextID = gc->getState()->getContextID();
-                        else
-                            cx._viewContextID = ~0u;
-
-                        _cs->setControlContext( cx );
-
-                        _width  = (int)vp->width();
-                        _height = (int)vp->height();
+                        handleResize( aa->asView(), canvas.get() );
                     }
-                    if ( vp->width() != 0 && vp->height() != 0 )
+
+                    if (canvas->handle( *e->get(), *aa ))
                     {
-                        _first = false;
+                        e->get()->setHandled(true);
                     }
                 }
             }
-            return false;
         }
-        ControlCanvas* _cs;
-        int _width, _height;
-        bool _first;
-    };
+    }
 
-    struct ControlCanvasEventHandler : public osgGA::GUIEventHandler
+    traverse(node,nv);
+}
+
+void 
+ControlCanvas::EventCallback::handleResize(osg::View* view, ControlCanvas* canvas)
+{
+    osg::Camera* cam = view->getCamera();
+
+    if ( cam && cam->getViewport() )
     {
-        ControlCanvasEventHandler( ControlCanvas* cs ) : _cs(cs) { }
-
-        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+        const osg::Viewport* vp = cam->getViewport();
+        if ( _firstTime || vp->width() != _width || vp->height() != _height )
         {
-            return _cs->handle( ea, aa );
+            canvas->setProjectionMatrix(osg::Matrix::ortho2D( 0, vp->width()-1, 0, vp->height()-1 ) );
+
+            ControlContext cx;
+            cx._view = view;
+            cx._vp = new osg::Viewport( 0, 0, vp->width(), vp->height() );
+
+            osg::GraphicsContext* gc = view->getCamera()->getGraphicsContext();
+            if ( !gc && view->getNumSlaves() > 0 )
+                gc = view->getSlave(0)._camera->getGraphicsContext();
+
+            if ( gc )
+                cx._viewContextID = gc->getState()->getContextID();
+            else
+                cx._viewContextID = ~0u;
+
+            canvas->setControlContext( cx );
+
+            _width  = (int)vp->width();
+            _height = (int)vp->height();
         }
 
-        ControlCanvas* _cs;
-    };
-
-    // This callback installs a control canvas under a view.
-    struct CanvasInstaller : public osg::NodeCallback
-    {
-        CanvasInstaller( ControlCanvas* canvas, osg::Camera* camera )
-            : _canvas( canvas )
+        if ( vp->width() != 0 && vp->height() != 0 )
         {
-            _oldCallback = camera->getUpdateCallback();
-            camera->setUpdateCallback( this );
+            _firstTime = false;
         }
-        
-        void operator()( osg::Node* node, osg::NodeVisitor* nv )
-        {
-            osg::Camera* camera = static_cast<osg::Camera*>(node);
-            osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(camera->getView());
-            install( view2, _canvas.get() );
-            camera->setUpdateCallback( _oldCallback.get() );
-        }
-
-        static void install( osgViewer::View* view2, ControlCanvas* canvas )
-        {
-            osg::Node* node = view2->getSceneData();
-            osg::Group* group = new osg::Group();
-            if ( node )
-                group->addChild( node );
-            group->addChild( canvas );
-            
-            // must save the manipulator matrix b/c calling setSceneData causes
-            // the view to call home() on the manipulator.
-            osg::Matrixd savedMatrix;
-            osgGA::CameraManipulator* manip = view2->getCameraManipulator();
-            if ( manip )
-                savedMatrix = manip->getMatrix();
-
-            view2->setSceneData( group );
-
-            // restore it
-            if ( manip )
-                manip->setByMatrix( savedMatrix );
-        }
-
-        osg::ref_ptr<ControlCanvas>     _canvas;
-        osg::ref_ptr<osg::NodeCallback> _oldCallback;
-    };
-
-} } } // namespace osgEarth::Util::Controls
+    }
+}
 
 // ---------------------------------------------------------------------------
 
-ControlNode::ControlNode( Control* control, float priority ) :
+ControlNode::ControlNode(Control* control, float priority ) :
 _control ( control ),
 _priority( priority )
 {
@@ -2300,13 +2278,13 @@ ControlNode::traverse( osg::NodeVisitor& nv )
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         // pull up the per-view data for this view:
-        PerViewData& data = _perViewData[cv->getCurrentCamera()->getView()];
+        TravSpecificData& data = _travDataMap[cv->getCurrentCamera()];
 
         // if it's uninitialized, find the corresponding control canvas and 
         // cache a reference to its control node bin:
         if ( !data._canvas.valid() )
         {
-            data._canvas = ControlCanvas::get( cv->getCurrentCamera()->getView(), true );
+            data._canvas = osgEarth::findTopMostNodeOfType<ControlCanvas>( cv->getCurrentCamera() );
             if ( data._canvas.valid() )
             {
                 ControlNodeBin* bin = static_cast<ControlCanvas*>(data._canvas.get())->getControlNodeBin();
@@ -2339,7 +2317,7 @@ ControlNode::traverse( osg::NodeVisitor& nv )
     osg::Node::traverse(nv);
 }
 
-ControlNode::PerViewData::PerViewData() :
+ControlNode::TravSpecificData::TravSpecificData() :
 _obscured   ( true ),
 _visibleTime( 0.0 ),
 _screenPos  ( 0.0, 0.0, 0.0 )
@@ -2421,7 +2399,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
             }
             else
             {
-                ControlNode::PerViewData& nodeData = node->getData( context._view );
+                ControlNode::TravSpecificData& nodeData = node->getData( context._view->getCamera() );
                 byDepth.insert( ControlNodePair(nodeData._screenPos.z(), node) );
             }
         }
@@ -2443,7 +2421,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 
         if ( nodeActive )
         {
-          ControlNode::PerViewData& nodeData = node->getData( context._view );
+          ControlNode::TravSpecificData& nodeData = node->getData( context._view->getCamera() );
           Control* control = node->getControl();
 
           // if the context changed (e.g., viewport resize), we need to mark all nodes as dirty
@@ -2588,55 +2566,52 @@ ControlNodeBin::addNode( ControlNode* controlNode )
 
 // ---------------------------------------------------------------------------
 
-ControlCanvas::ViewCanvasMap ControlCanvas::_viewCanvasMap;
-OpenThreads::Mutex           ControlCanvas::_viewCanvasMapMutex;
-
 ControlCanvas*
-ControlCanvas::get( osg::View* view, bool installInSceneData )
+ControlCanvas::getOrCreate(osg::View* view)
 {
-    ControlCanvas* canvas = 0L;
+    if ( !view )
+        return 0L;
 
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
+    if ( !view->getCamera() )
+        return 0L;
 
-    ViewCanvasMap::iterator i = _viewCanvasMap.find( view );
-    if ( i != _viewCanvasMap.end() )
-    {
-        canvas = i->second;
-    }
+    ControlCanvas* canvas = osgEarth::findTopMostNodeOfType<ControlCanvas>(view->getCamera());
+    if ( canvas )
+        return canvas;
 
-    else
-    {
-        // Not found, so create one. If requested, add a callback that will
-        // automatically install it in the view's scene data during the 
-        // next update traversal.
-        osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(view);
-        if ( view2 )
-        {
-            canvas = new ControlCanvas( view2, false );
-            _viewCanvasMap[view] = canvas;
-
-            if ( installInSceneData )
-                new CanvasInstaller( canvas, view->getCamera() );
-        }
-    }
-
+    canvas = new ControlCanvas();
+    view->getCamera()->addChild( canvas );
     return canvas;
 }
 
-// ---------------------------------------------------------------------------
-
-ControlCanvas::ControlCanvas( osgViewer::View* view )
+ControlCanvas*
+ControlCanvas::get(osg::View* view)
 {
-    init( view, true );
+#if 1 // for now, to avoid breaking lots of code
+    return getOrCreate(view);
+#else
+    if ( !view )
+        return 0L;
+
+    if ( !view->getCamera() )
+        return 0L;
+
+    ControlCanvas* canvas = osgEarth::findTopMostNodeOfType<ControlCanvas>(view->getCamera());
+    if ( canvas )
+        return canvas;
+
+    return 0L;
+#endif
 }
 
-ControlCanvas::ControlCanvas( osgViewer::View* view, bool registerCanvas )
+
+ControlCanvas::ControlCanvas()
 {
-    init( view, registerCanvas );
+    init();
 }
 
 void
-ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
+ControlCanvas::init()
 {
     _contextDirty  = true;
     _updatePending = false;
@@ -2644,14 +2619,8 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     // deter the optimizer
     this->setDataVariance( osg::Object::DYNAMIC );
 
-    osg::ref_ptr<osgGA::GUIEventHandler> pViewportHandler = new ViewportHandler(this);
-    osg::ref_ptr<osgGA::GUIEventHandler> pControlCanvasEventHandler = new ControlCanvasEventHandler(this);
-
-    _eventHandlersMap[pViewportHandler] = view;
-    _eventHandlersMap[pControlCanvasEventHandler] = view;
-
-    view->addEventHandler( pViewportHandler );
-    view->addEventHandler( pControlCanvasEventHandler );
+    this->addEventCallback( new EventCallback(this) );
+    this->setNumChildrenRequiringEventTraversal(1);
 
     setReferenceFrame(osg::Transform::ABSOLUTE_RF);
     setViewMatrix(osg::Matrix::identity());
@@ -2668,32 +2637,29 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
     ss->setRenderBinDetails( 0, "TraversalOrderBin" );
 
-#if 0
-    // come on we don't really need this...gw
-    // keeps the control bin shaders from "leaking out" into the scene graph :/
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        ss->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-    }
-#endif
-
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
    
 #ifndef OSG_GLES2_AVAILABLE
-    this->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(), osg::StateAttribute::OFF|osg::StateAttribute::OVERRIDE);
+    // don't use shaders unless we have to.
+    this->getOrCreateStateSet()->setAttributeAndModes(
+        new osg::Program(), 
+        osg::StateAttribute::OFF|osg::StateAttribute::OVERRIDE);
 #endif
 
+#if 0
     // register this canvas.
     if ( registerCanvas )
     {
         OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
         _viewCanvasMap[view] = this;
     }
+#endif
 }
 
 ControlCanvas::~ControlCanvas()
 {
+#if 0
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
     _viewCanvasMap.erase( _context._view );
 
@@ -2707,6 +2673,7 @@ ControlCanvas::~ControlCanvas()
             pView->removeEventHandler(pGUIEventHandler);
         }
     }
+#endif
 }
 
 void
@@ -2744,7 +2711,8 @@ ControlCanvas::getControlAtMouse( float x, float y )
 }
 
 bool
-ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+ControlCanvas::handle(const osgGA::GUIEventAdapter& ea,
+                      osgGA::GUIActionAdapter&      aa)
 {
     if ( !_context._vp )
         return false;
@@ -2760,6 +2728,7 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
     }
 
     bool handled = false;
+
     //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
@@ -2804,7 +2773,7 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
 }
 
 void
-ControlCanvas::update( const osg::FrameStamp* frameStamp )
+ControlCanvas::update(const osg::FrameStamp* frameStamp)
 {
     _context._frameStamp = frameStamp;
 
@@ -2847,7 +2816,7 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
 }
 
 void
-ControlCanvas::traverse( osg::NodeVisitor& nv )
+ControlCanvas::traverse(osg::NodeVisitor& nv)
 {
     switch( nv.getVisitorType() )
     {

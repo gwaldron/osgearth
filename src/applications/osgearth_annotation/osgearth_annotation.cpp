@@ -152,7 +152,7 @@ main(int argc, char** argv)
     root->addChild( editorGroup );
     editorGroup->setNodeMask( 0 );
 
-    HBox* box = ControlCanvas::get(&viewer)->addControl( new HBox() );
+    HBox* box = ControlCanvas::getOrCreate(&viewer)->addControl( new HBox() );
     box->setChildSpacing( 5 );
     //Add a toggle button to toggle editing
     CheckBoxControl* editCheckbox = new CheckBoxControl( false );

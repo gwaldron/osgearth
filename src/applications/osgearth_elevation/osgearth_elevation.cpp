@@ -174,7 +174,9 @@ int main(int argc, char** argv)
         mapSRS->getVerticalDatum()->getName() : 
         Stringify() << "geodetic (" << mapSRS->getEllipsoid()->getName() << ")" );
 
-    ControlCanvas::get(&viewer,true)->addControl(grid);
+    ControlCanvas* canvas = new ControlCanvas();
+    viewer.getCamera()->addChild( canvas );
+    canvas->addControl( grid );
 
     viewer.setSceneData( root );
 

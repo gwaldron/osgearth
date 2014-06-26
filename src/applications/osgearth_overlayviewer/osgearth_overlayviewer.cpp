@@ -127,8 +127,7 @@ namespace
 void
 setupOverlayView( osgViewer::View* view, osg::Group* parent, MapNode* mapNode )
 {
-
-    ControlCanvas* canvas = ControlCanvas::get(view, true);
+    ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
 
     VBox* v = canvas->addControl(new VBox());
     v->setBackColor( Color(Color::Black,0.75) );

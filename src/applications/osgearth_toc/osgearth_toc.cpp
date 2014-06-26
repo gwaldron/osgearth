@@ -221,7 +221,7 @@ struct MoveLayerHandler : public ControlEventHandler
 void
 createControlPanel( osgViewer::View* view )
 {
-    ControlCanvas* canvas = ControlCanvas::get( view );
+    ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
 
     s_masterGrid = new Grid();
     s_masterGrid->setBackColor(0,0,0,0.5);

@@ -130,7 +130,7 @@ main(int argc, char** argv)
     viewer.addEventHandler( measureTool );
 
     //Create some controls to interact with the measuretool
-    ControlCanvas* canvas = new ControlCanvas( &viewer );
+    ControlCanvas* canvas = new ControlCanvas();
     root->addChild( canvas );
     canvas->setNodeMask( 0x1 << 1 );
 

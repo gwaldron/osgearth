@@ -39,7 +39,7 @@ using namespace osgEarth::Symbology;
 Container*
 createControlPanel(osgViewer::View* view)
 {
-    ControlCanvas* canvas = ControlCanvas::get( view, true );
+    ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
     VBox* vbox = canvas->addControl(new VBox());
     vbox->setChildSpacing(10);
     return vbox;

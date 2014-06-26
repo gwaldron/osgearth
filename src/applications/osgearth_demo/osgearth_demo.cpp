@@ -84,7 +84,7 @@ main(int argc, char** argv)
     grid->setControl( 0, 3, new LabelControl("Go to:"));
     grid->setControl( 1, 3, new LabelControl("Double-click"));
 
-    ControlCanvas::get(&viewer)->addControl(vbox);
+    ControlCanvas::getOrCreate(&viewer)->addControl(vbox);
 
     // Load an earth file
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);

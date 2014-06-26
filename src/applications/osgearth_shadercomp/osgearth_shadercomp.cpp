@@ -205,8 +205,13 @@ int main(int argc, char** argv)
         return usage("");
     }
 
+    // add a canvas:
+    ControlCanvas* canvas = new ControlCanvas();
+    viewer.getCamera()->addChild( canvas );
+
+    // and a label:
     LabelControl* label = new LabelControl();
-    ControlCanvas::get(&viewer,true)->addControl(label);
+    canvas->addControl(label);
 
     if ( !test5 )
     {

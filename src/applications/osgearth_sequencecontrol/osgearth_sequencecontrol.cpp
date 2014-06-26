@@ -89,7 +89,7 @@ main(int argc, char** argv)
             label->setBackColor ( 0, 0, 0, 0.5 );
             label->setHorizAlign( ui::Control::ALIGN_CENTER );
             label->setVertAlign ( ui::Control::ALIGN_TOP );
-            ui::ControlCanvas::get( &viewer )->addControl( label );
+            ui::ControlCanvas::getOrCreate( &viewer )->addControl( label );
 
             // make sure the sequence is playing:
             sc->playSequence();

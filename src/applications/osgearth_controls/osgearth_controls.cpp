@@ -48,7 +48,7 @@ int main(int argc, char** argv)
         root->addChild( node );
 
     // create a surface to house the controls
-    ControlCanvas* cs = ControlCanvas::get( &viewer );
+    ControlCanvas* cs = ControlCanvas::getOrCreate( &viewer );
 
     viewer.setSceneData( root );
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator );
@@ -90,14 +90,6 @@ struct RotateImage : public ControlEventHandler
     }
 };
 
-struct SetImageOpacity : public ControlEventHandler
-{
-    void onValueChanged( Control* control, float value )
-    {
-        s_imageControl->setOpacity( value );
-    }
-};
-
 void
 createControls( ControlCanvas* cs )
 {
@@ -111,7 +103,7 @@ createControls( ControlCanvas* cs )
         center->setVertAlign( Control::ALIGN_CENTER );
 
         // Add an image:
-        osg::ref_ptr<osg::Image> image = osgDB::readImageFile("http://demo.pelicanmapping.com/rmweb/readymap_logo.png");
+        osg::ref_ptr<osg::Image> image = osgDB::readImageFile("http://osgearth.org/images/octocat-icon.png");
         if ( image.valid() )
         {
             s_imageControl = new ImageControl( image.get() );
@@ -144,22 +136,6 @@ createControls( ControlCanvas* cs )
             rotateBox->addControl( rotateSlider );
         }
         center->addControl( rotateBox );
-
-        // Opacity slider:
-        HBox* opacityBox = new HBox();
-        opacityBox->setChildVertAlign( Control::ALIGN_CENTER );
-        opacityBox->setHorizFill( true );
-        opacityBox->setBackColor( Color::Green );
-        {
-            opacityBox->addControl( new LabelControl("Opacity: ") );
-
-            HSliderControl* opacitySlider = new HSliderControl( 0.0, 1.0, 1.0 );
-            opacitySlider->addEventHandler( new SetImageOpacity() );
-            opacitySlider->setHeight( 8.0f );
-            opacitySlider->setHorizFill( true, 200 );
-            opacityBox->addControl( opacitySlider );
-        }
-        center->addControl( opacityBox );
 
         cs->addControl( center );
     }

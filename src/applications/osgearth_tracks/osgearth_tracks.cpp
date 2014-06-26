@@ -211,7 +211,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 void
 createControls( osgViewer::View* view )
 {
-    ControlCanvas* canvas = ControlCanvas::get(view, true);
+    ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
     
     // title bar
     VBox* vbox = canvas->addControl(new VBox(Control::ALIGN_NONE, Control::ALIGN_BOTTOM, 2, 1 ));

@@ -153,7 +153,7 @@ main(int argc, char** argv)
     viewer.getCamera()->setNearFarRatio(0.00002);
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-    ui::ControlCanvas::get(&viewer)->addControl( makeUI(app) );
+    ui::ControlCanvas::getOrCreate(&viewer)->addControl( makeUI(app) );
     app.apply();
 
     em->setTetherNode( app.geo );

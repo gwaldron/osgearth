@@ -566,8 +566,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
         view->setCameraManipulator( new osgGA::AnimationPathManipulator(animpath) );
     }
 
-    // install a canvas for any UI controls we plan to create:
-    ControlCanvas* canvas = ControlCanvas::get(view, false);
+    // Install a new Canvas for our UI controls, or use one that already exists.
+    ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
 
     Container* mainContainer = canvas->addControl( new VBox() );
     mainContainer->setAbsorbEvents( true );

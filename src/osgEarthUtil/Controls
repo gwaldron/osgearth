@@ -887,19 +887,10 @@ namespace osgEarth { namespace Util { namespace Controls
         Control* addControlImpl( Control* control );
 
     private:
-        friend struct ControlCanvasEventHandler;
         friend class ControlNode;
-
-        //ControlCanvas( osgViewer::View* view, bool registerCanvas );
-        //void init( osgViewer::View* view, bool registerCanvas );
         void init();
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
-
-        // a static registry of canvases in the scene graph.
-        //typedef std::map<osg::View*, ControlCanvas*> ViewCanvasMap;
-        //static ViewCanvasMap      _viewCanvasMap;        
-        //static OpenThreads::Mutex _viewCanvasMapMutex;
 
         /** Accesses the priority rendering bin for this canvas. */
         ControlNodeBin* getControlNodeBin() { return _controlNodeBin.get(); }

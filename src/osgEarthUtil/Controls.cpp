@@ -2646,34 +2646,11 @@ ControlCanvas::init()
         new osg::Program(), 
         osg::StateAttribute::OFF|osg::StateAttribute::OVERRIDE);
 #endif
-
-#if 0
-    // register this canvas.
-    if ( registerCanvas )
-    {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
-        _viewCanvasMap[view] = this;
-    }
-#endif
 }
 
 ControlCanvas::~ControlCanvas()
 {
-#if 0
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
-    _viewCanvasMap.erase( _context._view );
-
-    EventHandlersMap::iterator itr;
-    for (itr = _eventHandlersMap.begin(); itr != _eventHandlersMap.end(); ++itr)
-    {
-        osgGA::GUIEventHandler* pGUIEventHandler = itr->first.get();
-        osgViewer::View* pView = itr->second.get();
-        if ( (pView != NULL) && (pGUIEventHandler != NULL) )
-        {
-            pView->removeEventHandler(pGUIEventHandler);
-        }
-    }
-#endif
+    //nop
 }
 
 void

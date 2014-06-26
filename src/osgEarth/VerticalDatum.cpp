@@ -46,7 +46,11 @@ VerticalDatum::get( const std::string& initString )
 
     Threading::ScopedMutexLock exclusive(_vdataCacheMutex);
 
+#if defined(OSGEARTH_CASE_SENSITIVE_SRS)
     std::string s = initString;
+#else
+    std::string s = toLower( initString );
+#endif
     VDatumCache::const_iterator i = _vdatumCache.find( s );
     if ( i != _vdatumCache.end() )
     {

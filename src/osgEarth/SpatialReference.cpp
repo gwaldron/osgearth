@@ -193,8 +193,13 @@ SpatialReference::createFromWKT( const std::string& wkt, const std::string& name
 SpatialReference*
 SpatialReference::create( const std::string& horiz_init, const std::string& vert_init )
 {
+#if defined(OSGEARTH_CASE_SENSITIVE_SRS)
     std::string horiz = horiz_init;
     std::string vert  = vert_init;
+#else
+    std::string horiz = toLower(horiz_init);
+    std::string vert  = toLower(vert_init);
+#endif
 
     return create( Key(horiz, vert), true );
 }
@@ -223,10 +228,10 @@ SpatialReference::create( const Key& key, bool useCache )
     const std::string& vert  = key.second;
 
     // shortcut for spherical-mercator:
-    if (startsWith(horiz, "spherical-mercator", false) ||
-        startsWith(horiz, "epsg:900913"       , false) ||
-        startsWith(horiz, "epsg:3785"         , false) ||
-        startsWith(horiz, "epsg:102113"       , false) )
+    if (ciEquals(horiz, "spherical-mercator") ||
+        ciEquals(horiz, "epsg:900913"       ) ||
+        ciEquals(horiz, "epsg:3785"         ) ||
+        ciEquals(horiz, "epsg:102113"       ) )
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         srs = createFromPROJ4(
@@ -235,13 +240,13 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // ellipsoidal ("world") mercator:
-    else if (startsWith(horiz, "world-mercator", false) ||
-             startsWith(horiz, "epsg:54004"    , false) ||
-             startsWith(horiz, "epsg:9804"     , false) ||
-             startsWith(horiz, "epsg:3832"     , false) ||
-             startsWith(horiz, "epsg:102100"   , false) ||
-             startsWith(horiz, "esri:102100"   , false) ||
-             startsWith(horiz, "osgeo:41001"   , false) )
+    else if (ciEquals(horiz, "world-mercator") ||
+             ciEquals(horiz, "epsg:54004"    ) ||
+             ciEquals(horiz, "epsg:9804"     ) ||
+             ciEquals(horiz, "epsg:3832"     ) ||
+             ciEquals(horiz, "epsg:102100"   ) ||
+             ciEquals(horiz, "esri:102100"   ) ||
+             ciEquals(horiz, "osgeo:41001"   ) )
     {
         srs = createFromPROJ4(
             "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
@@ -249,8 +254,8 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // common WGS84:
-    else if (startsWith(horiz, "epsg:4326", false) ||
-             startsWith(horiz, "wgs84"    , false) )
+    else if (ciEquals(horiz, "epsg:4326") ||
+             ciEquals(horiz, "wgs84"    ) )
     {
         srs = createFromPROJ4(
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
@@ -258,7 +263,7 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // WGS84 Plate Carre:
-    else if (startsWith(horiz, "plate-carre", false) )
+    else if (ciEquals(horiz, "plate-carre") )
     {
         srs = createFromPROJ4(
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
@@ -268,7 +273,7 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // custom srs for the unified cube
-    else if ( startsWith(horiz, "unified-cube", false) )
+    else if ( ciEquals(horiz, "unified-cube") )
     {
         srs = createCube();
     }

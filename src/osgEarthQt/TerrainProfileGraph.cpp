@@ -84,8 +84,8 @@ const int TerrainProfileGraph::OVERLAY_Z = 30;
 
 
 TerrainProfileGraph::TerrainProfileGraph(TerrainProfileCalculator* calculator, TerrainProfilePositionCallback* callback)
-  : QGraphicsView(), _calculator(calculator), _positionCallback(callback), _graphFont(tr("Helvetica,Verdana,Arial"), 8),
-    _backgroundColor(128, 128, 128), _fieldColor(204, 204, 204), _axesColor(255, 255, 255), 
+  : QGraphicsView(), _calculator(calculator), _positionCallback(callback), 
+    _backgroundColor(128, 128, 128), _fieldColor(204, 204, 204), _axesColor(255, 255, 255),
     _graphColor(0, 128, 0), _graphFillColor(128, 255, 128, 192), _graphField(0, 0, 0, 0),
     _totalDistance(0.0), _graphMinY(0), _graphMaxY(0), _graphWidth(500), _graphHeight(309),
     _selecting(false)
@@ -93,6 +93,8 @@ TerrainProfileGraph::TerrainProfileGraph(TerrainProfileCalculator* calculator, T
   setMouseTracking(true);
 
   _graphFont.setStyleHint(QFont::SansSerif);
+  _graphFont.setFamily(_graphFont.defaultFamily());
+  _graphFont.setPixelSize( 8 );
 
   _linePen.setWidth(2);
   _linePen.setBrush(QBrush(_graphColor));
@@ -106,7 +108,7 @@ TerrainProfileGraph::TerrainProfileGraph(TerrainProfileCalculator* calculator, T
   _scene = new QGraphicsScene(0, 0, _graphWidth, _graphHeight);
   _scene->setBackgroundBrush(QBrush(_backgroundColor));
   setScene(_scene);
-  
+
   redrawGraph();
 
   _graphChangedCallback = new TerrainGraphChangedShim(this);

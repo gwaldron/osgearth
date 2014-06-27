@@ -296,25 +296,22 @@ void
 FeatureReadoutCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args )
 {
     clear();
-    if ( index && index->getFeatureSource() )
+    const Feature* f = 0L;
+    if ( index && index->getFeature(fid, f) )
     {
-        Feature* f = index->getFeatureSource()->getFeature( fid );
-        if ( f )
+        unsigned r=0;
+
+        _grid->setControl( 0, r, new LabelControl("FID", Color::Red) );
+        _grid->setControl( 1, r, new LabelControl(Stringify()<<fid, Color::White) );
+        ++r;
+
+        const AttributeTable& attrs = f->getAttrs();
+        for( AttributeTable::const_iterator i = attrs.begin(); i != attrs.end(); ++i, ++r )
         {
-            unsigned r=0;
-
-            _grid->setControl( 0, r, new LabelControl("FID", Color::Red) );
-            _grid->setControl( 1, r, new LabelControl(Stringify()<<fid, Color::White) );
-            ++r;
-
-            const AttributeTable& attrs = f->getAttrs();
-            for( AttributeTable::const_iterator i = attrs.begin(); i != attrs.end(); ++i, ++r )
-            {
-                _grid->setControl( 0, r, new LabelControl(i->first, 14.0f, Color::Yellow) );
-                _grid->setControl( 1, r, new LabelControl(i->second.getString(), 14.0f, Color::White) );
-            }
-            _grid->setVisible( true );
+            _grid->setControl( 0, r, new LabelControl(i->first, 14.0f, Color::Yellow) );
+            _grid->setControl( 1, r, new LabelControl(i->second.getString(), 14.0f, Color::White) );
         }
+        _grid->setVisible( true );
     }
     args._aa->requestRedraw();
 }

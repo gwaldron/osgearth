@@ -2620,7 +2620,6 @@ ControlCanvas::init()
     this->setDataVariance( osg::Object::DYNAMIC );
 
     this->addEventCallback( new EventCallback(this) );
-    this->setNumChildrenRequiringEventTraversal(1);
 
     setReferenceFrame(osg::Transform::ABSOLUTE_RF);
     setViewMatrix(osg::Matrix::identity());

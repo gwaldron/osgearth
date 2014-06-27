@@ -396,9 +396,9 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 CubeSpatialReference::CubeSpatialReference( void* handle ) :
 SpatialReference( handle, "OSGEARTH" )
 {
-    //nop
-    _key.first = "unified-cube";
-    _name      = "Unified Cube";
+    _key.horiz      = "unified-cube";
+    _key.horizLower = "unified-cube";
+    _name           = "Unified Cube";
 }
 
 CubeSpatialReference::~CubeSpatialReference()
@@ -412,10 +412,11 @@ CubeSpatialReference::_init()
 
     _is_user_defined = true;
     _is_cube         = true;
-    _is_contiguous  = false;
-    _is_geographic  = false;
-    _key.first      = "unified-cube";
-    _name           = "Unified Cube";
+    _is_contiguous   = false;
+    _is_geographic   = false;
+    _key.horiz       = "unified-cube";
+    _key.horizLower  = "unified-cube";
+    _name            = "Unified Cube";
 
     // Custom units. The big number there roughly converts [0..1] to meters
     // on a spheroid with WGS84-ish radius. Not perfect but close enough for

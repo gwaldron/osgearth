@@ -191,11 +191,8 @@ SpatialReference::createFromWKT( const std::string& wkt, const std::string& name
 }
 
 SpatialReference*
-SpatialReference::create( const std::string& horiz_init, const std::string& vert_init )
+SpatialReference::create( const std::string& horiz, const std::string& vert )
 {
-    std::string horiz = toLower(horiz_init);
-    std::string vert  = toLower(vert_init);
-
     return create( Key(horiz, vert), true );
 }
 
@@ -219,11 +216,14 @@ SpatialReference::create( const Key& key, bool useCache )
     // now try to resolve the horizontal SRS:
     osg::ref_ptr<SpatialReference> srs;
 
-    const std::string& horiz = key.first;
-    const std::string& vert  = key.second;
+    //const std::string& horiz = key.first;
+    //const std::string& vert  = key.second;
 
     // shortcut for spherical-mercator:
-    if (horiz == "spherical-mercator" || horiz == "epsg:900913" || horiz == "epsg:3785" || horiz == "epsg:102113")
+    if (key.horizLower == "spherical-mercator" || 
+        key.horizLower == "epsg:900913"        || 
+        key.horizLower == "epsg:3785"          || 
+        key.horizLower == "epsg:102113")
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         srs = createFromPROJ4(
@@ -233,9 +233,13 @@ SpatialReference::create( const Key& key, bool useCache )
 
     // ellipsoidal ("world") mercator:
     else 
-        if (horiz == "world-mercator" ||
-            horiz == "epsg:54004"  || horiz == "epsg:9804"   || horiz == "epsg:3832" ||
-            horiz == "epsg:102100" || horiz == "esri:102100" || horiz == "osgeo:41001" )
+        if (key.horizLower == "world-mercator" ||
+            key.horizLower == "epsg:54004"     ||
+            key.horizLower == "epsg:9804"      ||
+            key.horizLower == "epsg:3832"      ||
+            key.horizLower == "epsg:102100"    ||
+            key.horizLower == "esri:102100"    || 
+            key.horizLower == "osgeo:41001" )
 
     {
         srs = createFromPROJ4(
@@ -244,7 +248,9 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // common WGS84:
-    else if (horiz == "epsg:4326" || horiz == "wgs84")
+    else
+        if (key.horizLower == "epsg:4326" ||
+            key.horizLower == "wgs84")
     {
         srs = createFromPROJ4(
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
@@ -252,7 +258,7 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // WGS84 Plate Carre:
-    else if (horiz == "plate-carre")
+    else if (key.horizLower == "plate-carre")
     {
         srs = createFromPROJ4(
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
@@ -262,22 +268,24 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // custom srs for the unified cube
-    else if ( horiz == "unified-cube" )
+    else if (key.horizLower == "unified-cube" )
     {
         srs = createCube();
     }
 
-    else if ( horiz.find( "+" ) == 0 )
+    else if (key.horizLower.find( "+" ) == 0 )
     {
-        srs = createFromPROJ4( horiz, horiz );
+        srs = createFromPROJ4( key.horiz, key.horiz );
     }
-    else if ( horiz.find( "epsg:" ) == 0 || horiz.find( "osgeo:" ) == 0 )
+    else if (key.horizLower.find( "epsg:" )  == 0 ||
+             key.horizLower.find( "osgeo:" ) == 0 )
     {
-        srs = createFromPROJ4( std::string("+init=") + horiz, horiz );
+        srs = createFromPROJ4( std::string("+init=") + key.horiz, key.horiz );
     }
-    else if ( horiz.find( "projcs" ) == 0 || horiz.find( "geogcs" ) == 0 )
+    else if (key.horizLower.find( "projcs" ) == 0 || 
+             key.horizLower.find( "geogcs" ) == 0 )
     {
-        srs = createFromWKT( horiz, horiz );
+        srs = createFromWKT( key.horiz, key.horiz );
     }
 
     // bail out if no SRS exists by this point
@@ -287,12 +295,12 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // next, resolve the vertical SRS:
-    if ( !vert.empty() )
+    if ( !key.vert.empty() )
     {
-        srs->_vdatum = VerticalDatum::get(vert);
+        srs->_vdatum = VerticalDatum::get( key.vert );
         if ( !srs->_vdatum.valid() )
         {
-            OE_WARN << LC << "Failed to locate vertical datum \"" << vert << "\"" << std::endl;
+            OE_WARN << LC << "Failed to locate vertical datum \"" << key.vert << "\"" << std::endl;
         }
     }
 
@@ -532,7 +540,7 @@ SpatialReference::getHorizInitString() const
 { 
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
-    return _key.first;
+    return _key.horiz;
 }
 
 const std::string&
@@ -540,7 +548,7 @@ SpatialReference::getVertInitString() const
 { 
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
-    return _key.second;
+    return _key.vert;
 }
 
 bool
@@ -600,8 +608,8 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDa
     if ( considerVDatum && (_vdatum.get() != rhs->_vdatum.get()) )
         return false;
 
-    if (_key.first == rhs->_key.first &&
-        (!considerVDatum || (_key.second == rhs->_key.second) ) )
+    if (_key.horizLower == rhs->_key.horizLower &&
+        (!considerVDatum || (_key.vertLower == rhs->_key.vertLower) ) )
     {
         return true;
     }
@@ -876,7 +884,7 @@ SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn )
     else
     {
         csn->setFormat( _init_type );
-        csn->setCoordinateSystem( getKey().first );
+        csn->setCoordinateSystem( getKey().horiz );
     }
     
     csn->setEllipsoidModel( _ellipsoid.get() );
@@ -1559,17 +1567,20 @@ SpatialReference::_init()
     // Build a 'normalized' initialization key.
     if ( !_proj4.empty() )
     {
-        _key.first = _proj4;
+        _key.horiz = _proj4;
+        _key.horizLower = toLower(_key.horiz);
         _init_type = "PROJ4";
     }
     else if ( !_wkt.empty() )
     {
-        _key.first = _wkt;
+        _key.horiz = _wkt;
+        _key.horizLower = toLower(_key.horiz);
         _init_type = "WKT";
     }
     if ( _vdatum.valid() )
     {
-        _key.second = _vdatum->getInitString();
+        _key.vert = _vdatum->getInitString();
+        _key.vertLower = toLower(_key.vert);
     }
 
     _initialized = true;

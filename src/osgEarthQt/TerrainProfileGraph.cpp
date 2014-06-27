@@ -94,7 +94,7 @@ TerrainProfileGraph::TerrainProfileGraph(TerrainProfileCalculator* calculator, T
 
   _graphFont.setStyleHint(QFont::SansSerif);
   _graphFont.setFamily(_graphFont.defaultFamily());
-  _graphFont.setPixelSize( 8 );
+  _graphFont.setPixelSize( 10 );
 
   _linePen.setWidth(2);
   _linePen.setBrush(QBrush(_graphColor));

@@ -26,6 +26,7 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TessellateOperator>
 #include <osgEarthFeatures/Session>
+#include <osgEarth/Utils>
 #include <osgEarth/AutoScale>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Registry>
@@ -65,7 +66,9 @@ namespace
             for( unsigned i=0; i<geode.getNumDrawables(); ++i )
             {
                 osg::Drawable* d = geode.getDrawable(i);
-                osg::BoundingBox bbox = d->getBound();
+
+                osg::BoundingBox bbox = Utils::getBoundingBox(d);
+
                 if ( bbox.zMin() > _low )
                     bbox.expandBy( osg::Vec3f(bbox.xMin(), bbox.yMin(), _low) );
                 if ( bbox.zMax() < _high )

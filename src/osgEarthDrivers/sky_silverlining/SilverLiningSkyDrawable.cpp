@@ -65,7 +65,11 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 }
 
 osg::BoundingBox
+#if OSG_VERSION_GREATER_THAN(3,3,1)
+SkyDrawable::computeBoundingBox() const
+#else
 SkyDrawable::computeBound() const
+#endif
 {
     osg::BoundingBox skyBoundBox;
     if ( !_SL->ready() )

@@ -19,7 +19,7 @@
 
 #include <osgEarth/PrimitiveIntersector>
 #include <osgEarth/StringUtils>
-
+#include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/KdTree>
 #include <osg/Notify>
@@ -440,7 +440,8 @@ void PrimitiveIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Draw
 {
     if (reachedLimit()) return;
 
-    osg::BoundingBox bb = drawable->getBound();
+    osg::BoundingBox bb = Utils::getBoundingBox(drawable);
+
     if (bb.valid())
         bb.expandBy(osg::BoundingSphere(bb.center(), (_thickness - _start).length()));
 

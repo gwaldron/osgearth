@@ -48,7 +48,11 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 }
 
 osg::BoundingBox
+#if OSG_VERSION_GREATER_THAN(3,3,1)
+CloudsDrawable::computeBoundingBox() const
+#else
 CloudsDrawable::computeBound() const
+#endif
 {
     osg::BoundingBox cloudBoundBox;
     if ( !_SL->ready() )

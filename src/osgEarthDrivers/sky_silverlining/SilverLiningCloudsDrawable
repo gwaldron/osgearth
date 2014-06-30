@@ -18,6 +18,7 @@
  */
 #include <osg/Drawable>
 #include <osg/RenderInfo>
+#include <osg/Version>
 
 namespace osgEarth { namespace Drivers { namespace SilverLining
 {
@@ -41,9 +42,13 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
         // custom draw (called with an active GC)
         void drawImplementation(osg::RenderInfo& ri) const;
-
+        
         // custom bounds computation
+#if OSG_VERSION_GREATER_THAN(3,3,1)
+        osg::BoundingBox computeBoundingBox() const;
+#else
         osg::BoundingBox computeBound() const;
+#endif
 
     protected:
         virtual ~CloudsDrawable() { }

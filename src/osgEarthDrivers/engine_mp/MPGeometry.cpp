@@ -330,19 +330,20 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     }
 }
 
+#if OSG_VERSION_GREATER_THAN(3,3,1)
+#    define COMPUTE_BOUND computeBoundingBox
+#else
+#    define COMPUTE_BOUND computeBound
+#endif
 
 osg::BoundingBox
-MPGeometry::computeBound() const
+MPGeometry:: COMPUTE_BOUND() const
 {
-    osg::BoundingBox bbox = osg::Geometry::computeBound();
+    osg::BoundingBox bbox = osg::Geometry:: COMPUTE_BOUND ();
     {
         // update the uniform.
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
-        osg::BoundingSphere bs(bbox);
-        osg::Vec4f tk;
-        _tileKeyValue.w() = bs.radius();
-        // debugging:
-        //const_cast<MPGeometry*>(this)->validate();
+        _tileKeyValue.w() = bbox.radius();
     }
     return bbox;
 }

@@ -242,7 +242,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             const osg::Node*     drawableParent = drawable->getParent(0);
 
             // transform the bounding box of the drawable into window-space.
-            osg::BoundingBox box = drawable->getBound();
+            osg::BoundingBox box = Utils::getBoundingBox(drawable);
+
             static osg::Vec4d s_zero_w(0,0,0,1);
             osg::Vec4d clip = s_zero_w * (*leaf->_modelview.get()) * (*leaf->_projection.get());
             osg::Vec3d clip_ndc( clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w() );

@@ -331,7 +331,11 @@ struct ClusterVisitor : public osg::NodeVisitor
     void apply( osg::Geode& geode )
     {
         // save the geode's drawables..
-        osg::Geode::DrawableList old_drawables = geode.getDrawableList();
+        typedef std::vector<osg::ref_ptr<osg::Drawable> > Drawables;        
+        Drawables old_drawables;
+        old_drawables.reserve( geode.getNumDrawables() );
+        for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+            old_drawables.push_back( geode.getDrawable(i) );
 
         //OE_DEBUG << "ClusterVisitor geode " << &geode << " featureNode=" << _featureNode << " drawables=" << old_drawables.size() << std::endl;
 
@@ -339,7 +343,7 @@ struct ClusterVisitor : public osg::NodeVisitor
         geode.removeDrawables( 0, geode.getNumDrawables() );
 
         // foreach each drawable that was originally in the geode...
-        for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
+        for( Drawables::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
         {
             osg::Geometry* originalDrawable = dynamic_cast<osg::Geometry*>( i->get() );
             if ( !originalDrawable )

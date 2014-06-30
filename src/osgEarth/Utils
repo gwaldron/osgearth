@@ -52,6 +52,16 @@ namespace osgEarth
             float vr = (osg::clampBetween(v, vmin, vmax)-vmin)/(vmax-vmin);
             return r0 + vr * (r1-r0);
         }
+        
+
+        // Polyfill
+        static const osg::BoundingBox& getBoundingBox(const osg::Drawable* d) {
+#if OSG_VERSION_GREATER_THAN(3,3,1)
+            return d->getBoundingBox();
+#else
+            return d->getBound();
+#endif
+        }
     };
 
     /**

@@ -298,8 +298,7 @@ MeshConsolidator::convertToTriangles( osg::Geometry& geom, bool force )
     geom.setPrimitiveSetList( nonTriSets );
 }
 
-
-typedef osg::Geode::DrawableList DrawableList;
+typedef std::vector<osg::ref_ptr<osg::Drawable> > DrawableList;
 
 namespace
 {
@@ -311,7 +310,7 @@ namespace
         unsigned                      numNormals,
         const std::vector<unsigned>&  texCoordArrayUnits,
         bool                          useVBOs,
-        osg::Geode::DrawableList&     results )
+        DrawableList&                 results )
     {
         osg::Geometry::AttributeBinding newColorsBinding, newNormalsBinding;
 

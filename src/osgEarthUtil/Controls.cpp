@@ -2174,6 +2174,12 @@ _height   ( 0 )
     //nop
 }
 
+// version helper.
+#if OSG_VERSION_GREATER_THAN(3,3,0)
+#   define AS_ADAPTER(e) e->asGUIEventAdapter()
+#else
+#   define AS_ADAPTER(e) e
+#endif
 
 void
 ControlCanvas::EventCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
@@ -2198,12 +2204,14 @@ ControlCanvas::EventCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
                 for(osgGA::EventQueue::Events::const_iterator e = events.begin(); e != events.end(); ++e)
                 {
-                    if (!_firstTime && e->get()->getEventType() == osgGA::GUIEventAdapter::RESIZE)
+                    osgGA::GUIEventAdapter* ea = AS_ADAPTER(e->get());
+
+                    if (!_firstTime && ea->getEventType() == osgGA::GUIEventAdapter::RESIZE)
                     {
                         handleResize( aa->asView(), canvas.get() );
                     }
 
-                    if (canvas->handle( *e->get(), *aa ))
+                    if (canvas->handle( *ea, *aa ))
                     {
                         e->get()->setHandled(true);
                     }

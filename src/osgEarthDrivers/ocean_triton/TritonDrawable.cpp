@@ -37,12 +37,6 @@ _TRITON(TRITON)
     setDataVariance( osg::Object::DYNAMIC );
 }
 
-osg::BoundingBox
-TritonDrawable::computeBound() const
-{
-    return osg::BoundingBox();
-}
-
 void
 TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {

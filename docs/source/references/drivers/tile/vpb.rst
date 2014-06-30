@@ -13,6 +13,7 @@ Example usage::
 
     <image driver="vpb">
         <url>http://www.openscenegraph.org/data/earth_bayarea/earth.ive</url>
+        <profile>global-geodetic</profile>
         <primary_split_level>5</primary_split_level>
         <secondary_split_level>11</secondary_split_level>
         <directory_structure>nested</directory_structure>

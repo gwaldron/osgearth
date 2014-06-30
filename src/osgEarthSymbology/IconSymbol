@@ -21,6 +21,7 @@
 #define OSGEARTHSYMBOLOGY_ICON_SYMBOL_H 1
 
 #include <osgEarth/Common>
+#include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/InstanceSymbol>
 
 namespace osgEarth { namespace Symbology
@@ -77,6 +78,10 @@ namespace osgEarth { namespace Symbology
         optional<double>& occlusionCullAltitude() { return _occlusionCullAltitude; }
         const optional<double>& occlusionCullAltitude() const { return _occlusionCullAltitude; }
         
+        /** The material color */
+        optional<Color>& color() { return _color; }
+        const optional<Color>& color() const { return _color; }
+        
     public: // non-serialized properties (for programmatic use only)
 
         /** Explicit image to use for 2D icon placemet */
@@ -98,6 +103,7 @@ namespace osgEarth { namespace Symbology
         mutable osg::ref_ptr<osg::Image> _image;
         optional<bool>                   _occlusionCull;
         optional<double>                 _occlusionCullAltitude;
+        optional<Color>                  _color;
     };
 
 } } // namespace osgEarth::Symbology

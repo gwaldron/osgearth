@@ -35,7 +35,8 @@ _alignment            ( ALIGN_CENTER_BOTTOM ),
 _heading              ( NumericExpression(0.0) ),
 _declutter            ( false ),
 _occlusionCull        ( false ),
-_occlusionCullAltitude( 200000 )
+_occlusionCullAltitude( 200000 ),
+_color                ( Color() )
 {
     mergeConfig( conf );
 }
@@ -61,6 +62,8 @@ IconSymbol::getConfig() const
 	conf.addIfSet   ( "icon-occlusion-cull", _occlusionCull );
     conf.addIfSet   ( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
 
+    conf.addIfSet( "color", _color );
+
     conf.addNonSerializable( "IconSymbol::image", _image.get() );
     return conf;
 }
@@ -82,6 +85,8 @@ IconSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "declutter", _declutter );
 	conf.getIfSet   ( "icon-occlusion-cull", _occlusionCull );
     conf.getIfSet   ( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
+
+    conf.getIfSet( "color", _color );
 
     _image = conf.getNonSerializable<osg::Image>( "IconSymbol::image" );
 }
@@ -195,5 +200,8 @@ IconSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "icon-occlusion-cull-altitude") ) {
         style.getOrCreate<IconSymbol>()->occlusionCullAltitude() = as<float>(c.value(), *defaults.occlusionCullAltitude());
+    }
+    else if ( match(c.key(), "icon-color") ) {
+        style.getOrCreate<IconSymbol>()->color() = Color(c.value());
     }
 }

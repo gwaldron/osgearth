@@ -180,7 +180,8 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
                                      const osg::Vec2s& pixelOffset,
                                      unsigned          textureUnit,
                                      double            heading,
-                                     double            scale)
+                                     double            scale,
+                                     const osg::Vec4&  color)
 {
     if ( !image )
         return 0L;
@@ -233,7 +234,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->setTexCoordArray(textureUnit,tcoords);
 
     osg::Vec4Array* colors = new osg::Vec4Array(1);
-    (*colors)[0].set(1.0f,1.0f,1.0,1.0f);
+    (*colors)[0] = color;
     geom->setColorArray(colors);
     geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 

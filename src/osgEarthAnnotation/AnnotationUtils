@@ -69,7 +69,8 @@ namespace osgEarth { namespace Annotation
             const osg::Vec2s& pixelOffsets,
             unsigned          textureUnit,
             double            heading,
-            double            scale );
+            double            scale,
+            const osg::Vec4&  color = osg::Vec4f(1.0f,1.0f,1.0,1.0f));
 
         /**
          * Creates a fading uniform that the decluttering engine can use

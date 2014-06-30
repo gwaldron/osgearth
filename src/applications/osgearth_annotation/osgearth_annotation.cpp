@@ -20,6 +20,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Decluttering>
 #include <osgEarth/ECEF>
+#include <osgEarth/Registry>
+#include <osgEarth/ShaderGenerator>
 
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AnnotationEvents>
@@ -169,6 +171,26 @@ main(int argc, char** argv)
     Decluttering::setEnabled( labelGroup->getOrCreateStateSet(), true );
     annoGroup->addChild( labelGroup );
 
+    // Make a red label group
+    osg::Group* labelGroupRed = new osg::Group();
+    labelGroup->addChild( labelGroupRed );
+    // Declare a TexEnv instance, set the mode to 'BLEND', and set the env color
+    osg::TexEnv* texEnvRed = new osg::TexEnv;
+    texEnvRed->setMode(osg::TexEnv::BLEND);
+    texEnvRed->setColor(osg::Vec4(1,0,0,1));
+    // set texture env
+    labelGroupRed->getOrCreateStateSet()->setTextureAttribute(0,texEnvRed, osg::StateAttribute::OVERRIDE);
+    
+    // Make a green label group
+    osg::Group* labelGroupGreen = new osg::Group();
+    labelGroup->addChild( labelGroupGreen );
+    // Declare a TexEnv instance, set the mode to 'BLEND', and set the env color
+    osg::TexEnv* texEnvGreen = new osg::TexEnv;
+    texEnvGreen->setMode(osg::TexEnv::BLEND);
+    texEnvGreen->setColor(osg::Vec4(0,1,0,1));
+    // set texture env
+    labelGroupGreen->getOrCreateStateSet()->setTextureAttribute(0,texEnvGreen, osg::StateAttribute::OVERRIDE);
+
     // Style our labels:
     Style labelStyle;
     labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
@@ -183,25 +205,32 @@ main(int argc, char** argv)
     {
         Style pin;
         pin.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
+        pin.getOrCreate<IconSymbol>()->color() = osg::Vec4f(0.0f,0.0f,0.0f,1.0f);
 
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pin));
-        //labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90), "Chicago"       , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), "Los Angeles"   , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), "Boston"        , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), "Honolulu"      , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 139.75, 35.68), "Tokyo"         , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), "New Orleans"   , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pin));
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pin));
+        labelGroupRed->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pin));
+        labelGroupGreen->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pin));
+        //labelGroupRed->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90), "Chicago"       , pin));
+        labelGroupGreen->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), "Los Angeles"   , pin));
+        labelGroupRed->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), "Boston"        , pin));
+        labelGroupGreen->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), "Honolulu"      , pin));
+        labelGroupRed->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 139.75, 35.68), "Tokyo"         , pin));
+        labelGroupGreen->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), "New Orleans"   , pin));
+        labelGroupRed->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pin));
+        labelGroupGreen->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pin));
 
         // test with an LOD, just for kicks:
         osg::LOD* lod = new osg::LOD();
         lod->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 14.68, 50.0), "Prague", pin), 0.0, 1e6);
-        labelGroup->addChild( lod );
+        labelGroupRed->addChild( lod );
 
 
-        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90, 1000, ALTMODE_ABSOLUTE), "Chicago"       , pin));
+        labelGroupGreen->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90, 1000, ALTMODE_ABSOLUTE), "Chicago"       , pin));
+
+        // refresh shader
+        osgEarth::ShaderGenerator gen;
+        gen.run( labelGroupRed, osgEarth::Registry::stateSetCache() );
+        gen.run( labelGroupGreen, osgEarth::Registry::stateSetCache() );
+
     }
 
     //--------------------------------------------------------------------

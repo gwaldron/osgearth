@@ -70,7 +70,8 @@ public:
             _format = _map_service.getTileInfo().getFormat();
 		}
 
-        std::transform( _format.begin(), _format.end(), _format.begin(), tolower );
+        _format = osgEarth::toLower(_format);
+
         if ( _format.length() > 3 && _format.substr( 0, 3 ) == "png" )
 		{
             _format = "png";

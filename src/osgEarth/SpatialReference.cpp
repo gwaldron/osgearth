@@ -47,12 +47,7 @@ namespace
         const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
         if ( val )
         {
-            std::string t = val;
-            if ( lowercase )
-            {
-                std::transform( t.begin(), t.end(), t.begin(), ::tolower );
-            }
-            return t;
+            return lowercase ? toLower(val) : val;
         }
         return "";
     }    

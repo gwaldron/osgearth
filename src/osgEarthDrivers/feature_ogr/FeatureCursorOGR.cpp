@@ -107,9 +107,8 @@ _filters          ( filters )
             expr = query.expression().value();
 
             // if the expression is just a where clause, expand it into a complete SQL expression.
-            std::string temp = expr;
-            std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
-            //bool complete = temp.find( "select" ) == 0;
+            std::string temp = osgEarth::toLower(expr);
+
             if ( temp.find( "select" ) != 0 )
             {
                 std::stringstream buf;
@@ -131,8 +130,7 @@ _filters          ( filters )
         {                     
             std::string orderby = query.orderby().value();
             
-            std::string temp = orderby;
-            std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+            std::string temp = osgEarth::toLower(orderby);
 
             if ( temp.find( "order by" ) != 0 )
             {                

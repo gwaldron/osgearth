@@ -45,49 +45,38 @@ using namespace osgEarth;
 
 namespace
 {
-    struct ComputeVisibleBounds : public osg::NodeVisitor
+    struct ComputeVisibleBounds : public OverlayDecorator::InternalNodeVisitor
     {
-        ComputeVisibleBounds(osg::Polytope& tope, osg::Matrix& local2world) 
-            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
+        ComputeVisibleBounds(osg::Polytope& tope, osg::Matrix& local2tope)
         {
-            _matrixStack.push(local2world);
-            _topeStack.push(tope);
+            setTraversalMode( TRAVERSE_ACTIVE_CHILDREN );
+            _matrixStack.push(local2tope);
+            _tope = tope;
         }
 
         void apply(osg::Geode& node)
         {
             const osg::BoundingSphere& bs = node.getBound();
             osg::Vec3 p = bs.center() * _matrixStack.top();
-            if ( _topeStack.top().contains(p) )
+            if ( _tope.contains(p) )
             {
                 _bs.expandBy( osg::BoundingSphere(p, bs.radius()) );
             }
-            //if ( _topeStack.top().contains(bs) )
-            //{
-            //    osg::Vec3 p = _matrixStack.top() * bs.center();
-            //    _bs.expandBy( osg::BoundingSphere(p, bs.radius()) );
-            //}
         }
 
         void apply(osg::Transform& xform)
         {
-            osg::Matrix m;
+            osg::Matrix m( _matrixStack.top() );
             xform.computeLocalToWorldMatrix(m, this);
-
-            _matrixStack.push( _matrixStack.top() );
-            _matrixStack.top().preMult( m );
-
-            //_topeStack.push( _topeStack.top() );
-            //_topeStack.top().transformProvidingInverse(m);
+            _matrixStack.push( m );
 
             traverse(xform);
 
             _matrixStack.pop();
-            //_topeStack.pop();
         }
 
         std::stack<osg::Matrix>   _matrixStack;
-        std::stack<osg::Polytope> _topeStack;
+        osg::Polytope             _tope;
         osg::BoundingSphere       _bs;
     };
 
@@ -685,11 +674,13 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             // This causes problems for the draping projection matrix optimizer, so
             // for now instead of re-doing that code we will just center the eyepoint
             // here by using the larger of xmin and xmax. -gw.
+#if 1
             double x = std::max( fabs(xmin), fabs(xmax) );
             rttProjMatrix.makeOrtho(-x, x, ymin, ymax, 0.0, dist+zspan);
-
+#else
             //Note: this was the original setup, which is technically optimal:
-            //rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
+            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, 0.0, dist+zspan);
+#endif
 
             // Clamp the view frustum's N/F to the visible geometry. This clamped
             // frustum is the one we'll send to the technique.
@@ -724,6 +715,11 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             osg::Node* camNode = osgDB::readNodeFile(fn);
             camNode->setName("camera");
 
+            // visible overlay BEFORE cutting:
+            //uncutVisiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(0,1,1,1),osg::Vec4(0,1,1,.25));
+            //osg::Node* overlay = osgDB::readNodeFile(fn);
+            //overlay->setName("overlay");
+
             // visible overlay Polyherdron AFTER cuting:
             visiblePH.dumpGeometry(0,0,0,fn,osg::Vec4(1,.5,1,1),osg::Vec4(1,.5,0,.25));
             osg::Node* intersection = osgDB::readNodeFile(fn);
@@ -753,6 +749,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             osg::Group* g = new osg::Group();
             g->getOrCreateStateSet()->setAttribute(new osg::Program(), 0);
             g->addChild(camNode);
+            //g->addChild(overlay);
             g->addChild(intersection);
             g->addChild(rttNode);
             g->addChild(dsgmt);

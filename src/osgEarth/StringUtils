@@ -139,10 +139,9 @@ namespace osgEarth
     template<> inline bool
     as<bool>( const std::string& str, const bool& default_value )
     {
-        std::string temp = str;
-        std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+        std::string temp = toLower(str);
         return
-            temp == "true" || temp == "yes" || temp == "on" ? true :
+            temp == "true"  || temp == "yes" || temp == "on" ? true :
             temp == "false" || temp == "no" || temp == "off" ? false :
             default_value;
     }

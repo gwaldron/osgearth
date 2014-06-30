@@ -215,8 +215,7 @@ osgEarth::hashString( const std::string& input )
 osg::Vec4f
 osgEarth::htmlColorToVec4f( const std::string& html )
 {
-    std::string t = html;
-    std::transform( t.begin(), t.end(), t.begin(), ::tolower );
+    std::string t = osgEarth::toLower(html);
     osg::Vec4ub c(0,0,0,255);
     if ( t.length() >= 7 ) {
         c.r() |= t[1]<='9' ? (t[1]-'0')<<4 : (10+(t[1]-'a'))<<4;

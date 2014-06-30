@@ -283,8 +283,7 @@ Feature*
 
         // get the field name and convert to lower case:
         const char* field_name = OGR_Fld_GetNameRef( field_handle_ref ); 
-        std::string name = std::string( field_name ); 
-        std::transform( name.begin(), name.end(), name.begin(), ::tolower ); 
+        std::string name = osgEarth::toLower( std::string(field_name) );
 
         // get the field type and set the value appropriately
         OGRFieldType field_type = OGR_Fld_GetType( field_handle_ref );        

@@ -143,6 +143,9 @@ _fallbackData( fallbackData )
         ImageUtils::flattenImage(image, images);
 
         osg::Texture2DArray* tex = new osg::Texture2DArray();
+        tex->setTextureDepth(images.size());
+        tex->setInternalFormat(images[0]->getInternalTextureFormat());
+        tex->setSourceFormat(images[0]->getPixelFormat());
         for (int i = 0; i < (int) images.size(); ++i)
             tex->setImage( i, images[i].get() );
 

@@ -33,6 +33,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderUtils>
 #include <osgEarthUtil/Controls>
 
 using namespace osgEarth;
@@ -47,6 +48,7 @@ int usage( const std::string& msg )
         << "USAGE: osgearth_shadercomp <earthfile> \n"
         << "           [--test1]    : Run the function injection test \n"
         << "           [--test2]    : Run the accept callback test \n"
+        << "           [--test3]    : Run the shader LOD test \n"
         << "           [--test5]    : Run the Program state set text \n"
         << std::endl;
 
@@ -146,7 +148,40 @@ namespace TEST_2
         g->addChild( node );
         return g;
     }
+}
 
+//-------------------------------------------------------------------------
+
+// Tests the VirtualProgram's min/max range for functions (shader LOD)
+namespace TEST_3
+{
+    const char* fragShader =
+        "#version 110\n"
+        "void make_it_red(inout vec4 color) {\n"
+        "    color.r = 1.0;\n"
+        "}\n";
+
+    osg::Group* run(osg::Node* node)
+    {
+        float radius = osgEarth::SpatialReference::get("wgs84")->getEllipsoid()->getRadiusEquator();
+
+        VirtualProgram* vp = VirtualProgram::getOrCreate(node->getOrCreateStateSet());
+
+        // Install the shader function:
+        vp->setFunction("make_it_red", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+
+        // Set a maximum LOD range for the above function:
+        vp->setFunctionMinRange( "make_it_red", 500000 );
+        vp->setFunctionMaxRange( "make_it_red", 1000000 );
+
+        osg::Group* g = new osg::Group();
+
+        // Install a callback that will convey the LOD range to the shader LOD.
+        g->addCullCallback( new RangeUniformCullCallback() );
+
+        g->addChild( node );
+        return g;
+    }
 }
 
 //-------------------------------------------------------------------------
@@ -197,17 +232,21 @@ int main(int argc, char** argv)
 
     bool test1 = arguments.read("--test1");
     bool test2 = arguments.read("--test2");
+    bool test3 = arguments.read("--test3");
     bool test5 = arguments.read("--test5");
-    bool ok    = test1 || test2 || test5; 
+    bool ok    = test1 || test2 || test3 || test5; 
 
     if ( !ok )
     {
         return usage("");
     }
 
+    osg::Group* root = new osg::Group();
+    viewer.setSceneData( root );
+
     // add a canvas:
     ControlCanvas* canvas = new ControlCanvas();
-    viewer.getCamera()->addChild( canvas );
+    root->addChild( canvas );
 
     // and a label:
     LabelControl* label = new LabelControl();
@@ -215,28 +254,33 @@ int main(int argc, char** argv)
 
     if ( !test5 )
     {
-        osg::Node* earthNode = osgDB::readNodeFiles( arguments );
+        osg::Node* earthNode = osgDB::readNodeFile( "http://osgearth.org/demo.earth" );
         if (!earthNode)
         {
             return usage( "Unable to load earth model." );
         }
 
-        viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
-
         if ( test1 )
         {
-            viewer.setSceneData( TEST_1::run(earthNode) );
+            root->addChild( TEST_1::run(earthNode) );
             label->setText( "Function injection test: the map appears hazy at high altitude." );
         }
         else if ( test2 )
         {
-            viewer.setSceneData( TEST_2::run(earthNode) );
+            root->addChild( TEST_2::run(earthNode) );
             label->setText( "Accept callback test: the map turns red when viewport width > 1000" );
         }
+        else if ( test3 )
+        {
+            root->addChild( TEST_3::run(earthNode) );
+            label->setText( "Shader LOD test: the map turns red between 500K and 1M meters altitude" );
+        }
+        
+        viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
     }
     else // if ( test5 )
     {
-        viewer.setSceneData( TEST_5::run() );
+        root->addChild( TEST_5::run() );
         label->setText( "Leakage test: red tri on the left, blue on the right." );
     }
 

@@ -17,9 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderFactory>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
+#include <osg/ComputeBoundsVisitor>
 #include <list>
 
 using namespace osgEarth;
@@ -721,3 +723,36 @@ ArrayUniform::detach()
         }
     }
 }
+
+//...................................................................
+
+RangeUniformCullCallback::RangeUniformCullCallback()
+{
+    _uniform = osgEarth::Registry::instance()->shaderFactory()->createRangeUniform();
+
+    _stateSet = new osg::StateSet();
+    _stateSet->addUniform( _uniform.get() );
+}
+
+void
+RangeUniformCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+
+    const osg::BoundingSphere& bs = node->getBound();
+
+    float range = nv->getDistanceToViewPoint( bs.center(), true );
+
+    // range = distance from the viewpoint to the outside of the bounding sphere.
+    _uniform->set( range - bs.radius() );
+
+    //OE_INFO
+    //    << "Range = " << range 
+    //    << ", center = " << bs.center().x() << "," << bs.center().y()
+    //    << ", radius = " << bs.radius() << std::endl;
+    
+    cv->pushStateSet( _stateSet.get() );
+    traverse(node, nv);
+    cv->popStateSet();
+}
+

@@ -98,6 +98,27 @@ namespace
 
     // global/static repo.
     static ProgramSharedRepo s_programRepo;
+
+
+    /** Locate a function by name in the location map. */
+    bool findFunction(const std::string&               name, 
+                      ShaderComp::FunctionLocationMap& flm, 
+                      ShaderComp::Function**           output)
+    {        
+        for(ShaderComp::FunctionLocationMap::iterator i = flm.begin(); i != flm.end(); ++i )
+        {
+            ShaderComp::OrderedFunctionMap& ofm = i->second;
+            for( ShaderComp::OrderedFunctionMap::iterator j = ofm.begin(); j != ofm.end(); ++j )
+            {
+                if ( j->second._name.compare(name) == 0 )
+                {
+                    (*output) = &j->second;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }
 
 //------------------------------------------------------------------------
@@ -816,6 +837,32 @@ VirtualProgram::setFunction(const std::string&           functionName,
         entry._accept        = accept;
 
     } // release lock
+}
+
+void 
+VirtualProgram::setFunctionMinRange(const std::string& name, float minRange)
+{
+    // lock the functions map while making changes:
+    Threading::ScopedWriteLock exclusive( _dataModelMutex );
+
+    ShaderComp::Function* function;
+    if ( findFunction(name, _functions, &function) )
+    {
+        function->_minRange = minRange;
+    }
+}
+
+void 
+VirtualProgram::setFunctionMaxRange(const std::string& name, float maxRange)
+{
+    // lock the functions map while making changes:
+    Threading::ScopedWriteLock exclusive( _dataModelMutex );
+
+    ShaderComp::Function* function;
+    if ( findFunction(name, _functions, &function) )
+    {
+        function->_maxRange = maxRange;
+    }
 }
 
 void

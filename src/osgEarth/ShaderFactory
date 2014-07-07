@@ -96,6 +96,17 @@ namespace osgEarth
             osg::StateAttribute::GLModeValue value ) const;
 
         /**
+         * The name of the range uniform created by createRangeUniform().
+         */
+        virtual std::string getRangeUniformName() const;
+
+        /**
+         * Creates a uniform that's used by the RangeUniformCullCallback to convey
+         * "distance to viewpoint" in a shader program.
+         */
+        osg::Uniform* createRangeUniform() const;
+
+        /**
          * Sets the order in which the shader program generator will create
          * code for the fragment program's COLORING and LIGHTING stages.
          */

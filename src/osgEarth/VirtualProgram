@@ -82,6 +82,8 @@ namespace osgEarth
         {
             std::string                  _name;
             osg::ref_ptr<AcceptCallback> _accept;
+            optional<float>              _minRange;
+            optional<float>              _maxRange;
             
             bool accept(const osg::State& state) const {
                 return (!_accept.valid()) || (_accept->operator()(state) == true);
@@ -170,6 +172,16 @@ namespace osgEarth
             ShaderComp::FunctionLocation location,
             ShaderComp::AcceptCallback*  acceptCallback,
             float                        order =1.0f );
+
+        /**
+         * Sets the minimum active range for a named function. The function must already
+         * exist in the VirtualProgram. For this to work, there must to a uniform in the
+         * scene graph that conveys the current range; use the VirtualProgramRangeCallback
+         * to activate this.
+         */
+        void setFunctionMinRange(const std::string& name, float minRange);
+
+        void setFunctionMaxRange(const std::string& name, float maxRange);
 
         /**
          * Whether this VP should inherit shaders from parent state sets. This is

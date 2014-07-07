@@ -248,11 +248,11 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
 osg::BoundingSphere
 MPTerrainEngineNode::computeBound() const
 {
-    if ( _terrain && _terrain->getNumChildren() > 0 )
-    {
-        return _terrain->getBound();
-    }
-    else
+    //if ( _terrain && _terrain->getNumChildren() > 0 )
+    //{
+    //    return _terrain->getBound();
+    //}
+    //else
     {
         return TerrainEngineNode::computeBound();
     }

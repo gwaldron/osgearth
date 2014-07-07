@@ -170,7 +170,7 @@ namespace osgEarth
         struct Key {
             Key() { }
             Key(const std::string& h, const std::string& v)
-                : horiz(h), vert(v), horizLower(toLower(h)), vertLower(toLower(v)) { }
+                : horiz(h), horizLower(toLower(h)), vert(v), vertLower(toLower(v)) { }
             std::string horiz, horizLower;
             std::string vert,  vertLower;
             bool operator < (const Key& rhs) const {

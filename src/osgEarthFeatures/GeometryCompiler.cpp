@@ -535,7 +535,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         sscache->optimize( resultGroup.get() );
     }
 
+    //test: dump the tile to disk
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
+
+    //test: shader LOD callback
+    //resultGroup->addCullCallback( new RangeUniformCullCallback() );
 
 #ifdef PROFILING
     osg::Timer_t p_end = osg::Timer::instance()->tick();

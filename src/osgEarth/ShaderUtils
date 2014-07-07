@@ -186,6 +186,23 @@ namespace osgEarth
 
         void ensureCapacity( unsigned newSize );
     };
+
+
+    /**
+     * Cull callback that installs a range (distance to view point) uniform
+     * in the State based on the bounding center of the node being culled.
+     * The actual name of the range uniform can is returned by
+     * ShaderFactory::getRangeUniformName().
+     */
+    class OSGEARTH_EXPORT RangeUniformCullCallback : public osg::NodeCallback
+    {
+    public:
+        RangeUniformCullCallback();
+        void operator()(osg::Node*, osg::NodeVisitor* nv);
+    private:
+        osg::ref_ptr<osg::StateSet> _stateSet;
+        osg::ref_ptr<osg::Uniform>  _uniform;
+    };
 }
 
 #endif // OSGEARTH_SHADER_UTILS_H

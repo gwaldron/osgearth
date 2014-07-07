@@ -36,10 +36,31 @@
 #endif
 
 #define INDENT "    "
-
+#define RANGE  osgEarth::Registry::instance()->shaderFactory()->getRangeUniformName()
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
+
+
+namespace
+{
+    void insertRangeConditionals(const Function& f, std::ostream& buf)
+    {
+        if ( f._minRange.isSet() && !f._maxRange.isSet() )
+        {
+            buf << INDENT << "if (" << RANGE << " >= float(" << f._minRange.value() << "))\n" << INDENT;
+        }
+        else if ( !f._minRange.isSet() && f._maxRange.isSet() )
+        {
+            buf << INDENT << "if (" << RANGE << " <= float(" << f._maxRange.value() << "))\n" << INDENT;
+        }
+        else if ( f._minRange.isSet() && f._maxRange.isSet() )
+        {
+            buf << INDENT << "if (" << RANGE << " >= float(" << f._minRange.value() << ") && " << RANGE << " <= float(" << f._maxRange.value() << "))\n" << INDENT;
+        }
+    }
+}
+
 
 ShaderFactory::ShaderFactory()
 {
@@ -65,27 +86,34 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
     std::stringstream buf;
     buf << 
         "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n";
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "uniform float " << RANGE << ";\n";
 
     // prototypes for model stage methods:
     if ( modelStage )
     {
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
+        {
             buf << "void " << i->second._name << "(inout vec4 VertexMODEL); \n";
+        }
     }
 
     // prototypes for view stage methods:
     if ( viewStage )
     {
         for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+        {
             buf << "void " << i->second._name << "(inout vec4 VertexVIEW); \n";
+        }
     }
 
     // prototypes for clip stage methods:
     if ( clipStage )
     {
         for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+        {
             buf << "void " << i->second._name << "(inout vec4 VertexCLIP); \n";
+        }
     }
 
     // main:
@@ -104,6 +132,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
 
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
         {
+            insertRangeConditionals( i->second, buf );
             buf << INDENT << i->second._name << "(vertex); \n";
         }
 
@@ -121,6 +150,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
 
         for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
         {
+            insertRangeConditionals( i->second, buf );
             buf << INDENT << i->second._name << "(vertex); \n";
         }
     }
@@ -139,6 +169,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
 
         for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
         {
+            insertRangeConditionals( i->second, buf );
             buf << INDENT << i->second._name << "(vertex); \n";
         }
     }
@@ -181,24 +212,31 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
 
     std::stringstream buf;
     buf << "#version " << GLSL_VERSION_STR << "\n"
-        << GLSL_DEFAULT_PRECISION_FLOAT << "\n";
+        << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
+        << "uniform float " << RANGE << ";\n";
 
     if ( coloring )
     {
         for( OrderedFunctionMap::const_iterator i = coloring->begin(); i != coloring->end(); ++i )
+        {
             buf << "void " << i->second._name << "( inout vec4 color ); \n";
+        }
     }
 
     if ( lighting )
     {
         for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
+        {
             buf << "void " << i->second._name << "( inout vec4 color ); \n";
+        }
     }
 
     if ( output )
     {
         for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
+        {
             buf << "void " << i->second._name << "( inout vec4 color ); \n";
+        }
     }
 
     buf << 
@@ -215,20 +253,29 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
         if ( coloring && (pass == coloringPass) )
         {
             for( OrderedFunctionMap::const_iterator i = coloring->begin(); i != coloring->end(); ++i )
+            {
+                insertRangeConditionals( i->second, buf );
                 buf << INDENT << i->second._name << "( color ); \n";
+            }
         }
 
         if ( lighting && (pass == lightingPass) )
         {
             for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
+            {
+                insertRangeConditionals( i->second, buf );
                 buf << INDENT << i->second._name << "( color ); \n";
+            }
         }
     }
 
     if ( output )
     {
         for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
+        {
+            insertRangeConditionals( i->second, buf );
             buf << INDENT << i->second._name << "( color ); \n";
+        }
     }
     else
     {
@@ -294,4 +341,16 @@ ShaderFactory::createUniformForGLMode(osg::StateAttribute::GLMode      mode,
     }
 
     return u;
+}
+
+std::string
+ShaderFactory::getRangeUniformName() const
+{
+    return "oe_range_to_bs";
+}
+
+osg::Uniform*
+ShaderFactory::createRangeUniform() const
+{
+    return new osg::Uniform(osg::Uniform::FLOAT, getRangeUniformName());
 }

@@ -1036,8 +1036,8 @@ public:
 
             pixelToGeo(0.0, 0.0, ul_lon, ul_lat );
             pixelToGeo(0.0, _warpedDS->GetRasterYSize() + 1, ll_lon, ll_lat);
-            pixelToGeo(_warpedDS->GetRasterXSize() + 1, _warpedDS->GetRasterYSize() + 1, lr_lon, lr_lat);
-            pixelToGeo(_warpedDS->GetRasterXSize() + 1, 0.0, ur_lon, ur_lat);
+            pixelToGeo(_warpedDS->GetRasterXSize(), _warpedDS->GetRasterYSize(), lr_lon, lr_lat);
+            pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, ur_lon, ur_lat);
 
             minX = osg::minimum( ll_lon, osg::minimum( ul_lon, osg::minimum( ur_lon, lr_lon ) ) );
             maxX = osg::maximum( ll_lon, osg::maximum( ul_lon, osg::maximum( ur_lon, lr_lon ) ) );
@@ -1055,8 +1055,8 @@ public:
         }
         else
         {
-            pixelToGeo(0.0, _warpedDS->GetRasterYSize() + 1, minX, minY);
-            pixelToGeo(_warpedDS->GetRasterXSize() + 1, 0.0, maxX, maxY);
+            pixelToGeo(0.0, _warpedDS->GetRasterYSize(), minX, minY);
+            pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, maxX, maxY);
         }
 
         OE_DEBUG << LC << INDENT << "Geo extents: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
@@ -1848,7 +1848,7 @@ public:
 
             // Determine the read window
             double src_min_x, src_min_y, src_max_x, src_max_y;
-            // Get the pixel coordiantes of the intersection
+            // Get the pixel coordinates of the intersection
             geoToPixel( intersection.xMin(), intersection.yMax(), src_min_x, src_min_y);
             geoToPixel( intersection.xMax(), intersection.yMin(), src_max_x, src_max_y);
 
@@ -1879,13 +1879,46 @@ public:
             {
                 target_width = max_read_dimensions;
                 // Figure out how many source pixels equate to half a read buffer cell.
-                double dx = ((double)width) / ((double)target_width) * 0.5;
+                double dx = ((double)width) / ((double)(target_width - 1)) * 0.5;
                 //Inflate the source read window by half a target buffer cell. There are two reasons for this:
                 // 1) Later we will deflate our read window by the same amount, so if we don't do this here there will be an apparent gap between tiles.
                 // 2) GDAL will start reading half way along the first target buffer cell and finish reading half way along the last.
                 //     We want the the nearest neighbour to that point to be right on the tile boundary so that the boundary values are the same on neighbouring tiles.
-                src_min_x = osg::maximum((int)floor(src_min_x - dx), 0);
-                src_max_x = osg::minimum((int)ceil(src_max_x + dx), rasterWidth - 1);
+                int x0 = (int)floor(src_min_x - dx);
+                int x1 = (int)ceil(src_max_x + dx);
+
+                bool limitx0 = false;
+                bool limitx1 = false;
+
+                if( x0 < 0 )
+                {
+                    x0 = 0;
+                    limitx0 = true;
+                }
+
+                if( x1 > rasterWidth - 1 )
+                {
+                    x1 = rasterWidth - 1;
+                    limitx1 = true;
+                }
+
+                if( limitx0 && !limitx1 )
+                {
+                    // Recalculate x1
+                    double dx_rev = (src_max_x - x0) / (((double)target_width) - 0.5);
+                    x1 = (int)ceil(src_max_x + dx_rev);
+                }
+
+                if( limitx1 && !limitx0 )
+                {
+                    // Recalculate x0
+                    double dx_rev = (x1 - src_min_x) / (((double)target_width) - 0.5);
+                    x0 = (int)floor(src_min_x - dx_rev);
+                }
+
+                src_min_x = x0;
+                src_max_x = x1;
+
                 // Need to recalc width.
                 width = (int)(src_max_x - src_min_x) + 1;
             }
@@ -1903,13 +1936,46 @@ public:
             {
                 target_height = max_read_dimensions;
                 // Figure out how many source pixels equate to half a read buffer cell.
-                double dy =  ((double)height) / ((double)target_height) * 0.5;
+                double dy =  ((double)height) / ((double)(target_height - 1)) * 0.5;
                 //Inflate the source read window by half a target buffer cell. There are two reasons for this:
                 // 1) Later we will deflate our read window by the same amount, so if we don't do this here there will be an apparent gap between tiles.
                 // 2) GDAL will start reading half way along the first target buffer cell and finish reading half way along the last.
                 //     We want the the nearest neighbour to that point to be right on the tile boundary so that the boundary values are the same on neighbouring tiles.
-                src_min_y = osg::maximum((int)floor(src_min_y - dy), 0);
-                src_max_y = osg::minimum((int)ceil(src_max_y + dy), rasterHeight - 1);
+                int y0 = (int)floor(src_min_y - dy);
+                int y1 = (int)ceil(src_max_y + dy);
+
+                bool limity0 = false;
+                bool limity1 = false;
+
+                if( y0 < 0 )
+                {
+                    y0 = 0;
+                    limity0 = true;
+                }
+
+                if( y1 > rasterHeight - 1 )
+                {
+                    y1 = rasterHeight - 1;
+                    limity1 = true;
+                }
+
+                if( limity0 && !limity1 )
+                {
+                    // Recalculate y1
+                    double dy_rev = (src_max_y - y0) / (((double)target_height) - 0.5);
+                    y1 = (int)ceil(src_max_y + dy_rev);
+                }
+
+                if( limity1 && !limity0 )
+                {
+                    // Recalculate y0
+                    double dy_rev = (y1 - src_min_y) / (((double)target_height) - 0.5);
+                    y0 = (int)floor(src_min_y - dy_rev);
+                }
+
+                src_min_y = y0;
+                src_max_y = y1;
+
                 // Need to recalc height.
                 height = (int)(src_max_y - src_min_y) + 1;
             }
@@ -1924,7 +1990,7 @@ public:
             }
 
             OE_DEBUG << LC << "Reading key " << key.str() << "   " << xmin << ", " << ymin << ", " << xmax << ", " << ymax << ", " << std::endl;
-            OE_DEBUG << LC << "ReadWindow " << src_min_x << "," << src_min_y << " " << width << "x" << height << std::endl;
+            OE_DEBUG << LC << "ReadWindow " << src_min_x << "," << src_min_y  << "," << src_max_x << "," << src_max_y << " " << width << "x" << height << std::endl;
             OE_DEBUG << LC << "DestWindowSize " << target_width << "x" << target_height << std::endl;
 
             // Figure out the true pixel extents of what we read
@@ -1943,7 +2009,7 @@ public:
             read_max_y -= half_dy;
 
 
-            OE_DEBUG << "Read extents " << read_min_x << ", " << read_min_y << " to " << read_max_x << ", " << read_max_y << std::endl;
+            OE_DEBUG << LC << "Read extents " << read_min_x << ", " << read_min_y << " to " << read_max_x << ", " << read_max_y << std::endl;
 
             // Try to find a FLOAT band
             GDALRasterBand* band = findBandByDataType(_warpedDS, GDT_Float32);

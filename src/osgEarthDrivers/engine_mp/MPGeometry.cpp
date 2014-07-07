@@ -452,10 +452,12 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     //    return;
     //}
 
-    // See if this is a depth-only camera. If so we can skip all the layers
+    // See if this is a pre-render depth-only camera. If so we can skip all the layers
     // and just render the primitive sets.
+    osg::Camera* camera = renderInfo.getCurrentCamera();
     bool renderColor =
-        (renderInfo.getCurrentCamera()->getClearMask() & GL_COLOR_BUFFER_BIT) != 0L;
+        (camera->getRenderOrder() != osg::Camera::PRE_RENDER) ||
+        ((camera->getClearMask() & GL_COLOR_BUFFER_BIT) != 0L);
 
     osg::State& state = *renderInfo.getState();
 

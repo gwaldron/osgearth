@@ -1866,7 +1866,7 @@ public:
             int height = (int)(src_max_y - src_min_y) + 1;
 
             // Don't read anything greater than a dimension of max_read_dimensions.  If the source window is really large it will use
-            // GDAL's nearest neighbor sampling.  If the source window is < max_read_dimensions x max_read_dimensions then the exact source data is read and
+            // GDAL's nearest neighbour sampling.  If the source window is < max_read_dimensions x max_read_dimensions then the exact source data is read and
             // resampled.  This make sure that once get into high enough resolution data the verts don't move around on you due to sampling.
             int max_read_dimensions = 256;
 
@@ -1890,6 +1890,7 @@ public:
                 bool limitx0 = false;
                 bool limitx1 = false;
 
+                // Check if the recalculated values are valid, or if they need to be limited to the edge of the data.
                 if( x0 < 0 )
                 {
                     x0 = 0;
@@ -1902,6 +1903,7 @@ public:
                     limitx1 = true;
                 }
 
+                // If one of the recalculated values was limited, then we need to recalculate the other so that half a cell offset will land on the edge of the grid.
                 if( limitx0 && !limitx1 )
                 {
                     // Recalculate x1
@@ -1947,6 +1949,7 @@ public:
                 bool limity0 = false;
                 bool limity1 = false;
 
+                // Check if the recalculated values are valid, or if they need to be limited to the edge of the data.
                 if( y0 < 0 )
                 {
                     y0 = 0;
@@ -1959,6 +1962,7 @@ public:
                     limity1 = true;
                 }
 
+                // If one of the recalculated values was limited, then we need to recalculate the other so that half a cell offset will land on the edge of the grid.
                 if( limity0 && !limity1 )
                 {
                     // Recalculate y1

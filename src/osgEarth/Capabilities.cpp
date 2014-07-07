@@ -148,6 +148,13 @@ _supportsRGTC           ( false )
     // logical CPUs (cores)
     _numProcessors = OpenThreads::GetNumberOfProcessors();
 
+    // GLES compile?
+#if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
+    _isGLES = true;
+#else
+    _isGLES = false;
+#endif
+
     // create a graphics context so we can query OpenGL support:
     MyGraphicsContext mgc;
 

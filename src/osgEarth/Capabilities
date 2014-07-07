@@ -78,6 +78,9 @@ namespace osgEarth
         /** GLSL version as an integer x 100. I.e.: GLSL 1.4 => 140. */
         unsigned getGLSLVersionInt() const { return (unsigned)(_GLSLversion*100.0f); }
 
+        /** Are we running OpenGLES? */
+        bool isGLES() const { return _isGLES; }
+
         /** the GPU vendor */
         const std::string& getVendor() const { return _vendor;}
 
@@ -179,6 +182,7 @@ namespace osgEarth
         bool _supportsARBTC;
         bool _supportsETC;
         bool _supportsRGTC;
+        bool _isGLES;
 
     public:
         friend class Registry;

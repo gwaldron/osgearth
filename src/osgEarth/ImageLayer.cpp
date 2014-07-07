@@ -26,6 +26,8 @@
 #include <osgEarth/Progress>
 #include <osgEarth/URI>
 #include <osgEarth/MemCache>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Version>
 #include <osgDB/WriteFile>
 #include <memory.h>
@@ -808,15 +810,29 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
 
     if ( _runtimeOptions.textureCompression() == (osg::Texture::InternalFormatMode)~0 )
     {
-        // auto - pick a good one.
-        osg::Texture::InternalFormatMode mode;
-        if (ImageUtils::computeTextureCompressionMode(tex->getImage(0), mode))
+        // auto mode:
+        if ( Registry::capabilities().isGLES() )
         {
-            tex->setInternalFormatMode(mode);
+            // Many GLES drivers do not support automatic compression, so by 
+            // default, don't set the internal format.
+            // TODO: later perhaps we can replace this with a CPU-side 
+            // compression step for PV or ETC
+            tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
+        }
+        else
+        {
+            // compute the best available mode.
+            osg::Texture::InternalFormatMode mode;
+            if (ImageUtils::computeTextureCompressionMode(tex->getImage(0), mode))
+            {
+                tex->setInternalFormatMode(mode);
+            }
         }
     }
+
     else if ( _runtimeOptions.textureCompression().isSet() )
     {
+        // use specifically picked a mode.
         tex->setInternalFormatMode( *_runtimeOptions.textureCompression() );
     }
 }

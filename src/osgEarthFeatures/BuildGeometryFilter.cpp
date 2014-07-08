@@ -350,14 +350,11 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
         {
             Geometry* part = parts.next();
 
-            // skip invalid geometry for lines.
-            if ( part->size() < 2 )
-                continue;
-
-            // extract the required line symbol; bail out if not found.
+            // extract the required point symbol; bail out if not found.
             const PointSymbol* point =
                 input->style().isSet() && input->style()->has<PointSymbol>() ? input->style()->get<PointSymbol>() :
                 _style.get<PointSymbol>();
+
             if ( !point )
                 continue;
 

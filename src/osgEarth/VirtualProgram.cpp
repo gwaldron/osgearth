@@ -607,13 +607,8 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
             const ShaderEntry& lhsEntry = lhsIter->second;
             const ShaderEntry& rhsEntry = rhsIter->second;
 
-            int shaderComp = lhsEntry._shader->compare( *rhsEntry._shader.get() );
-            if ( shaderComp != 0 ) return shaderComp;
-
-            if ( lhsEntry._overrideValue < rhsEntry._overrideValue ) return -1;
-            if ( lhsEntry._overrideValue > rhsEntry._overrideValue ) return 1;
-
-            //todo: compare accept member??
+            if ( lhsEntry < rhsEntry ) return -1;
+            if ( rhsEntry < lhsEntry ) return  1;
 
             lhsIter++;
             rhsIter++;

@@ -277,6 +277,13 @@ namespace osgEarth
             osg::ref_ptr<osg::Shader>                _shader;
             osg::StateAttribute::OverrideValue       _overrideValue;
             osg::ref_ptr<ShaderComp::AcceptCallback> _accept;
+
+            bool operator < (const ShaderEntry& rhs) const {
+                if ( _shader->compare(*rhs._shader.get()) < 0 ) return true;
+                if ( _overrideValue < rhs._overrideValue ) return true;
+                if ( _accept.valid() && !rhs._accept.valid() ) return true;
+                return false;
+            }
         };
 
         typedef std::map< std::string, ShaderEntry > ShaderMap;

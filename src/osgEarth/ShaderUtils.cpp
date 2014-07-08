@@ -726,7 +726,8 @@ ArrayUniform::detach()
 
 //...................................................................
 
-RangeUniformCullCallback::RangeUniformCullCallback()
+RangeUniformCullCallback::RangeUniformCullCallback() :
+_dump( false )
 {
     _uniform = osgEarth::Registry::instance()->shaderFactory()->createRangeUniform();
 
@@ -746,10 +747,13 @@ RangeUniformCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     // range = distance from the viewpoint to the outside of the bounding sphere.
     _uniform->set( range - bs.radius() );
 
-    //OE_INFO
-    //    << "Range = " << range 
-    //    << ", center = " << bs.center().x() << "," << bs.center().y()
-    //    << ", radius = " << bs.radius() << std::endl;
+    if ( _dump )
+    {
+        OE_NOTICE
+            << "Range = " << range 
+            << ", center = " << bs.center().x() << "," << bs.center().y()
+            << ", radius = " << bs.radius() << std::endl;
+    }
     
     cv->pushStateSet( _stateSet.get() );
     traverse(node, nv);

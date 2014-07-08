@@ -199,9 +199,14 @@ namespace osgEarth
     public:
         RangeUniformCullCallback();
         void operator()(osg::Node*, osg::NodeVisitor* nv);
+
+        // testing
+        void setDump(bool v) { _dump = true; }
+
     private:
         osg::ref_ptr<osg::StateSet> _stateSet;
         osg::ref_ptr<osg::Uniform>  _uniform;
+        bool                        _dump;
     };
 }
 

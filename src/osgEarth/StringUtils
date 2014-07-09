@@ -135,6 +135,31 @@ namespace osgEarth
         return temp;
     }
 
+    // template specialization for integers (to handle hex)
+#define AS_INT_DEC_OR_HEX(TYPE) \
+    template<> inline TYPE \
+    as< TYPE >(const std::string& str, const TYPE & dv) { \
+        TYPE temp = dv; \
+        std::istringstream strin( trim(str) ); \
+        if ( !strin.eof() ) { \
+            if ( str.length() >= 2 && str.at(0) == '0' && str.at(1) == 'x' ) { \
+                strin.seekg( 2 ); \
+                strin >> std::hex >> temp; \
+            } \
+            else { \
+                strin >> temp; \
+            } \
+        } \
+        return temp; \
+    }
+
+    AS_INT_DEC_OR_HEX(int)
+    AS_INT_DEC_OR_HEX(unsigned)
+    AS_INT_DEC_OR_HEX(short)
+    AS_INT_DEC_OR_HEX(unsigned short)
+    AS_INT_DEC_OR_HEX(long)
+    AS_INT_DEC_OR_HEX(unsigned long)
+
     // template specialization for a bool
     template<> inline bool
     as<bool>( const std::string& str, const bool& default_value )

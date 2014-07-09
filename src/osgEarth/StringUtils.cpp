@@ -19,7 +19,6 @@
 
 #include <osgEarth/StringUtils>
 #include <osgDB/FileNameUtils>
-//#include <ctype.h>
 #include <cctype>
 
 using namespace osgEarth;

@@ -139,8 +139,10 @@ namespace osgEarth
         bool                         _supported;
         bool                         _dirty;
         osg::observer_ptr<osg::Node> _graph;
-        osg::ref_ptr<osg::Uniform>   _biasUniform;
-        osg::ref_ptr<osg::Uniform>   _rangeUniform;
+        //osg::ref_ptr<osg::Uniform>   _biasUniform;
+        //osg::ref_ptr<osg::Uniform>   _rangeUniform;
+        osg::ref_ptr<osg::Uniform>   _minBiasUniform, _maxBiasUniform;
+        osg::ref_ptr<osg::Uniform>   _minRangeUniform, _maxRangeUniform;
         DepthOffsetOptions           _options;
     };
 

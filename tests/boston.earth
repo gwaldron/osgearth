@@ -80,7 +80,7 @@ to extruded buildings.
     </model>
     
     
-    <model name="Streets" driver="feature_geom" enabled="false">
+    <model name="Streets" driver="feature_geom" enabled="true">
         <features name="streets" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
             <resample max_length="25"/>
@@ -95,8 +95,8 @@ to extruded buildings.
                 streets {
                     stroke:                       #ffff007f;
                     stroke-width:                 7.5m;
-                    altitude-clamping:            terrain-gpu;
-                    render-depth-offset-min-bias: 10;
+                    altitude-clamping:            terrain;
+                    render-depth-offset-min-bias: 3.6;
                 }
             </style>
         </styles>        

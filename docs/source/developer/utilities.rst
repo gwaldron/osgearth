@@ -109,9 +109,9 @@ The ``LogarithmicDepthBuffer`` is one way to solve this problem. It uses a shade
 re-map the GPU's depth buffer values so they can be put to better use in this type
 of scenario.
 
-It's easy to install:
+It's easy to install::
 
-    osg::ref_ptr<LogarithmicDepthBuffer> logdepth = new LogarithmicDepthBuffer();
+    LogarithmicDepthBuffer logdepth;
     logdepth->install( view->getCamera() );
 
 Since it does alter the projection-space coordinates of your geometry at draw time,

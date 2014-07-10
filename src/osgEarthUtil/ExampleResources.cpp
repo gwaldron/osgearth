@@ -690,15 +690,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
             caster->addChild(mapNode);
             root = caster;
         }
-
-#if 0
-        // if we're also using the LogDepthBuffer, we need to also apply it
-        // to the shadowing depth cameras.
-        if ( useLogDepth )
-        {
-            caster->setUseLogarithmicDepthBuffer( true );
-        }
-#endif
     }
 
     // Loading KML from the command line:

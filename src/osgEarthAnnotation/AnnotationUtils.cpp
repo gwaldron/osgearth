@@ -545,9 +545,9 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
             float sin_v = sinf(v);
             
             verts->push_back(osg::Vec3(
-                xRadius * cos_u * sin_v,
-                yRadius * sin_u * sin_v,
-                zRadius * cos_v ));
+                xRadius * cos_u * cos_v,
+                yRadius * sin_u * cos_v,
+                zRadius * sin_v ));
 
             if (genTexCoords)
             {

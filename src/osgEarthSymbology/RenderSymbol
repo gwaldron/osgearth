@@ -60,6 +60,10 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>& order() { return _order; }
         const optional<NumericExpression>& order() const { return _order; }
 
+        /** clip plane number to activate. */
+        optional<unsigned>& clipPlane() { return _clipPlane; }
+        const optional<unsigned>& clipPlane() const { return _clipPlane; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -71,6 +75,7 @@ namespace osgEarth { namespace Symbology
         optional<DepthOffsetOptions> _depthOffset;
         optional<bool>               _backfaceCulling;
         optional<NumericExpression>  _order;
+        optional<unsigned>           _clipPlane;
         
         /** dtor */
         virtual ~RenderSymbol() { }

@@ -1191,6 +1191,8 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
             }
         }
     }
+    
+    const RenderSymbol* render = style.get<RenderSymbol>();
 
     if ( _clampable )
     {
@@ -1206,7 +1208,6 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
         // check for explicit depth offset render settings (note, this could
         // override the automatic disable put in place by the presence of an
         // ExtrusionSymbol above)
-        const RenderSymbol* render = style.get<RenderSymbol>();
         if ( render && render->depthOffset().isSet() )
         {
             _clampable->setDepthOffsetOptions(*render->depthOffset());
@@ -1215,7 +1216,6 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
 
     else 
     {
-        const RenderSymbol* render = style.get<RenderSymbol>();
         if ( render && render->depthOffset().isSet() )
         {
             _depthOffsetAdapter.setGraph( this );

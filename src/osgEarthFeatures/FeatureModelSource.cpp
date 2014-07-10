@@ -253,6 +253,12 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                 GL_CULL_FACE,
                 (render->backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
+
+        if ( render->clipPlane().isSet() )
+        {
+            GLenum mode = GL_CLIP_PLANE0 + (render->clipPlane().value());
+            group->getOrCreateStateSet()->setMode(mode, 1);
+        }
     }
 
     return group;

@@ -41,10 +41,25 @@ namespace
             if ( camera )
             {
                 // find (or create) a stateset
-                unsigned id = camera->getGraphicsContext()->getState()->getContextID();
-                osg::ref_ptr<osg::StateSet>& stateset = _stateSets[id];
-                if ( !stateset.valid() )
-                    stateset = new osg::StateSet();
+                osg::StateSet* stateset = 0L;
+                osg::ref_ptr<osg::StateSet> refStateSet;
+
+                osg::GraphicsContext* gc = camera->getGraphicsContext();
+                if ( gc )
+                {
+                    // faster method of re-using statesets when a GC is present
+                    unsigned id = gc->getState()->getContextID();
+                    refStateSet = _stateSets[id];
+                    if ( !refStateSet.valid() )
+                        refStateSet = new osg::StateSet();
+                    stateset = refStateSet.get();
+                }
+                else
+                {
+                    // no GC is present (e.g., RTT camera) so just make a fresh one
+                    refStateSet = new osg::StateSet();
+                    stateset = refStateSet.get();
+                }
 
                 // the uniform conveying the far clip plane:
                 osg::Uniform* u = stateset->getOrCreateUniform("oe_logdepth_farplane", osg::Uniform::FLOAT);

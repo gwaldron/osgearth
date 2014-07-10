@@ -2791,9 +2791,7 @@ ControlCanvas::update(const osg::FrameStamp* frameStamp)
     // shaderize.
     // we don't really need to rebuild shaders on every dirty; we could probably
     // just do it on add/remove controls; but that's an optimization for later
-    ShaderGenerator shaderGen;
-    shaderGen.setProgramName( "osgEarth.ControlCanvas" );
-    shaderGen.run( this );
+    Registry::shaderGenerator().run( this, "osgEarth.ControlCanvas" );
 #endif
 
     _contextDirty = false;

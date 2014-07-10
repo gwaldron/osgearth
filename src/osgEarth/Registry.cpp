@@ -21,6 +21,7 @@
 #include <osgEarth/Cube>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/ShaderGenerator>
 #include <osgEarth/TaskService>
 #include <osgEarth/IOTypes>
 #include <osgEarth/ColorFilter>
@@ -71,6 +72,9 @@ _cacheDriver        ( "filesystem" )
 
     // generates the basic shader code for the terrain engine and model layers.
     _shaderLib = new ShaderFactory();
+
+    // shader generator used internally by osgEarth. Can be replaced.
+    _shaderGen = new ShaderGenerator();
 
     // thread pool for general use
     _taskServiceManager = new TaskServiceManager();
@@ -419,6 +423,19 @@ Registry::setShaderFactory( ShaderFactory* lib )
 {
     if ( lib != 0L && lib != _shaderLib.get() )
         _shaderLib = lib;
+}
+
+ShaderGeneratorProxy
+Registry::getShaderGenerator() const
+{
+    return ShaderGeneratorProxy(_shaderGen.get());
+}
+
+void
+Registry::setShaderGenerator(ShaderGenerator* shaderGen)
+{
+    if ( shaderGen != 0L && shaderGen != _shaderGen.get() )
+        _shaderGen = shaderGen;
 }
         
 void

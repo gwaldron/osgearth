@@ -112,9 +112,10 @@ ModelNode::init()
                 if ( Registry::capabilities().supportsGLSL() )
                 {
                     // generate shader code for the loaded model:
-                    ShaderGenerator gen;
-                    gen.setProgramName( "osgEarth.ModelNode" );
-                    gen.run( node, Registry::stateSetCache() );
+                    Registry::shaderGenerator().run(
+                        this,
+                        "osgEarth.ModelNode",
+                        Registry::stateSetCache() );
 
                     // do we really need this? perhaps
 #if 0

@@ -25,6 +25,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osg/NodeVisitor>
 #include <osg/State>
+#include <osg/Version>
 #include <sstream>
 #include <set>
 
@@ -51,8 +52,7 @@ namespace osgEarth
      *
      * Usage:
      *
-     *   ShaderGenerator gen;
-     *   gen.run( graph );
+     * osgEarth::Registry::shaderGenerator().run(graph);
      *
      * If osgEarth detects a lack of GLSL support, the ShaderGenerator
      * will do nothing.
@@ -60,20 +60,30 @@ namespace osgEarth
     class OSGEARTH_EXPORT ShaderGenerator : public osg::NodeVisitor
     {
     public:
-        /**
-         * Constructs a new shader generator
-         */
+        /** Constructs a new shader generator */
         ShaderGenerator();
 
-        /**
-         * Sets the name to give any VP's we create
-         */
-        void setProgramName(const std::string& name);
+        /** Copy constructor */
+        ShaderGenerator(const ShaderGenerator& rhs, const osg::CopyOp& copy);
+
+#if OSG_VERSION_LESS_THAN(3,3,0)
+        virtual ShaderGenerator* clone(const osg::CopyOp& copy) {
+            return new ShaderGenerator(*this, copy);
+        }
+#endif
+
+    public: // ShaderGeneratorInterface
 
         /**
-         * Runs the shader generator and then optimizes state sharing when it's done.
+         * Runs the shader generator on a graph.
+         * @param graph Graph for which to generate shader components.
+         * @param name Name to give to the top level Virtual Program.
+         * @param cache StateSet cache to use for sharing state when finished.
          */
-        void run(osg::Node* graph, StateSetCache* cache =0L);
+        void run(osg::Node* graph, const std::string& name, StateSetCache* cache);
+
+
+    public: // statics
 
         /**
          * Marks a node with a hint that the shader generator should ignore it in
@@ -85,6 +95,14 @@ namespace osgEarth
          * Whether an object has been marked for ignore 
          */
         static bool ignore(const osg::Object* object);
+
+    public: // deprecated
+
+        /**
+         * Sets the name to give any VP's we create           
+         * @deprecated Now a NO-OP. Use run(graph, name, ...) instead.
+         */
+        void setProgramName(const std::string& name) const { }
 
     public:
         /**
@@ -122,6 +140,8 @@ namespace osgEarth
 
 
     protected: // high-level entry points:
+
+        virtual void optimizeStateSharing(osg::Node* graph, StateSetCache* cache);
 
         virtual void apply( osg::Drawable* );
 
@@ -170,6 +190,32 @@ namespace osgEarth
         AcceptCallbackVector _acceptCallbacks;
 
         bool accept(const osg::StateAttribute* sa) const;
+    };
+
+    
+    /** Proxy interface for a ShaderGenerator - used by the registry. */
+    class ShaderGeneratorProxy //header only
+    {
+    public:
+        void run(osg::Node* graph, const std::string& name, StateSetCache* cache) {
+            _instance->run(graph, name, cache);
+        }
+        void run(osg::Node* graph) {
+            run(graph, "ShaderGenerator", 0L);
+        }
+        void run(osg::Node* graph, StateSetCache* cache) {
+            run(graph, "ShaderGenerator", cache);
+        }
+        void run(osg::Node* graph, const std::string& name) {
+            run(graph, name, 0L);
+        }
+
+    public:
+        ShaderGeneratorProxy(ShaderGenerator* temp)
+            : _instance( temp->clone(osg::CopyOp::SHALLOW_COPY) ) { }
+
+    private:
+        osg::ref_ptr<ShaderGenerator> _instance;
     };
 
 } // namespace osgEarth

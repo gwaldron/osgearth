@@ -216,10 +216,12 @@ PlaceNode::init()
     applyStyle( _style );
 
     setLightingIfNotSet( false );
-
-    ShaderGenerator gen;
-    gen.setProgramName( "osgEarth.PlaceNode" );
-    gen.run( this, Registry::stateSetCache() );
+    
+    // generate shaders:
+    Registry::shaderGenerator().run(
+        this,
+        "osgEarth.PlaceNode",
+        Registry::stateSetCache() );
 
     // re-apply annotation drawable-level stuff as neccesary.
     AnnotationData* ad = getAnnotationData();

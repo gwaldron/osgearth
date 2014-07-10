@@ -95,6 +95,33 @@ LOD blending supports the following properties (earth file and API):
     :blend_imagery:    Whether to blend imagery LODs (true)
     :blend_elevation:  Whether to morph elevation LODs (true)
 
+
+Logarithmic Depth Buffer
+------------------------
+
+In whole-earth applications it's common that you want to see something up close (like
+an aircraft at altitude) while seeing the Earth and its horizon off in the distance.
+This poses a problem for modern graphic hardware because the standard depth buffer
+precision heavily favors objects closer to the camera, and viewing such a wide range
+of objects leads to "z-fighting" artifacts.
+
+The ``LogarithmicDepthBuffer`` is one way to solve this problem. It uses a shader to
+re-map the GPU's depth buffer values so they can be put to better use in this type
+of scenario.
+
+It's easy to install:
+
+    osg::ref_ptr<LogarithmicDepthBuffer> logdepth = new LogarithmicDepthBuffer();
+    logdepth->install( view->getCamera() );
+
+Since it does alter the projection-space coordinates of your geometry at draw time,
+you do need to be careful that you aren't doing anything ELSE in clip space in your
+own custom shaders that would conflict with this.
+
+(10-Jul-2014: Some osgEarth features are incompatible with the log depth buffer;
+namely, GPU clamping and Shadowing. Depth Offset works correctly though.)
+
+
 Formatters
 ----------
 

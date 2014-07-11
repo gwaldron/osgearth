@@ -87,6 +87,10 @@ namespace osgEarth
         optional<bool>& bilinearReprojection() { return _bilinearReprojection; }
         const optional<bool>& bilinearReprojection() const { return _bilinearReprojection; }
 
+        /** Force the tilesource to report this as the maximum available LOD */
+        optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
+        const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
+
     public:
         /** For backwards-compatibility; use minValidValue() instead 
          *  @deprecated */
@@ -119,6 +123,7 @@ namespace osgEarth
         optional<std::string>    _blacklistFilename;
         optional<int>            _L2CacheSize;
         optional<bool>           _bilinearReprojection;
+        optional<unsigned>       _maxDataLevel;
     };
 
 

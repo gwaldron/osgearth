@@ -98,7 +98,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     t->setText( text, text_encoding );
 
-    // osgText::Text turns on depth writing by default, even if you turned it off..
+    // osgText::Text turns on depth writing by default, even if you turned it off.
     t->setEnableDepthWrites( false );
 
     if ( symbol && symbol->layout().isSet() )
@@ -433,7 +433,11 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geom );
 
-    return geode;
+    // need 2-pass alpha so you can view it properly from below.
+    if ( color.a() < 1.0f )
+      return installTwoPassAlpha( geode );
+    else
+      return geode;
 }
 
 osg::Node* 
@@ -454,7 +458,7 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
-    b->reserve(24);
+    b->reserve(12);
     b->push_back(0); b->push_back(2); b->push_back(3);
     b->push_back(0); b->push_back(3); b->push_back(1);
     b->push_back(0); b->push_back(1); b->push_back(4);
@@ -483,10 +487,13 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     geode->addDrawable( geom );
 
     // need 2-pass alpha so you can view it properly from below.
-    return installTwoPassAlpha( geode );
+    if ( color.a() < 1.0f )
+      return installTwoPassAlpha( geode );
+    else
+      return geode;
 }
 
-// constucts an ellipsoidal mesh
+// constructs an ellipsoidal mesh
 osg::Geometry*
 AnnotationUtils::createEllipsoidGeometry(float xRadius, 
                                          float yRadius,

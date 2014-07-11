@@ -212,6 +212,12 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | max_resolution        | Maximum source data resolution at which to draw tiles. Value is    |
 |                       | units per pixel, in the native units of the source data.           |
 +-----------------------+--------------------------------------------------------------------+
+| max_data_level        | Maximum level of detail at which new source data is available to   |
+|                       | this image layer. Usually the driver will report this information. |
+|                       | But you may wish to limit it yourself. This is especially true for |
+|                       | some drivers that have no resolution limit, like a rasterization   |
+|                       | driver (agglite) for example.                                      |
++-----------------------+--------------------------------------------------------------------+
 | enabled               | Whether to include this layer in the map. You can only set this at |
 |                       | load time; it is just an easy way of "commenting out" a layer in   |
 |                       | the earth file.                                                    |

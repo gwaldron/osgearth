@@ -27,6 +27,7 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
 #include <osg/UserDataContainer>
+#include <osg/LOD>
 #include <osgUtil/MeshOptimizers>
 
 #define LC "[DrawInstanced] "
@@ -143,6 +144,32 @@ ConvertToDrawInstanced::apply( osg::Geode& geode )
     }
 
     traverse(geode);
+}
+
+
+void
+ConvertToDrawInstanced::apply(osg::LOD& lod)
+{
+    // find the highest LOD:
+    int   minIndex = 0;
+    float minRange = FLT_MAX;
+    for(unsigned i=0; i<lod.getNumRanges(); ++i)
+    {
+        if ( lod.getRangeList()[i].first < minRange )
+        {
+            minRange = lod.getRangeList()[i].first;
+            minIndex = i;
+        }
+    }
+
+    // remove all but the highest:
+    osg::ref_ptr<osg::Node> highestLOD = lod.getChild( minIndex );
+    lod.removeChildren( 0, lod.getNumChildren() );
+
+    // add it back with a full range.
+    lod.addChild( highestLOD.get(), 0.0f, FLT_MAX );
+
+    traverse(lod);
 }
 
 

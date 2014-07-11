@@ -65,6 +65,7 @@ namespace osgEarth
                 bool                    optimize );
 
             void apply(osg::Geode&);
+            void apply(osg::LOD&);
 
         protected:
             unsigned _numInstances;

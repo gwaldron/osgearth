@@ -182,9 +182,16 @@ PlaceNode::init()
             heading = osg::DegreesToRadians( icon->heading()->eval() );
         }
 
+        // Apply a default material color
+        osg::Vec4 color = osg::Vec4f(1.0f,1.0f,1.0,1.0f);
+        if ( icon->color().isSet() )
+        {
+          color = icon->color().value();
+        }
+
         //We must actually rotate the geometry itself and not use a MatrixTransform b/c the 
         //decluttering doesn't respect Transforms above the drawable.
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading, scale );
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, 0, heading, scale, color );
         if ( imageGeom )
         {
             _geode->addDrawable( imageGeom );

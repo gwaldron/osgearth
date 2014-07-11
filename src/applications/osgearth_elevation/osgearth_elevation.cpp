@@ -100,10 +100,11 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 s_mslLabel->setText( Stringify() << out_hamsl );
                 s_haeLabel->setText( Stringify() << mapPointGeodetic.z() );
                 s_resLabel->setText( Stringify() << out_resolution );
-                s_mapLabel->setText( Stringify() << isectZ );
 
                 yes = true;
             }
+
+            s_mapLabel->setText( Stringify() << isectZ );
         }
 
         if (!yes)
@@ -112,7 +113,6 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             s_mslLabel->setText( "-" );
             s_haeLabel->setText( "-" );
             s_resLabel->setText( "-" );
-            s_mapLabel->setText( "-" );
         }
     }
 
@@ -149,6 +149,10 @@ int main(int argc, char** argv)
     }
 
     osg::Group* root = new osg::Group();
+    viewer.setSceneData( root );
+    
+    // install the programmable manipulator.
+    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
     // The MapNode will render the Map object in the scene graph.
     root->addChild( s_mapNode );
@@ -174,11 +178,9 @@ int main(int argc, char** argv)
         mapSRS->getVerticalDatum()->getName() : 
         Stringify() << "geodetic (" << mapSRS->getEllipsoid()->getName() << ")" );
 
-    ControlCanvas* canvas = new ControlCanvas();
-    viewer.getCamera()->addChild( canvas );
+    ControlCanvas* canvas = new ControlCanvas();    
+    root->addChild(canvas);
     canvas->addControl( grid );
-
-    viewer.setSceneData( root );
 
     // An event handler that will respond to mouse clicks:
     viewer.addEventHandler( new QueryElevationHandler() );
@@ -187,10 +189,6 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
-    // install the programmable manipulator.
-    if ( s_mapNode->getMap()->isGeocentric() )
-        viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
     return viewer.run();
 }

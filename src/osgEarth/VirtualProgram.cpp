@@ -39,6 +39,7 @@ using namespace osgEarth::ShaderComp;
 //#define OE_TEST OE_NOTICE
 //#define USE_ATTRIB_ALIASES
 //#define DEBUG_APPLY_COUNTS
+//#define DEBUG_ACCUMULATION
 
 //------------------------------------------------------------------------
 
@@ -434,6 +435,41 @@ namespace
                                VirtualProgram::ShaderVector&       outputKeyVector)
     {
 
+#ifdef DEBUG_ACCUMULATION
+
+        // test dump .. function map and shader map should always include identical data.
+        OE_INFO << LC << "====PROGRAM: " << programName << "\n";
+
+        // debug:
+        OE_INFO << LC << "====FUNCTIONS:\n";
+
+        for(ShaderComp::FunctionLocationMap::iterator i = accumFunctions.begin();
+            i != accumFunctions.end();
+            ++i)
+        {
+            ShaderComp::OrderedFunctionMap& ofm = i->second;
+            for(ShaderComp::OrderedFunctionMap::iterator j = ofm.begin(); j != ofm.end(); ++j)
+            {
+                OE_INFO << LC 
+                    << j->second._name << ", " << (j->second.accept(state)?"accepted":"rejected")
+                    << std::endl;
+            }
+        }
+
+        OE_INFO << LC << "====SHADERS:\n";
+        for(VirtualProgram::ShaderMap::iterator i = accumShaderMap.begin();
+            i != accumShaderMap.end();
+            ++i)
+        {
+            OE_INFO << LC
+                << i->first << ", "
+                << (i->second.accept(state)?"accepted":"rejected") << ", "
+                << i->second._overrideValue
+                << std::endl;
+        }
+        OE_INFO << LC << "\n\n";
+#endif
+
         // create new MAINs for this function stack.
         osg::Shader* vertMain = Registry::shaderFactory()->createVertexShaderMain( accumFunctions );
         osg::Shader* fragMain = Registry::shaderFactory()->createFragmentShaderMain( accumFunctions );
@@ -466,6 +502,29 @@ namespace
 
         return program;
     }
+}
+
+//------------------------------------------------------------------------
+
+VirtualProgram::ShaderEntry::ShaderEntry() :
+_overrideValue(0)
+{
+    //nop
+}
+
+bool
+VirtualProgram::ShaderEntry::accept(const osg::State& state) const
+{
+    return (!_accept.valid()) || (_accept->operator()(state) == true);
+}
+
+bool
+VirtualProgram::ShaderEntry::operator < (const VirtualProgram::ShaderEntry& rhs) const
+{
+    if ( _shader->compare(*rhs._shader.get()) < 0 ) return true;
+    if ( _overrideValue < rhs._overrideValue ) return true;
+    if ( _accept.valid() && !rhs._accept.valid() ) return true;
+    return false;
 }
 
 //------------------------------------------------------------------------
@@ -971,7 +1030,10 @@ VirtualProgram::apply( osg::State& state ) const
     for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
     {
         ShaderEntry& entry = i->second;
-        vec.push_back( entry._shader.get() );
+        if ( i->second.accept(state) )
+        {
+            vec.push_back( entry._shader.get() );
+        }
     }
 
     // see if there's already a program associated with this list:

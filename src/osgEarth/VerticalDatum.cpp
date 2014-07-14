@@ -160,7 +160,7 @@ VerticalDatum::transform(const VerticalDatum* from,
         for( unsigned r=0; r<rows; ++r)
         {
             double lat = sw.y() + ystep*double(r);
-            float& h = hf->getHeight(r, c);
+            float& h = hf->getHeight(c, r);
             VerticalDatum::transform( from, to, lat, lon, h );
         }
     }
@@ -185,6 +185,12 @@ VerticalDatum::isEquivalentTo( const VerticalDatum* rhs ) const
 {
     if ( this == rhs )
         return true;
+
+    if ( rhs == 0L && !_geoid.valid() )
+        return true;
+
+    if ( rhs == 0L )
+        return false;
 
     if ( _units != rhs->_units )
         return false;

@@ -1227,8 +1227,8 @@ VirtualProgram::accumulateFunctions(const osg::State&                state,
                                         break;
                                     }
                                 }
+                                dest.insert( *k );
                             }
-                            dest.insert( *k );
                         }
                     }
                 }

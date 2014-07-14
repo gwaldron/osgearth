@@ -53,7 +53,7 @@ namespace
             for( unsigned c=0; c<cols-1; ++c )
             {
                 float inputLon = 0.0f + float(c) * colStep;
-                if ( inputLon > 180.0 ) inputLon -= 360.0;
+                if ( inputLon >= 180.0 ) inputLon -= 360.0;
 
                 for( unsigned r=0; r<rows; ++r )
                 {
@@ -66,6 +66,10 @@ namespace
                     hf->setHeight( outc, outr, float(h.as(Units::METERS)) );
                 }
             }
+
+            // copy the first column to the last column
+            for(unsigned r=0; r<rows; ++r)
+                hf->setHeight(cols-1, r, hf->getHeight(0, r));
 
             _geoid = new Geoid();
             _geoid->setHeightField( hf );

@@ -41,7 +41,11 @@ namespace osgEarth
         virtual ~ElevationLayerOptions() { }
 
         optional<bool>& offset() { return _offset; }
-        const optional<bool>& offset() const { return _offset; }  
+        const optional<bool>& offset() const { return _offset; }
+
+        /** Policy for dealing with NO_DATA values in elevation */
+        optional<ElevationNoDataPolicy>& noDataPolicy() { return _noDataPolicy; }
+        const optional<ElevationNoDataPolicy>& noDataPolicy() const { return _noDataPolicy; }
 
     public:
         virtual Config getConfig() const { return getConfig(false); }
@@ -52,7 +56,8 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-        optional< bool > _offset;
+        optional<bool>                  _offset;
+        optional<ElevationNoDataPolicy> _noDataPolicy;
     };
 
     //--------------------------------------------------------------------

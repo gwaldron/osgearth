@@ -172,7 +172,7 @@ namespace osgEarth
 
         /**
          * Resolves any "invalid" height values in the hieghtfield, replacing them
-         * with valid values from a Geoid (or zero if no geoid).
+         * with geodetic (ellipsoid) relative values from a Geoid (or zero if no geoid).
          */
         static void resolveInvalidHeights(
             osg::HeightField* grid,

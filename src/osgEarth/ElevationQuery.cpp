@@ -283,7 +283,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
                 hf->getFloatArray()->at( i ) = NO_DATA_VALUE;
             }   
 
-            if (_mapf.populateHeightField( hf, key ) )
+            if (_mapf.populateHeightField(hf, key, false))
             {                
                 geoHF = GeoHeightField( hf.get(), key.getExtent() );
                 _cache.insert( key, geoHF );

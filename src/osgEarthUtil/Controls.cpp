@@ -2588,7 +2588,25 @@ ControlCanvas::getOrCreate(osg::View* view)
         return canvas;
 
     canvas = new ControlCanvas();
-    view->getCamera()->addChild( canvas );
+
+    // ControlCanvas does NOT work as a direct child of the View's camera.
+    osg::Group* group = 0L;
+    if ( view->getCamera()->getNumChildren() > 0 )
+    {
+        group = view->getCamera()->getChild(0)->asGroup();
+        if ( !group )
+        {
+            group = new osg::Group();
+            osgEarth::insertGroup(group, view->getCamera());
+        }
+    }
+    else
+    {
+        group = new osg::Group();
+        view->getCamera()->addChild(group);
+    }
+
+    group->addChild( canvas );
     return canvas;
 }
 

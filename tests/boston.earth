@@ -113,6 +113,7 @@ to extruded buildings.
         </layout>
         
         <instancing>true</instancing>
+		<cluster_culling>false</cluster_culling>
         
         <styles>
             <style type="text/css">

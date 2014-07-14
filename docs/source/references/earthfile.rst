@@ -257,7 +257,8 @@ will composite all elevation data into a single heightmap and use that to build 
                    min_resolution = "100.0"
                    max_resolution = "0.0"
                    enabled        = "true"
-                   offset         = "false" >
+                   offset         = "false"
+                   nodata_policy  = "interpolate" >
 
 
 +-----------------------+--------------------------------------------------------------------+
@@ -285,6 +286,10 @@ will composite all elevation data into a single heightmap and use that to build 
 +-----------------------+--------------------------------------------------------------------+
 | offset                | Indicates that the height values in this layer are relative        |
 |                       | offsets rather than true terrain height samples.                   |
++-----------------------+--------------------------------------------------------------------+
+| nodata_policy         | What to do with "no data" values. Default is "interpolate" which   |
+|                       | will interpolate neighboring values to fill holes. Set it to "msl" |
+|                       | to replace "no data" samples with the current sea level value.     |
 +-----------------------+--------------------------------------------------------------------+
 
 

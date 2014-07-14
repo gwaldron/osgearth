@@ -1102,3 +1102,31 @@ LODScaleGroup::traverse(osg::NodeVisitor& nv)
 
     osg::Group::traverse( nv );
 }
+
+//------------------------------------------------------------------
+
+ClipToGeocentricHorizon::ClipToGeocentricHorizon(const osgEarth::SpatialReference* srs,
+                                                 osg::ClipPlane*                   clipPlane)
+{
+    _radius = std::min(
+        srs->getEllipsoid()->getRadiusPolar(),
+        srs->getEllipsoid()->getRadiusEquator() );
+
+    _clipPlane = clipPlane;
+}
+
+void
+ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osg::ref_ptr<osg::ClipPlane> clipPlane;
+    if ( _clipPlane.lock(clipPlane) )
+    {
+        osg::Vec3 eye = nv->getEyePoint();
+        double d = eye.length();
+        double a = acos(_radius/d);
+        double horizonRadius = _radius*cos(a);
+        eye.normalize();
+        clipPlane->setClipPlane(osg::Plane(eye, eye*horizonRadius));
+    }
+    traverse(node, nv);
+}

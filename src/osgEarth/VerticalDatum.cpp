@@ -186,6 +186,12 @@ VerticalDatum::isEquivalentTo( const VerticalDatum* rhs ) const
     if ( this == rhs )
         return true;
 
+    if ( rhs == 0L && !_geoid.valid() )
+        return true;
+
+    if ( rhs == 0L )
+        return false;
+
     if ( _units != rhs->_units )
         return false;
 

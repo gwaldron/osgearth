@@ -503,8 +503,19 @@ ElevationLayer::createHeightField(const TileKey&    key,
     {
         if ( _runtimeOptions.noDataPolicy() == NODATA_MSL )
         {
-            const VerticalDatum* vdatum = result.getExtent().getSRS()->getVerticalDatum();
-            const Geoid* geoid = vdatum ? vdatum->getGeoid() : 0L;
+            // requested VDatum:
+            const VerticalDatum* outputVDatum = key.getExtent().getSRS()->getVerticalDatum();
+            const Geoid* geoid = 0L;
+
+            // if there's an output vdatum, just set all invalid's to zero MSL.
+            if ( outputVDatum == 0L )
+            {
+                // if the output is geodetic (HAE), but the input has a geoid, 
+                // use that geoid to populate the invalid data at sea level.
+                const VerticalDatum* profileDatum  = getProfile()->getSRS()->getVerticalDatum();
+                if ( profileDatum )
+                    geoid = profileDatum->getGeoid();
+            }
 
             HeightFieldUtils::resolveInvalidHeights(
                 result.getHeightField(),

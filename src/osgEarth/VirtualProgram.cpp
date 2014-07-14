@@ -39,7 +39,7 @@ using namespace osgEarth::ShaderComp;
 //#define OE_TEST OE_NOTICE
 //#define USE_ATTRIB_ALIASES
 //#define DEBUG_APPLY_COUNTS
-#define DEBUG_ACCUMULATION
+//#define DEBUG_ACCUMULATION
 
 //------------------------------------------------------------------------
 

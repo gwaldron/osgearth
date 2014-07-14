@@ -70,8 +70,6 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             GeoPoint mapPoint;
             mapPoint.fromWorld( _terrain->getSRS(), world );
 
-            double isectZ = mapPoint.alt();
-
             // do an elevation query:
             double query_resolution = 0; // 1/10th of a degree
             double out_hamsl        = 0.0;
@@ -104,7 +102,10 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                 yes = true;
             }
 
-            s_mapLabel->setText( Stringify() << isectZ );
+            // finally, get a normal ISECT HAE point.
+            GeoPoint isectPoint;
+            isectPoint.fromWorld( _terrain->getSRS()->getGeodeticSRS(), world );
+            s_mapLabel->setText( Stringify() << isectPoint.alt() );
         }
 
         if (!yes)
@@ -118,7 +119,8 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
     {
-        if ( ea.getEventType() == osgGA::GUIEventAdapter::MOVE )
+        if (ea.getEventType() == osgGA::GUIEventAdapter::MOVE &&
+            aa.asView()->getFrameStamp()->getFrameNumber() % 10 == 0)
         {
             osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
             update( ea.getX(), ea.getY(), view );
@@ -163,7 +165,7 @@ int main(int argc, char** argv)
     grid->setControl(0,1,new LabelControl("Vertical Datum:"));
     grid->setControl(0,2,new LabelControl("Height (MSL):"));
     grid->setControl(0,3,new LabelControl("Height (HAE):"));
-    grid->setControl(0,4,new LabelControl("Height (TRN):"));
+    grid->setControl(0,4,new LabelControl("Isect  (HAE):"));
     grid->setControl(0,5,new LabelControl("Resolution:"));
 
     s_posLabel = grid->setControl(1,0,new LabelControl(""));

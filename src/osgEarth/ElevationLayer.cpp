@@ -87,11 +87,9 @@ namespace
     struct ElevationLayerPreCacheOperation : public TileSource::HeightFieldOperation
     {
         osg::ref_ptr<CompositeValidValueOperator> _ops;
-        float _noDataReplacementValue;
 
         ElevationLayerPreCacheOperation( TileSource* source )
         {
-            _noDataReplacementValue = NO_DATA_VALUE;
             _ops = new CompositeValidValueOperator;
             _ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
             _ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
@@ -101,7 +99,7 @@ namespace
         {
             //Modify the heightfield data so that is contains a standard value for NO_DATA
             ReplaceInvalidDataOperator op;
-            op.setReplaceWith(_noDataReplacementValue);
+            op.setReplaceWith(NO_DATA_VALUE);
             op.setValidDataOperator(_ops.get());
             op( hf.get() );
         }
@@ -493,7 +491,10 @@ ElevationLayer::createHeightField(const TileKey&    key,
             hf->setXInterval( dx );
             hf->setYInterval( dy );
             hf->setBorderWidth( 0 );
+        }
 
+        if ( hf.valid() )
+        {
             result = GeoHeightField( hf.get(), key.getExtent() );
         }
     }

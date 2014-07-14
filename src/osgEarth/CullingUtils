@@ -29,6 +29,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Vec3d>
 #include <osg/Vec3>
+#include <osg/ClipPlane>
 #include <osgUtil/CullVisitor>
 
 namespace osgEarth
@@ -269,6 +270,24 @@ namespace osgEarth
 
     private:
         float _scaleFactor;
+    };
+
+
+    
+    // Cull callback that figures out where the visible horizon is
+    // based on the eyepoint.
+    class OSGEARTH_EXPORT ClipToGeocentricHorizon : public osg::NodeCallback
+    {
+    public:
+        ClipToGeocentricHorizon(
+            const osgEarth::SpatialReference* srs,
+            osg::ClipPlane*                   clipPlane);
+        
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+    protected:
+        double _radius;
+        osg::observer_ptr<osg::ClipPlane> _clipPlane;
     };
 }
 

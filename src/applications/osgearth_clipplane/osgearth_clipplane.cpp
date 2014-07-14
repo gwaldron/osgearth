@@ -24,6 +24,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/MapNode>
+#include <osgEarth/CullingUtils>
 #include <osg/ClipNode>
 #include <osg/ClipPlane>
 
@@ -56,34 +57,6 @@ const char* clipvs =
     "void oe_clip_vert(inout vec4 vertex_view) { \n"
     "   gl_ClipVertex = vertex_view; \n"
     "}\n";
-
-// Cull callback that figures out where the visible horizon is
-// based on the eyepoint.
-struct ClipToVisibleHorizon : public osg::NodeCallback
-{
-    ClipToVisibleHorizon(const osgEarth::SpatialReference* srs)
-    {
-        _radius = std::min(
-            srs->getEllipsoid()->getRadiusPolar(),
-            srs->getEllipsoid()->getRadiusEquator() );
-    }
-
-    void operator()(osg::Node* node, osg::NodeVisitor* nv)
-    {
-        osg::Vec3 eye = nv->getEyePoint();
-        double d = eye.length();
-        double a = acos(_radius/d);
-        double horizonRadius = _radius*cos(a);
-        eye.normalize();
-        osg::ClipNode* clipnode = static_cast<osg::ClipNode*>(node);
-        osg::ClipPlane* clipplane = clipnode->getClipPlane(0);
-        clipplane->setClipPlane(osg::Plane(eye, eye*horizonRadius));
-        clipplane->setClipPlaneNum(0);
-        traverse(node, nv);
-    }
-
-    double _radius;
-};
 
 int
 main(int argc, char** argv)
@@ -130,7 +103,7 @@ main(int argc, char** argv)
         // This cull callback will recalcuate the position of the clipping plane
         // each frame based on the camera.
         const osgEarth::SpatialReference* srs = osgEarth::MapNode::get(node)->getMapSRS();
-        clipNode->addCullCallback( new ClipToVisibleHorizon(srs) );
+        clipNode->addCullCallback( new ClipToGeocentricHorizon(srs, cp) );
 
         // We also need a shader that will activate clipping in GLSL.
         VirtualProgram* vp = VirtualProgram::getOrCreate(root->getOrCreateStateSet());

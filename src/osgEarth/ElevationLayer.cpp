@@ -48,7 +48,8 @@ TerrainLayerOptions( name, driverOptions )
 void
 ElevationLayerOptions::setDefaults()
 {
-    _offset = false;
+    _offset.init( false );
+    _noDataPolicy.init( NODATA_INTERPOLATE );
 }
 
 Config
@@ -56,13 +57,20 @@ ElevationLayerOptions::getConfig( bool isolate ) const
 {
     Config conf = TerrainLayerOptions::getConfig( isolate );
     conf.updateIfSet("offset", _offset);
+    conf.updateIfSet("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
+    conf.updateIfSet("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
+    conf.updateIfSet("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
+
     return conf;
 }
 
 void
 ElevationLayerOptions::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "offset", _offset );
+    conf.getIfSet("offset", _offset );
+    conf.getIfSet("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
+    conf.getIfSet("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
+    conf.getIfSet("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
 }
 
 void
@@ -78,21 +86,23 @@ namespace
 {
     struct ElevationLayerPreCacheOperation : public TileSource::HeightFieldOperation
     {
-        osg::ref_ptr<CompositeValidValueOperator> ops;
+        osg::ref_ptr<CompositeValidValueOperator> _ops;
+        float _noDataReplacementValue;
 
         ElevationLayerPreCacheOperation( TileSource* source )
         {
-            ops = new CompositeValidValueOperator;
-            ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
-            ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
+            _noDataReplacementValue = NO_DATA_VALUE;
+            _ops = new CompositeValidValueOperator;
+            _ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
+            _ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
         }
 
         void operator()( osg::ref_ptr<osg::HeightField>& hf )
         {
             //Modify the heightfield data so that is contains a standard value for NO_DATA
             ReplaceInvalidDataOperator op;
-            op.setReplaceWith(NO_DATA_VALUE);
-            op.setValidDataOperator(ops.get());
+            op.setReplaceWith(_noDataReplacementValue);
+            op.setValidDataOperator(_ops.get());
             op( hf.get() );
         }
     };
@@ -112,7 +122,7 @@ namespace
             return false;
         
         return true;
-    }
+    }    
 }
 
 //------------------------------------------------------------------------
@@ -191,7 +201,9 @@ ElevationLayer::initTileSource()
     TerrainLayer::initTileSource();
 
     if ( _tileSource.valid() )
-        _preCacheOp = new ElevationLayerPreCacheOperation( _tileSource.get() );
+    {
+        _preCacheOp = new ElevationLayerPreCacheOperation( _tileSource.get() );        
+    }
 }
 
 
@@ -351,7 +363,8 @@ GeoHeightField
 ElevationLayer::createHeightField(const TileKey&    key,
                                   ProgressCallback* progress )
 {
-    osg::ref_ptr<osg::HeightField> result;
+    GeoHeightField result;
+    osg::ref_ptr<osg::HeightField> hf;
 
     // If the layer is disabled, bail out.
     if ( getEnabled() == false )
@@ -363,120 +376,145 @@ ElevationLayer::createHeightField(const TileKey&    key,
     if ( _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
-        ReadResult result = bin->readObject(key.str() );
-        if ( result.succeeded() )
-            return GeoHeightField(static_cast<osg::HeightField*>(result.releaseObject()), key.getExtent());
-        //_memCache->dumpStats(key.getProfile()->getFullSignature());
-    }
-
-    // See if there's a persistent cache.
-    CacheBin* cacheBin = getCacheBin( key.getProfile() );
-
-    // validate that we have either a valid tile source, or we're cache-only.
-    if ( ! (getTileSource() || (isCacheOnly() && cacheBin) ) )
-    {
-        OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create heightfield" << std::endl;
-        _runtimeOptions.enabled() = false;
-        return GeoHeightField::INVALID;
-    }
-
-    // validate the existance of a valid layer profile.
-    if ( !isCacheOnly() && !getProfile() )
-    {
-        OE_WARN << LC << "Could not establish a valid profile" << std::endl;
-        _runtimeOptions.enabled() = false;
-        return GeoHeightField::INVALID;
-    }
-
-    // Now attempt to read from the cache. Since the cached data is stored in the
-    // map profile, we can try this first.
-    bool fromCache = false;
-
-    osg::ref_ptr< osg::HeightField > cachedHF;
-
-    if ( cacheBin && getCachePolicy().isCacheReadable() )
-    {
-        ReadResult r = cacheBin->readObject( key.str() );
-        if ( r.succeeded() )
-        {            
-            bool expired = getCachePolicy().isExpired(r.lastModifiedTime());
-            cachedHF = r.get<osg::HeightField>();
-            if ( cachedHF && validateHeightField(cachedHF) )
-            {
-                if (!expired)
-                {
-                    result = cachedHF;
-                    fromCache = true;
-                }
-            }
+        ReadResult cacheResult = bin->readObject(key.str() );
+        if ( cacheResult.succeeded() )
+        {
+            result = GeoHeightField(
+                static_cast<osg::HeightField*>(cacheResult.releaseObject()),
+                key.getExtent());
         }
-    }
-
-    // if we're cache-only, but didn't get data from the cache, fail silently.
-    if ( !result.valid() && isCacheOnly() )
-    {
-        return GeoHeightField::INVALID;
+        //_memCache->dumpStats(key.getProfile()->getFullSignature());
     }
 
     if ( !result.valid() )
     {
-        // bad tilesource? fail
-        if ( !getTileSource() || !getTileSource()->isOK() )
-            return GeoHeightField::INVALID;
+        // See if there's a persistent cache.
+        CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
-        if ( !isKeyInRange(key) )
-            return GeoHeightField::INVALID;
-
-        // build a HF from the TileSource.
-        result = createHeightFieldFromTileSource( key, progress );
-
-        // validate it to make sure it's legal.
-        if ( result.valid() && !validateHeightField(result.get()) )
+        // validate that we have either a valid tile source, or we're cache-only.
+        if ( ! (getTileSource() || (isCacheOnly() && cacheBin) ) )
         {
-            OE_WARN << LC << "Driver " << getTileSource()->getName() << " returned an illegal heightfield" << std::endl;
-            result = 0L;
+            OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create heightfield" << std::endl;
+            _runtimeOptions.enabled() = false;
+            return GeoHeightField::INVALID;
+        }
+
+        // validate the existance of a valid layer profile.
+        if ( !isCacheOnly() && !getProfile() )
+        {
+            OE_WARN << LC << "Could not establish a valid profile" << std::endl;
+            _runtimeOptions.enabled() = false;
+            return GeoHeightField::INVALID;
+        }
+
+        // Now attempt to read from the cache. Since the cached data is stored in the
+        // map profile, we can try this first.
+        bool fromCache = false;
+
+        osg::ref_ptr< osg::HeightField > cachedHF;
+
+        if ( cacheBin && getCachePolicy().isCacheReadable() )
+        {
+            ReadResult r = cacheBin->readObject( key.str() );
+            if ( r.succeeded() )
+            {            
+                bool expired = getCachePolicy().isExpired(r.lastModifiedTime());
+                cachedHF = r.get<osg::HeightField>();
+                if ( cachedHF && validateHeightField(cachedHF) )
+                {
+                    if (!expired)
+                    {
+                        hf = cachedHF;
+                        fromCache = true;
+                    }
+                }
+            }
+        }
+
+        // if we're cache-only, but didn't get data from the cache, fail silently.
+        if ( !hf.valid() && isCacheOnly() )
+        {
+            return GeoHeightField::INVALID;
+        }
+
+        if ( !hf.valid() )
+        {
+            // bad tilesource? fail
+            if ( !getTileSource() || !getTileSource()->isOK() )
+                return GeoHeightField::INVALID;
+
+            if ( !isKeyInRange(key) )
+                return GeoHeightField::INVALID;
+
+            // build a HF from the TileSource.
+            hf = createHeightFieldFromTileSource( key, progress );
+
+            // validate it to make sure it's legal.
+            if ( hf.valid() && !validateHeightField(hf.get()) )
+            {
+                OE_WARN << LC << "Driver " << getTileSource()->getName() << " returned an illegal heightfield" << std::endl;
+                hf = 0L; // to fall back on cached data if possible.
+            }
+
+            // memory cache first:
+            if ( hf && _memCache.valid() )
+            {
+                CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
+                bin->write(key.str(), hf.get());
+            }
+
+            // cache if necessary
+            if ( hf            && 
+                 cacheBin      && 
+                 !fromCache    &&
+                 getCachePolicy().isCacheWriteable() )
+            {
+                cacheBin->write( key.str(), hf );
+            }
+
+            // We have an expired heightfield from the cache and no new data from the TileSource.  So just return the cached data.
+            if (!hf.valid() && cachedHF.valid())
+            {
+                OE_DEBUG << LC << "Using cached but expired heightfield for " << key.str() << std::endl;
+                hf = cachedHF;
+            }
+
+            if ( !hf.valid() )
+            {
+                return GeoHeightField::INVALID;
+            }
+
+            // Set up the heightfield so we don't have to worry about it later
+            double minx, miny, maxx, maxy;
+            key.getExtent().getBounds(minx, miny, maxx, maxy);
+            hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+            double dx = (maxx - minx)/(double)(hf->getNumColumns()-1);
+            double dy = (maxy - miny)/(double)(hf->getNumRows()-1);
+            hf->setXInterval( dx );
+            hf->setYInterval( dy );
+            hf->setBorderWidth( 0 );
+
+            result = GeoHeightField( hf.get(), key.getExtent() );
         }
     }
 
-    // memory cache first:
-    if ( result && _memCache.valid() )
+    // post-processing:
+    if ( result.valid() )
     {
-        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
-        bin->write(key.str(), result.get());
+        if ( _runtimeOptions.noDataPolicy() == NODATA_MSL )
+        {
+            const VerticalDatum* vdatum = result.getExtent().getSRS()->getVerticalDatum();
+            const Geoid* geoid = vdatum ? vdatum->getGeoid() : 0L;
+
+            HeightFieldUtils::resolveInvalidHeights(
+                result.getHeightField(),
+                result.getExtent(),
+                NO_DATA_VALUE,
+                geoid );
+        }
     }
 
-    // cache if necessary
-    if ( result        && 
-         cacheBin      && 
-         !fromCache    &&
-         getCachePolicy().isCacheWriteable() )
-    {
-        cacheBin->write( key.str(), result );
-    }
-
-    // We have an expired heightfield from the cache and no new data from the TileSource.  So just return the cached data.
-    if (!result.valid() && cachedHF.valid())
-    {
-        OE_DEBUG << LC << "Using cached but expired heightfield for " << key.str() << std::endl;
-        result = cachedHF;
-    }
-
-    if ( result )
-    {
-        // Set up the heightfield so we don't have to worry about it later
-        double minx, miny, maxx, maxy;
-        key.getExtent().getBounds(minx, miny, maxx, maxy);
-        result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-        double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
-        double dy = (maxy - miny)/(double)(result->getNumRows()-1);
-        result->setXInterval( dx );
-        result->setYInterval( dy );
-        result->setBorderWidth( 0 );
-    }
-
-    return result ?
-        GeoHeightField( result, key.getExtent() ) :
-        GeoHeightField::INVALID;
+    return result;
 }
 
 

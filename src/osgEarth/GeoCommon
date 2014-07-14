@@ -21,6 +21,7 @@
 
 namespace osgEarth
 {
+    // Default normalized no-data value for elevation
 #define NO_DATA_VALUE -FLT_MAX
 
     /**
@@ -52,6 +53,15 @@ namespace osgEarth
         SAMPLE_HIGHEST,
         SAMPLE_LOWEST,
         SAMPLE_AVERAGE
+    };
+
+    /**
+     * Elevation NO_DATA treatment policy
+     */
+    enum ElevationNoDataPolicy
+    {
+        NODATA_INTERPOLATE,     // interpolate across NO_DATA samples
+        NODATA_MSL              // rewrite NO_DATA samples as MSL
     };
 
     /**

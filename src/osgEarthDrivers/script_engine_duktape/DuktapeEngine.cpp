@@ -18,6 +18,7 @@
  */
 #include "DuktapeEngine"
 #include <osgEarth/JsonUtils>
+#include <osgEarth/StringUtils>
 #include <sstream>
 
 #define LC "[DuktapeEngine] "
@@ -42,14 +43,20 @@ namespace
         duk_push_string(ctx, "feature");    // [ global, "feature" ]
         duk_get_prop(ctx, -2);              // [ global, feature ]
 
+        // add a property for the Feature ID:
+        std::string fid = Stringify() << feature->getFID();
+        duk_push_string(ctx, "id");               // [global, feature, "id"]
+        duk_push_int(ctx, feature->getFID());     // [global, feature, "id", fid]
+        ::duk_put_prop(ctx, -3);                  // [global, feature]
+
         // add each property to the object:
         const AttributeTable& attrs = feature->getAttrs();
         for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
         {
             if ( !a->first.empty() )
             {
-                duk_push_string(ctx, a->second.getString().c_str()); // [ global, feature, name ]
-                duk_put_prop_string(ctx, -2, a->first.c_str());      // [ global, feature ]
+                duk_push_string(ctx, a->second.getString().c_str()); // [global, feature, value]
+                duk_put_prop_string(ctx, -2, a->first.c_str());      // [global, feature]
             }
         }
 

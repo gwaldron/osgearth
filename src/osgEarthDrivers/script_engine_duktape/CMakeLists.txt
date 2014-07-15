@@ -1,18 +1,35 @@
 
-INCLUDE_DIRECTORIES( ${DUKTAPE_INCLUDE_DIR} )
+IF(WITH_EXTERNAL_DUKTAPE)
 
-SET(TARGET_H
-    duktape.h
-    DuktapeEngine
-)
+    INCLUDE_DIRECTORIES( ${DUKTAPE_INCLUDE_DIR} )
 
-SET(TARGET_SRC
-    Plugin.cpp
-    duktape.c
-    DuktapeEngine.cpp
-)
+    SET(TARGET_H
+        DuktapeEngine
+    )
 
-SET(TARGET_COMMON_LIBRARIES osgEarthFeatures osgEarthSymbology)
+    SET(TARGET_SRC
+        Plugin.cpp
+        DuktapeEngine.cpp
+    )
+
+    SET(TARGET_COMMON_LIBRARIES ${DUKTAPE_LIBRARY} osgEarthFeatures osgEarthSymbology)
+
+ELSE(WITH_EXTERNAL_DUKTAPE)
+
+    SET(TARGET_H
+        duktape.h
+        DuktapeEngine
+    )
+
+    SET(TARGET_SRC
+        Plugin.cpp
+        duktape.c
+        DuktapeEngine.cpp
+    )
+
+    SET(TARGET_COMMON_LIBRARIES osgEarthFeatures osgEarthSymbology)
+
+ENDIF(WITH_EXTERNAL_DUKTAPE)
 
 SETUP_PLUGIN(osgearth_scriptengine_javascript)
 

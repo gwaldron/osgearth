@@ -66,12 +66,6 @@ namespace osgEarth
         /** Copy constructor */
         ShaderGenerator(const ShaderGenerator& rhs, const osg::CopyOp& copy);
 
-#if OSG_VERSION_LESS_THAN(3,3,0)
-        virtual ShaderGenerator* clone(const osg::CopyOp& copy) {
-            return new ShaderGenerator(*this, copy);
-        }
-#endif
-
     public: // ShaderGeneratorInterface
 
         /**
@@ -211,8 +205,8 @@ namespace osgEarth
         }
 
     public:
-        ShaderGeneratorProxy(ShaderGenerator* temp)
-            : _instance( temp->clone(osg::CopyOp::SHALLOW_COPY) ) { }
+        ShaderGeneratorProxy(const ShaderGenerator* temp)
+            : _instance( new ShaderGenerator(*temp, osg::CopyOp::SHALLOW_COPY) ) { }
 
     private:
         osg::ref_ptr<ShaderGenerator> _instance;

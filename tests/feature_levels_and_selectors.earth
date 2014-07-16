@@ -16,7 +16,7 @@ Shows how to use Levels and Selectors together.
         <styles>
             <style type="text/css">
                 world {
-                   stroke:             #ffff00;
+                   stroke:             #9f9f7f;
 				   stroke-width:       2px;
                 }            
             </style>

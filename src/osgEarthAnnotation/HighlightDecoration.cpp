@@ -18,134 +18,73 @@
 */
 
 #include <osgEarthAnnotation/HighlightDecoration>
+#include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthAnnotation/OrthoNode>
-#include <osgEarth/NodeUtils>
-#include <osg/Stencil>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 
 #undef  LC
 #define LC "[HighlightDecoration] "
 
 using namespace osgEarth::Annotation;
 
+#define FRAG_FUNCTION "oe_anno_highlight_frag"
+
 namespace
 {
-    struct HighlightGroup : public osg::Group
-    {
-        osg::ref_ptr<osg::StateSet> _pass1, _pass2;
-        osg::ref_ptr<osg::Node>     _fillNode;
-
-        void traverse(osg::NodeVisitor& nv)
-        {
-            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            if ( cv && _fillNode.valid() && _pass1.valid() )
-            {
-                const osg::GraphicsContext* gc = cv->getCurrentCamera()->getGraphicsContext();
-                if ( gc && gc->getTraits() && gc->getTraits()->stencil < 1 )
-                {
-                    OE_WARN << LC << "Insufficient stencil buffer bits available; disabling highlighting." << std::endl;
-                    OE_WARN << LC << "Please call osg::DisplaySettings::instance()->setMinimumNumStencilBits()" << std::endl;
-                    _pass1 = 0L;
-                }
-                else
-                {
-                    // first render the geometry to the stencil buffer:
-                    cv->pushStateSet(_pass1);
-                    osg::Group::traverse( nv );
-                    cv->popStateSet();
-
-                    // the render the coverage quad
-                    cv->pushStateSet(_pass2);
-                    _fillNode->accept( nv );
-                    cv->popStateSet();
-                }
-            }
-            else
-            {
-                osg::Group::traverse(nv);
-            }
-        }
-    };
+    const char* fragSource =
+        "#version " GLSL_VERSION_STR "\n"
+        "uniform vec4 oe_anno_highlight_color; \n"
+        "void " FRAG_FUNCTION "(inout vec4 color) {\n"
+        "    color.rgb = mix(color.rgb, oe_anno_highlight_color.rgb, oe_anno_highlight_color.a); \n"
+        "}\n";
 }
 
+
 HighlightDecoration::HighlightDecoration(const osg::Vec4f& color) :
-InjectionDecoration( new HighlightGroup() ),
-_color( color )
+Decoration(),
+_color    (color)
 {
-    HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
-
-    hg->_pass1 = new osg::StateSet();
+    _supported = Registry::capabilities().supportsGLSL();
+    if ( _supported )
     {
-        osg::Stencil* stencil  = new osg::Stencil();
-        stencil->setFunction(osg::Stencil::ALWAYS, 1, ~0u);
-        stencil->setOperation(osg::Stencil::KEEP, osg::Stencil::KEEP, osg::Stencil::REPLACE);
-        hg->_pass1->setAttributeAndModes(stencil, 1);
-        hg->_pass1->setBinNumber(0);
+        _colorUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_anno_highlight_color");
+        _colorUniform->set(_color);
     }
+}
 
-    hg->_pass2 = new osg::StateSet();
+void
+HighlightDecoration::setColor(const osg::Vec4f& color)
+{
+    _color = color;
+    if ( _colorUniform.valid() )
     {
-        osg::Stencil* stencil  = new osg::Stencil();
-        stencil->setFunction(osg::Stencil::NOTEQUAL, 0, ~0u);
-        stencil->setOperation(osg::Stencil::REPLACE, osg::Stencil::REPLACE, osg::Stencil::REPLACE);
-        hg->_pass2->setAttributeAndModes(stencil, 1);
-        hg->_pass2->setBinNumber(1);
+        _colorUniform->set(_color);
     }
 }
 
 bool
-HighlightDecoration::apply(OrthoNode& node, bool enable)
+HighlightDecoration::apply(AnnotationNode& node, bool enable)
 {
-    if ( node.getAttachPoint() )
+    if ( _supported )
     {
-        node.setDynamic( true );
-        FindNodesVisitor<osg::Geode> fnv;
-        node.getAttachPoint()->accept( fnv );
+        osg::StateSet* ss = node.getOrCreateStateSet();
         if ( enable )
         {
-            osg::BoundingBox box;
-            for( std::vector<osg::Geode*>::iterator i = fnv._results.begin(); i != fnv._results.end(); ++i )
+            VirtualProgram* vp = VirtualProgram::getOrCreate( ss );
+            if ( vp->getShader(FRAG_FUNCTION) == 0L )
             {
-                osg::Geode* geode = *i;
-                box.expandBy( geode->getBoundingBox() );
+                vp->setFunction(FRAG_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING);
+                ss->addUniform( _colorUniform.get() );
             }
-            
-            if ( fnv._results.size() > 0 )
-            {
-                osg::Drawable* geom = AnnotationUtils::create2DOutline( box, 3.0f, _color );  
-                geom->setUserData( node.getAnnotationData() );
-                for( std::vector<osg::Geode*>::iterator i = fnv._results.begin(); i != fnv._results.end(); ++i )
-                {
-                    (*i)->addDrawable(geom);
-                }
-            }
+            _colorUniform->set(_color);
         }
         else
         {
-            for( std::vector<osg::Geode*>::iterator i = fnv._results.begin(); i != fnv._results.end(); ++i )
-            {
-                osg::Geode* geode = *i;
-                geode->removeDrawable( geode->getDrawable(geode->getNumDrawables()-1) );
-            }
+            // sets alpha=0 to disable highlighting
+            _colorUniform->set(osg::Vec4f(1,1,1,0));
         }
-
-        return true;
     }
-    return false;
-}
-
-bool
-HighlightDecoration::apply(osg::Group* ap, bool enable)
-{
-    HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
-    if ( !hg->_fillNode.valid() && ap != 0L )
-    {
-        const osg::BoundingSphere& bs = ap->getBound();
-
-        osg::Node* quad = AnnotationUtils::createFullScreenQuad( _color );
-        quad->setCullingActive( false );
-        hg->_fillNode = quad;
-    }
-
-    return InjectionDecoration::apply(ap, enable);
+    return _supported;
 }

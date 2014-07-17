@@ -118,11 +118,6 @@ struct ToggleNodeHandler : public ControlEventHandler
 int
 main(int argc, char** argv)
 {
-    // The HighlightDecoration requires you to allocate stencil planes,
-    // and will yell at you if you don't. You have to do this prior to creating
-    // your Viewer.
-    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 2 );
-
     osg::Group* root = new osg::Group();
 
     // try to load an earth file.
@@ -131,11 +126,11 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator() );
 
-    viewer.setCameraManipulator( new EarthManipulator() );
-
     // load an earth file and parse demo arguments
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
-    if ( !node ) return usage(argv);
+    if ( !node )
+        return usage(argv);
+
     root->addChild( node );
 
     // find the map node that we loaded.
@@ -184,9 +179,9 @@ main(int argc, char** argv)
         Style pin;
         pin.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
 
+        // bunch of pins:
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), "New York"      , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), "Washington, DC", pin));
-        //labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90), "Chicago"       , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), "Los Angeles"   , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), "Boston"        , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), "Honolulu"      , pin));
@@ -195,12 +190,12 @@ main(int argc, char** argv)
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), "Miami"         , pin));
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), "San Diego"     , pin));
 
-        // test with an LOD, just for kicks:
+        // test with an LOD:
         osg::LOD* lod = new osg::LOD();
         lod->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 14.68, 50.0), "Prague", pin), 0.0, 1e6);
         labelGroup->addChild( lod );
 
-
+        // absolute altitude:
         labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90, 1000, ALTMODE_ABSOLUTE), "Chicago"       , pin));
     }
 
@@ -271,39 +266,34 @@ main(int argc, char** argv)
 
     //--------------------------------------------------------------------
 
-    // A circle around New Orleans.
+    // Two circle segments around New Orleans.
     {
         Style circleStyle;
         circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
-        //circleStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Cyan, 1.0);
-        //circleStyle.getOrCreate<LineSymbol>()->stroke()->width() = 6.0f;
-        //circleStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
         circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
         CircleNode* circle = new CircleNode(
             mapNode,
             GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
-            Linear(300, Units::KILOMETERS),
-            circleStyle, Angular(-45.0, Units::DEGREES), Angular(45.0, Units::DEGREES), true);
+            Distance(300, Units::KILOMETERS),
+            circleStyle, Angle(-45.0, Units::DEGREES), Angle(45.0, Units::DEGREES), true);
         annoGroup->addChild( circle );
 
         editorGroup->addChild( new CircleNodeEditor( circle ) );
     }
+
 	{
 		Style circleStyle;
 		circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Red, 0.5);
-		//circleStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Red, 1.0);
-		//circleStyle.getOrCreate<LineSymbol>()->stroke()->width() = 6.0f;
-		//circleStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
 		circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 		circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
 		CircleNode* circle = new CircleNode(
 			mapNode,
 			GeoPoint(geoSRS, -90.25, 29.98, 1000., ALTMODE_RELATIVE),
-			Linear(300, Units::KILOMETERS),
-			circleStyle, Angular(45.0, Units::DEGREES), Angular(360.0 - 45.0, Units::DEGREES), true);
+			Distance(300, Units::KILOMETERS),
+			circleStyle, Angle(45.0, Units::DEGREES), Angle(360.0 - 45.0, Units::DEGREES), true);
 		annoGroup->addChild( circle );
 
 		editorGroup->addChild( new CircleNodeEditor( circle ) );
@@ -311,56 +301,43 @@ main(int argc, char** argv)
 
     //--------------------------------------------------------------------
 
-    // An draped ellipse around Miami.
+    // An extruded ellipse around Miami.
     {
         Style ellipseStyle;
         ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
-        //ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Orange, 0.75);
-        //ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;
         ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
         EllipseNode* ellipse = new EllipseNode(
             mapNode, 
             GeoPoint(geoSRS, -80.28, 25.82, 0.0, ALTMODE_RELATIVE),
-            Linear(500, Units::MILES),
-            Linear(100, Units::MILES),
-            Angular(0, Units::DEGREES),
-            ellipseStyle, Angular(45.0, Units::DEGREES), Angular(360.0 - 45.0, Units::DEGREES), true);
+            Distance(250, Units::MILES),
+            Distance(100, Units::MILES),
+            Angle   (0, Units::DEGREES),
+            ellipseStyle,
+            Angle(45.0, Units::DEGREES),
+            Angle(360.0 - 45.0, Units::DEGREES), 
+            true);
         annoGroup->addChild( ellipse );
         editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
     }
 	{
 		Style ellipseStyle;
 		ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Blue, 0.75);
-		//ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Blue, 0.75);
-		//ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;
 		ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
 		EllipseNode* ellipse = new EllipseNode(
 			mapNode, 
 			GeoPoint(geoSRS, -80.28, 25.82, 0.0, ALTMODE_RELATIVE),
-			Linear(500, Units::MILES),
-			Linear(100, Units::MILES),
-			Angular(0, Units::DEGREES),
-			ellipseStyle, Angular(-45.0, Units::DEGREES), Angular(45.0, Units::DEGREES), true);
+			Distance(250, Units::MILES),
+			Distance(100, Units::MILES),
+			Angle   (0, Units::DEGREES),
+			ellipseStyle, 
+            Angle(-40.0, Units::DEGREES), 
+            Angle(40.0, Units::DEGREES), 
+            true);
 		annoGroup->addChild( ellipse );
 		editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
 	}
-	{
-		Style ellipseStyle;
-		//ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Yellow, 1.0);
-		ellipseStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(Color::Yellow, 1.0);
-		ellipseStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0;
-		ellipseStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-		ellipseStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
-		EllipseNode* ellipse = new EllipseNode(
-			mapNode, 
-			GeoPoint(geoSRS, -111.81157835546561, 40.084919763639768, 0.0, ALTMODE_RELATIVE),
-			Linear(1808.6968623438568, Units::METERS),
-			Linear(839.43545163719330, Units::METERS),
-			Angular(0, Units::DEGREES),
-			ellipseStyle);
-		annoGroup->addChild( ellipse );
-		editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
-	}
+    
+    //--------------------------------------------------------------------
 
     {
         // A rectangle around San Diego
@@ -371,15 +348,13 @@ main(int argc, char** argv)
         RectangleNode* rect = new RectangleNode(
             mapNode, 
             GeoPoint(geoSRS, -117.172, 32.721),
-            Linear(300, Units::KILOMETERS ),
-            Linear(600, Units::KILOMETERS ),
+            Distance(300, Units::KILOMETERS ),
+            Distance(600, Units::KILOMETERS ),
             rectStyle);
         annoGroup->addChild( rect );
 
         editorGroup->addChild( new RectangleNodeEditor( rect ) );
-    }
-
-    
+    }    
 
     //--------------------------------------------------------------------
 
@@ -406,7 +381,7 @@ main(int argc, char** argv)
 
     //--------------------------------------------------------------------
 
-    // an image overlay
+    // an image overlay.
     {
         ImageOverlay* imageOverlay = 0L;
         osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );

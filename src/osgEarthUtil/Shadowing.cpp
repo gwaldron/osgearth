@@ -34,7 +34,7 @@ ShadowCaster::ShadowCaster() :
 _size        ( 2048 ),
 _texImageUnit( 7 ),
 _blurFactor  ( 0.0f ),
-_color       ( osg::Vec4f(.3f, .3f, .3f, 1.f) )
+_color       ( osg::Vec4f(.4f, .4f, .4f, 1) )
 {
     _castingGroup = new osg::Group();
 

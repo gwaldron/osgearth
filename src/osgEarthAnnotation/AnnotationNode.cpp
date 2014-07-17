@@ -424,5 +424,10 @@ AnnotationNode::applyGeneralSymbology(const Style& style)
             GLenum mode = GL_CLIP_PLANE0 + render->clipPlane().value();
             getOrCreateStateSet()->setMode(mode, 1);
         }
+
+        if ( render->minAlpha().isSet() )
+        {
+            DiscardAlphaFragments().install( getOrCreateStateSet(), render->minAlpha().value() );
+        }
     }
 }

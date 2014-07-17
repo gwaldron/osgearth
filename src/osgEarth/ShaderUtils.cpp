@@ -760,3 +760,45 @@ RangeUniformCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     cv->popStateSet();
 }
 
+//------------------------------------------------------------------------
+
+namespace
+{
+    
+}
+
+void
+DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
+{
+    if ( ss && minAlpha < 1.0f )
+    {
+        VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+        if ( vp )
+        {
+            std::string code = Stringify()
+                << "#version " GLSL_VERSION_STR "\n"
+                << "void oe_discardalpha_frag(inout vec4 color) { \n"
+                << "    if ( color.a < " << std::setprecision(1) << minAlpha << ") discard;\n"
+                << "} \n";
+
+            vp->setFunction(
+                "oe_discardalpha_frag",
+                code,
+                ShaderComp::LOCATION_FRAGMENT_COLORING,
+                0L, 2.0f);
+        }
+    }
+}
+ 
+void
+DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
+{
+    if ( ss )
+    {
+        VirtualProgram* vp = VirtualProgram::get(ss);
+        if ( vp )
+        {
+            vp->removeShader("oe_discardalpha_frag");
+        }
+    }
+}

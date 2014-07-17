@@ -108,8 +108,8 @@ to extruded buildings.
             <url>../data/boston-parks.shp</url>
         </features>
         
-        <layout tile_size_factor="3.5">
-            <level max_range="3500"/>
+        <layout tile_size_factor="3">
+            <level max_range="2000"/>
         </layout>
         
         <instancing>true</instancing>
@@ -118,12 +118,13 @@ to extruded buildings.
         <styles>
             <style type="text/css">
                 parks {
-                   model:                  "../data/tree.ive";
+                   model:                  "../data/loopix/tree4.osgb";
+				   model-scale:            0.15 + 0.1*Math.random();
                    model-placement:        random;
-                   model-density:          12000;
-                   model-scale:            1.0;
+                   model-density:          3000;
+				   model-heading:          Math.random() * 360.0;
                    altitude-clamping:      terrain;
-                   altitude-resolution:    0;
+				   render-min-alpha:       0.15;
                 }
             </style>
         </styles>        

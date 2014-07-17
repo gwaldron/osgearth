@@ -19,6 +19,7 @@
 
 #include <osgEarth/PhongLightingEffect>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
 #include <osgEarth/VirtualProgram>
@@ -143,7 +144,11 @@ PhongLightingEffect::PhongLightingEffect(osg::StateSet* stateset)
 void
 PhongLightingEffect::init()
 {
-    _lightingUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
+    _supported = Registry::capabilities().supportsGLSL();
+    if ( _supported )
+    {
+        _lightingUniform = Registry::shaderFactory()->createUniformForGLMode( GL_LIGHTING, 1 );
+    }
 }
 
 void
@@ -163,7 +168,7 @@ PhongLightingEffect::~PhongLightingEffect()
 void
 PhongLightingEffect::attach(osg::StateSet* stateset)
 {
-    if ( stateset )
+    if ( stateset && _supported )
     {
         _statesets.push_back(stateset);
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
@@ -178,23 +183,26 @@ PhongLightingEffect::attach(osg::StateSet* stateset)
 void
 PhongLightingEffect::detach()
 {
-    for (StateSetList::iterator it = _statesets.begin(); it != _statesets.end(); ++it)
+    if ( _supported )
     {
-        osg::ref_ptr<osg::StateSet> stateset;
-        if ( (*it).lock(stateset) )
+        for (StateSetList::iterator it = _statesets.begin(); it != _statesets.end(); ++it)
         {
-            detach( stateset );
-            (*it) = 0L;
+            osg::ref_ptr<osg::StateSet> stateset;
+            if ( (*it).lock(stateset) )
+            {
+                detach( stateset );
+                (*it) = 0L;
+            }
         }
-    }
 
-    _statesets.clear();
+        _statesets.clear();
+    }
 }
 
 void
 PhongLightingEffect::detach(osg::StateSet* stateset)
 {
-    if ( stateset )
+    if ( stateset && _supported )
     {
         if ( _lightingUniform.valid() )
             stateset->removeUniform( _lightingUniform.get() );

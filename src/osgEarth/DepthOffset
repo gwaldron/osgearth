@@ -127,6 +127,9 @@ namespace osgEarth
 
         bool isDirty() const { return _dirty; }
 
+        /** whether depth offsetting is supported. */
+        bool supported() const { return _supported; }
+
     public: // DepthOffsetInterface
 
         void setDepthOffsetOptions( const DepthOffsetOptions& options );

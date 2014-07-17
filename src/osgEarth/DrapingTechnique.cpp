@@ -40,7 +40,7 @@ namespace
     // Additional per-view data stored by the draping technique.
     struct LocalPerViewData : public osg::Referenced
     {
-        osg::ref_ptr<osg::Uniform> _texGenUniform;  // when shady
+        osg::ref_ptr<osg::Uniform> _texGenUniform;
     };
 }
 
@@ -297,6 +297,8 @@ _rttBlending     ( true ),
 _attachStencil   ( false ),
 _maxFarNearRatio ( 5.0 )
 {
+    _supported = Registry::capabilities().supportsGLSL();
+
     // try newer version
     const char* nfr2 = ::getenv("OSGEARTH_OVERLAY_RESOLUTION_RATIO");
     if ( nfr2 )

@@ -19,6 +19,8 @@
 #include <osgEarthUtil/Shadowing>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Texture2D>
 #include <osg/CullFace>
 #include <osgShadow/ConvexPolyhedron>
@@ -36,13 +38,21 @@ _color       ( osg::Vec4f(.3f, .3f, .3f, 1.f) )
 {
     _castingGroup = new osg::Group();
 
-    // defaults to 4 slices.
-    _ranges.push_back(0.0f);
-    _ranges.push_back(500.0f);
-    _ranges.push_back(1750.0f);
-    _ranges.push_back(5000.0f);
+    _supported = Registry::capabilities().supportsGLSL();
+    if ( _supported )
+    {
+        // defaults to 4 slices.
+        _ranges.push_back(0.0f);
+        _ranges.push_back(500.0f);
+        _ranges.push_back(1750.0f);
+        _ranges.push_back(5000.0f);
 
-    reinitialize();
+        reinitialize();
+    }
+    else
+    {
+        OE_WARN << LC << "ShadowCaster not supported (no GLSL); disabled." << std::endl;
+    }
 }
 
 void
@@ -70,19 +80,24 @@ void
 ShadowCaster::setBlurFactor(float value)
 {
     _blurFactor = value;
-    _shadowBlurUniform->set(value);
+    if ( _shadowBlurUniform.valid() )
+        _shadowBlurUniform->set(value);
 }
 
 void
 ShadowCaster::setShadowColor(const osg::Vec4f& value)
 {
     _color = value;
-    _shadowColorUniform->set(value);
+    if ( _shadowColorUniform.valid() )
+        _shadowColorUniform->set(value);
 }
 
 void
 ShadowCaster::reinitialize()
 {
+    if ( !_supported )
+        return;
+
     _shadowmap = 0L;
     _rttCameras.clear();
 
@@ -244,7 +259,10 @@ ShadowCaster::reinitialize()
 void
 ShadowCaster::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.CULL_VISITOR && _castingGroup->getNumChildren() > 0 && _shadowmap.valid() )
+    if (_supported                             && 
+        nv.getVisitorType() == nv.CULL_VISITOR && 
+        _castingGroup->getNumChildren() > 0    && 
+        _shadowmap.valid() )
     {
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         osg::Camera* camera = cv->getCurrentCamera();

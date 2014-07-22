@@ -126,7 +126,7 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 | ``--bounds xmin ymin xmax ymax``   | bounds to package (in map coordinates; default=entire map)         |
 |                                    | You can provide multiple bounds                                    |
 +------------------------------------+--------------------------------------------------------------------+
-| ``--max-level level``              | max LOD level for tiles (all layers; default=inf)                  |
+| ``--max-level level``              | max LOD level for tiles (all layers; default=5)                  |
 +------------------------------------+--------------------------------------------------------------------+
 | ``--out-earth earthfile``          | export an earth file referencing the new repo                      |
 +------------------------------------+--------------------------------------------------------------------+

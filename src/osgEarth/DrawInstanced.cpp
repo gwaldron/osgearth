@@ -23,6 +23,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Utils>
 
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
@@ -42,10 +43,80 @@ using namespace osgEarth::DrawInstanced;
 
 #define TAG_MATRIX_VECTOR "osgEarth::DrawInstanced::MatrixRefVector"
 
+//Uncomment to experiment with instance count adjustment
+//#define USE_INSTANCE_LODS
+
 //----------------------------------------------------------------------
 
 namespace
 {
+#ifdef USE_INSTANCE_LODS
+
+    struct LODCallback : public osg::Drawable::DrawCallback
+    {
+        LODCallback() : _first(true), _maxInstances(0) { }
+
+        void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const
+        {
+            const osg::Geometry* geom = drawable->asGeometry();
+
+            if ( _first && geom->getNumPrimitiveSets() > 0 )
+            {
+                _maxInstances = geom->getPrimitiveSet(0)->getNumInstances();
+                _first = false;
+            }
+
+            const osg::BoundingBox bbox = Utils::getBoundingBox(geom);
+            float radius = bbox.radius();
+
+            osg::Vec3d centerView = bbox.center() * ri.getState()->getModelViewMatrix();
+            float rangeToBS = (float)-centerView.z() - radius;
+
+#if OSG_MIN_VERSION_REQUIRED(3,3,0)
+            // check for inherit mode (3.3.0+ only)
+            osg::Camera* cam = ri.getCurrentCamera();
+
+            // Problem: the camera stack is *always* size=1. So no access to the ref cam.
+            if (cam->getReferenceFrame() == cam->ABSOLUTE_RF_INHERIT_VIEWPOINT &&
+                ri.getCameraStack().size() > 1)
+            {
+                osg::Camera* refCam = *(ri.getCameraStack().end()-2);
+                if ( refCam )
+                {
+                    osg::Vec3d centerWorld = centerView * cam->getInverseViewMatrix();
+                    osg::Vec3d centerRefView = centerWorld * refCam->getViewMatrix();
+                    rangeToBS = (float)(-centerRefView.z() - radius);
+                }
+            }
+#endif
+
+            // these should obviously be programmable
+            const float maxDistance = 2000.0f;
+            const float minDistance = 100.0f;
+
+            float ratio = (rangeToBS-minDistance)/(maxDistance-minDistance);
+            ratio = 1.0 - osg::clampBetween(ratio, 0.0f, 1.0f);
+            // 1 = closest, 0 = farthest
+
+            unsigned instances = (unsigned)(ratio*(float)_maxInstances);
+
+            if ( instances > 0 )
+            {
+                for(unsigned i=0; i<geom->getNumPrimitiveSets(); ++i)
+                {
+                    const osg::PrimitiveSet* ps = geom->getPrimitiveSet(i);
+                    const_cast<osg::PrimitiveSet*>(ps)->setNumInstances(instances);
+                }
+
+                drawable->drawImplementation(ri);
+            }
+        }
+
+        mutable bool     _first;
+        mutable unsigned _maxInstances;
+    };
+#endif // USE_INSTANCE_LODS
+
     typedef std::map< osg::ref_ptr<osg::Node>, std::vector<osg::Matrix> > ModelNodeMatrices;
     
     /**
@@ -138,8 +209,14 @@ ConvertToDrawInstanced::apply( osg::Geode& geode )
             // convert to use DrawInstanced
             for( unsigned p=0; p<geom->getNumPrimitiveSets(); ++p )
             {
-                geom->getPrimitiveSet(p)->setNumInstances( _numInstances );
+                osg::PrimitiveSet* ps = geom->getPrimitiveSet(p);
+                ps->setNumInstances( _numInstances );
+                _primitiveSets.push_back( ps );
             }
+
+#ifdef USE_INSTANCE_LODS
+            geom->setDrawCallback( new LODCallback() );
+#endif
         }
     }
 

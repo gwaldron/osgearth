@@ -349,7 +349,7 @@ ShaderGenerator::run(osg::Node*         graph,
         // generate shaders:
         graph->accept( *this );
 
-        // perform GL state sharing
+        // perform GL state sharing        
         optimizeStateSharing( graph, cache );
 
         osg::StateSet* stateset = graph->getOrCreateStateSet();

@@ -528,18 +528,22 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         // Common state set cache?
         osg::ref_ptr<StateSetCache> sscache;
         if ( sharedCX.getSession() )
+        {
+            // with a shared cache, don't combine statesets. They may be
+            // in the live graph
             sscache = sharedCX.getSession()->getStateSetCache();
+            sscache->consolidateStateAttributes( resultGroup.get() );
+        }
         else 
+        {
+            // isolated: perform full optimization
             sscache = new StateSetCache();
-
-        sscache->optimize( resultGroup.get() );
+            sscache->optimize( resultGroup.get() );
+        }
     }
 
     //test: dump the tile to disk
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
-
-    //test: shader LOD callback
-    //resultGroup->addCullCallback( new RangeUniformCullCallback() );
 
 #ifdef PROFILING
     osg::Timer_t p_end = osg::Timer::instance()->tick();

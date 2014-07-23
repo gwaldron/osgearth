@@ -52,11 +52,23 @@ namespace osgEarth
          */
         bool eligible( osg::StateAttribute* attr ) const;
 
-        /**
-         * Traverse the node and consolidate equivalent state sets, updating
-         * the cache along the way.
+        /** 
+         * Scans a graph and combines equivalents state attributes into
+         * single shared attribute. Skips any attribute (or stateset)
+         * with dynamic data variance
          */
-        void optimize( osg::Node* node );
+        void consolidateStateAttributes(osg::Node* node);
+
+        /**
+         * Scans a graph and combines equivalent statesets into a single
+         * shared stateset. Skips any stateset with dynamic data variance.
+         */
+        void consolidateStateSets(osg::Node* node);
+
+        /**
+         * Calls consolidateStateAttributes followed by consolidateStateSets.
+         */
+        void optimize(osg::Node* node);
 
         /**
          * Looks in the cache for a stateset matching the input. If found,

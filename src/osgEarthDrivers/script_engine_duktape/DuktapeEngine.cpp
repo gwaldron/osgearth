@@ -34,18 +34,21 @@ using namespace osgEarth::Drivers::Duktape;
 
 //............................................................................
 
-static duk_ret_t log( duk_context *ctx ) {
-    duk_idx_t i, n;
+namespace
+{
+    static duk_ret_t log( duk_context *ctx ) {
+        duk_idx_t i, n;
 
-    std::string msg;
-    for( i = 0, n = duk_get_top( ctx ); i < n; i++ ) {
-        if( i > 0 ) {
-            msg += " ";
+        std::string msg;
+        for( i = 0, n = duk_get_top( ctx ); i < n; i++ ) {
+            if( i > 0 ) {
+                msg += " ";
+            }
+            msg += duk_safe_to_string( ctx, i );
         }
-        msg += duk_safe_to_string( ctx, i );
+        OE_WARN << LC << msg << std::endl;
+        return 0;
     }
-    OE_WARN << LC << msg << std::endl;
-    return 0;
 }
 
 //............................................................................
@@ -69,25 +72,25 @@ namespace
         const AttributeTable& attrs = feature->getAttrs();
         for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
         {
-			osgEarth::Features::AttributeType atype = (*a).second.first;
-			switch( atype ) {
-				case osgEarth::Features::ATTRTYPE_BOOL:
-					duk_push_boolean( ctx, a->second.getBool() );
-					duk_put_prop_string( ctx, -2, a->first.c_str() );
-					break;
-				case osgEarth::Features::ATTRTYPE_DOUBLE:
-					duk_push_number( ctx, a->second.getDouble() ); 
-					duk_put_prop_string( ctx, -2, a->first.c_str() );    
-					break;
-				case osgEarth::Features::ATTRTYPE_INT:
-					duk_push_int( ctx, a->second.getInt() );
-					duk_put_prop_string( ctx, -2, a->first.c_str() );
-					break;
-				default:
-					duk_push_string( ctx, a->second.getString().c_str() ); 
-					duk_put_prop_string( ctx, -2, a->first.c_str() );
-					break;
-			}
+            osgEarth::Features::AttributeType atype = (*a).second.first;
+            switch( atype ) {
+            case osgEarth::Features::ATTRTYPE_BOOL:
+                duk_push_boolean( ctx, a->second.getBool() );
+                duk_put_prop_string( ctx, -2, a->first.c_str() );
+                break;
+            case osgEarth::Features::ATTRTYPE_DOUBLE:
+                duk_push_number( ctx, a->second.getDouble() ); 
+                duk_put_prop_string( ctx, -2, a->first.c_str() );    
+                break;
+            case osgEarth::Features::ATTRTYPE_INT:
+                duk_push_int( ctx, a->second.getInt() );
+                duk_put_prop_string( ctx, -2, a->first.c_str() );
+                break;
+            default:
+                duk_push_string( ctx, a->second.getString().c_str() ); 
+                duk_put_prop_string( ctx, -2, a->first.c_str() );
+                break;
+            }
         }
 
         duk_pop_2(ctx); // []

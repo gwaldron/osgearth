@@ -20,7 +20,7 @@ to extruded buildings.
         <features name="buildings" driver="ogr">
             <url>../data/boston_buildings_utm19.shp</url>
             <build_spatial_index>true</build_spatial_index>
-			<resample min_length="5"/>
+			<resample min_length="2.5"/>
         </features>
         
 		<!-- Uncomment this for the featuremanip or featurequery demo. -->
@@ -37,10 +37,7 @@ to extruded buildings.
               
            The "tile size factor" controls how a feature is tiled. The higher this factor,
               the smaller the tile size, and the more tiles will be used to render a given
-              level of detail. The default is 15. (The renderer multiplies a tile's radius
-              by the tile_size_factor to calculate the maximum suitable camera range for
-              a given level of subdivision. It compares this to the feature level's max
-              range to decide how many tiles to create.)
+              level of detail. The default is 15. tile size = max range / tile size factor.
         -->
         
         <layout tile_size_factor="52">

@@ -34,6 +34,22 @@ using namespace osgEarth::Drivers::Duktape;
 
 //............................................................................
 
+static duk_ret_t log( duk_context *ctx ) {
+    duk_idx_t i, n;
+
+    std::string msg;
+    for( i = 0, n = duk_get_top( ctx ); i < n; i++ ) {
+        if( i > 0 ) {
+            msg += " ";
+        }
+        msg += duk_safe_to_string( ctx, i );
+    }
+    OE_WARN << LC << msg << std::endl;
+    return 0;
+}
+
+//............................................................................
+
 namespace
 {
     // Updates the global feature object with new attributes.
@@ -92,6 +108,15 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
             duk_pop(_ctx); // []
         }
 
+        // Add global log function.
+
+        {
+            duk_push_global_object( _ctx );
+            duk_push_c_function( _ctx, log, DUK_VARARGS );
+            duk_put_prop_string( _ctx, -2, "log" );
+            duk_pop( _ctx );
+        }
+		
         // Create the global feature object.
         {
             duk_push_global_object(_ctx);             // [ global ]         feature object's home

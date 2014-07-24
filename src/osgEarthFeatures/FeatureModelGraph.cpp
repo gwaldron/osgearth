@@ -255,9 +255,12 @@ _overlayChange      ( OVERLAY_NO_CHANGE )
     _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
 
     // set up the callback queues for pre- and post-merge operations.
+
+    // per-merge ops run in the pager thread:
     if ( !_preMergeOperations.valid())
         _preMergeOperations = new RefNodeOperationVector();
 
+    // post-merge ops run in the update traversal:
     if ( !_postMergeOperations.valid() )
         _postMergeOperations = new RefNodeOperationVector();
 
@@ -271,8 +274,12 @@ _overlayChange      ( OVERLAY_NO_CHANGE )
         return;
     }
 
-    // set up a shared resource cache for the session. The ResourceCache will make sure
-    // that resources (skin textures, instance models, etc.) only get loaded once.
+    // Set up a shared resource cache for the session. A session-wide cache means
+    // that all the paging threads that load data from this FMG will load resources
+    // from a single cache; e.g., once a texture is loaded in one thread, the same
+    // StateSet will be used across the entire Session. That also means that StateSets
+    // in the ResourceCache can potentially also be in the live graph; so you should
+    // take care in dealing with them in a multi-threaded environment.
     if ( !session->getResourceCache() && _options.sessionWideResourceCache() == true )
     {
         session->setResourceCache( new ResourceCache(session->getDBOptions()) );

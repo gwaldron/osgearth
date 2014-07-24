@@ -136,7 +136,9 @@ SubstituteModelFilter::process(const FeatureList&           features,
     // first, go through the features and build the model cache. Apply the model matrix' scale
     // factor to any AutoTransforms directly (cloning them as necessary)
     std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
-	std::map< std::string, URI> URIMap;
+
+    // URI cache speeds up URI creation since it can be slow.
+    osgEarth::fast_map<std::string, URI> uriCache;
 
     // keep track of failed URIs so we don't waste time or warning messages on them
     std::set< URI > missing;
@@ -157,7 +159,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
 		// evaluate the instance URI expression:
 		const std::string& st = input->eval(uriEx, &context);
-		URI& instanceURI = URIMap[st];
+		URI& instanceURI = uriCache[st];
 		if(instanceURI.empty()) // Create a map, to reuse URI's, since they take a long time to create
 		{
 			instanceURI = URI( st, uriEx.uriContext() );

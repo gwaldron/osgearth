@@ -372,10 +372,10 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             Corners::iterator this_corner = c;
 
             Corners::iterator next_corner = c;
-			bool notLastEdge=true;
+			bool isLastEdge = false;
 			if ( ++next_corner == corners.end() )
 			{
-				notLastEdge=false;
+				isLastEdge = true;
 				next_corner = corners.begin();
 			}
 
@@ -394,14 +394,18 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
                 {
                     // insert a new fake corner.
 					Corners::iterator new_corner;
-					if(notLastEdge)
-						new_corner = corners.insert(next_corner, Corner());
-					else
-					{
+
+                    if ( isLastEdge )
+                    {
 						corners.push_back(Corner());
 						new_corner = c;
 						new_corner++;
+                    }
+                    else
+                    {
+						new_corner = corners.insert(next_corner, Corner());
 					}
+
                     new_corner->isFromSource = false;
                     double advance = nextTexBoundary-cornerOffset;
                     new_corner->base = this_corner->base + base_vec*advance;

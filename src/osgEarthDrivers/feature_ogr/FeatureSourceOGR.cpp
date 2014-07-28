@@ -300,15 +300,25 @@ public:
         }
         else
         {
-            OGR_SCOPED_LOCK;
+            OGRDataSourceH dsHandle = 0L;
+            OGRLayerH layerHandle = 0L;
 
-            // Each cursor requires its own DS handle so that multi-threaded access will work.
-            // The cursor impl will dispose of the new DS handle.
-            OGRDataSourceH dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
-            if ( dsHandle )
+            // open the handles safely:
             {
-                OGRLayerH layerHandle = openLayer(dsHandle, _options.layer().get());
+                OGR_SCOPED_LOCK;
 
+                // Each cursor requires its own DS handle so that multi-threaded access will work.
+                // The cursor impl will dispose of the new DS handle.
+                dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
+                if ( dsHandle )
+                {
+                    layerHandle = openLayer(dsHandle, _options.layer().get());
+                }
+            }
+
+            if ( dsHandle && layerHandle )
+            {
+                // cursor is responsible for the OGR handles.
                 return new FeatureCursorOGR( 
                     dsHandle,
                     layerHandle, 
@@ -319,6 +329,12 @@ public:
             }
             else
             {
+                if ( dsHandle )
+                {
+                    OGR_SCOPED_LOCK;
+                    OGRReleaseDataSource( dsHandle );
+                }
+
                 return 0L;
             }
         }
@@ -328,6 +344,7 @@ public:
     {
         if (_writable && _layerHandle)
         {
+            OGR_SCOPED_LOCK;
             if (OGR_L_DeleteFeature( _layerHandle, fid ) == OGRERR_NONE)
             {
                 _needsSync = true;

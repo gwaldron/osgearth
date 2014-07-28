@@ -45,9 +45,10 @@ int usage( char** argv, const std::string& msg )
     << "to stitch an external model into the terrain.\n\n"
     << "USAGE: " << argv[0] << " [options] model_file\n"
     << "           --out <file_name>    : output file for boundary geometry (default is boundary.txt)\n"
+    << "           --tolerance <meters> : tolerance for combining similar verts along a boundary (default = 0.01)\n"
+    << "           --precision <n>      : output precision of boundary coords (default=14)\n"
     << "           --no-geocentric      : skip geocentric reprojection (for flat databases)\n"
     << "           --convex-hull        : calculate a convex hull instead of a full boundary\n"
-    << "           --tolerance <meters> : tolerance for combining similar verts along a boundary (default = 0.01)\n"
     << "           --verbose            : print progress to console\n"
     << "           --view               : show result in 3D window\n"
     << std::endl;
@@ -67,6 +68,9 @@ int main(int argc, char** argv)
     double tolerance;
     if (arguments.read("--tolerance", tolerance))
         BoundaryUtil::setTolerance(tolerance);
+
+    int precision = 12;
+    arguments.read("--precision", precision);
 
     bool geocentric = !arguments.read("--no-geocentric");
     bool verbose = arguments.read("--verbose");
@@ -112,7 +116,7 @@ int main(int argc, char** argv)
 
             outStream
                 //<< std::fixed //std::setiosflags(std::ios_base::fixed)
-                << std::setprecision(12)
+                << std::setprecision(precision)
                 << (i > 0 ? ", " : "") << lon << " " << lat << " " << height;
           }
 

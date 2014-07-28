@@ -110,7 +110,10 @@ int main(int argc, char** argv)
             if (verbose)
               std::cout << "  hull[" << i << "] == " << lon << ", " << lat << ", " << height << std::endl;
 
-            outStream << std::setiosflags(std::ios_base::fixed) << (i > 0 ? ", " : "") << lon << " " << lat << " " << height;
+            outStream
+                //<< std::fixed //std::setiosflags(std::ios_base::fixed)
+                << std::setprecision(12)
+                << (i > 0 ? ", " : "") << lon << " " << lat << " " << height;
           }
 
           outStream << "))";

@@ -44,3 +44,10 @@ OverlayNode( mapNode, draped, &getTechniqueGroup )
     //nop
 }
 
+void
+DrapeableNode::setRenderOrder(int order)
+{
+    _renderOrder = order;
+    osg::StateSet* s = _overlayProxyContainer->getOrCreateStateSet();
+    s->setRenderBinDetails(order, "RenderBin");
+}

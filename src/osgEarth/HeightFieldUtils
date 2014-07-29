@@ -51,7 +51,7 @@ namespace osgEarth
             }
         }
 
-        void getNeighborForNormalizedLocation(double nx, double ny, osg::ref_ptr<osg::HeightField>& hf, double& out_nx, double& out_ny) const {
+        bool getNeighborForNormalizedLocation(double nx, double ny, osg::ref_ptr<osg::HeightField>& hf, double& out_nx, double& out_ny) const {
             int xoffset = nx < 0.0 ? -1 : nx > 1.0 ? 1 : 0;
             int yoffset = ny < 0.0 ? 1 : ny > 1.0 ? -1 : 0;
             if ( xoffset != 0 || yoffset != 0 )
@@ -60,6 +60,7 @@ namespace osgEarth
                 hf = _center.get();
             out_nx = nx < 0.0 ? 1.0+nx : nx > 1.0 ? nx-1.0 : nx;
             out_ny = ny < 0.0 ? 1.0+ny : ny > 1.0 ? ny-1.0 : ny;
+            return hf.valid();
         }
     };
 
@@ -108,11 +109,12 @@ namespace osgEarth
         /**
          * Gets the interpolated elevation at the specified "normalized unit location".
          * i.e., nx => [-1.0...2.0], ny => [-1.0...2.0] since it can query neighbors
-         * as well.
+         * as well. Returns FALSE if there's no heightfield in the hood.
          */
-        static float getHeightAtNormalizedLocation(
+        static bool getHeightAtNormalizedLocation(
             const HeightFieldNeighborhood& hood,
             double nx, double ny,
+            double& output,
             ElevationInterpolation interp = INTERP_BILINEAR);
 
         /**
@@ -135,14 +137,18 @@ namespace osgEarth
         
         /**
          * Creates a heightfield containing MSL heights for the specified extent.
-         * If the SRS (in GeoExtent) has a vertical datum, the height values will be those of
-         * its reference geoid. If there is no vertical datum, we assume that MSL == the reference
-         * ellipsoid, and all the HF values will be zero.
+         *
+         * @param expressHeightsAsHAE
+         *      If the SRS (in GeoExtent) has a vertical datum, and expressHeightsAsHAE==true,
+         *      the height values will be those of its reference geoid. If there is no vertical
+         *      datum, or is expressHeightsAsHAE==false, we assume that MSL == the reference
+         *      ellipsoid and all the HF values will be zero.
          */
         static osg::HeightField* createReferenceHeightField( 
             const GeoExtent& ex, 
             unsigned         numCols,
-            unsigned         numRows );
+            unsigned         numRows,
+            bool             expressHeightsAsHAE =true);
 
         /**
          * Subsamples a heightfield to the specified extent.
@@ -166,7 +172,7 @@ namespace osgEarth
 
         /**
          * Resolves any "invalid" height values in the hieghtfield, replacing them
-         * with valid values from a Geoid (or zero if no geoid).
+         * with geodetic (ellipsoid) relative values from a Geoid (or zero if no geoid).
          */
         static void resolveInvalidHeights(
             osg::HeightField* grid,

@@ -111,6 +111,22 @@ FeatureTileSource::initialize(const osgDB::Options* dbOptions)
     if ( _features.valid() )
     {
         _features->initialize( dbOptions );
+
+        // Try to fill the DataExtent list using the FeatureProfile
+        const FeatureProfile* featureProfile = _features->getFeatureProfile();
+        if (featureProfile != NULL)
+        {
+            if (featureProfile->getProfile() != NULL)
+            {
+                // Use specified profile's GeoExtent
+                getDataExtents().push_back(DataExtent(featureProfile->getProfile()->getExtent()));
+            }
+            else if (featureProfile->getExtent().isValid() == true)
+            {
+                // Use FeatureProfile's GeoExtent
+                getDataExtents().push_back(DataExtent(featureProfile->getExtent()));
+            }
+        }
     }
     else
     {
@@ -159,7 +175,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
         osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
         while( cursor.valid() && cursor->hasMore() )
         {
-            Feature* feature = cursor->nextFeature();
+            osg::ref_ptr< Feature > feature = cursor->nextFeature();
             if ( feature )
             {
                 FeatureList list;

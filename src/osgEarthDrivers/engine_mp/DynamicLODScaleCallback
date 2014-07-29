@@ -23,7 +23,7 @@
 #include <osg/NodeCallback>
 #include <osg/CullStack>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
      * Cull callback that dynamically computes an LOD scale based on
@@ -80,6 +80,6 @@ namespace osgEarth_engine_mp
         float _fallOff;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
 #endif //OSGEARTH_ENGINE_OSGTERRAIN_DYNAMIC_LOD_SCALE_CALLBACK_H

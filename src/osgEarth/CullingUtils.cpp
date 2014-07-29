@@ -21,10 +21,12 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DPLineSegmentIntersector>
 #include <osgEarth/GeoData>
+#include <osgEarth/Utils>
 #include <osg/ClusterCullingCallback>
 #include <osg/PrimitiveSet>
 #include <osg/Geode>
 #include <osg/TemplatePrimitiveFunctor>
+#include <osgGA/GUIActionAdapter>
 #include <osgUtil/CullVisitor>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
@@ -308,6 +310,25 @@ Culling::asCullVisitor(osg::NodeVisitor* nv)
     return 0L;
 }
 
+//------------------------------------------------------------------------
+
+void
+DoNotComputeNearFarCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osgUtil::CullVisitor* cv = static_cast< osgUtil::CullVisitor*>( nv );
+    osg::CullSettings::ComputeNearFarMode oldMode;
+    if( cv )
+    {
+        oldMode = cv->getComputeNearFarMode();
+        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    }
+    traverse(node, nv);
+    if( cv )
+    {
+        cv->setComputeNearFarMode(oldMode);
+    }
+}
+
 
 //----------------------------------------------------------------------------
 
@@ -332,6 +353,11 @@ SuperClusterCullingCallback::cull(osg::NodeVisitor* nv, osg::Drawable* , osg::St
     float radius = (float)eye_cp.length();
     if (radius < _radius)
         return false;
+
+#if 0 // underwater test.
+    if (radius-_radius < 1000000)
+        return false;
+#endif
 
     // handle perspective and orthographic projections differently.
     const osg::Matrixd& proj = *cv->getProjectionMatrix();
@@ -666,7 +692,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
             remainingTime = OcclusionCullingCallback::_maxFrameTime;
         }
 
-        osg::Vec3d eye = cv->getViewPoint();        
+        osg::Vec3d eye = cv->getViewPoint();
 
         if (_prevEye != eye || _prevWorld != _world)
         {
@@ -694,7 +720,7 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
                     osg::Vec3d start = eye;
                     osg::Vec3d end = _world;
                     DPLineSegmentIntersector* i = new DPLineSegmentIntersector( start, end );
-                    i->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+                    i->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
                     osgUtil::IntersectionVisitor iv;
                     iv.setIntersector( i );
                     _node->accept( iv );
@@ -717,6 +743,15 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
             else
             {
                 numSkipped++;
+                // if we skipped some we need to request a redraw so the remianing ones get processed on the next frame.
+                if ( cv->getCurrentCamera() && cv->getCurrentCamera()->getView() )
+                {
+                    osgGA::GUIActionAdapter* aa = dynamic_cast<osgGA::GUIActionAdapter*>(cv->getCurrentCamera()->getView());
+                    if ( aa )
+                    {
+                        aa->requestRedraw();
+                    }
+                }
             }
         }
 
@@ -806,9 +841,15 @@ ProxyCullVisitor::distance(const osg::Vec3& coord,const osg::Matrix& matrix)
 void 
 ProxyCullVisitor::handle_cull_callbacks_and_traverse(osg::Node& node)
 {
+#if OSG_VERSION_GREATER_THAN(3,3,1)
+    osg::Callback* callback = node.getCullCallback();
+    if (callback) callback->run(&node, this);
+    else traverse(node);
+#else
     osg::NodeCallback* callback = node.getCullCallback();
     if (callback) (*callback)(&node,this);
     else traverse(node);
+#endif
 }
 
 void 
@@ -892,12 +933,17 @@ ProxyCullVisitor::apply(osg::Geode& node)
     for(unsigned int i=0;i<node.getNumDrawables();++i)
     {
         osg::Drawable* drawable = node.getDrawable(i);
-        const osg::BoundingBox& bb =drawable->getBound();
+        const osg::BoundingBox& bb = Utils::getBoundingBox(drawable);
 
         if( drawable->getCullCallback() )
         {
+#if OSG_VERSION_GREATER_THAN(3,3,1)
+            if( drawable->getCullCallback()->run(drawable, _cv) == true )
+                continue;
+#else
             if( drawable->getCullCallback()->cull( _cv, drawable, &_cv->getRenderInfo() ) == true )
                 continue;
+#endif
         }
 
         //else
@@ -1055,4 +1101,32 @@ LODScaleGroup::traverse(osg::NodeVisitor& nv)
     }
 
     osg::Group::traverse( nv );
+}
+
+//------------------------------------------------------------------
+
+ClipToGeocentricHorizon::ClipToGeocentricHorizon(const osgEarth::SpatialReference* srs,
+                                                 osg::ClipPlane*                   clipPlane)
+{
+    _radius = std::min(
+        srs->getEllipsoid()->getRadiusPolar(),
+        srs->getEllipsoid()->getRadiusEquator() );
+
+    _clipPlane = clipPlane;
+}
+
+void
+ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osg::ref_ptr<osg::ClipPlane> clipPlane;
+    if ( _clipPlane.lock(clipPlane) )
+    {
+        osg::Vec3 eye = nv->getEyePoint();
+        double d = eye.length();
+        double a = acos(_radius/d);
+        double horizonRadius = _radius*cos(a);
+        eye.normalize();
+        clipPlane->setClipPlane(osg::Plane(eye, eye*horizonRadius));
+    }
+    traverse(node, nv);
 }

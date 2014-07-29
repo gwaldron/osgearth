@@ -22,6 +22,7 @@
 
 #include <osg/AutoTransform>
 #include <osg/Depth>
+#include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/TextureRectangle>
 #include <osg/Program>
@@ -123,7 +124,10 @@ MarkerResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOptio
 
     ReadResult r = uri.readObject( dbOptions );
     if ( r.succeeded() )
-    {
+    {     
+        OE_INFO << LC << "Loaded " << uri.base() << "(from " << (r.isFromCache()? "cache" : "source") << ")"
+            << std::endl;
+
         if ( r.getImage() )
         {
             node = buildImageModel( r.getImage() );
@@ -140,13 +144,6 @@ MarkerResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOptio
         StringTokenizer( *uri, tok, "()" );
         if (tok.size() >= 2)
             return createNodeFromURI( URI(tok[1]), dbOptions );
-    }
-
-    // for now, disable any shaders on an imported resource until we do something about it
-    if ( node )
-    {
-        // disable shaders. perhaps later we can run a shadergen or something.
-        node->getOrCreateStateSet()->setAttributeAndModes( new osg::Program(), osg::StateAttribute::OFF );
     }
 
     return node;

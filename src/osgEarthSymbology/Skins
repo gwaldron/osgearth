@@ -25,6 +25,7 @@
 #include <osgEarthSymbology/Symbol>
 #include <osgEarth/URI>
 #include <osg/TexEnv>
+#include <osg/Texture2DArray>
 
 namespace osgEarth { namespace Symbology
 {
@@ -47,6 +48,17 @@ namespace osgEarth { namespace Symbology
          * Creates a new StateSet containing a Texture based on this Skin.
          */
         osg::StateSet* createStateSet( const osgDB::Options* dbOptions ) const;
+
+        /**
+         * Creates an image for this SkinResource.
+         */
+        osg::Image* createImage( const osgDB::Options* options ) const;
+
+        /** 
+         * A key string that can uniquely identify this object for the purposes
+         * of creating its state set (e.g., for a cache)
+         */
+        std::string getUniqueID() const;
 
     public:
         /** Source location of the actual texture image.  */
@@ -73,6 +85,26 @@ namespace osgEarth { namespace Symbology
         optional<bool>& isTiled() { return _isTiled; }
         const optional<bool>& isTiled() const { return _isTiled; }
 
+        /** Image offset within a source atlas (S dimension [0..1]) */
+        optional<float>& imageBiasS() { return _imageBiasS; }
+        const optional<float>& imageBiasS() const { return _imageBiasS; }
+
+        /** Image offset (pixels) within a source atlas (T dimension [0..1]) */
+        optional<float>& imageBiasT() { return _imageBiasT; }
+        const optional<float>& imageBiasT() const { return _imageBiasT; }
+
+        /** Image layer index within a source atlas (R dimension) */
+        optional<unsigned>& imageLayer() { return _imageLayer; }
+        const optional<unsigned>& imageLayer() const { return _imageLayer; }
+
+        /** Image scalke factor within a source atlas (S dimension) */
+        optional<float>& imageScaleS() { return _imageScaleS; }
+        const optional<float>& imageScaleS() const { return _imageScaleS; }
+
+        /** Image scalke factor within a source atlas (T dimension) */
+        optional<float>& imageScaleT() { return _imageScaleT; }
+        const optional<float>& imageScaleT() const { return _imageScaleT; }
+
         /** GL texture application mode */
         optional<osg::TexEnv::Mode>& texEnvMode() { return _texEnvMode; }
         const optional<osg::TexEnv::Mode>& texEnvMode() const { return _texEnvMode; }
@@ -88,9 +120,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
 
-        osg::StateSet* createStateSet( osg::Image* image ) const;
-
-        osg::Image* createImage( const osgDB::Options* options ) const;
+        osg::StateSet* createStateSet( osg::Image* image ) const;        
 
     protected:
 
@@ -102,6 +132,11 @@ namespace osgEarth { namespace Symbology
         optional<bool>              _isTiled;
         optional<osg::TexEnv::Mode> _texEnvMode;
         optional<unsigned>          _maxTexSpan;
+        optional<float>             _imageBiasS;
+        optional<float>             _imageBiasT;
+        optional<unsigned>          _imageLayer;
+        optional<float>             _imageScaleS;
+        optional<float>             _imageScaleT;
     };
 
 
@@ -160,6 +195,38 @@ namespace osgEarth { namespace Symbology
     };
 
     typedef std::vector< osg::ref_ptr<SkinResource> > SkinResourceVector;
+
+#if 0
+    /**
+     * Utility class that builds a Texture2DArray from a list of SkinResources
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT SkinTextureArray : public osg::Referenced
+    {
+    public:
+        SkinTextureArray();
+
+        /**
+         * Gets the Texture2DArray for this SkinTextureArray
+         */
+        osg::Texture2DArray* getTexture();
+
+        /**
+         * Gets the index into the texture array for the given SkinResource.
+         */
+        int getSkinIndex( const SkinResource* skin );
+
+        /**
+         * Builds a Texture2DArray from the given SkinResources.
+         */
+        void build(SkinResourceVector& skins, const osgDB::Options* dbOptions);
+
+    protected:
+
+        typedef std::map< std::string, int > LayerIndex;
+        LayerIndex _layerIndex;
+        osg::ref_ptr< osg::Texture2DArray > _texture;
+    };
+#endif
 
 } } // namespace osgEarth::Symbology
 

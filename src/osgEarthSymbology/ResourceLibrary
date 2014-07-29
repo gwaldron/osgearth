@@ -59,6 +59,11 @@ namespace osgEarth { namespace Symbology
         /** dtor */
         virtual ~ResourceLibrary() { }
 
+        /** 
+         * Initialize the catalog by loading its contents into memory
+         */
+        bool initialize( const osgDB::Options* options );
+
         /**
          * Gets the name of the lib.
          */
@@ -128,9 +133,11 @@ namespace osgEarth { namespace Symbology
         void mergeConfig( const Config& conf );
         Config getConfig() const;
 
+        optional<URI>& uri() { return _uri; }
+        const optional<URI>& uri() const { return _uri; }
+
     protected:
         typedef std::map< const Symbol*, Random > RandomMap;
-
         optional<URI>                      _uri;
         std::string                        _name;
         bool                               _initialized;
@@ -141,8 +148,6 @@ namespace osgEarth { namespace Symbology
         ResourceMap<InstanceResource>      _instances;
 
         bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;
-
-        void initialize( const osgDB::Options* options );
     };
 
 

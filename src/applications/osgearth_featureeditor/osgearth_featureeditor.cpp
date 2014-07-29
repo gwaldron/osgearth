@@ -218,7 +218,7 @@ int main(int argc, char** argv)
     s_root->addChild( s_featureNode );
 
     //Setup the controls
-    ControlCanvas* canvas = ControlCanvas::get( &viewer );
+    ControlCanvas* canvas = ControlCanvas::getOrCreate( &viewer );
     s_root->addChild( canvas );
     Grid *toolbar = createToolBar( );
     canvas->addControl( toolbar );

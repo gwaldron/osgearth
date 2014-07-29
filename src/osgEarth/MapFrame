@@ -96,18 +96,22 @@ namespace osgEarth
         /** Checks whether all the data for the specified key is cached. */
         bool isCached( const TileKey& key ) const;
 
+        /** Access to the map's options */
+        const MapOptions& getMapOptions() const;
+
+        /** The highest set minLevel() amongst all image and elevation layers */
+        unsigned getHighestMinLevel() const { return _highestMinLevel; }
+
         /**
-         * Equivalent to the Map::createHeightField() method, but operates on the elevation stack
-         * snapshot in this MapFrame.
+         * Equivalent to the Map::populateHeightField() method, but operates on the
+         * elevation stack snapshot in this MapFrame.
          */
-        bool getHeightField(
+        bool populateHeightField(
+            osg::ref_ptr<osg::HeightField>& hf,
             const TileKey&                  key,
-            bool                            fallback,
-            osg::ref_ptr<osg::HeightField>& out_hf,
-            bool*                           out_isFallback =0L,   
-            bool                            convertToHAE   =true,         
-            ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
-            ProgressCallback*               progress       =0L ) const;
+            bool                            expressHeightsAsHAE =true,
+            ElevationSamplePolicy           samplePolicy        =SAMPLE_FIRST_VALID,
+            ProgressCallback*               progress            =0L) const;
 
     private:
         bool _initialized;
@@ -119,9 +123,12 @@ namespace osgEarth
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;
         ModelLayerVector _modelLayers;
-        MaskLayerVector _maskLayers;        
+        MaskLayerVector _maskLayers;
+        unsigned _highestMinLevel;
 
         friend class Map;
+
+        void refreshComputedValues();
     };
 
 }

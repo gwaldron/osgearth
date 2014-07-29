@@ -1,0 +1,77 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_CACHE_LEVELDB
+#define OSGEARTH_DRIVER_CACHE_LEVELDB 1
+
+#include "LevelDBCacheOptions"
+#include "Tracker"
+#include <osgEarth/Common>
+#include <osgEarth/Cache>
+#include <leveldb/db.h>
+
+namespace osgEarth { namespace Drivers { namespace LevelDBCache
+{    
+    /** 
+     * Cache that stores data in a LEVELDB database in the local filesystem.
+     */
+    class LevelDBCacheImpl : public osgEarth::Cache
+    {
+    public:
+        META_Object( osgEarth, LevelDBCacheImpl );
+        virtual ~LevelDBCacheImpl();
+        LevelDBCacheImpl() { } // unused
+        LevelDBCacheImpl( const LevelDBCacheImpl& rhs, const osg::CopyOp& op ) { } // unused
+
+        /**
+         * Constructs a new leveldb cache object.
+         * @param options Options structure that comes from a serialized description of 
+         *        the object (see LevelDBCacheOptions)
+         */
+        LevelDBCacheImpl( const osgEarth::CacheOptions& options );
+
+    public: // Cache interface
+
+        osgEarth::CacheBin* addBin( const std::string& binID );
+
+        osgEarth::CacheBin* getOrCreateDefaultBin();
+
+        off_t getApproximateSize() const;
+
+        // Compact the cache, reclaiming space fragmented by removing records
+        bool compact();
+
+        // Clear all records from the cache
+        bool clear();
+
+    protected:
+
+        void init();
+        void open();
+
+        std::string  _rootPath;
+        bool         _active;
+        leveldb::DB* _db;
+        osg::ref_ptr<Tracker> _tracker;
+        LevelDBCacheOptions _options;
+    };
+
+
+} } } // namespace osgEarth::Drivers::LevelDBCache
+
+#endif // OSGEARTH_DRIVER_CACHE_LEVELDB

@@ -51,8 +51,11 @@ SET(THIRD_PARTY_DIR "" CACHE PATH "OSG 3rd-party dependency folder")
 SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
 
 # Attempt to detect the GIT revision number.
-include(GetGitRevisionDescription)
-get_git_head_revision(GIT_REFSPEC OSGEARTH_GIT_SHA1)
+OPTION(OSGEARTH_EMBED_GIT_SHA "Embeds the GIT SHA in the version code" OFF)
+IF (OSGEARTH_EMBED_GIT_SHA)
+  include(GetGitRevisionDescription)
+  get_git_head_revision(GIT_REFSPEC OSGEARTH_GIT_SHA1)
+ENDIF (OSGEARTH_EMBED_GIT_SHA)
 
 # IPHONE_PORT@tom
 # Trying to get CMake to generate an XCode IPhone project, current efforts are to get iphoneos sdk 3.1 working
@@ -114,11 +117,20 @@ FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(ZLIB)
 
+FIND_PACKAGE(LevelDB)
+
+FIND_PACKAGE(SilverLining)
+FIND_PACKAGE(Triton)
+
+# JavaScript Engines:
 SET(V8_DIR "" CACHE PATH "set to base V8 install path")
 FIND_PACKAGE(V8)
-
 FIND_PACKAGE(JavaScriptCore)
-FIND_PACKAGE(LibNoise)
+
+SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")
+IF (WITH_EXTERNAL_DUKTAPE)
+    FIND_PACKAGE(Duktape)
+ENDIF (WITH_EXTERNAL_DUKTAPE)
 
 FIND_PACKAGE(Qt5Core QUIET)
 FIND_PACKAGE(Qt5Widgets QUIET)
@@ -199,7 +211,6 @@ ENDIF(WIN32)
 ########################################################################################################
 
 # Common to all platforms:
-SET(OSG_DIR "" CACHE PATH "set to base osg install path")
 
 SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a postfix, usually d on windows")
 SET(CMAKE_RELEASE_POSTFIX "" CACHE STRING "add a postfix, usually empty on windows")

@@ -270,8 +270,7 @@ public:
             OE_NOTICE << "[osgEarth::WMS] Profile=" << getProfile()->toString() << std::endl;
 
             // set up the cache options properly for a TileSource.
-            _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );
-            CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+            _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );            
 
             return STATUS_OK;
         }

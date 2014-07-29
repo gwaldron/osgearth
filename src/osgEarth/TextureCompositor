@@ -20,135 +20,12 @@
 #define OSGEARTH_TEXTURE_COMPOSITOR_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/GeoData>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/TerrainOptions>
-#include <osg/StateSet>
-#include <osg/Program>
 
 namespace osgEarth
 {
-    class ImageLayer;
-    class TileKey;
-    struct MapModelChange;
-
     /**
-     * Tracks the usage of texture slots and their rendering order for a map.
-     *
-     * A "slot" is a home for a texture layer. For example, in a multitexturing setup, a
-     * slot corresponds to a texture image unit in the hardware. In a texture_array setup,
-     * a slot is one "slice" of the texture array.
-     *
-     * A single layer can occupy more than one slot. (Specifically, this is the case when
-     * LOD Blending is enabled on that layer -- the layer will require 2 slots in order to
-     * blend the images together in the shader.) In this case, we refer to the first slot
-     * as the "primary" slot, and any additional slots belonging to the same layer as 
-     * "secondary" slots.
-     */
-    class OSGEARTH_EXPORT TextureLayout
-    {        
-    public:
-        // vector of texture slots, each slot containing the UID of the image layer in that slot
-        // or -1 if the slot is empty.
-        typedef std::vector<UID> TextureSlotVector;
-
-        // rendering order of texture slots- each element is an index into the TextureSlotVector.
-        typedef std::vector<int> RenderOrderVector;
-
-    public:
-        TextureLayout();
-
-        /** dtor */
-        virtual ~TextureLayout() { }
-
-        /**
-         * Gets a texture slot corresponding to the layer UID. There may be more than one,
-         * the "which" parameter allows you to select one in particular. You can also limit
-         * the number of slots to search.
-         */
-        int getSlot( UID layerUID, unsigned which =0, unsigned maxSlotsToSearch =~0 ) const;
-
-        /** Gets the render order index of the layer with the given UID */
-        int getOrder( UID layerUID ) const;
-
-        /** Gets the index of the highest populated slot. */
-        int getMaxUsedSlot() const;
-
-        /** Whether the indicated slot is available for use */
-        bool isSlotAvailable( int slot ) const;
-
-        /** Accesses a vector that maps layer UIDs to texture slots. */
-        const TextureSlotVector& getTextureSlots() const { return _slots; }
-
-        /** Access a vector that specifies the rendering order of texture slots. */
-        const RenderOrderVector& getRenderOrder() const { return _order; }
-
-        /** Returns "true" if the layout contains at least one secondary slot allocation. */
-        bool containsSecondarySlots( unsigned maxSlotsToSearch = ~0) const;
-
-        /** whether LOD blending is enabled on a layer */
-        bool isBlendingEnabled( UID layerUID ) const;
-
-    protected:
-        friend class TextureCompositor;
-
-        void applyMapModelChange( 
-          const MapModelChange& change, 
-          bool reserveSeconarySlotIfNecessary,
-          bool disableLodBlending );
-
-        void setReservedSlots( const std::set<int>& reservedSlots );
-
-    protected:
-        TextureSlotVector  _slots;
-        RenderOrderVector  _order;
-        bool               _textureImageUnitPerSlot;
-        std::set<int>      _reservedSlots;
-        std::map<UID,bool> _lodBlending;
-
-        void assignPrimarySlot( ImageLayer* layer, int index );
-        void assignSecondarySlot( ImageLayer* layer );
-    };
-
-    //-----------------------------------------------------------------------
-
-    /**
-     * Base interface for a particular texture composition implementation
-     *
-     * TODO: document these methods
-     */
-    class OSGEARTH_EXPORT TextureCompositorTechnique : public osg::Referenced
-    {
-    public:
-        virtual bool requiresUnitTextureSpace() const =0;
-
-        virtual bool usesShaderComposition() const =0;
-
-        virtual bool blendingRequiresSecondarySlot() const { return false; }
-
-        virtual bool supportsLayerUpdate() const { return false; }
-
-        virtual void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const { }
-
-        virtual GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
-
-        virtual GeoImage prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
-
-        virtual void applyLayerUpdate( osg::StateSet* stateSet, UID layerUID, const GeoImage& preparedImage, const TileKey& tileKey, const TextureLayout& layout, osg::StateSet* parentStateSet ) const { }
-
-        virtual void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const { }
-
-        virtual osg::Shader* createSamplerFunction( 
-            UID layerUID, 
-            const std::string& functionName, 
-            osg::Shader::Type type, 
-            const TextureLayout& layout ) const { return 0L; }
-    };
-
-    //-----------------------------------------------------------------------
-
-    /**
-     * Utility class that composites texture data for use by a terrain engine.
+     * Utility class that tracks texture allocation units
      */
     class OSGEARTH_EXPORT TextureCompositor : public osg::Referenced
     {
@@ -156,141 +33,25 @@ namespace osgEarth
         /**
          * Constructs a new compositor.
          */
-        TextureCompositor( const TerrainOptions& options );
+        TextureCompositor();
 
         /** dtor */
         virtual ~TextureCompositor() { }
 
         /**
-         * Sets a custom technique to use.
-         */
-        void setTechnique( TextureCompositorTechnique* tech );
-
-        /**
-         * Gets the actual technique selected by the compositor. This might not be the same
-         * as the requested technique, since it will validate against system capabilities and
-         * automatically "fall back" on lesser techniques if necessary.
-         */
-        const TerrainOptions::CompositingTechnique& getTechnique() const { return _tech; }
-
-        /**
-         * Applies a map model change action to the texture layout contained within this compositor.
-         * You should call this any time the map model change happens.
-         */
-        void applyMapModelChange( const MapModelChange& change );
-
-        /**
-         * Returns true if the compositor implementation supports the ability to update an individual
-         * image layer (via prepareLayerUpdate and applyLayerUpdate).
-         */
-        bool supportsLayerUpdate() const;
-
-        /**
-         * Prepares a new image for incorporation into the texture composite. Usually you will call this 
-         * method when you are updating a single layer AFTER having originally created the stateset
-         * (via createStateSet). It is safe to call this method from any thread. You can thereafter take
-         * the result and pass it to updateLayer. These two methods are separated so that you can call
-         * this one from any thread (it is guaranteed to be thread-safe) and then use updateLayer to 
-         * updaet a live scene graph if necessary.
-         */
-        GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const;
-
-        /**
-         * Like prepareImage, but prepares it for use as a secondary texture (for LOD blending).
-         */
-        GeoImage prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) const;
-
-        /**
-         * Updates a stateset's texture composition with an image. Typically this will be the image
-         * returned from prepareImage(), but it doesn't have to be. Note: if the stateset is live in
-         * the scene graph, be sure to only call this method from UPDATE trav.
-         */
-        void applyLayerUpdate(
-            osg::StateSet*  stateSet,
-            UID             layerUID,
-            const GeoImage& preparedImage,
-            const TileKey&  tileKey,
-            osg::StateSet*  parentStateSet ) const;
-
-        /**
-         * Updates a stateset's texture composition based on the information that a layer has been
-         * removed.
-         */
-        void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const;
-
-        /**
-         * Assigns a texture coordinate array to a geometry, putting it in the proper
-         * texture slot according to the compositor's layout.
-         */
-        void assignTexCoordArray(
-            osg::Geometry*  geom,
-            UID             layerUID,
-            osg::Vec2Array* texCoords ) const;
-
-        /**
-         * Whether the texture composition technique uses a single, unit (0..1) texture coordinate
-         * space (true), or a separate texture coordinate space per layer (false). This provides a
-         * hint to whomever is generating the texture coordinates as to what they need to do to 
-         * support the current technique.
-         */
-        bool requiresUnitTextureSpace() const;
-
-        /**
-         * Whether the composition technique uses GLSL shader composition.
-         */
-        bool usesShaderComposition() const;
-
-        /**
-         * Updates a state set with attributes required to support the technique.
-         * Call this whenever the composition of the image layer stack changes in order to update
-         * applicable global uniforms, texture attributes, and so forth.
-         */
-        void updateMasterStateSet( osg::StateSet* stateSet ) const;
-
-        /**
          * Requests a texture image unit that is not in use, and marks is as reserved. You can release
          * the reserved texture image unit by calling releaseTextureImageUnit().
          */
-        bool reserveTextureImageUnit( int& out_unit );
+        bool reserveTextureImageUnit(int& out_unit);
 
         /**
          * Releases a reserved texture image unit previously returned by reserveTextureImageUnit.
          */
-        void releaseTextureImageUnit( int unit );
-
-        /**
-         * Gets the rendering order of the layer with the specified UID.
-         */
-        int getRenderOrder( UID layerUID ) const;
-
-        /**
-         * Creates a shader component that implements texture sampling for the layer with 
-         * the specified layer UID. You can use this is a custom shader to sample texels from
-         * one of osgEarth's Map image layers.
-         *
-         *    vec4 function_name()
-         */
-        osg::Shader* createSamplerFunction( UID layerUID, const std::string& functionName, osg::Shader::Type type ) const;
-
-        /**
-         * Gets the terrain options for this TextureCompositor
-         */
-        TerrainOptions& getOptions() { return _options;}
+        void releaseTextureImageUnit(int unit);
 
     private:
-        void init();
-
-        OpenThreads::Mutex                       _initMutex;
-        TerrainOptions::CompositingTechnique     _tech;
-        TerrainOptions                           _options;
-        bool                                     _forceTech;
-        osg::ref_ptr<osg::Program>               _program;
-        osg::ref_ptr<TextureCompositorTechnique> _impl;
-
-        TextureLayout _layout;
-        Threading::ReadWriteMutex _layoutMutex;
-
-        std::set<int> _reservedUnits;
+        Threading::Mutex _reservedUnitsMutex;
+        std::set<int>    _reservedUnits;
     };
 }
 

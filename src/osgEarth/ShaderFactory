@@ -44,6 +44,25 @@ namespace osgEarth
     {
     public:
         /**
+         * Defines the ordering of the COLORING and LIGHTING stages in
+         * the fragment program.
+         */
+        enum FragmentStageOrder
+        {
+            /** Apply lighting before coloring/texturing. This mimics the FFP. */
+            FRAGMENT_STAGE_ORDER_LIGHTING_COLORING,
+
+            /** Apply coloring/texturing before lighting. */
+            FRAGMENT_STAGE_ORDER_COLORING_LIGHTING
+        };
+
+    public:
+        /**
+         * Construtor
+         */
+        ShaderFactory();
+
+        /**
          * Creates a vertex shader main() function for use with VirtualPrograms.
          * Do not call this function directly; VirtualProgram will call it to
          * install its main() vertex function.
@@ -58,24 +77,6 @@ namespace osgEarth
          */
         virtual osg::Shader* createFragmentShaderMain(
             const ShaderComp::FunctionLocationMap& functions) const;
-
-        /**
-         * Gets the uniform/shader name of the sampler corresponding the the provider
-         * texture image unit
-         *
-         * @deprecated Only supported by older texture compositors, which will likely
-         *             go away in a future version
-         */
-        virtual std::string getSamplerName( unsigned texImageUnit ) const;
-
-        /**
-         * Install lighting shaders in a VirtualProgram.
-         *
-         * Note: this will likely go away in a future version. At this point it makes
-         * more sense to decouple the default lighting shaders from the main shader
-         * factory and simply use a VirtualProgram rather than replacing the ShaderFactory.
-         */
-        virtual void installLightingShaders(VirtualProgram* vp) const;
 
         /**
          * Builds a shader function that executes an image filter chain.
@@ -94,8 +95,30 @@ namespace osgEarth
             osg::StateAttribute::GLMode      mode,
             osg::StateAttribute::GLModeValue value ) const;
 
+        /**
+         * The name of the range uniform created by createRangeUniform().
+         */
+        virtual std::string getRangeUniformName() const;
+
+        /**
+         * Creates a uniform that's used by the RangeUniformCullCallback to convey
+         * "distance to viewpoint" in a shader program.
+         */
+        osg::Uniform* createRangeUniform() const;
+
+        /**
+         * Sets the order in which the shader program generator will create
+         * code for the fragment program's COLORING and LIGHTING stages.
+         */
+        void setFragmentStageOrder(const FragmentStageOrder& value);
+        const FragmentStageOrder& getFragmentStageOrder() const { return _fragStageOrder; }
+
+
+    protected:
         /** dtor */
         virtual ~ShaderFactory() { }
+
+        FragmentStageOrder _fragStageOrder;
     };
 
 

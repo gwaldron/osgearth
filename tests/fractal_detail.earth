@@ -31,16 +31,16 @@ have very high resolution data.
 	run once as normal, then again to further refine the results of the first
 	output, and so on.
 	
-	With each succesive octave, the output is scaled like this:
-	freq *= lacunarity, and scale *= persistence. This happens successivly for
+	With each successive octave, the output is scaled like this:
+	freq *= lacunarity, and scale *= persistence. This happens successively for
 	each octave.
 	-->
     <elevation driver="noise" name="noise" enabled="true" offset="true">
 		<tile_size>31</tile_size>
-		<frequency>0.004</frequency>	   <!-- one cycle every 250m -->
+		<frequency>0.004</frequency>      <!-- one cycle every 250m -->
 		<lacunarity>2.0</lacunarity>      <!-- freq *= lac for each octave (default = 2) -->
 		<persistence>0.5</persistence>    <!-- amp *= pers for each octave (default = 0.5) -->
-		<octaves>4</octaves>
+		<octaves>24</octaves>
 		<scale>20</scale>
 		<bias>0</bias>
 	</elevation>

@@ -43,10 +43,12 @@ PagedLODWithNodeOperations::runPostMerge( osg::Node* node )
 {
     if ( _postMergeOps.valid() )
     {
+        _postMergeOps->mutex().readLock();
         for( NodeOperationVector::iterator i = _postMergeOps->begin(); i != _postMergeOps->end(); ++i )
         {
             i->get()->operator()( node );
         }
+        _postMergeOps->mutex().readUnlock();
     }
 }
 
@@ -151,10 +153,9 @@ _polygon( 0 )
 void
 PrimitiveSetTypeCounter::apply(osg::Geode& geode)
 {
-    const osg::Geode::DrawableList& drawables = geode.getDrawableList();
-    for( osg::Geode::DrawableList::const_iterator i = drawables.begin(); i != drawables.end(); ++i )
+    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
     {
-        osg::Geometry* g = i->get()->asGeometry();
+        osg::Geometry* g = geode.getDrawable(i)->asGeometry();
         if ( g )
         {
             const osg::Geometry::PrimitiveSetList& primSets = g->getPrimitiveSetList();

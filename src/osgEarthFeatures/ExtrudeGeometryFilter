@@ -26,6 +26,8 @@
 #include <osgEarthSymbology/Expression>
 #include <osgEarthSymbology/Style>
 #include <osg/Geode>
+#include <vector>
+#include <list>
 
 namespace osgEarth { namespace Features 
 {
@@ -88,8 +90,62 @@ namespace osgEarth { namespace Features
         optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
         const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
 
+        /**
+         * Whether or not to use TextureArrays for the wall and roof skins
+         */
+        optional<bool>& useTextureArrays() { return _useTextureArrays;}
+        const optional<bool>& useTextureArrays() const { return _useTextureArrays;}
+
 
     protected:
+
+        // A Corner is one vertex in the source geometry, extrude from base to roof.
+        struct Corner
+        {
+            osg::Vec3d base, roof;
+            float      roofTexU, roofTexV;
+            double     offsetX;
+            float      wallTexHeightAdjusted;
+            bool       isFromSource;
+            float      cosAngle;
+        };
+        typedef std::list<Corner> Corners; // use a list to prevent iterator invalidation
+
+        // A Face joins to Corners.
+        struct Face
+        {
+            Corner left;
+            Corner right;
+            double widthM;
+        };
+        typedef std::vector<Face> Faces;
+        
+        // An Elevation is a series of related Faces.
+        struct Elevation
+        {
+            Faces  faces;
+            double texHeightAdjustedM;
+
+            unsigned getNumPoints() const {
+                return faces.size() * 6;
+            }
+        };
+        typedef std::vector<Elevation> Elevations;
+
+        // A Structure is a collection of related Elevations.
+        struct Structure
+        {
+            Elevations elevations;
+            bool       isPolygon;
+
+            unsigned getNumPoints() const {
+                unsigned c = 0;
+                for(Elevations::const_iterator e = elevations.begin(); e != elevations.end(); ++e ) {
+                    c += e->getNumPoints();
+                }
+                return c;
+            }
+        };
 
         // a set of geodes indexed by stateset pointer, for pre-sorting geodes based on 
         // their texture usage
@@ -110,6 +166,7 @@ namespace osgEarth { namespace Features
 
         Style                          _style;
         bool                           _styleDirty;
+        optional<bool>                 _useTextureArrays;
 
         osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;
         osg::ref_ptr<const SkinSymbol>      _wallSkinSymbol;
@@ -132,7 +189,33 @@ namespace osgEarth { namespace Features
         bool process( 
             FeatureList&     input,
             FilterContext&   context );
+        
+        bool buildStructure(const Geometry*         input,
+                            double                  height,
+                            double                  heightOffset,
+                            bool                    flatten,
+                            const SkinResource*     wallSkin,
+                            const SkinResource*     roofSkin,
+                            Structure&              out_structure,
+                            FilterContext&          cx );
 
+        bool buildWallGeometry(const Structure&     structure,
+                               osg::Geometry*       walls,
+                               const osg::Vec4&     wallColor,
+                               const osg::Vec4&     wallBaseColor,
+                               const SkinResource*  wallSkin);
+
+        bool buildRoofGeometry(const Structure&     structure,
+                               osg::Geometry*       roof,
+                               const osg::Vec4&     roofColor,
+                               const SkinResource*  roofSkin);
+
+        bool buildOutlineGeometry(const Structure&  structure,
+                                  osg::Geometry*    outline,
+                                  const osg::Vec4&  outlineColor,
+                                  float             minCreaseAngleDeg);
+
+#if 0
         bool extrudeGeometry(
             const Geometry*      input,
             double               height,
@@ -147,8 +230,11 @@ namespace osgEarth { namespace Features
             const osg::Vec4&     roofColor,
             const osg::Vec4&     outlineColor,
             const SkinResource*  wallSkin,
+            int wallLayer,
             const SkinResource*  roofSkin,
+            int roofLayer,
             FilterContext&       cx );
+#endif
     };
 
 } } // namespace osgEarth::Features

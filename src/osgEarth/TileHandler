@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_TILEHANDLER_H
+#define OSGEARTH_TILEHANDLER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileKey>
+#include <osgEarth/Map>
+
+#include <osgEarth/TerrainLayer>
+
+namespace osgEarth
+{
+    class TileVisitor;
+
+    /**
+    * TileHandler is an interface for operations on a TileKey
+    */
+    class OSGEARTH_EXPORT TileHandler : public osg::Referenced
+    {
+    public:
+        /**
+         * Process a tile for the given key
+         */
+        virtual bool handleTile( const TileKey& key );
+
+        /**
+         * Process a tile - also provides a reference to the calling TileVisitor
+         */
+        virtual bool handleTile(const TileKey& key, const TileVisitor& tv);
+
+        /**
+         * Callback that tells a TileVisitor if it should attempt to process this key.
+         * If this function returns false no further processing is done on child keys.
+         */
+        virtual bool hasData( const TileKey& key ) const;
+
+        /**
+         * Returns the process to run when executing in a MultiProcessTileVisitor.
+         * 
+         * When running in a MultiProcessTileVisitor the actual data processing is done by an external program
+         * that takes a --tiles argument.  This function lets you tie that process to the TileHandler
+         */
+        virtual std::string getProcessString() const;
+    };    
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_TRAVERSAL_DATA_H

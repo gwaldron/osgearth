@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Utils>
+#include <osgEarth/ECEF>
+#include <osgEarth/CullingUtils>
 #include <osg/Version>
 #include <osg/CoordinateSystemNode>
 #include <osg/MatrixTransform>
@@ -37,30 +39,13 @@ void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler*
 
 //------------------------------------------------------------------------
 
-void
-DoNotComputeNearFarCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-    osgUtil::CullVisitor* cv = static_cast< osgUtil::CullVisitor*>( nv );
-    osg::CullSettings::ComputeNearFarMode oldMode;
-    if( cv )
-    {
-        oldMode = cv->getComputeNearFarMode();
-        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    }
-    traverse(node, nv);
-    if( cv )
-    {
-        cv->setComputeNearFarMode(oldMode);
-    }
-}
-
-//------------------------------------------------------------------------
-
 #undef LC
 #define LC "[PixelAutoTransform] "
 
 PixelAutoTransform::PixelAutoTransform() :
-osg::AutoTransform()
+osg::AutoTransform         (),
+_rotateInScreenSpace       ( false ),
+_screenSpaceRotationRadians( 0.0 )
 {
     // deactivate culling for the first traversal. We will reactivate it later.
     setCullingActive( false );
@@ -75,24 +60,24 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
     {
         // re-activate culling now that the first cull traversal has taken place.
         this->setCullingActive( true );
-        osg::CullStack* cs = dynamic_cast<osg::CullStack*>(&nv);
-        if ( cs )
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        if ( cv )
         {
             osg::Viewport::value_type width  = _previousWidth;
             osg::Viewport::value_type height = _previousHeight;
 
-            osg::Viewport* viewport = cs->getViewport();
+            osg::Viewport* viewport = cv->getViewport();
             if (viewport)
             {
                 width = viewport->width();
                 height = viewport->height();
             }
 
-            osg::Vec3d eyePoint = cs->getEyeLocal(); 
-            osg::Vec3d localUp = cs->getUpLocal(); 
+            osg::Vec3d eyePoint = cv->getEyeLocal(); 
+            osg::Vec3d localUp = cv->getUpLocal(); 
             osg::Vec3d position = getPosition();
 
-            const osg::Matrix& projection = *(cs->getProjectionMatrix());
+            const osg::Matrix& projection = *(cv->getProjectionMatrix());
 
             bool doUpdate = _firstTimeToInitEyePoint || _dirty;
             if ( !_firstTimeToInitEyePoint )
@@ -128,7 +113,7 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                         getNumChildren() > 0 ? getChild(0)->getBound().radius() : 
                         0.48;
 
-                    double pixels = cs->pixelSize( getPosition(), radius );
+                    double pixels = cv->pixelSize( getPosition(), radius );
 
                     double scaledMinPixels = _minPixels * _minimumScale;
                     double scale = pixels < scaledMinPixels ? scaledMinPixels / pixels : 1.0;
@@ -148,14 +133,59 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 _matrixDirty = true;
             }
 
-            if (_autoRotateMode==ROTATE_TO_SCREEN)
+            if (_rotateInScreenSpace==true)
+            {
+                osg::Vec3d translation, scale;
+                osg::Quat  rotation, so;
+                osg::RefMatrix& mvm = *(cv->getModelViewMatrix());
+
+                mvm.decompose( translation, rotation, scale, so );
+
+                // this will rotate the object into screen space.
+                osg::Quat toScreen( rotation.inverse() );
+
+                // we need to compensate for the "heading" of the camera, so compute that.
+                // From (http://goo.gl/9bjM4t).
+                // GEOCENTRIC ONLY!
+
+                const osg::Matrixd& view = cv->getCurrentCamera()->getViewMatrix();
+                osg::Matrixd viewInverse;
+                viewInverse.invert(view);
+
+                osg::Vec3d N(0, 0, 6356752); // north pole, more or less
+                osg::Vec3d E = osg::Vec3d(0,0,0)*viewInverse;
+                osg::Vec3d b( -view(0,2), -view(1,2), -view(2,2) );
+                osg::Vec3d u = E; u.normalize();
+
+                osg::Vec3d proj_d = b - u*(b*u);
+                osg::Vec3d n = N - E;
+                osg::Vec3d proj_n = n - u*(n*u);
+                osg::Vec3d proj_e = proj_n^u;
+
+                double cameraHeading = atan2(proj_e*proj_d, proj_n*proj_d);
+
+                while (cameraHeading < 0.0)
+                    cameraHeading += osg::PI*2.0;
+                double objHeading = _screenSpaceRotationRadians;
+                while ( objHeading < 0.0 )
+                    objHeading += osg::PI*2.0;
+                double finalRot = cameraHeading - objHeading;
+                while( finalRot > osg::PI )
+                    finalRot -= osg::PI*2.0;
+
+                osg::Quat toRotation( finalRot, osg::Vec3(0,0,1) );
+
+                setRotation( toRotation * toScreen );
+            }
+
+            else if (_autoRotateMode==ROTATE_TO_SCREEN)
             {
                 osg::Vec3d translation;
                 osg::Quat rotation;
                 osg::Vec3d scale;
                 osg::Quat so;
 
-                cs->getModelViewMatrix()->decompose( translation, rotation, scale, so );
+                cv->getModelViewMatrix()->decompose( translation, rotation, scale, so );
 
                 setRotation(rotation.inverse());
             }
@@ -169,7 +199,6 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 setRotation(q);
             }
 
-#if OSG_MIN_VERSION_REQUIRED(3,0,0)
             else if (_autoRotateMode==ROTATE_TO_AXIS)
             {
                 osg::Matrix matrix;
@@ -244,15 +273,17 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 q.set(matrix);
                 setRotation(q);
             }
-#endif
 
             _dirty = false;
-        }
-    }
+
+            // update the LOD Scale based on the auto-scale.
+            cv->setLODScale( 1.0/getScale().x() );
+
+        } // if (cv)
+    } // if is cull visitor
 
     // finally, skip AT's accept and do Transform.
     Transform::accept(nv);
-
 }
 
 void

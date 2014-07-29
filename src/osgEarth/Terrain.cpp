@@ -33,8 +33,8 @@ namespace
 {
     struct BaseOp : public osg::Operation
     {
-        BaseOp(Terrain* terrain ) : osg::Operation("",false), _terrain(terrain) { }
-        osg::ref_ptr<Terrain> _terrain;
+        BaseOp(Terrain* terrain, bool keepByDefault) : osg::Operation("",keepByDefault), _terrain(terrain) { }
+        osg::observer_ptr<Terrain> _terrain;
     };
 
     struct OnTileAddedOperation : public BaseOp
@@ -42,39 +42,38 @@ namespace
         TileKey _key;
         osg::observer_ptr<osg::Node> _node;
         unsigned _count;
-        //osg::ref_ptr<osg::Node> _node;
 
         OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
-            : BaseOp(terrain), _key(key), _node(node), _count(0) { }
+            : BaseOp(terrain, true), _key(key), _node(node), _count(0) { }
 
         void operator()(osg::Object*)
         {
-            ++_count;
-            this->setKeep( false );
+            if ( getKeep() == false )
+                return;
 
+            ++_count;
+            osg::ref_ptr<Terrain>   terrain;
             osg::ref_ptr<osg::Node> node;
-            if ( _terrain.valid() && _node.lock(node) )
+
+            if ( _terrain.lock(terrain) && _node.lock(node) )
             {
                 if ( node->getNumParents() > 0 )
                 {
                     //OE_NOTICE << LC << "FIRING onTileAdded for " << _key.str() << " (tries=" << _count << ")" << std::endl;
-                    _terrain->fireTileAdded( _key, node.get() );
+                    terrain->fireTileAdded( _key, node.get() );
+                    this->setKeep( false );
                 }
                 else
                 {
                     //OE_NOTICE << LC << "Deferring onTileAdded for " << _key.str() << std::endl;
-                    this->setKeep( true );
                 }
             }
             else
             {
                 // nop; tile expired; let it go.
                 //OE_NOTICE << "Tile expired before notification: " << _key.str() << std::endl;
+                this->setKeep( false );
             }
-            //if ( _node.valid() && _node->referenceCount() > 1 && _terrain.valid() )
-            //{
-            //    _terrain->fireTileAdded( _key, _node.get() );
-            //}
         }
     };
 }
@@ -226,7 +225,7 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     osg::ref_ptr< DPLineSegmentIntersector > picker = new DPLineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
 
     // Limit it to one intersection, we only care about the first
-    picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE );
+    picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
 
     osgUtil::IntersectionVisitor iv(picker.get());
     iv.setTraversalMask(traversalMask);
@@ -287,6 +286,7 @@ Terrain::addTerrainCallback( TerrainCallback* cb )
     {        
         Threading::ScopedWriteLock exclusiveLock( _callbacksMutex );
         _callbacks.push_back( cb );
+        ++_callbacksSize; // atomic increment
     }
 }
 
@@ -300,6 +300,7 @@ Terrain::removeTerrainCallback( TerrainCallback* cb )
         if ( i->get() == cb )
         {
             i = _callbacks.erase( i );
+            --_callbacksSize;
         }
         else
         {
@@ -316,9 +317,10 @@ Terrain::notifyTileAdded( const TileKey& key, osg::Node* node )
         OE_WARN << LC << "notify with a null node!" << std::endl;
     }
 
-    if ( _updateOperationQueue.valid() )
+    osg::ref_ptr<osg::OperationQueue> queue;
+    if ( _callbacksSize > 0 && _updateOperationQueue.lock(queue) )
     {
-        _updateOperationQueue->add( new OnTileAddedOperation(key, node, this) );
+        queue->add( new OnTileAddedOperation(key, node, this) );
     }
 }
 
@@ -333,10 +335,10 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
         i->get()->onTileAdded( key, node, context );
 
         // if the callback set the "remove" flag, discard the callback.
-        if ( !context._remove )
-            ++i;
-        else
+        if ( context.markedForRemoval() )
             i = _callbacks.erase( i );
+        else
+            ++i;
     }
 }
 

@@ -33,23 +33,26 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-struct CopyAndSetAlpha
+namespace
 {
-    bool operator()( const osg::Vec4& in, osg::Vec4& out ) {
-        out = in;
-        out.a() = 0.3333*(in.r() + in.g() + in.b());
-        return true;
-    }
-};
+    struct CopyAndSetAlpha
+    {
+        bool operator()( const osg::Vec4& in, osg::Vec4& out ) {
+            out = in;
+            out.a() = 0.3333*(in.r() + in.g() + in.b());
+            return true;
+        }
+    };
 
-static
-osg::Image* makeRGBAandComputeAlpha(osg::Image* image)
-{
-    osg::Image* result = new osg::Image();
-    result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
-    result->setInternalTextureFormat( GL_RGBA8 );
-    ImageUtils::PixelVisitor<CopyAndSetAlpha>().accept( image, result );
-    return result;
+    osg::Image* makeRGBAandComputeAlpha(osg::Image* image)
+    {
+        osg::Image* result = new osg::Image();
+        result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
+        memset(result->data(), 0, result->getTotalSizeInBytes());
+        result->setInternalTextureFormat( GL_RGBA8 );
+        ImageUtils::PixelVisitor<CopyAndSetAlpha>().accept( image, result );
+        return result;
+    }
 }
 
 class OSGTileSource : public TileSource
@@ -65,8 +68,7 @@ public:
 
     Status initialize( const osgDB::Options* dbOptions )
     {
-        osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
-        CachePolicy::NO_CACHE.apply(localOptions.get());
+        osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);        
 
         if ( !getProfile() )
         {

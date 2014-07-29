@@ -34,9 +34,9 @@
 #include <osgEarthQt/TerrainProfileWidget>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthDrivers/ocean_surface/OceanSurface>
+#include <osgEarthUtil/Sky>
+#include <osgEarthUtil/Ocean>
 
 #include <QAction>
 #include <QDockWidget>
@@ -59,7 +59,7 @@ using namespace osgEarth::Util;
 
 static osg::ref_ptr<osg::Group> s_annoGroup;
 static osgEarth::Util::SkyNode* s_sky=0L;
-static osgEarth::Drivers::OceanSurfaceNode* s_ocean=0L;
+static osgEarth::Util::OceanNode* s_ocean=0L;
 
 //------------------------------------------------------------------
 
@@ -283,16 +283,19 @@ main(int argc, char** argv)
             Config skyConf = externals.child("sky");
 
             double hours = skyConf.value("hours", 12.0);
-            s_sky = new osgEarth::Util::SkyNode(mapNode->getMap());
+            s_sky = osgEarth::Util::SkyNode::create(mapNode);
             s_sky->setDateTime( DateTime(2011, 3, 6, hours) );
             for(osgEarth::QtGui::ViewVector::iterator i = views.begin(); i != views.end(); ++i )
-                s_sky->attach( *i );
+                s_sky->attach( *i, 0 );
             root->addChild(s_sky);
 
             // Ocean surface.
             if (externals.hasChild("ocean"))
             {
-                s_ocean = new osgEarth::Drivers::OceanSurfaceNode(mapNode.get(), externals.child("ocean"));
+                s_ocean = osgEarth::Util::OceanNode::create(
+                    osgEarth::Util::OceanOptions(externals.child("ocean")),
+                    mapNode.get());
+
                 if (s_ocean)
                     root->addChild(s_ocean);
             }

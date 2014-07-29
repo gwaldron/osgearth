@@ -46,6 +46,8 @@ public:
             ratio(-1.0),
             primitiveIndex(0) {}
 
+        Intersection(const Intersection &rhs);
+
         bool operator < (const Intersection& rhs) const { return ratio < rhs.ratio; }
 
         typedef std::vector<unsigned int>   IndexList;
@@ -108,6 +110,8 @@ protected:
 
     bool intersects(const osg::BoundingSphere& bs);
     bool intersectAndClip(osg::Vec3d& s, osg::Vec3d& e,const osg::BoundingBox& bb);
+
+    unsigned int findPrimitiveIndex(osg::Drawable* drawable, unsigned int index);
 
     PrimitiveIntersector* _parent;
 

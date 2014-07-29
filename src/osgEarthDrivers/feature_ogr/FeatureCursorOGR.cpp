@@ -28,6 +28,38 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
+
+namespace
+{
+    /**
+     * Determine whether a point is valid or not.  Some shapefiles can have points that are ridiculously big, which are really invalid data
+     * but shapefiles have no way of marking the data as invalid.  So instead we check for really large values that are indiciative of something being wrong.
+     */
+    inline bool isPointValid( const osg::Vec3d& v, double thresh = 1e10 )
+    {
+        return (!v.isNaN() && osg::absolute( v.x() ) < thresh && osg::absolute( v.y() ) < thresh && osg::absolute( v.z() ) < thresh );
+    }
+
+    /**
+     * Checks to see if all points in the Geometry are valid.
+     */
+    inline bool isGeometryValid( Geometry* geometry )
+    {        
+        if (!geometry) return false;
+
+        if (!geometry->isValid()) return false;
+
+        for (Geometry::const_iterator i = geometry->begin(); i != geometry->end(); ++i)
+        {
+            if (!isPointValid( *i ))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+}
 
 
 FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH           dsHandle,
@@ -75,9 +107,8 @@ _filters          ( filters )
             expr = query.expression().value();
 
             // if the expression is just a where clause, expand it into a complete SQL expression.
-            std::string temp = expr;
-            std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
-            //bool complete = temp.find( "select" ) == 0;
+            std::string temp = osgEarth::toLower(expr);
+
             if ( temp.find( "select" ) != 0 )
             {
                 std::stringstream buf;
@@ -99,8 +130,7 @@ _filters          ( filters )
         {                     
             std::string orderby = query.orderby().value();
             
-            std::string temp = orderby;
-            std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+            std::string temp = osgEarth::toLower(orderby);
 
             if ( temp.find( "order by" ) != 0 )
             {                
@@ -200,10 +230,17 @@ FeatureCursorOGR::readChunk()
         osg::ref_ptr<Feature> f = OgrUtils::createFeature( _nextHandleToQueue, _profile->getSRS() );
         if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
         {
-            _queue.push( f );
-            
-            if ( _filters.size() > 0 )
-                preProcessList.push_back( f.release() );
+            if ( isGeometryValid( f->getGeometry() ) )
+            {
+                _queue.push( f );
+
+                if ( _filters.size() > 0 )
+                    preProcessList.push_back( f.release() );
+            }
+            else
+            {
+                OE_INFO << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
+            }
         }
         OGR_F_Destroy( _nextHandleToQueue );
         _nextHandleToQueue = 0L;
@@ -220,11 +257,18 @@ FeatureCursorOGR::readChunk()
             osg::ref_ptr<Feature> f = OgrUtils::createFeature( handle, _profile->getSRS() );
             if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
             {
-                _queue.push( f );
+                if (isGeometryValid( f->getGeometry() ) )
+                {
+                    _queue.push( f );
 
-                if ( _filters.size() > 0 )
-                    preProcessList.push_back( f.release() );
-            }
+                    if ( _filters.size() > 0 )
+                        preProcessList.push_back( f.release() );
+                }
+                else
+                {
+                    OE_INFO << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
+                }
+            }            
             OGR_F_Destroy( handle );
         }
         else
@@ -238,7 +282,7 @@ FeatureCursorOGR::readChunk()
     if ( preProcessList.size() > 0 )
     {
         FilterContext cx;
-        cx.profile() = _profile.get();
+        cx.setProfile( _profile.get() );
 
         for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
         {

@@ -40,46 +40,17 @@
 #include <QProgressDialog>
 #include <QToolBar>
 #include <QFileDialog>
+#include <QMessageBox>
 
 #include "SceneController.h"
 #include "TMSExporter.h"
 #include "ExportDialog"
 #include "WaitDialog"
+#include "ExportProgress.h"
 
 namespace
 {
-  class ExportProgressCallback : public osgEarth::ProgressCallback
-  {
-  public:
-    ExportProgressCallback(QProgressDialog* dialog)
-      : _dialog(dialog)
-    {
-    }
-
-    virtual ~ExportProgressCallback() { }
-
-    bool reportProgress(double current, double total, unsigned currentStage, unsigned totalStages, const std::string& msg)
-    {
-      if (_dialog)
-      {
-        QMetaObject::invokeMethod(_dialog, "setValue", Qt::QueuedConnection, Q_ARG(int, (current / total) * 100));
-
-        if (_dialog->wasCanceled())
-          return true;
-      }
-
-      return false;
-    }
-
-    void onCompleted()
-    {
-      QMetaObject::invokeMethod(_dialog, "close", Qt::QueuedConnection);
-    }
-
-  private:
-    QProgressDialog* _dialog;
-  };
-
+ 
   struct SceneBoundsSetCallback : public PackageQt::BoundsSetCallback
   {
     SceneBoundsSetCallback(QAction* toggleAction) : _action(toggleAction) { }
@@ -199,6 +170,7 @@ private slots:
 
           osgEarth::Drivers::GDALOptions layerOpt;
           layerOpt.url() = osgEarth::URI(filePath.toStdString());
+          layerOpt.tileSize() = 15;
           
           std::string fileName = osgDB::getSimpleFileName(filePath.toStdString());
           osg::ref_ptr<osgEarth::ElevationLayer> newLayer = new osgEarth::ElevationLayer(osgEarth::ElevationLayerOptions(fileName, layerOpt));
@@ -218,21 +190,27 @@ private slots:
     {
         if (_exporter)
         {
-          PackageQt::ExportDialog exportDialog(_lastDir.toStdString(), _controller->getBoundsString());
+            osgEarth::Bounds bounds(_controller->getBoundsLL().x(), _controller->getBoundsLL().y(),
+                                    _controller->getBoundsUR().x(), _controller->getBoundsUR().y());
+          PackageQt::ExportDialog exportDialog(_controller->mapNode(), _lastDir.toStdString(), bounds);
+         
 	        if (exportDialog.exec() == QDialog::Accepted)
 	        {
             //QProgressDialog* progress = new QProgressDialog(tr("Exporting. Please wait."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
-            QProgressDialog* progress = new QProgressDialog(tr("Processing layers..."), QString(), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
+            QProgressDialog* progress = new QProgressDialog(tr("Processing layers..."), tr("Cancel"), 0, 100, this, Qt::CustomizeWindowHint|Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);
             progress->setAttribute(Qt::WA_DeleteOnClose, true);
             progress->setWindowTitle(tr("Exporting"));
-            progress->setValue(0);
-            _exporter->setProgressCallback(new ExportProgressCallback(progress));
+            progress->setValue(0);                        
+            progress->setAutoClose(false);
+            _exporter->setProgressCallback(new ExportProgressCallback(this, progress));
 
             progress->setWindowModality(Qt::WindowModal);
             progress->show();
 
             _exporter->setKeepEmpties(exportDialog.keepEmpties());
             _exporter->setMaxLevel(exportDialog.getMaxLevel());
+            _exporter->setConcurrency(exportDialog.getConcurrency());
+            _exporter->setProcessingMode(exportDialog.getProcessingMode() );
 
             osg::Vec2d ll = _controller->getBoundsLL();
             osg::Vec2d ur = _controller->getBoundsUR();
@@ -240,10 +218,11 @@ private slots:
             std::vector<osgEarth::Bounds> bounds;
             if (exportDialog.useBounds() && (ur - ll).length() > 0.0)
               bounds.push_back(osgEarth::Bounds(ll.x(), ll.y(), ur.x(), ur.y()));
-
+            
             _exportThread = new TMSExporterWorkerThread(
               _exporter, 
               _controller->mapNode(),
+              _controller->getEarthFilePath(),
               exportDialog.getExportPath(),
               bounds,
               (exportDialog.exportEarthFile() ? exportDialog.getEarthFilePath() : ""),
@@ -253,6 +232,26 @@ private slots:
             _exportThread->start();
           }
         }
+    }
+
+    void showExportResult()
+    {
+      if (_exporter->getProgressCallback()->isCanceled())
+      {        
+          std::string message = "Error exporting package";
+          if (!_exporter->getProgressCallback()->message().empty())
+          {
+              message = _exporter->getProgressCallback()->message();
+          }
+          QMessageBox::warning(this, tr("Error"), tr(message.c_str()));
+      }
+      else
+      {
+          double timeS = _exporter->getExportTime();          
+          std::stringstream message;
+          message << "The export finished successfully in " << osgEarth::prettyPrintTime(timeS);          
+          QMessageBox::information(this, tr("Complete"), QString::fromStdString(message.str()));
+      }
     }
 
     void getBoundingBox(bool checked)
@@ -416,3 +415,4 @@ private:
 };
 
 }
+

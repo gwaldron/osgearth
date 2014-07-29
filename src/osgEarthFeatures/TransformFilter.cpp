@@ -132,9 +132,9 @@ TransformFilter::push( FeatureList& input, FilterContext& incx )
     if ( _outputSRS.valid() )
     {
         if ( incx.extent()->isValid() )
-            outcx.profile() = new FeatureProfile( incx.extent()->transform( _outputSRS.get() ) );
+            outcx.setProfile( new FeatureProfile( incx.extent()->transform( _outputSRS.get()) ) );
         else
-            outcx.profile() = new FeatureProfile( incx.profile()->getExtent().transform( _outputSRS.get() ) );
+            outcx.setProfile( new FeatureProfile( incx.profile()->getExtent().transform( _outputSRS.get()) ) );
     }
 
     // set the reference frame to shift data to the centroid. This will
@@ -151,7 +151,7 @@ TransformFilter::push( FeatureList& input, FilterContext& incx )
         {
             localizeGeometry( i->get(), localizer );
         }
-        outcx.setReferenceFrame( localizer );
+        //outcx.setReferenceFrame( localizer );
     }
 
     return outcx;

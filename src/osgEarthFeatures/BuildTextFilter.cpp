@@ -50,6 +50,12 @@ BuildTextFilter::push( FeatureList& input, FilterContext& context )
 
     LabelSourceOptions options;
     options.setDriver( "annotation" );
+
+    if( text && !text->provider()->empty() )
+        options.setDriver( *text->provider() );
+
+
+
     //options.setDriver( text ? (*text->provider()) : (*icon->provider()) );
     osg::ref_ptr<LabelSource> source = LabelSourceFactory::create( options );
     if ( source.valid() )

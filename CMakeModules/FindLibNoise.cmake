@@ -43,7 +43,7 @@ FIND_LIBRARY(LIBNOISE_LIBRARY
 )
 
 FIND_LIBRARY(LIBNOISE_LIBRARY
-  NAMES libnoise
+  NAMES libnoise noise
   PATHS
     ~/Library/Frameworks
     /Library/Frameworks

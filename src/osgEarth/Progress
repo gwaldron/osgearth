@@ -21,6 +21,7 @@
 #define OSGEARTH_PROGRESS_H 1
 
 #include <osgEarth/Common>
+#include <map>
 
 namespace osgEarth
 {
@@ -81,14 +82,19 @@ namespace osgEarth
         /**
          * Sets the cancelation flag
          */
-        void cancel() { _canceled = true; }
+        virtual void cancel() { _canceled = true; }
 
         /**
          * Whether cancelation was requested
          */
-        virtual bool isCanceled() const { return _canceled; }
+        virtual bool isCanceled() { return _canceled; }
 
         std::string& message() { return _message; }
+
+        /**
+         * Resets the canceled flag.
+         */
+        void reset() { _canceled = false; }
 
         /**
         *Whether or not the task should be retried.
@@ -100,11 +106,17 @@ namespace osgEarth
          */
         void setNeedsRetry( bool needsRetry ) { _needsRetry = needsRetry; }
 
+        /**
+         * Access user stats
+         */
+        std::map<std::string,double>& stats() { return _stats; }
+
     protected:
         volatile unsigned _numStages;
         std::string       _message;
         mutable  bool     _needsRetry;
         mutable  bool     _canceled;
+        mutable  std::map<std::string, double> _stats;
     };
 
 

@@ -122,10 +122,12 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
     setLightingIfNotSet( false );
 
     getAttachPoint()->addChild( _geode );
-
-    ShaderGenerator gen;
-    gen.setProgramName( "osgEarth.TrackNode" );
-    gen.run( this, Registry::stateSetCache() );
+    
+    // generate shaders:
+    Registry::shaderGenerator().run(
+        this,
+        "osgEarth.TrackNode",
+        Registry::stateSetCache() );
 }
 
 void
@@ -179,9 +181,8 @@ TrackNode::setAnnotationData( AnnotationData* data )
     OrthoNode::setAnnotationData( data );
 
     // override this method so we can attach the anno data to the drawables.
-    const osg::Geode::DrawableList& list = _geode->getDrawableList();
-    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
     {
-        i->get()->setUserData( data );
+        _geode->getDrawable(i)->setUserData( data );
     }
 }

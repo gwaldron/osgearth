@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/Script>
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/FileUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
@@ -47,10 +48,6 @@ _dbOptions     ( dbOptions )
     else
         _styles = new StyleSheet();
 
-    // if no script engine was created when the style was set above, create a default javascript one
-    if (!_styleScriptEngine.valid())
-      _styleScriptEngine = ScriptEngineFactory::create("javascript");
-
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
@@ -63,12 +60,25 @@ _dbOptions     ( dbOptions )
 
 Session::~Session()
 {
+    //nop
 }
 
 const osgDB::Options*
 Session::getDBOptions() const
 {
     return _dbOptions.get();
+}
+
+void
+Session::setResourceCache(ResourceCache* cache)
+{
+    _resourceCache = cache;
+}
+
+ResourceCache*
+Session::getResourceCache()
+{
+    return _resourceCache.get();
 }
 
 MapFrame
@@ -81,7 +91,6 @@ void
 Session::removeObject( const std::string& key )
 {
     Threading::ScopedMutexLock lock( _objMapMutex );
-    //Threading::ScopedWriteLock lock( _objMapMutex );
     _objMap.erase( key );
 }
 
@@ -89,22 +98,36 @@ void
 Session::setStyles( StyleSheet* value )
 {
     _styles = value ? value : new StyleSheet();
+    _styleScriptEngine = 0L;
 
-    // Go ahead and create the script engine for the StyleSheet
-    if (_styles && _styles->script())
-      _styleScriptEngine = ScriptEngineFactory::create(Script(_styles->script()->code, _styles->script()->language, _styles->script()->name));
-    else
-      _styleScriptEngine = 0L;
+    // Create a script engine for the StyleSheet
+    if (_styles)
+    {
+        if (_styles->script())
+        {
+            _styleScriptEngine = ScriptEngineFactory::create( Script(
+                _styles->script()->code, 
+                _styles->script()->language, 
+                _styles->script()->name ) );
+        }
+        else
+        {
+            // If the stylesheet has no script set, create a default JS engine
+            // This enables the use of "inline" scripting in StringExpression
+            // and NumericExpression style values.
+            _styleScriptEngine = ScriptEngineFactory::create("javascript", "", true);
+        }
+    }
 }
 
 ScriptEngine*
 Session::getScriptEngine() const
 {
-  return _styleScriptEngine.get();
+    return _styleScriptEngine.get();
 }
 
 FeatureSource*
 Session::getFeatureSource() const 
 { 
-	return _featureSource.get(); 
+    return _featureSource.get(); 
 }

@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
 #include <osgEarth/VirtualProgram>
@@ -33,6 +34,7 @@
 #include <osg/MatrixTransform>
 #include <osg/NodeVisitor>
 #include <osg/ShapeDrawable>
+#include <osg/AlphaFunc>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
@@ -135,6 +137,9 @@ SubstituteModelFilter::process(const FeatureList&           features,
     // factor to any AutoTransforms directly (cloning them as necessary)
     std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
 
+    // URI cache speeds up URI creation since it can be slow.
+    osgEarth::fast_map<std::string, URI> uriCache;
+
     // keep track of failed URIs so we don't waste time or warning messages on them
     std::set< URI > missing;
 
@@ -152,9 +157,13 @@ SubstituteModelFilter::process(const FeatureList&           features,
     {
         Feature* input = f->get();
 
-        // evaluate the instance URI expression:
-        StringExpression uriEx = *symbol->url();
-        URI instanceURI( input->eval(uriEx, &context), uriEx.uriContext() );
+		// evaluate the instance URI expression:
+		const std::string& st = input->eval(uriEx, &context);
+		URI& instanceURI = uriCache[st];
+		if(instanceURI.empty()) // Create a map, to reuse URI's, since they take a long time to create
+		{
+			instanceURI = URI( st, uriEx.uriContext() );
+		}
 
         // find the corresponding marker in the cache
         osg::ref_ptr<InstanceResource> instance;
@@ -164,7 +173,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // evalute the scale expression (if there is one)
         float scale = 1.0f;
         osg::Matrixd scaleMatrix;
-
         if ( symbol->scale().isSet() )
         {
             scale = input->eval( scaleEx, &context );
@@ -176,21 +184,22 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
         
         osg::Matrixd rotationMatrix;
-
         if ( modelSymbol && modelSymbol->heading().isSet() )
         {
             float heading = input->eval(headingEx, &context);
             rotationMatrix.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
         }
 
-        // how that we have a marker source, create a node for it
-        std::pair<URI,float> key( instanceURI, scale );
+		// how that we have a marker source, create a node for it
+		std::pair<URI,float> key( instanceURI, iconSymbol? scale : 1.0f );//use 1.0 for models, since we don't want unique models based on scaling
 
         // cache nodes per instance.
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];
         if ( !model.valid() )
         {
-            context.resourceCache()->getInstanceNode( instance.get(), model );
+            // Always clone the cached instance so we're not processing data that's
+            // already in the scene graph. -gw
+            context.resourceCache()->cloneOrCreateInstanceNode(instance.get(), model);
 
             // if icon decluttering is off, install an AutoTransform.
             if ( iconSymbol )
@@ -226,6 +235,23 @@ SubstituteModelFilter::process(const FeatureList&           features,
                 for( unsigned i=0; i<geom->size(); ++i )
                 {
                     osg::Matrixd mat;
+
+                    // need to recalcluate expression-based data per-point, not just per-feature!
+                    if ( symbol->scale().isSet() )
+                    {
+                        scale = input->eval(scaleEx, &context);
+                        if ( scale == 0.0 )
+                            scale = 1.0;
+                        if ( scale != 1.0 )
+                            _normalScalingRequired = true;
+                        scaleMatrix = osg::Matrix::scale( scale, scale, scale );
+                    }
+
+                    if ( modelSymbol->heading().isSet() )
+                    {
+                        float heading = input->eval(headingEx, &context);
+                        rotationMatrix.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
+                    }
 
                     osg::Vec3d point = (*geom)[i];
                     if ( makeECEF )
@@ -318,7 +344,11 @@ struct ClusterVisitor : public osg::NodeVisitor
     void apply( osg::Geode& geode )
     {
         // save the geode's drawables..
-        osg::Geode::DrawableList old_drawables = geode.getDrawableList();
+        typedef std::vector<osg::ref_ptr<osg::Drawable> > Drawables;        
+        Drawables old_drawables;
+        old_drawables.reserve( geode.getNumDrawables() );
+        for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+            old_drawables.push_back( geode.getDrawable(i) );
 
         //OE_DEBUG << "ClusterVisitor geode " << &geode << " featureNode=" << _featureNode << " drawables=" << old_drawables.size() << std::endl;
 
@@ -326,7 +356,7 @@ struct ClusterVisitor : public osg::NodeVisitor
         geode.removeDrawables( 0, geode.getNumDrawables() );
 
         // foreach each drawable that was originally in the geode...
-        for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
+        for( Drawables::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
         {
             osg::Geometry* originalDrawable = dynamic_cast<osg::Geometry*>( i->get() );
             if ( !originalDrawable )
@@ -571,6 +601,11 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         process( features, symbol, context.getSession(), group, newContext );
     }
 
+    // return proper context
+    context = newContext;
+
+#if 0
+    // TODO: OBE due to shader pipeline
     // see if we need normalized normals
     if ( _normalScalingRequired )
     {
@@ -583,6 +618,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
             group->getOrCreateStateSet()->setMode( GL_NORMALIZE, osg::StateAttribute::ON );
         }
     }
+#endif
 
     return group;
 }

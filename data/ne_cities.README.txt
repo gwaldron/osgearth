@@ -1,0 +1,3 @@
+ne_cities.shp is a stripped-down version of the NaturalEarth populated places dataset:
+
+http://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-populated-places/

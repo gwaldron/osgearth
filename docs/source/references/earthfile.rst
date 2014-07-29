@@ -47,7 +47,7 @@ the entire map.
                  elevation_tile_size      = "8"
                  overlay_texture_size     = "4096"
                  overlay_blending         = "true"
-                 overlay_resolution_ratio = "5.0" >
+                 overlay_resolution_ratio = "3.0" >
 
             <:ref:`profile <Profile>`>
             <:ref:`proxy <ProxySettings>`>
@@ -79,7 +79,10 @@ the entire map.
 | overlay_resolution_ratio | For draped geometry, the ratio of the resolution of the projective |
 |                          | texture near the camera versus the resolution far from the camera. |
 |                          | Increase the value to improve appearance close to the camera while |
-|                          | sacrificing appearance of farther geometry.                        |
+|                          | sacrificing appearance of farther geometry. NOTE: If you're using  |
+|                          | a camera manipulator that support roll, you will probably need to  |
+|                          | set this to 1.0; otherwise you will get draping artifacts! This is |
+|                          | a known issue.                                                     |
 +--------------------------+--------------------------------------------------------------------+
 
 
@@ -95,14 +98,14 @@ These options control the rendering of the terrain surface.
         <options>
             <terrain driver                = "mp"
                      lighting              = "true"
-                     skirt_ratio           = "0.05"
                      min_tile_range_factor = "6"
                      min_lod               = "0"
                      max_lod               = "23"
                      first_lod             = "0"
                      cluster_culling       = "true"
                      mercator_fast_path    = "true"
-                     blending              = "false" >
+                     blending              = "false"
+                     color                 = "#ffffffff" >
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
@@ -114,11 +117,10 @@ These options control the rendering of the terrain surface.
 | lighting              | Whether to enable GL_LIGHTING on the terrain. By default this is   |
 |                       | unset, meaning it will inherit the lighting mode of the scene.     |
 +-----------------------+--------------------------------------------------------------------+
-| skirt_ratio           | Ratio of the height of a terrain tile "skirt" to the extent of the |
-|                       | tile. The *skirt* is geometry that hides gaps between adjacent     |
-|                       | tiles with different levels of detail.                             |
-+-----------------------+--------------------------------------------------------------------+
-| min_tile_range_factor | Ratio of a tile's extent to its visibility range.                  |
+| min_tile_range_factor | Determines how close you need to be to a terrain tile for it to    |
+|                       | display. The value is the ratio of a tile's extent to its          |
+|                       | For example, if a tile is 10km is radius, and the MTRF=6, then the |
+|                       | tile will become visible at a range of about 60km.                 |
 +-----------------------+--------------------------------------------------------------------+
 | min_lod               | The lowest level of detail that the terrain is guaranteed to       |
 |                       | display, even if no source data is available at that LOD. The      |
@@ -142,6 +144,8 @@ These options control the rendering of the terrain surface.
 | blending              | Set this to ``true`` to enable GL blending on the terrain's        |
 |                       | underlying geometry. This lets you make the globe partially        |
 |                       | transparent. This is handy for seeing underground objects.         |
++-----------------------+--------------------------------------------------------------------+
+| color                 | Color on the underlying (untextures) terrain.                      |
 +-----------------------+--------------------------------------------------------------------+
 
 
@@ -208,6 +212,12 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | max_resolution        | Maximum source data resolution at which to draw tiles. Value is    |
 |                       | units per pixel, in the native units of the source data.           |
 +-----------------------+--------------------------------------------------------------------+
+| max_data_level        | Maximum level of detail at which new source data is available to   |
+|                       | this image layer. Usually the driver will report this information. |
+|                       | But you may wish to limit it yourself. This is especially true for |
+|                       | some drivers that have no resolution limit, like a rasterization   |
+|                       | driver (agglite) for example.                                      |
++-----------------------+--------------------------------------------------------------------+
 | enabled               | Whether to include this layer in the map. You can only set this at |
 |                       | load time; it is just an easy way of "commenting out" a layer in   |
 |                       | the earth file.                                                    |
@@ -247,7 +257,8 @@ will composite all elevation data into a single heightmap and use that to build 
                    min_resolution = "100.0"
                    max_resolution = "0.0"
                    enabled        = "true"
-                   offset         = "false" >
+                   offset         = "false"
+                   nodata_policy  = "interpolate" >
 
 
 +-----------------------+--------------------------------------------------------------------+
@@ -275,6 +286,10 @@ will composite all elevation data into a single heightmap and use that to build 
 +-----------------------+--------------------------------------------------------------------+
 | offset                | Indicates that the height values in this layer are relative        |
 |                       | offsets rather than true terrain height samples.                   |
++-----------------------+--------------------------------------------------------------------+
+| nodata_policy         | What to do with "no data" values. Default is "interpolate" which   |
+|                       | will interpolate neighboring values to fill holes. Set it to "msl" |
+|                       | to replace "no data" samples with the current sea level value.     |
 +-----------------------+--------------------------------------------------------------------+
 
 

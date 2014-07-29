@@ -135,11 +135,31 @@ _altMode( altMode )
 }
 
 GeoPoint::GeoPoint(const SpatialReference* srs,
+                   double x,
+                   double y,
+                   double z) :
+_srs    ( srs ),
+_p      ( x, y, z ),
+_altMode( ALTMODE_ABSOLUTE )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
                    const osg::Vec3d&       xyz,
                    const AltitudeMode&     altMode) :
 _srs(srs),
 _p  (xyz),
 _altMode( altMode )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   const osg::Vec3d&       xyz) :
+_srs(srs),
+_p  (xyz),
+_altMode( ALTMODE_ABSOLUTE )
 {
     //nop
 }
@@ -299,7 +319,7 @@ GeoPoint::transform(const SpatialReference* outSRS) const
 }
 
 bool
-GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain ) 
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainResolver* terrain ) 
 {
     double z;
     if ( transformZ(altMode, terrain, z) )
@@ -312,7 +332,7 @@ GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t
 }
 
 bool
-GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* terrain, double& out_z ) const
+GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainResolver* terrain, double& out_z ) const
 {
     if ( !isValid() )
         return false;
@@ -365,7 +385,11 @@ GeoPoint::transform(const SpatialReference* outSRS, GeoPoint& output) const
 bool
 GeoPoint::toWorld( osg::Vec3d& out_world ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+    {
+        OE_WARN << LC << "Called toWorld() on an invalid point" << std::endl;
+        return false;
+    }
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
         OE_WARN << LC << "ILLEGAL: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
@@ -375,9 +399,13 @@ GeoPoint::toWorld( osg::Vec3d& out_world ) const
 }
 
 bool
-GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain ) const
+GeoPoint::toWorld( osg::Vec3d& out_world, const TerrainResolver* terrain ) const
 {
-    if ( !isValid() ) return false;
+    if ( !isValid() )
+    {
+        OE_WARN << LC << "Called toWorld() on an invalid point" << std::endl;
+        return false;
+    }
     if ( _altMode == ALTMODE_ABSOLUTE )
     {
         return _srs->transformToWorld( _p, out_world );
@@ -420,7 +448,7 @@ GeoPoint::createLocalToWorld( osg::Matrixd& out_l2w ) const
     if ( !isValid() ) return false;
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocalToorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createLocalToWorld( _p, out_l2w );
@@ -432,7 +460,7 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
     if ( !isValid() ) return false;
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_WARN << LC << "ILLEGAL: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        OE_WARN << LC << "ILLEGAL: called GeoPoint::createWorldToLocal with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return _srs->createWorldToLocal( _p, out_w2l );
@@ -772,6 +800,14 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
 
     }
     return GeoExtent::INVALID;
+}
+
+
+bool
+GeoExtent::transform( const SpatialReference* srs, GeoExtent& output ) const
+{
+    output = transform(srs);
+    return output.isValid();
 }
 
 void
@@ -1726,6 +1762,45 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
             width, height, useBilinearInterpolation);
     }   
     return GeoImage(resultImage, destExtent);
+}
+
+void
+GeoImage::applyAlphaMask(const GeoExtent& maskingExtent)
+{
+    if ( !valid() )
+        return;
+
+    GeoExtent maskingExtentLocal = maskingExtent.transform(_extent.getSRS());
+
+    // if the image is completely contains by the mask, no work to do.
+    if ( maskingExtentLocal.contains(getExtent()))
+        return;
+
+    // TODO: find a more performant way about this 
+    ImageUtils::PixelReader read (_image.get());
+    ImageUtils::PixelWriter write(_image.get());
+
+    double sInterval = _extent.width()/(double)_image->s();
+    double tInterval = _extent.height()/(double)_image->t();
+
+    for( int t=0; t<_image->t(); ++t )
+    {
+        double y = _extent.south() + tInterval*(double)t;
+
+        for( int s=0; s<_image->s(); ++s )
+        {
+            double x = _extent.west() + sInterval*(double)s;
+
+            for( int r=0; r<_image->r(); ++r )
+            {
+                if ( !maskingExtentLocal.contains(x, y) )
+                {
+                    osg::Vec4f pixel = read(s,t,r);
+                    write(osg::Vec4f(pixel.r(), pixel.g(), pixel.b(), 0.0f), s, t, r);
+                }
+            }
+        }
+    }
 }
 
 osg::Image*

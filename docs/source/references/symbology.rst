@@ -92,6 +92,13 @@ control the color and style of the vector data.
 |                       | Number of times to repeat each bit in |                            |
 |                       | the stippling pattern                 |                            |
 +-----------------------+---------------------------------------+----------------------------+
+| stroke-crease-angle   | When outlining extruded polygons,     | float degrees (0.0)        |
+|                       | only draw a post outline if the angle |                            |
+|                       | between the adjoining faces exceeds   |                            |
+|                       | this value. This has the effect of    |                            |
+|                       | only outlining corners that are       |                            |
+|                       | sufficiently "sharp".                 |                            |
++-----------------------+---------------------------------------+----------------------------+
 | point-fill            | Fill color for a point.               | HTML color                 |
 +-----------------------+---------------------------------------+----------------------------+
 | point-size            | Size for a GL point geometry          | float (1.0)                |

@@ -37,16 +37,23 @@ namespace osgEarth
         /** dtor */
         virtual ~MemCache() { }
 
+        void dumpStats(const std::string& binID);
+
     public: // Cache interface
 
-        virtual CacheBin* addBin( const std::string& binID );
+        virtual CacheBin* addBin(const std::string& binID);
+
+        virtual CacheBin* getOrCreateBin(const std::string& binID);
 
         virtual CacheBin* getOrCreateDefaultBin();
     
     private:
-        MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
+        MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) : Cache( rhs, op ) { }
 
         unsigned _maxBinSize;
+        float _writes;
+        float _reads;
+        float _hits;
     };
 
 } // namespace osgEarth

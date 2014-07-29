@@ -27,6 +27,7 @@
 #include <osgViewer/CompositeViewer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthQt/ViewWidget>
+#include <osgEarth/Random>
 #include <QApplication>
 #include <QDialog>
 #include <QMainWindow>

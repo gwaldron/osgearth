@@ -84,7 +84,7 @@ main(int argc, char** argv)
             FeatureQueryTool* tool = new FeatureQueryTool( mapNode );
             viewer.addEventHandler( tool );
 
-            VBox* readout = ControlCanvas::get(&viewer)->addControl( new VBox() );
+            VBox* readout = ControlCanvas::getOrCreate(&viewer)->addControl( new VBox() );
             readout->setHorizAlign( Control::ALIGN_RIGHT );
             readout->setBackColor( Color(Color::Black,0.8) );
             tool->addCallback( new FeatureReadoutCallback(readout) );

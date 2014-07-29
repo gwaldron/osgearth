@@ -51,6 +51,9 @@ namespace osgEarth { namespace Drivers
 
         optional<float>& loadingPriorityOffset() { return _loadingPriorityOffset; }
         const optional<float>& loadingPriorityOffset() const { return _loadingPriorityOffset; }
+
+        optional<bool>& paged() { return _paged; }
+        const optional<bool>& paged() const { return _paged; }
         
         /**
          If specified, use this node instead try to load from url
@@ -66,7 +69,8 @@ namespace osgEarth { namespace Drivers
               _lod_scale(1.0f),
               _shaderPolicy( SHADERPOLICY_GENERATE ),
               _loadingPriorityScale(1.0f),
-              _loadingPriorityOffset(0.0f)
+              _loadingPriorityOffset(0.0f),
+              _paged(false)
         {
             setDriver( "simple" );
             fromConfig( _conf );
@@ -83,6 +87,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "orientation", _orientation);
             conf.updateIfSet( "loading_priority_scale", _loadingPriorityScale );
             conf.updateIfSet( "loading_priority_offset", _loadingPriorityOffset );
+            conf.updateIfSet( "paged", _paged);
 
             conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
             conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -106,6 +111,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "orientation", _orientation);
             conf.getIfSet( "loading_priority_scale", _loadingPriorityScale );
             conf.getIfSet( "loading_priority_offset", _loadingPriorityOffset );
+            conf.getIfSet( "paged", _paged );
 
             conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
             conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -121,6 +127,7 @@ namespace osgEarth { namespace Drivers
         optional<ShaderPolicy> _shaderPolicy;
         optional<float> _loadingPriorityScale;
         optional<float> _loadingPriorityOffset;
+        optional<bool> _paged;
         osg::ref_ptr<osg::Node> _node;
     };
 

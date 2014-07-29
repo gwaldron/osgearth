@@ -35,10 +35,9 @@
 
 using namespace osgEarth;
 
-// undef this if you want to adjust in the normal direction (of a geocentric point) instead
-#define ADJUST_TOWARDS_EYE 1
-
-
+// vertex-only method - just pull the actual vertex. test for a while
+// and accept if it works consistently.
+#define VERTEX_ONLY_METHOD 1
 
 //------------------------------------------------------------------------
 
@@ -94,13 +93,47 @@ namespace
     //...............................
     // Shader code:
 
+#ifdef VERTEX_ONLY_METHOD
+
     const char* s_vertex =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        // uniforms from ClampableNode:
-        "uniform vec2 oe_doff_bias; \n"
-        "uniform vec2 oe_doff_range; \n"
+        "uniform float oe_doff_min_bias; \n"
+        "uniform float oe_doff_max_bias; \n"
+        "uniform float oe_doff_min_range; \n"
+        "uniform float oe_doff_max_range; \n"
+
+        "void oe_doff_vertex(inout vec4 VertexVIEW) \n"
+        "{ \n"
+        //   calculate range to target:
+        "    vec3 vert3 = VertexVIEW.xyz/VertexVIEW.w; \n"
+        "    float range = length(vert3); \n"
+
+        //   calculate the depth offset bias for this range:
+        "    float ratio = (clamp(range, oe_doff_min_range, oe_doff_max_range)-oe_doff_min_range)/(oe_doff_max_range-oe_doff_min_range);\n"
+        "    float bias = oe_doff_min_bias + ratio * (oe_doff_max_bias-oe_doff_min_bias);\n"
+
+        //   clamp the bias to 1/2 of the range of the vertex. We don't want to 
+        //   pull the vertex TOO close to the camera and certainly not behind it.
+        "    bias = min(bias, range*0.5); \n"
+
+        //   pull the vertex towards the camera.
+        "    vec3 pullVec = normalize(vert3); \n"
+        "    vec3 simVert3 = vert3 - pullVec*bias; \n"
+        "    VertexVIEW = vec4( simVert3 * VertexVIEW.w, VertexVIEW.w ); \n"
+        "} \n";
+
+#else
+
+    const char* s_vertex =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        
+        "uniform float oe_doff_min_bias; \n"
+        "uniform float oe_doff_max_bias; \n"
+        "uniform float oe_doff_min_range; \n"
+        "uniform float oe_doff_max_range; \n"
 
         // values to pass to fragment shader:
         "varying vec4 oe_doff_vert; \n"
@@ -113,8 +146,8 @@ namespace
         "    float range = length(vert3); \n"
 
         //   calculate the depth offset bias for this range:
-        "    float ratio = (clamp(range, oe_doff_range[0], oe_doff_range[1])-oe_doff_range[0])/(oe_doff_range[1]-oe_doff_range[0]);\n"
-        "    float bias = oe_doff_bias[0] + ratio * (oe_doff_bias[1]-oe_doff_bias[0]);\n"
+        "    float ratio = (clamp(range, oe_doff_min_range, oe_doff_max_range)-oe_doff_min_range)/(oe_doff_max_range-oe_doff_min_range);\n"
+        "    float bias = oe_doff_min_bias + ratio * (oe_doff_max_bias-oe_doff_min_bias);\n"
 
         //   calculate the "simulated" vertex, pulled toward the camera:
         "    vec3 pullVec = normalize(vert3); \n"
@@ -144,6 +177,8 @@ namespace
         "    if ( sim_depth > 1.0 && oe_doff_vertRange < 0.0 ) { sim_depth = 0.0; } \n"
         "    gl_FragDepth = max(0.0, sim_depth); \n"
         "} \n";
+
+#endif // !VERTEX_ONLY_METHOD
 }
 
 //------------------------------------------------------------------------
@@ -198,11 +233,13 @@ _dirty( false )
 void
 DepthOffsetAdapter::init()
 {
-    _supported = Registry::capabilities().supportsFragDepthWrite();
+    _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
     {
-        _biasUniform  = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "oe_doff_bias");
-        _rangeUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "oe_doff_range");
+        _minBiasUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_doff_min_bias");
+        _maxBiasUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_doff_max_bias");
+        _minRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_doff_min_range");
+        _maxRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_doff_max_range");
         updateUniforms();
     }
 }
@@ -229,13 +266,19 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
 
         // uninstall uniforms and shaders.
         osg::StateSet* s = _graph->getStateSet();
-        s->removeUniform( _biasUniform.get() );
-        s->removeUniform( _rangeUniform.get() );
+        s->removeUniform( _minBiasUniform.get() );
+        s->removeUniform( _maxBiasUniform.get() );
+        s->removeUniform( _minRangeUniform.get() );
+        s->removeUniform( _maxRangeUniform.get() );
+
         VirtualProgram* vp = VirtualProgram::get( s );
         if ( vp )
         {
             vp->removeShader( "oe_doff_vertex" );
+
+#ifndef VERTEX_ONLY_METHOD
             vp->removeShader( "oe_doff_fragment" );
+#endif
         }
     }
 
@@ -245,13 +288,18 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
 
         // install uniforms and shaders.
         osg::StateSet* s = graph->getOrCreateStateSet();
-        s->addUniform( _biasUniform.get() );
-        s->addUniform( _rangeUniform.get() );
+        s->addUniform( _minBiasUniform.get() );
+        s->addUniform( _maxBiasUniform.get() );
+        s->addUniform( _minRangeUniform.get() );
+        s->addUniform( _maxRangeUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate( s );
+
         vp->setFunction( "oe_doff_vertex", s_vertex, ShaderComp::LOCATION_VERTEX_VIEW );
+
+#ifndef VERTEX_ONLY_METHOD
         vp->setFunction( "oe_doff_fragment", s_fragment, ShaderComp::LOCATION_FRAGMENT_COLORING );
-        s->setAttributeAndModes( vp, osg::StateAttribute::ON );
+#endif
     }
 
     if ( graphChanging )
@@ -269,13 +317,16 @@ DepthOffsetAdapter::updateUniforms()
 {
     if ( !_supported ) return;
 
-    _biasUniform->set( osg::Vec2f(*_options.minBias(), *_options.maxBias()) );
-    _rangeUniform->set( osg::Vec2f(*_options.minRange(), *_options.maxRange()) );
+    _minBiasUniform->set( *_options.minBias() );
+    _maxBiasUniform->set( *_options.maxBias() );
+    _minRangeUniform->set( *_options.minRange() );
+    _maxRangeUniform->set( *_options.maxRange() );
 
     if ( _options.enabled() == true )
     {
-        OE_TEST << LC << "bias=[" << *_options.minBias() << ", " << *_options.maxBias() << "] ... "
-                << "range=[" << *_options.minRange() << ", " << *_options.maxRange() << "]" << std::endl;
+        OE_TEST << LC 
+            << "bias=[" << *_options.minBias() << ", " << *_options.maxBias() << "] ... "
+            << "range=[" << *_options.minRange() << ", " << *_options.maxRange() << "]" << std::endl;
     }
 }
 
@@ -322,17 +373,20 @@ DepthOffsetAdapter::recalculate()
 DepthOffsetGroup::DepthOffsetGroup() :
 _updatePending( false )
 {
-    _adapter.setGraph( this );
+    if ( _adapter.supported() )
+    {
+        _adapter.setGraph( this );
 
-    if ( _adapter.isDirty() )
-        _adapter.recalculate();
+        if ( _adapter.isDirty() )
+            _adapter.recalculate();
+    }
 }
 
 void
 DepthOffsetGroup::setDepthOffsetOptions(const DepthOffsetOptions& options)
 {
     _adapter.setDepthOffsetOptions(options);
-    if ( _adapter.isDirty() && !_updatePending )
+    if ( _adapter.supported() && _adapter.isDirty() && !_updatePending )
         scheduleUpdate();
 }
 
@@ -345,17 +399,22 @@ DepthOffsetGroup::getDepthOffsetOptions() const
 void
 DepthOffsetGroup::scheduleUpdate()
 {
-    ADJUST_UPDATE_TRAV_COUNT(this, 1);
-    _updatePending = true;
+    if ( _adapter.supported() )
+    {
+        ADJUST_UPDATE_TRAV_COUNT(this, 1);
+        _updatePending = true;
+    }
 }
 
 osg::BoundingSphere
 DepthOffsetGroup::computeBound() const
 {
-    static Threading::Mutex s_mutex;
+    if ( _adapter.supported() )
     {
-        Threading::ScopedMutexLock lock(s_mutex);
+        static Threading::Mutex s_mutex;
+        s_mutex.lock();
         const_cast<DepthOffsetGroup*>(this)->scheduleUpdate();
+        s_mutex.unlock();
     }
     return osg::Group::computeBound();
 }

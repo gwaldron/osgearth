@@ -103,8 +103,8 @@ namespace osgEarth { namespace Symbology
         const optional<NumericExpression>& priority() const { return _priority; }
 
         /** Font size. */
-        optional<float>& size() { return _size; }
-        const optional<float>& size() const { return _size; }
+        optional<NumericExpression>& size() { return _size; }
+        const optional<NumericExpression>& size() const { return _size; }
 
         /** Pixel offset from the center point. */
         optional<osg::Vec2s>& pixelOffset() { return _pixelOffset; }
@@ -152,7 +152,7 @@ namespace osgEarth { namespace Symbology
         optional<Stroke>            _halo;
         optional<float>             _haloOffset;
         optional<std::string>       _font;
-        optional<float>             _size;
+        optional<NumericExpression> _size;
         optional<StringExpression>  _content;
         optional<NumericExpression> _priority;
         optional<bool>              _removeDuplicateLabels;

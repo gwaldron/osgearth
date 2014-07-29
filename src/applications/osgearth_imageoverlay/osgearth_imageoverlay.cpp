@@ -45,7 +45,7 @@ static Grid* s_layerBox = NULL;
 osg::Node*
 createControlPanel( osgViewer::View* view )
 {
-    ControlCanvas* canvas = ControlCanvas::get( view );
+    ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
 
     // the outer container:
     s_layerBox = new Grid();

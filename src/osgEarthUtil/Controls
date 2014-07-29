@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Units>
 #include <osgEarth/AlphaEffect>
+#include <osgEarth/Containers>
 #include <osg/Drawable>
 #include <osg/Geode>
 #include <osg/MatrixTransform>
@@ -227,10 +228,10 @@ namespace osgEarth { namespace Util { namespace Controls
         bool horizFill() const { return _hfill; }
 
         void setVertFill( bool value, float minHeight =0.0f );
-        const bool vertFill() const { return _vfill; }
+        bool vertFill() const { return _vfill; }
 
         void setVisible( bool value );
-        const bool visible() const { return _visible; }
+        bool visible() const { return _visible; }
         bool parentIsVisible() const;
 
         void setForeColor( const osg::Vec4f& value );
@@ -374,10 +375,10 @@ namespace osgEarth { namespace Util { namespace Controls
         const optional<osg::Vec4f>& haloColor() const { return _haloColor; }
 
         void setTextBackdropType(osgText::Text::BackdropType value);
-        const osgText::Text::BackdropType getTextBackdropType() const { return _backdropType; }
+        osgText::Text::BackdropType getTextBackdropType() const { return _backdropType; }
 
         void setTextBackdropImplementation(osgText::Text::BackdropImplementation value);
-        const osgText::Text::BackdropImplementation getTextBackdropImplementation() const { return _backdropImpl; }
+        osgText::Text::BackdropImplementation getTextBackdropImplementation() const { return _backdropImpl; }
 
         void setTextBackdropOffset(float offsetValue);
         float getTextBackdropOffset() const { return _backdropOffset; }
@@ -738,7 +739,7 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         /** Constructs a new control node with an embedded control. */
-        ControlNode( Control* control, float priority =0.0f );
+        ControlNode(Control* control, float priority =0.0f);
 
         /** dtor */
         virtual ~ControlNode() { }
@@ -762,9 +763,9 @@ namespace osgEarth { namespace Util { namespace Controls
 
     protected:
 
-        struct PerViewData
+        struct TravSpecificData
         {
-            PerViewData();
+            TravSpecificData();
             bool                              _obscured;
             osg::Vec3f                        _screenPos;
             float                             _visibleTime;
@@ -772,14 +773,14 @@ namespace osgEarth { namespace Util { namespace Controls
             osg::ref_ptr<osg::Uniform>        _uniform;
             osg::observer_ptr<osg::Camera>    _canvas;
         };
-        typedef std::map<osg::View*,PerViewData> PerViewDataMap;
+        typedef osgEarth::fast_map<osg::Camera*,TravSpecificData> TravSpecificDataMap;
 
-        PerViewDataMap         _perViewData;
+        TravSpecificDataMap    _travDataMap;
         osg::ref_ptr<Control>  _control;
         float                  _priority;
         optional<osg::Vec2f>   _anchor;
 
-        PerViewData& getData( osg::View* view ) { return _perViewData[view]; }
+        TravSpecificData& getData(osg::Camera* key) { return _travDataMap[key]; }
 
         friend class ControlNodeBin;
     };
@@ -835,7 +836,10 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         /** Accesses the control canvas attached the the specified view. */
-        static ControlCanvas* get( osg::View* view, bool installCanvasInSceneData =false );
+        static ControlCanvas* get(osg::View* view);
+        
+        /** Accesses the control canvas attached the the specified view. */
+        static ControlCanvas* getOrCreate(osg::View* view);
 
     public:
         /** adds a top-level control to this surface. */
@@ -860,15 +864,14 @@ namespace osgEarth { namespace Util { namespace Controls
         void setControlContext( const ControlContext& );
 
     public:
-        virtual void traverse( osg::NodeVisitor& nv ); // override
+        virtual void traverse(osg::NodeVisitor& nv); // override
 
         virtual ~ControlCanvas();
 
         /**
-         * Constructs a new canvas and attaches it to a view. Call
-         * getOrCreateControlCanvas(view) to create one.
+         * Constructs a new canvas.
          */
-        ControlCanvas( osgViewer::View* view );
+        ControlCanvas();
 
     protected:
 
@@ -884,21 +887,26 @@ namespace osgEarth { namespace Util { namespace Controls
         Control* addControlImpl( Control* control );
 
     private:
-        friend struct ControlCanvasEventHandler;
         friend class ControlNode;
-
-        ControlCanvas( osgViewer::View* view, bool registerCanvas );
-        void init( osgViewer::View* view, bool registerCanvas );
+        void init();
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 
-        // a static registry of canvases in the scene graph.
-        typedef std::map<osg::View*, ControlCanvas*> ViewCanvasMap;
-        static ViewCanvasMap      _viewCanvasMap;        
-        static OpenThreads::Mutex _viewCanvasMapMutex;
-
         /** Accesses the priority rendering bin for this canvas. */
         ControlNodeBin* getControlNodeBin() { return _controlNodeBin.get(); }
+
+        // internal class
+        class EventCallback : public osg::NodeCallback
+        {
+        public:
+            EventCallback(ControlCanvas*);
+            void operator()(osg::Node*, osg::NodeVisitor*);
+            void handleResize(osg::View* view, ControlCanvas* canvas);
+        protected:
+            osg::observer_ptr<ControlCanvas> _canvas;
+            bool _firstTime;
+            int _width, _height;
+        };
     };
 
 

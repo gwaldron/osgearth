@@ -141,9 +141,10 @@ LabelNode::setStyle( const Style& style )
 
     setLightingIfNotSet( false );
 
-    ShaderGenerator gen;
-    gen.setProgramName( "osgEarth.LabelNode" );
-    gen.run( this, Registry::stateSetCache() );
+    Registry::shaderGenerator().run(
+        this,
+        "osgEarth.LabelNode",
+        Registry::stateSetCache() );
 }
 
 void
@@ -152,10 +153,9 @@ LabelNode::setAnnotationData( AnnotationData* data )
     OrthoNode::setAnnotationData( data );
 
     // override this method so we can attach the anno data to the drawables.
-    const osg::Geode::DrawableList& list = _geode->getDrawableList();
-    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
     {
-        i->get()->setUserData( data );
+        _geode->getDrawable(i)->setUserData( data );
     }
 }
 

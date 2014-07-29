@@ -15,6 +15,7 @@ Properties:
     :url:       External model to load
     :location:  Map coordinates at which to place the model. SRS is that of
                 the containing map.
+    :paged:     If true, the model will be paged in when the camera is within the max range of the location.  If false the model is loaded immediately.
 
 Also see:
 

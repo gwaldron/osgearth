@@ -111,6 +111,16 @@ namespace osgEarth
 
     /** Generates a hashed integer for a string (poor man's MD5) */
     extern OSGEARTH_EXPORT unsigned hashString( const std::string& input );
+
+    /**
+    * Gets the total number of seconds formatted as H:M:S
+    */
+    extern OSGEARTH_EXPORT std::string prettyPrintTime( double seconds );
+
+    /**
+    * Gets a pretty printed version of the given size in MB.
+    */
+    extern OSGEARTH_EXPORT std::string prettyPrintSize( double mb );
     
     //------------------------------------------------------------------------
     // conversion templates
@@ -125,14 +135,38 @@ namespace osgEarth
         return temp;
     }
 
+    // template specialization for integers (to handle hex)
+#define AS_INT_DEC_OR_HEX(TYPE) \
+    template<> inline TYPE \
+    as< TYPE >(const std::string& str, const TYPE & dv) { \
+        TYPE temp = dv; \
+        std::istringstream strin( trim(str) ); \
+        if ( !strin.eof() ) { \
+            if ( str.length() >= 2 && str.at(0) == '0' && str.at(1) == 'x' ) { \
+                strin.seekg( 2 ); \
+                strin >> std::hex >> temp; \
+            } \
+            else { \
+                strin >> temp; \
+            } \
+        } \
+        return temp; \
+    }
+
+    AS_INT_DEC_OR_HEX(int)
+    AS_INT_DEC_OR_HEX(unsigned)
+    AS_INT_DEC_OR_HEX(short)
+    AS_INT_DEC_OR_HEX(unsigned short)
+    AS_INT_DEC_OR_HEX(long)
+    AS_INT_DEC_OR_HEX(unsigned long)
+
     // template specialization for a bool
     template<> inline bool
     as<bool>( const std::string& str, const bool& default_value )
     {
-        std::string temp = str;
-        std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+        std::string temp = toLower(str);
         return
-            temp == "true" || temp == "yes" || temp == "on" ? true :
+            temp == "true"  || temp == "yes" || temp == "on" ? true :
             temp == "false" || temp == "no" || temp == "off" ? false :
             default_value;
     }

@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthSymbology/TextSymbol>
@@ -25,6 +26,7 @@
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -215,7 +217,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&         features,
                 context.featureIndex()->tagPrimitiveSets( geom, input );
         }
 
-        polygonizer.installShaders( geode->getOrCreateStateSet() );
+        polygonizer.installShaders( geode );
     }
     return geode;
 }
@@ -348,14 +350,11 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
         {
             Geometry* part = parts.next();
 
-            // skip invalid geometry for lines.
-            if ( part->size() < 2 )
-                continue;
-
-            // extract the required line symbol; bail out if not found.
+            // extract the required point symbol; bail out if not found.
             const PointSymbol* point =
                 input->style().isSet() && input->style()->has<PointSymbol>() ? input->style()->get<PointSymbol>() :
                 _style.get<PointSymbol>();
+
             if ( !point )
                 continue;
 

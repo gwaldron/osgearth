@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osg/Notify>
@@ -39,7 +40,8 @@ _maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true ),
 _backfaceCulling   ( true ),
-_alphaBlending     ( true )
+_alphaBlending     ( true ),
+_sessionWideResourceCache( true )
 {
     fromConfig( _conf );
 }
@@ -64,7 +66,8 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "cluster_culling",  _clusterCulling );
     conf.getIfSet( "backface_culling", _backfaceCulling );
     conf.getIfSet( "alpha_blending",   _alphaBlending );
-
+    
+    conf.getIfSet( "session_wide_resource_cache", _sessionWideResourceCache );
 }
 
 Config
@@ -90,6 +93,8 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
     conf.updateIfSet( "backface_culling", _backfaceCulling );
     conf.updateIfSet( "alpha_blending",   _alphaBlending );
+    
+    conf.updateIfSet( "session_wide_resource_cache", _sessionWideResourceCache );
 
     return conf;
 }
@@ -139,6 +144,22 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions)
     if ( _features.valid() )
     {
         _features->initialize( dbOptions );
+
+        // Try to fill the DataExtent list using the FeatureProfile
+        const FeatureProfile* featureProfile = _features->getFeatureProfile();
+        if (featureProfile != NULL)
+        {
+            if (featureProfile->getProfile() != NULL)
+            {
+                // Use specified profile's GeoExtent
+                getDataExtents().push_back(DataExtent(featureProfile->getProfile()->getExtent()));
+            }
+            else if (featureProfile->getExtent().isValid() == true)
+            {
+                // Use FeatureProfile's GeoExtent
+                getDataExtents().push_back(DataExtent(featureProfile->getExtent()));
+            }
+        }
     }
     else
     {
@@ -177,14 +198,12 @@ FeatureModelSource::createNodeImplementation(const Map*            map,
     Session* session = new Session( map, _options.styles().get(), _features.get(), dbOptions );
 
     // Graph that will render feature models. May included paged data.
-    FeatureModelGraph* graph = new FeatureModelGraph( session, _options, factory );
-
-    // install any post-merge operations on the FMG so it can call them during paging:
-    const NodeOperationVector& ops = postProcessors();
-    for( NodeOperationVector::const_iterator i = ops.begin(); i != ops.end(); ++i )
-    {
-        graph->addPostMergeOperation( i->get() );
-    }
+    FeatureModelGraph* graph = new FeatureModelGraph( 
+       session,
+       _options,
+       factory,
+       _preMergeOps.get(),
+       _postMergeOps.get() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );
@@ -234,6 +253,17 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
             group->getOrCreateStateSet()->setMode(
                 GL_CULL_FACE,
                 (render->backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+
+        if ( render->clipPlane().isSet() )
+        {
+            GLenum mode = GL_CLIP_PLANE0 + (render->clipPlane().value());
+            group->getOrCreateStateSet()->setMode(mode, 1);
+        }
+
+        if ( render->minAlpha().isSet() )
+        {
+            DiscardAlphaFragments().install( group->getOrCreateStateSet(), render->minAlpha().value() );
         }
     }
 

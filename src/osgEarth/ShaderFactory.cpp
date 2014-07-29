@@ -36,18 +36,36 @@
 #endif
 
 #define INDENT "    "
-
+#define RANGE  osgEarth::Registry::instance()->shaderFactory()->getRangeUniformName()
 
 using namespace osgEarth;
 using namespace osgEarth::ShaderComp;
 
 
-std::string
-ShaderFactory::getSamplerName( unsigned unit ) const
+namespace
 {
-    return Stringify() << "osgearth_tex" << unit;
+    void insertRangeConditionals(const Function& f, std::ostream& buf)
+    {
+        if ( f._minRange.isSet() && !f._maxRange.isSet() )
+        {
+            buf << INDENT << "if (" << RANGE << " >= float(" << f._minRange.value() << "))\n" << INDENT;
+        }
+        else if ( !f._minRange.isSet() && f._maxRange.isSet() )
+        {
+            buf << INDENT << "if (" << RANGE << " <= float(" << f._maxRange.value() << "))\n" << INDENT;
+        }
+        else if ( f._minRange.isSet() && f._maxRange.isSet() )
+        {
+            buf << INDENT << "if (" << RANGE << " >= float(" << f._minRange.value() << ") && " << RANGE << " <= float(" << f._maxRange.value() << "))\n" << INDENT;
+        }
+    }
 }
 
+
+ShaderFactory::ShaderFactory()
+{
+    _fragStageOrder = FRAGMENT_STAGE_ORDER_COLORING_LIGHTING;
+}
 
 osg::Shader*
 ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) const
@@ -68,27 +86,34 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
     std::stringstream buf;
     buf << 
         "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n";
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "uniform float " << RANGE << ";\n";
 
     // prototypes for model stage methods:
     if ( modelStage )
     {
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
-            buf << "void " << i->second << "(inout vec4 VertexMODEL); \n";
+        {
+            buf << "void " << i->second._name << "(inout vec4 VertexMODEL); \n";
+        }
     }
 
     // prototypes for view stage methods:
     if ( viewStage )
     {
         for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
-            buf << "void " << i->second << "(inout vec4 VertexVIEW); \n";
+        {
+            buf << "void " << i->second._name << "(inout vec4 VertexVIEW); \n";
+        }
     }
 
     // prototypes for clip stage methods:
     if ( clipStage )
     {
         for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
-            buf << "void " << i->second << "(inout vec4 VertexCLIP); \n";
+        {
+            buf << "void " << i->second._name << "(inout vec4 VertexCLIP); \n";
+        }
     }
 
     // main:
@@ -107,7 +132,8 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
 
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
         {
-            buf << INDENT << i->second << "(vertex); \n";
+            insertRangeConditionals( i->second, buf );
+            buf << INDENT << i->second._name << "(vertex); \n";
         }
 
         buf << INDENT << "oe_Normal = normalize(gl_NormalMatrix * oe_Normal); \n";
@@ -124,7 +150,8 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
 
         for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
         {
-            buf << INDENT << i->second << "(vertex); \n";
+            insertRangeConditionals( i->second, buf );
+            buf << INDENT << i->second._name << "(vertex); \n";
         }
     }
 
@@ -142,7 +169,8 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
 
         for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
         {
-            buf << INDENT << i->second << "(vertex); \n";
+            insertRangeConditionals( i->second, buf );
+            buf << INDENT << i->second._name << "(vertex); \n";
         }
     }
 
@@ -179,20 +207,36 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
     FunctionLocationMap::const_iterator j = functions.find( LOCATION_FRAGMENT_LIGHTING );
     const OrderedFunctionMap* lighting = j != functions.end() ? &j->second : 0L;
 
+    FunctionLocationMap::const_iterator k = functions.find( LOCATION_FRAGMENT_OUTPUT );
+    const OrderedFunctionMap* output = k != functions.end() ? &k->second : 0L;
+
     std::stringstream buf;
     buf << "#version " << GLSL_VERSION_STR << "\n"
-        << GLSL_DEFAULT_PRECISION_FLOAT << "\n";
+        << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
+        << "uniform float " << RANGE << ";\n";
 
     if ( coloring )
     {
         for( OrderedFunctionMap::const_iterator i = coloring->begin(); i != coloring->end(); ++i )
-            buf << "void " << i->second << "( inout vec4 color ); \n";
+        {
+            buf << "void " << i->second._name << "( inout vec4 color ); \n";
+        }
     }
 
     if ( lighting )
     {
         for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
-            buf << "void " << i->second << "( inout vec4 color ); \n";
+        {
+            buf << "void " << i->second._name << "( inout vec4 color ); \n";
+        }
+    }
+
+    if ( output )
+    {
+        for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
+        {
+            buf << "void " << i->second._name << "( inout vec4 color ); \n";
+        }
     }
 
     buf << 
@@ -201,89 +245,51 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
         "{ \n"
         INDENT "vec4 color = osg_FrontColor; \n";
 
-    if ( coloring )
+    int coloringPass = _fragStageOrder == FRAGMENT_STAGE_ORDER_COLORING_LIGHTING ? 0 : 1;
+    int lightingPass = 1-coloringPass;
+
+    for(int pass=0; pass<2; ++pass)
     {
-        for( OrderedFunctionMap::const_iterator i = coloring->begin(); i != coloring->end(); ++i )
-            buf << INDENT << i->second << "( color ); \n";
+        if ( coloring && (pass == coloringPass) )
+        {
+            for( OrderedFunctionMap::const_iterator i = coloring->begin(); i != coloring->end(); ++i )
+            {
+                insertRangeConditionals( i->second, buf );
+                buf << INDENT << i->second._name << "( color ); \n";
+            }
+        }
+
+        if ( lighting && (pass == lightingPass) )
+        {
+            for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
+            {
+                insertRangeConditionals( i->second, buf );
+                buf << INDENT << i->second._name << "( color ); \n";
+            }
+        }
     }
 
-    if ( lighting )
+    if ( output )
     {
-        for( OrderedFunctionMap::const_iterator i = lighting->begin(); i != lighting->end(); ++i )
-            buf << INDENT << i->second << "( color ); \n";
+        for( OrderedFunctionMap::const_iterator i = output->begin(); i != output->end(); ++i )
+        {
+            insertRangeConditionals( i->second, buf );
+            buf << INDENT << i->second._name << "( color ); \n";
+        }
     }
-
-    buf << 
-        INDENT "gl_FragColor = color; \n"
-        "} \n";  
+    else
+    {
+        // in the absense of any output functions, generate a default output statement
+        // that simply writes to gl_FragColor.
+        buf << INDENT "gl_FragColor = color;\n";
+    }
+    buf << "}\n";
 
     std::string str;
     str = buf.str();
     osg::Shader* shader = new osg::Shader( osg::Shader::FRAGMENT, str );
     shader->setName( "main(frag)" );
     return shader;
-}
-
-
-void
-ShaderFactory::installLightingShaders(VirtualProgram* vp) const
-{
-    const char* vs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "uniform bool oe_mode_GL_LIGHTING; \n"
-        "varying vec4 oe_lighting_adjustment; \n"
-        "varying vec4 oe_lighting_zero_vec; \n"
-        "varying vec3 oe_Normal; \n"
-
-        "void oe_lighting_vertex(inout vec4 VertexVIEW) \n"
-        "{ \n"
-        "    oe_lighting_adjustment = vec4(1.0); \n"
-        "    if (oe_mode_GL_LIGHTING) \n"
-        "    { \n"
-        "        vec3 N = oe_Normal; \n" //normalize(gl_NormalMatrix * gl_Normal); \n"
-        "        float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
-        "        NdotL = max( 0.0, NdotL ); \n"
-
-        // NOTE: See comment in the fragment shader below for an explanation of
-        //       this oe_zero_vec value.
-        "        oe_lighting_zero_vec = vec4(0.0); \n"
-
-        "        vec4 adj = \n"
-        "            gl_FrontLightProduct[0].ambient + \n"
-        "            gl_FrontLightProduct[0].diffuse * NdotL; \n"
-        "        oe_lighting_adjustment = clamp( adj, 0.0, 1.0 ); \n"
-        "    } \n"
-        "} \n";
-
-    const char* fs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "varying vec4 oe_lighting_adjustment; \n"
-        "varying vec4 oe_lighting_zero_vec; \n"
-
-         "uniform bool oe_mode_GL_LIGHTING; \n"
-         "void oe_lighting_fragment( inout vec4 color ) \n"
-         "{ \n"
-         //NOTE: The follow was changed from the single line
-         //      "color *= oe_lighting_adjustment" to the current code to fix
-         //      an issue on iOS devices.  Adding a varying vec4 value set to
-         //      (0.0,0.0,0.0,0.0) to the color should not make a difference,
-         //      but it is part of the solution to the issue we were seeing.
-         //      Without it and the additional lines of code, the globe was
-         //      rendering textureless (just a white surface with lighting).
-         "    if ( oe_mode_GL_LIGHTING ) \n"
-         "    { \n"
-         "        float alpha = color.a; \n"
-         "        color = color * oe_lighting_adjustment + oe_lighting_zero_vec; \n"
-         "        color.a = alpha; \n"
-         "    } \n"
-        "} \n";
-
-    vp->setFunction( "oe_lighting_vertex",   vs, ShaderComp::LOCATION_VERTEX_VIEW, 0.0 );
-    vp->setFunction( "oe_lighting_fragment", fs, ShaderComp::LOCATION_FRAGMENT_LIGHTING, 0.0 );
 }
 
 
@@ -335,4 +341,16 @@ ShaderFactory::createUniformForGLMode(osg::StateAttribute::GLMode      mode,
     }
 
     return u;
+}
+
+std::string
+ShaderFactory::getRangeUniformName() const
+{
+    return "oe_range_to_bs";
+}
+
+osg::Uniform*
+ShaderFactory::createRangeUniform() const
+{
+    return new osg::Uniform(osg::Uniform::FLOAT, getRangeUniformName());
 }

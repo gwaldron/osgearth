@@ -115,17 +115,12 @@ XmlElement::getChildren() const
 XmlElement*
 XmlElement::getSubElement( const std::string& name ) const
 {
-    std::string name_lower = name;
-    std::transform( name_lower.begin(), name_lower.end(), name_lower.begin(), tolower );
-
     for( XmlNodeList::const_iterator i = getChildren().begin(); i != getChildren().end(); i++ )
     {
         if ( i->get()->isElement() )
         {
             XmlElement* e = (XmlElement*)i->get();
-            std::string name = e->getName();
-            std::transform( name.begin(), name.end(), name.begin(), tolower );
-            if ( name == name_lower )
+            if (osgEarth::ciEquals(name, e->getName()))
                 return e;
         }
     }
@@ -166,17 +161,12 @@ XmlElement::getSubElements( const std::string& name ) const
 {
     XmlNodeList results;
 
-    std::string name_lower = name;
-    std::transform( name_lower.begin(), name_lower.end(), name_lower.begin(), tolower );
-
     for( XmlNodeList::const_iterator i = getChildren().begin(); i != getChildren().end(); i++ )
     {
         if ( i->get()->isElement() )
         {
             XmlElement* e = (XmlElement*)i->get();
-            std::string name = e->getName();
-            std::transform( name.begin(), name.end(), name.begin(), tolower );
-            if ( name == name_lower )
+            if ( osgEarth::ciEquals(name, e->getName()) )
                 results.push_back( e );
         }
     }
@@ -263,9 +253,8 @@ namespace
         while( *ptr != NULL )
         {
             std::string name = *ptr++;
-            std::string value = *ptr++;
-            std::transform( name.begin(), name.end(), name.begin(), tolower );
-            map[name] = value;
+            std::string value = *ptr++;            
+            map[osgEarth::toLower(name)] = value;
         }
         return map;
     }
@@ -278,17 +267,15 @@ namespace
         case TiXmlNode::TINYXML_ELEMENT:
             {
                 TiXmlElement* element = node->ToElement();
-                std::string tag = element->Value();
-                std::transform( tag.begin(), tag.end(), tag.begin(), tolower);
+                std::string tag = osgEarth::toLower(element->Value());
 
                 //Get all the attributes
                 XmlAttributes attrs;
                 TiXmlAttribute* attr = element->FirstAttribute();
                 while (attr)
                 {
-                    std::string name  = attr->Name();
+                    std::string name  = osgEarth::toLower(attr->Name());
                     std::string value = attr->Value();
-                    std::transform( name.begin(), name.end(), name.begin(), tolower);
                     attrs[name] = value;
                     attr = attr->Next();
                 }

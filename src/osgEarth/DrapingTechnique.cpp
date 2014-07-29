@@ -40,7 +40,7 @@ namespace
     // Additional per-view data stored by the draping technique.
     struct LocalPerViewData : public osg::Referenced
     {
-        osg::ref_ptr<osg::Uniform> _texGenUniform;  // when shady
+        osg::ref_ptr<osg::Uniform> _texGenUniform;
     };
 }
 
@@ -125,9 +125,13 @@ namespace
             if ( eyeClip.y() >= -1.0 && eyeClip.y() <= 1.0 )
                 return;
 
+            // sanity check. 6 faces requires since we need near and far
+            if ( params._visibleFrustumPH._faces.size() < 6 )
+                return;
+
             // discover the max near-plane width.
             double halfWidthNear = 0.0;
-            osgShadow::ConvexPolyhedron::Faces::iterator f = params._frustumPH._faces.begin();
+            osgShadow::ConvexPolyhedron::Faces::iterator f = params._visibleFrustumPH._faces.begin();
             f++; f++; f++; f++; // the near plane Face
             // f->vertices.size() should always be 4, I would think.. but it's not..
             for(unsigned i=0; i<f->vertices.size(); ++i)
@@ -291,8 +295,10 @@ _textureSize     ( 1024 ),
 _mipmapping      ( false ),
 _rttBlending     ( true ),
 _attachStencil   ( false ),
-_maxFarNearRatio ( 3.0 )
+_maxFarNearRatio ( 5.0 )
 {
+    _supported = Registry::capabilities().supportsGLSL();
+
     // try newer version
     const char* nfr2 = ::getenv("OSGEARTH_OVERLAY_RESOLUTION_RATIO");
     if ( nfr2 )
@@ -413,7 +419,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         //Setup a separate blend function for the alpha components and the RGB components.  
         //Because the destination alpha is initialized to 0 instead of 1
         osg::BlendFunc* blendFunc = 0;        
-        if (Registry::capabilities().supportsGLSL(1.4f))
+        if (Registry::capabilities().supportsGLSL(140u))
         {
             //Blend Func Separate is only available on OpenGL 1.4 and above
             blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -626,7 +632,7 @@ DrapingTechnique::onInstall( TerrainEngineNode* engine )
     if ( !_textureSize.isSet() )
     {
         unsigned maxSize = Registry::capabilities().getMaxFastTextureSize();
-        _textureSize.init( osg::minimum( 4096u, maxSize ) );
+        _textureSize.init( osg::minimum( 2048u, maxSize ) );
     }
     OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
 }

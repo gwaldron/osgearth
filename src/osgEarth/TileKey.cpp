@@ -28,7 +28,7 @@ TileKey TileKey::INVALID( 0, 0, 0, 0L );
 
 //------------------------------------------------------------------------
 
-TileKey::TileKey( unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
+TileKey::TileKey(unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
 {
     _x = tile_x;
     _y = tile_y;
@@ -92,14 +92,6 @@ TileKey::getQuadrant() const
         xeven && yeven ? 0 :
         xeven          ? 2 :
         yeven          ? 1 : 3;
-}
-
-osgTerrain::TileID
-TileKey::getTileId() const
-{
-    //TODO: will this be an issue with multi-face? perhaps not since each face will
-    // exist within its own scene graph.. ?
-    return osgTerrain::TileID(_lod, _x, _y);
 }
 
 void
@@ -185,4 +177,50 @@ TileKey::createNeighborKey( int xoffset, int yoffset ) const
     //OE_NOTICE << "Returning neighbor " << x << ", " << y << " for tile " << str() << " offset=" << xoffset << ", " << yoffset << std::endl;
 
     return TileKey( _lod, x, y, _profile.get() );
+}
+
+namespace
+{
+    int nextPowerOf2(int x) {
+        --x;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return x+1;
+    }
+}
+
+TileKey
+TileKey::mapResolution(unsigned targetSize,
+                       unsigned sourceSize,
+                       unsigned minimumLOD) const
+{
+    // This only works when falling back; i.e. targetSize is smaller than sourceSize.
+    if ( getLOD() == 0 || targetSize >= sourceSize )
+        return *this;
+
+    // Minimum target tile size.
+    if ( targetSize < 2 )
+        targetSize = 2;
+
+    int lod = (int)getLOD();
+    int targetSizePOT = nextPowerOf2((int)targetSize);
+
+    while(true)
+    {
+        if (targetSizePOT >= (int)sourceSize)
+        {
+            return createAncestorKey(lod);
+        }
+
+        if ( lod == (int)minimumLOD )
+        {
+            return createAncestorKey(lod);
+        }
+
+        lod--;
+        targetSizePOT *= 2;        
+    }
 }

@@ -558,7 +558,7 @@ JSFilterContext::PropertyCallback(v8::Local<v8::String> name, const v8::Property
   if (prop == "session")
     value = JSSession::WrapSession(v8::Isolate::GetCurrent(), const_cast<Session*>(context->getSession()));
   if (prop == "profile")
-    value = JSFeatureProfile::WrapFeatureProfile(v8::Isolate::GetCurrent(), const_cast<FeatureProfile*>(context->profile().get()));
+    value = JSFeatureProfile::WrapFeatureProfile(v8::Isolate::GetCurrent(), const_cast<FeatureProfile*>(context->profile()));
   if (prop == "extent" && context->extent().isSet())
     value = JSGeoExtent::WrapGeoExtent(v8::Isolate::GetCurrent(), const_cast<osgEarth::GeoExtent*>(&context->extent().get()));
   //if (prop == "geocentric")

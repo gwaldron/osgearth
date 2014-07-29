@@ -1,0 +1,88 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#include "MBTilesOptions"
+
+#include <osgEarth/TileSource>
+#include <osgEarth/ThreadingUtils>
+#include <osgDB/ObjectWrapper>
+
+// forward declare
+struct sqlite3;
+
+namespace osgEarth { namespace Drivers { namespace MBTiles
+{
+    /**
+     * TileSource that reads and writes the MapBox MBTiles format.
+     * https://www.mapbox.com/foundations/an-open-platform/#storing-tiles
+     */
+    class MBTilesTileSource : public TileSource
+    {
+    public:
+
+        /** Constructor */
+        MBTilesTileSource(const TileSourceOptions& options);
+
+    public: // TileSource interface
+
+        Status initialize(const osgDB::Options* dbOptions);
+
+        /** Reads and image from the mbtiles db */
+        osg::Image* createImage(
+            const TileKey&    key, 
+            ProgressCallback* progress);
+        
+        /** Stores an image to the mbtiles db */
+        bool storeImage(
+            const TileKey&    key,
+            osg::Image*       image,
+            ProgressCallback* progress);
+
+        std::string getExtension() const;
+
+        CachePolicy getCachePolicyHint(const Profile* targetProfile) const;
+
+
+    protected:
+        void computeLevels();
+
+        bool getMetaData(const std::string& name, std::string& value);
+
+        bool putMetaData(const std::string& name, const std::string& value);
+
+        bool createTables();
+
+    private:
+        const MBTilesTileSourceOptions _options;    
+        sqlite3* _database;
+        unsigned int _minLevel;
+        unsigned int _maxLevel;
+        osg::ref_ptr< osg::Image> _emptyImage;
+
+        osg::ref_ptr<osgDB::ReaderWriter> _rw;
+        osg::ref_ptr<osgDB::Options> _dbOptions;
+        osg::ref_ptr<osgDB::BaseCompressor> _compressor;
+        std::string _tileFormat;
+        bool _forceRGB;
+
+        // because no one knows if/when sqlite3 is threadsafe.
+        mutable Threading::Mutex _mutex; 
+    };
+
+} } } // namespace osgEarth::Drivers::MBTiles

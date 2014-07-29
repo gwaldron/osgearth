@@ -305,9 +305,7 @@ ImageOverlay::init()
         if ( Registry::capabilities().supportsGLSL() )
         {
             //OE_WARN << LC << "ShaderGen RUNNING" << std::endl;
-            ShaderGenerator gen;
-            gen.setProgramName( "osgEarth.ImageOverlay" );
-            gen.run( _geode );
+            Registry::shaderGenerator().run( _geode, "osgEarth.ImageOverlay" );
         }
     }
 }

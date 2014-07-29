@@ -11,4 +11,5 @@ resource within osgEarth.
    model/index
    feature/index
    terrain/index
-   loaders/index
+   effects/index
+   cache/index

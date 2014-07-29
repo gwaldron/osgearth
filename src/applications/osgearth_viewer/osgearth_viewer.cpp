@@ -17,17 +17,15 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osg/Notify>
 #include <osgViewer/Viewer>
+#include <osgEarth/Notify>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
-#include <osgEarthAnnotation/ModelNode>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Annotation;
 
 int
 usage(const char* name)
@@ -54,7 +52,7 @@ main(int argc, char** argv)
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
-    //Tell the database pager to not modify the unref settings
+    // Tell the database pager to not modify the unref settings
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
     // install our default manipulator (do this before calling load)
@@ -67,15 +65,13 @@ main(int argc, char** argv)
     {
         viewer.setSceneData( node );
 
-        // configure the near/far so we don't clip things that are up close
         viewer.getCamera()->setNearFarRatio(0.00002);
         viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-        viewer.run();
+        return viewer.run();
     }
     else
     {
         return usage(argv[0]);
     }
-    return 0;
 }

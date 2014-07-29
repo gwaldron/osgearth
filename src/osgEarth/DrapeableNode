@@ -43,13 +43,20 @@ namespace osgEarth
          */
         DrapeableNode( MapNode* mapNode, bool active =true );
 
+        /** Sets the rendering order of the draped geometry */
+        void setRenderOrder(int order);
+        const optional<int>& renderOrder() const { return _renderOrder; }
+
         /** Backwards compatibility */
         void setDraped( bool value ) { setActive(value); }
         bool getDraped() const { return getActive(); }
 
+
     protected:
         /** dtor */
         virtual ~DrapeableNode() { }
+
+        optional<int> _renderOrder;
     };
 
 } // namespace osgEarth

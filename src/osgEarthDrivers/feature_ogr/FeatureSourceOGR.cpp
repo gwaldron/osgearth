@@ -19,6 +19,7 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+#include <osgEarth/StringUtils>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/BufferFilter>
@@ -42,6 +43,22 @@ using namespace osgEarth::Drivers;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
+namespace
+{
+    // helper function.
+    OGRLayerH openLayer(OGRDataSourceH ds, const std::string& layer)
+    {
+        OGRLayerH h = OGR_DS_GetLayerByName(ds, layer.c_str());
+        if ( !h )
+        {
+            unsigned index = osgEarth::as<unsigned>(layer, 0);
+            h = OGR_DS_GetLayer(ds, index);
+        }
+        return h;
+    }
+}
+
+
 /**
  * A FeatureSource that reads features from an OGR driver.
  *
@@ -53,7 +70,6 @@ public:
     OGRFeatureSource( const OGRFeatureOptions& options ) : FeatureSource( options ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
-      _layerIndex( 0 ),
       _ogrDriverHandle( 0L ),
       _options( options ),
       _featureCount(-1),
@@ -160,12 +176,8 @@ public:
             {
                 if (openMode == 1) _writable = true;
                 
-                if ( _options.layer().isSet() )
-                {
-                    _layerIndex = _options.layer().value();
-                }                
+                _layerHandle = openLayer(_dsHandle, _options.layer().value());
 
-                _layerHandle = OGR_DS_GetLayer( _dsHandle, _layerIndex );
                 if ( _layerHandle )
                 {                                     
                     GeoExtent extent;
@@ -201,14 +213,21 @@ public:
                     // assuming we successfully opened the layer, build a spatial index if requested.
                     if ( _options.buildSpatialIndex() == true )
                     {
-                        OE_INFO << LC << "Building spatial index for " << getName() << std::endl;
-                        std::stringstream buf;
-                        const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
-                        buf << "CREATE SPATIAL INDEX ON " << name; 
-                        std::string bufStr;
-                        bufStr = buf.str();
-                        OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
-                        OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
+                        if ( (_options.forceRebuildSpatialIndex() == true) || (OGR_L_TestCapability(_layerHandle, OLCFastSpatialFilter) == 0) )
+                        {
+                            OE_INFO << LC << "Building spatial index for " << getName() << std::endl;
+                            std::stringstream buf;
+                            const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
+                            buf << "CREATE SPATIAL INDEX ON " << name;
+                            std::string bufStr;
+                            bufStr = buf.str();
+                            OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
+                            OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
+                        }
+                        else
+                        {
+                            OE_INFO << LC << "Use existing spatial index for " << getName() << std::endl;
+                        }
                     }
 
                     //Get the feature count
@@ -278,7 +297,6 @@ public:
                 _geometry.get(),
                 getFeatureProfile(),
                 _options.filters() );
-                //getFilters() );
         }
         else
         {
@@ -286,11 +304,10 @@ public:
 
             // Each cursor requires its own DS handle so that multi-threaded access will work.
             // The cursor impl will dispose of the new DS handle.
-
             OGRDataSourceH dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
             if ( dsHandle )
             {
-                OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, _layerIndex );
+                OGRLayerH layerHandle = openLayer(dsHandle, _options.layer().get());
 
                 return new FeatureCursorOGR( 
                     dsHandle,
@@ -469,7 +486,6 @@ private:
     std::string _source;
     OGRDataSourceH _dsHandle;
     OGRLayerH _layerHandle;
-    unsigned int _layerIndex;
     OGRSFDriverH _ogrDriverHandle;
     osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
     const OGRFeatureOptions _options;

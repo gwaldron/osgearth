@@ -82,7 +82,7 @@ ResourceLibrary::mergeConfig( const Config& conf )
 Config
 ResourceLibrary::getConfig() const
 {
-    Config conf;
+    Config conf("resources");
     {
         Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
 
@@ -166,19 +166,25 @@ ResourceLibrary::removeResource( Resource* resource )
 
 static Threading::Mutex s_initMutex;
 
-void
+bool
 ResourceLibrary::initialize( const osgDB::Options* dbOptions )
 {
+    bool ok = true;
+
     if ( !_initialized )
     {
         Threading::ScopedMutexLock exclusive(s_initMutex);
         if ( !_initialized )
         {
+            ok = false;
+
             if ( _uri.isSet() )
             {
                 osg::ref_ptr<XmlDocument> xml = XmlDocument::load( *_uri, dbOptions );
                 if ( xml.valid() )
                 {
+                    ok = true;
+
                     Config conf = xml->getConfig();
                     if ( conf.key() == "resources" )
                     {
@@ -195,6 +201,8 @@ ResourceLibrary::initialize( const osgDB::Options* dbOptions )
             _initialized = true;
         }
     }
+
+    return ok;
 }
 
 SkinResource*

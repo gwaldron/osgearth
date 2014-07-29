@@ -1,0 +1,118 @@
+<!-- 
+osgEarth Sample - Detail Texturing
+-->
+
+<map>
+
+    <options elevation_interpolation="bilinear">
+        <terrain min_lod="19" max_lod="19" min_tile_range_factor="7"/>
+    </options>
+    
+    <image name="readymap_imagery" driver="tms" visible="true" opacity="1">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+    
+    <image driver="splat_mask" name="splat" shared="true" visible="false"
+           min_level     ="10" 
+           tile_size     ="5"
+           contrast      ="4.0">
+		<classification_path>
+			H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif
+		</classification_path>
+    </image>
+               
+    <image name="normalmap" driver="noise" shared="true" visible="false"
+           start_lod  ="10"
+           tile_size  ="64"
+           normal_map ="true"
+           frequency  =".001"
+           persistence="0.45"
+           lacunarity ="3.0"
+           octaves    ="6"
+           scale      ="15" >
+    </image> 
+
+    <external>
+        <detail_texture mask_layer="splat"
+                        start_lod ="10"
+                        scale     ="4"
+                        intensity ="0.9"
+                        octaves   ="3"
+                        attenuation_distance="20000">
+            <textures>
+                <texture name="rock"  url="../data/textures/seamless/rock.jpg"/>
+                <texture name="dirt"  url="../data/textures/seamless/dirt5.jpg"/>
+                <texture name="grass" url="../data/textures/seamless/grass.jpg"/>
+                <texture name="water" url="../data/textures/seamless/water.jpg"/>
+            </textures>
+        </detail_texture>
+        
+		<!--
+        <normal_map layer="normalmap"/>
+		-->
+		        
+        <viewpoints>
+            <viewpoint name="one" heading="15" height="4093" lat="46.8545" long="-121.7652" pitch="-29" range="41747"/>
+            <viewpoint name="two" heading="-145.5717976089649" height="1877.697350924835" lat="46.8725220319367" long="-121.6904520329511" pitch="-6.060576722588542" range="4608.703411154525"/>
+            <viewpoint name="three" heading="49.16286972143863" height="1596.743544967845" lat="46.79259290581516" long="-121.7574053228272" pitch="-5.905240611358435" range="2449.290556889881"/>
+        </viewpoints>
+    </external>
+    
+    
+    <model name="trees" driver="feature_geom" enabled="true">
+        <features name="trees" driver="ogr">
+			<geometry>
+				POLYGON((-121.82 46.833, -121.82 46.754, -121.63 46.754, -121.63 46.836))
+			</geometry>
+        </features>
+        
+        <instancing>true</instancing>
+        
+        <fading 
+            duration="1.0"
+            max_range="12000"
+            attenuation_distance="11000"/>
+        
+        <layout>
+            <tile_size_factor>3.5</tile_size_factor>
+            <crop_features>true</crop_features>
+            <level max_range="12000" style="parks-0"/>
+            <level max_range="3000" style="parks-2"/>
+            <level max_range="1000" style="parks-1"/>
+        </layout>
+             
+        <styles>
+            <style type="text/css">
+                parks-0 {
+                   model:               "../data/pinetree.ive";
+                   model-placement:     random;
+                   model-density:       50;
+                   model-scale:         24.0;
+                   altitude-clamping:   terrain;
+                   altitude-resolution: 0.001;
+                }            
+                parks-1 {
+                   model:               "../data/tree.ive";
+                   model-placement:     random;
+                   model-density:       650;
+                   model-scale:         3.0;
+                   altitude-clamping:   terrain;
+                   altitude-resolution: 0.001;
+                }            
+                parks-2 {
+                   model:               "../data/pinetree.ive";
+                   model-placement:     random;
+                   model-density:       350;
+                   model-scale:         20.5;
+                   model-random-seed:   1;
+                   altitude-clamping:   terrain;
+                   altitude-resolution: 0.001;
+                }              
+            </style>
+        </styles>        
+    </model>
+</map>

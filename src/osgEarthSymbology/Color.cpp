@@ -124,8 +124,7 @@ osg::Vec4f( rhs )
 /** Parses a hex color string ("#rrggbb", "#rrggbbaa", "0xrrggbb", etc.) into an OSG color. */
 Color::Color( const std::string& input, Format format )
 {
-    std::string t = input;
-    std::transform( t.begin(), t.end(), t.begin(), ::tolower );
+    std::string t = osgEarth::toLower(input);
     osg::Vec4ub c(0,0,0,255);
 
     unsigned e = 

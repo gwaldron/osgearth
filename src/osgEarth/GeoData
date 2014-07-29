@@ -31,7 +31,7 @@
 
 namespace osgEarth
 {
-    class TerrainHeightProvider;
+    class TerrainResolver;
     class GeoExtent;
 
     /**
@@ -52,6 +52,15 @@ namespace osgEarth
             const AltitudeMode& mode );
 
         /**
+         * Constructs a GeoPoint with an absolute Z.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            double x,
+            double y,
+            double z );
+
+        /**
          * Constructs a GeoPoint with X and Y coordinates. The Z defaults
          * to zero with an ALTMODE_RELATIVE altitude mode (i.e., 0 meters
          * above the terrain).
@@ -68,6 +77,13 @@ namespace osgEarth
             const SpatialReference* srs,
             const osg::Vec3d&       xyz,
             const AltitudeMode&     mode );
+
+        /**
+         * Constructs a GeoPoint from a vec3 with absolute Z.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            const osg::Vec3d&       xyz);
 
         /**
          * Constructs a new GeoPoint by transforming an existing GeoPoint into
@@ -145,22 +161,22 @@ namespace osgEarth
         /**
          * Transforms this geopoint's Z coordinate (in place)
          */
-        bool transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t );
+        bool transformZ(const AltitudeMode& altMode, const TerrainResolver* t );
 
         /**
          * Transforms and returns the geopoints Z coordinate.
          */
-        bool transformZ(const AltitudeMode& altMode, const TerrainHeightProvider* t, double& out_z) const;
+        bool transformZ(const AltitudeMode& altMode, const TerrainResolver* t, double& out_z) const;
 
         /**
          * Transforms this geopoint's Z to be absolute w.r.t. the vertical datum
          */
-        bool makeAbsolute(const TerrainHeightProvider* t) { return transformZ(ALTMODE_ABSOLUTE, t); }
+        bool makeAbsolute(const TerrainResolver* t) { return transformZ(ALTMODE_ABSOLUTE, t); }
 
         /**
          * Transforms this geopoint's Z to be terrain-relative.
          */
-        bool makeRelative(const TerrainHeightProvider* t) { return transformZ(ALTMODE_RELATIVE, t); }
+        bool makeRelative(const TerrainResolver* t) { return transformZ(ALTMODE_RELATIVE, t); }
 
         /**
          * Transforms this GeoPoint to geographic (lat/long) coords in place.
@@ -180,7 +196,7 @@ namespace osgEarth
          * object that will be used if the point needs to be converted to absolute
          * altitude
          */
-        bool toWorld( osg::Vec3d& out_world, const TerrainHeightProvider* terrain ) const;
+        bool toWorld( osg::Vec3d& out_world, const TerrainResolver* terrain ) const;
 
         /**
          * Converts world coordinates into a geopoint
@@ -600,6 +616,11 @@ namespace osgEarth
             bool rightBorder=true, 
             bool bottomBorder=true, 
             bool topBorder=true);
+
+        /**
+         * Sets alpha to Zero for any pixels that do NOT intersect the masking extent.
+         */
+        void applyAlphaMask(const GeoExtent& maskingExtent);
 
         /**
          * Returns the underlying OSG image and releases the reference pointer.

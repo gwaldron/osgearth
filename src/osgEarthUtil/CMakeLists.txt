@@ -9,9 +9,11 @@ SET(LIB_NAME osgEarthUtil)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(HEADERS_ROOT
+	ActivityMonitorTool
     AnnotationEvents
-    AutoClipPlaneHandler
+    AutoClipPlaneHandler	
     ArcGIS
+    AtlasBuilder
     Common
     Controls
     ContourMap
@@ -20,10 +22,12 @@ SET(HEADERS_ROOT
     DateTime
     DetailTexture
     EarthManipulator
+	Ephemeris
     ExampleResources
     Export
     FeatureManipTool
     FeatureQueryTool
+    Fog
     Formatter
     GeodeticGraticule
     HTM
@@ -31,18 +35,23 @@ SET(HEADERS_ROOT
     LineOfSight
     LinearLineOfSight
     LODBlending
+	LogarithmicDepthBuffer
     MeasureTool
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
     NormalMap
     ObjectLocator
+    Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
-    SkyNode
+	Shadowing
+	SimplexNoise
+    Sky
     SpatialData
     StarData
     TerrainProfile
+	TextureSplatter
     TileIndex
     TileIndexBuilder
     TFS
@@ -55,43 +64,47 @@ SET(HEADERS_ROOT
     WFS
     WMS
 )
-IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
-    SET(HEADERS_ROOT ${HEADERS_ROOT}
-        ShadowUtils)
-ENDIF()
 SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
 
 SET(SOURCES_ROOT
+	ActivityMonitorTool.cpp
     AnnotationEvents.cpp
     ArcGIS.cpp
+    AtlasBuilder.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
     ContourMap.cpp
-    DataScanner.cpp
-    #DateTime.cpp #moved to osgEarth namespace
+    DataScanner.cpp    
     DetailTexture.cpp
     EarthManipulator.cpp
+	Ephemeris.cpp
     ExampleResources.cpp
     FeatureManipTool.cpp
     FeatureQueryTool.cpp
+    Fog.cpp
     GeodeticGraticule.cpp
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
     LODBlending.cpp
+	LogarithmicDepthBuffer.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
     NormalMap.cpp
     ObjectLocator.cpp
+    Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
+	Shadowing.cpp
+	SimplexNoise.cpp
     SpatialData.cpp
-    SkyNode.cpp
+    Sky.cpp
     TerrainProfile.cpp
+	TextureSplatter.cpp
     TileIndex.cpp
     TileIndexBuilder.cpp
     TFS.cpp
@@ -104,10 +117,6 @@ SET(SOURCES_ROOT
     WFS.cpp
     WMS.cpp
 )
-IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "3.1.0")
-    SET(SOURCES_ROOT ${SOURCES_ROOT} 
-        ShadowUtils.cpp)
-ENDIF()
 
 SOURCE_GROUP( Sources FILES ${SOURCES_ROOT} )
 

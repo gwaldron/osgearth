@@ -16,14 +16,14 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_QUICK_RELEASE_GL_OBJECTS
-#define OSGEARTH_ENGINE_MP_QUICK_RELEASE_GL_OBJECTS 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_QUICK_RELEASE_GL_OBJECTS
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_QUICK_RELEASE_GL_OBJECTS 1
 
 #include "Common"
 #include "TileNodeRegistry"
 #include <osg/Camera>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
      * A draw callback to calls another, nested draw callback.
@@ -86,6 +86,6 @@ namespace osgEarth_engine_mp
         osg::ref_ptr<TileNodeRegistry> _tilesToRelease;
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace
 
-#endif // OSGEARTH_ENGINE_MP_QUICK_RELEASE_GL_OBJECTS
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_QUICK_RELEASE_GL_OBJECTS

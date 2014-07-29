@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2013 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -23,14 +23,15 @@
 #include <osg/io_utils>
 
 #include <osgEarth/Common>
-#include <osgEarth/Map>
-#include <osgEarth/MapFrame>
 #include <osgEarth/Cache>
 #include <osgEarth/CacheEstimator>
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarth/FileUtils>
+
+#include <osgEarth/TileVisitor>
 
 #include <iostream>
 #include <sstream>
@@ -46,12 +47,10 @@ int seed( osg::ArgumentParser& args );
 int purge( osg::ArgumentParser& args );
 int usage( const std::string& msg );
 int message( const std::string& msg );
-std::string prettyPrintTime( double seconds );
-std::string prettyPrintSize( double mb );
 
 
 int
-main(int argc, char** argv)
+    main(int argc, char** argv)
 {
     osg::ArgumentParser args(&argc,argv);
 
@@ -60,13 +59,13 @@ main(int argc, char** argv)
     else if ( args.read( "--list" ) )
         return list( args );
     else if ( args.read( "--purge" ) )
-        return purge( args );
+        return purge( args );        
     else
-        return usage("");
+    return usage("");
 }
 
 int
-usage( const std::string& msg )
+    usage( const std::string& msg )
 {
     if ( !msg.empty() )
     {
@@ -77,7 +76,7 @@ usage( const std::string& msg )
         << std::endl
         << "USAGE: osgearth_cache" << std::endl
         << std::endl
-        << "    --list file.earth                   ; Lists info about the cache in a .earth file" << std::endl
+        << "    --list file.earth                   ; Lists info about the cache in a .earth file" << std::endl       
         << std::endl
         << "    --seed file.earth                   ; Seeds the cache in a .earth file"  << std::endl
         << "        [--estimate]                    ; Print out an estimation of the number of tiles, disk space and time it will take to perform this seed operation" << std::endl
@@ -87,7 +86,10 @@ usage( const std::string& msg )
         << "        [--index shapefile]             ; Use the feature extents in a shapefile to set the bounding boxes for seeding" << std::endl
         << "        [--cache-path path]             ; Overrides the cache path in the .earth file" << std::endl
         << "        [--cache-type type]             ; Overrides the cache type in the .earth file" << std::endl
-        << "        [--threads]                     ; The number of threads to use for the seed operation (default=1)" << std::endl
+        << "        [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
+        << "        [--mt]                          ; Use multithreading to process the tiles." << std::endl
+        << "        [--concurrency]                 ; The number of threads or proceses to use if --mp or --mt are provided." << std::endl
+        << "        [--verbose]                     ; Displays progress of the seed operation" << std::endl
         << std::endl
         << "    --purge file.earth                  ; Purges a layer cache in a .earth file (interactive)" << std::endl
         << std::endl;
@@ -105,21 +107,21 @@ int message( const std::string& msg )
 }
 
 int
-seed( osg::ArgumentParser& args )
+    seed( osg::ArgumentParser& args )
 {    
+    osgDB::Registry::instance()->getReaderWriterForExtension("png");
+    osgDB::Registry::instance()->getReaderWriterForExtension("jpg");
+    osgDB::Registry::instance()->getReaderWriterForExtension("tiff");
 
     //Read the min level
     unsigned int minLevel = 0;
     while (args.read("--min-level", minLevel));
-    
+
     //Read the max level
     unsigned int maxLevel = 5;
     while (args.read("--max-level", maxLevel));
 
     bool estimate = args.read("--estimate");        
-
-    unsigned int threads = 1;
-    while (args.read("--threads", threads));
     
 
     std::vector< Bounds > bounds;
@@ -132,6 +134,9 @@ seed( osg::ArgumentParser& args )
         bounds.push_back( b );
     }    
 
+    std::string tileList;
+    while (args.read( "--tiles", tileList ) );
+
     //Read the cache override directory
     std::string cachePath;
     while (args.read("--cache-path", cachePath));
@@ -142,6 +147,21 @@ seed( osg::ArgumentParser& args )
 
     bool verbose = args.read("--verbose");
 
+    unsigned int batchSize = 0;
+    args.read("--batchsize", batchSize);
+
+    // Read the concurrency level
+    unsigned int concurrency = 0;
+    args.read("-c", concurrency);
+    args.read("--concurrency", concurrency);
+
+    int imageLayerIndex = -1;
+    args.read("--image", imageLayerIndex);
+
+    int elevationLayerIndex = -1;
+    args.read("--elevation", elevationLayerIndex);
+
+
     //Read in the earth file.
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
@@ -150,7 +170,7 @@ seed( osg::ArgumentParser& args )
     MapNode* mapNode = MapNode::findMapNode( node.get() );
     if ( !mapNode )
         return usage( "Input file was not a .earth file" );
-    
+
     // Read in an index shapefile
     std::string index;
     while (args.read("--index", index))
@@ -193,46 +213,181 @@ seed( osg::ArgumentParser& args )
         double size = est.getSizeInMB();
         double time = est.getTotalTimeInSeconds();
         std::cout << "Cache Estimation " << std::endl
-                  << "---------------- " << std::endl
-                  << "Total number of tiles: " << numTiles << std::endl
-                  << "Size on disk:          " << prettyPrintSize( size ) << std::endl
-                  << "Total time:            " << prettyPrintTime( time ) << std::endl;
+            << "---------------- " << std::endl
+            << "Total number of tiles: " << numTiles << std::endl
+            << "Size on disk:          " << osgEarth::prettyPrintSize( size ) << std::endl
+            << "Total time:            " << osgEarth::prettyPrintTime( time ) << std::endl;
 
         return 0;
     }
+    
+    osg::ref_ptr< TileVisitor > visitor;
 
-    CacheSeed seeder;
-    seeder.setMinLevel( minLevel );
-    seeder.setMaxLevel( maxLevel );
-    seeder.setNumThreads( threads );
+
+    // If we are given a task file, load it up and create a new TileKeyListVisitor
+    if (!tileList.empty())
+    {        
+        TaskList tasks( mapNode->getMap()->getProfile() );
+        tasks.load( tileList );
+
+        TileKeyListVisitor* v = new TileKeyListVisitor();
+        v->setKeys( tasks.getKeys() );
+        visitor = v;        
+        OE_DEBUG << "Read task list with " << tasks.getKeys().size() << " tasks" << std::endl;
+    }
+  
+
+    // If we dont' have a visitor create one.
+    if (!visitor.valid())
+    {
+        if (args.read("--mt"))
+        {
+            // Create a multithreaded visitor
+            MultithreadedTileVisitor* v = new MultithreadedTileVisitor();
+            if (concurrency > 0)
+            {
+                v->setNumThreads(concurrency);
+            }
+            visitor = v;            
+        }
+        else if (args.read("--mp"))
+        {
+            // Create a multiprocess visitor
+            MultiprocessTileVisitor* v = new MultiprocessTileVisitor();
+            if (concurrency > 0)
+            {
+                v->setNumProcesses(concurrency);
+            }
+
+            if (batchSize > 0)
+            {                
+                v->setBatchSize(batchSize);
+            }
+
+            // Try to find the earth file
+            std::string earthFile;
+            for(int pos=1;pos<args.argc();++pos)
+            {
+                if (!args.isOption(pos))
+                {
+                    earthFile  = args[ pos ];
+                    break;
+                }
+            }
+            v->setEarthFile( earthFile );            
+            visitor = v;            
+        }
+        else
+        {
+            // Create a single thread visitor
+            visitor = new TileVisitor();            
+        }        
+    }
+
+    osg::ref_ptr< ProgressCallback > progress = new ConsoleProgressCallback();
+    
+    if (verbose)
+    {
+        visitor->setProgressCallback( progress );
+    }
+
+    visitor->setMinLevel( minLevel );
+    visitor->setMaxLevel( maxLevel );        
 
 
     for (unsigned int i = 0; i < bounds.size(); i++)
     {
         GeoExtent extent(mapNode->getMapSRS(), bounds[i]);
-        OE_DEBUG << "Adding extent " << extent.toString() << std::endl;
-        seeder.addExtent( extent );
+        OE_DEBUG << "Adding extent " << extent.toString() << std::endl;                
+        visitor->addExtent( extent );
     }    
+    
 
-    if (verbose)
+    // Initialize the seeder
+    CacheSeed seeder;
+    seeder.setVisitor(visitor.get());
+
+    osgEarth::Map* map = mapNode->getMap();
+
+    // They want to seed an image layer
+    if (imageLayerIndex >= 0)
     {
-        seeder.setProgressCallback(new ConsoleProgressCallback);
+        osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt( imageLayerIndex );
+        if (layer)
+        {
+            OE_NOTICE << "Seeding single layer " << layer->getName() << std::endl;
+            osg::Timer_t start = osg::Timer::instance()->tick();        
+            seeder.run(layer, map);
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }    
+        }
+        else
+        {
+            std::cout << "Failed to find an image layer at index " << imageLayerIndex << std::endl;
+            return 1;
+        }
+
     }
+    // They want to seed an elevation layer
+    else if (elevationLayerIndex >= 0)
+    {
+        osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt( elevationLayerIndex );
+        if (layer)
+        {
+            OE_NOTICE << "Seeding single layer " << layer->getName() << std::endl;
+            osg::Timer_t start = osg::Timer::instance()->tick();        
+            seeder.run(layer, map);
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }    
+        }
+        else
+        {
+            std::cout << "Failed to find an elevation layer at index " << elevationLayerIndex << std::endl;
+            return 1;
+        }
+    }
+    // They want to seed the entire map
+    else
+    {                
+        // Seed all the map layers
+        for (unsigned int i = 0; i < map->getNumImageLayers(); ++i)
+        {            
+            osg::ref_ptr< ImageLayer > layer = map->getImageLayerAt(i);
+            OE_NOTICE << "Seeding layer" << layer->getName() << std::endl;            
+            osg::Timer_t start = osg::Timer::instance()->tick();
+            seeder.run(layer.get(), map);            
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }                
+        }
 
-
-    osg::Timer_t start = osg::Timer::instance()->tick();
-
-    seeder.seed( mapNode->getMap() );
-
-    osg::Timer_t end = osg::Timer::instance()->tick();
-
-    OE_NOTICE << "Completed seeding in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+        for (unsigned int i = 0; i < map->getNumElevationLayers(); ++i)
+        {
+            osg::ref_ptr< ElevationLayer > layer = map->getElevationLayerAt(i);
+            OE_NOTICE << "Seeding layer" << layer->getName() << std::endl;
+            osg::Timer_t start = osg::Timer::instance()->tick();
+            seeder.run(layer.get(), map);            
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            if (verbose)
+            {
+                OE_NOTICE << "Completed seeding layer " << layer->getName() << " in " << prettyPrintTime( osg::Timer::instance()->delta_s( start, end ) ) << std::endl;
+            }                
+        }        
+    }    
 
     return 0;
 }
 
 int
-list( osg::ArgumentParser& args )
+    list( osg::ArgumentParser& args )
 {
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
@@ -295,10 +450,10 @@ struct Entry
 
 
 int
-purge( osg::ArgumentParser& args )
+    purge( osg::ArgumentParser& args )
 {
     //return usage( "Sorry, but purge is not yet implemented." );
-    
+
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
         return usage( "Failed to read .earth file." );
@@ -420,42 +575,4 @@ purge( osg::ArgumentParser& args )
     }
 
     return 0;
-}
-
-/**
- * Gets the total number of seconds formatted as H:M:S
- */
-std::string prettyPrintTime( double seconds )
-{
-    int hours = (int)floor(seconds / (3600.0) );
-    seconds -= hours * 3600.0;
-
-    int minutes = (int)floor(seconds/60.0);
-    seconds -= minutes * 60.0;
-
-    std::stringstream buf;
-    buf << hours << ":" << minutes << ":" << seconds;
-    return buf.str();
-}
-
-/**
- * Gets a pretty printed version of the given size in MB.
- */
-std::string prettyPrintSize( double mb )
-{
-    std::stringstream buf;
-    // Convert to terabytes
-    if ( mb > 1024 * 1024 )
-    {
-        buf << (mb / (1024.0*1024.0)) << " TB";
-    }
-    else if (mb > 1024)
-    {
-        buf << (mb / 1024.0) << " GB";
-    }
-    else 
-    {
-        buf << mb << " MB";
-    }
-    return buf.str();
 }

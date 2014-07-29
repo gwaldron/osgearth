@@ -103,9 +103,7 @@ namespace osgEarth { namespace Symbology
     private:
 
         std::string normalize( const std::string& input ) const {
-            std::string output = input;
-            std::transform( output.begin(), output.end(), output.begin(), tolower );
-            return output;
+            return osgEarth::toLower(input);
         }
     };
 

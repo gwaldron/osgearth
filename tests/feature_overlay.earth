@@ -1,7 +1,6 @@
 <!--
 osgEarth Sample
-
-Demonstrate the Altitude Symbol and GPU-based vertex clamping.
+Drawing simple lines at a set altitude.
 -->
 
 <map name="Geometry Rasterizer Demo" type="round" version="2">
@@ -12,6 +11,7 @@ Demonstrate the Altitude Symbol and GPU-based vertex clamping.
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
+        <cache_policy usage="no_cache"/>
     </image>
     
     <model name="world_boundaries" driver="feature_geom">
@@ -21,8 +21,6 @@ Demonstrate the Altitude Symbol and GPU-based vertex clamping.
             <url>../data/world.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-		
-		<feature_indexing/>	
                 
         <styles>
             <style type="text/css">

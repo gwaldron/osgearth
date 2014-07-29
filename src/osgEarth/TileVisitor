@@ -1,0 +1,228 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2013 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_TILEVISITOR_H
+#define OSGEARTH_TILEVISITOR_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileHandler>
+#include <osgEarth/Profile>
+#include <osgEarth/TaskService>
+
+namespace osgEarth
+{
+    /**
+    * Utility class that traverses a Profile and emits TileKey's based on a collection of extents and min/max levels
+    */
+    class OSGEARTH_EXPORT TileVisitor : public osg::Referenced
+    {
+    public:
+
+        TileVisitor();
+
+        TileVisitor(TileHandler* handler);
+
+        /**
+        * Sets the minimum level to visit
+        */
+        void setMinLevel(const unsigned int& minLevel) {_minLevel = minLevel;}
+
+        /**
+        * Gets the minimum level to visit
+        */
+        const unsigned int getMinLevel() const {return _minLevel;}
+
+        /**
+        * Sets the maximum level to visit
+        */
+        void setMaxLevel(const unsigned int& maxLevel) {_maxLevel = maxLevel;}
+
+        /**
+        * Gets the maximum level to visit
+        */
+        const unsigned int getMaxLevel() const {return _maxLevel;}
+  
+
+        /**
+        * Extents to visit
+        */
+        void addExtent( const GeoExtent& extent ); 
+        const std::vector< GeoExtent >& getExtents() const { return _extents; }  
+
+        virtual void run(const Profile* mapProfile);
+
+        bool intersects( const GeoExtent& extent );    
+
+        void setTileHandler( TileHandler* handler );
+
+        void setProgressCallback( ProgressCallback* progress );
+
+        void incrementProgress( unsigned int progress );
+
+        void resetProgress();
+        
+
+    protected:        
+
+        void estimate();
+
+        virtual bool handleTile( const TileKey& key );
+
+        void processKey( const TileKey& key );
+
+        unsigned int _minLevel;
+        unsigned int _maxLevel;
+
+        std::vector< GeoExtent > _extents;
+
+        osg::ref_ptr< TileHandler > _tileHandler;
+
+        osg::ref_ptr< ProgressCallback > _progress;
+
+        osg::ref_ptr< const Profile > _profile;
+
+        OpenThreads::Mutex _progressMutex;
+
+        unsigned int _total;
+        unsigned int _processed;        
+    };
+
+
+    /**
+    * A TileVisitor that pushes all of it's generated keys onto a TaskService queue and handles them in background threads.
+    */
+    class OSGEARTH_EXPORT MultithreadedTileVisitor: public TileVisitor
+    {
+    public:
+        MultithreadedTileVisitor();
+
+        MultithreadedTileVisitor( TileHandler* handler );
+
+        unsigned int getNumThreads() const;
+        void setNumThreads( unsigned int numThreads);
+
+        virtual void run(const Profile* mapProfile);
+
+    protected:
+
+        virtual bool handleTile( const TileKey& key );
+
+        unsigned int _numThreads;
+
+        // The work queue to pass seed operations to
+        osg::ref_ptr<osgEarth::TaskService> _taskService;
+    };
+
+
+    typedef std::vector< TileKey > TileKeyList;
+
+    
+    /**
+     * A list of TileKeys that you can serialize to a file
+     */
+    class OSGEARTH_EXPORT TaskList
+    {    
+    public:
+        TaskList(const Profile* profile);
+
+        /**
+         * Loads the tiles from the given file.
+         */
+        bool load( const std::string &filename);          
+
+        /**
+         * Saves the tiles to the given file.
+         */
+        void save( const std::string& filename);
+
+        /**
+         * Gets the list of keys
+         */
+        TileKeyList& getKeys();
+
+        const TileKeyList& getKeys() const;
+
+    protected:
+        TileKeyList _keys;
+        osg::ref_ptr< const Profile > _profile;
+    };
+
+
+
+
+    /**
+    * A TileVisitor that launches an external process to process tiles.
+    */
+    class OSGEARTH_EXPORT MultiprocessTileVisitor: public TileVisitor
+    {
+    public:
+        MultiprocessTileVisitor();
+
+        MultiprocessTileVisitor( TileHandler* handler );
+
+        unsigned int getNumProcesses() const;
+        void setNumProcesses( unsigned int numProcesses);
+
+        unsigned int getBatchSize() const;
+        void setBatchSize( unsigned int batchSize );
+
+        virtual void run(const Profile* mapProfile);          
+
+        const std::string& getEarthFile() const;
+        void setEarthFile( const std::string& earthFile );
+
+    protected:
+
+        virtual bool handleTile( const TileKey& key );
+
+        void processBatch();
+
+        TileKeyList _batch;
+
+        unsigned int _batchSize;
+        unsigned int _numProcesses;    
+
+        std::string _earthFile;
+
+        // The work queue to pass seed operations to
+        osg::ref_ptr<osgEarth::TaskService> _taskService;        
+    };
+
+    
+    /**
+    * A TileVisitor that simply emits keys from a list.  Useful for running a list of tasks.
+    */
+    class OSGEARTH_EXPORT TileKeyListVisitor : public TileVisitor
+    {
+    public:
+        TileKeyListVisitor();
+
+        void setKeys(const TileKeyList& keys);
+        
+        virtual void run(const Profile* mapProfile);
+
+    protected:
+        
+        TileKeyList _keys;
+    };
+
+
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_TRAVERSAL_DATA_H

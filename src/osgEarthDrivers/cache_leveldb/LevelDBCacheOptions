@@ -1,0 +1,114 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_CACHE_LEVELDB_OPTIONS
+#define OSGEARTH_DRIVER_CACHE_LEVELDB_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Cache>
+#include <string>
+
+namespace osgEarth { namespace Drivers { namespace LevelDBCache
+{
+    using namespace osgEarth;
+    
+    /**
+     * Serializable options for the LevelDBCache.
+     */
+    class LevelDBCacheOptions : public CacheOptions
+    {
+    public:
+        LevelDBCacheOptions( const ConfigOptions& options =ConfigOptions() )
+            : CacheOptions    ( options ),
+              _maxSizeMB      ( 0 ),
+              _sizeCheckPeriod( 100 ),
+              _sizePurgePeriod( 75 ),
+              _blockSize      ( 262144 )// 256K
+        {
+            setDriver( "leveldb" );
+            fromConfig( _conf ); 
+        }
+
+        /** dtor */
+        virtual ~LevelDBCacheOptions() { }
+
+    public:
+        /** Folder containing the cache bins. */
+        optional<std::string>& rootPath() { return _path; }
+        const optional<std::string>& rootPath() const { return _path; }
+
+        /** Maximum size of the cache in megabytes. Note: this is not
+         *  a guarantee - merely a guideline. */
+        optional<unsigned>& maxSizeMB() { return _maxSizeMB; }
+        const optional<unsigned>& maxSizeMB() const { return _maxSizeMB; }
+
+        //--- Advanced options ---
+
+        /** Number of writes between cap checks */
+        optional<unsigned>& sizeCheckPeriod() { return _sizeCheckPeriod; }
+        const optional<unsigned>& sizeCheckPeriod() const { return _sizeCheckPeriod; }
+
+        /** Number of writer between cap purges */
+        optional<unsigned>& sizePurgePeriod() { return _sizePurgePeriod; }
+        const optional<unsigned>& sizePurgePeriod() const { return _sizePurgePeriod; }
+
+        /** Leveldb block size */
+        optional<unsigned>& blockSize() { return _blockSize; }
+        const optional<unsigned>& blockSize() const { return _blockSize; }
+
+        /** Obfuscation key string */
+        optional<std::string>& key() { return _key; }
+        const optional<std::string>& key() const { return _key; }
+
+    public:
+        virtual Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.addIfSet( "path", _path );
+            conf.addIfSet( "max_size_mb", _maxSizeMB );
+            conf.addIfSet( "size_check_period", _sizeCheckPeriod );
+            conf.addIfSet( "size_purge_period", _sizePurgePeriod );
+            conf.addIfSet( "block_size", _blockSize );
+            conf.addIfSet( "key", _key );
+            return conf;
+        }
+        virtual void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "path", _path );
+            conf.getIfSet( "max_size_mb", _maxSizeMB );
+            conf.getIfSet( "size_check_period", _sizeCheckPeriod );
+            conf.getIfSet( "size_purge_period", _sizePurgePeriod );
+            conf.getIfSet( "block_size", _blockSize );
+            conf.getIfSet( "key", _key );
+        }
+
+        optional<std::string> _path;
+        optional<unsigned>    _maxSizeMB;
+        optional<unsigned>    _sizeCheckPeriod;
+        optional<unsigned>    _sizePurgePeriod;
+        optional<unsigned>    _blockSize;
+        optional<std::string> _key;
+    };
+
+} } } // namespace osgEarth::Drivers::LevelDBCache
+
+#endif // OSGEARTH_DRIVER_CACHE_LEVELDB_OPTIONS

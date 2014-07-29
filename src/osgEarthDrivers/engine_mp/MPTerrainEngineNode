@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_ENGINE_MP_ENGINE_NODE_H
-#define OSGEARTH_ENGINE_MP_ENGINE_NODE_H 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_ENGINE_NODE_H
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_ENGINE_NODE_H 1
 
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
@@ -37,7 +37,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     class MPTerrainEngineNode : public TerrainEngineNode
     {
@@ -53,19 +53,22 @@ namespace osgEarth_engine_mp
         /** Creates a tile node with no support for paging in subtiles. */
         osg::Node* createStandaloneNode(const TileKey& key, ProgressCallback* progress =0L);
 
-        /** Creates a tile node that is upsampled from an existing lower-LOD node. */
-        osg::Node* createUpsampledNode(const TileKey& key, ProgressCallback* progress =0L);
-
     public: // TerrainEngineNode
 
         // for standalone tile creation outside of a terrain
         osg::Node* createTile(const TileKey& key);
+        
+        // when incremental update is enabled, forces regeneration of tiles
+        // in the given region.
+        void invalidateRegion(
+            const GeoExtent& extent,
+            unsigned         minLevel,
+            unsigned         maxLevel);
 
     public: // internal TerrainEngineNode
 
         virtual void preInitialize( const Map* map, const TerrainOptions& options );
         virtual void postInitialize( const Map* map, const TerrainOptions& options );
-        virtual void validateTerrainOptions( TerrainOptions& options );
         virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
         virtual osg::BoundingSphere computeBound() const;
 
@@ -99,7 +102,7 @@ namespace osgEarth_engine_mp
 
     protected:
         // override from TerrainEngineNode
-        virtual void updateTextureCombining() { updateShaders(); }
+        virtual void updateTextureCombining() { updateState(); }
 
     private:
         void init();
@@ -119,10 +122,10 @@ namespace osgEarth_engine_mp
         void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
         void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
         
-        void updateShaders(); 
+        void updateState(); 
 
     private:
-        osgEarth::Drivers::MPTerrainEngineOptions _terrainOptions;
+        MPTerrainEngineOptions _terrainOptions;
 
         class TerrainNode* _terrain;
         UID                _uid;
@@ -131,7 +134,7 @@ namespace osgEarth_engine_mp
         Revision           _shaderLibRev;
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
-        bool               _shaderUpdateRequired;
+        bool               _stateUpdateRequired;
         bool               _rootTilesRegistered;
         Threading::Mutex   _rootTilesRegisteredMutex;
 
@@ -159,6 +162,6 @@ namespace osgEarth_engine_mp
         MPTerrainEngineNode( const MPTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
     };
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_ENGINE_NODE_H
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_ENGINE_NODE_H

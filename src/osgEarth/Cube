@@ -131,8 +131,8 @@ namespace osgEarth
 
         // This SRS uses a WGS84 lat/long SRS under the hood for reprojection. So we need the
         // pre/post transforms to move from cube to latlong and back.
-        virtual bool preTransform ( std::vector<osg::Vec3d>& points ) const;
-        virtual bool postTransform( std::vector<osg::Vec3d>& points ) const;
+        virtual const SpatialReference* preTransform ( std::vector<osg::Vec3d>& points ) const;
+        virtual const SpatialReference* postTransform( std::vector<osg::Vec3d>& points ) const;
 
         virtual bool transformExtentToMBR(
             const SpatialReference* to_srs,
@@ -186,9 +186,12 @@ namespace osgEarth
 
     public: // Profile
 
-        virtual void getIntersectingTiles(
+        void getIntersectingTiles(
             const GeoExtent& extent,
+            unsigned localLOD,
             std::vector< TileKey >& out_intersectingKeys ) const;
+
+        unsigned getEquivalentLOD(const Profile* rhsProfile, unsigned rhsLOD) const;
 
     private:
 

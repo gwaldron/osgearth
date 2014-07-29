@@ -17,9 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderFactory>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
+#include <osg/ComputeBoundsVisitor>
 #include <list>
 
 using namespace osgEarth;
@@ -364,39 +366,20 @@ osg_LightSourceParameters::glslDefinition()
 #define LC "[UpdateLightingUniformHelper] "
 
 UpdateLightingUniformsHelper::UpdateLightingUniformsHelper( bool useUpdateTrav ) :
-_lightingEnabled( true ),
 _dirty          ( true ),
 _applied        ( false ),
 _useUpdateTrav  ( useUpdateTrav )
 {
     _maxLights = Registry::instance()->getCapabilities().getMaxLights();
-
-    _lightEnabled = new bool[ _maxLights ];
-    if ( _maxLights > 0 ){
-        _lightEnabled[0] = true;
-        //allocate light
-        _osgLightSourceParameters.push_back(osg_LightSourceParameters(0));
-    }
-    for(int i=1; i<_maxLights; ++i ){
-        _lightEnabled[i] = true;
-        _osgLightSourceParameters.push_back(osg_LightSourceParameters(i));
-    }
-
-    _lightingEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "oe_mode_GL_LIGHTING" );
-    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::BOOL, "oe_mode_GL_LIGHT", _maxLights );
-
-    if ( !_useUpdateTrav )
+    for(int i=0; i<_maxLights; ++i )
     {
-        // setting the data variance the DYNAMIC makes it safe to change the uniform values
-        // during the CULL traversal.
-        _lightingEnabledUniform->setDataVariance( osg::Object::DYNAMIC );
-        _lightEnabledUniform->setDataVariance( osg::Object::DYNAMIC );
+        _osgLightSourceParameters.push_back(osg_LightSourceParameters(i));
     }
 }
 
 UpdateLightingUniformsHelper::~UpdateLightingUniformsHelper()
 {
-    delete [] _lightEnabled;
+    //nop
 }
 
 void
@@ -421,6 +404,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
             sg = sg->_parent;
         }
 
+#if 0
         // Update the overall lighting-enabled value:
         bool lightingEnabled =
             ( getModeValue(stateSetStack, GL_LIGHTING) & osg::StateAttribute::ON ) != 0;
@@ -433,6 +417,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
             else
                 _lightingEnabledUniform->set( _lightingEnabled );
         }
+#endif
 
         osg::View* view = cv->getCurrentCamera()->getView();
         if ( view )
@@ -445,6 +430,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
             }
         }
 
+#if 0
         else
         {
             // Update the list of enabled lights:
@@ -478,6 +464,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
                 }
             }	
         }
+#endif
 
         // apply if necessary:
         if ( !_applied && !_useUpdateTrav )
@@ -485,8 +472,8 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _stateSetMutex );
             if (!_applied)
             {
-                node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
-                node->getStateSet()->addUniform( _lightEnabledUniform.get() );
+                //node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
+                //node->getStateSet()->addUniform( _lightEnabledUniform.get() );
                 for( int i=0; i < _maxLights; ++i )
                 {
                     _osgLightSourceParameters[i].applyState(node->getStateSet());
@@ -502,18 +489,18 @@ UpdateLightingUniformsHelper::updateTraverse( osg::Node* node )
 {
     if ( _dirty )
     {
-        _lightingEnabledUniform->set( _lightingEnabled );
+        //_lightingEnabledUniform->set( _lightingEnabled );
 
-        for( int i=0; i < _maxLights; ++i )
-            _lightEnabledUniform->setElement( i, _lightEnabled[i] );
+        //for( int i=0; i < _maxLights; ++i )
+            //_lightEnabledUniform->setElement( i, _lightEnabled[i] );
 
         _dirty = false;
 
         if ( !_applied )
         {
             osg::StateSet* stateSet = node->getOrCreateStateSet();
-            stateSet->addUniform( _lightingEnabledUniform.get() );
-            stateSet->addUniform( _lightEnabledUniform.get() );
+            //stateSet->addUniform( _lightingEnabledUniform.get() );
+            //stateSet->addUniform( _lightEnabledUniform.get() );
             for( int i=0; i < _maxLights; ++i )
             {
                 _osgLightSourceParameters[i].applyState(stateSet);
@@ -733,6 +720,85 @@ ArrayUniform::detach()
             _stateSet = 0L;
 
             stateSet_safe.release(); // don't want to unref delete
+        }
+    }
+}
+
+//...................................................................
+
+RangeUniformCullCallback::RangeUniformCullCallback() :
+_dump( false )
+{
+    _uniform = osgEarth::Registry::instance()->shaderFactory()->createRangeUniform();
+
+    _stateSet = new osg::StateSet();
+    _stateSet->addUniform( _uniform.get() );
+}
+
+void
+RangeUniformCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+
+    const osg::BoundingSphere& bs = node->getBound();
+
+    float range = nv->getDistanceToViewPoint( bs.center(), true );
+
+    // range = distance from the viewpoint to the outside of the bounding sphere.
+    _uniform->set( range - bs.radius() );
+
+    if ( _dump )
+    {
+        OE_NOTICE
+            << "Range = " << range 
+            << ", center = " << bs.center().x() << "," << bs.center().y()
+            << ", radius = " << bs.radius() << std::endl;
+    }
+    
+    cv->pushStateSet( _stateSet.get() );
+    traverse(node, nv);
+    cv->popStateSet();
+}
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    
+}
+
+void
+DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
+{
+    if ( ss && minAlpha < 1.0f )
+    {
+        VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+        if ( vp )
+        {
+            std::string code = Stringify()
+                << "#version " GLSL_VERSION_STR "\n"
+                << "void oe_discardalpha_frag(inout vec4 color) { \n"
+                << "    if ( color.a < " << std::setprecision(1) << minAlpha << ") discard;\n"
+                << "} \n";
+
+            vp->setFunction(
+                "oe_discardalpha_frag",
+                code,
+                ShaderComp::LOCATION_FRAGMENT_COLORING,
+                0L, 2.0f);
+        }
+    }
+}
+ 
+void
+DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
+{
+    if ( ss )
+    {
+        VirtualProgram* vp = VirtualProgram::get(ss);
+        if ( vp )
+        {
+            vp->removeShader("oe_discardalpha_frag");
         }
     }
 }

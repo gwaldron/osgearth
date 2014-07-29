@@ -59,11 +59,14 @@
     v8::Handle<v8::Context> createGlobalContext();
 
     /** Compiles and runs javascript in the current context. */
-    ScriptResult executeScript(v8::Handle<v8::String> script);
+    ScriptResult executeScript(v8::Handle<v8::String> script, bool ignoreUndefinedResult=false);
 
   protected:
     v8::Persistent<v8::Context> _globalContext;
     v8::Isolate* _isolate;
+  private:
+    ScriptResult createErrorResult( std::string prefix, const v8::TryCatch& try_catch );
+
   };
 
 //} } } // namespace osgEarth::Drivers::JavascriptV8

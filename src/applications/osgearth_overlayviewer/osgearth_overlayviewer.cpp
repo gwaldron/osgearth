@@ -21,11 +21,15 @@
 #include <osg/Depth>
 #include <osg/LineWidth>
 #include <osgGA/StateSetManipulator>
+#include <osgGA/AnimationPathManipulator>
 #include <osgViewer/CompositeViewer>
+#include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
+#include <osgEarthSymbology/Color>
 
 #define LC "[viewer] "
 
@@ -123,8 +127,7 @@ namespace
 void
 setupOverlayView( osgViewer::View* view, osg::Group* parent, MapNode* mapNode )
 {
-
-    ControlCanvas* canvas = ControlCanvas::get(view, true);
+    ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
 
     VBox* v = canvas->addControl(new VBox());
     v->setBackColor( Color(Color::Black,0.75) );
@@ -166,18 +169,41 @@ main(int argc, char** argv)
     osgViewer::CompositeViewer viewer(arguments);
     viewer.setThreadingModel( osgViewer::CompositeViewer::SingleThreaded );
 
+    // query the screen size.
+    osg::GraphicsContext::ScreenIdentifier si;
+    si.readDISPLAY();
+    if ( si.displayNum < 0 ) si.displayNum = 0;
+    osg::GraphicsContext::WindowingSystemInterface* wsi = osg::GraphicsContext::getWindowingSystemInterface();
+    unsigned width, height;
+    wsi->getScreenResolution( si, width, height );
+    unsigned b = 50;
+
     osgViewer::View* mainView = new osgViewer::View();
     mainView->getCamera()->setNearFarRatio(0.00002);
-    mainView->setCameraManipulator( new EarthManipulator() );
-    mainView->setUpViewInWindow( 50, 50, 600, 600 );
+    EarthManipulator* em = new EarthManipulator();
+    em->getSettings()->setMinMaxPitch(-90, 0);
+    mainView->setCameraManipulator( em );
+    //mainView->setUpViewInWindow( 50, 50, 600, 600 );
+    mainView->setUpViewInWindow( b, b, (width/2)-b*2, (height-b*4) );
     viewer.addView( mainView );
 
     osgViewer::View* overlayView = new osgViewer::View();
     overlayView->getCamera()->setNearFarRatio(0.00002);
-    overlayView->setCameraManipulator( new EarthManipulator() );
-    overlayView->setUpViewInWindow( 700, 50, 600, 600 );
+    EarthManipulator* overlayEM = new EarthManipulator();
+    overlayEM->getSettings()->setCameraProjection(overlayEM->PROJ_ORTHOGRAPHIC);
+    overlayView->setCameraManipulator( overlayEM );
+    
+    //overlayView->setUpViewInWindow( 700, 50, 600, 600 );
+    overlayView->setUpViewInWindow( (width/2), b, (width/2)-b*2, (height-b*4) );
     overlayView->addEventHandler(new osgGA::StateSetManipulator(overlayView->getCamera()->getOrCreateStateSet()));
     viewer.addView( overlayView );
+
+    std::string pathfile;
+    double animationSpeed = 1.0;
+    if (arguments.read("-p", pathfile))
+    {
+        mainView->setCameraManipulator( new osgGA::AnimationPathManipulator(pathfile) );
+    }
 
     osg::Node* node = MapNodeHelper().load( arguments, mainView );
     if ( node )

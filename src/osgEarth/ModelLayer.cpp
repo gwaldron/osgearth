@@ -159,6 +159,8 @@ ModelLayer::initialize( const osgDB::Options* dbOptions )
 {
     if ( !_modelSource.valid() && _initOptions.driver().isSet() )
     {
+        OE_INFO << LC << "Initializing model layer \"" << getName() << "\", driver=\"" << _initOptions.driver()->getDriver() << "\"" << std::endl;
+
         _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
 
         if ( _modelSource.valid() )
@@ -197,14 +199,6 @@ ModelLayer::createSceneGraph(const Map*            map,
                 ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
-
-#if 0 // moved the MapNode level.
-            if ( Registry::capabilities().supportsGLSL() )
-            {
-                // install a callback that keeps the shader uniforms up to date
-                node->addCullCallback( new UpdateLightingUniformsHelper() );
-            }
-#endif
 
             _modelSource->sync( _modelSourceRev );
 

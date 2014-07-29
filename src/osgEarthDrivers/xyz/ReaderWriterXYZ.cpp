@@ -55,8 +55,7 @@ public:
 
     Status initialize(const osgDB::Options* dbOptions)
     {
-        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);        
 
         URI xyzURI = _options.url().value();
         if ( xyzURI.empty() )
@@ -102,6 +101,13 @@ public:
         }
 
         std::string location = _template;
+
+        // support OpenLayers template style:
+        replaceIn( location, "${x}", Stringify() << x );
+        replaceIn( location, "${y}", Stringify() << y );
+        replaceIn( location, "${z}", Stringify() << key.getLevelOfDetail() );
+
+        // failing that, legacy osgearth style:
         replaceIn( location, "{x}", Stringify() << x );
         replaceIn( location, "{y}", Stringify() << y );
         replaceIn( location, "{z}", Stringify() << key.getLevelOfDetail() );

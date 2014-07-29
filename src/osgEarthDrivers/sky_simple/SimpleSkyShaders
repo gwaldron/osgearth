@@ -1,0 +1,677 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_SIMPLE_SKY_SHADERS
+#define OSGEARTH_DRIVER_SIMPLE_SKY_SHADERS 1
+
+#include <osgEarth/VirtualProgram>
+
+namespace osgEarth { namespace Drivers { namespace SimpleSky
+{
+    // Atmospheric Scattering and Sun Shaders
+    // Adapted from code that is Copyright (c) 2004 Sean O'Neil
+
+    static char* Atmosphere_Vertex =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "uniform mat4 osg_ViewMatrixInverse;   // camera position in [3].xyz\n"
+        "uniform vec3 atmos_v3LightDir;        // The direction vector to the light source \n"
+        "uniform vec3 atmos_v3InvWavelength;   // 1 / pow(wavelength,4) for the rgb channels \n"
+        "uniform float atmos_fOuterRadius;     // Outer atmosphere radius \n"
+        "uniform float atmos_fOuterRadius2;    // fOuterRadius^2 \n"		
+        "uniform float atmos_fInnerRadius;     // Inner planetary radius \n"
+        "uniform float atmos_fInnerRadius2;    // fInnerRadius^2 \n"
+        "uniform float atmos_fKrESun;          // Kr * ESun \n"	
+        "uniform float atmos_fKmESun;          // Km * ESun \n"		
+        "uniform float atmos_fKr4PI;           // Kr * 4 * PI \n"	
+        "uniform float atmos_fKm4PI;           // Km * 4 * PI \n"		
+        "uniform float atmos_fScale;           // 1 / (fOuterRadius - fInnerRadius) \n"	
+        "uniform float atmos_fScaleDepth;      // The scale depth \n"
+        "uniform float atmos_fScaleOverScaleDepth;     // fScale / fScaleDepth \n"	
+        "uniform int atmos_nSamples; \n"	
+        "uniform float atmos_fSamples; \n"				
+
+        "varying vec3 atmos_v3Direction; \n"
+        "varying vec3 atmos_mieColor; \n"
+        "varying vec3 atmos_rayleighColor; \n"
+
+        "vec3 vVec; \n"
+        "float atmos_fCameraHeight;    // The camera's current height \n"		
+        "float atmos_fCameraHeight2;   // fCameraHeight^2 \n"
+
+        "float atmos_fastpow(in float x, in float y) \n"
+        "{ \n"
+        "    return x/(x+y-y*x); \n"
+        "} \n"
+
+        "float atmos_scale(float fCos) \n"	
+        "{ \n"
+        "    float x = 1.0 - fCos; \n"
+        "    return atmos_fScaleDepth * exp(-0.00287 + x*(0.459 + x*(3.83 + x*(-6.80 + x*5.25)))); \n"
+        "} \n"
+
+        "void atmos_SkyFromSpace(void) \n"
+        "{ \n"
+        "    // Get the ray from the camera to the vertex and its length (which is the far point of the ray passing through the atmosphere) \n"
+        "    vec3 v3Pos = gl_Vertex.xyz; \n"
+        "    vec3 v3Ray = v3Pos - vVec; \n"
+        "    float fFar = length(v3Ray); \n"
+        "    v3Ray /= fFar; \n"
+
+        "    // Calculate the closest intersection of the ray with the outer atmosphere \n"
+        "    // (which is the near point of the ray passing through the atmosphere) \n"
+        "    float B = 2.0 * dot(vVec, v3Ray); \n"
+        "    float C = atmos_fCameraHeight2 - atmos_fOuterRadius2; \n"
+        "    float fDet = max(0.0, B*B - 4.0 * C); \n"	
+        "    float fNear = 0.5 * (-B - sqrt(fDet)); \n"		
+
+        "    // Calculate the ray's starting position, then calculate its scattering offset \n"
+        "    vec3 v3Start = vVec + v3Ray * fNear; \n"			
+        "    fFar -= fNear; \n"	
+        "    float fStartAngle = dot(v3Ray, v3Start) / atmos_fOuterRadius; \n"			
+        "    float fStartDepth = exp(-1.0 / atmos_fScaleDepth); \n"
+        "    float fStartOffset = fStartDepth*atmos_scale(fStartAngle); \n"		
+
+        "    // Initialize the atmos_ing loop variables \n"	
+        "    float fSampleLength = fFar / atmos_fSamples; \n"		
+        "    float fScaledLength = fSampleLength * atmos_fScale; \n"					
+        "    vec3 v3SampleRay = v3Ray * fSampleLength; \n"	
+        "    vec3 v3SamplePoint = v3Start + v3SampleRay * 0.5; \n"	
+
+        "    // Now loop through the sample rays \n"
+        "    vec3 v3FrontColor = vec3(0.0, 0.0, 0.0); \n"
+        "    vec3 v3Attenuate; \n"  
+        "    for(int i=0; i<atmos_nSamples; i++) \n"		
+        "    { \n"
+        "        float fHeight = length(v3SamplePoint); \n"			
+        "        float fDepth = exp(atmos_fScaleOverScaleDepth * (atmos_fInnerRadius - fHeight)); \n"
+        "        float fLightAngle = dot(atmos_v3LightDir, v3SamplePoint) / fHeight; \n"		
+        "        float fCameraAngle = dot(v3Ray, v3SamplePoint) / fHeight; \n"			
+        "        float fscatter = (fStartOffset + fDepth*(atmos_scale(fLightAngle) - atmos_scale(fCameraAngle))); \n"	
+        "        v3Attenuate = exp(-fscatter * (atmos_v3InvWavelength * atmos_fKr4PI + atmos_fKm4PI)); \n"	
+        "        v3FrontColor += v3Attenuate * (fDepth * fScaledLength); \n"					
+        "        v3SamplePoint += v3SampleRay; \n"		
+        "    } \n"		
+
+        "    // Finally, scale the Mie and Rayleigh colors and set up the varying \n"			
+        "    // variables for the pixel shader \n"	
+        "    atmos_mieColor      = v3FrontColor * atmos_fKmESun; \n"				
+        "    atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"						
+        "    atmos_v3Direction = vVec  - v3Pos; \n"			
+        "} \n"		
+
+        "void atmos_SkyFromAtmosphere(void) \n"		
+        "{ \n"
+        "  // Get the ray from the camera to the vertex, and its length (which is the far \n"
+        "  // point of the ray passing through the atmosphere) \n"		
+        "  vec3 v3Pos = gl_Vertex.xyz; \n"	
+        "  vec3 v3Ray = v3Pos - vVec; \n"			
+        "  float fFar = length(v3Ray); \n"					
+        "  v3Ray /= fFar; \n"				
+
+        "  // Calculate the ray's starting position, then calculate its atmos_ing offset \n"
+        "  vec3 v3Start = vVec; \n"
+        "  float fHeight = length(v3Start); \n"		
+        "  float fDepth = exp(atmos_fScaleOverScaleDepth * (atmos_fInnerRadius - atmos_fCameraHeight)); \n"
+        "  float fStartAngle = dot(v3Ray, v3Start) / fHeight; \n"	
+        "  float fStartOffset = fDepth*atmos_scale(fStartAngle); \n"
+
+        "  // Initialize the atmos_ing loop variables \n"		
+        "  float fSampleLength = fFar / atmos_fSamples; \n"			
+        "  float fScaledLength = fSampleLength * atmos_fScale; \n"				
+        "  vec3 v3SampleRay = v3Ray * fSampleLength; \n"		
+        "  vec3 v3SamplePoint = v3Start + v3SampleRay * 0.5; \n"
+
+        "  // Now loop through the sample rays \n"		
+        "  vec3 v3FrontColor = vec3(0.0, 0.0, 0.0); \n"		
+        "  vec3 v3Attenuate; \n"  
+        "  for(int i=0; i<atmos_nSamples; i++) \n"			
+        "  { \n"	
+        "    float fHeight = length(v3SamplePoint); \n"	
+        "    float fDepth = exp(atmos_fScaleOverScaleDepth * (atmos_fInnerRadius - fHeight)); \n"
+        "    float fLightAngle = dot(atmos_v3LightDir, v3SamplePoint) / fHeight; \n"
+        "    float fCameraAngle = dot(v3Ray, v3SamplePoint) / fHeight; \n"	
+        "    float fscatter = (fStartOffset + fDepth*(atmos_scale(fLightAngle) - atmos_scale(fCameraAngle))); \n"	
+        "    v3Attenuate = exp(-fscatter * (atmos_v3InvWavelength * atmos_fKr4PI + atmos_fKm4PI)); \n"	
+        "    v3FrontColor += v3Attenuate * (fDepth * fScaledLength); \n"		
+        "    v3SamplePoint += v3SampleRay; \n"		
+        "  } \n"
+
+        "  // Finally, scale the Mie and Rayleigh colors and set up the varying \n"
+        "  // variables for the pixel shader \n"					
+        "  atmos_mieColor      = v3FrontColor * atmos_fKmESun; \n"			
+        "  atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"				
+        "  atmos_v3Direction = vVec - v3Pos; \n"				
+        "} \n"
+
+        "void atmos_vertex_main(inout vec4 VertexVIEW) \n"
+        "{ \n"
+        "    // Get camera position and height \n"
+        "    vVec = osg_ViewMatrixInverse[3].xyz; \n"
+        "    atmos_fCameraHeight = length(vVec); \n"
+        "    atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; \n"
+        "    if(atmos_fCameraHeight >= atmos_fOuterRadius) \n"
+        "    { \n"
+        "        atmos_SkyFromSpace(); \n"
+        "    } \n"
+        "    else { \n"
+        "        atmos_SkyFromAtmosphere(); \n"
+        "    } \n"
+        "} \n";
+
+    static char* Atmosphere_Fragment = 
+        "uniform vec3 atmos_v3LightDir; \n"
+
+        "uniform float atmos_g; \n"				
+        "uniform float atmos_g2; \n"
+        "uniform float atmos_fWeather; \n"
+
+        "varying vec3 atmos_v3Direction; \n"	
+        "varying vec3 atmos_mieColor; \n"
+        "varying vec3 atmos_rayleighColor; \n"
+
+        "const float fExposure = 4.0; \n"
+
+        "float atmos_fastpow(in float x, in float y) \n"
+        "{ \n"
+        "    return x/(x+y-y*x); \n"
+        "} \n"
+
+        "void atmos_fragment_main(inout vec4 color) \n"
+        "{ \n"				
+        "    float fCos = dot(atmos_v3LightDir, atmos_v3Direction) / length(atmos_v3Direction); \n"
+        "    float fRayleighPhase = 1.0; \n" // 0.75 * (1.0 + fCos*fCos); \n"
+        "    float fMiePhase = 1.5 * ((1.0 - atmos_g2) / (2.0 + atmos_g2)) * (1.0 + fCos*fCos) / atmos_fastpow(1.0 + atmos_g2 - 2.0*atmos_g*fCos, 1.5); \n"
+        "    vec3 f4Color = fRayleighPhase * atmos_rayleighColor + fMiePhase * atmos_mieColor; \n"
+        "    vec3 skyColor = 1.0 - exp(f4Color * -fExposure); \n"
+        "    color.rgb = skyColor.rgb*atmos_fWeather; \n"
+        "    color.a = (skyColor.r+skyColor.g+skyColor.b) * 2.0; \n"
+        "} \n";
+
+
+    //-- GROUND LIGHTING WITH ATMOSPHERIC SCATTERING --------------------------
+    
+    static const char* Ground_Scattering_Vertex =
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+
+        "uniform mat4 osg_ViewMatrixInverse;   // world camera position in [3].xyz \n"
+        "uniform mat4 osg_ViewMatrix;          // GL view matrix \n"
+        "uniform vec3 atmos_v3LightDir;        // The direction vector to the light source \n"
+        "uniform vec3 atmos_v3InvWavelength;   // 1 / pow(wavelength,4) for the rgb channels \n"
+        "uniform float atmos_fOuterRadius;     // Outer atmosphere radius \n"
+        "uniform float atmos_fOuterRadius2;    // fOuterRadius^2 \n"		
+        "uniform float atmos_fInnerRadius;     // Inner planetary radius \n"
+        "uniform float atmos_fInnerRadius2;    // fInnerRadius^2 \n"
+        "uniform float atmos_fKrESun;          // Kr * ESun \n"	
+        "uniform float atmos_fKmESun;          // Km * ESun \n"		
+        "uniform float atmos_fKr4PI;           // Kr * 4 * PI \n"	
+        "uniform float atmos_fKm4PI;           // Km * 4 * PI \n"		
+        "uniform float atmos_fScale;           // 1 / (fOuterRadius - fInnerRadius) \n"	
+        "uniform float atmos_fScaleDepth;      // The scale depth \n"
+        "uniform float atmos_fScaleOverScaleDepth;     // fScale / fScaleDepth \n"	
+        "uniform int atmos_nSamples; \n"	
+        "uniform float atmos_fSamples; \n"
+
+        "varying vec3 atmos_color; \n"         // primary sky light color
+        "varying vec3 atmos_atten; \n"         // sky light attenuation factor
+        "varying vec3 oe_Normal; \n"           // surface normal (from osgEarth)
+        "varying vec3 atmos_lightDir; \n"      // light direction in view space
+        
+        "float atmos_fCameraHeight;            // The camera's current height \n"		
+        "float atmos_fCameraHeight2;           // fCameraHeight^2 \n"
+
+        "varying vec3 atmos_up; \n"            // earth up vector at vertex location (not the normal)
+        "varying float atmos_space; \n"        // [0..1]: camera: 0=inner radius (ground); 1.0=outer radius
+        "varying vec3 atmos_vert; \n"
+
+        "float atmos_scale(float fCos) \n"	
+        "{ \n"
+        "    float x = 1.0 - fCos; \n"
+        "    return atmos_fScaleDepth * exp(-0.00287 + x*(0.459 + x*(3.83 + x*(-6.80 + x*5.25)))); \n"
+        "} \n"
+
+        "void atmos_GroundFromSpace(in vec4 vertexVIEW) \n"
+        "{ \n"
+        "    // Get the ray from the camera to the vertex and its length (which is the far point of the ray passing through the atmosphere) \n"
+        "    vec3 v3Pos = vertexVIEW.xyz; \n"
+        "    vec3 v3Ray = v3Pos; \n"
+        "    float fFar = length(v3Ray); \n"
+        "    v3Ray /= fFar; \n"
+                
+        "    vec4 ec4 = osg_ViewMatrix * vec4(0,0,0,1); \n"
+        "    vec3 earthCenter = ec4.xyz/ec4.w; \n"
+        "    vec3 normal = normalize(v3Pos-earthCenter); \n"
+        "    atmos_up = normal; \n"
+
+        "    // Calculate the closest intersection of the ray with the outer atmosphere \n"
+        "    // (which is the near point of the ray passing through the atmosphere) \n"
+        "    float B = 2.0 * dot(-earthCenter, v3Ray); \n"
+        "    float C = atmos_fCameraHeight2 - atmos_fOuterRadius2; \n"
+        "    float fDet = max(0.0, B*B - 4.0*C); \n"	
+        "    float fNear = 0.5 * (-B - sqrt(fDet)); \n"		
+
+        "    // Calculate the ray's starting position, then calculate its scattering offset \n"
+        "    vec3 v3Start = v3Ray * fNear; \n"			
+        "    fFar -= fNear; \n"
+        "    float fDepth = exp((atmos_fInnerRadius - atmos_fOuterRadius) / atmos_fScaleDepth);\n"
+        "    float fCameraAngle = dot(-v3Ray, normal); \n"
+        "    float fLightAngle = dot(atmos_lightDir, normal); \n"
+        "    float fCameraScale = atmos_scale(fCameraAngle); \n"
+        "    float fLightScale = atmos_scale(fLightAngle); \n"
+        "    float fCameraOffset = fDepth*fCameraScale; \n"
+        "    float fTemp = fLightScale * fCameraScale; \n"		
+
+        "    // Initialize the scattering loop variables \n"
+        "    float fSampleLength = fFar / atmos_fSamples; \n"		
+        "    float fScaledLength = fSampleLength * atmos_fScale; \n"					
+        "    vec3 v3SampleRay = v3Ray * fSampleLength; \n"	
+        "    vec3 v3SamplePoint = v3Start + v3SampleRay * 0.5; \n"	
+
+        "    // Now loop through the sample rays \n"
+        "    vec3 v3FrontColor = vec3(0.0, 0.0, 0.0); \n"
+        "    vec3 v3Attenuate = vec3(1,0,0); \n"
+
+        "    for(int i=0; i<atmos_nSamples; ++i) \n"
+        "    { \n"        
+        "        float fHeight = length(v3SamplePoint-earthCenter); \n"			
+        "        float fDepth = exp(atmos_fScaleOverScaleDepth * (atmos_fInnerRadius - fHeight)); \n"
+        "        float fScatter = fDepth*fTemp - fCameraOffset; \n"
+        "        v3Attenuate = exp(-fScatter * (atmos_v3InvWavelength * atmos_fKr4PI + atmos_fKm4PI)); \n"	
+        "        v3FrontColor += v3Attenuate * (fDepth * fScaledLength); \n"					
+        "        v3SamplePoint += v3SampleRay; \n"		
+        "    } \n"	
+
+        "    atmos_color = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun + atmos_fKmESun); \n"
+        "    atmos_atten = v3Attenuate; \n"
+        "} \n"		
+
+        "void atmos_GroundFromAtmosphere(in vec4 vertexVIEW) \n"		
+        "{ \n"
+        "    // Get the ray from the camera to the vertex and its length (which is the far point of the ray passing through the atmosphere) \n"
+        "    vec3 v3Pos = vertexVIEW.xyz / vertexVIEW.w; \n"
+        "    vec3 v3Ray = v3Pos; \n"
+        "    float fFar = length(v3Ray); \n"
+        "    v3Ray /= fFar; \n"
+        
+        "    vec4 ec4 = osg_ViewMatrix * vec4(0,0,0,1); \n"
+        "    vec3 earthCenter = ec4.xyz/ec4.w; \n"
+        "    vec3 normal = normalize(v3Pos-earthCenter); \n"
+        "    atmos_up = normal; \n"
+
+        "    // Calculate the ray's starting position, then calculate its scattering offset \n"
+        "    float fDepth = exp((atmos_fInnerRadius - atmos_fCameraHeight) / atmos_fScaleDepth);\n"
+        "    float fCameraAngle = dot(-v3Ray, normal); \n"
+        "    float fLightAngle = dot(atmos_lightDir, normal); \n"
+        "    float fCameraScale = atmos_scale(fCameraAngle); \n"
+        "    float fLightScale = atmos_scale(fLightAngle); \n"
+        "    float fCameraOffset = fDepth*fCameraScale; \n"
+        "    float fTemp = fLightScale * fCameraScale; \n"
+
+        "    // Initialize the scattering loop variables \n"	
+        "    float fSampleLength = fFar / atmos_fSamples; \n"		
+        "    float fScaledLength = fSampleLength * atmos_fScale; \n"					
+        "    vec3 v3SampleRay = v3Ray * fSampleLength; \n"	
+        "    vec3 v3SamplePoint = v3SampleRay * 0.5; \n"	
+
+        "    // Now loop through the sample rays \n"
+        "    vec3 v3FrontColor = vec3(0.0, 0.0, 0.0); \n"
+        "    vec3 v3Attenuate; \n"  
+        "    for(int i=0; i<atmos_nSamples; i++) \n"		
+        "    { \n"
+        "        float fHeight = length(v3SamplePoint-earthCenter); \n"			
+        "        float fDepth = exp(atmos_fScaleOverScaleDepth * (atmos_fInnerRadius - fHeight)); \n"
+        "        float fScatter = fDepth*fTemp - fCameraOffset; \n"
+        "        v3Attenuate = exp(-fScatter * (atmos_v3InvWavelength * atmos_fKr4PI + atmos_fKm4PI)); \n"	
+        "        v3FrontColor += v3Attenuate * (fDepth * fScaledLength); \n"					
+        "        v3SamplePoint += v3SampleRay; \n"		
+        "    } \n"		
+
+        "    atmos_color = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun + atmos_fKmESun); \n"			
+        "    atmos_atten = v3Attenuate; \n"
+        "} \n"
+
+        "void atmos_vertex_main(inout vec4 vertexVIEW) \n"
+        "{ \n"
+        "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
+
+        "    atmos_fCameraHeight = length(osg_ViewMatrixInverse[3].xyz); \n"
+        "    atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; \n"
+        "    atmos_lightDir = normalize(gl_LightSource[0].position.xyz); \n" // view space
+        "    atmos_vert = vertexVIEW.xyz; \n"
+
+        "    atmos_space = (atmos_fCameraHeight-atmos_fInnerRadius)/(atmos_fOuterRadius-atmos_fInnerRadius); \n"
+        "    atmos_space = clamp(atmos_space, 0.0, 1.0); \n"
+
+        "    if(atmos_fCameraHeight >= atmos_fOuterRadius) \n"
+        "    { \n"
+        "        atmos_GroundFromSpace(vertexVIEW); \n"
+        "    } \n"
+        "    else \n"
+        "    { \n"
+        "        atmos_GroundFromAtmosphere(vertexVIEW); \n"
+        "    } \n"
+        "} \n";
+
+    static const char* Ground_Scattering_Fragment =
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+        "uniform float atmos_exposure; \n"  // scene exposure (ground level)
+        "varying vec3 atmos_lightDir; \n"   // light direction (view coords)
+        "varying vec3 oe_Normal; \n"        // vertex normal (view coords)
+        "varying vec3 atmos_color; \n"      // atmospheric lighting color
+        "varying vec3 atmos_atten; \n"      // atmospheric lighting attentuation factor
+        "varying vec3 atmos_up; \n"         // earth up vector at fragment (in view coords)
+        "varying float atmos_space; \n"     // camera altitude (0=ground, 1=atmos outer radius)
+        "varying vec3 atmos_vert; \n"
+
+        "void atmos_fragment_main(inout vec4 color) \n"
+        "{ \n"
+        "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
+
+        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
+        "    vec3 U = normalize(atmos_up); \n"
+        "    float NdotL = max(dot(N,L), 0.0); \n"
+
+        // Calculate how much normal-based shading should be applied.
+        // Between "low" and "high" (which are NdotL's) we phase out the
+        // normal-based shading (since the atmospheric scattering will
+        // take over at that point). This provides a nice dawn or dusk
+        // "shining" effect on the sides of buildings or terrain.
+        // Adjust the "low": Higher value will increase the effect of
+        // normal-based shading at shallower sun angles (i.e. it will
+        // become more prominent. Perhaps it makes sense in the future to
+        // make this a "scattering effect" uniform or something -gw)
+        "    const float low = 0.4; \n"
+        "    const float high = 0.9; \n"
+        "    float UdotL = clamp(dot(U,L), low, high); \n"
+        "    float shadeFactor = 1.0 - (UdotL-low)/(high-low); \n"
+
+        // start applying normal-based shading when we're at twice the 
+        // altitude of the atmosphere's outer radius:
+        "    float normFactor = 1.0-(2.0*atmos_space); \n"
+
+        // calculate the base scene color. Skip ambience since we'll be
+        // factoring that in later.
+        "    vec4 sceneColor = mix(color, color*NdotL, normFactor*shadeFactor); \n"
+
+        "    if (NdotL > 0.0 ) { \n"
+        "        vec3 V = normalize(atmos_vert); \n"
+        "        vec3 H = normalize(L-V); \n"
+        "        float HdotN = max(dot(H,N), 0.0); \n"
+        "        float shine = clamp(gl_FrontMaterial.shininess, 1.0, 128.0); \n"
+        "        sceneColor += gl_FrontLightProduct[0].specular * pow(HdotN, shine); \n"
+        "    } \n"
+
+        // clamp the attentuation to the minimum ambient lighting:
+        "    vec3 attenuation = max(atmos_atten, gl_LightSource[0].ambient.rgb); \n"
+
+        // ramp exposure from ground (full) to space (50%).
+        "    float exposure = atmos_exposure*clamp(1.0-atmos_space, 0.5, 1.0); \n"
+
+        "    vec3 atmosColor = 1.0 - exp(-exposure * (atmos_color + sceneColor.rgb * attenuation)); \n"
+        "    color.rgb = atmosColor; \n"
+        "} \n";
+
+    //-- BASIC PHONG GROUND LIGHTING ------------------------------------------
+
+#ifdef OSG_GLES2_AVAILABLE
+    static const char* Ground_Phong_Vertex =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+        "varying vec4 oe_lighting_adjustment; \n"
+        "varying vec4 oe_lighting_zero_vec; \n"
+        "varying vec3 oe_Normal; \n"
+
+        "void atmos_vertex_main(inout vec4 VertexVIEW) \n"
+        "{ \n"
+        "    oe_lighting_adjustment = vec4(1.0); \n"
+        "    if (oe_mode_GL_LIGHTING) \n"
+        "    { \n"
+        "        vec3 N = oe_Normal; \n"
+        "        float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
+        "        NdotL = max( 0.0, NdotL ); \n"
+
+        // NOTE: See comment in the fragment shader below for an explanation of
+        //       this oe_zero_vec value.
+        "        oe_lighting_zero_vec = vec4(0.0); \n"
+
+        "        vec4 adj = \n"
+        "            gl_FrontLightProduct[0].ambient + \n"
+        "            gl_FrontLightProduct[0].diffuse * NdotL; \n"
+        "        oe_lighting_adjustment = clamp( adj, 0.0, 1.0 ); \n"
+        "    } \n"
+        "} \n";
+
+    static const char* Ground_Phong_Fragment =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+        "varying vec4 oe_lighting_adjustment; \n"
+        "varying vec4 oe_lighting_zero_vec; \n"
+
+        "void atmos_fragment_main(inout vec4 color) \n"
+        "{ \n"        
+        //NOTE: The follow was changed from the single line
+        //      "color *= oe_lighting_adjustment" to the current code to fix
+        //      an issue on iOS devices.  Adding a varying vec4 value set to
+        //      (0.0,0.0,0.0,0.0) to the color should not make a difference,
+        //      but it is part of the solution to the issue we were seeing.
+        //      Without it and the additional lines of code, the globe was
+        //      rendering textureless (just a white surface with lighting).
+        "    if ( oe_mode_GL_LIGHTING ) \n"
+        "    { \n"
+        "        float alpha = color.a; \n"
+        "        color = color * oe_lighting_adjustment + oe_lighting_zero_vec; \n"
+        "        color.a = alpha; \n"
+        "    } \n"
+        "} \n";
+
+#else
+    static const char* Ground_Phong_Vertex =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+        "varying vec3 atmos_vertexView3; \n"
+
+        "void atmos_vertex_main(inout vec4 VertexVIEW) \n"
+        "{ \n"
+        "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
+
+        "    atmos_vertexView3 = VertexVIEW.xyz / VertexVIEW.w; \n"
+        "} \n";
+
+    static const char* Ground_Phong_Fragment =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "uniform bool oe_mode_GL_LIGHTING; \n"
+        "varying vec3 atmos_vertexView3; \n"
+        "varying vec3 oe_Normal; \n"
+
+        "void atmos_fragment_main(inout vec4 color) \n"
+        "{ \n"        
+        "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
+
+        "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
+        "    vec3 V = normalize(atmos_vertexView3); \n"
+        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 R = normalize(-reflect(L,N)); \n"
+
+        "    float NdotL = max(dot(N,L), 0.0); \n"
+
+        "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
+        "    vec4 diffuse = clamp(gl_FrontLightProduct[0].diffuse * NdotL, 0.0, 1.0); \n"
+        "    vec4 specular= vec4(0); \n"
+
+#if 0
+        "    if (NdotL > 0.0) { \n"
+        "        vec3 HV = normalize(L+V); \n"
+        "        float HVdotN = max(dot(HV,N), 0.0); \n"
+        "        specular = gl_FrontLightProduct[0].specular * pow(HVdotN, 16.0); \n"
+        "    } \n"
+#endif
+
+        "    color.rgb = ambient.rgb + diffuse.rgb*color.rgb + specular.rgb; \n"
+        "} \n";
+#endif
+
+
+    //-- SUN ----------------------------------------------------
+
+    static const char* Sun_Vertex =
+        "varying vec3 atmos_v3Direction; \n"
+        "void main() \n"
+        "{ \n"
+        "    vec3 v3Pos = gl_Vertex.xyz; \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "    atmos_v3Direction = vec3(0.0,0.0,1.0) - v3Pos; \n"
+        "    atmos_v3Direction = atmos_v3Direction/length(atmos_v3Direction); \n"
+        "} \n";
+
+    static const char* Sun_Fragment =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "uniform float atmos_sunAlpha; \n"
+        "varying vec3 atmos_v3Direction; \n"
+
+        "float atmos_fastpow(in float x, in float y) \n"
+        "{ \n"
+        "    return x/(x+y-y*x); \n"
+        "} \n"
+
+        "void main( void ) \n"
+        "{ \n"
+        "   float fCos = -atmos_v3Direction[2]; \n"         
+        "   float fMiePhase = 0.050387596899224826 * (1.0 + fCos*fCos) / atmos_fastpow(1.9024999999999999 - -1.8999999999999999*fCos, 1.5); \n"
+        "   gl_FragColor.rgb = fMiePhase*vec3(.3,.3,.2); \n"
+        "   gl_FragColor.a = atmos_sunAlpha*gl_FragColor.r; \n"
+        "} \n";
+
+    // -- MOON -------------------------------------------------
+
+    static const char* Moon_Vertex = 
+        "uniform mat4 osg_ModelViewProjectionMatrix;"
+        "varying vec4 moon_TexCoord;\n"
+        "void main() \n"
+        "{ \n"
+        "    moon_TexCoord = gl_MultiTexCoord0; \n"
+        "    gl_Position = osg_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "} \n";
+
+    static const char* Moon_Fragment =
+        "varying vec4 moon_TexCoord;\n"
+        "uniform sampler2D moonTex;\n"
+        "void main( void ) \n"
+        "{ \n"
+        "   gl_FragColor = texture2D(moonTex, moon_TexCoord.st);\n"
+        "} \n";
+
+    // -- STARS ------------------------------------------------
+
+    static const char* Stars_Vertex_110 =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "uniform vec3 atmos_v3LightDir; \n"
+        "uniform mat4 osg_ViewMatrixInverse; \n"
+        "varying float visibility; \n"
+        "varying vec4 osg_FrontColor; \n"
+
+        "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
+        "{ \n"
+        "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); \n"
+        "    return r0 + vr * (r1-r0); \n"
+        "} \n"
+
+        "void main() \n"
+        "{ \n"
+        "    osg_FrontColor = gl_Color; \n"
+        "    gl_PointSize = gl_Color.r * 2.0; \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "    vec3 eye = osg_ViewMatrixInverse[3].xyz; \n"
+        "    float hae = length(eye) - 6378137.0; \n"
+        // "highness": visibility increases with altitude
+        "    float highness = remap( hae, 25000.0, 150000.0, 0.0, 1.0 ); \n"
+        "    eye = normalize(eye); \n"
+        // "darkness": visibility increase as the sun goes around the other side of the earth
+        "    float darkness = 1.0-remap(dot(eye,atmos_v3LightDir), -0.25, 0.0, 0.0, 1.0); \n"
+        "    visibility = clamp(highness + darkness, 0.0, 1.0); \n"
+        "} \n";
+
+    static const char* Stars_Fragment_110 =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+
+        "varying float visibility; \n"
+        "varying vec4 osg_FrontColor; \n"
+        "void main( void ) \n"
+        "{ \n"
+        "    gl_FragColor = osg_FrontColor * visibility; \n"
+        "} \n";
+
+
+    static const char* Stars_Vertex_120 =
+        "#version 120\n"
+
+        "uniform vec3 atmos_v3LightDir; \n"
+        "uniform mat4 osg_ViewMatrixInverse; \n"
+        "varying float visibility; \n"
+        "varying vec4 osg_FrontColor; \n"
+
+        "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
+        "{ \n"
+        "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); \n"
+        "    return r0 + vr * (r1-r0); \n"
+        "} \n"
+
+        "void main() \n"
+        "{ \n"
+        "    osg_FrontColor = gl_Color; \n"
+        "    gl_PointSize = gl_Color.r * 14.0; \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "    vec3 eye = osg_ViewMatrixInverse[3].xyz; \n"
+        "    float hae = length(eye) - 6378137.0; \n"
+        // "highness": visibility increases with altitude
+        "    float highness = remap( hae, 25000.0, 150000.0, 0.0, 1.0 ); \n"
+        "    eye = normalize(eye); \n"
+        // "darkness": visibility increase as the sun goes around the other side of the earth
+        "    float darkness = 1.0-remap(dot(eye,atmos_v3LightDir), -0.25, 0.0, 0.0, 1.0); \n"
+        "    visibility = clamp(highness + darkness, 0.0, 1.0); \n"
+        "} \n";
+
+    static const char* Stars_Fragment_120 =
+        "#version 120\n"
+        "varying float visibility; \n"
+        "varying vec4 osg_FrontColor; \n"
+        "void main( void ) \n"
+        "{ \n"
+        "    float b1 = 1.0-(2.0*abs(gl_PointCoord.s-0.5)); \n"
+        "    float b2 = 1.0-(2.0*abs(gl_PointCoord.t-0.5)); \n"
+        "    float i = b1*b1 * b2*b2; \n"
+        "    gl_FragColor = osg_FrontColor * i * visibility; \n"
+        "} \n";
+
+} } } // namespace osgEarth::Drivers::SimpleSky
+
+#endif //OSGEARTH_DRIVER_SIMPLE_SKY_SHADERS

@@ -22,8 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/DepthOffset>
-#include <osgEarth/GeoMath>
-#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Expression>
 #include <osgEarthSymbology/Symbol>
 #include <osg/Referenced>
 #include <vector>
@@ -57,6 +56,18 @@ namespace osgEarth { namespace Symbology
         optional<bool>& backfaceCulling() { return _backfaceCulling; }
         const optional<bool>& backfaceCulling() const { return _backfaceCulling; }
 
+        /** applies a rendering order to affected geometry */
+        optional<NumericExpression>& order() { return _order; }
+        const optional<NumericExpression>& order() const { return _order; }
+
+        /** clip plane number to activate. */
+        optional<unsigned>& clipPlane() { return _clipPlane; }
+        const optional<unsigned>& clipPlane() const { return _clipPlane; }
+
+        /** discard fragments with alpha < threshold */
+        optional<float>& minAlpha() { return _minAlpha; }
+        const optional<float>& minAlpha() const { return _minAlpha; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -67,6 +78,9 @@ namespace osgEarth { namespace Symbology
         optional<bool>               _lighting;
         optional<DepthOffsetOptions> _depthOffset;
         optional<bool>               _backfaceCulling;
+        optional<NumericExpression>  _order;
+        optional<unsigned>           _clipPlane;
+        optional<float>              _minAlpha;
         
         /** dtor */
         virtual ~RenderSymbol() { }

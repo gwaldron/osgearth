@@ -67,7 +67,7 @@ namespace osgEarth
     public:
         osg::observer_ptr<class MapNode> _mapNode;
         osg::ref_ptr<osg::StateSet>      _stateSet;
-        osg::ref_ptr<osg::Uniform>       _windowScaleMatrixUniform;
+        osg::ref_ptr<osg::Uniform>       _windowMatrixUniform;
         double                           _cameraAltitude;
 
     protected:

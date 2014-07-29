@@ -22,6 +22,7 @@
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/MapNode>
+#include <cmath>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -187,7 +188,7 @@ EllipseNode::rebuild()
     GeometryFactory factory;
     Geometry* geom = NULL;
 
-    if (abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
+    if (std::abs(_arcEnd.as(Units::DEGREES) - _arcStart.as(Units::DEGREES)) >= 360.0)
     {
         geom = factory.createEllipse(osg::Vec3d(0,0,0), _radiusMajor, _radiusMinor, _rotationAngle, _numSegments);
     }

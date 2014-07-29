@@ -22,6 +22,8 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/TimeControl>
 #include <osgEarth/URI>
+#include <osgEarth/MemCache>
+#include <osgEarth/CacheBin>
 #include <osgDB/WriteFile>
 #include <osg/Version>
 #include <OpenThreads/ScopedLock>
@@ -37,7 +39,7 @@ using namespace OpenThreads;
 TerrainLayerOptions::TerrainLayerOptions( const ConfigOptions& options ) :
 ConfigOptions       ( options ),
 _minLevel           ( 0 ),
-_maxLevel           ( 30 ),
+_maxLevel           ( 23 ),
 _cachePolicy        ( CachePolicy::DEFAULT ),
 _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
@@ -69,7 +71,7 @@ TerrainLayerOptions::setDefaults()
     _cachePolicy.init( CachePolicy() );
     _loadingWeight.init( 1.0f );
     _minLevel.init( 0 );
-    _maxLevel.init( 30 );
+    _maxLevel.init( 23 );
     _maxDataLevel.init( 99 );
 }
 
@@ -190,6 +192,14 @@ TerrainLayer::init()
     
     initializeCachePolicy( _dbOptions.get() );
     storeProxySettings( _dbOptions.get() );
+
+    // Create an L2 mem cache that sits atop the main cache, if necessary.
+    // For now: use the same L2 cache size at the driver.
+    int memCacheSize = _initOptions.driver()->L2CacheSize().get();
+    if ( memCacheSize > 0 )
+    {
+        _memCache = new MemCache(memCacheSize);
+    }
 }
 
 void
@@ -268,6 +278,26 @@ TerrainLayer::setTargetProfileHint( const Profile* profile )
         CacheBinMetadata meta;
         getCacheBinMetadata( profile, meta );
     }
+
+    // If the tilesource was already initialized, re-read the 
+    // cache policy hint since it may change due to the target
+    // profile change.
+    refreshTileSourceCachePolicyHint();
+}
+
+void
+TerrainLayer::refreshTileSourceCachePolicyHint()
+{
+    if ( _tileSource.valid() && !_initOptions.cachePolicy().isSet() )
+    {
+        CachePolicy hint = _tileSource->getCachePolicyHint( _targetProfileHint.get() );
+
+        if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
+        {
+            setCachePolicy( hint );
+            OE_INFO << LC << "Caching disabled (by policy hint)" << std::endl;
+        }
+    }
 }
 
 TileSource* 
@@ -279,7 +309,7 @@ TerrainLayer::getTileSource() const
     if ((_tileSource.valid() && !_tileSourceInitAttempted) ||
         (!_tileSource.valid() && !isCacheOnly()))
     {
-        OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
+        Threading::ScopedMutexLock lock(_initTileSourceMutex);
         
         // double-check pattern
         if ((_tileSource.valid() && !_tileSourceInitAttempted) ||
@@ -289,17 +319,10 @@ TerrainLayer::getTileSource() const
             const_cast<TerrainLayer*>(this)->initTileSource();
 
             // read the cache policy hint from the tile source unless user expressly set 
-            // a policy in the initialization options.
-            if ( _tileSource.valid() && !_initOptions.cachePolicy().isSet() )
-            {
-                CachePolicy hint = _tileSource->getCachePolicyHint( _targetProfileHint.get() );
-
-                if ( hint.usage().isSetTo(CachePolicy::USAGE_NO_CACHE) )
-                {
-                    const_cast<TerrainLayer*>(this)->setCachePolicy( hint );
-                    OE_INFO << LC << "Caching disabled (by policy hint)" << std::endl;
-                }
-            }
+            // a policy in the initialization options. In other words, the hint takes
+            // ultimate priority (even over the Registry override) unless expressly
+            // overridden in the layer options!
+            const_cast<TerrainLayer*>(this)->refreshTileSourceCachePolicyHint();
 
             // Unless the user has already configured an expiration policy, use the "last modified"
             // timestamp of the TileSource to set a minimum valid cache entry timestamp.
@@ -329,23 +352,6 @@ TerrainLayer::getProfile() const
             // Call getTileSource to make sure the TileSource is initialized
             getTileSource();
         }
-
-        if ( _tileSource.valid() && !_profile.valid() && !_tileSourceInitFailed )
-        {
-            const_cast<TerrainLayer*>(this)->_profile = _tileSource->getProfile();
-
-            // check for a vertical datum override:
-            if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
-            {
-                std::string vdatum = toLower( *_runtimeOptions->verticalDatum() );
-                if ( _profile->getSRS()->getVertInitString() != vdatum )
-                {
-                    ProfileOptions po = _profile->toProfileOptions();
-                    po.vsrsString() = vdatum;
-                    const_cast<TerrainLayer*>(this)->_profile = Profile::create(po);
-                }
-            }
-        }
     }
     
     return _profile.get();
@@ -354,8 +360,9 @@ TerrainLayer::getProfile() const
 unsigned
 TerrainLayer::getTileSize() const
 {
-    TileSource* ts = getTileSource();
-    return ts ? ts->getPixelsPerTile() : _tileSize;
+    // force tile source initialization (which sets _tileSize)
+    getTileSource();
+    return _tileSize; //ts ? ts->getPixelsPerTile() : _tileSize;
 }
 
 bool
@@ -368,6 +375,9 @@ TerrainLayer::isDynamic() const
 CacheBin*
 TerrainLayer::getCacheBin( const Profile* profile )
 {
+    // make sure we've initialized the tile source first.
+    getTileSource();
+
     if ( getCachePolicy() == CachePolicy::NO_CACHE )
     {
         return 0L;
@@ -382,6 +392,9 @@ TerrainLayer::getCacheBin( const Profile* profile )
 CacheBin*
 TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
 {
+    // make sure we've initialized the tile source first.
+    TileSource* tileSource = getTileSource();
+
     // in no-cache mode, there are no cache bins.
     if ( getCachePolicy() == CachePolicy::NO_CACHE )
     {
@@ -420,13 +433,13 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
             // attempt to read the cache metadata:
             CacheBinMetadata meta( newBin->readMetadata() );
 
-            if ( !meta._empty ) // cache exists
+            if ( meta.isValid() ) // cache exists and is valid.
             {
                 // verify that the cache if compatible with the tile source:
-                if ( getTileSource() && getProfile() )
+                if ( tileSource && getProfile() )
                 {
                     //todo: check the profile too
-                    if ( *meta._sourceDriver != getTileSource()->getOptions().getDriver() )
+                    if ( *meta._sourceDriver != tileSource->getOptions().getDriver() )
                     {
                         OE_WARN << LC << "Cache has an incompatible driver or profile... disabling"
                             << std::endl;
@@ -440,6 +453,7 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
                     // in cacheonly mode, create a profile from the first cache bin accessed
                     // (they SHOULD all be the same...)
                     _profile = Profile::create( *meta._sourceProfile );
+                    _tileSize = *meta._sourceTileSize;
                 }
             }
 
@@ -447,29 +461,34 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
             {
                 // cache does not exist, so try to create it. A valid TileSource is necessary
                 // for this.
-                if ( getTileSource() && getProfile() )
+                if ( tileSource && getProfile() )
                 {
                     // no existing metadata; create some.
-                    meta._cacheBinId    = binId;
-                    meta._sourceName    = this->getName();
-                    meta._sourceDriver  = getTileSource()->getOptions().getDriver();
-                    meta._sourceProfile = getProfile()->toProfileOptions();
-                    meta._cacheProfile  = profile->toProfileOptions();
+                    meta._cacheBinId      = binId;
+                    meta._sourceName      = this->getName();
+                    meta._sourceDriver    = tileSource->getOptions().getDriver();
+                    meta._sourceTileSize  = getTileSize();
+                    meta._sourceProfile   = getProfile()->toProfileOptions();
+                    meta._cacheProfile    = profile->toProfileOptions();
+                    meta._cacheCreateTime = DateTime().asTimeStamp();
 
                     // store it in the cache bin.
                     newBin->writeMetadata( meta.getConfig() );
                 }
                 else if ( isCacheOnly() )
                 {
-                    OE_WARN << LC << "Failed to open a cache for layer [" << getName() << "] "
-                        << " because cache_only policy is in effect and bin [" << binId << "] cound not be located."
+                    OE_WARN << LC <<
+                        "Failed to open a cache for layer "
+                        "because cache_only policy is in effect and bin [" << binId << "] "
+                        "could not be located."
                         << std::endl;
                     return 0L;
                 }
                 else
                 {
-                    OE_WARN << LC << "Failed to create cache bin [" << binId << "] "
-                        << "for layer [" << getName() << "] because there is no valid tile source."
+                    OE_WARN << LC <<
+                        "Failed to create cache bin [" << binId << "] "
+                        "because there is no valid tile source."
                         << std::endl;
                     return 0L;
                 }
@@ -480,13 +499,14 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
             newInfo._metadata = meta;
             newInfo._bin      = newBin.get();
 
-            OE_INFO << LC << "Opened cache bin [" << binId << "]" << std::endl;
+            OE_INFO << LC <<
+                "Opened cache bin [" << binId << "]" << std::endl;
         }
         else
         {
             // bin creation failed, so disable caching for this layer.
             setCachePolicy( CachePolicy::NO_CACHE );
-            OE_WARN << LC << "Failed to create a caching bin for layer; cache disabled." << std::endl;
+            OE_WARN << LC << "Failed to create a cache bin; cache disabled." << std::endl;
         }
 
         return newBin.get(); // not release()
@@ -515,6 +535,8 @@ TerrainLayer::getCacheBinMetadata( const Profile* profile, CacheBinMetadata& out
 void
 TerrainLayer::initTileSource()
 {
+    _tileSourceInitAttempted = true;
+
     OE_DEBUG << LC << "Initializing tile source ..." << std::endl;
 
     // Instantiate it from driver options if it has not already been created.
@@ -523,7 +545,7 @@ TerrainLayer::initTileSource()
     {
         if ( _runtimeOptions->driver().isSet() )
         {
-            _tileSource = TileSourceFactory::create( *_runtimeOptions->driver() );
+            _tileSource = TileSourceFactory::create(*_runtimeOptions->driver());
         }
     }
 
@@ -539,6 +561,7 @@ TerrainLayer::initTileSource()
             URIContext( _runtimeOptions->referrer() ).apply( _dbOptions.get() );
         }
 
+
         // report on a manual override profile:
         if ( _tileSource->getProfile() )
         {
@@ -546,16 +569,34 @@ TerrainLayer::initTileSource()
                 << _tileSource->getProfile()->toString() << std::endl;
         }
 
-        // Start up the tile source (if it hasn't already been started)
+        // Open the tile source (if it hasn't already been started)
         TileSource::Status status = _tileSource->getStatus();
         if ( status != TileSource::STATUS_OK )
         {
-            status = _tileSource->startup( _dbOptions.get() );
+            status = _tileSource->open(TileSource::MODE_READ, _dbOptions.get());
         }
 
         if ( status == TileSource::STATUS_OK )
         {
             _tileSize = _tileSource->getPixelsPerTile();
+
+#if 0 //debugging 
+            // dump out data extents:
+            if ( _tileSource->getDataExtents().size() > 0 )
+            {
+                OE_INFO << LC << "Data extents reported:" << std::endl;
+                for(DataExtentList::const_iterator i = _tileSource->getDataExtents().begin();
+                    i != _tileSource->getDataExtents().end(); ++i)
+                {
+                    const DataExtent& de = *i;
+                    OE_INFO << "    "
+                        << "X(" << i->xMin() << ", " << i->xMax() << ") "
+                        << "Y(" << i->yMin() << ", " << i->yMax() << ") "
+                        << "Z(" << i->minLevel().get() << ", " << i->maxLevel().get() << ")"
+                        << std::endl;
+                }                
+            }
+#endif
         }
         else
         {
@@ -569,7 +610,28 @@ TerrainLayer::initTileSource()
     // Set the profile from the TileSource if possible:
     if ( _tileSource.valid() )
     {
-        _profile = _tileSource->getProfile();
+        if ( !_profile.valid() && !_tileSourceInitFailed )
+        {
+            _profile = _tileSource->getProfile();
+        }
+
+        // check for a vertical datum override:
+        if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
+        {
+            std::string vdatum = *_runtimeOptions->verticalDatum();
+            if ( !ciEquals(_profile->getSRS()->getVertInitString(), vdatum) )
+            {
+                OE_INFO << LC << "Overriding vdatum with: " << vdatum << std::endl;
+                ProfileOptions po = _profile->toProfileOptions();
+                po.vsrsString() = vdatum;
+                _profile = Profile::create(po);
+            }
+        }
+
+        if ( _profile.valid() )
+        {
+            OE_INFO << LC << "Profile=" << _profile->toString() << std::endl;
+        }
     }
 
     // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
@@ -579,40 +641,43 @@ TerrainLayer::initTileSource()
         OE_NOTICE << LC << "Could not initialize TileSource " << _name << ", but a cache exists. Setting layer to cache-only mode." << std::endl;
         setCachePolicy( CachePolicy::CACHE_ONLY );
     }
-
-    _tileSourceInitAttempted = true;
 }
 
 bool
-TerrainLayer::isKeyValid(const TileKey& key) const
+TerrainLayer::isKeyInRange(const TileKey& key) const
 {    
-    if (!key.valid())
-        return false;
-
-    // Check to see if an explicity max LOD is set. Do NOT compare against the minLevel,
-    // because we still need to create empty tiles until we get to the data. The ImageLayer
-    // will deal with this.
-    if ( _runtimeOptions->maxLevel().isSet() && key.getLOD() > _runtimeOptions->maxLevel().value() ) 
+    if ( !key.valid() )
     {
         return false;
     }
 
-    // Check to see if levels of detail based on resolution are set
-    const Profile* profile = getProfile();
-    if ( profile )
+    // First check the key against the min/max level limits, it they are set.
+    if ((_runtimeOptions->maxLevel().isSet() && key.getLOD() > _runtimeOptions->maxLevel().value()) ||
+        (_runtimeOptions->minLevel().isSet() && key.getLOD() < _runtimeOptions->minLevel().value()))
     {
-        if ( !profile->isEquivalentTo( key.getProfile() ) )
-        {
-            OE_DEBUG << LC
-                << "TerrainLayer::isKeyValid called with key of a different profile" << std::endl;
-        }
+        return false;
+    }
 
-        if ( _runtimeOptions->maxResolution().isSet() )
+    // Next, check against resolution limits (based on the source tile size).
+    if (_runtimeOptions->minResolution().isSet() ||
+        _runtimeOptions->maxResolution().isSet())
+    {
+        const Profile* profile = getProfile();
+        if ( profile )
         {
-            double keyres = key.getExtent().width() / (double)getTileSize();
-            double keyresInLayerProfile = key.getProfile()->getSRS()->transformUnits(keyres, profile->getSRS());
+            // calculate the resolution in the layer's profile, which can
+            // be different that the key's profile.
+            double resKey   = key.getExtent().width() / (double)getTileSize();
+            double resLayer = key.getProfile()->getSRS()->transformUnits(resKey, profile->getSRS());
 
-            if ( _runtimeOptions->maxResolution().isSet() && keyresInLayerProfile < _runtimeOptions->maxResolution().value() )
+            if (_runtimeOptions->maxResolution().isSet() &&
+                _runtimeOptions->maxResolution().value() > resLayer)
+            {
+                return false;
+            }
+
+            if (_runtimeOptions->minResolution().isSet() &&
+                _runtimeOptions->minResolution().value() < resLayer)
             {
                 return false;
             }
@@ -625,13 +690,18 @@ TerrainLayer::isKeyValid(const TileKey& key) const
 bool
 TerrainLayer::isCached(const TileKey& key) const
 {
+    // first consult the policy:
+    if ( getCachePolicy() == CachePolicy::NO_CACHE )
+        return false;
+    else if ( getCachePolicy() == CachePolicy::CACHE_ONLY )
+        return true;
+
+    // next check for a bin:
     CacheBin* bin = const_cast<TerrainLayer*>(this)->getCacheBin( key.getProfile() );
     if ( !bin )
         return false;
-
-    TimeStamp minTime = this->getCachePolicy().getMinAcceptTime();
-
-    return bin->getRecordStatus( key.str(), minTime ) == CacheBin::STATUS_OK;
+    
+    return bin->getRecordStatus( key.str() ) == CacheBin::STATUS_OK;
 }
 
 void
@@ -650,27 +720,21 @@ TerrainLayer::setDBOptions( const osgDB::Options* dbOptions )
 }
 
 void
-TerrainLayer::initializeCachePolicy( const osgDB::Options* options )
+TerrainLayer::initializeCachePolicy(const osgDB::Options* options)
 {
+    // Start with the cache policy passed in by the Map.
     optional<CachePolicy> cp;
+    CachePolicy::fromOptions(options, cp);
 
+    // if this layer specifies cache policy info, that will override 
+    // whatever the map passed in:
     if ( _initOptions.cachePolicy().isSet() )
-    {
-        // if the initialization options specify a cache policy, attempt to use it
-        osg::ref_ptr<osgDB::Options> temp = Registry::instance()->cloneOrCreateOptions(options);
-        _initOptions.cachePolicy()->apply( temp.get() );
+        cp->mergeAndOverride( _initOptions.cachePolicy() );
 
-        if ( ! Registry::instance()->getCachePolicy(cp, temp.get()) )
-            cp = CachePolicy::DEFAULT;
-    }
-    else 
-    {
-        // otherwise go the normal route.
-        if ( ! Registry::instance()->getCachePolicy(cp, options) )
-            cp = CachePolicy::DEFAULT;
-    }
+    // finally resolve with global overrides:
+    Registry::instance()->resolveCachePolicy( cp );
 
-    setCachePolicy( *cp );
+    setCachePolicy( cp.get() );
 }
 
 void

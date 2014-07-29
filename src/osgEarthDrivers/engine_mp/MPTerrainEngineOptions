@@ -16,14 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_ENGINE_MP_OPTIONS
-#define OSGEARTH_ENGINE_MP_OPTIONS 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_OPTIONS
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_OPTIONS 1
 
 #include <osgEarth/Common>
 #include <osgEarth/TerrainOptions>
 #include <osgEarthSymbology/Color>
 
-namespace osgEarth { namespace Drivers
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
@@ -38,10 +38,9 @@ namespace osgEarth { namespace Drivers
             _skirtRatio        ( 0.05 ),
             _quickRelease      ( true ),
             _lodFallOff        ( 0.0 ),
-            _normalizeEdges    ( true ),
+            _normalizeEdges    ( false ),
             _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize     ( 256 ),
-            _premultAlpha      ( false ),
             _color             ( Color::White ),
             _incrementalUpdate ( false )
         {
@@ -74,10 +73,6 @@ namespace osgEarth { namespace Drivers
         optional<float>& tilePixelSize() { return _tilePixelSize; }
         const optional<float>& tilePixelSize() const { return _tilePixelSize; }
 
-        /** Whether to use pre-multiplied alpha blending for terrain imagery */
-        optional<bool>& premultipliedAlpha() { return _premultAlpha; }
-        const optional<bool>& premultipliedAlpha() const { return _premultAlpha; }
-
         /** The color of the globe surface where no images are applied */
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
@@ -101,7 +96,6 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "tile_pixel_size", _tilePixelSize );
             conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
-            conf.updateIfSet( "premultiplied_alpha", _premultAlpha );
             conf.updateIfSet( "color", _color );
             conf.updateIfSet( "incremental_update", _incrementalUpdate );
 
@@ -123,7 +117,6 @@ namespace osgEarth { namespace Drivers
 
             conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
-            conf.getIfSet( "premultiplied_alpha", _premultAlpha );
             conf.getIfSet( "color", _color );
             conf.getIfSet( "incremental_update", _incrementalUpdate );
         }
@@ -134,11 +127,10 @@ namespace osgEarth { namespace Drivers
         optional<bool>                _normalizeEdges;
         optional<osg::LOD::RangeMode> _rangeMode;
         optional<float>               _tilePixelSize;
-        optional<bool>                _premultAlpha;
         optional<Color>               _color;
         optional<bool>                _incrementalUpdate;
     };
 
-} } // namespace osgEarth::Drivers
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_OPTIONS
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_OPTIONS

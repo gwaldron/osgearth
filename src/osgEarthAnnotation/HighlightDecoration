@@ -20,15 +20,16 @@
 #define OSGEARTH_ANNOTATION_HIGHLIGHT_DECORATION_H 1
 
 #include <osgEarthAnnotation/Decoration>
+#include <osg/Uniform>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
 
     /**
-     * Decoration technique that highlights the geometry
+     * Decoration technique that highlights the geometry.
      */
-    class OSGEARTHANNO_EXPORT HighlightDecoration : public InjectionDecoration
+    class OSGEARTHANNO_EXPORT HighlightDecoration : public Decoration
     {
     public:
         HighlightDecoration(const osg::Vec4f& color =osg::Vec4f(1,1,0,0.5));
@@ -36,14 +37,19 @@ namespace osgEarth { namespace Annotation
         virtual ~HighlightDecoration() { }
 
         virtual Decoration* clone() const { return new HighlightDecoration(_color); }
+
+        /** Hightlight color (mixes with alpha) */
+        void setColor(const osg::Vec4f& color);
+        const osg::Vec4f& getColor() const { return _color; }
         
-        virtual bool apply(class OrthoNode& node, bool enable);
+    public: // Decoration interface
 
-    protected:
-        virtual bool apply(osg::Group* attachPoint, bool enable);
+        virtual bool apply(class AnnotationNode& node, bool enable);
 
-        osg::Vec4f _color;
-        osg::ref_ptr<osg::StateSet> _passes[2];
+    private:
+        bool                         _supported;
+        osg::Vec4f                   _color;
+        osg::ref_ptr<osg::Uniform>   _colorUniform;
     };
 
 } } // namespace osgEarth::Annotation

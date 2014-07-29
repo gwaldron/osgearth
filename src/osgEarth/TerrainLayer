@@ -21,7 +21,6 @@
 #define OSGEARTH_TERRAIN_LAYER_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Cache>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/Config>
 #include <osgEarth/Layer>
@@ -32,6 +31,10 @@
 
 namespace osgEarth
 {
+    class Cache;
+    class CacheBin;
+    class MemCache;
+
     /**
      * Initialization (and serializable) options for a terrain layer.
      */
@@ -89,15 +92,6 @@ namespace osgEarth
          */
         optional<double>& maxResolution() { return _maxResolution; }
         const optional<double>& maxResolution() const { return _maxResolution; }
-
-        /**
-         * Overrides the maximum available LOD of the underlying tile source. The layer
-         * will never ask the tile source (or the cache) for an LOD higher than this.
-         * Data from this layer may still appear in map tiles above the maxDataLevel,
-         * but it will be upsampled from the maxDataLevel.
-         */
-        optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
-        const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
         
         /**
          * Whether to use this layer with the map. Setting this to false means that 
@@ -269,9 +263,10 @@ namespace osgEarth
         TileSource* getTileSource() const;
 
         /**
-         * Gets the tile size of the this MapLayer
+         * Gets the size (i.e. number of samples in each dimension) or the source
+         * data for this layer.
          */
-        unsigned int getTileSize() const;
+        unsigned getTileSize() const;
         
         /**
          * Whether the layer represents dynamic data, i.e. tile data that can change.
@@ -279,9 +274,10 @@ namespace osgEarth
         bool isDynamic() const;
 
         /**
-         * Whether the given key is valid for this layer
+         * Whether the given key falls within the range limits set in the options;
+         * i.e. min/maxLevel or min/maxResolution.
          */
-        virtual bool isKeyValid(const TileKey& key) const;
+        virtual bool isKeyInRange(const TileKey& key) const;
 
         /** 
          * Whether the data for the specified tile key is in the cache.
@@ -314,6 +310,15 @@ namespace osgEarth
                 _runtimeOptions->cachePolicy().isSet() &&
                 _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY;
         }
+        
+        /**
+         * Convenience check for no-cache mode.
+         */
+        bool isNoCache() const {
+            return 
+                _runtimeOptions->cachePolicy().isSet() &&
+                _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE;
+        }
 
     public: // Layer interface
 
@@ -328,43 +333,67 @@ namespace osgEarth
          */
         struct CacheBinMetadata
         {
-            CacheBinMetadata() { }
+            CacheBinMetadata() :
+                _valid(false) { }
 
             CacheBinMetadata( const CacheBinMetadata& rhs ) :
-                _empty        ( rhs._empty ),
-                _cacheBinId   ( rhs._cacheBinId ),
-                _sourceName   ( rhs._sourceName ),
-                _sourceDriver ( rhs._sourceDriver ),                
-                _sourceProfile( rhs._sourceProfile ),
-                _cacheProfile ( rhs._cacheProfile ) { }
+                _valid          ( rhs._valid ),
+                _cacheBinId     ( rhs._cacheBinId ),
+                _sourceName     ( rhs._sourceName ),
+                _sourceDriver   ( rhs._sourceDriver ),
+                _sourceTileSize ( rhs._sourceTileSize ),
+                _sourceProfile  ( rhs._sourceProfile ),
+                _cacheProfile   ( rhs._cacheProfile ),   
+                _cacheCreateTime( rhs._cacheCreateTime ) { }
 
             CacheBinMetadata( const Config& conf )
             {
-                _empty = conf.empty();
-                conf.getIfSet   ( "cachebin_id",    _cacheBinId );
-                conf.getIfSet   ( "source_name",    _sourceName );
-                conf.getIfSet   ( "source_driver",  _sourceDriver );                
-                conf.getObjIfSet( "source_profile", _sourceProfile );
-                conf.getObjIfSet( "cache_profile",  _cacheProfile );
+                _valid = !conf.empty();
+
+                conf.getIfSet   ( "cachebin_id",      _cacheBinId );
+                conf.getIfSet   ( "source_name",      _sourceName );
+                conf.getIfSet   ( "source_driver",    _sourceDriver );   
+                conf.getIfSet   ( "source_tile_size", _sourceTileSize );           
+                conf.getObjIfSet( "source_profile",   _sourceProfile );
+                conf.getObjIfSet( "cache_profile",    _cacheProfile ); 
+                conf.getIfSet   ( "cache_create_time", _cacheCreateTime ); 
+                
+                // check for validity. This will reject older caches that don't have
+                // sufficient attribution.
+                if ( _valid )
+                {
+                    if (!conf.hasValue("source_tile_size") ||
+                        !conf.hasChild("source_profile")   ||
+                        !conf.hasChild("cache_profile"))
+                    {
+                        _valid = false;
+                    }
+                }
             }
+
+            bool isValid() const { return _valid; }
 
             Config getConfig() const
             {
                 Config conf( "osgearth_terrainlayer_cachebin" );
-                conf.addIfSet   ( "cachebin_id",    _cacheBinId );
-                conf.addIfSet   ( "source_name",    _sourceName );
-                conf.addIfSet   ( "source_driver",  _sourceDriver );                
-                conf.addObjIfSet( "source_profile", _sourceProfile );
-                conf.addObjIfSet( "cache_profile",  _cacheProfile );
+                conf.addIfSet   ( "cachebin_id",       _cacheBinId );
+                conf.addIfSet   ( "source_name",       _sourceName );
+                conf.addIfSet   ( "source_driver",     _sourceDriver );      
+                conf.addIfSet   ( "source_tile_size",  _sourceTileSize );
+                conf.addObjIfSet( "source_profile",    _sourceProfile );
+                conf.addObjIfSet( "cache_profile",     _cacheProfile );
+                conf.addIfSet   ( "cache_create_time", _cacheCreateTime );
                 return conf;
             }
 
-            bool                     _empty;
+            bool                     _valid;
             optional<std::string>    _cacheBinId;
             optional<std::string>    _sourceName;
-            optional<std::string>    _sourceDriver;            
+            optional<std::string>    _sourceDriver;   
+            optional<int>            _sourceTileSize;
             optional<ProfileOptions> _sourceProfile;
             optional<ProfileOptions> _cacheProfile;
+            optional<TimeStamp>      _cacheCreateTime;
         };
 
         /**
@@ -381,12 +410,14 @@ namespace osgEarth
     protected:
 
         osg::ref_ptr<TileSource>       _tileSource;
-        osg::ref_ptr<const Profile>    _profile;
         osg::ref_ptr<const Profile>    _targetProfileHint;
         bool                           _tileSourceInitAttempted;
         bool                           _tileSourceInitFailed;
         unsigned                       _tileSize;  
         osg::ref_ptr<osgDB::Options>   _dbOptions;
+        osg::ref_ptr<MemCache>         _memCache;
+
+        mutable osg::ref_ptr<const Profile> _profile;
 
         void setCachePolicy( const CachePolicy& cp );
         const CachePolicy& getCachePolicy() const;
@@ -394,9 +425,9 @@ namespace osgEarth
     private:
         std::string                    _name;
         std::string                    _referenceURI;
-        OpenThreads::Mutex             _initTileSourceMutex;
         TerrainLayerOptions            _initOptions;
         TerrainLayerOptions*           _runtimeOptions;
+        mutable Threading::Mutex       _initTileSourceMutex;
 
         osg::ref_ptr<Cache>            _cache;
 
@@ -426,6 +457,9 @@ namespace osgEarth
          * TODO: is it legal to set this at any time?
          */
         void setCache( Cache* cache );
+
+        // read the tile source's cache policy hint and apply as necessary
+        void refreshTileSourceCachePolicyHint();
     };
 
     typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;

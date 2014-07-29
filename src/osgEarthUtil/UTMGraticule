@@ -24,6 +24,7 @@
 #include <osgEarth/MapNodeObserver>
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/Feature>
+#include <osg/ClipPlane>
 #include <vector>
 
 namespace osgEarth { namespace Util
@@ -102,6 +103,16 @@ namespace osgEarth { namespace Util
          */
         const UTMGraticuleOptions& getOptions() const { return _options.value(); }
 
+        /**
+         * Sets the clip plane to use. If you don't set one, the object will
+         * create both a ClipNode and ClipPlane for geocentric horizon clipping.
+         * If you do set a clip plane, this object will update it automatically,
+         * and we expect that you have the plane registered with an osg::ClipNode
+         * elsewhere in the scene graph.
+         */
+        void setClipPlane(osg::ClipPlane* clipPlane);
+        osg::ClipPlane* getClipPlane() const { return _clipPlane.get(); }
+
         
     public: // MapNodeObserver
 
@@ -123,7 +134,7 @@ namespace osgEarth { namespace Util
         typedef std::map<std::string, GeoExtent> SectorTable;
         SectorTable _gzd;
 
-        osg::StateAttribute* _depthAttribute;
+        osg::ref_ptr<osg::ClipPlane> _clipPlane;
 
     protected:
         unsigned int getID() const { return _id; }

@@ -19,7 +19,7 @@
 
 #include <osgEarth/PrimitiveIntersector>
 #include <osgEarth/StringUtils>
-
+#include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/KdTree>
 #include <osg/Notify>
@@ -342,6 +342,19 @@ PrimitiveIntersector::PrimitiveIntersector(CoordinateFrame cf, const osg::Vec3d&
   setThickness(thickness);
 }
 
+PrimitiveIntersector::Intersection::Intersection(const PrimitiveIntersector::Intersection &rhs)
+{
+  ratio = rhs.ratio;
+  nodePath = rhs.nodePath;
+  drawable = rhs.drawable;
+  matrix = rhs.matrix;
+  localIntersectionPoint = rhs.localIntersectionPoint;
+  localIntersectionNormal = rhs.localIntersectionNormal;
+  indexList = rhs.indexList;
+  ratioList = rhs.ratioList;
+  primitiveIndex = rhs.primitiveIndex;
+}
+
 void PrimitiveIntersector::setThickness(double thickness)
 {
   _thicknessVal = thickness;
@@ -427,7 +440,8 @@ void PrimitiveIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Draw
 {
     if (reachedLimit()) return;
 
-    osg::BoundingBox bb = drawable->getBound();
+    osg::BoundingBox bb = Utils::getBoundingBox(drawable);
+
     if (bb.valid())
         bb.expandBy(osg::BoundingSphere(bb.center(), (_thickness - _start).length()));
 
@@ -471,7 +485,7 @@ void PrimitiveIntersector::intersect(osgUtil::IntersectionVisitor& iv, osg::Draw
             hit.matrix = iv.getModelMatrix();
             hit.nodePath = iv.getNodePath();
             hit.drawable = drawable;
-            hit.primitiveIndex = triHit._index;
+            hit.primitiveIndex = findPrimitiveIndex(drawable, triHit._index);
 
             hit.localIntersectionPoint = _start*(1.0-remap_ratio) + _end*remap_ratio;
 
@@ -678,4 +692,63 @@ bool PrimitiveIntersector::intersectAndClip(osg::Vec3d& s, osg::Vec3d& e,const o
     }
 
     return true;
+}
+
+unsigned int PrimitiveIntersector::findPrimitiveIndex(osg::Drawable* drawable, unsigned int index)
+{
+    if (!drawable)
+      return index;
+
+    const osg::Geometry* geom = drawable->asGeometry();
+    if ( geom )
+    {
+        unsigned int primIndex = 0;
+        unsigned int encounteredPrims = 0;
+
+        const osg::Geometry::PrimitiveSetList& primSets = geom->getPrimitiveSetList();
+        for( osg::Geometry::PrimitiveSetList::const_iterator i = primSets.begin(); i != primSets.end(); ++i )
+        {
+            bool simple = false;
+            unsigned int numPrims = 0;
+
+            const osg::PrimitiveSet* pset = i->get();
+            switch( pset->getMode() )
+            {
+            case osg::PrimitiveSet::TRIANGLE_STRIP:
+            case osg::PrimitiveSet::TRIANGLE_FAN:
+                numPrims = osg::maximum(pset->getNumIndices() - 2, 0U);
+                encounteredPrims += numPrims;
+                break;
+            case osg::PrimitiveSet::QUAD_STRIP:
+                numPrims = osg::maximum((pset->getNumIndices() - 2) / 2, 0U);
+                encounteredPrims += numPrims;
+                break;
+            case osg::PrimitiveSet::LINE_STRIP:
+                numPrims = osg::maximum(pset->getNumIndices() - 1, 0U);
+                encounteredPrims += numPrims;
+                break;
+            case osg::PrimitiveSet::LINE_LOOP:
+                numPrims = pset->getNumIndices();
+                encounteredPrims += numPrims;
+                break;
+            default:
+                numPrims = pset->getNumPrimitives();
+                primIndex += osg::minimum(numPrims, index - encounteredPrims);
+                encounteredPrims += numPrims;
+                simple = true;
+            }
+
+            if (encounteredPrims > index)
+                return primIndex;
+
+            // primIndex already incremented above for simple primitives
+            if (!simple)
+                primIndex++;
+        }
+    }
+
+    //Should never reach here
+    OE_DEBUG << LC << "Could not find primitive index!" << std::endl;
+
+    return index;
 }

@@ -1,0 +1,138 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_CACHE_LEVELDB_BIN
+#define OSGEARTH_DRIVER_CACHE_LEVELDB_BIN 1
+
+#include "Tracker"
+#include <osgEarth/Common>
+#include <osgEarth/Cache>
+#include <string>
+#include <leveldb/db.h>
+
+#define LEVELDB_CACHE_VERSION 1
+
+namespace osgEarth { namespace Drivers { namespace LevelDBCache
+{
+    using namespace osgEarth;
+
+    /** 
+     * Cache bin implementation for a LevelDBCache.
+    */
+    class LevelDBCacheBin : public osgEarth::CacheBin
+    {
+    public:
+        LevelDBCacheBin(const std::string& name, leveldb::DB* db, Tracker* tracker);
+
+        virtual ~LevelDBCacheBin();
+
+    public: // CacheBin interface
+
+        ReadResult readObject(const std::string& key);
+
+        ReadResult readImage(const std::string& key);
+
+        ReadResult readNode(const std::string& key);
+
+        ReadResult readString(const std::string& key);
+
+        bool write(const std::string& key, const osg::Object* object, const Config& meta);
+
+        bool remove(const std::string& key);
+
+        bool touch(const std::string& key);
+
+        RecordStatus getRecordStatus(const std::string& key);
+
+        bool clear();
+
+        bool compact();
+        
+        unsigned getStorageSize();
+
+        Config readMetadata();
+
+        bool writeMetadata( const Config& meta );
+
+        bool purgeOldest(unsigned maxnum);
+        
+    protected:
+
+        bool binValidForReading(bool silent =true);
+
+        bool binValidForWriting(bool silent =false);
+
+        bool                              _ok;
+        bool                              _binPathExists;
+        std::string                       _metaPath;       // full path to the bin's metadata file
+        std::string                       _binPath;        // full path to the bin's root folder
+        osg::ref_ptr<osgDB::ReaderWriter> _rw;
+        osg::ref_ptr<osgDB::Options>      _rwOptions;
+        Threading::Mutex                  _rwMutex;
+        leveldb::DB*                      _db;
+        osg::ref_ptr<Tracker>             _tracker;
+        bool                              _debug;
+        
+        // adapter base for all the osg read functions...
+        struct Reader {
+            osgDB::ReaderWriter* _rw;
+            osgDB::Options*      _op;
+            Reader(osgDB::ReaderWriter* rw, osgDB::Options* op) : _rw(rw), _op(op) { }
+            virtual osgDB::ReaderWriter::ReadResult read(std::istream& in) const = 0;
+        };
+
+        struct ImageReader : public Reader {
+            ImageReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
+            osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readImage(in, _op); }
+        };
+        struct NodeReader : public Reader {
+            NodeReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
+            osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readNode(in, _op); }
+        };
+        struct ObjectReader : public Reader {
+            ObjectReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
+            osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readObject(in, _op); }
+        };
+
+        ReadResult read(const std::string& key, const Reader& reader);
+
+        void postWrite();
+
+        // key generators
+        std::string binDataKeyTuple(const std::string& key);
+        std::string binPhrase();
+        std::string dataKey(const std::string& key);
+        std::string dataKeyFromTuple(const std::string& tuple);
+        std::string dataBegin();
+        std::string dataEnd();
+        std::string metaKey(const std::string& key);
+        std::string metaKeyFromTuple(const std::string& tuple);
+        std::string metaBegin();
+        std::string metaEnd();
+        std::string timeKey(const DateTime& t, const std::string& key);
+        std::string timeBegin();
+        std::string timeEnd();
+        std::string binKey();
+        std::string timeBeginGlobal();
+        std::string timeEndGlobal();
+    };
+
+
+} } } // namespace osgEarth::Drivers::LevelDBCache
+
+#endif // OSGEARTH_DRIVER_CACHE_LEVELDB_BIN

@@ -1,0 +1,122 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#include "SimpleSkyOptions"
+#include <osgEarthUtil/Sky>
+#include <osgEarth/MapNode>
+#include <osgEarth/PhongLightingEffect>
+#include <osg/MatrixTransform>
+
+namespace osg {
+    class EllipsoidModel;
+    class Light;
+}
+
+namespace osgEarth { namespace Drivers { namespace SimpleSky
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+
+    /**
+     * Node that roots the silverlining adapter.
+     */
+    class SimpleSkyNode : public SkyNode
+    {
+    public:
+        SimpleSkyNode(
+            const SpatialReference* srs);
+
+        SimpleSkyNode(
+            const SpatialReference* srs,
+            const SimpleSkyOptions& options);
+
+    public: // SkyNode
+
+        osg::Light* getSunLight() { return _light.get(); }
+
+        void attach(osg::View* view, int lightNum);
+
+        void onSetEphemeris();
+        void onSetDateTime();
+        void onSetSunVisible();
+        void onSetMoonVisible();
+        void onSetStarsVisible();
+
+    public: // osg::Node
+
+        void traverse(osg::NodeVisitor&);
+
+        osg::BoundingSphere computeBound() const;
+
+    protected:
+        virtual ~SimpleSkyNode() { }
+
+    private:
+        /** Sets the sun's position as a latitude and longitude. */
+        //void setSunPosition(double lat_degrees, double lon_degrees, osg::View* view);
+
+        struct StarData
+        {
+            std::string name;
+            double right_ascension;
+            double declination;
+            double magnitude;
+            
+            StarData() { }
+            StarData( std::stringstream &ss );
+        };
+
+        osg::ref_ptr<osg::Light>   _light;
+        osg::ref_ptr<osg::Uniform> _lightPosUniform;
+        
+        osg::ref_ptr<osg::MatrixTransform> _sunXform;
+        osg::ref_ptr<osg::MatrixTransform> _moonXform;
+        osg::ref_ptr<osg::MatrixTransform> _starsXform;
+
+        osg::ref_ptr<osg::Group> _cullContainer;
+
+        float _innerRadius, _outerRadius, _sunDistance, _starRadius, _minStarMagnitude;
+        osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere, _moon;
+        osg::ref_ptr<osg::Uniform> _starAlpha;
+        osg::ref_ptr<osg::Uniform> _starPointSize;
+
+        osg::ref_ptr<PhongLightingEffect> _phong;
+
+        osg::ref_ptr<const osg::EllipsoidModel> _ellipsoidModel;
+
+		const SimpleSkyOptions _options;
+
+        void initialize(const SpatialReference* srs);
+
+        void makeSceneLighting();
+        void makeAtmosphere( const osg::EllipsoidModel* );
+        void makeSun();
+        void makeMoon();
+
+        void makeStars();
+        osg::Node* buildStarGeometry(const std::vector<StarData>& stars);
+        void getDefaultStars(std::vector<StarData>& out_stars);
+        bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
+
+        void setAmbientBrightness(float value);
+        void setSunPosition(const osg::Vec3& pos);
+        void setMoonPosition(const osg::Vec3d& pos);
+    };
+
+} } } // namespace osgEarth::Drivers::SimpleSky

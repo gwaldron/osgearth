@@ -216,10 +216,12 @@ PlaceNode::init()
     applyStyle( _style );
 
     setLightingIfNotSet( false );
-
-    ShaderGenerator gen;
-    gen.setProgramName( "osgEarth.PlaceNode" );
-    gen.run( this, Registry::stateSetCache() );
+    
+    // generate shaders:
+    Registry::shaderGenerator().run(
+        this,
+        "osgEarth.PlaceNode",
+        Registry::stateSetCache() );
 
     // re-apply annotation drawable-level stuff as neccesary.
     AnnotationData* ad = getAnnotationData();
@@ -242,10 +244,9 @@ PlaceNode::setText( const std::string& text )
 
     _text = text;
 
-    const osg::Geode::DrawableList& list = _geode->getDrawableList();
-    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
     {
-        osgText::Text* d = dynamic_cast<osgText::Text*>( i->get() );
+        osgText::Text* d = dynamic_cast<osgText::Text*>( _geode->getDrawable(i) );
         if ( d )
         {
 			TextSymbol* symbol =  _style.getOrCreate<TextSymbol>();
@@ -286,10 +287,9 @@ PlaceNode::setAnnotationData( AnnotationData* data )
     OrthoNode::setAnnotationData( data );
 
     // override this method so we can attach the anno data to the drawables.
-    const osg::Geode::DrawableList& list = _geode->getDrawableList();
-    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
     {
-        i->get()->setUserData( data );
+        _geode->getDrawable(i)->setUserData( data );
     }
 }
 
@@ -298,11 +298,11 @@ void
 PlaceNode::setDynamic( bool value )
 {
     OrthoNode::setDynamic( value );
-
-    const osg::Geode::DrawableList& list = _geode->getDrawableList();
-    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    
+    for(unsigned i=0; i<_geode->getNumDrawables(); ++i)
     {
-        i->get()->setDataVariance( value ? osg::Object::DYNAMIC : osg::Object::STATIC );
+        _geode->getDrawable(i)->setDataVariance( 
+            value ? osg::Object::DYNAMIC : osg::Object::STATIC );
     }
 }
 

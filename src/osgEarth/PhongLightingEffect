@@ -1,0 +1,73 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_PHONG_LIGHTING_EFFECT_H
+#define OSGEARTH_PHONG_LIGHTING_EFFECT_H
+
+#include <osgEarth/Common>
+#include <osg/StateSet>
+#include <osg/Uniform>
+#include <osg/observer_ptr>
+
+namespace osgEarth
+{
+    /**
+     * Shader effect that performs simple Phong lighting.
+     */
+    class OSGEARTH_EXPORT PhongLightingEffect : public osg::Referenced
+    {
+    public:
+        /** constructs a new effect */
+        PhongLightingEffect();
+
+        /** contructs a new effect and attaches it to a stateset. */
+        PhongLightingEffect(osg::StateSet* stateset);
+
+        /** is it supported by the h/w? */
+        bool supported() const { return _supported; }
+
+        /** whether to create its own lighting mode uniform (default = true).
+          * Set this to false if you are creating the lighting uniform elsewhere.
+          * The lighting uniform is returned by ShaderFactory::createUniformForGLMode(GL_LIGHTING). */
+        void setCreateLightingUniform(bool value);
+
+    public:
+        /** attach this effect to a stateset. */
+        void attach(osg::StateSet* stateset);
+
+        /** detach this effect from any attached statesets. */
+        void detach();
+        /** detach this effect from a stateset. */
+        void detach(osg::StateSet* stateset);
+
+    protected:
+        virtual ~PhongLightingEffect();
+
+        typedef std::list< osg::observer_ptr<osg::StateSet> > StateSetList;
+
+        bool _supported;
+        StateSetList _statesets;
+        bool _createLightingUniform;
+        osg::ref_ptr<osg::Uniform> _lightingUniform;
+
+        void init();
+    };
+
+} // namespace osgEarth::Util
+
+#endif // OSGEARTH_PHONG_LIGHTING_EFFECT_H

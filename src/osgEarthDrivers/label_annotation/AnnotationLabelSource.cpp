@@ -21,6 +21,7 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarth/DepthOffset>
+#include <osgEarth/VirtualProgram>
 #include <osgDB/FileNameUtils>
 #include <osgUtil/Optimizer>
 
@@ -59,6 +60,7 @@ public:
         
         StringExpression  textContentExpr ( text ? *text->content()  : StringExpression() );
         NumericExpression textPriorityExpr( text ? *text->priority() : NumericExpression() );
+        NumericExpression textSizeExpr    ( text ? *text->size()     : NumericExpression() );
         StringExpression  iconUrlExpr     ( icon ? *icon->url()      : StringExpression() );
         NumericExpression iconScaleExpr   ( icon ? *icon->scale()    : NumericExpression() );
         NumericExpression iconHeadingExpr ( icon ? *icon->heading()  : NumericExpression() );
@@ -83,6 +85,9 @@ public:
             {
                 if ( text->content().isSet() )
                     tempStyle.get<TextSymbol>()->content()->setLiteral( feature->eval( textContentExpr, &context ) );
+
+                if ( text->size().isSet() )
+                    tempStyle.get<TextSymbol>()->size()->setLiteral( feature->eval(textSizeExpr, &context) );
             }
 
             if ( icon )
@@ -113,6 +118,9 @@ public:
                 group->addChild( node );
             }
         }
+
+        VirtualProgram* vp = VirtualProgram::getOrCreate(group->getOrCreateStateSet());
+        vp->setInheritShaders( false );
 
         return group;
     }

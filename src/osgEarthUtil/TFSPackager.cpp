@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
+#include <osgEarth/FileUtils>
 
 #define LC "[TFSPackager] "
 
@@ -137,7 +138,7 @@ public:
           bool valid = false;
           // It's a single point, so we do a contains check instead of an intersection check b/c the bounds really aren't valid.
           if (featureExtent.width() == 0 && featureExtent.height() == 0)
-          {              
+          {                            
               valid = tile->getExtent().contains( featureExtent.xMin(), featureExtent.yMin());
           }
           else
@@ -187,15 +188,7 @@ public:
                   tile->traverse( this );
               }
 
-          }
-          else
-          {
-              OE_NOTICE << "Feature doesn't intersect tile" << std::endl;
-              OE_NOTICE << "Feature extent: " << featureExtent.toString() << std::endl;
-              OE_NOTICE << "Tile  extent: " <<  tile->getExtent().toString() << std::endl;              
-          }
-
-
+          }          
       }
 
       int _levelAdded;
@@ -270,7 +263,7 @@ public:
               //OE_NOTICE << "Writing " << features.size() << " features to " << filename << std::endl;
 
               if ( !osgDB::fileExists( osgDB::getFilePath(filename) ) )
-                  osgDB::makeDirectoryForFile( filename );
+                  osgEarth::makeDirectoryForFile( filename );
 
 
               std::fstream output( filename.c_str(), std::ios_base::out );

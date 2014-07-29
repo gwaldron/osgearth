@@ -123,7 +123,7 @@ namespace osgEarth
         struct Record {
             Record() : _valid(false) { }
             Record(const T& value) : _value(value), _valid(true) { }
-            const bool valid() const { return _valid; }
+            bool valid() const { return _valid; }
             const T& value() const { return _value; }
         private:
             bool _valid;
@@ -456,7 +456,6 @@ namespace osgEarth
     private:
         vector_type _impl;
     };
-
 }
 
 #endif // OSGEARTH_CONTAINERS_H

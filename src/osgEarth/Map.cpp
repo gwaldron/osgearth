@@ -55,42 +55,20 @@ _mapOptions          ( options ),
 _initMapOptions      ( options ),
 _dataModelRevision   ( 0 )
 {
+    // If the registry doesn't have a default cache policy, but the
+    // map options has one, make the map policy the default.
     if (_mapOptions.cachePolicy().isSet() &&
-        _mapOptions.cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY )
+        !Registry::instance()->defaultCachePolicy().isSet())
     {
-        OE_INFO << LC << "CACHE-ONLY MODE activated from map" << std::endl;
-    }
-
-    // if the map has a cache policy set, make this the system-wide default, UNLESS
-    // there ALREADY IS a registry default, in which case THAT will override THIS one.
-    // (In other words, whichever one is set first wins. And of course, if the registry
-    // has an override set, that will cancel out all of this.)
-    const optional<CachePolicy> regCachePolicy = Registry::instance()->defaultCachePolicy();
-
-    if ( _mapOptions.cachePolicy().isSet() )
-    {
-        if ( !regCachePolicy.isSet() )
-        {
-            Registry::instance()->setDefaultCachePolicy( *_mapOptions.cachePolicy() );
-            OE_INFO << LC 
-                << "Setting default cache policy from map ("
-                << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
-        }
-        else
-        {
-            _mapOptions.cachePolicy() = *regCachePolicy;
-            OE_INFO << LC
-                << "Settings map caching policy to default ("
-                << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
-        }
-    }
-    else if ( regCachePolicy.isSet() )
-    {
-        _mapOptions.cachePolicy() = *regCachePolicy;
-        OE_INFO << LC
-            << "Settings map caching policy to default ("
+        Registry::instance()->setDefaultCachePolicy( _mapOptions.cachePolicy().get() );
+        OE_INFO << LC 
+            << "Setting default cache policy from map ("
             << _mapOptions.cachePolicy()->usageString() << ")" << std::endl;
     }
+
+    // Combine the CachePolicy in the map options with the settings in
+    // the registry.
+    Registry::instance()->resolveCachePolicy( _mapOptions.cachePolicy() );
 
     // the map-side dbOptions object holds I/O information for all components.
     _dbOptions = osg::clone( Registry::instance()->getDefaultOptions() );
@@ -975,8 +953,9 @@ Map::calculateProfile()
                 else
                 {
                     OE_WARN << LC 
-                        << "Map is geocentric, but the configured profile does not "
-                        << "have a geographic SRS. Falling back on default.."
+                        << "Map is geocentric, but the configured profile SRS ("
+                        << userProfile->getSRS()->getName() << ") is not geographic; "
+                        << "it will be ignored."
                         << std::endl;
                 }
             }
@@ -1085,28 +1064,36 @@ Map::calculateProfile()
     }
 }
 
+osg::HeightField*
+Map::createReferenceHeightField(const TileKey& key,
+                                bool           expressHeightsAsHAE) const
+{
+    unsigned size = std::max(*_mapOptions.elevationTileSize(), 2u);
+    return HeightFieldUtils::createReferenceHeightField(key.getExtent(), size, size, expressHeightsAsHAE);
+}
+
 
 bool
-Map::getHeightField(const TileKey&                  key,
-                    bool                            fallback,
-                    osg::ref_ptr<osg::HeightField>& out_result,
-                    bool*                           out_isFallback,
-                    bool                            convertToHAE,
-                    ElevationSamplePolicy           samplePolicy,
-                    ProgressCallback*               progress) const
+Map::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
+                         const TileKey&                  key,
+                         bool                            convertToHAE,
+                         ElevationSamplePolicy           samplePolicy, // deprecated (unused)
+                         ProgressCallback*               progress) const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
 
     ElevationInterpolation interp = getMapOptions().elevationInterpolation().get();    
 
-    return _elevationLayers.createHeightField(
-        key, 
-        fallback, 
+    if ( !hf.valid() )
+    {
+        hf = createReferenceHeightField(key, convertToHAE);
+    }
+
+    return _elevationLayers.populateHeightField(
+        hf.get(),
+        key,
         convertToHAE ? _profileNoVDatum.get() : 0L,
-        interp, 
-        samplePolicy, 
-        out_result,  
-        out_isFallback,
+        interp,
         progress );
 }
 

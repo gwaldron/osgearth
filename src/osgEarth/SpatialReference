@@ -166,7 +166,22 @@ namespace osgEarth
 
     public: // properties
 
-        typedef std::pair<std::string,std::string> Key;
+        /** uniquely identifies an SRS. */
+        struct Key {
+            Key() { }
+            Key(const std::string& h, const std::string& v)
+                : horiz(h), horizLower(toLower(h)), vert(v), vertLower(toLower(v)) { }
+            std::string horiz, horizLower;
+            std::string vert,  vertLower;
+            bool operator < (const Key& rhs) const {
+                int h = horizLower.compare(rhs.horizLower);
+                if ( h < 0 ) return true;
+                if ( h > 0 ) return false;
+                int v = vertLower.compare(rhs.vertLower);
+                if ( v < 0 ) return true;
+                return false;
+            }
+        };
 
         /** True if this is a geographic SRS (lat/long/msl) */
         virtual bool isGeographic() const;
@@ -354,9 +369,9 @@ namespace osgEarth
         virtual void _init();
         virtual bool _isEquivalentTo( const SpatialReference* srs, bool considerVDatum =true ) const;
 
-        virtual bool preTransform(std::vector<osg::Vec3d>&) const { return true; }
+        virtual const SpatialReference* preTransform(std::vector<osg::Vec3d>&) const { return this; }
 
-        virtual bool postTransform(std::vector<osg::Vec3d>&) const { return true; }
+        virtual const SpatialReference* postTransform(std::vector<osg::Vec3d>&) const { return this; }
 
         bool transformXYPointArrays(
             double*  x,

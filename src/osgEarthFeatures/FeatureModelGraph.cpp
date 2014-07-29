@@ -20,6 +20,9 @@
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarthFeatures/Session>
+
+#include <osgEarth/Map>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ClampableNode>
 #include <osgEarth/CullingUtils>
@@ -39,6 +42,9 @@
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
 
+#include <algorithm>
+#include <iterator>
+
 #define LC "[FeatureModelGraph] "
 
 using namespace osgEarth;
@@ -48,6 +54,20 @@ using namespace osgEarth::Symbology;
 #undef USE_PROXY_NODE_FOR_TESTING
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
+
+namespace
+{
+    // callback to force features onto the high-latency queue.
+    struct HighLatencyFileLocationCallback : public osgDB::FileLocationCallback
+    {
+        Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        {
+            return REMOTE_FILE;
+        }
+
+        bool useFileCache() const { return false; }
+    };
+}
 
 //---------------------------------------------------------------------------
 
@@ -75,7 +95,8 @@ namespace
                                 float maxRange, 
                                 float priOffset, 
                                 float priScale,
-                                RefNodeOperationVector* postMergeOps)
+                                RefNodeOperationVector* postMergeOps,
+                                osgDB::FileLocationCallback* flc)
     {
 #ifdef USE_PROXY_NODE_FOR_TESTING
         osg::ProxyNode* p = new osg::ProxyNode();
@@ -85,13 +106,17 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        //p->setRadius(std::max((float)bs.radius(),maxRange));
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
         p->setPriorityOffset( 0, priOffset );
         p->setPriorityScale( 0, priScale );
 #endif
+
+        // force onto the high-latency thread pool.
+        osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
+        options->setFileLocationCallback( flc );
+        p->setDatabaseOptions( options );
 
         return p;
     }
@@ -129,7 +154,10 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
             osg::ref_ptr<const Map> map = graph->getSession()->getMap();
             if (map.valid() == true)
             {
-                return ReadResult( graph->load( lod, x, y, uri ) );
+                Registry::instance()->startActivity(uri);
+                osg::Node* node = graph->load( lod, x, y, uri );
+                Registry::instance()->endActivity(uri);
+                return ReadResult(node);
             }
         }
 
@@ -205,23 +233,36 @@ namespace
 
 FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      const FeatureModelSourceOptions& options,
-                                     FeatureNodeFactory*              factory ) :
-_session           ( session ),
-_options           ( options ),
-_factory           ( factory ),
-_dirty             ( false ),
-_pendingUpdate     ( false ),
-_overlayInstalled  ( 0L ),
-_overlayPlaceholder( 0L ),
-_clampable         ( 0L ),
-_drapeable         ( 0L ),
-_overlayChange     ( OVERLAY_NO_CHANGE )
+                                     FeatureNodeFactory*              factory,
+                                     RefNodeOperationVector*          preMergeOperations,
+                                     RefNodeOperationVector*          postMergeOperations) :
+_session            ( session ),
+_options            ( options ),
+_factory            ( factory ),
+_preMergeOperations ( preMergeOperations ),
+_postMergeOperations( postMergeOperations ),
+_dirty              ( false ),
+_pendingUpdate      ( false ),
+_overlayInstalled   ( 0L ),
+_overlayPlaceholder ( 0L ),
+_clampable          ( 0L ),
+_drapeable          ( 0L ),
+_overlayChange      ( OVERLAY_NO_CHANGE )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
-    // operations that get applied after a new node gets merged into the 
-    // scene graph by the pager.
-    _postMergeOperations = new RefNodeOperationVector();
+    // an FLC that queues feature data on the high-latency thread.
+    _defaultFileLocationCallback = new HighLatencyFileLocationCallback();
+
+    // set up the callback queues for pre- and post-merge operations.
+
+    // per-merge ops run in the pager thread:
+    if ( !_preMergeOperations.valid())
+        _preMergeOperations = new RefNodeOperationVector();
+
+    // post-merge ops run in the update traversal:
+    if ( !_postMergeOperations.valid() )
+        _postMergeOperations = new RefNodeOperationVector();
 
     // install the stylesheet in the session if it doesn't already have one.
     if ( !session->styles() )
@@ -231,6 +272,17 @@ _overlayChange     ( OVERLAY_NO_CHANGE )
     {
         OE_WARN << LC << "ILLEGAL: Session must have a feature source" << std::endl;
         return;
+    }
+
+    // Set up a shared resource cache for the session. A session-wide cache means
+    // that all the paging threads that load data from this FMG will load resources
+    // from a single cache; e.g., once a texture is loaded in one thread, the same
+    // StateSet will be used across the entire Session. That also means that StateSets
+    // in the ResourceCache can potentially also be in the live graph; so you should
+    // take care in dealing with them in a multi-threaded environment.
+    if ( !session->getResourceCache() && _options.sessionWideResourceCache() == true )
+    {
+        session->setResourceCache( new ResourceCache(session->getDBOptions()) );
     }
     
     // Calculate the usable extent (in both feature and map coordinates) and bounds.
@@ -307,7 +359,9 @@ _overlayChange     ( OVERLAY_NO_CHANGE )
     // proper fade time for paged nodes.
     if ( _options.fading().isSet() )
     {
-        addPostMergeOperation( new SetupFading() );
+        _postMergeOperations->mutex().writeLock();
+        _postMergeOperations->push_back( new SetupFading() );
+        _postMergeOperations->mutex().writeUnlock();
         OE_INFO << LC << "Added fading post-merge operation" << std::endl;
     }
 
@@ -325,13 +379,6 @@ void
 FeatureModelGraph::dirty()
 {
     _dirty = true;
-}
-
-void
-FeatureModelGraph::addPostMergeOperation( NodeOperation* op )
-{
-    if ( op )
-        _postMergeOperations->push_back( op );
 }
 
 osg::BoundingSphered
@@ -415,6 +462,9 @@ FeatureModelGraph::setupPaging()
             if ( !_options.layout()->tileSizeFactor().isSet() )
             {
                 //Automatically compute the tileSizeFactor based on the max range
+                //TODO: This is no longer correct. "max_range" is actually an altitude,
+                //not a distance-from-tile, so if the user sets it we need to do something
+                //different. -gw
                 double width, height;
                 featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
 
@@ -440,6 +490,8 @@ FeatureModelGraph::setupPaging()
     }
 
     // calculate the max range for the top-level PLOD:
+    // TODO: a user-specified maxRange is actually an altitude, so this is not
+    //       strictly correct anymore!
     float maxRange = 
         maxRangeOverride.isSet() ? *maxRangeOverride :
         bs.radius() * _options.layout()->tileSizeFactor().value();
@@ -455,7 +507,8 @@ FeatureModelGraph::setupPaging()
         maxRange, 
         *_options.layout()->priorityOffset(), 
         *_options.layout()->priorityScale(),
-        _postMergeOperations.get() );
+        _postMergeOperations.get(),
+        _defaultFileLocationCallback.get() );
 
     return pagedNode;
 }
@@ -595,6 +648,9 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
         OE_DEBUG << LC << "Blacklisting: " << uri << std::endl;
     }
 
+    // Done - run the pre-merge operations.
+    runPreMergeOperations(result);
+
     return result;
 }
 
@@ -648,7 +704,8 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     0.0f, maxRange, 
                     *_options.layout()->priorityOffset(), 
                     *_options.layout()->priorityScale(),
-                    _postMergeOperations.get() );
+                    _postMergeOperations.get(),
+                    _defaultFileLocationCallback.get() );
 
                 parent->addChild( pagedNode );
             }
@@ -731,22 +788,15 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
         // account for a min-range here. Do not address the max-range here; that happens
         // above when generating paged LOD nodes, etc.
         float minRange = level.minRange();
-
-#if 1
         if ( minRange > 0.0f )
         {
-            // minRange can't be less than the tile geometry's radius.
-            //minRange = std::max(minRange, (float)group->getBound().radius());
-            //osg::LOD* lod = new osg::LOD();
-            //lod->addChild( group.get(), minRange, FLT_MAX );
-
             ElevationLOD* lod = new ElevationLOD( _session->getMapSRS() );
             lod->setMinElevation( minRange );
             lod->addChild( group.get() );
             group = lod;
         }
-#endif
 
+        // install a cluster culler.
         if ( _session->getMapInfo().isGeocentric() && _options.clusterCulling() == true )
         {
             const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
@@ -1148,6 +1198,8 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
             }
         }
     }
+    
+    const RenderSymbol* render = style.get<RenderSymbol>();
 
     if ( _clampable )
     {
@@ -1163,7 +1215,6 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
         // check for explicit depth offset render settings (note, this could
         // override the automatic disable put in place by the presence of an
         // ExtrusionSymbol above)
-        const RenderSymbol* render = style.get<RenderSymbol>();
         if ( render && render->depthOffset().isSet() )
         {
             _clampable->setDepthOffsetOptions(*render->depthOffset());
@@ -1172,11 +1223,16 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
 
     else 
     {
-        const RenderSymbol* render = style.get<RenderSymbol>();
         if ( render && render->depthOffset().isSet() )
         {
             _depthOffsetAdapter.setGraph( this );
             _depthOffsetAdapter.setDepthOffsetOptions( *render->depthOffset() );
+        }
+
+        // apply render order when draping:
+        if ( _drapeable && render && render->order().isSet() )
+        {
+            _drapeable->setRenderOrder( render->order()->eval() );
         }
     }
 }
@@ -1232,17 +1288,32 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
     osg::Group::traverse(nv);
 }
 
+void
+FeatureModelGraph::runPreMergeOperations(osg::Node* node)
+{
+   if ( _preMergeOperations.valid() )
+   {
+      _preMergeOperations->mutex().readLock();
+      for( NodeOperationVector::iterator i = _preMergeOperations->begin(); i != _preMergeOperations->end(); ++i )
+      {
+         i->get()->operator()( node );
+      }
+      _preMergeOperations->mutex().readUnlock();
+   }
+}
 
 void
 FeatureModelGraph::runPostMergeOperations(osg::Node* node)
 {
-    if ( _postMergeOperations.valid() )
-    {
-        for( NodeOperationVector::iterator i = _postMergeOperations->begin(); i != _postMergeOperations->end(); ++i )
-        {
-            i->get()->operator()( node );
-        }
-    }
+   if ( _postMergeOperations.valid() )
+   {
+      _postMergeOperations->mutex().readLock();
+      for( NodeOperationVector::iterator i = _postMergeOperations->begin(); i != _postMergeOperations->end(); ++i )
+      {
+         i->get()->operator()( node );
+      }
+      _postMergeOperations->mutex().readUnlock();
+   }
 }
 
 

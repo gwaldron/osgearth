@@ -17,7 +17,6 @@ Group {
         binNumber 10
         binName DepthSortedBin
         GL_CULL_FACE OFF
-        GL_LIGHTING OFF
         GL_BLEND ON
         BlendFunc {
           UniqueID BlendFunc_0

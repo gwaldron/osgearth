@@ -58,6 +58,7 @@ SET(LIB_PUBLIC_HEADERS
     GeoData
     Geoid
     GeoMath
+	GeoTransform
     HeightFieldUtils
     HTTPClient
     ImageLayer
@@ -90,6 +91,7 @@ SET(LIB_PUBLIC_HEADERS
     optional
     OverlayDecorator
     OverlayNode
+	PhongLightingEffect
     Pickers
     PrimitiveIntersector
     Profile
@@ -103,6 +105,7 @@ SET(LIB_PUBLIC_HEADERS
     SparseTexture2DArray
     SpatialReference
     StateSetCache
+	StateSetLOD
     StringUtils
     TaskService
     Terrain
@@ -111,9 +114,9 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TextureCompositor
-    TextureCompositorMulti
-    TextureCompositorTexArray
     TileKey
+    TileHandler
+    TileVisitor
     TileSource
     TimeControl
     TraversalData
@@ -146,13 +149,20 @@ IF (NOT TINYXML_FOUND)
     )
 ENDIF (NOT TINYXML_FOUND)
 
-# auto-generate the VersionGit file to include the git SHA1 variable.
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp" 
-    @ONLY)
+
+SET(VERSION_GIT_SOURCE "")
+IF (OSGEARTH_EMBED_GIT_SHA)
+	ADD_DEFINITIONS(-DOSGEARTH_EMBED_GIT_SHA)
+	
+	# auto-generate the VersionGit file to include the git SHA1 variable.
+	configure_file(
+		"${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
+		"${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp" 
+		@ONLY)
     
-set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")
+	set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")	
+ENDIF (OSGEARTH_EMBED_GIT_SHA)
+
 
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
@@ -190,6 +200,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     GeoData.cpp
     Geoid.cpp
     GeoMath.cpp
+	GeoTransform.cpp
     HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageLayer.cpp
@@ -219,6 +230,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Notify.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
+	PhongLightingEffect.cpp
     Pickers.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
@@ -232,6 +244,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     SparseTexture2DArray.cpp
     SpatialReference.cpp
     StateSetCache.cpp
+	StateSetLOD.cpp
     StringUtils.cpp
     TaskService.cpp
     Terrain.cpp
@@ -239,9 +252,9 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TerrainOptions.cpp
     TerrainEngineNode.cpp
     TextureCompositor.cpp
-    TextureCompositorMulti.cpp
-    TextureCompositorTexArray.cpp
     TileKey.cpp
+    TileHandler.cpp
+    TileVisitor.cpp
     TileSource.cpp
     TimeControl.cpp
     TraversalData.cpp

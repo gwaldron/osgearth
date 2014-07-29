@@ -358,7 +358,7 @@ Each level describes a level of detail. This is a camera range (between ``min_ra
 and ``max_range``) at which tiles in this level of detail are rendered. But how
 big is each tile? This is calculated based on the *tile range factor*.
 
-The ``tile_range_factor`` determines the size of a tile, based on the ``max_range``
+The ``tile_size_factor`` determines the size of a tile, based on the ``max_range``
 of the LOD. The tile range factor is the multiple of a tile's radius at which the
 LOD's ``max_range`` takes effect. In other words::
 
@@ -375,46 +375,3 @@ sending large batches of similar geometry to the graphics card, tweaking the
 tile size can help with performance and throughput. Unfortunately there's no way
 for osgEarth to know exactly what the "best" tile size will be in advance;
 so, you have the opportunity to tweak using this setting.
-
-Multiple Levels and Using Selectors
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can have any number of levels -- but keep in mind that unlike the terrain
-imagery, feature data does NOT form a quadtree in which the higher LODs replace
-the lower ones. Rather, feature levels are independent of one another. So if you
-want to draw more detail as you zoom in closer, you have to use selectors to
-decide what you want to draw at each step.
-
-Here's an example. Say we're drawing roads.
-We have a shapefile in which the road type is stored in an attribute called ``roadtype`` ::
-
-   <layout>
-       <tile_size_factor>15.0</tile_size_factor>
-       <crop_features>true</crop_features>
-       <level name="highway" max_range="100000">
-          <selector class="highway">
-             <query>
-                <expr>roadtype = 'A'</expr>
-             </query>
-          </selector>
-       </level>
-       <level name="street" max_range="10000">
-          <selector class="street">
-             <query>
-                <expr>roadtype = 'B'</expr>
-             </query>
-          </selector>
-       </level>
-   </layout>
-
-   <styles>
-      highway {
-          stroke:       #ffff00;
-          stroke-width: 2.0;
-      }
-      street {
-          stroke:       #ffffff7f;
-          stroke-width: 1.0;
-      }
-   </styles>
-   

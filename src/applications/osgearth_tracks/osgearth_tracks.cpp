@@ -143,7 +143,7 @@ createFieldSchema( TrackNodeFieldSchema& schema )
     nameSymbol->pixelOffset()->set( 0, 2+ICON_SIZE/2 );
     nameSymbol->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
     nameSymbol->halo()->color() = Color::Black;
-    nameSymbol->size() = nameSymbol->size().value() + 2.0f;
+    nameSymbol->size() = nameSymbol->size()->eval() + 2.0f;
     schema[FIELD_NAME] = TrackNodeField(nameSymbol, false); // false => static label (won't change after set)
 
     // draw the track coordinates below the icon:
@@ -151,7 +151,7 @@ createFieldSchema( TrackNodeFieldSchema& schema )
     posSymbol->pixelOffset()->set( 0, -2-ICON_SIZE/2 );
     posSymbol->alignment() = TextSymbol::ALIGN_CENTER_TOP;
     posSymbol->fill()->color() = Color::Yellow;
-    posSymbol->size() = posSymbol->size().value() - 2.0f;
+    posSymbol->size() = posSymbol->size()->eval() - 2.0f;
     schema[FIELD_POSITION] = TrackNodeField(posSymbol, true); // true => may change at runtime
 
     // draw some other field to the left:
@@ -211,7 +211,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 void
 createControls( osgViewer::View* view )
 {
-    ControlCanvas* canvas = ControlCanvas::get(view, true);
+    ControlCanvas* canvas = ControlCanvas::getOrCreate(view);
     
     // title bar
     VBox* vbox = canvas->addControl(new VBox(Control::ALIGN_NONE, Control::ALIGN_BOTTOM, 2, 1 ));

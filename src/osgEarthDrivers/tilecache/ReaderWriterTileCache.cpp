@@ -48,8 +48,7 @@ public:
 
     Status initialize( const osgDB::Options* dbOptions )
     {
-        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
-        CachePolicy::NO_CACHE.apply( _dbOptions.get() );
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);        
 
         if ( !getProfile() )
         {

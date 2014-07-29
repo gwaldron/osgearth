@@ -237,8 +237,8 @@ GeometryFactory::createEllipticalArc(const osg::Vec3d& center,
         numSegments = (unsigned)::ceil(circumference / segLen);
     }
 
-    double startRad = std::min( start.as(Units::RADIANS), end.as(Units::RADIANS) ) - osg::PI_2;
-    double endRad   = std::max( start.as(Units::RADIANS), end.as(Units::RADIANS) ) - osg::PI_2;
+    double startRad = std::min( start.as(Units::RADIANS), end.as(Units::RADIANS) );// - osg::PI_2;
+    double endRad   = std::max( start.as(Units::RADIANS), end.as(Units::RADIANS) );// - osg::PI_2;
 
     if ( endRad == startRad )
     {
@@ -275,16 +275,15 @@ GeometryFactory::createEllipticalArc(const osg::Vec3d& center,
     {
         double a = radiusMajor.as(Units::METERS);
         double b = radiusMinor.as(Units::METERS);
-        double g = rotationAngle.as(Units::RADIANS) - osg::PI_2;
+        double g = rotationAngle.as(Units::RADIANS);
         double sing = sin(g), cosg = cos(g);
 
         for( unsigned i=0; i<=numSegments; i++ )
         {
             double angle = startRad + step*(double)i;
-            double t = angle - osg::PI_2;
-            double cost = cos(t), sint = sin(t);
-            double x = center.x() + a*cost*cosg - b*sint*sing;
-            double y = center.y() + a*cost*sing + b*sint*cosg;
+            double cost = cos(angle), sint = sin(angle);
+            double x = center.x() + a*sint*cosg + b*cost*sing;
+            double y = center.y() + b*cost*cosg - a*sint*sing;
 
             geom->push_back( osg::Vec3d(x, y, center.z()) );
         }

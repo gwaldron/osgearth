@@ -576,7 +576,7 @@ namespace osgEarth { namespace Util
         /**
          * Gets the current camera position.
          */
-        Viewpoint getViewpoint() const;
+        Viewpoint getViewpoint() const;        
 
         /**
          * Sets the camera position, optionally moving it there over time.
@@ -586,12 +586,17 @@ namespace osgEarth { namespace Util
         /**
          * Cancels a viewpoint transition if one is in progress
          */
-        void cancelViewpointTransition() { _setting_viewpoint = false; }
+        void cancelViewpointTransition() { _setting_viewpoint = false; }        
 
         /**
          * Sets the viewpoint to activate when performing the ACTION_HOME action.
          */
         void setHomeViewpoint( const Viewpoint& vp, double duration_s = 0.0 );
+
+        /**
+         * Whether the manipulator is performing a viewpoint transition
+         */
+        bool isSettingViewpoint() const { return _setting_viewpoint; }
 
         /**
          * Locks the camera's focal point on the center of a node's bounding sphere.
@@ -600,8 +605,10 @@ namespace osgEarth { namespace Util
          *
          * @param node
          *      Node to which to tether the viewpoint.
+         * @param duration_s
+         *      The duration that the camera should transition when tethering to the node.
          */
-        void setTetherNode( osg::Node* node );
+        void setTetherNode( osg::Node* node, double duration_s =0.0  );
 
         /**
          * Gets the node to which the camera is tethered, or NULL if tethering is
@@ -853,6 +860,11 @@ namespace osgEarth { namespace Util
         virtual void handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view );
         //virtual bool handleMultiTouchAction( const Action& action, const TouchEvent& te, osg::View* view );
 
+        /**
+         * Gets the viewpoint of the TetherNode.
+         */
+        Viewpoint getTetherNodeViewpoint() const;
+
     protected:
 
         // makeshift "stack" of the last 2 incoming events.
@@ -872,16 +884,11 @@ namespace osgEarth { namespace Util
         bool _is_geocentric;
         bool _srs_lookup_failed;
 
-        osg::observer_ptr<osg::Node> _tether_node;
-        osg::Transform*              _tether_xform;
-        osg::Vec3d                   _tether_local_center;
-        Viewpoint                    _pre_tether_vp;
+        osg::observer_ptr<osg::Node> _tether_node;        
 
         double                  _time_s_last_frame;
-        double                  _time_s_now;
-        osg::Timer_t            _now;
-        double                  _delta_t;
-        double                  _t_factor;
+        double                  _time_s_now;        
+        double                  _delta_t;        
         bool                    _thrown;
         double                  _throw_dx;
         double                  _throw_dy;
@@ -909,8 +916,6 @@ namespace osgEarth { namespace Util
         osg::Vec3d              _previousUp;
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;
-        //double                  _local_pitch;
-        //double                  _local_azim;
 
         bool                    _continuous;
         double                  _continuous_dx;

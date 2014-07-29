@@ -51,7 +51,7 @@ TextSymbol::getConfig() const
     conf.addObjIfSet( "halo", _halo );
     conf.addIfSet( "halo_offset", _haloOffset );
     conf.addIfSet( "font", _font );
-    conf.addIfSet( "size", _size );
+    conf.addObjIfSet( "size", _size );
     conf.addObjIfSet( "content", _content );
     conf.addObjIfSet( "priority", _priority );
     conf.addIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
@@ -103,7 +103,7 @@ TextSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "halo", _halo );
     conf.getIfSet( "halo_offset", _haloOffset );
     conf.getIfSet( "font", _font );
-    conf.getIfSet( "size", _size );
+    conf.getObjIfSet( "size", _size );
     conf.getObjIfSet( "content", _content );
     conf.getObjIfSet( "priority", _priority );
     conf.getIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
@@ -157,7 +157,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<TextSymbol>()->fill()->color().a() = as<float>( c.value(), 1.0f );
     }
     else if ( match(c.key(), "text-size") ) {
-        style.getOrCreate<TextSymbol>()->size() = as<float>(c.value(), 32.0f);
+        style.getOrCreate<TextSymbol>()->size() = NumericExpression( c.value() );
     }
     else if ( match(c.key(), "text-font") ) {
         style.getOrCreate<TextSymbol>()->font() = c.value();

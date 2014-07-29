@@ -83,6 +83,7 @@ public:
 
                 std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON()) << "_wfs";
                 _cacheBin = cache->addBin( binId );
+                _cacheBin->setHashKeys(true);
                 
                 // write a metadata record just for reference purposes.. we don't actually use it
                 Config metadata = _cacheBin->readMetadata();
@@ -326,9 +327,13 @@ public:
                    "&Y=" << query.tileKey().get().getTileY();
         }
         else if (query.bounds().isSet())
-        {
-            buf << "&BBOX=" << query.bounds().get().xMin() << "," << query.bounds().get().yMin() << ","
-                            << query.bounds().get().xMax() << "," << query.bounds().get().yMax();
+        {            
+            double buffer = *_options.buffer();            
+            buf << "&BBOX=" << std::setprecision(16)
+                            << query.bounds().get().xMin() - buffer << ","
+                            << query.bounds().get().yMin() - buffer << ","
+                            << query.bounds().get().xMax() + buffer << ","
+                            << query.bounds().get().yMax() + buffer;
         }
         std::string str;
         str = buf.str();
@@ -376,7 +381,7 @@ public:
             if ( features.size() > 0 )
             {
                 FilterContext cx;
-                cx.profile() = getFeatureProfile();
+                cx.setProfile( getFeatureProfile() );
 
                 for( FeatureFilterList::const_iterator i = _options.filters().begin(); i != _options.filters().end(); ++i )
                 {

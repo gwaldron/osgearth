@@ -32,6 +32,7 @@
 #include <osg/CullFace>
 #include <osg/MatrixTransform>
 #include <osg/LightModel>
+#include <osg/Projection>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -97,7 +98,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     t->setText( text, text_encoding );
 
-    // osgText::Text turns on depth writing by default, even if you turned it off..
+    // osgText::Text turns on depth writing by default, even if you turned it off.
     t->setEnableDepthWrites( false );
 
     if ( symbol && symbol->layout().isSet() )
@@ -129,7 +130,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     t->setAutoRotateToScreen( false );
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
-    t->setCharacterSize( symbol && symbol->size().isSet() ? *symbol->size() : 16.0f );
+    t->setCharacterSize( symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f );
     t->setColor( symbol && symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
 
     osgText::Font* font = 0L;
@@ -432,7 +433,11 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geom );
 
-    return geode;
+    // need 2-pass alpha so you can view it properly from below.
+    if ( color.a() < 1.0f )
+      return installTwoPassAlpha( geode );
+    else
+      return geode;
 }
 
 osg::Node* 
@@ -453,7 +458,7 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
        v->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
-    b->reserve(24);
+    b->reserve(12);
     b->push_back(0); b->push_back(2); b->push_back(3);
     b->push_back(0); b->push_back(3); b->push_back(1);
     b->push_back(0); b->push_back(1); b->push_back(4);
@@ -482,10 +487,13 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     geode->addDrawable( geom );
 
     // need 2-pass alpha so you can view it properly from below.
-    return installTwoPassAlpha( geode );
+    if ( color.a() < 1.0f )
+      return installTwoPassAlpha( geode );
+    else
+      return geode;
 }
 
-// constucts an ellipsoidal mesh
+// constructs an ellipsoidal mesh
 osg::Geometry*
 AnnotationUtils::createEllipsoidGeometry(float xRadius, 
                                          float yRadius,
@@ -544,9 +552,9 @@ AnnotationUtils::createEllipsoidGeometry(float xRadius,
             float sin_v = sinf(v);
             
             verts->push_back(osg::Vec3(
-                xRadius * cos_u * sin_v,
-                yRadius * sin_u * sin_v,
-                zRadius * cos_v ));
+                xRadius * cos_u * cos_v,
+                yRadius * sin_u * cos_v,
+                zRadius * sin_v ));
 
             if (genTexCoords)
             {

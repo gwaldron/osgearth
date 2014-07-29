@@ -24,6 +24,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
 #include <osg/Timer>
+#include <OpenThreads/ReentrantMutex>
 #include <queue>
 #include <list>
 #include <string>
@@ -91,6 +92,16 @@ namespace osgEarth
         Threading::Event* _completedEvent;
     };
 
+    /**
+     * Special marker class that is used to signify the end of the work.  TaskRequestThreads should shut down when they receive a PoisonPill
+     */
+    class OSGEARTH_EXPORT PoisonPill : public TaskRequest
+    {        
+        virtual void operator()( ProgressCallback* progress )
+        {
+        }
+    };
+
     typedef std::list< osg::ref_ptr<TaskRequest> > TaskRequestList;
 
     typedef std::vector< osg::ref_ptr<TaskRequest> > TaskRequestVector;
@@ -125,24 +136,31 @@ namespace osgEarth
     class TaskRequestQueue : public osg::Referenced
     {
     public:
-        TaskRequestQueue();
+        TaskRequestQueue(unsigned int maxSize=0);
 
         void add( TaskRequest* request );
         TaskRequest* get();
         void clear();
+        void cancel();
 
         void setDone();
+
+        unsigned int getMaxSize() const { return _maxSize;}
 
         void setStamp( int value ) { _stamp = value; }
         int getStamp() const { return _stamp; }
 
         unsigned int getNumRequests() const;
 
+
     private:
         TaskRequestPriorityMap _requests;
         OpenThreads::Mutex _mutex;
+        OpenThreads::Mutex _addMutex;
         OpenThreads::Condition _cond;
+        OpenThreads::Condition _addCond;
         volatile bool _done;
+        unsigned int _maxSize;
 
         int _stamp;
     };
@@ -167,7 +185,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TaskService : public osg::Referenced
     {
     public:
-        TaskService( const std::string& name ="", int numThreads =4 );
+        TaskService( const std::string& name ="", int numThreads =4, unsigned int maxSize=0 );
 
         void add( TaskRequest* request );
 
@@ -184,6 +202,12 @@ namespace osgEarth
          *Gets the number of requets left in the queue
          */
         unsigned int getNumRequests() const;
+
+        void waitforThreadsToComplete();
+
+        bool areThreadsRunning();
+
+        void cancelAll();
 
     private:
         void adjustThreadCount();

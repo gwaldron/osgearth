@@ -84,7 +84,7 @@ main(int argc, char** argv)
     grid->setControl( 0, 3, new LabelControl("Go to:"));
     grid->setControl( 1, 3, new LabelControl("Double-click"));
 
-    ControlCanvas::get(&viewer)->addControl(vbox);
+    ControlCanvas::getOrCreate(&viewer)->addControl(vbox);
 
     // Load an earth file
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
@@ -108,7 +108,7 @@ main(int argc, char** argv)
     win.setCentralWidget( viewerWidget );
     win.setGeometry(100, 100, 1024, 800);
 
-    win.statusBar()->showMessage(QString("osgEarth.   Terrain on Demand.   Copyright 2013 Pelican Mapping.   Please visit http://osgearth.org"));
+    win.statusBar()->showMessage(QString("osgEarth.  Copyright 2014 Pelican Mapping.   Please visit http://osgearth.org"));
 
     win.show();
     app.exec();

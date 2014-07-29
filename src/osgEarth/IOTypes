@@ -79,7 +79,8 @@ namespace osgEarth
             RESULT_NO_READER,
             RESULT_READER_ERROR,
             RESULT_UNKNOWN_ERROR,
-            RESULT_NOT_IMPLEMENTED
+            RESULT_NOT_IMPLEMENTED,
+            RESULT_NOT_MODIFIED
         };
 
         /** Construct a result with no object */
@@ -106,7 +107,10 @@ namespace osgEarth
         virtual ~ReadResult() { }
 
         /** Whether the read operation succeeded */
-        bool succeeded() const { return _code == RESULT_OK && _result.valid(); }
+        bool succeeded() const
+        {
+            return _code == RESULT_OK && _result.valid();
+        }
 
         /** Whether the read operation failed */
         bool failed() const { return _code != RESULT_OK; }
@@ -119,6 +123,9 @@ namespace osgEarth
 
         /** Last modified timestamp */
         TimeStamp lastModifiedTime() const { return _lmt; }
+
+        /** Duration of request/response in seconds */
+        double duration() const { return _duration_s; }
 
         /** True if the object came from the cache */
         bool isFromCache() const { return _fromCache; }
@@ -172,6 +179,8 @@ namespace osgEarth
 
         void setLastModifiedTime(TimeStamp t) { _lmt = t; }
 
+        void setDuration(double s) { _duration_s = s; }
+
     protected:
         Code                      _code;
         osg::ref_ptr<osg::Object> _result;
@@ -180,6 +189,7 @@ namespace osgEarth
         Config                    _emptyConfig;
         bool                      _fromCache;
         TimeStamp                 _lmt;
+        double                    _duration_s;
     };
 
 //--------------------------------------------------------------------

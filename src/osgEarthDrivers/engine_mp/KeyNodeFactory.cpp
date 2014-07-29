@@ -18,8 +18,7 @@
 */
 #include "KeyNodeFactory"
 
-using namespace osgEarth_engine_mp;
-using namespace osgEarth;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 
 #define LC "[KeyNodeFactory] "
 

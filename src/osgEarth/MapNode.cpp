@@ -33,6 +33,7 @@
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
+#include <osgEarth/ShaderGenerator>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
@@ -208,6 +209,9 @@ MapNode::init()
     // Protect the MapNode from the Optimizer
     setDataVariance(osg::Object::DYNAMIC);
 
+    // Protect the MapNode from the ShaderGenerator
+    ShaderGenerator::setIgnoreHint(this, true);
+
     // initialize 0Ls
     _terrainEngine          = 0L;
     _terrainEngineContainer = 0L;
@@ -260,12 +264,12 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        //_terrainEngineContainer->getOrCreateStateSet()->setMode( 
-        //    GL_LIGHTING, 
-        //    terrainOptions.enableLighting().value() ? 1 : 0 );
-
         _terrainEngineContainer->getOrCreateStateSet()->addUniform(
             Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, *terrainOptions.enableLighting()) );
+
+        _terrainEngineContainer->getOrCreateStateSet()->setMode( 
+            GL_LIGHTING, 
+            terrainOptions.enableLighting().value() ? 1 : 0 );
     }
 
     if ( _terrainEngine )
@@ -340,21 +344,16 @@ MapNode::init()
     osg::StateSet* stateset = getOrCreateStateSet();
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
+        stateset->addUniform(Registry::shaderFactory()->createUniformForGLMode(
+            GL_LIGHTING, 
+            _mapNodeOptions.enableLighting().value() ? 1 : 0));
+
         stateset->setMode( 
             GL_LIGHTING, 
-            _mapNodeOptions.enableLighting().value() ? 1 : 0 );
+            _mapNodeOptions.enableLighting().value() ? 1 : 0);
     }
 
     dirtyBound();
-
-    // Install a default lighting shader program.
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
-        vp->setName( "osgEarth::MapNode" );
-
-        Registry::shaderFactory()->installLightingShaders( vp );
-    }
 
     // register for event traversals so we can deal with blacklisted filenames
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
@@ -432,15 +431,6 @@ MapNode::getTerrainEngine() const
     return _terrainEngine;
 }
 
-void
-MapNode::setCompositorTechnique( TextureCompositorTechnique* tech )
-{
-    if ( _terrainEngine )
-    {
-        _terrainEngine->getTextureCompositor()->setTechnique( tech );
-    }
-}
-
 osg::Group*
 MapNode::getModelLayerGroup() const
 {
@@ -485,7 +475,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
     {
         // install a post-processing callback on the ModelLayer's source 
         // so we can update the MapNode on new data that comes in:
-        modelSource->addPostProcessor( new MapNodeObserverInstaller(this) );
+        modelSource->addPostMergeOperation( new MapNodeObserverInstaller(this) );
     }
 
     // create the scene graph:
@@ -651,9 +641,6 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
     else if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        // update the light model uniforms.
-        _updateLightingUniformsHelper.cullTraverse( this, &nv );
-
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         if ( cv )
         {
@@ -678,12 +665,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
                 cullData->_cameraAltitude = eye.z();
             }
 
-            // window scale matrix:
-            osg::Matrix  m4 = cv->getWindowMatrix();
-            osg::Matrix3 m3( m4(0,0), m4(1,0), m4(2,0),
-                             m4(0,1), m4(1,1), m4(2,1),
-                             m4(0,2), m4(1,2), m4(2,2) );
-            cullData->_windowScaleMatrixUniform->set( m3 );
+            // window matrix:
+            cullData->_windowMatrixUniform->set( cv->getWindowMatrix() );
 
             // traverse:
             cv->pushStateSet( cullData->_stateSet.get() );

@@ -60,8 +60,8 @@ public:
                 label->setForeColor( symbol->fill()->color() );
             if ( symbol->halo().isSet() )
                 label->setHaloColor( symbol->halo()->color() );
-            if ( symbol->size().isSet() )
-                label->setFontSize( *symbol->size() );
+            //if ( symbol->size().isSet() )
+            //    label->setFontSize( *symbol->size() );
             if ( symbol->font().isSet() )
                 label->setFont( osgText::readFontFile(*symbol->font()) );
             if ( symbol->encoding().isSet() )
@@ -141,8 +141,8 @@ public:
                     label->setForeColor( text->fill()->color() );
                 if ( text->halo().isSet() )
                     label->setHaloColor( text->halo()->color() );
-                if ( text->size().isSet() )
-                    label->setFontSize( *text->size() );
+                //if ( text->size().isSet() )
+                //    label->setFontSize( *text->size() );
                 if ( text->font().isSet() )
                     label->setFont( osgText::readFontFile(*text->font()) );
 

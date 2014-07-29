@@ -16,83 +16,56 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TILE_GROUP
-#define OSGEARTH_ENGINE_MP_TILE_GROUP 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_GROUP
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_GROUP 1
 
 #include "Common"
 #include "TileNode"
+#include "TileNodeRegistry"
 #include <osg/Group>
-#include <osgDB/Options>
 #include <osgEarth/ThreadingUtils>
 
-using namespace osgEarth;
-
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
-    class TileNodeRegistry;
+    using namespace osgEarth;
 
     /**
-     * A TileGroup parents a TileNode (which contains the geometry for a
-     * TileKey) and four TilePagedLODs (each of which is responsible for
-     * loading one of the four subtiles).
+     * TileGroup is a group node that contians four sibling TileNodes
+     * in the quadtree structure. It has the ability to update itself
+     * by checking the map revision and scheduling an incremental
+     * update of its TileNode set.
      */
-    class TileGroup : public osg::Group, public TileNodeContainer
+    class TileGroup : public osg::Group
     {
     public:
-        TileGroup(
-            TileNode*         tilenode,
-            const UID&        engineUID, 
-            TileNodeRegistry* liveTiles,
-            TileNodeRegistry* deadTiles,
-            osgDB::Options*   dbOptions);
+        TileGroup(const TileKey&    key, 
+                  const UID&        engineUID,
+                  TileNodeRegistry* live,
+                  TileNodeRegistry* dead);
 
-        /** Range at which subtiles should start paging in. */
-        void setSubtileRange(float range);
-        float getSubtileRange() const { return _subtileRange; }
+        const UID& getEngineUID() const { return _engineUID; }
 
-        /** Sets the tile group to continue subdividing even if all children are upsampled. */
-        void setForceSubdivide(bool value);
-
-        /** Replaces the underlying TileNode with a new one. */
-        void setTileNode( TileNode* tilenode );
-
-    public: // TileNodeContainer
-
-        /** The TileNode holding the geometry for this group. */
-        TileNode* getTileNode() { return _tilenode; }
+        const TileKey& getKey() const { return _key; }
 
     public: // osg::Node
+        virtual void traverse(osg::NodeVisitor& nv);
 
-        /** custom traversal. */
-        void traverse(osg::NodeVisitor& nv);
-        
-        /** Bound is equivalent to the bound of the tilenode. */
-        osg::BoundingSphere computeBound() const;
+    public: // internal
+        void applyUpdate(osg::Node* node);
 
     protected:
-        TileGroup();
-
         virtual ~TileGroup() { }
 
-    private:
-        TileNode* _tilenode;
-        float     _subtileRange;
-        bool      _ignoreSubtiles;
-        bool      _forceSubdivide;
+        TileNode* getTileNode(unsigned q);
+
+        osg::ref_ptr<osg::Node>        _updateAgent;
+        mutable Threading::Mutex       _updateMutex;
+        UID                            _engineUID;
+        TileKey                        _key;
+        osg::ref_ptr<TileNodeRegistry> _live;
+        osg::ref_ptr<TileNodeRegistry> _dead;
     };
 
-    class RootTileGroup : public TileGroup
-    {
-    public:
-        RootTileGroup();
-        void addRootKey(const TileKey&    key,
-                        osg::Node*        node,
-                        const UID&        engineUID,
-                        TileNodeRegistry* live,
-                        TileNodeRegistry* dead,
-                        osgDB::Options*   dbOptions);
-    };
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-} // namespace osgEarth_engine_mp
-
-#endif // OSGEARTH_ENGINE_MP_TILE_GROUP
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE

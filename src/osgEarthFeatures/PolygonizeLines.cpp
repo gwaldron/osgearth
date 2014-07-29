@@ -18,9 +18,11 @@
  */
 #include <osgEarthFeatures/PolygonizeLines>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Utils>
+#include <osgEarth/CullingUtils>
 
 #define LC "[PolygonizeLines] "
 
@@ -225,6 +227,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
             // flip it depending on the current side.
             //osg::Vec3 bufVecUnit = (s==0) ? normal ^ dir : dir ^ normal;
             osg::Vec3 bufVecUnit = (side < 0.0f) ? normal ^ dir : dir ^ normal;
+            bufVecUnit.normalize();
 
             // scale the buffering vector to half the stroke width.
             osg::Vec3 bufVec = bufVecUnit * halfWidth;
@@ -445,13 +448,39 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
 #define SHADER_NAME "osgEarth::PolygonizeLinesAutoScale"
 
+namespace
+{
+    struct PixelSizeVectorCullCallback : public osg::NodeCallback
+    {
+        PixelSizeVectorCullCallback(osg::StateSet* stateset)
+        {
+            _pixelSizeVectorUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_PixelSizeVector");
+            stateset->addUniform( _pixelSizeVectorUniform.get() );
+        }
+
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+            _pixelSizeVectorUniform->set( cv->getCurrentCullingSet().getPixelSizeVector() );
+            traverse(node, nv);
+        }
+
+        osg::ref_ptr<osg::Uniform> _pixelSizeVectorUniform;
+    };
+}
+
 
 void
-PolygonizeLinesOperator::installShaders(osg::StateSet* stateset) const
+PolygonizeLinesOperator::installShaders(osg::Node* node) const
 {
+    if ( !node )
+        return;
+
     float minPixels = _stroke.minPixels().getOrUse( 0.0f );
     if ( minPixels <= 0.0f )
         return;
+
+    osg::StateSet* stateset = node->getOrCreateStateSet();
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
@@ -464,34 +493,27 @@ PolygonizeLinesOperator::installShaders(osg::StateSet* stateset) const
     const char* vs =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "attribute vec3   oe_polyline_center; \n"
-        "uniform   float  oe_polyline_scale;  \n"
-        "uniform   float  oe_polyline_min_pixels; \n"
-        "uniform   mat3   oe_WindowScaleMatrix; \n"
+        "attribute vec3 oe_polyline_center; \n"
+        "uniform float oe_polyline_scale;  \n"
+        "uniform float oe_polyline_min_pixels; \n"
+        "uniform vec4 oe_PixelSizeVector; \n"
 
-        "void oe_polyline_scalelines(inout vec4 VertexMODEL) \n"
+        "void oe_polyline_scalelines(inout vec4 vertex_model4) \n"
         "{ \n"
-        //"   if ( oe_polyline_scale != 1.0 || oe_polyline_min_pixels > 0.0 ) \n"
+        "   vec4  center_model = vec4(oe_polyline_center, 1.0); \n"
+        "   vec4  vertex_model = vertex_model4/vertex_model4.w; \n"
+        "   vec3  vector_model = vertex_model.xyz - center_model.xyz; \n"
+        
+        "   float r = length(vector_model); \n"
+
+        "   if ( r > 0.0 && oe_polyline_min_pixels > 0.0 ) \n"
         "   { \n"
-        "       vec4  center_model = vec4(oe_polyline_center*VertexMODEL.w, VertexMODEL.w); \n"
-        "       vec4  vector_model = VertexMODEL - center_model; \n"
-        "       if ( length(vector_model.xyz) > 0.0 ) \n"
-        "       { \n"
-        "           float scale = oe_polyline_scale; \n"
+        "       float pixelSize = abs(r/dot(center_model, oe_PixelSizeVector)); \n"
+        "       float min_scale = max( oe_polyline_min_pixels/pixelSize, 1.0 ); \n"
+        "       float scale = max( oe_polyline_scale, min_scale ); \n"
 
-        "           vec4 vertex_clip = gl_ModelViewProjectionMatrix * VertexMODEL; \n"
-        "           vec4 center_clip = gl_ModelViewProjectionMatrix * center_model; \n"
-        "           vec4 vector_clip = vertex_clip - center_clip; \n"
-
-        "           if ( oe_polyline_min_pixels > 0.0 ) \n"
-        "           { \n"
-        "               vec3 vector_win = oe_WindowScaleMatrix * (vertex_clip.xyz/vertex_clip.w - center_clip.xyz/center_clip.w); \n"
-        "               float min_scale = max( (0.5*oe_polyline_min_pixels)/length(vector_win.xy), 1.0 ); \n"
-        "               scale = max( scale, min_scale ); \n"
-        "           } \n"
-
-        "           VertexMODEL = center_model + vector_model*scale; \n"
-        "        } \n"
+        "       vertex_model.xyz += vector_model*scale; \n"
+        "       vertex_model4 = vec4(vertex_model.xyz, 1.0); \n"
         "    } \n"
         "} \n";
 
@@ -509,6 +531,13 @@ PolygonizeLinesOperator::installShaders(osg::StateSet* stateset) const
     osg::Uniform* minPixelsU = new osg::Uniform(osg::Uniform::FLOAT, "oe_polyline_min_pixels");
     minPixelsU->set( minPixels );
     stateset->addUniform( minPixelsU, 1 );
+
+    // this will install and update the oe_PixelSizeVector uniform.
+    node->addCullCallback( new PixelSizeVectorCullCallback(stateset) );
+
+    // DYNAMIC since we will be altering the uniforms and we don't want 
+    // the stateset to get shared via statesetcache optimization.
+    stateset->setDataVariance(osg::Object::DYNAMIC);
 }
 
 
@@ -587,7 +616,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
     geode->accept( vco );
 
     // If we're auto-scaling, we need a shader
-    polygonize.installShaders( geode->getOrCreateStateSet() );
+    polygonize.installShaders( geode );
 
     return delocalize( geode );
 }

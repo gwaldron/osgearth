@@ -47,7 +47,8 @@ namespace osgEarth
          * @param binID  Name of this caching bin (unique withing a Cache)
          * @param driver ReaderWriter that serializes data for this caching bin.
          */
-        CacheBin( const std::string& binID ) : _binID(binID) { }
+        CacheBin( const std::string& binID )
+            : _binID(binID), _hashKeys(false), _minTime(0) { }
 
         /** dtor */
         virtual ~CacheBin() { }
@@ -58,25 +59,29 @@ namespace osgEarth
         const std::string& getID() const { return _binID; }
 
         /**
-         * Reads an object from the cache bin.
-         * @param key     Lookup key to read
-         * @param minTime Fail if the entry's timestamp is older than this
+         * Whether the implemention should hash record keys instead of using
+         * them directly. Default = false.
          */
-        virtual ReadResult readObject(const std::string& key, TimeStamp minTime) =0;
+        void setHashKeys(bool value) { _hashKeys = value; }
+        bool getHashKeys() const { return _hashKeys; }
+
+        /**
+         * Reads an object from the cache bin.
+         * @param key     Lookup key to read         
+         */
+        virtual ReadResult readObject(const std::string& key) =0;
 
         /**
          * Reads an image from the cache bin.
-         * @param key     Lookup key to read
-         * @param minTime Fail if the entry's timestamp is older than this
+         * @param key     Lookup key to read         
          */
-        virtual ReadResult readImage(const std::string& key, TimeStamp minTime) =0;
+        virtual ReadResult readImage(const std::string& key) =0;
 
         /**
          * Reads a string buffer from the cache bin.
          * @param key    Lookup key to read.
-         * @param minTime Fail if the entry's timestamp is older than this.
          */
-        virtual ReadResult readString(const std::string& key, TimeStamp minTime) =0;
+        virtual ReadResult readString(const std::string& key) =0;
 
         /**
          * Writes an object (or an image) to the cache bin.
@@ -91,17 +96,9 @@ namespace osgEarth
         /**
          * Gets the status of a key, i.e. not found, valid or expired.
          * Pass in a minTime = 0 to simply check whether the record exists.
-         * @param key     Lookup key to check for
-         * @param minTime Return EXPIRED if the key exists but is older than this
+         * @param key     Lookup key to check for         
          */
-        virtual RecordStatus getRecordStatus(const std::string& key, TimeStamp minTime) =0;
-
-        /**
-         * Checks whether a key exists in the cache.
-         * @deprecated - Please use getRecordStatus instead
-         */
-        //bool isCached(const std::string& key) { 
-        //    return getRecordStatus(key, 0) == STATUS_OK; }
+        virtual RecordStatus getRecordStatus(const std::string& key) =0;
 
         /**
          * Purge an entry from the cache bin
@@ -127,7 +124,18 @@ namespace osgEarth
         /**
          * Purges all entries in the cache bin.
          */
-        virtual bool purge() = 0;
+        virtual bool clear() { return false; }
+
+        /**
+         * Compacts the cache bin (where applicable)
+         */
+        virtual bool compact() { return false; }
+
+        /**
+         * Returns the approximate disk space being used by this cache,
+         * or 0 if unavailable.
+         */
+        virtual unsigned getStorageSize() { return 0u; }
 
         /**
          * Store this pointer in an options structure
@@ -143,8 +151,17 @@ namespace osgEarth
             return options ? const_cast<CacheBin*>(static_cast<const CacheBin*>(options->getPluginData("osgEarth::CacheBin"))) : 0L;
         }
 
+
+    public: //deprecated
+
+        /** @deprecated - use clear */
+        bool purge() { return clear(); } // backwards compatibility
+
+
     protected:
         std::string _binID;
+        bool        _hashKeys;
+        TimeStamp   _minTime;
     };
 }
 

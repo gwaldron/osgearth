@@ -46,8 +46,8 @@ Geoid::setHeightField( osg::HeightField* hf )
     _bounds = Bounds(
         _hf->getOrigin().x(),
         _hf->getOrigin().y(),
-        _hf->getOrigin().x() + _hf->getXInterval() * double(_hf->getNumColumns()),
-        _hf->getOrigin().y() + _hf->getYInterval() * double(_hf->getNumRows()) );
+        _hf->getOrigin().x() + _hf->getXInterval() * double(_hf->getNumColumns()-1),
+        _hf->getOrigin().y() + _hf->getYInterval() * double(_hf->getNumRows()-1) );
     validate();
 }
 

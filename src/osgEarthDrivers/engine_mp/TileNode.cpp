@@ -23,7 +23,7 @@
 #include <osg/NodeVisitor>
 #include <osg/Uniform>
 
-using namespace osgEarth_engine_mp;
+using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 using namespace OpenThreads;
 
@@ -35,7 +35,6 @@ using namespace OpenThreads;
 TileNode::TileNode( const TileKey& key, const TileModel* model ) :
 _key               ( key ),
 _model             ( model ),
-_bornTime          ( 0.0 ),
 _lastTraversalFrame( 0 ),
 _dirty             ( false ),
 _outOfDate         ( false )
@@ -44,20 +43,13 @@ _outOfDate         ( false )
 
     // revisions are initially in sync:
     if ( model )
+    {
         _maprevision = model->_revision;
-
-    // NOTE:
-    // We have temporarily disabled setting of the "birth time" uniform.
-    // Having a uniform on each TileNode adds a StateGraph for each TileNode and slows
-    // down the DRAW time considerably. Until we find a better solution, no 
-    // birth time uniform here. (That only affects LOD Blending atm)
-
-    //osg::StateSet* stateset = getOrCreateStateSet();
-
-    // born-on date uniform.
-    _bornUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_tile_birthtime");
-    _bornUniform->set( -1.0f );
-    //stateset->addUniform( _bornUniform );
+        if ( model->requiresUpdateTraverse() )
+        {
+            this->setNumChildrenRequiringUpdateTraversal(1);
+        }
+    }
 }
 
 
@@ -71,37 +63,28 @@ TileNode::setLastTraversalFrame(unsigned frame)
 void
 TileNode::traverse( osg::NodeVisitor& nv )
 {
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    if ( _model.valid() )
     {
-        osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
-        if (ccc)
+        if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
-            if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
-        }
-
-        // if this tile is marked dirty, bump the marker so the engine knows it
-        // needs replacing.
-        if ( _dirty || _model->_revision != _maprevision )
-        {
-            _outOfDate = true;
-        }
-
-        // reset the "birth" time if necessary - this is the time at which the 
-        // node passes cull (not multi-view compatible)
-        const osg::FrameStamp* fs = nv.getFrameStamp();
-        if ( fs )
-        {
-            unsigned frame = fs->getFrameNumber();
-
-            if ( (frame - _lastTraversalFrame > 1) || (_bornTime == 0.0) )
+            osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
+            if (ccc)
             {
-                _bornTime = fs->getReferenceTime();
-                _bornUniform->set( (float)_bornTime );
+                if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
             }
 
-            _lastTraversalFrame = frame;
+            // if this tile is marked dirty, bump the marker so the engine knows it
+            // needs replacing.
+            if ( _dirty || _model->_revision != _maprevision )
+            {
+                _outOfDate = true;
+            }
         }
-    }
+        else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+        {
+            _model->updateTraverse(nv);
+        }
+    }    
 
     osg::MatrixTransform::traverse( nv );
 }

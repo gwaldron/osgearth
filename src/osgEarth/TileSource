@@ -31,16 +31,14 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
-#include <osgEarth/MemCache>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/MemCache>
 
 #include <osg/Referenced>
 #include <osg/Object>
 #include <osg/Image>
 #include <osg/Shape>
-#if OSG_MIN_VERSION_REQUIRED(2,9,5)
 #include <osgDB/Options>
-#endif
 #include <osgDB/ReadFile>
 #include <string>
 
@@ -89,6 +87,10 @@ namespace osgEarth
         optional<bool>& bilinearReprojection() { return _bilinearReprojection; }
         const optional<bool>& bilinearReprojection() const { return _bilinearReprojection; }
 
+        /** Force the tilesource to report this as the maximum available LOD */
+        optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
+        const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
+
     public:
         /** For backwards-compatibility; use minValidValue() instead 
          *  @deprecated */
@@ -121,6 +123,7 @@ namespace osgEarth
         optional<std::string>    _blacklistFilename;
         optional<int>            _L2CacheSize;
         optional<bool>           _bilinearReprojection;
+        optional<unsigned>       _maxDataLevel;
     };
 
 
@@ -141,12 +144,12 @@ namespace osgEarth
         /**
          *Adds the given tile to the blacklist
          */
-        void add(const osgTerrain::TileID &tile);
+        void add(const TileKey& key);
 
         /**
          *Removes the given tile from the blacklist
          */
-        void remove(const osgTerrain::TileID& tile);
+        void remove(const TileKey& key);
 
         /**
          *Removes all tiles from the blacklist
@@ -156,7 +159,7 @@ namespace osgEarth
         /**
          *Returns whether the given tile is in the blacklist
          */
-        bool contains(const osgTerrain::TileID &tile) const;
+        bool contains(const TileKey& key) const;
 
         /**
          *Returns the size of the blacklist
@@ -184,9 +187,9 @@ namespace osgEarth
         void write(const std::string &filename) const;
 
     private:
-        typedef std::set< osgTerrain::TileID > BlacklistedTiles;
+        typedef std::set<TileKey> BlacklistedTiles;
         BlacklistedTiles _tiles;
-        osgEarth::Threading::ReadWriteMutex _mutex;
+        mutable osgEarth::Threading::ReadWriteMutex _mutex;
     };
 
     /**
@@ -197,6 +200,19 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileSource : public virtual osg::Object
     {
     public:
+        /** Modes: OR these together when you call open(). */
+        typedef unsigned Mode;
+
+        /** Open for reading only */
+        static const Mode MODE_READ;  
+        
+        /** Open for writing */
+        static const Mode MODE_WRITE;
+
+        /** When using MODE_WRITE, create the data store if necessary */
+        static const Mode MODE_CREATE;
+
+
         /** Initialization status */
         struct Status
         {
@@ -216,6 +232,9 @@ namespace osgEarth
 
         static Status STATUS_OK;
 
+        /** interface name, used by the plugin system. */
+        static const char* INTERFACE_NAME;
+
     public:
         struct ImageOperation : public osg::Referenced {
             virtual void operator()( osg::ref_ptr<osg::Image>& in_out_image ) =0;
@@ -226,7 +245,8 @@ namespace osgEarth
         };
 
     public:
-        TileSource( const TileSourceOptions& options =TileSourceOptions() );
+        /** Constructor */
+        TileSource(const TileSourceOptions& options);
 
         /**
          * Gets the status of this tile source.
@@ -261,6 +281,24 @@ namespace osgEarth
             const TileKey&        key,
             HeightFieldOperation* op        =0L,
             ProgressCallback*     progress  =0L );
+
+        /**
+         * Stores an image in the tile source for the given TileKey.
+         * The driver must support writing or this method will return false.
+         */
+        virtual bool storeImage(const TileKey&    key,
+                                osg::Image*       image,
+                                ProgressCallback* progress) { return false; }
+
+        /**
+         * Stores a heightfield in the tile source for the given TileKey.
+         * The driver must support writing or this method will return false.
+         * (Note: The default implementation will convert the heightfield to an
+         * image with one 32-bit channel and call storeImage.)
+         */
+        virtual bool storeHeightField(const TileKey&    key,
+                                      osg::HeightField* hf,
+                                      ProgressCallback* progress);
 
     public:
 
@@ -353,10 +391,18 @@ namespace osgEarth
         /**
          * Starts up the tile source.
          */
-        const Status& startup( const osgDB::Options* dbOptions );
+        const Status& open(
+            const Mode&           openMode  =MODE_READ,
+            const osgDB::Options* dbOptions =0L);
 
+        /**
+         * The open mode (passed to startup).
+         */
+        const Mode& getMode() const { return _mode; }
 
-        /** The options used to construct this tile source. */
+        /**
+         * The options used to construct this tile source.
+         */
         const TileSourceOptions& getOptions() const { return _options; }
 
     public:
@@ -370,7 +416,6 @@ namespace osgEarth
 
     protected:
 
-        virtual ~TileSource();
 
         /**
          * Initializes the tile source (called by startup)
@@ -385,7 +430,7 @@ namespace osgEarth
          * The Subclass should override this to report a correct initialization status.
          * The default implementation reports STATUS_OK (for compatibility).
          */
-        virtual Status initialize( const osgDB::Options* dbOptions );
+        virtual Status initialize(const osgDB::Options* dbOptions);
 
         /**
          * Creates an image for the given TileKey.
@@ -393,7 +438,7 @@ namespace osgEarth
          */
         virtual osg::Image* createImage(
             const TileKey&        key,
-            ProgressCallback*     progress ) = 0;
+            ProgressCallback*     progress );
 
         /**
          * Creates a heightfield for the given TileKey
@@ -403,14 +448,20 @@ namespace osgEarth
             const TileKey&        key,
             ProgressCallback*     progress );
 
+    protected:
+        
+        virtual ~TileSource();
+
         /**
-         * Called by subclasses to initialize their profile
+         * Subclass can call this to set a Profile after opening the 
+         * data store.
          */
         void setProfile( const Profile* profile );
 
         /**
-         * Sets the status of this tile source. Called by a subclass to
-         * set the status
+         * Subclass can call this to set the status. Normally you set the
+         * status by returning it from initialize(), but you can call this
+         * later, e.g. in the event of an unrecoverable error.
          */
         void setStatus( Status status );
 
@@ -445,6 +496,7 @@ namespace osgEarth
 
         DataExtentList _dataExtents;
         Status         _status;
+        Mode           _mode;
     };
 
 
@@ -455,19 +507,26 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileSourceDriver : public osgDB::ReaderWriter
     {
     protected:
-        const TileSourceOptions& getTileSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+        const TileSourceOptions& getTileSourceOptions(const osgDB::Options* options) const;
+
+        const std::string getInterfaceName(const osgDB::Options* options) const;
+
+        TileSource::Mode getOpenMode(const osgDB::Options* options) const;
     };
 
     //--------------------------------------------------------------------
 
     /**
-     * Creates TileSource instances and chains them together to create
-     * tile source "pipelines" for data access and processing.
+     * Creates TileSource instances.
      */
     class OSGEARTH_EXPORT TileSourceFactory
     {
     public:
-        static TileSource* create( const TileSourceOptions& options );
+        /**
+         * Creates a TileSource instance by loading the driver plugin
+         * specified in the options.
+         */
+        static TileSource* create(const TileSourceOptions& options);
     };
 }
 

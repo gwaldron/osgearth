@@ -105,7 +105,7 @@ public:
 
                     start = osg::Timer::instance()->tick();
                     source = osgEarth::TileSourceFactory::create( opt );                               
-                    TileSource::Status compStatus = source->startup( 0 );
+                    TileSource::Status compStatus = source->open();
                     if (compStatus.isOK())
                     {
                         _tileSourceCache.insert( files[i], source.get() );                                                

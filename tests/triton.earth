@@ -1,0 +1,36 @@
+<!--
+Tests the Triton ocean plugin.
+http://sundog-soft.com/sds/features/real-time-3d-clouds/
+-->
+<map name="readymap.org" type="geocentric" version="2">
+    
+    <options>
+        <elevation_tile_size>7</elevation_tile_size>
+        <terrain first_lod="1"/>
+    </options>
+    
+    <image name="readymap_imagery" driver="tms" visible="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+
+    <external>
+        <ocean driver="triton"
+               user="my_user_name"
+               license_code="my_license_code"
+			   max_altitude="30000"/>
+        <sky hours="18"/>
+        <viewpoints>
+            <viewpoint name="Click to see the water by Maui" heading="-29" height="-204" lat="20.6714" long="-156.5384" pitch="-4" range="3270"/>
+        </viewpoints>
+		<annotations>
+			<model name="Object in the water">
+				<url>../data/red_flag.osg.40.scale</url>
+				<position lat="20.6714" long="-156.5384" alt="0"/>
+			</model>
+		</annotations>
+    </external>
+</map>

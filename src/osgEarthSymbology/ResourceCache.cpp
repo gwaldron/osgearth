@@ -21,70 +21,48 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-ResourceCache::ResourceCache(const osgDB::Options* dbOptions,
-                             bool                  threadSafe ) :
+
+// internal thread-safety not required since we mutex it in this object.
+ResourceCache::ResourceCache(const osgDB::Options* dbOptions ) :
 _dbOptions    ( dbOptions ),
-_threadSafe   ( threadSafe ),
 _skinCache    ( false ),
-_markerCache  ( false ),
-_instanceCache( false )
+_instanceCache( false ),
+_resourceLibraryCache( false )
 {
     //nop
 }
 
 bool
-ResourceCache::getStateSet(SkinResource*                skin,
-                           osg::ref_ptr<osg::StateSet>& output)
+ResourceCache::getOrCreateStateSet(SkinResource*                skin,
+                                   osg::ref_ptr<osg::StateSet>& output)
 {
     output = 0L;
-    std::string key = skin->getConfig().toJSON(false);
+    //std::string key = skin->getConfig().toJSON(false);
 
-    if ( _threadSafe )
+    // Note: we use the imageURI as the basis for the caching key since 
+    // it's the only property used by Skin->createStateSet(). If that
+    // changes, we need to address it here. It might be better it SkinResource
+    // were to provide a unique key.
+    std::string key = skin->getUniqueID();
+
+    // exclusive lock (since it's an LRU)
     {
-        // first check if it exists
-        {
-            Threading::ScopedReadLock shared( _skinMutex );
-
-            SkinCache::Record rec;
-            if ( _skinCache.get(key, rec) )
-            {
-                output = rec.value().get();
-            }
-        }
-
-        // no? exclusive lock and create it.
-        if ( !output.valid() )
-        {
-            Threading::ScopedWriteLock exclusive( _skinMutex );
+        Threading::ScopedMutexLock exclusive( _skinMutex );
             
-            // double check to avoid race condition
-            SkinCache::Record rec;
-            if ( _skinCache.get(key, rec) )
-            {
-                output = rec.value().get();
-            }
-            else
-            {
-                // still not there, make it.
-                output = skin->createStateSet( _dbOptions.get() );
-                if ( output.valid() )
-                    _skinCache.insert( key, output.get() );
-            }
-        }
-    }
-
-    else
-    {
-        SkinCache::Record rec;
-        if ( _skinCache.get(key, rec) )
+        // double check to avoid race condition
+        SkinCache::Record rec;       
+        if ( _skinCache.get(key, rec) && rec.value().valid() )
         {
-            output = rec.value();
+            output = rec.value().get();
         }
         else
         {
+            // still not there, make it.
             output = skin->createStateSet( _dbOptions.get() );
             if ( output.valid() )
+            {
                 _skinCache.insert( key, output.get() );
+            }
         }
     }
 
@@ -93,118 +71,62 @@ ResourceCache::getStateSet(SkinResource*                skin,
 
 
 bool
-ResourceCache::getInstanceNode(InstanceResource*        res,
-                               osg::ref_ptr<osg::Node>& output)
+ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
+                                       osg::ref_ptr<osg::Node>& output)
 {
     output = 0L;
     std::string key = res->getConfig().toJSON(false);
 
-    if ( _threadSafe )
+    // exclusive lock (since it's an LRU)
     {
-        // first check if it exists
-        {
-            Threading::ScopedReadLock shared( _instanceMutex );
+        Threading::ScopedMutexLock exclusive( _instanceMutex );
 
-            InstanceCache::Record rec;
-            if ( _instanceCache.get(key, rec) )
-            {
-                output = rec.value().get();
-            }
-        }
-
-        // no? exclusive lock and create it.
-        if ( !output.valid() )
-        {
-            Threading::ScopedWriteLock exclusive( _instanceMutex );
-            
-            // double check to avoid race condition
-            InstanceCache::Record rec;
-            if ( _instanceCache.get(key, rec) )
-            {
-                output = rec.value().get();
-            }
-            else
-            {
-                // still not there, make it.
-                output = res->createNode( _dbOptions.get() );
-                if ( output.valid() )
-                    _instanceCache.insert( key, output.get() );
-            }
-        }
-    }
-
-    else
-    {
+        // double check to avoid race condition
         InstanceCache::Record rec;
-        if ( _instanceCache.get(key, rec) )
+        if ( _instanceCache.get(key, rec) && rec.value().valid() )
         {
             output = rec.value().get();
         }
         else
         {
+            // still not there, make it.
             output = res->createNode( _dbOptions.get() );
             if ( output.valid() )
+            {
                 _instanceCache.insert( key, output.get() );
+            }
         }
     }
 
     return output.valid();
 }
 
-
 bool
-ResourceCache::getMarkerNode(MarkerResource*          marker,
-                             osg::ref_ptr<osg::Node>& output)
+ResourceCache::cloneOrCreateInstanceNode(InstanceResource*        res,
+                                         osg::ref_ptr<osg::Node>& output)
 {
     output = 0L;
-    std::string key = marker->getConfig().toJSON(false);
+    std::string key = res->getConfig().toJSON(false);
 
-    if ( _threadSafe )
+    // exclusive lock (since it's an LRU)
     {
-        // first check if it exists
-        {
-            Threading::ScopedReadLock shared( _markerMutex );
+        Threading::ScopedMutexLock exclusive( _instanceMutex );
 
-            MarkerCache::Record rec;
-            if ( _markerCache.get(key, rec) )
-            {
-                output = rec.value().get();
-            }
-        }
-
-        // no? exclusive lock and create it.
-        if ( !output.valid() )
+        // double check to avoid race condition
+        InstanceCache::Record rec;
+        if ( _instanceCache.get(key, rec) && rec.value().valid() )
         {
-            Threading::ScopedWriteLock exclusive( _markerMutex );
-            
-            // double check to avoid race condition
-            MarkerCache::Record rec;
-            if ( _markerCache.get( key, rec ) )
-            {
-                output = rec.value().get();
-            }
-            else
-            {
-                // still not there, make it.
-                output = marker->createNode( _dbOptions.get() );
-                if ( output.valid() )
-                    _markerCache.insert( key, output.get() );
-            }
-        }
-    }
-
-    else
-    {
-        MarkerCache::Record rec;
-        if ( _markerCache.get( key, rec ) )
-        {
-            output = rec.value().get();
+            output = osg::clone(rec.value().get(), osg::CopyOp::DEEP_COPY_ALL);
         }
         else
         {
-            output = marker->createNode( _dbOptions.get() );
+            // still not there, make it.
+            output = res->createNode( _dbOptions.get() );
             if ( output.valid() )
-                _markerCache.insert( key, output.get() );
+            {
+                _instanceCache.insert( key, output.get() );
+                output = osg::clone(output.get(), osg::CopyOp::DEEP_COPY_ALL);
+            }
         }
     }
 

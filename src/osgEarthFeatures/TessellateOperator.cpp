@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/TessellateOperator>
 #include <osgEarthSymbology/Geometry>
+#include <osgEarth/GeoMath>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;

@@ -42,14 +42,17 @@ namespace osgEarth { namespace Drivers
         optional<bool>& buildSpatialIndex() { return _buildSpatialIndex; }
         const optional<bool>& buildSpatialIndex() const { return _buildSpatialIndex; }
 
+        optional<bool>& forceRebuildSpatialIndex() { return _forceRebuildSpatialIndex; }
+        const optional<bool>& forceRebuildSpatialIndex() const { return _forceRebuildSpatialIndex; }
+
         optional<Config>& geometryConfig() { return _geometryConf; }
         const optional<Config>& geometryConfig() const { return _geometryConf; }
 
         optional<std::string>& geometryUrl() { return _geometryUrl; }
         const optional<std::string>& geometryUrl() const { return _geometryUrl; }
 
-        optional<unsigned int>& layer() { return _layer; }
-        const optional<unsigned int>& layer() const { return _layer; }
+        optional<std::string>& layer() { return _layer; }
+        const optional<std::string>& layer() const { return _layer; }
 
         // does not serialize
         osg::ref_ptr<Symbology::Geometry>& geometry() { return _geometry; }
@@ -70,6 +73,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "connection", _connection );
             conf.updateIfSet( "ogr_driver", _ogrDriver );
             conf.updateIfSet( "build_spatial_index", _buildSpatialIndex );
+            conf.updateIfSet( "force_rebuild_spatial_index", _forceRebuildSpatialIndex );
             conf.updateIfSet( "geometry", _geometryConf );    
             conf.updateIfSet( "geometry_url", _geometryUrl );
             conf.updateIfSet( "layer", _layer );
@@ -89,6 +93,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "connection", _connection );
             conf.getIfSet( "ogr_driver", _ogrDriver );
             conf.getIfSet( "build_spatial_index", _buildSpatialIndex );
+            conf.getIfSet( "force_rebuild_spatial_index", _forceRebuildSpatialIndex );
             conf.getIfSet( "geometry", _geometryConf );
             conf.getIfSet( "geometry_url", _geometryUrl );
             conf.getIfSet( "layer", _layer);
@@ -99,10 +104,11 @@ namespace osgEarth { namespace Drivers
         optional<std::string>             _connection;
         optional<std::string>             _ogrDriver;
         optional<bool>                    _buildSpatialIndex;
+        optional<bool>                    _forceRebuildSpatialIndex;
         optional<Config>                  _geometryConf;
         optional<Config>                  _geometryProfileConf;
         optional<std::string>             _geometryUrl;
-        optional<unsigned int >           _layer;
+        optional<std::string>             _layer;
         osg::ref_ptr<Symbology::Geometry> _geometry;
     };
 

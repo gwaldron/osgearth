@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/ColorFilter>
-#include <osg/Uniform>
+#include <osg/Shader>
 
 namespace osgEarth { namespace Util
 {
@@ -35,18 +35,26 @@ namespace osgEarth { namespace Util
         GLSLColorFilter(const Config& conf);
         virtual ~GLSLColorFilter() { }
 
+        void setType(const osg::Shader::Type& type) { _type = type; }
+        const osg::Shader::Type& getType() const { return _type.get(); }
+
+        void setEntryPointFunctionName(const std::string& name) { _functionName = name; }
+
         void setCode(const std::string& code) { _code = code; }
         const std::string& getCode() const { return _code; }
 
     public: // ColorFilter
-        virtual std::string getEntryPointFunctionName(void) const;
+        virtual std::string getEntryPointFunctionName() const;
         virtual void install(osg::StateSet* stateSet) const;
         virtual Config getConfig() const;
 
     protected:
-        unsigned m_instanceId;
+        unsigned                    _instanceId;
+        optional<osg::Shader::Type> _type;
+        optional<std::string>       _functionName;
+        std::string                 _code;
+        
         void init();
-        std::string _code;
     };
 
 } } // namespace osgEarth::Util

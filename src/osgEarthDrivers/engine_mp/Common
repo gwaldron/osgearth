@@ -16,9 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_ENGINE_MP_COMMON_H
-#define OSGEARTH_ENGINE_MP_COMMON_H 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_COMMON_H
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_COMMON_H 1
 
 #include <osgEarth/Common>
 
-#endif // OSGEARTH_ENGINE_MP_COMMON_H
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_COMMON_H

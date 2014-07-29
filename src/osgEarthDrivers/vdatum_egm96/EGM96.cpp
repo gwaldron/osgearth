@@ -53,19 +53,25 @@ namespace
             for( unsigned c=0; c<cols-1; ++c )
             {
                 float inputLon = 0.0f + float(c) * colStep;
-                if ( inputLon > 180.0 ) inputLon -= 360.0;
+
+                if ( inputLon >= 180.0 ) inputLon -= 360.0;
+                
+                unsigned outc = unsigned( (inputLon-origin.x())/colStep );
 
                 for( unsigned r=0; r<rows; ++r )
                 {
                     float inputLat = 90.0f - float(r) * rowStep;
 
-                    unsigned outc = unsigned( (inputLon-origin.x())/colStep );
                     unsigned outr = unsigned( (inputLat-origin.y())/rowStep );
 
                     Linear h( (double)s_egm96grid[r*cols+c], Units::CENTIMETERS );
                     hf->setHeight( outc, outr, float(h.as(Units::METERS)) );
                 }
             }
+
+            // copy the first column to the last column
+            for(unsigned r=0; r<rows; ++r)
+                hf->setHeight(cols-1, r, hf->getHeight(0, r));
 
             _geoid = new Geoid();
             _geoid->setHeightField( hf );

@@ -76,8 +76,9 @@ and image textures from one LOD to the next as you zoom in or out. Basic usage i
     mapnode->getTerrainEngine()->addEffect( effect );
 
 Caveats: It requires that the terrain elevation tile size dimensions be odd-numbered
-(e.g., 15x15). You can use the ``MapOptions::elevationTileSize`` property to configure
-this, or set ``elevation_tile_size`` in your earth file::
+(e.g., 17x17, which is the default.) You can use the ``MapOptions::elevationTileSize``
+property to configure this, or set ``elevation_tile_size`` in your earth file if you
+want to change it::
 
     <map>
         <options elevation_tile_size="15" ...
@@ -85,6 +86,40 @@ this, or set ``elevation_tile_size`` in your earth file::
 For a demo, run this example and zoom into a mountainous area::
 
     osgearth_viewer lod_blending.earth
+
+LOD blending supports the following properties (earth file and API):
+
+    :delay:            Time to wait before starting a blending transition (seconds)
+    :duration:         Duration of the blending transition (seconds)
+    :vertical_scale:   Factor by which to vertically scale the terrain (default = 1.0)
+    :blend_imagery:    Whether to blend imagery LODs (true)
+    :blend_elevation:  Whether to morph elevation LODs (true)
+
+
+Logarithmic Depth Buffer
+------------------------
+
+In whole-earth applications it's common that you want to see something up close (like
+an aircraft at altitude) while seeing the Earth and its horizon off in the distance.
+This poses a problem for modern graphic hardware because the standard depth buffer
+precision heavily favors objects closer to the camera, and viewing such a wide range
+of objects leads to "z-fighting" artifacts.
+
+The ``LogarithmicDepthBuffer`` is one way to solve this problem. It uses a shader to
+re-map the GPU's depth buffer values so they can be put to better use in this type
+of scenario.
+
+It's easy to install::
+
+    LogarithmicDepthBuffer logdepth;
+    logdepth->install( view->getCamera() );
+
+Since it does alter the projection-space coordinates of your geometry at draw time,
+you do need to be careful that you aren't doing anything ELSE in clip space in your
+own custom shaders that would conflict with this.
+
+(10-Jul-2014: Some osgEarth features are incompatible with the log depth buffer;
+namely, GPU clamping and Shadowing. Depth Offset works correctly though.)
 
 
 Formatters

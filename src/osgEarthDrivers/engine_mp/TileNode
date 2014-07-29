@@ -16,14 +16,14 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_MP_TILE_NODE
-#define OSGEARTH_ENGINE_MP_TILE_NODE 1
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE 1
 
 #include "Common"
 #include "TileModel"
 #include <osg/MatrixTransform>
 
-namespace osgEarth_engine_mp
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
     class TileNode;
@@ -108,11 +108,9 @@ namespace osgEarth_engine_mp
         virtual ~TileNode() { }
 
         TileKey                            _key;
-        osg::ref_ptr<osg::Uniform>         _bornUniform;
         osg::ref_ptr<const TileModel>      _model;
         osg::ref_ptr<osg::Uniform>         _tileParentMatrixUniform;
         unsigned                           _lastTraversalFrame;
-        double                             _bornTime;
         Revision                           _maprevision;
         bool                               _outOfDate;
         bool                               _dirty;
@@ -136,6 +134,6 @@ namespace osgEarth_engine_mp
     };
 
 
-} // namespace osgEarth_engine_mp
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_MP_TILE_NODE
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_NODE

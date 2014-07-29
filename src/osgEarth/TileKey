@@ -24,7 +24,6 @@
 #include <osgEarth/Profile>
 #include <osg/ref_ptr>
 #include <osg/Version>
-#include <osgTerrain/TerrainTile>
 #include <string>
 
 namespace osgEarth
@@ -59,17 +58,26 @@ namespace osgEarth
             unsigned int tile_y,
             const Profile* profile );
 
+        /** Copy constructor. */
         TileKey( const TileKey& rhs );
 
         /** dtor */
         virtual ~TileKey() { }
 
+        /** Compare two tilekeys for equality. */
         bool operator == (const TileKey& rhs) const {
-            return valid() && rhs.valid() && _lod==rhs._lod && _x==rhs._x && _y==rhs._y;
+            return
+                valid() && rhs.valid() && 
+                _lod==rhs._lod && _x==rhs._x && _y==rhs._y && 
+                _profile->isHorizEquivalentTo(rhs._profile);
         }
+
+        /** Compare two tilekeys for inequality */
         bool operator != (const TileKey& rhs) const {
             return !(*this == rhs);
         }
+
+        /** Sorts tilekeys, ignoring profiles */
         bool operator < (const TileKey& rhs) const {
             if (_lod < rhs._lod) return true;
             if (_lod > rhs._lod) return false;
@@ -90,11 +98,6 @@ namespace osgEarth
         const std::string& str() const { return _key; }
 
         /**
-         * Gets a TileID corresponding to this key.
-         */
-        osgTerrain::TileID getTileId() const;
-
-        /**
          * Gets the profile within which this key is interpreted.
          */
         const osgEarth::Profile* getProfile() const;
@@ -102,7 +105,7 @@ namespace osgEarth
         /**
          * Whether this is a valid key.
          */
-        const bool valid() const { return _profile.valid(); }
+        bool valid() const { return _profile.valid(); }
 
         /**
          * Get the quadrant relative to this key's parent.
@@ -126,7 +129,6 @@ namespace osgEarth
          * the specified LOD.
          */
         TileKey createAncestorKey( int ancestorLod ) const;
-
 
         /**
          * Creates a key that represents this tile's neighbor at the same LOD. Wraps
@@ -167,10 +169,30 @@ namespace osgEarth
         unsigned int getTileX() const { return _x; }
         unsigned int getTileY() const { return _y; }
 
-        static inline int getLOD(const osgTerrain::TileID& id)
-        {
-            return id.level;
-        }
+        //static inline int getLOD(const osgTerrain::TileID& id)
+        //{
+        //    return id.level;
+        //}
+
+        /**
+         * Maps this tile key to another tile key in order to account in
+         * a resolution difference. For example: we are requesting data for
+         * a TileKey at LOD 4, at a tile size of 32. The source data's tile
+         * size if 256. That means the source data at LOD 1 will contain the
+         * data necessary to build the tile.
+         *
+         *   usage: TileKey tk = mapResolution(31, 256);
+         *
+         * We want a 31x31 tile. The source data is 256x256. This will return
+         * a TileKey that access the appropriate source data, which we will then
+         * need to crop to populate our tile.
+         *
+         * You can set "minimumLOD" if you don't want a key below a certain LOD.
+         */
+        TileKey mapResolution(
+            unsigned targetSize,
+            unsigned sourceDataSize,
+            unsigned minimumLOD =0) const;
 
     protected:
         std::string _key;

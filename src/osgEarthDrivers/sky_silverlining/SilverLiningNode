@@ -20,7 +20,7 @@
 #include "SilverLiningOptions"
 #include <osgEarthUtil/Sky>
 #include <osgEarth/Map>
-#include <osgEartzh/PhongLightingEffect>
+#include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
 
 namespace osgEarth { namespace Drivers { namespace SilverLining

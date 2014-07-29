@@ -225,7 +225,7 @@ a specified higher level of detail.  For example, you can specify a max level of
 
 
 osgearth_boundarygen
------------------
+--------------------
 osgearth_boundarygen generates boundary geometry that you can use with an osgEarth <mask> layer in order to 
 stich an external model into the terrain.
 

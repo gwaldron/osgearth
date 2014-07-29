@@ -111,7 +111,7 @@ namespace osgEarth { namespace Util
          * elsewhere in the scene graph.
          */
         void setClipPlane(osg::ClipPlane* clipPlane);
-        osg::ClipPlane* getClipPlane() const { return _clipPlane; }
+        osg::ClipPlane* getClipPlane() const { return _clipPlane.get(); }
 
         
     public: // MapNodeObserver

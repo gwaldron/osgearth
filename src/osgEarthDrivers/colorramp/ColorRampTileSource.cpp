@@ -91,10 +91,10 @@ public:
 
             std::ifstream in(filename.c_str());
             float value;
-            unsigned int r, g, b;
-            while(in >> value >> r >> g >> b)
+            unsigned int r, g, b, a;
+            while(in >> value >> r >> g >> b >> a)
             {                
-                transfer->setColor(value, osg::Vec4((float)r/255.0, (float)g/255.0, (float)b/255.0, 1.0));
+                transfer->setColor(value, osg::Vec4((float)r/255.0, (float)g/255.0, (float)b/255.0, (float)a/255.0));
             }
             return transfer;
         }

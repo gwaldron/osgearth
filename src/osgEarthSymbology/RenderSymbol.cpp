@@ -30,7 +30,8 @@ _depthTest      ( true ),
 _lighting       ( true ),
 _backfaceCulling( true ),
 _order          ( 0 ),
-_clipPlane      ( 0 )
+_clipPlane      ( 0 ),
+_minAlpha       ( 0.0f )
 {
     mergeConfig(conf);
 }
@@ -46,6 +47,7 @@ RenderSymbol::getConfig() const
     conf.addIfSet   ( "backface_culling", _backfaceCulling );
     conf.addObjIfSet( "order",            _order );
     conf.addIfSet   ( "clip_plane",       _clipPlane );
+    conf.addIfSet   ( "min_alpha",        _minAlpha );
     return conf;
 }
 
@@ -58,6 +60,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "backface_culling", _backfaceCulling );
     conf.getObjIfSet( "order",            _order );
     conf.getIfSet   ( "clip_plane",       _clipPlane );
+    conf.getIfSet   ( "min_alpha",        _minAlpha );
 }
 
 void
@@ -98,5 +101,8 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "render-clip-plane") ) {
         style.getOrCreate<RenderSymbol>()->clipPlane() = as<unsigned>(c.value(), *defaults.clipPlane() );
+    }
+    else if ( match(c.key(), "render-min-alpha") ) {
+        style.getOrCreate<RenderSymbol>()->minAlpha() = as<float>(c.value(), *defaults.minAlpha() );
     }
 }

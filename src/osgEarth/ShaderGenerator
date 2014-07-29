@@ -46,16 +46,32 @@ namespace osg
 namespace osgEarth
 {
     /**
-     * Utility class that will traverse a scene graph and generate a
-     * set of VirtualProgram attributes to render it as best it can using
-     * shaders.
+     * Traverses a scene graph and generates VirtualProgram attributes to
+     * render the geometry using GLSL shaders.
      *
-     * Usage:
+     * You can use this class directly, but they osgEarth Registry hold
+     * a system-wide implementation that the user can replace. So the best
+     * way to use this class is:
      *
-     * osgEarth::Registry::shaderGenerator().run(graph);
+     *   osgEarth::Registry::shaderGenerator().run(graph);
      *
-     * If osgEarth detects a lack of GLSL support, the ShaderGenerator
-     * will do nothing.
+     * After generating shaders, the scene graph will have MANY additional
+     * StateSets. For performance reasons you should run a StateSet sharing
+     * pass afterwards. You can do this by running the StateSetCache 
+     * optimization function:
+     *
+     *   osgEarth::StateSetCache::optimize(graph)
+     *
+     * Or you can pass a StateSetCache instance into the ShaderGenerator::run()
+     * method and it will perform state sharing internally.
+     *
+     * Implementation Notes:
+     *
+     * ShaderGenerator WILL NOT modify existing StateSets. Instead, when 
+     * a state change is necessary (to inject uniforms or virtual programs)
+     * it will clone the existing StateSet and replace it with a
+     * modified version. We do this to avoid altering StateSets that might
+     * be shared or in the live scene graph.
      */
     class OSGEARTH_EXPORT ShaderGenerator : public osg::NodeVisitor
     {
@@ -65,12 +81,6 @@ namespace osgEarth
 
         /** Copy constructor */
         ShaderGenerator(const ShaderGenerator& rhs, const osg::CopyOp& copy);
-
-#if OSG_VERSION_LESS_THAN(3,3,0)
-        virtual ShaderGenerator* clone(const osg::CopyOp& copy) {
-            return new ShaderGenerator(*this, copy);
-        }
-#endif
 
     public: // ShaderGeneratorInterface
 
@@ -211,8 +221,8 @@ namespace osgEarth
         }
 
     public:
-        ShaderGeneratorProxy(ShaderGenerator* temp)
-            : _instance( temp->clone(osg::CopyOp::SHALLOW_COPY) ) { }
+        ShaderGeneratorProxy(const ShaderGenerator* temp)
+            : _instance( new ShaderGenerator(*temp, osg::CopyOp::SHALLOW_COPY) ) { }
 
     private:
         osg::ref_ptr<ShaderGenerator> _instance;

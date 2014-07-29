@@ -208,6 +208,18 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform>  _uniform;
         bool                        _dump;
     };
+
+
+    /**
+     * Shader that will discard fragments whose alpha component falls below
+     * the specified threshold.
+     */
+    class OSGEARTH_EXPORT DiscardAlphaFragments
+    {
+    public:
+        void install(osg::StateSet* ss, float minAlpha) const;
+        void uninstall(osg::StateSet* ss) const;
+    };
 }
 
 #endif // OSGEARTH_SHADER_UTILS_H

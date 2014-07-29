@@ -19,6 +19,8 @@
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgUtil/CullVisitor>
 #include <osg/Uniform>
 #include <osg/buffered_value>
@@ -111,13 +113,21 @@ namespace
 
 LogarithmicDepthBuffer::LogarithmicDepthBuffer()
 {
-    _cullCallback = new LogDepthCullCallback();
+    _supported = Registry::capabilities().supportsGLSL();
+    if ( _supported )
+    {
+        _cullCallback = new LogDepthCullCallback();
+    }
+    else
+    {
+        OE_WARN << LC << "Not supported on this platform (no GLSL)" << std::endl;
+    }
 }
 
 void
 LogarithmicDepthBuffer::install(osg::Camera* camera)
 {
-    if ( camera )
+    if ( camera && _supported )
     {
         // install the shader component:
         osg::StateSet* stateset = camera->getOrCreateStateSet();
@@ -136,7 +146,7 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
 void
 LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
 {
-    if ( camera )
+    if ( camera && _supported )
     {
         camera->removeCullCallback( _cullCallback.get() );
 

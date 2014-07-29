@@ -25,10 +25,8 @@
 
 #define DEFAULT_PRUNE_ACCESS_COUNT 40
 
-#if 0 // do not share ssets. there are issues.
 #if OSG_MIN_VERSION_REQUIRED(3,1,4)
-#   define SHARE_STATESETS 1
-#endif
+#   define STATESET_SHARING_SUPPORTED 1
 #endif
 
 using namespace osgEarth;
@@ -58,7 +56,7 @@ namespace
 
     bool isEligible(osg::StateSet* stateSet)
     {
-#ifdef SHARE_STATESETS
+#ifdef STATESET_SHARING_SUPPORTED
         if ( !stateSet )
             return false;
 
@@ -276,21 +274,34 @@ StateSetCache::setMaxSize(unsigned value)
 }
 
 void
+StateSetCache::consolidateStateAttributes(osg::Node* node)
+{
+    if ( !node )
+        return;
+
+    ShareStateAttributes v( this );
+    node->accept( v );
+}
+
+void
+StateSetCache::consolidateStateSets(osg::Node* node)
+{
+    if ( !node )
+        return;
+
+#ifdef STATESET_SHARING_SUPPORTED
+    ShareStateSets v( this );
+    node->accept( v );
+#endif
+}
+
+void
 StateSetCache::optimize(osg::Node* node)
 {
     if ( node )
     {
-        // replace all equivalent attributes with a single instance
-        ShareStateAttributes v1( this );
-        node->accept( v1 );
-
-#ifdef SHARE_STATESETS
-        // replace all equivalent static statesets with a single instance
-        // only supported in OSG 3.1.4+ because of the Uniform mutex 
-        // protection.
-        ShareStateSets v2( this );
-        node->accept( v2 );
-#endif
+        consolidateStateAttributes( node );
+        consolidateStateSets( node );
     }
 }
 
@@ -315,7 +326,7 @@ StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
                      bool                         checkEligible)
 {
     bool shared     = false;
-    bool shareattrs = true;
+    //bool shareattrs = true;
 
     if ( !checkEligible || eligible(input.get()) )
     {
@@ -323,14 +334,14 @@ StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
 
         pruneIfNecessary();
 
-        shareattrs = false;
+        //shareattrs = false;
 
         std::pair<StateSetSet::iterator,bool> result = _stateSetCache.insert( input );
         if ( result.second )
         {
             // first use
             output = input.get();
-            shareattrs = true;
+            //shareattrs = true;
             shared = false;
         }
         else
@@ -346,11 +357,12 @@ StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
         shared = false;
     }
 
-    if ( shareattrs )
-    {
-        ShareStateAttributes sa(this);
-        sa.applyStateSet( input.get() );
-    }
+    // OBE.
+    //if ( shareattrs )
+    //{
+    //    ShareStateAttributes sa(this);
+    //    sa.applyStateSet( input.get() );
+    //}
 
     return shared;
 }

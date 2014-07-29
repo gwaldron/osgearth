@@ -18,6 +18,7 @@
  */
 #include "DuktapeEngine"
 #include <osgEarth/JsonUtils>
+#include <osgEarth/StringUtils>
 #include <sstream>
 
 #define LC "[DuktapeEngine] "
@@ -35,6 +36,25 @@ using namespace osgEarth::Drivers::Duktape;
 
 namespace
 {
+    static duk_ret_t log( duk_context *ctx ) {
+        duk_idx_t i, n;
+
+        std::string msg;
+        for( i = 0, n = duk_get_top( ctx ); i < n; i++ ) {
+            if( i > 0 ) {
+                msg += " ";
+            }
+            msg += duk_safe_to_string( ctx, i );
+        }
+        OE_WARN << LC << msg << std::endl;
+        return 0;
+    }
+}
+
+//............................................................................
+
+namespace
+{
     // Updates the global feature object with new attributes.
     void updateFeature(duk_context* ctx, Feature const* feature)
     {
@@ -42,14 +62,34 @@ namespace
         duk_push_string(ctx, "feature");    // [ global, "feature" ]
         duk_get_prop(ctx, -2);              // [ global, feature ]
 
+        // add a property for the Feature ID:
+        std::string fid = Stringify() << feature->getFID();
+        duk_push_string(ctx, "id");               // [global, feature, "id"]
+        duk_push_int(ctx, feature->getFID());     // [global, feature, "id", fid]
+        ::duk_put_prop(ctx, -3);                  // [global, feature]
+
         // add each property to the object:
         const AttributeTable& attrs = feature->getAttrs();
         for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
         {
-            if ( !a->first.empty() )
-            {
-                duk_push_string(ctx, a->second.getString().c_str()); // [ global, feature, name ]
-                duk_put_prop_string(ctx, -2, a->first.c_str());      // [ global, feature ]
+            osgEarth::Features::AttributeType atype = (*a).second.first;
+            switch( atype ) {
+            case osgEarth::Features::ATTRTYPE_BOOL:
+                duk_push_boolean( ctx, a->second.getBool() );
+                duk_put_prop_string( ctx, -2, a->first.c_str() );
+                break;
+            case osgEarth::Features::ATTRTYPE_DOUBLE:
+                duk_push_number( ctx, a->second.getDouble() ); 
+                duk_put_prop_string( ctx, -2, a->first.c_str() );    
+                break;
+            case osgEarth::Features::ATTRTYPE_INT:
+                duk_push_int( ctx, a->second.getInt() );
+                duk_put_prop_string( ctx, -2, a->first.c_str() );
+                break;
+            default:
+                duk_push_string( ctx, a->second.getString().c_str() ); 
+                duk_put_prop_string( ctx, -2, a->first.c_str() );
+                break;
             }
         }
 
@@ -85,6 +125,15 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
             duk_pop(_ctx); // []
         }
 
+        // Add global log function.
+
+        {
+            duk_push_global_object( _ctx );
+            duk_push_c_function( _ctx, log, DUK_VARARGS );
+            duk_put_prop_string( _ctx, -2, "log" );
+            duk_pop( _ctx );
+        }
+		
         // Create the global feature object.
         {
             duk_push_global_object(_ctx);             // [ global ]         feature object's home

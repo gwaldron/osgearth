@@ -21,6 +21,7 @@
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/TextureRectangle>
+#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgEarth/VirtualProgram>
 #include <osgEarthUtil/EarthManipulator>
@@ -236,6 +237,65 @@ usage(const char* name)
     return 0;
 }
 
+struct RTTIntersectionTest : public osgGA::GUIEventHandler
+{
+    osgViewer::View* _view;
+    osg::Node*       _node;
+
+    virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*)
+    {
+        if ( ea.getEventType() == ea.PUSH )
+        {
+            // mouse click from [-1...1]
+            float nx = ea.getXnormalized();
+            float ny = ea.getYnormalized();
+
+            // clicked point in clip space:
+            osg::Vec3d pn( nx, ny, -1 ); // on near plane
+            osg::Vec3d pf( nx, ny,  1 ); // on far plane
+
+            OE_NOTICE << "clip: nx=" << nx << ", ny=" << ny << std::endl;
+            
+            // take the view matrix as-is:
+            osg::Matrix view = _view->getCamera()->getViewMatrix();
+
+            // adjust projection matrix to include entire earth:
+            double fovy, ar, zn, zf;
+            _view->getCamera()->getProjectionMatrix().getPerspective(fovy, ar, zn, zf);
+            osg::Matrix proj;
+            proj.makePerspective(fovy, ar, 1.0, 1e10);
+
+            // Invert the MVP to transform points from clip to model space:
+            osg::Matrix MVP = view * proj;
+            osg::Matrix invMVP;
+            invMVP.invert(MVP);
+
+            pn = pn * invMVP;
+            pf = pf * invMVP;
+
+            OE_NOTICE << "model: near = " << pn.x() << ", " << pn.y() << ", " << pn.z() << std::endl;
+            OE_NOTICE << "model: far  = " << pf.x() << ", " << pf.y() << ", " << pf.z() << std::endl;
+
+            // Intersect in model space.
+            osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(
+                osgUtil::Intersector::MODEL, pn, pf );
+
+            lsi->setIntersectionLimit( lsi->LIMIT_NEAREST );
+
+            osgUtil::IntersectionVisitor iv( lsi ); 
+            
+            _node->accept( iv );
+
+            if ( lsi->containsIntersections() )
+            {
+                osg::Vec3d p = lsi->getIntersections().begin()->getWorldIntersectPoint();
+                OE_NOTICE << "i = " << p.x() << ", " << p.y() << ", " << p.z() << std::endl;
+            }
+        }
+        return false;
+    }
+};
+
 int
 main(int argc, char** argv)
 {
@@ -257,11 +317,13 @@ main(int argc, char** argv)
         osg::Node* pass2 = createFramebufferPass(app);
         root->addChild( pass2 );
 
-        viewer.setSceneData( root );
+        // demonstrate scene intersection when using MRT/RTT.
+        RTTIntersectionTest* isect = new RTTIntersectionTest();
+        isect->_view = &viewer;
+        isect->_node = node;
+        viewer.addEventHandler( isect );
 
-        // configure the near/far so we don't clip things that are up close
-        viewer.getCamera()->setNearFarRatio(0.00002);
-        viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+        viewer.setSceneData( root );
 
         viewer.run();
     }

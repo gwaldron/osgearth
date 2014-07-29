@@ -19,6 +19,8 @@
 #include <osgEarthUtil/Shadowing>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osg/Texture2D>
 #include <osg/CullFace>
 #include <osgShadow/ConvexPolyhedron>
@@ -31,18 +33,27 @@ using namespace osgEarth::Util;
 ShadowCaster::ShadowCaster() :
 _size        ( 2048 ),
 _texImageUnit( 7 ),
-_blurFactor  ( 0.0f ),
-_color       ( osg::Vec4f(.3f, .3f, .3f, 1.f) )
+_blurFactor  ( 0.002f ),
+_color       ( osg::Vec4f(.4f, .4f, .4f, 1) )
 {
     _castingGroup = new osg::Group();
 
-    // defaults to 4 slices.
-    _ranges.push_back(0.0f);
-    _ranges.push_back(500.0f);
-    _ranges.push_back(1750.0f);
-    _ranges.push_back(5000.0f);
+    _supported = Registry::capabilities().supportsGLSL();
+    if ( _supported )
+    {
+        // defaults to 4 slices.
+        _ranges.push_back(0.0f);
+        _ranges.push_back(100.0f);
+        _ranges.push_back(500.0f);
+        _ranges.push_back(1750.0f);
+        _ranges.push_back(5000.0f);
 
-    reinitialize();
+        reinitialize();
+    }
+    else
+    {
+        OE_WARN << LC << "ShadowCaster not supported (no GLSL); disabled." << std::endl;
+    }
 }
 
 void
@@ -70,19 +81,24 @@ void
 ShadowCaster::setBlurFactor(float value)
 {
     _blurFactor = value;
-    _shadowBlurUniform->set(value);
+    if ( _shadowBlurUniform.valid() )
+        _shadowBlurUniform->set(value);
 }
 
 void
 ShadowCaster::setShadowColor(const osg::Vec4f& value)
 {
     _color = value;
-    _shadowColorUniform->set(value);
+    if ( _shadowColorUniform.valid() )
+        _shadowColorUniform->set(value);
 }
 
 void
 ShadowCaster::reinitialize()
 {
+    if ( !_supported )
+        return;
+
     _shadowmap = 0L;
     _rttCameras.clear();
 
@@ -141,27 +157,45 @@ ShadowCaster::reinitialize()
         "} \n";
 
     std::string fragment = Stringify() << 
-        "#version " GLSL_VERSION_STR "\n"
+        "#version 120\n" //" GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#extension GL_EXT_texture_array : enable \n"
+
         "uniform sampler2DArray oe_shadow_map; \n"
         "uniform vec4 oe_shadow_color; \n"
         "uniform float oe_shadow_blur; \n"
         "varying vec3 oe_Normal; \n"
         "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
 
+        //TODO-run a generator and rplace
+        "#define OE_SHADOW_NUM_SAMPLES 16\n"
+        "const vec2 oe_shadow_samples[OE_SHADOW_NUM_SAMPLES] = vec2[]( vec2( -0.942016, -0.399062 ), vec2( 0.945586, -0.768907 ), vec2( -0.094184, -0.929389 ), vec2( 0.344959, 0.293878 ), vec2( -0.915886, 0.457714 ), vec2( -0.815442, -0.879125 ), vec2( -0.382775, 0.276768 ), vec2( 0.974844, 0.756484 ), vec2( 0.443233, -0.975116 ), vec2( 0.53743, -0.473734 ), vec2( -0.264969, -0.41893 ), vec2( 0.791975, 0.190909 ), vec2( -0.241888, 0.997065 ), vec2( -0.8141, 0.914376 ), vec2( 0.199841, 0.786414 ), vec2( 0.143832, -0.141008 )); \n"
+
+        "float oe_shadow_rand(vec2 co){\n"
+        "   return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);\n"
+        "}\n"
+        
+        "vec2 oe_shadow_rot(vec2 p, float a) { \n"
+        "    vec2 sincos = vec2(sin(a), cos(a)); \n"
+        "    return vec2(dot(p, vec2(sincos.y, -sincos.x)), dot(p, sincos.xy)); \n"
+        "}\n"
+
         // slow PCF sampling.
         "float oe_shadow_multisample(in vec3 c, in float refvalue, in float blur) \n"
         "{ \n"
         "    float shadowed = 0.0; \n"
-        "    for(float i=-blur; i<=blur; i+=blur) { \n"
-        "        for(float j=-blur; j<=blur; j+=blur) { \n"
-        "            float depth = texture2DArray(oe_shadow_map, vec3(c.x+i, c.y+j, c.z)).r; \n"
-        "            if ( depth < 1.0 && depth < refvalue ) \n"
-        "               shadowed += 1.0; \n"
+        "    float a = 6.283185 * oe_shadow_rand(c.xy); \n"
+        "    vec4 b = vec4(oe_shadow_rot(vec2(1,0),a), oe_shadow_rot(vec2(0,1),a)); \n"
+        "    for(int i=0; i<OE_SHADOW_NUM_SAMPLES; ++i) { \n"
+        "        vec2 off = oe_shadow_samples[i];\n"
+        "        off = vec2(dot(off,b.xz), dot(off,b.yw)); \n"
+        "        vec3 pc = vec3(c.xy + off*blur, c.z); \n"
+        "        float depth = texture2DArray(oe_shadow_map, pc).r; \n"
+        "        if ( depth < 1.0 && depth < refvalue ) { \n"
+        "           shadowed += 1.0; \n"
         "        } \n"
         "    } \n"
-        "    return 1.0-(shadowed/9.0); \n"
+        "    return 1.0-(shadowed/OE_SHADOW_NUM_SAMPLES); \n"
         "} \n"
 
         "void oe_shadow_fragment( inout vec4 color )\n"
@@ -244,15 +278,15 @@ ShadowCaster::reinitialize()
 void
 ShadowCaster::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.CULL_VISITOR && _castingGroup->getNumChildren() > 0 && _shadowmap.valid() )
+    if (_supported                             && 
+        nv.getVisitorType() == nv.CULL_VISITOR && 
+        _castingGroup->getNumChildren() > 0    && 
+        _shadowmap.valid() )
     {
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
         osg::Camera* camera = cv->getCurrentCamera();
         if ( camera )
         {
-            osg::Matrix world2view    = camera->getViewMatrix();
-            osg::Quat   world2viewRot = world2view.getRotate();
-
             osg::Matrix MV = *cv->getModelViewMatrix();
             osg::Matrix inverseMV;
             inverseMV.invert(MV);
@@ -271,6 +305,7 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             osg::Matrix lightViewMat;
             lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, camUp);
             
+            //int i = nv.getFrameStamp()->getFrameNumber() % (_ranges.size()-1);
             int i;
             for(i=0; i < (int) _ranges.size()-1; ++i)
             {
@@ -280,7 +315,10 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 // take the camera's projection matrix and clamp it's near and far planes
                 // to our shadow map slice range.
                 osg::Matrix proj = _prevProjMatrix;
-                cv->clampProjectionMatrix(proj, n, f);
+                //cv->clampProjectionMatrix(proj, n, f);
+                double fovy,ar,zn,zf;
+                proj.getPerspective(fovy,ar,zn,zf);
+                proj.makePerspective(fovy,ar,std::max(n,zn),std::min(f,zf));
                 
                 // extract the corner points of the camera frustum in world space.
                 osg::Matrix MVP = MV * proj;

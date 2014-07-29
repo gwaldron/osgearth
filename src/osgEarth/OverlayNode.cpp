@@ -150,11 +150,18 @@ _getGroup ( provider )
 
     setMapNode( mapNode );
 
-    if ( mapNode )
+    if ( mapNode && _getGroup )
     {
-        // If draping is requested, set up to apply it on the first update traversal.
-        // Can't apply it until then since we need safe access to the MapNode.
-        setActive( active );
+        if (_getGroup(mapNode) != 0L)
+        {
+            // If draping is requested, set up to apply it on the first update traversal.
+            // Can't apply it until then since we need safe access to the MapNode.
+            setActive( active );
+        }
+        else
+        {
+            OE_WARN << LC << "Overlay technique not available; disabled." << std::endl;
+        }
     }
 }
 

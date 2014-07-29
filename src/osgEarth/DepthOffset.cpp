@@ -233,7 +233,7 @@ _dirty( false )
 void
 DepthOffsetAdapter::init()
 {
-    _supported = Registry::capabilities().supportsFragDepthWrite();
+    _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
     {
         _minBiasUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_doff_min_bias");
@@ -373,17 +373,20 @@ DepthOffsetAdapter::recalculate()
 DepthOffsetGroup::DepthOffsetGroup() :
 _updatePending( false )
 {
-    _adapter.setGraph( this );
+    if ( _adapter.supported() )
+    {
+        _adapter.setGraph( this );
 
-    if ( _adapter.isDirty() )
-        _adapter.recalculate();
+        if ( _adapter.isDirty() )
+            _adapter.recalculate();
+    }
 }
 
 void
 DepthOffsetGroup::setDepthOffsetOptions(const DepthOffsetOptions& options)
 {
     _adapter.setDepthOffsetOptions(options);
-    if ( _adapter.isDirty() && !_updatePending )
+    if ( _adapter.supported() && _adapter.isDirty() && !_updatePending )
         scheduleUpdate();
 }
 
@@ -396,17 +399,22 @@ DepthOffsetGroup::getDepthOffsetOptions() const
 void
 DepthOffsetGroup::scheduleUpdate()
 {
-    ADJUST_UPDATE_TRAV_COUNT(this, 1);
-    _updatePending = true;
+    if ( _adapter.supported() )
+    {
+        ADJUST_UPDATE_TRAV_COUNT(this, 1);
+        _updatePending = true;
+    }
 }
 
 osg::BoundingSphere
 DepthOffsetGroup::computeBound() const
 {
-    static Threading::Mutex s_mutex;
+    if ( _adapter.supported() )
     {
-        Threading::ScopedMutexLock lock(s_mutex);
+        static Threading::Mutex s_mutex;
+        s_mutex.lock();
         const_cast<DepthOffsetGroup*>(this)->scheduleUpdate();
+        s_mutex.unlock();
     }
     return osg::Group::computeBound();
 }

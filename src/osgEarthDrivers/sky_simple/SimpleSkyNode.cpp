@@ -229,15 +229,7 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
 
     // containers for sky elements.
     _cullContainer = new osg::Group();
-
-    _lightPosUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir");
-    _lightPosUniform->set( lightPos / lightPos.length() );
-    this->getOrCreateStateSet()->addUniform( _lightPosUniform.get() );
-
-    // default GL_LIGHTING uniform setting
-    this->getOrCreateStateSet()->addUniform(
-        Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, 1) );
-
+    
     // set up the astronomical parameters:
     _ellipsoidModel = srs->getEllipsoid();
     _innerRadius = osg::minimum(
@@ -245,18 +237,29 @@ SimpleSkyNode::initialize(const SpatialReference* srs)
         _ellipsoidModel->getRadiusEquator() );
     _outerRadius = _innerRadius * 1.025f;
     _sunDistance = _innerRadius * 12000.0f;
+    
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        _lightPosUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC3, "atmos_v3LightDir");
+        _lightPosUniform->set( lightPos / lightPos.length() );
+        this->getOrCreateStateSet()->addUniform( _lightPosUniform.get() );
 
-    // make the uniforms and the terrain lighting shaders.
-    makeSceneLighting();
+        // default GL_LIGHTING uniform setting
+        this->getOrCreateStateSet()->addUniform(
+            Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, 1) );
 
-    // make the sky elements (don't change the order here)
-    makeAtmosphere( _ellipsoidModel.get() );
+        // make the uniforms and the terrain lighting shaders.
+        makeSceneLighting();
 
-    makeSun();
+        // make the sky elements (don't change the order here)
+        makeAtmosphere( _ellipsoidModel.get() );
 
-    makeMoon();
+        makeSun();
 
-    makeStars();
+        makeMoon();
+
+        makeStars();
+    }
 
     // Update everything based on the date/time.
     onSetDateTime();
@@ -318,7 +321,8 @@ SimpleSkyNode::onSetDateTime()
         double time_r = dt.hours()/24.0; // 0..1
         double rot_z = -osg::PI + TWO_PI*time_r;
 
-        _starsXform->setMatrix( osg::Matrixd::rotate(-rot_z, 0, 0, 1) );
+        if ( _starsXform.valid() )
+            _starsXform->setMatrix( osg::Matrixd::rotate(-rot_z, 0, 0, 1) );
     }
 }
 
@@ -340,37 +344,47 @@ void
 SimpleSkyNode::setSunPosition(const osg::Vec3& pos)
 {
     _light->setPosition( osg::Vec4(pos, 0.0f) );
+    
+    if ( _lightPosUniform.valid() )
+    {
+        _lightPosUniform->set( pos/pos.length() );
+    }
 
-    _lightPosUniform->set( pos/pos.length() );
-
-    _sunXform->setMatrix( osg::Matrix::translate( 
-        _sunDistance * pos.x(), 
-        _sunDistance * pos.y(),
-        _sunDistance * pos.z() ) );
+    if ( _sunXform.valid() )
+    {
+        _sunXform->setMatrix( osg::Matrix::translate( 
+            _sunDistance * pos.x(), 
+            _sunDistance * pos.y(),
+            _sunDistance * pos.z() ) );
+    }
 }
 
 void
 SimpleSkyNode::setMoonPosition(const osg::Vec3d& pos)
 {
-    _moonXform->setMatrix( osg::Matrixd::translate(pos.x(), pos.y(), pos.z()) );
+    if ( _moonXform.valid() )
+        _moonXform->setMatrix( osg::Matrixd::translate(pos.x(), pos.y(), pos.z()) );
 }
 
 void
 SimpleSkyNode::onSetStarsVisible()
 {
-    _starsXform->setNodeMask( getStarsVisible() ? ~0 : 0 );
+    if ( _starsXform.valid() )
+        _starsXform->setNodeMask( getStarsVisible() ? ~0 : 0 );
 }
 
 void
 SimpleSkyNode::onSetMoonVisible()
 {
-    _moonXform->setNodeMask( getMoonVisible() ? ~0 : 0 );
+    if ( _moonXform.valid() )
+        _moonXform->setNodeMask( getMoonVisible() ? ~0 : 0 );
 }
 
 void
 SimpleSkyNode::onSetSunVisible()
 {
-    _sunXform->setNodeMask( getSunVisible() ? ~0 : 0 );
+    if ( _sunXform.valid() )
+        _sunXform->setNodeMask( getSunVisible() ? ~0 : 0 );
 }
 
 void
@@ -508,18 +522,14 @@ SimpleSkyNode::makeSun()
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
     set->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
-    // set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
 
     // create shaders
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        osg::Program* program = new osg::Program();
-        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Sun_Vertex );
-        program->addShader( vs );
-        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Sun_Fragment );
-        program->addShader( fs );
-        set->setAttributeAndModes( program, osg::StateAttribute::ON );
-    }
+    osg::Program* program = new osg::Program();
+    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Sun_Vertex );
+    program->addShader( vs );
+    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Sun_Fragment );
+    program->addShader( fs );
+    set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
     // A nested camera isolates the projection matrix calculations so the node won't 
     // affect the clip planes in the rest of the scene.
@@ -575,18 +585,15 @@ SimpleSkyNode::makeMoon()
 
 #ifdef OSG_GLES2_AVAILABLE
 
-    if ( Registry::capabilities().supportsGLSL() )
-    {
-        set->addUniform(new osg::Uniform("moonTex", 0));
+    set->addUniform(new osg::Uniform("moonTex", 0));
 
-        // create shaders
-        osg::Program* program = new osg::Program();
-        osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Moon_Vertex );
-        program->addShader( vs );
-        osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Moon_Fragment );
-        program->addShader( fs );
-        set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
-    }
+    // create shaders
+    osg::Program* program = new osg::Program();
+    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Moon_Vertex );
+    program->addShader( vs );
+    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Moon_Fragment );
+    program->addShader( fs );
+    set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 #endif
 
     // A nested camera isolates the projection matrix calculations so the node won't 
@@ -702,28 +709,25 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 
     osg::StateSet* sset = geometry->getOrCreateStateSet();
 
-    if ( Registry::capabilities().supportsGLSL() )
+    sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
+    sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
+
+    std::string starVertSource, starFragSource;
+    if ( Registry::capabilities().getGLSLVersion() < 1.2f )
     {
-        sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
-        sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
-
-        std::string starVertSource, starFragSource;
-        if ( Registry::capabilities().getGLSLVersion() < 1.2f )
-        {
-            starVertSource = Stars_Vertex_110;
-            starFragSource = Stars_Fragment_110;
-        }
-        else
-        {
-            starVertSource = Stars_Vertex_120;
-            starFragSource = Stars_Fragment_120;
-        }
-
-        osg::Program* program = new osg::Program;
-        program->addShader( new osg::Shader(osg::Shader::VERTEX, starVertSource) );
-        program->addShader( new osg::Shader(osg::Shader::FRAGMENT, starFragSource) );
-        sset->setAttributeAndModes( program, osg::StateAttribute::ON );
+        starVertSource = Stars_Vertex_110;
+        starFragSource = Stars_Fragment_110;
     }
+    else
+    {
+        starVertSource = Stars_Vertex_120;
+        starFragSource = Stars_Fragment_120;
+    }
+
+    osg::Program* program = new osg::Program;
+    program->addShader( new osg::Shader(osg::Shader::VERTEX, starVertSource) );
+    program->addShader( new osg::Shader(osg::Shader::FRAGMENT, starFragSource) );
+    sset->setAttributeAndModes( program, osg::StateAttribute::ON );
 
     sset->setRenderBinDetails( BIN_STARS, "RenderBin");
     sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );

@@ -19,11 +19,12 @@ This example shows how to use the TFS driver.
         <styles>                
             <style type="text/css">
                 buildings {
-                    extrusion-height:  15;
-                    extrusion-flatten: true;
-                    fill:              #ff7f2f;
-                    altitude-clamping: terrain;
-					render-lighting:   true;
+                    extrusion-height:        Math.random()*30.0 + 5.0;
+                    extrusion-flatten:       true;
+					extrusion-wall-gradient: 0.25;
+                    fill:                    #ff7f2f;
+					stroke:                  #6f2f0f;
+                    altitude-clamping:       terrain;
                 }            
             </style>
         </styles>

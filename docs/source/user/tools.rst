@@ -126,7 +126,11 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 | ``--bounds xmin ymin xmax ymax``   | bounds to package (in map coordinates; default=entire map)         |
 |                                    | You can provide multiple bounds                                    |
 +------------------------------------+--------------------------------------------------------------------+
-| ``--max-level level``              | max LOD level for tiles (all layers; default=inf)                  |
+| ``--max-level level``              | max LOD level for tiles (all layers; default=5). Note: you can set |
+|                                    | this to a large number to get all available data (e.g., 99). This  |
+|                                    | works fine for files (like a GeoTIFF). But some data sources do    |
+|                                    | not report (or have) a maximum data level, so it's better to       |
+|                                    | specify a specific maximum.                                        |
 +------------------------------------+--------------------------------------------------------------------+
 | ``--out-earth earthfile``          | export an earth file referencing the new repo                      |
 +------------------------------------+--------------------------------------------------------------------+
@@ -142,14 +146,14 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 | ``--db-options``                   | db options string to pass to the image writer                      |
 |                                    | in quotes (e.g., "JPEG_QUALITY 60")                                |
 +------------------------------------+--------------------------------------------------------------------+
-| ``--mp``                            | Use multiprocessing to process the tiles.  Useful for GDAL        |
-|                                     | sources as this avoids the global GDAL lock                       |
-+-------------------------------------+-------------------------------------------------------------------+
-| ``--mt``                            | Use multithreading to process the tiles.                          |
-+-------------------------------------+-------------------------------------------------------------------+
-| ``--concurrency``                   | The number of threads or proceses to use if --mp or --mt          |
-|                                     | are provided                                                      | 
-+-------------------------------------+-------------------------------------------------------------------+
+| ``--mp``                           | Use multiprocessing to process the tiles.  Useful for GDAL         |
+|                                    | sources as this avoids the global GDAL lock                        |
++------------------------------------+--------------------------------------------------------------------+
+| ``--mt``                           | Use multithreading to process the tiles.                           |
++------------------------------------+--------------------------------------------------------------------+
+| ``--concurrency``                  | The number of threads or proceses to use if --mp or --mt           |
+|                                    | are provided                                                       | 
++------------------------------------+--------------------------------------------------------------------+
 
 osgearth_tfs
 ------------
@@ -221,18 +225,18 @@ a specified higher level of detail.  For example, you can specify a max level of
 
 
 osgearth_boundarygen
------------------
+--------------------
 osgearth_boundarygen generates boundary geometry that you can use with an osgEarth <mask> layer in order to 
 stich an external model into the terrain.
 
 **Sample Usage**
 ::
-    osgearth_boundarygen model_file
+    osgearth_boundarygen model_file [options]
 
 +----------------------------------+--------------------------------------------------------------------+
 | Argument                         | Description                                                        |
 +==================================+====================================================================+
-| ``--out file_name``              | output file for boundary geometry( default is boundary.txt)        |
+| ``--out file_name``              | output file for boundary geometry (default is boundary.txt)        |
 +----------------------------------+--------------------------------------------------------------------+
 | ``--no-geocentric``              | Skip geocentric reprojection (for flat databases)                  |
 +----------------------------------+--------------------------------------------------------------------+
@@ -241,6 +245,10 @@ stich an external model into the terrain.
 | ``--verbose``                    | print progress to console                                          |
 +----------------------------------+--------------------------------------------------------------------+
 | ``--view``                       | show result in 3D window                                           |
++----------------------------------+--------------------------------------------------------------------+
+| ``--tolerance`` N                | vertices less than this distance apart will be coalesced (0.005)   |
++----------------------------------+--------------------------------------------------------------------+
+| ``--precision`` N                | output coordinates will have this many significant digits (12)     |
 +----------------------------------+--------------------------------------------------------------------+
 
 

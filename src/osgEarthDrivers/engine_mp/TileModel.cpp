@@ -131,7 +131,7 @@ _fallbackData( fallbackData )
     osg::Texture::FilterMode minFilter = layer->getImageLayerOptions().minFilter().get();
     osg::Texture::FilterMode magFilter = layer->getImageLayerOptions().magFilter().get();
 
-    if (image->r() == 1)
+    if (image->r() <= 1)
     {
         _texture = new osg::Texture2D( image );
     }

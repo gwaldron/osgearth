@@ -266,6 +266,21 @@ namespace
 #endif
         }
     };
+
+    // if the node has a stateset, clone it and replace it with the clone.
+    // otherwise, just create a new stateset on the node.
+    osg::StateSet* cloneOrCreateStateSet(osg::Node* node)
+    {
+        if ( node->getStateSet() )
+        {
+            node->setStateSet( osg::clone(node->getStateSet(), osg::CopyOp::SHALLOW_COPY) );
+            return node->getStateSet();
+        }
+        else
+        {
+            return node->getOrCreateStateSet();
+        }
+    }
 }
 
 //------------------------------------------------------------------------
@@ -352,7 +367,7 @@ ShaderGenerator::run(osg::Node*         graph,
         // perform GL state sharing
         optimizeStateSharing( graph, cache );
 
-        osg::StateSet* stateset = graph->getOrCreateStateSet();
+        osg::StateSet* stateset = cloneOrCreateStateSet(graph);
 
         // install a blank VP at the top as the default.
         VirtualProgram* vp = VirtualProgram::get(stateset);
@@ -587,7 +602,8 @@ ShaderGenerator::apply(osg::ClipNode& node)
     if ( ignore(&node) )
         return;
 
-    VirtualProgram* vp = VirtualProgram::getOrCreate(node.getOrCreateStateSet());
+    osg::StateSet* stateSet = cloneOrCreateStateSet(&node);
+    VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
     if ( vp->referenceCount() == 1 ) vp->setName( _name );
     vp->setFunction( "oe_sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW );
 
@@ -611,7 +627,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
     if ( dynamic_cast<osg::Program*>(program) != 0L )
         return false;
 
-    // new state set:
+    // New state set. We never modify existing statesets.
     replacement = ss ? osg::clone(ss, osg::CopyOp::SHALLOW_COPY) : new osg::StateSet();
 
     // new VP:
@@ -665,8 +681,8 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
     if ( dynamic_cast<osg::Program*>(program) != 0L )
         return false;
 
-    // copy or create a new stateset (that we may or may not use depending on
-    // what we find)
+    // Copy or create a new stateset (that we may or may not use depending on
+    // what we find). Never modify an existing stateset!
     osg::ref_ptr<osg::StateSet> new_stateset = 
         original ? osg::clone(original, osg::CopyOp::SHALLOW_COPY) :
         new osg::StateSet();

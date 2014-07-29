@@ -38,6 +38,9 @@ namespace osgEarth { namespace Util
         /** Constructs a logarithmic depth buffer controller. */
         LogarithmicDepthBuffer();
 
+        /** is it supported on this platform? */
+        bool supported() const { return _supported; }
+
         /** Installs a logarithmic depth buffer on a camera. */
         void install(osg::Camera* camera);
 
@@ -46,6 +49,7 @@ namespace osgEarth { namespace Util
 
     protected:
         osg::ref_ptr<osg::NodeCallback> _cullCallback;
+        bool _supported;
     };
 
 } } // namespace osgEarth::Util

@@ -238,8 +238,6 @@ public:
                     result,
                     _options.url()->base(),
                     cache.get() );
-
-                cache->dumpStats();
             }
             else if ( _options.shaderPolicy() == SHADERPOLICY_DISABLE )
             {

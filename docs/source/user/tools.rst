@@ -231,12 +231,12 @@ stich an external model into the terrain.
 
 **Sample Usage**
 ::
-    osgearth_boundarygen model_file
+    osgearth_boundarygen model_file [options]
 
 +----------------------------------+--------------------------------------------------------------------+
 | Argument                         | Description                                                        |
 +==================================+====================================================================+
-| ``--out file_name``              | output file for boundary geometry( default is boundary.txt)        |
+| ``--out file_name``              | output file for boundary geometry (default is boundary.txt)        |
 +----------------------------------+--------------------------------------------------------------------+
 | ``--no-geocentric``              | Skip geocentric reprojection (for flat databases)                  |
 +----------------------------------+--------------------------------------------------------------------+
@@ -245,6 +245,10 @@ stich an external model into the terrain.
 | ``--verbose``                    | print progress to console                                          |
 +----------------------------------+--------------------------------------------------------------------+
 | ``--view``                       | show result in 3D window                                           |
++----------------------------------+--------------------------------------------------------------------+
+| ``--tolerance`` N                | vertices less than this distance apart will be coalesced (0.005)   |
++----------------------------------+--------------------------------------------------------------------+
+| ``--precision`` N                | output coordinates will have this many significant digits (12)     |
 +----------------------------------+--------------------------------------------------------------------+
 
 

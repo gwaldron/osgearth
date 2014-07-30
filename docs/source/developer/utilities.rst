@@ -113,6 +113,10 @@ It's easy to install::
 
     LogarithmicDepthBuffer logdepth;
     logdepth->install( view->getCamera() );
+    
+Or you can activate it from ``osgearth_viewer`` or other examples::
+
+    osgearth_viewer --logdepth ...
 
 Since it does alter the projection-space coordinates of your geometry at draw time,
 you do need to be careful that you aren't doing anything ELSE in clip space in your

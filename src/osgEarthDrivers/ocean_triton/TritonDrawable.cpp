@@ -392,7 +392,8 @@ const char* fragmentShader =
     "} \n";
 
 TritonDrawable::TritonDrawable(osgEarth::MapNode* mapNode, TritonContext* TRITON) :
-_TRITON(TRITON)
+_TRITON(TRITON),
+_mapNode(mapNode)
 {
     // call this to ensure draw() gets called every frame.
     setSupportsDisplayList( false );
@@ -400,20 +401,21 @@ _TRITON(TRITON)
 
     // dynamic variance prevents update/cull overlap when drawing this
     setDataVariance( osg::Object::DYNAMIC );
-
-    setupHeightMap(mapNode);
 }
 
 void
 TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     osg::State& state = *renderInfo.getState();
-
+    
     state.disableAllVertexArrays();
 
     _TRITON->initialize( renderInfo );
     if ( !_TRITON->ready() )
         return;
+
+    if(!_terrainChangedCallback.valid())
+        const_cast< TritonDrawable *>( this )->setupHeightMap(_mapNode.get());;
 
     ::Triton::Environment* environment = _TRITON->getEnvironment();
 
@@ -426,9 +428,9 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
     if(_terrainChangedCallback.valid())
     {
-        _terrainChangedCallback->setViewMatrix( state.getModelViewMatrix());
-        _terrainChangedCallback->setProjectionMatrix(state.getProjectionMatrix());
-        _terrainChangedCallback->setContextID(state.getContextID());
+        _terrainChangedCallback->setViewMatrix( renderInfo.getView()->getCamera()->getViewMatrix() );
+        _terrainChangedCallback->setProjectionMatrix(renderInfo.getView()->getCamera()->getProjectionMatrix() );
+        _terrainChangedCallback->setContextID(renderInfo.getView()->getCamera()->getGraphicsContext()->getState()->getContextID() );
     }
 
     state.dirtyAllVertexArrays();
@@ -541,7 +543,7 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
 
     if( mapNode && _heightCamera )
     {
-        _heightCamera->addChild( mapNode );//mapNode->getTerrainEngine() );
+        _heightCamera->addChild( mapNode->getTerrainEngine() );
         _terrainChangedCallback = new OceanTerrainChangedCallback( _TRITON.get(), mapNode, _heightCamera.get(), _heightMap.get());
         mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
     }
@@ -549,7 +551,7 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     mapNode->getParent(0)->addChild(_heightCamera);
 
 #ifdef DEBUG_HEIGHTMAP
-    mapNode->getParent(0)->addChild(CreateTextureQuadOverlay(_heightMap, 0.0, 0.05, 0.3, 0.3));
+    mapNode->getParent(0)->addChild(CreateTextureQuadOverlay(_heightMap, 0.65, 0.05, 0.3, 0.3));
     mapNode->getParent(0)->insertChild(0, makeFrustumFromCamera(_heightCamera));
 #endif /* DEBUG_HEIGHTMAP */
 }

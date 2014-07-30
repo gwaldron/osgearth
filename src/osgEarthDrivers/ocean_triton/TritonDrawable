@@ -61,6 +61,7 @@ namespace osgEarth { namespace Drivers { namespace Triton
         virtual ~TritonDrawable() { }
 
         osg::observer_ptr<TritonContext>  _TRITON;
+        osg::observer_ptr<osgEarth::MapNode> _mapNode;
         osg::ref_ptr<osg::TextureCubeMap> _cubeMap;
         osg::BoundingBox                  _bbox;
         osg::ref_ptr<osg::Texture2D> _heightMap;

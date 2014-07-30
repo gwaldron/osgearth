@@ -20,6 +20,13 @@
 #include <osg/RenderInfo>
 #include <osg/TextureCubeMap>
 #include <osg/Version>
+#include <osg/Texture2D>
+
+#include <osgEarth/MapNode>
+
+const unsigned int OCEAN_MASK         = 0x4; // 0100
+
+class OceanTerrainChangedCallback;
 
 namespace osgEarth { namespace Drivers { namespace Triton
 {
@@ -33,13 +40,15 @@ namespace osgEarth { namespace Drivers { namespace Triton
     class TritonDrawable : public osg::Drawable
     {
     public:
-        TritonDrawable(TritonContext* TRITON =0L);
+        TritonDrawable(osgEarth::MapNode* mapNode=NULL, TritonContext* TRITON =0L);
         META_Object(Triton, TritonDrawable);
      
     public: // osg::Drawable
 
         // custom draw (called with an active GC)
         void drawImplementation(osg::RenderInfo& ri) const;
+        
+        void setupHeightMap(osgEarth::MapNode* mapNode);
 
 #if OSG_VERSION_GREATER_THAN(3,3,1)
         osg::BoundingBox computeBoundingBox() const
@@ -54,6 +63,9 @@ namespace osgEarth { namespace Drivers { namespace Triton
         osg::observer_ptr<TritonContext>  _TRITON;
         osg::ref_ptr<osg::TextureCubeMap> _cubeMap;
         osg::BoundingBox                  _bbox;
+        osg::ref_ptr<osg::Texture2D> _heightMap;
+        osg::ref_ptr<osg::Camera> _heightCamera;
+        osg::observer_ptr<OceanTerrainChangedCallback> _terrainChangedCallback;
         
         TritonDrawable(const TritonDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };

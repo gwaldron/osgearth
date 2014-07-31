@@ -45,7 +45,7 @@ _lastAltitude(DBL_MAX)
     _light->setAmbient( osg::Vec4(0.2f, 0.2f, 0.2f, 1) );
     _light->setPosition( osg::Vec4(1, 0, 0, 0) ); // w=0 means infinity
     _light->setDirection( osg::Vec3(-1,0,0) );
-    
+
     osg::LightSource* source = new osg::LightSource();
     source->setLight( _light.get() );
     source->setReferenceFrame(osg::LightSource::RELATIVE_RF);
@@ -63,10 +63,12 @@ _lastAltitude(DBL_MAX)
 
     // Draws the sky:
     _skyDrawable = new SkyDrawable( _SL.get() );
+    //_skyDrawable->getOrCreateStateSet()->setRenderBinDetails( 98, "RenderBin" );
     _geode->addDrawable( _skyDrawable );
 
     // Clouds
     _cloudsDrawable = new CloudsDrawable( _SL.get() );
+    //_cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "RenderBin" );
     _geode->addDrawable( _cloudsDrawable.get() );
 
     // scene lighting
@@ -76,7 +78,8 @@ _lastAltitude(DBL_MAX)
     _lighting->attach( stateset );
 
     // ensure it's depth sorted and draws after the terrain
-    stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+    //stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+    //getOrCreateStateSet()->setRenderBinDetails( 100, "RenderBin" );
 
     // SL requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
@@ -113,7 +116,7 @@ SilverLiningNode::onSetDateTime()
 void
 SilverLiningNode::traverse(osg::NodeVisitor& nv)
 {
-    if ( _SL->ready() )
+    if ( _SL && _SL->ready() )
     {
         if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
         {
@@ -123,18 +126,21 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
             _SL->getAtmosphere()->UpdateSkyAndClouds();
             _skyDrawable->dirtyBound();
 
-            if (_lastAltitude <= *_options.cloudsMaxAltitude() )
+            if( _cloudsDrawable )
             {
-                if ( _cloudsDrawable->getNumParents() == 0 )
-                    _geode->addDrawable( _cloudsDrawable.get() );
-                
-                _cloudsDrawable->dirtyBound();
+                if (_lastAltitude <= *_options.cloudsMaxAltitude() )
+                {
+                    if ( _cloudsDrawable->getNumParents() == 0 )
+                        _geode->addDrawable( _cloudsDrawable.get() );
+                    
+                    _cloudsDrawable->dirtyBound();
+                }
+                else
+                {
+                    if ( _cloudsDrawable->getNumParents() > 0 )
+                        _geode->removeDrawable( _cloudsDrawable.get() );
+                }
             }
-            else
-            {
-                if ( _cloudsDrawable->getNumParents() > 0 )
-                    _geode->removeDrawable( _cloudsDrawable.get() );
-			}
         }
         else if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {

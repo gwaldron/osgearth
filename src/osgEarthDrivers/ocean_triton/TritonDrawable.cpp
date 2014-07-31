@@ -407,6 +407,9 @@ _mapNode(mapNode)
 
     // dynamic variance prevents update/cull overlap when drawing this
     setDataVariance( osg::Object::DYNAMIC );
+
+    this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+    //this->getOrCreateStateSet()->setRenderBinDetails( 97, "RenderBin" );
 }
 
 void

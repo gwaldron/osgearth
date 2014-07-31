@@ -166,24 +166,26 @@ CreateTextureQuadOverlay( osg::Texture * texture, float x, float y, float w, flo
 
     osg::Geode * geode = new osg::Geode();
     camera->addChild( geode );
-
+/*
     osg::Geometry * background = osg::createTexturedQuadGeometry( osg::Vec3( x,y,0 ),osg::Vec3( w,0,0 ), osg::Vec3( 0,h,0 ) );
     geode->addDrawable( background );
 
     osg::Vec4Array* colors = new osg::Vec4Array;
-    colors->push_back( osg::Vec4( 1,1,1,0.3 ) );
+    colors->push_back( osg::Vec4( 1,1,0,0.3 ) );
     background->setColorArray( colors );
     background->setColorBinding( osg::Geometry::BIND_OVERALL );
     background->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
     background->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
-
+*/
     osg::Geometry * quad = osg::createTexturedQuadGeometry( osg::Vec3( x,y,0 ),osg::Vec3( w,0,0 ), osg::Vec3( 0,h,0 ) );
     geode->addDrawable( quad );
-    quad->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texture );
+    quad->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON );
     quad->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
+    quad->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
+    quad->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
 
 
-    // set the camera to render before the main camera.
+    // set the camera to render after the main camera.
     camera->setRenderOrder(osg::Camera::POST_RENDER);
 
     return camera;
@@ -327,13 +329,17 @@ public:
 
         //unsigned int contextID = _viewer->getCamera()->getGraphicsContext()->getState()->getContextID();
         _texObj = _heightMap->getTextureObject(_contextID);
+        //osg::notify( osg::ALWAYS ) << "_contextID " << _contextID << std::endl;
 
         if(_texObj)
         {
             PassHeightMapToTritonCallback* cb = dynamic_cast<PassHeightMapToTritonCallback*>(_heightCam->getFinalDrawCallback());
-            cb->_enable = true;
-            cb->_id = _texObj->id();
-            cb->_heightMapMatrix = heightMapMatrix;
+            if( cb )
+            {
+                cb->_enable = true;
+                cb->_id = _texObj->id();
+                cb->_heightMapMatrix = heightMapMatrix;
+            }
         }
 #ifdef DEBUG_HEIGHTMAP
         _mapNode->getParent(0)->removeChild(0 ,1);
@@ -361,12 +367,12 @@ const char* vertexShader =
     "#version " GLSL_VERSION_STR "\n"
     GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-    "attribute vec4  osgearth_elevData; \n" // osgearth_elevData //oe_terrain_attr
+    "attribute vec4  oe_terrain_attr; \n" // osgearth_elevData //oe_terrain_attr
     "varying float height;\n"
 
     "void setupContour(inout vec4 VertexModel) \n"
     "{ \n"
-    "    height = osgearth_elevData[3]; \n"
+    "    height = oe_terrain_attr[3]; \n"
     "} \n";
 
 // The fragment shader simply takes the texture index that we generated
@@ -492,6 +498,21 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         {
             environment->SetEnvironmentMap(
                 (::Triton::TextureHandle)_cubeMap->getTextureObject( state.getContextID() )->id(), transformFromYUpToZUpCubeMapCoords );
+
+#if 0
+            if( _planarReflectionMap.valid() && _planarReflectionProjection.valid() )
+            {
+                osg::Matrix & p = *_planarReflectionProjection;
+
+                Triton::Matrix3 planarProjection( p(0,0), p(0,1), p(0,2),
+                                                  p(1,0), p(1,1), p(1,2),
+                                                  p(2,0), p(2,1), p(2,2) );
+
+                _environment->SetPlanarReflectionMap( (Triton::TextureHandle)
+                                                      _planarReflectionMap->getTextureObject( state.getContextID() )->id(),
+                                                      planarProjection, 0.125  );
+            }
+#endif
         }
 
         // Draw the ocean for the current time sample
@@ -510,6 +531,13 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     int textureSize = 1024;
     // Create our height map texture
     _heightMap = new osg::Texture2D;
+/*
+osg::Image* image = osgDB::readImageFile("G:/dev/nlr/iVIS/master/data/nodata_image.jpg");
+_heightMap = new osg::Texture2D(image);        
+_heightMap->setResizeNonPowerOfTwoHint(false);
+_heightMap->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+_heightMap->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+*/
     _heightMap->setTextureSize(textureSize, textureSize);
     _heightMap->setInternalFormat(GL_LUMINANCE32F_ARB);
     _heightMap->setSourceFormat(GL_LUMINANCE);
@@ -536,10 +564,10 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING);//, -1.0 );
 
     osg::StateSet *stateSet = _heightCamera->getOrCreateStateSet();
-    stateSet->setAttributeAndModes(heightProgram, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-    stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+    stateSet->setAttributeAndModes(heightProgram, osg::StateAttribute::ON);// | osg::StateAttribute::OVERRIDE);
+    stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);// | osg::StateAttribute::OVERRIDE);
 
-    heightProgram->addBindAttribLocation( "osgearth_elevData", osg::Drawable::ATTRIBUTE_6 );
+//    heightProgram->addBindAttribLocation( "oe_terrain_attr", osg::Drawable::ATTRIBUTE_6 );
 
     if( mapNode && _heightCamera )
     {
@@ -548,7 +576,8 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
         mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
     }
 
-    mapNode->getParent(0)->addChild(_heightCamera);
+    osg::Group* root = osgEarth::findTopMostNodeOfType<osg::Group>(mapNode);
+    root->addChild(_heightCamera);
 
 #ifdef DEBUG_HEIGHTMAP
     mapNode->getParent(0)->addChild(CreateTextureQuadOverlay(_heightMap, 0.65, 0.05, 0.3, 0.3));

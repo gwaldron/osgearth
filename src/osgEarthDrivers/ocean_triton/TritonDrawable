@@ -56,6 +56,9 @@ namespace osgEarth { namespace Drivers { namespace Triton
         osg::BoundingBox computeBound() const
 #endif
             { return osg::BoundingBox(); }
+            
+        void SetPlanarReflectionMap(osg::Texture2D* map) {_planarReflectionMap = map;};
+        void SetPlanarReflectionProjection(osg::RefMatrix * proj) {_planarReflectionProjection = proj;};
 
     protected:
         virtual ~TritonDrawable() { }
@@ -67,6 +70,9 @@ namespace osgEarth { namespace Drivers { namespace Triton
         osg::ref_ptr<osg::Texture2D> _heightMap;
         osg::ref_ptr<osg::Camera> _heightCamera;
         osg::observer_ptr<OceanTerrainChangedCallback> _terrainChangedCallback;
+        
+        osg::ref_ptr< osg::Texture2D >       _planarReflectionMap;
+        osg::ref_ptr< osg::RefMatrix >       _planarReflectionProjection;
         
         TritonDrawable(const TritonDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };

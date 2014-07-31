@@ -111,12 +111,12 @@ MaskLayer::initialize( const osgDB::Options* dbOptions, const Map* map )
 
     if ( _maskSource.valid() )
     {
-        _maskSource->initialize( dbOptions, map );
+        _maskSource->initialize( dbOptions );
     }
 }
 
 osg::Vec3dArray*
-MaskLayer::getOrCreateBoundary( float heightScale, const SpatialReference *srs, ProgressCallback* progress )
+MaskLayer::getOrCreateMaskBoundary( float heightScale, const SpatialReference *srs, ProgressCallback* progress )
 {
     if ( _maskSource.valid() )
     {

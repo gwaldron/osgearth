@@ -55,8 +55,6 @@ MaskSourceOptions::getConfig() const
 MaskSource::MaskSource( const MaskSourceOptions& options ) :
 _options( options )
 {
-    //TODO: is this really necessary?
-    this->setThreadSafeRefUnref( true );
 }
 
 MaskSource::~MaskSource()

@@ -77,7 +77,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     {
     public:
         TileModelCompiler(
-            const MaskLayerVector&        masks,
+            const MaskLayerVector&        maskLayers,
+            const ModelLayerVector&       modelLayers,
             int                           textureImageUnit,
             bool                          optimizeTriangleOrientation,
             const MPTerrainEngineOptions& options);
@@ -88,7 +89,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         TileNode* compile(const TileModel* model, const MapFrame& frame);
 
     protected:
-        const MaskLayerVector&                    _masks;
+        const MaskLayerVector&                    _maskLayers;
+        const ModelLayerVector&                   _modelLayers;
         int                                       _textureImageUnit;
         bool                                      _optimizeTriOrientation;
         const MPTerrainEngineOptions&             _options;

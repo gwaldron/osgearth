@@ -271,29 +271,40 @@ SimpleSkyNode::computeBound() const
     return osg::BoundingSphere();
 }
 
-void
-SimpleSkyNode::traverse( osg::NodeVisitor& nv )
-{
-    if ( nv.getVisitorType() == nv.CULL_VISITOR && _cullContainer.valid() )
-    {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+void 
+    SimpleSkyNode::traverse( osg::NodeVisitor& nv ) 
+{ 
+    if ( nv.getVisitorType() == nv.CULL_VISITOR && _cullContainer.valid() ) 
+    { 
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv); 
 
-        // If there's a custom projection matrix clamper installed, remove it temporarily.
-        // We dont' want it mucking with our sky elements.
+        bool needToRestoreInheritanceMask =
+            (cv->getInheritanceMask() & osg::CullSettings::CLAMP_PROJECTION_MATRIX_CALLBACK) > 0; 
+
+        // If there's a custom projection matrix clamper installed, remove it temporarily. 
+        // We dont' want it mucking with our sky elements. 
         osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> cb = 
-            cv->getClampProjectionMatrixCallback();
+            cv->getClampProjectionMatrixCallback(); 
 
-        cv->setClampProjectionMatrixCallback( 0L );
+        cv->setClampProjectionMatrixCallback( 0L ); 
 
-        _cullContainer->accept( nv );
+        _cullContainer->accept( nv ); 
 
-        // restore a custom clamper.
-        if ( cb.valid() )
-            cv->setClampProjectionMatrixCallback( cb.get() );
-    }
+        // restore a custom clamper. 
+        if ( cb.valid() ) 
+        { 
+            cv->setClampProjectionMatrixCallback( cb.get() ); 
+        } 
 
-    SkyNode::traverse( nv );
-}
+        if (needToRestoreInheritanceMask) 
+        { 
+            cv->setInheritanceMask(
+                cv->getInheritanceMask() | osg::CullSettings::CLAMP_PROJECTION_MATRIX_CALLBACK); 
+        } 
+    } 
+
+    SkyNode::traverse( nv ); 
+} 
 
 void
 SimpleSkyNode::onSetEphemeris()

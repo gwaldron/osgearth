@@ -261,53 +261,6 @@ public:
         double horizonDistance = osg::minimum(radE, sqrt( 2.0*radius*hasl + hasl*hasl ));
 
         osg::Vec3d heightCamEye(eye);
-#if 0
-        osg::Vec3d tempLookAt(center);
-        osg::Vec3d lookAtDirection(tempLookAt - eye);
-        double lookAtDistance = lookAtDirection.length();
-        bool foundIntersection = false;
-        int counter = 0;
-        while (!foundIntersection && counter < 3)
-        {
-            counter++;
-            lookAtDirection.normalize();
-            osg::Vec3d end(lookAtDirection * horizonDistance);
-            osgEarth::DPLineSegmentIntersector* dpLineSegInt = new osgEarth::DPLineSegmentIntersector(eye, end);
-            osgUtil::IntersectionVisitor iv( dpLineSegInt );
-            terrain->accept( iv );
-            osgUtil::LineSegmentIntersector::Intersections& results = dpLineSegInt->getIntersections();
-            if ( !results.empty() )
-            {
-                osg::notify( osg::ALWAYS ) << "results.size() = " << results.size() << std::endl;
-
-                foundIntersection = true;
-                const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
-                osg::Vec3d hit = result.getWorldIntersectPoint();
-
-                osg::Vec3d eyeToHCEyeDir(hit - eye);
-                heightCamEye = eye + eyeToHCEyeDir / 2.0;
-                //osg::notify( osg::ALWAYS ) << "looking at: " << heightCamEye.x() << ", " << heightCamEye.y() << ", " << heightCamEye.z() << " counter = " << counter << std::endl;
-                
-                osg::notify( osg::ALWAYS ) << "eye at:     " << osg::RadiansToDegrees(eyeLat) << ", " << osg::RadiansToDegrees(eyeLon) << ", " << osg::RadiansToDegrees(eyeHeight) << std::endl;
-                double intersection_lat, intersection_lon, intersection_height;
-                _map->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(hit.x(), hit.y(), hit.z(), intersection_lat, intersection_lon, intersection_height);
-                osg::notify( osg::ALWAYS ) << "looking at: " << osg::RadiansToDegrees(intersection_lat) << ", " << osg::RadiansToDegrees(intersection_lon) << ", " << osg::RadiansToDegrees(intersection_height) << " counter = " << counter << std::endl;
-                double heightcam_lat, heightcam_lon, heightcam_height;
-                _map->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(heightCamEye.x(), heightCamEye.y(), heightCamEye.z(), heightcam_lat, heightcam_lon, heightcam_height);
-                osg::notify( osg::ALWAYS ) << "heightcam : " << osg::RadiansToDegrees(heightcam_lat) << ", " << osg::RadiansToDegrees(heightcam_lon) << ", " << osg::RadiansToDegrees(heightcam_height) << " counter = " << counter << std::endl;
-            }
-            else
-            {
-                double tempLookAtHeight = lookAtHeight;
-                if(counter == 1)
-                    tempLookAtHeight -= sqrt(pow(lookAtDistance,2.0) + pow((eyeHeight-lookAtHeight),2.0)) * sin(osg::maximum(fovxDEG,fovyDEG));
-                if(counter == 2)
-                    tempLookAtHeight += sqrt(pow(lookAtDistance,2.0) + pow((eyeHeight-lookAtHeight),2.0)) * sin(osg::maximum(fovxDEG,fovyDEG));
-                _map->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(lookAtLat, lookAtLon, tempLookAtHeight, tempLookAt.x(), tempLookAt.y(), tempLookAt.z()); 
-                lookAtDirection = tempLookAt - eye;
-            }
-        }
-#endif // #if 0
 
         double near = osg::maximum(1.0, heightCamEye.length() - hmax);
         double far = osg::maximum(10.0, heightCamEye.length() - hmin + radE);
@@ -502,16 +455,16 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             environment->SetEnvironmentMap(
                 (::Triton::TextureHandle)_cubeMap->getTextureObject( state.getContextID() )->id(), transformFromYUpToZUpCubeMapCoords );
 
-#if 0
+#if 1
             if( _planarReflectionMap.valid() && _planarReflectionProjection.valid() )
             {
                 osg::Matrix & p = *_planarReflectionProjection;
 
-                Triton::Matrix3 planarProjection( p(0,0), p(0,1), p(0,2),
-                                                  p(1,0), p(1,1), p(1,2),
-                                                  p(2,0), p(2,1), p(2,2) );
+                ::Triton::Matrix3 planarProjection( p(0,0), p(0,1), p(0,2),
+                                                    p(1,0), p(1,1), p(1,2),
+                                                    p(2,0), p(2,1), p(2,2) );
 
-                _environment->SetPlanarReflectionMap( (Triton::TextureHandle)
+                environment->SetPlanarReflectionMap( (::Triton::TextureHandle)
                                                       _planarReflectionMap->getTextureObject( state.getContextID() )->id(),
                                                       planarProjection, 0.125  );
             }
@@ -534,13 +487,6 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     int textureSize = 1024;
     // Create our height map texture
     _heightMap = new osg::Texture2D;
-/*
-osg::Image* image = osgDB::readImageFile("G:/dev/nlr/iVIS/master/data/nodata_image.jpg");
-_heightMap = new osg::Texture2D(image);        
-_heightMap->setResizeNonPowerOfTwoHint(false);
-_heightMap->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-_heightMap->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
-*/
     _heightMap->setTextureSize(textureSize, textureSize);
     _heightMap->setInternalFormat(GL_LUMINANCE32F_ARB);
     _heightMap->setSourceFormat(GL_LUMINANCE);

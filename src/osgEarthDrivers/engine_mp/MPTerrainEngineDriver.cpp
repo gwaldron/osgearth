@@ -38,11 +38,14 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     class MPTerrainEngineDriver : public osgDB::ReaderWriter
     {
     public:
-        bool _profiling;
+        int _profiling;
 
         MPTerrainEngineDriver()
         {
-            _profiling = (::getenv("OSGEARTH_MP_PROFILE") != 0L);
+            _profiling = 0;
+            const char* p = ::getenv("OSGEARTH_MP_PROFILE");
+            if ( p )
+                _profiling = as<int>(std::string(p), 1);
         }
 
         virtual const char* className()
@@ -136,7 +139,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                     if ( progress )
                         progress->stats()["tile_load_time"] = tileLoadTime;
 
-                    if ( _profiling )
+                    // profiling level 1 = detailed stats about individual loads.
+                    if ( _profiling == 1 )
                     {
                         progress->stats()["http_get_time_avg"] =
                             progress->stats()["http_get_time"] / progress->stats()["http_get_count"];
@@ -158,6 +162,36 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                             delete progress;
                             progress = 0L;
                         }
+                    }
+
+                    // profiling level 2 = running 60-sample averages
+                    else if ( _profiling == 2 )
+                    {
+                        static std::deque<double> tileLoadTimes[3];
+                        static int    samples[3]       = { 64, 256, 1024 };
+                        static double runningTotals[3] = { 0.0, 0.0, 0.0 };
+                        //static int s0 = 60, s1 = 256, s2 = 1024;
+                        //static double runningTileLoadTime = 0.0;
+                        static Threading::Mutex averageMutex;
+
+                        averageMutex.lock();
+                        for(int i=0; i<3; ++i)
+                        {
+                            runningTotals[i] += tileLoadTime;
+                            tileLoadTimes[i].push_back( tileLoadTime );
+                            if ( tileLoadTimes[i].size() > samples[i] )
+                            {
+                                runningTotals[i] -= tileLoadTimes[i].front();
+                                tileLoadTimes[i].pop_front();
+                            }
+                        }
+                        OE_NOTICE << "(samples)time : "
+                            << "(" << samples[0] << "): " << (tileLoadTimes[0].size() == samples[0] ? (runningTotals[0]/(double)samples[0]) : -1.0) << "; "
+                            << "(" << samples[1] << "): " << (tileLoadTimes[1].size() == samples[1] ? (runningTotals[1]/(double)samples[1]) : -1.0) << "; "
+                            << "(" << samples[2] << "): " << (tileLoadTimes[2].size() == samples[2] ? (runningTotals[2]/(double)samples[2]) : -1.0) << "; "
+                            << std::endl;
+
+                        averageMutex.unlock();
                     }
                     
                     Registry::instance()->endActivity(uri);

@@ -196,6 +196,7 @@ Revisioned                      (),
 _single_axis_rotation           ( false ),
 _lock_azim_while_panning        ( true ),
 _mouse_sens                     ( 1.0 ),
+_touch_sens                     ( 0.005 ),
 _keyboard_sens                  ( 1.0 ),
 _scroll_sens                    ( 1.0 ),
 _min_pitch                      ( -89.9 ),
@@ -225,6 +226,7 @@ _bindings( rhs._bindings ),
 _single_axis_rotation( rhs._single_axis_rotation ),
 _lock_azim_while_panning( rhs._lock_azim_while_panning ),
 _mouse_sens( rhs._mouse_sens ),
+_touch_sens( rhs._touch_sens),
 _keyboard_sens( rhs._keyboard_sens ),
 _scroll_sens( rhs._scroll_sens ),
 _min_pitch( rhs._min_pitch ),
@@ -1828,9 +1830,9 @@ EarthManipulator::addTouchEvents(const osgGA::GUIEventAdapter& ea)
 
 bool
 EarthManipulator::parseTouchEvents( TouchEvents& output )
-{
-    const float sens = 0.005f;    
-        
+{    
+    double sens = this->getSettings()->getTouchSensitivity();
+
     if (_touchPointQueue.size() == 2 )
     {
         if (_touchPointQueue[0].size()   == 2 &&     // two fingers
@@ -1860,7 +1862,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 angle[1] = atan2(p1[0].y - p1[1].y, p1[0].x - p1[1].x);
                 float da = angle[0] - angle[1];
 
-                float dragThres = 2.0f;         
+                float dragThres = 2.0f * 0.0005 / sens;         
 
                 // now see if that corresponds to any touch events:
                 
@@ -1877,7 +1879,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 else
                 {                                 
                     // otherwise it's a pinch and/or a zoom.  You can do them together.
-                    if (fabs(deltaDistance) > 1.0)
+                    if (fabs(deltaDistance) > (1.0 * 0.0005 / sens ) )
                     {
                         // distance between the fingers changed: a pinch.
                         output.push_back(TouchEvent());
@@ -1886,14 +1888,14 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                         ev._dx = 0.0, ev._dy = deltaDistance * -sens;
                     }
 
-                    if (fabs(da) > 0.01)
+                    if (fabs(da) > (0.01 * 0.0005 / sens) )
                     {
                         // angle between vectors changed: a twist.
                         output.push_back(TouchEvent());
                         TouchEvent& ev = output.back();
                         ev._eventType = EVENT_MULTI_TWIST;                    
                         ev._dx = da;
-                        //ev._dy = 0.5 * (dy[0]+dy[1]) * sens;
+                        //ev._dy = 0.5 * (dy[0]+dy[1]) * _touch_sens;
                         ev._dy = 0.0;
                     }
                 }             

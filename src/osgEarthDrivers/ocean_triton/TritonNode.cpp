@@ -29,11 +29,12 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers::Triton;
 
-TritonNode::TritonNode(const Map*           map,
+TritonNode::TritonNode(MapNode*           mapNode,
                        const TritonOptions& options) :
 OceanNode( options ),
 _options ( options )
 {
+    const Map* map = mapNode->getMap();
     if ( map )
         setSRS( map->getSRS() );
 
@@ -42,9 +43,11 @@ _options ( options )
     if ( map )
         _TRITON->setSRS( map->getSRS() );
 
-    _drawable = new TritonDrawable(_TRITON);
+    TritonDrawable* tritonDrawable = new TritonDrawable(mapNode,_TRITON);
+    _drawable = tritonDrawable;
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( _drawable );
+    geode->setNodeMask( OCEAN_MASK );
 
     this->addChild( geode );
 

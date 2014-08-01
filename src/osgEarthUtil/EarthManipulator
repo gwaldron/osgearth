@@ -352,6 +352,20 @@ namespace osgEarth { namespace Util
              * Gets the overall mouse sensitivity scale factor. Default = 1.0.
              */
             double getMouseSensitivity() const { return _mouse_sens; }
+            
+            /**
+             * Sets an overall touch sensitivity factor.
+             *
+             * @param value
+             *      A scale factor to apply to mouse readings.
+             *      0.005 = default; < 0.005 = less sensitive; > 0.005 = more sensitive.
+             */
+            void setTouchSensitivity( double value ) { _touch_sens = value; }
+
+            /**
+             * Gets the overall touch sensitivity scale factor. Default = 1.0.
+             */
+            double getTouchSensitivity() const { return _touch_sens; }
 
             /**
              * Sets the keyboard action sensitivity factor. This applies to navigation actions
@@ -520,6 +534,7 @@ namespace osgEarth { namespace Util
             double _mouse_sens;
             double _keyboard_sens;
             double _scroll_sens;
+            double _touch_sens;
             double _min_pitch;
             double _max_pitch;
 

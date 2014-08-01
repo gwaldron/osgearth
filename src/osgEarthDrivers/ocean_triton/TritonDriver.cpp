@@ -84,7 +84,7 @@ namespace osgEarth { namespace Drivers { namespace Triton
             }
 
             MapNode* mapNode = getMapNode(options);
-            return new TritonNode( mapNode->getMap(), tritonOptions );
+            return new TritonNode( mapNode, tritonOptions );
         }
 
     protected:

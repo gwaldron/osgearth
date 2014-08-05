@@ -142,11 +142,13 @@ public:
 
         if ( _geometry.valid() )
         {
-            // if the user specified explicit geometry/profile, use that:
+            // if the user specified explicit geometry, use that and the calculated
+            // extent of the geometry to derive a profile.
             GeoExtent ex;
             if ( profile.valid() )
-            {
-                ex = profile->getExtent();
+            {                
+                //ex = profile->getExtent();
+                ex = GeoExtent(profile->getSRS(), _geometry->getBounds());
             }
 
             if ( !ex.isValid() )

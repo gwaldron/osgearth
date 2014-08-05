@@ -51,7 +51,6 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
         _altitude.valid()                                          && 
         _altitude->clamping()  != AltitudeSymbol::CLAMP_NONE       &&
         _altitude->technique() == AltitudeSymbol::TECHNIQUE_MAP    &&
-        //_altitude->technique() != AltitudeSymbol::TECHNIQUE_SCENE  &&
         cx.getSession()        != 0L                               &&
         cx.profile()           != 0L;
 
@@ -120,7 +119,8 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
     // the map against which we'll be doing elevation clamping
     //MapFrame mapf = session->createMapFrame( Map::ELEVATION_LAYERS );
-    MapFrame mapf = session->createMapFrame( Map::TERRAIN_LAYERS );
+    MapFrame mapf = session->createMapFrame( 
+        (Map::ModelParts)(Map::TERRAIN_LAYERS | Map::MODEL_LAYERS) );
 
     const SpatialReference* mapSRS = mapf.getProfile()->getSRS();
     osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();

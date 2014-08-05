@@ -335,7 +335,7 @@ osgEarth terrain. The model MUST be in the same coordinate system as the terrain
 
     <map>
         <model ...>
-            <mask ...>
+            <mask driver="feature">
                 <features driver="ogr">
                     ...
 

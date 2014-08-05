@@ -108,7 +108,7 @@ namespace
         p->setCenter( bs.center() );
         p->setRadius( bs.radius() );
         p->setFileName( 0, uri );
-        p->setRange( 0, minRange, maxRange );
+        p->setRange( 0, minRange, maxRange + bs.radius() );
         p->setPriorityOffset( 0, priOffset );
         p->setPriorityScale( 0, priScale );
 #endif
@@ -329,7 +329,9 @@ _overlayChange      ( OVERLAY_NO_CHANGE )
 
             OE_INFO << LC << session->getFeatureSource()->getName() 
                 << ": F.Level max=" << level->maxRange() << ", min=" << level->minRange()
-                << ", LOD=" << lod << std::endl;
+                << ", LOD=" << lod
+                << ", Tile size=" << (level->maxRange() / options.layout()->tileSizeFactor().get())
+                << std::endl;
         }
     }
 
@@ -606,7 +608,7 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
                 lod > 0 ?
                 s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent ) :
                 _usableFeatureExtent;
-
+                
             geometry = buildLevel( *level, tileExtent, 0 );
             result = geometry;
         }
@@ -696,6 +698,7 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     << std::fixed
                     << "; center = " << subtile_bs.center().x() << "," << subtile_bs.center().y() << "," << subtile_bs.center().z()
                     << "; radius = " << subtile_bs.radius()
+                    << "; maxrange = " << maxRange
                     << std::endl;
 
                 osg::Group* pagedNode = createPagedNode( 

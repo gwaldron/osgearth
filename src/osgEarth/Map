@@ -52,6 +52,11 @@ namespace osgEarth
 
     public:
         /**
+         * Gets this Map's unique ID 
+         */
+        UID getUID() const { return _uid; }
+
+        /**
          * Gets the options governing this map.
          */
         const MapOptions& getMapOptions() const { return _mapOptions; }
@@ -361,6 +366,7 @@ namespace osgEarth
 
     private:
 
+        UID _uid;
         MapOptions _mapOptions;
         const MapOptions _initMapOptions;
         std::string _name;

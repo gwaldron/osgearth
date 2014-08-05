@@ -21,6 +21,7 @@
 
 #include <osgEarth/MapFrame>
 #include <osgEarth/Containers>
+#include <osgEarth/DPLineSegmentIntersector>
 
 namespace osgEarth
 {
@@ -35,6 +36,9 @@ namespace osgEarth
      * NOTE: EQ does NOT take into account rendering properties like vertical scale or
      * skirts. If you need a vertical scale, for example, simply scale the resulting
      * elevation value.
+     *
+     * ElevationQuery is not thread-safe. So not use the same instance of ElevationQuery
+     * from multiple threads without mutexing.
      */
     class OSGEARTH_EXPORT ElevationQuery
     {
@@ -143,10 +147,13 @@ namespace osgEarth
         TileCache _cache;
         double _queries;
         double _totalTime;
+        std::vector<ModelLayer*> _patchLayers;
+        osg::ref_ptr<DPLineSegmentIntersector> _patchLayersLSI;
 
     private:
         void postCTOR();
         void sync();
+        void gatherPatchLayers();
 
         bool getElevationImpl(            
             const GeoPoint& point,

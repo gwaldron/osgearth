@@ -38,12 +38,17 @@ namespace osgEarth
         /**
          * Constructs a new map frame.
          */
-        MapFrame( const Map* map, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
+        MapFrame(
+            const Map*         map, 
+            Map::ModelParts    parts =Map::TERRAIN_LAYERS,
+            const std::string& name  ="" );
 
         /**
          * A copy constructor with a new name (no sync happens)
          */
-        MapFrame( const MapFrame& frame, const std::string& name ="" );
+        MapFrame(
+            const MapFrame& frame, 
+            const std::string& name ="" );
 
         /** dtor */
         virtual ~MapFrame() { }
@@ -58,6 +63,9 @@ namespace osgEarth
          * True is a sync() would acquire new data.
          */
         bool needsSync() const;
+
+        /** The source map's UID */
+        UID getUID() const;
 
         /** Accesses the profile/rendering info about the source map. */
         const MapInfo& getMapInfo() const { return _mapInfo; }

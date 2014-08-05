@@ -86,6 +86,12 @@ MapFrame::needsSync() const
         (_map->getDataModelRevision() != _mapDataModelRevision || !_initialized);
 }
 
+UID
+MapFrame::getUID() const
+{
+    return _map.valid() ? _map->getUID() : (UID)0;
+}
+
 void
 MapFrame::refreshComputedValues()
 {

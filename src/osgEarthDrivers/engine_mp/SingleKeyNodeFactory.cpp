@@ -62,9 +62,8 @@ SingleKeyNodeFactory::getMinimumRequiredLevel()
         minLevel;
 }
 
-//Experimental: this speeds up tile loading a lot; it's sort of a 
-//              replacement for the OSG_MAX_PAGEDLOD cache that 
-//              doesn't rely on sorting.
+//Experimental: this speeds up tile loading a lot; it's sort of an alternative
+// to the OSG_MAX_PAGEDLOD cache.
 //#define EXPERIMENTAL_TILE_NODE_CACHE
 #ifdef EXPERIMENTAL_TILE_NODE_CACHE
 namespace

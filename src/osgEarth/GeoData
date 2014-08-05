@@ -145,8 +145,16 @@ namespace osgEarth
 
         const SpatialReference* getSRS() const { return _srs.get(); }
 
+        /**
+         * AltitudeMode reflects whether the Z coordinate is absolute with
+         * respect to MSL or relative to the terrain elevation at that
+         * point. When using relative points, GeoPoint usually requires
+         * access to a TerrainProvider in order to resolve the altitude.
+         */
         AltitudeMode& altitudeMode() { return _altMode; }
         const AltitudeMode& altitudeMode() const { return _altMode; }
+        bool isRelative() const { return _altMode == ALTMODE_RELATIVE; }
+        bool isAbsolute() const { return _altMode == ALTMODE_ABSOLUTE; }
 
         /**
          * Returns a copy of this geopoint transformed into another SRS.

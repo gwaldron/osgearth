@@ -55,6 +55,9 @@ _mapOptions          ( options ),
 _initMapOptions      ( options ),
 _dataModelRevision   ( 0 )
 {
+    // Generate a UID.
+    _uid = Registry::instance()->createUID();
+
     // If the registry doesn't have a default cache policy, but the
     // map options has one, make the map policy the default.
     if (_mapOptions.cachePolicy().isSet() &&

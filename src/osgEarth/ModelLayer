@@ -27,6 +27,7 @@
 #include <osgEarth/ModelSource>
 #include <osgEarth/MaskSource>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/Containers>
 #include <osg/Node>
 #include <osg/Array>
 #include <vector>
@@ -103,6 +104,13 @@ namespace osgEarth
         optional<unsigned>& maskMinLevel() { return _maskMinLevel; }
         const optional<unsigned>& maskMinLevel() const { return _maskMinLevel; }
 
+        /**
+         * Whether this layer should be treated as part of the terrain
+         * for the purposes of elevation queries, clamping, etc.
+         */
+        optional<bool>& terrainPatch() { return _terrainPatch; }
+        const optional<bool>& terrainPatch() const { return _terrainPatch; }
+
 
     public:
         virtual Config getConfig() const;
@@ -120,6 +128,7 @@ namespace osgEarth
         optional<bool>               _lighting;
         optional<MaskSourceOptions>  _maskOptions;
         optional<unsigned>           _maskMinLevel;
+        optional<bool>               _terrainPatch;
     };
 
     /**
@@ -197,6 +206,12 @@ namespace osgEarth
             const SpatialReference* srs,
             ProgressCallback*       progress);
 
+        /**
+         * Whether this model layer is a terrain patch for the purposes of 
+         * intersection testing. (convenience function)
+         */
+        bool isTerrainPatch() const { return _initOptions.terrainPatch().get(); }
+
 
     public:
 
@@ -206,12 +221,18 @@ namespace osgEarth
         void initialize( const osgDB::Options* options );
 
         /**
-         * Creates the scene graph representing this model layer for the given Map.
+         * Creates the scene graph representing this model layer for the given Map,
+         * or returns one that already exists.
          */
-        osg::Node* createSceneGraph( 
+        osg::Node* getOrCreateSceneGraph( 
             const Map*            map, 
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
+
+        /**
+         * Gets a scene graph what was previously created with getOrCreateSceneGraph.
+         */
+        osg::Node* getSceneGraph(const UID& mapUID) const;
 
 
     public: // properties
@@ -251,10 +272,11 @@ namespace osgEarth
         ModelLayerCallbackList        _callbacks;
         osg::ref_ptr<AlphaEffect>     _alphaEffect;
         osg::ref_ptr<osg::Vec3dArray> _maskBoundary;
-        Threading::Mutex              _maskBoundaryMutex;
 
-        typedef std::set< osg::observer_ptr<osg::Node> > NodeObserverSet;
-        NodeObserverSet _nodeSet;
+        typedef fast_map<UID, osg::observer_ptr<osg::Node> > Graphs;
+        Graphs _graphs;
+
+        mutable Threading::Mutex _mutex; // general-purpose mutex.
 
         virtual void fireCallback( ModelLayerCallbackMethodPtr method );
 

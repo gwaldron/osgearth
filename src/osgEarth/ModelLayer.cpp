@@ -72,6 +72,7 @@ ModelLayerOptions::setDefaults()
     _lighting.init    ( true );
     _opacity.init     ( 1.0f );
     _maskMinLevel.init( 0 );
+    _terrainPatch.init( false );
 }
 
 Config
@@ -85,6 +86,7 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "lighting",       _lighting );
     conf.updateIfSet( "opacity",        _opacity );
     conf.updateIfSet( "mask_min_level", _maskMinLevel );
+    conf.updateIfSet( "patch",          _terrainPatch );    
 
     // Merge the ModelSource options
     if ( driver().isSet() )
@@ -106,6 +108,7 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "lighting",       _lighting );
     conf.getIfSet( "opacity",        _opacity );
     conf.getIfSet( "mask_min_level", _maskMinLevel );
+    conf.getIfSet( "patch",          _terrainPatch );
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -196,10 +199,28 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
 }
 
 osg::Node*
-ModelLayer::createSceneGraph(const Map*            map,
-                             const osgDB::Options* dbOptions,
-                             ProgressCallback*     progress )
+ModelLayer::getSceneGraph(const UID& mapUID) const
 {
+    Threading::ScopedMutexLock lock(_mutex);
+    Graphs::const_iterator i = _graphs.find( mapUID );
+    return i == _graphs.end() ? 0L : i->second.get();
+}
+
+osg::Node*
+ModelLayer::getOrCreateSceneGraph(const Map*            map,
+                                  const osgDB::Options* dbOptions,
+                                  ProgressCallback*     progress )
+{
+    // exclusive lock for cache lookup/update.
+    Threading::ScopedMutexLock lock( _mutex );
+
+    // There can be one node graph per Map. See if it already exists
+    // and if so, return it.
+    Graphs::iterator i = _graphs.find(map->getUID());
+    if ( i != _graphs.end() && i->second.valid() )
+        return i->second.get();
+
+    // need to create it.
     osg::Node* node = 0L;
 
     if ( _modelSource.valid() )
@@ -228,19 +249,20 @@ ModelLayer::createSceneGraph(const Map*            map,
             _modelSource->sync( _modelSourceRev );
 
             // save an observer reference to the node so we can change the visibility/lighting/etc.
-            _nodeSet.insert( node );
+            //_nodeSet.insert( node );
+
+            // add a parent group for shaders/effects to attach to without overwriting any model programs directly
+            osg::Group* group = new osg::Group();
+            group->addChild(node);
+            _alphaEffect->attach( group->getOrCreateStateSet() );
+            node = group;
+
+            // save it.
+            _graphs[map->getUID()] = node;
         }
     }
 
-    // add a parent group for shaders/effects to attach to without overwriting any model programs directly
-    osg::Group* group = 0L;
-    if ( node ) {
-      group = new osg::Group();
-      group->addChild(node);
-      _alphaEffect->attach( group->getOrCreateStateSet() );
-    }
-
-    return group;
+    return node;
 }
 
 bool
@@ -262,13 +284,13 @@ ModelLayer::setVisible(bool value)
     {
         _runtimeOptions.visible() = value;
 
-        for( NodeObserverSet::iterator i = _nodeSet.begin(); i != _nodeSet.end(); ++i )
+        _mutex.lock();
+        for(Graphs::iterator i = _graphs.begin(); i != _graphs.end(); ++i)
         {
-            if ( i->valid() )
-            {
-                i->get()->setNodeMask( value ? ~0 : 0 );
-            }
+            if ( i->second.valid() )
+                i->second->setNodeMask( value ? ~0 : 0 );
         }
+        _mutex.unlock();
 
         fireCallback( &ModelLayerCallback::onVisibleChanged );
     }
@@ -298,11 +320,12 @@ ModelLayer::setLightingEnabled( bool value )
 {
     _runtimeOptions.lightingEnabled() = value;
 
-    for( NodeObserverSet::iterator i = _nodeSet.begin(); i != _nodeSet.end(); ++i )
+    _mutex.lock();
+    for(Graphs::iterator i = _graphs.begin(); i != _graphs.end(); ++i)
     {
-        if ( i->valid() )
+        if ( i->second.valid() )
         {
-            osg::StateSet* stateset = i->get()->getOrCreateStateSet();
+            osg::StateSet* stateset = i->second->getOrCreateStateSet();
 
             stateset->setMode( 
                 GL_LIGHTING, value ? osg::StateAttribute::ON : 
@@ -356,7 +379,7 @@ ModelLayer::getOrCreateMaskBoundary(float                   heightScale,
 {
     if ( _maskSource.valid() && !_maskBoundary.valid() )
     {
-        Threading::ScopedMutexLock excl(_maskBoundaryMutex);
+        Threading::ScopedMutexLock excl(_mutex);
 
         if ( !_maskBoundary.valid() ) // double-check pattern
         {

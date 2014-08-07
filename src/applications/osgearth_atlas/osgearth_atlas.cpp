@@ -61,6 +61,9 @@ usage(const char* msg, const char* name =0L)
             << "\n"
             << "\n      --build catalog.xml               : Build an atlas from the catalog"
             << "\n        --size <x> <y>                  : Maximum size of atlas textures"
+            << "\n        --out-image <path>              : Output path for the atlas image (defaults to an OSGB file in"
+            << "\n                                          the working directory). The paths in the resulting catalog"
+            << "\n                                          file will point to this location using a relative path if possible."
             << "\n        --aux <pattern> <r> <g> <b> <a> : Build an auxiliary atlas for files matching the pattern"
             << "\n                                          \"filename_pattern.ext\", e.g., \"texture.jpg\" will match"
             << "\n                                          \"texture_NML.jpg\" for pattern = \"NML\". The RGBA are the"
@@ -88,11 +91,6 @@ build(osg::ArgumentParser& arguments)
 
     // the output texture atlas image path:
     std::string inCatalogFile = osgDB::getSimpleFileName(inCatalogPath);
-    std::string outImageFile  = osgDB::getNameLessExtension(inCatalogFile) + "_atlas.osgb";
-
-    // the output catalog file describing the texture atlas contents:
-    std::string outCatalogFile;
-    outCatalogFile = outImageFile + ".xml";
 
     // check that the input file exists:
     if ( !osgDB::fileExists(inCatalogPath) )
@@ -113,6 +111,14 @@ build(osg::ArgumentParser& arguments)
     unsigned sizex, sizey;
     if ( arguments.read("--size", sizex, sizey) )
         builder.setSize( sizex, sizey );
+
+    // output location for image:
+    std::string outImageFile;
+    if ( !arguments.read("--out-image", outImageFile) )
+        outImageFile  = osgDB::getNameLessExtension(inCatalogFile) + "_atlas.osgb";
+        
+    // the output catalog file describing the texture atlas contents:
+    std::string outCatalogFile = osgDB::getSimpleFileName(outImageFile) + ".xml";
 
     // auxiliary atlas patterns:
     std::string pattern;

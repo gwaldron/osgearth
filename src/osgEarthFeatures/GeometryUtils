@@ -29,13 +29,15 @@ namespace osgEarth { namespace Features
 
     namespace GeometryUtils
     {
-        extern OSGEARTHFEATURES_EXPORT std::string geometryToWKT( Geometry* geometry );
+        extern OSGEARTHFEATURES_EXPORT std::string geometryToWKT( const Geometry* geometry );
         extern OSGEARTHFEATURES_EXPORT Geometry*   geometryFromWKT( const std::string& wkt );
 
-        extern OSGEARTHFEATURES_EXPORT std::string geometryToGeoJSON( Geometry* geometry );
-        extern OSGEARTHFEATURES_EXPORT std::string geometryToKML( Geometry* geometry );
-        extern OSGEARTHFEATURES_EXPORT std::string geometryToGML( Geometry* geometry );
-        extern OSGEARTHFEATURES_EXPORT double getGeometryArea( Geometry* geometry );
+        extern OSGEARTHFEATURES_EXPORT std::string geometryToGeoJSON( const Geometry* geometry );
+        extern OSGEARTHFEATURES_EXPORT Geometry*   geometryFromGeoJSON( const std::string& geojson );
+
+        extern OSGEARTHFEATURES_EXPORT std::string geometryToKML( const Geometry* geometry );
+        extern OSGEARTHFEATURES_EXPORT std::string geometryToGML( const Geometry* geometry );
+        extern OSGEARTHFEATURES_EXPORT double getGeometryArea( const Geometry* geometry );
     }
 
 } } // namespace osgEarth::Features

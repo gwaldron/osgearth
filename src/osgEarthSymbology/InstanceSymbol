@@ -45,11 +45,11 @@ namespace osgEarth { namespace Symbology
          */
         enum Placement
         {
+            /** Places an instance at each feature point (default) */
+            PLACEMENT_VERTEX,
+
             /** Places one instance at the centroid of the feature. */
             PLACEMENT_CENTROID,
-
-            /** Places an instance at each feature point. */
-            PLACEMENT_VERTEX,
 
             /** Places instances at regular intervals within/along the feature geometry,
                 according to density. */
@@ -91,6 +91,12 @@ namespace osgEarth { namespace Symbology
         optional<URIAliasMap>& uriAliasMap() { return _uriAliasMap; }
         const optional<URIAliasMap>& uriAliasMap() const { return _uriAliasMap; }
 
+        /** Expression that returns custom geometry as a GeoJSON string. 
+            You will typically use this as a script that takes the input geometry
+            to dumps out a new geometry for model substitution. */
+        optional<StringExpression>& script() { return _script; }
+        const optional<StringExpression>& script() const { return _script; }
+
     public: // conversions to built-in base classes, for convenience.
 
         const IconSymbol* asIcon() const;
@@ -115,6 +121,7 @@ namespace osgEarth { namespace Symbology
         optional<float>              _density;
         optional<unsigned>           _randomSeed;
         optional<URIAliasMap>        _uriAliasMap;
+        optional<StringExpression>   _script;
     };
 
 } } // namespace osgEarth::Symbology

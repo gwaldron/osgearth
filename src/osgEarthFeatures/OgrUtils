@@ -38,11 +38,11 @@ struct OSGEARTHFEATURES_EXPORT OgrUtils
        
     static Symbology::Geometry* createGeometry( OGRGeometryH geomHandle );
 
-    static OGRGeometryH encodePart( Geometry* geometry, OGRwkbGeometryType part_type );
+    static OGRGeometryH encodePart( const Geometry* geometry, OGRwkbGeometryType part_type );
 
-    static OGRGeometryH encodeShape( Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type );    
+    static OGRGeometryH encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type );    
 
-    static OGRGeometryH createOgrGeometry(osgEarth::Symbology::Geometry* geometry, OGRwkbGeometryType requestedType = wkbUnknown);
+    static OGRGeometryH createOgrGeometry(const Geometry* geometry, OGRwkbGeometryType requestedType = wkbUnknown);
     
     static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs );
     

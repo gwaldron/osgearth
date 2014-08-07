@@ -19,6 +19,7 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/GeometryUtils>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
 #include <osgEarth/VirtualProgram>
@@ -156,6 +157,13 @@ SubstituteModelFilter::process(const FeatureList&           features,
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
+
+        // Run a feature pre-processing script.
+        if ( symbol->script().isSet() )
+        {
+            StringExpression scriptExpr(symbol->script().get());
+            input->eval( scriptExpr, &context );
+        }
 
 		// evaluate the instance URI expression:
 		const std::string& st = input->eval(uriEx, &context);

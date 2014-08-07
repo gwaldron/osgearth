@@ -445,7 +445,7 @@ Feature::getWorldBoundingPolytope(const SpatialReference* srs,
 
 
 std::string
-Feature::getGeoJSON()
+Feature::getGeoJSON() const
 {
     std::string geometry = GeometryUtils::geometryToGeoJSON( getGeometry() );
 
@@ -516,7 +516,6 @@ Feature::getGeoJSON()
 
     root["properties"] = props;
     return Json::FastWriter().write( root );
-    //return Json::StyledWriter().write( root );
 }
 
 std::string Feature::featuresToGeoJSON( FeatureList& features)

@@ -141,6 +141,11 @@ namespace osgEarth { namespace Util {
 
         /** dtor */
         virtual ~TerrainProfileCalculator();
+
+        /**
+         * Set the MapNode to compute the terrain profile against
+         */
+        void setMapNode( osgEarth::MapNode* mapNode );
     
         /**
          * Add a ChangedCallback
@@ -192,7 +197,7 @@ namespace osgEarth { namespace Util {
          * @param profile
          *        The resulting TerrainProfile
          */
-        static void computeTerrainProfile( osgEarth::MapNode* mapNode, const osgEarth::GeoPoint& start, const osgEarth::GeoPoint& end, unsigned int numSamples, TerrainProfile& profile);
+        static void computeTerrainProfile( osgEarth::MapNode* mapNode, const osgEarth::GeoPoint& start, const osgEarth::GeoPoint& end, TerrainProfile& profile);
 
 
 

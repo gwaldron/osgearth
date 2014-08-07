@@ -80,6 +80,21 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
     {
         Feature* input = f->get();
 
+        // access the polygon symbol, and bail out if there isn't one
+        const PolygonSymbol* poly =
+            input->style().isSet() && input->style()->has<PolygonSymbol>() ? input->style()->get<PolygonSymbol>() :
+            _style.get<PolygonSymbol>();
+
+        if ( !poly )
+            continue;
+
+        // run a symbol script if present.
+        if ( poly->script().isSet() )
+        {
+            StringExpression temp( poly->script().get() );
+            input->eval( temp, &context );
+        }
+
         GeometryIterator parts( input->getGeometry(), false );
         while( parts.hasMore() )
         {
@@ -87,13 +102,6 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
             // skip geometry that is invalid for a polygon
             if ( part->size() < 3 )
-                continue;
-
-            // access the polygon symbol, and bail out if there isn't one
-            const PolygonSymbol* poly =
-                input->style().isSet() && input->style()->has<PolygonSymbol>() ? input->style()->get<PolygonSymbol>() :
-                _style.get<PolygonSymbol>();
-            if ( !poly )
                 continue;
 
             // resolve the color:
@@ -176,8 +184,16 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&         features,
         const LineSymbol* line =
             input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
             _style.get<LineSymbol>();
+
         if ( !line )
             continue;
+
+        // run a symbol script if present.
+        if ( line->script().isSet() )
+        {
+            StringExpression temp( line->script().get() );
+            input->eval( temp, &context );
+        }
 
         // The operator we'll use to make lines into polygons.
         PolygonizeLinesOperator polygonizer( *line->stroke() );
@@ -244,6 +260,21 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
     {
         Feature* input = f->get();
 
+        // extract the required line symbol; bail out if not found.
+        const LineSymbol* line = 
+            input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
+            _style.get<LineSymbol>();
+
+        if ( !line )
+            continue;
+
+        // run a symbol script if present.
+        if ( line->script().isSet() )
+        {
+            StringExpression temp( line->script().get() );
+            input->eval( temp, &context );
+        }
+
         GeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
@@ -251,13 +282,6 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
 
             // skip invalid geometry for lines.
             if ( part->size() < 2 )
-                continue;
-
-            // extract the required line symbol; bail out if not found.
-            const LineSymbol* line = 
-                input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
-                _style.get<LineSymbol>();
-            if ( !line )
                 continue;
 
             // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise

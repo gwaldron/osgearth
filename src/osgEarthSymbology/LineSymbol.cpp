@@ -101,4 +101,7 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "stroke-crease-angle") ) {
         style.getOrCreate<LineSymbol>()->creaseAngle() = as<float>(c.value(), 0.0);
     }
+    else if ( match(c.key(), "stroke-script") ) {
+        style.getOrCreate<LineSymbol>()->script() = StringExpression(c.value());
+    }
 }

@@ -246,4 +246,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "text-occlusion-cull-altitude") ) {
         style.getOrCreate<TextSymbol>()->occlusionCullAltitude() = as<double>(c.value(), 200000.0);
     }
+    else if ( match(c.key(), "text-script") ) {
+        style.getOrCreate<TextSymbol>()->script() = StringExpression(c.value());
+    }
 }

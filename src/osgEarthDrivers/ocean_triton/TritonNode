@@ -21,7 +21,7 @@
 
 #include "TritonOptions"
 #include <osgEarthUtil/Ocean>
-#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 #include <osg/Drawable>
 
 namespace osgEarth { namespace Drivers { namespace Triton
@@ -38,7 +38,7 @@ namespace osgEarth { namespace Drivers { namespace Triton
     {
     public:
         TritonNode(
-            const Map*           map,
+            MapNode*           mapNode,
             const TritonOptions& options );
 
     protected: // OceanNode

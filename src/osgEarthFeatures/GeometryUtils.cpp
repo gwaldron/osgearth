@@ -24,7 +24,7 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 std::string
-osgEarth::Features::GeometryUtils::geometryToWKT( Geometry* geometry )
+osgEarth::Features::GeometryUtils::geometryToWKT( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     std::string result;
@@ -42,7 +42,7 @@ osgEarth::Features::GeometryUtils::geometryToWKT( Geometry* geometry )
 }
 
 std::string 
-osgEarth::Features::GeometryUtils::geometryToGeoJSON( Geometry* geometry )
+osgEarth::Features::GeometryUtils::geometryToGeoJSON( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     std::string result;
@@ -60,8 +60,21 @@ osgEarth::Features::GeometryUtils::geometryToGeoJSON( Geometry* geometry )
     return result;
 }
 
+Geometry*
+osgEarth::Features::GeometryUtils::geometryFromGeoJSON(const std::string& geojson)
+{
+    Geometry* result = 0L;
+    OGRGeometryH g = OGR_G_CreateGeometryFromJson(geojson.c_str());
+    if ( g )
+    {
+        result = OgrUtils::createGeometry( g );
+        OGR_G_DestroyGeometry( g );
+    }
+    return result;
+}
+
 std::string 
-osgEarth::Features::GeometryUtils::geometryToKML( Geometry* geometry )
+osgEarth::Features::GeometryUtils::geometryToKML( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     std::string result;
@@ -80,7 +93,7 @@ osgEarth::Features::GeometryUtils::geometryToKML( Geometry* geometry )
 }
 
 std::string 
-osgEarth::Features::GeometryUtils::geometryToGML( Geometry* geometry )
+osgEarth::Features::GeometryUtils::geometryToGML( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     std::string result;
@@ -134,7 +147,7 @@ osgEarth::Features::GeometryUtils::geometryFromWKT( const std::string& wkt )
 }
 
 double
-osgEarth::Features::GeometryUtils::getGeometryArea( Geometry* geometry )
+osgEarth::Features::GeometryUtils::getGeometryArea( const Geometry* geometry )
 {
     OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
     

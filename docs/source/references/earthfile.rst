@@ -302,8 +302,10 @@ A *Model Layer* renders non-terrain data, like vector features or external 3D mo
 .. parsed-literal::
 
     <map>
-        <model name   = "my model layer"
-               driver = "feature_geom"
+        <model name    = "my model layer"
+               driver  = "feature_geom"
+               enabled = true
+               visible = true >
 
 
 +-----------------------+--------------------------------------------------------------------+
@@ -321,6 +323,34 @@ A *Model Layer* renders non-terrain data, like vector features or external 3D mo
 +-----------------------+--------------------------------------------------------------------+
 | visible               | Whether to draw the layer.                                         |
 +-----------------------+--------------------------------------------------------------------+
+
+The Model Layer also allows you to define a cut-out mask. The terrain engine will cut a hole
+in the terrain surface matching a *boundary geometry* that you supply. You can use the tool
+*osgearth_boundarygen* to create such a geometry.
+
+This is useful if you have an external terrain model and you want to insert it into the 
+osgEarth terrain. The model MUST be in the same coordinate system as the terrain.
+
+.. parsed-literal::
+
+    <map>
+        <model ...>
+            <mask driver="feature">
+                <features driver="ogr">
+                    ...
+
+The Mask can take any polygon feature as input. You can specify masking geometry inline
+by using an inline geometry:
+
+.. parsed-literal::
+    
+    <features ...>
+        <geometry>POLYGON((120 42 0, 121 41 0, 121 40 0))</geometry>
+
+Or you use a shapefile or other feature source, in which case osgEarth will use the 
+*first* feature in the source.
+
+Refer to the *mask.earth* sample for an example.
 
 
 

@@ -59,6 +59,7 @@ namespace osgEarth { namespace Symbology
         optional<bool>& autoScale() { return _autoScale; }
         const optional<bool>& autoScale() const { return _autoScale; }
         
+        
     public: // non-serialized properties (for programmatic use only)
 
         /** Explicit model to use for model placement */

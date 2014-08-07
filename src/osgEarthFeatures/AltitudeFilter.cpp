@@ -51,7 +51,6 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
         _altitude.valid()                                          && 
         _altitude->clamping()  != AltitudeSymbol::CLAMP_NONE       &&
         _altitude->technique() == AltitudeSymbol::TECHNIQUE_MAP    &&
-        //_altitude->technique() != AltitudeSymbol::TECHNIQUE_SCENE  &&
         cx.getSession()        != 0L                               &&
         cx.profile()           != 0L;
 
@@ -77,6 +76,13 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
+        
+        // run a symbol script if present.
+        if ( _altitude.valid() && _altitude->script().isSet() )
+        {
+            StringExpression temp( _altitude->script().get() );
+            feature->eval( temp, &cx );
+        }
 
         double minHAT       =  DBL_MAX;
         double maxHAT       = -DBL_MAX;
@@ -120,7 +126,8 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
     // the map against which we'll be doing elevation clamping
     //MapFrame mapf = session->createMapFrame( Map::ELEVATION_LAYERS );
-    MapFrame mapf = session->createMapFrame( Map::TERRAIN_LAYERS );
+    MapFrame mapf = session->createMapFrame( 
+        (Map::ModelParts)(Map::TERRAIN_LAYERS | Map::MODEL_LAYERS) );
 
     const SpatialReference* mapSRS = mapf.getProfile()->getSRS();
     osg::ref_ptr<const SpatialReference> featureSRS = cx.profile()->getSRS();
@@ -152,6 +159,14 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
+        
+        // run a symbol script if present.
+        if ( _altitude.valid() && _altitude->script().isSet() )
+        {
+            StringExpression temp( _altitude->script().get() );
+            feature->eval( temp, &cx );
+        }
+
         double maxTerrainZ  = -DBL_MAX;
         double minTerrainZ  =  DBL_MAX;
         double minHAT       =  DBL_MAX;

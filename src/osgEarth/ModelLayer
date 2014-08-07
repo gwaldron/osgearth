@@ -25,8 +25,11 @@
 #include <osgEarth/Layer>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
+#include <osgEarth/MaskSource>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/Containers>
 #include <osg/Node>
+#include <osg/Array>
 #include <vector>
 
 namespace osgEarth
@@ -39,9 +42,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelLayerOptions : public ConfigOptions
     {
     public:        
-        ModelLayerOptions( const ConfigOptions& options =ConfigOptions() );
+        /** Construct or deserialize new model layer options. */
+        ModelLayerOptions(
+            const ConfigOptions& options =ConfigOptions());
 
-        ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions =ModelSourceOptions() );
+        /** Construct or deserialize new model layer options. */
+        ModelLayerOptions(
+            const std::string&        name, 
+            const ModelSourceOptions& driverOptions =ModelSourceOptions() );
 
         /** dtor */
         virtual ~ModelLayerOptions() { }
@@ -82,6 +90,28 @@ namespace osgEarth
         optional<float>& opacity() { return _opacity; }
         const optional<float>& opacity() const { return _opacity; }
 
+        /**
+         * Masking options for cutting a hole in the terrain to accommodate this model.
+         * Note; the mask will NOT honor any visibility or opacity settings on the
+         * model layer.
+         */
+        optional<MaskSourceOptions>& maskOptions() { return _maskOptions; }
+        const optional<MaskSourceOptions>& maskOptions() const { return _maskOptions; }
+
+        /**
+         * Minimum terrain LOD at which to apply the mask (if there if one)
+         */
+        optional<unsigned>& maskMinLevel() { return _maskMinLevel; }
+        const optional<unsigned>& maskMinLevel() const { return _maskMinLevel; }
+
+        /**
+         * Whether this layer should be treated as part of the terrain
+         * for the purposes of elevation queries, clamping, etc.
+         */
+        optional<bool>& terrainPatch() { return _terrainPatch; }
+        const optional<bool>& terrainPatch() const { return _terrainPatch; }
+
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -96,6 +126,9 @@ namespace osgEarth
         optional<bool>               _visible;
         optional<float>              _opacity;
         optional<bool>               _lighting;
+        optional<MaskSourceOptions>  _maskOptions;
+        optional<unsigned>           _maskMinLevel;
+        optional<bool>               _terrainPatch;
     };
 
     /**
@@ -155,6 +188,31 @@ namespace osgEarth
          */
         ModelSource* getModelSource() const { return _modelSource.get(); }
 
+        /**
+         * The underlying mask source, if one exists.
+         */
+        MaskSource* getMaskSource() const { return _maskSource.get(); }
+
+        /**
+         * The minimum terrain LOD at which to apply the mask.
+         */
+        unsigned getMaskMinLevel() const { return _initOptions.maskMinLevel().get(); }
+        
+        /**
+         * The boundary geometry for the mask.
+         */
+        osg::Vec3dArray* getOrCreateMaskBoundary(
+            float                   heightScale,
+            const SpatialReference* srs,
+            ProgressCallback*       progress);
+
+        /**
+         * Whether this model layer is a terrain patch for the purposes of 
+         * intersection testing. (convenience function)
+         */
+        bool isTerrainPatch() const { return _initOptions.terrainPatch().get(); }
+
+
     public:
 
         /**
@@ -163,12 +221,18 @@ namespace osgEarth
         void initialize( const osgDB::Options* options );
 
         /**
-         * Creates the scene graph representing this model layer for the given Map.
+         * Creates the scene graph representing this model layer for the given Map,
+         * or returns one that already exists.
          */
-        osg::Node* createSceneGraph( 
+        osg::Node* getOrCreateSceneGraph( 
             const Map*            map, 
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
+
+        /**
+         * Gets a scene graph what was previously created with getOrCreateSceneGraph.
+         */
+        osg::Node* getSceneGraph(const UID& mapUID) const;
 
 
     public: // properties
@@ -200,21 +264,23 @@ namespace osgEarth
         void removeCallback( ModelLayerCallback* cb );
 
     private:
-        osg::ref_ptr<ModelSource>    _modelSource;
-        const ModelLayerOptions      _initOptions;
-        ModelLayerOptions            _runtimeOptions;
-        Revision                     _modelSourceRev;
-        ModelLayerCallbackList       _callbacks;
-        osg::ref_ptr<AlphaEffect>    _alphaEffect;
-        //UpdateLightingUniformsHelper _updateLightingUniformsHelper;
+        osg::ref_ptr<ModelSource>     _modelSource;
+        osg::ref_ptr<MaskSource>      _maskSource;
+        const ModelLayerOptions       _initOptions;
+        ModelLayerOptions             _runtimeOptions;
+        Revision                      _modelSourceRev;
+        ModelLayerCallbackList        _callbacks;
+        osg::ref_ptr<AlphaEffect>     _alphaEffect;
+        osg::ref_ptr<osg::Vec3dArray> _maskBoundary;
 
-        typedef std::set< osg::observer_ptr<osg::Node> > NodeObserverSet;
-        NodeObserverSet _nodeSet;
+        typedef fast_map<UID, osg::observer_ptr<osg::Node> > Graphs;
+        Graphs _graphs;
+
+        mutable Threading::Mutex _mutex; // general-purpose mutex.
 
         virtual void fireCallback( ModelLayerCallbackMethodPtr method );
 
         void copyOptions();
-
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;

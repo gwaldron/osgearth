@@ -129,4 +129,7 @@ AltitudeSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "altitude-scale") ) {
         style.getOrCreate<AltitudeSymbol>()->verticalScale() = NumericExpression( c.value() );
     }
+    else if ( match(c.key(), "fill-script") ) {
+        style.getOrCreate<AltitudeSymbol>()->script() = StringExpression(c.value());
+    }
 }

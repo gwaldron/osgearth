@@ -69,9 +69,25 @@ void SymbolRegistry::parseSLD(const Config& c, class Style& style) const
 
 //------------------------------------------------------------------------
 
-Symbol::Symbol( const Config& conf )
+Symbol::Symbol(const Config& conf) :
+_script( StringExpression("{}") )
 {
     _uriContext = URIContext(conf.referrer());
+    mergeConfig(conf);
+}
+
+void
+Symbol::mergeConfig(const Config& conf)
+{
+    conf.getObjIfSet("script", _script);
+}
+
+Config
+Symbol::getConfig() const
+{
+    Config conf;
+    conf.addObjIfSet("script", _script);
+    return conf;
 }
 
 bool

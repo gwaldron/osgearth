@@ -105,6 +105,8 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "model-heading") ) {
         style.getOrCreate<ModelSymbol>()->heading() = NumericExpression(c.value());
     }
-
+    else if ( match(c.key(), "model-script") ) {
+        style.getOrCreate<ModelSymbol>()->script() = StringExpression(c.value());
+    }
 }
 

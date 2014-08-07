@@ -18,6 +18,7 @@
  */
 #include "TritonContext"
 #include <Triton.h>
+#include <osg/GLExtensions>
 #include <osgEarth/SpatialReference>
 
 #define LC "[TritonContext] "
@@ -80,9 +81,18 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
                 _environment->SetConfigOption( "polar-earth-radius-meters",      poRadius.c_str() );
             }
 
+            float openGLVersion = osg::getGLVersionNumber();
+            enum ::Triton::Renderer tritonOpenGlVersion = ::Triton::OPENGL_2_0;
+            if( openGLVersion == 4.1 )
+                tritonOpenGlVersion = ::Triton::OPENGL_4_1;
+            else if( openGLVersion == 4.0 )
+                tritonOpenGlVersion = ::Triton::OPENGL_4_0;
+            else if( openGLVersion == 3.2 )
+                tritonOpenGlVersion = ::Triton::OPENGL_3_2;
+
             ::Triton::EnvironmentError err = _environment->Initialize(
                 cs,
-                ::Triton::OPENGL_2_0,
+                tritonOpenGlVersion,
                 _resourceLoader );
 
             if ( err == ::Triton::SUCCEEDED )

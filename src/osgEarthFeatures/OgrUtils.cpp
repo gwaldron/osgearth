@@ -141,7 +141,7 @@ OgrUtils::createGeometry( OGRGeometryH geomHandle )
 }
 
 OGRGeometryH
-OgrUtils::encodePart( Geometry* geometry, OGRwkbGeometryType part_type )
+OgrUtils::encodePart( const Geometry* geometry, OGRwkbGeometryType part_type )
 {
     OGRGeometryH part_handle = OGR_G_CreateGeometry( part_type );
 
@@ -156,15 +156,15 @@ OgrUtils::encodePart( Geometry* geometry, OGRwkbGeometryType part_type )
 
 
 OGRGeometryH
-OgrUtils::encodeShape( Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type )
+OgrUtils::encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type )
 {
     OGRGeometryH shape_handle = OGR_G_CreateGeometry( shape_type );
     if ( shape_handle )
     {
-        GeometryIterator itr(geometry, true);
+        ConstGeometryIterator itr(geometry, true);
         while (itr.hasMore())
         {
-            Geometry* geom = itr.next();
+            const Geometry* geom = itr.next();
             OGRGeometryH part_handle = encodePart( geom, part_type );
             if ( part_handle )
             {
@@ -176,7 +176,7 @@ OgrUtils::encodeShape( Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkb
 }
 
 OGRGeometryH
-OgrUtils::createOgrGeometry(osgEarth::Symbology::Geometry* geometry, OGRwkbGeometryType requestedType)
+OgrUtils::createOgrGeometry(const osgEarth::Symbology::Geometry* geometry, OGRwkbGeometryType requestedType)
 {
     if (!geometry) return NULL;
 
@@ -200,7 +200,7 @@ OgrUtils::createOgrGeometry(osgEarth::Symbology::Geometry* geometry, OGRwkbGeome
         case Geometry::TYPE_UNKNOWN: break;
         case Geometry::TYPE_MULTI: 
             {
-                osgEarth::Symbology::MultiGeometry* multi = dynamic_cast<MultiGeometry*>(geometry);
+                const osgEarth::Symbology::MultiGeometry* multi = dynamic_cast<const MultiGeometry*>(geometry);
                 osgEarth::Symbology::Geometry::Type componentType = multi->getComponentType();
                 requestedType = componentType == Geometry::TYPE_POLYGON ? wkbMultiPolygon : 
                     componentType == Geometry::TYPE_POINTSET ? wkbMultiPoint :
@@ -231,13 +231,13 @@ OgrUtils::createOgrGeometry(osgEarth::Symbology::Geometry* geometry, OGRwkbGeome
     //OE_NOTICE << "shape_type = " << shape_type << " part_type=" << part_type << std::endl;
 
 
-    osgEarth::Symbology::MultiGeometry* multi = dynamic_cast<MultiGeometry*>(geometry);
+    const osgEarth::Symbology::MultiGeometry* multi = dynamic_cast<const MultiGeometry*>(geometry);
 
     if ( multi )
     {
         OGRGeometryH group_handle = OGR_G_CreateGeometry( wkbGeometryCollection );
 
-        for (GeometryCollection::iterator itr = multi->getComponents().begin(); itr != multi->getComponents().end(); ++itr)
+        for (GeometryCollection::const_iterator itr = multi->getComponents().begin(); itr != multi->getComponents().end(); ++itr)
         {
             OGRGeometryH shape_handle = encodeShape( itr->get(), shape_type, part_type );
             if ( shape_handle )

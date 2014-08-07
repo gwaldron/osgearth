@@ -1,8 +1,26 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/Locators>
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/DPLineSegmentIntersector>
 #include <osgUtil/IntersectionVisitor>
-#include <osgUtil/LineSegmentIntersector>
 
 #define LC "[ElevationQuery] "
 
@@ -22,13 +40,13 @@ namespace
     }
 }
 
-ElevationQuery::ElevationQuery( const Map* map ) :
-_mapf( map, Map::TERRAIN_LAYERS )
+ElevationQuery::ElevationQuery(const Map* map) :
+_mapf( map, (Map::ModelParts)(Map::TERRAIN_LAYERS | Map::MODEL_LAYERS) )
 {
     postCTOR();
 }
 
-ElevationQuery::ElevationQuery( const MapFrame& mapFrame ) :
+ElevationQuery::ElevationQuery(const MapFrame& mapFrame) :
 _mapf( mapFrame )
 {
     postCTOR();
@@ -37,10 +55,14 @@ _mapf( mapFrame )
 void
 ElevationQuery::postCTOR()
 {
+    // defaults:
     _maxLevelOverride = -1;
     _queries          = 0.0;
     _totalTime        = 0.0;  
     _cache.setMaxSize( 500 );
+
+    // find terrain patch layers.
+    gatherPatchLayers();
 }
 
 void
@@ -50,6 +72,21 @@ ElevationQuery::sync()
     {
         _mapf.sync();
         _cache.clear();
+        gatherPatchLayers();
+    }
+}
+
+void
+ElevationQuery::gatherPatchLayers()
+{
+    // cache a vector of terrain patch models.
+    _patchLayers.clear();
+    for(ModelLayerVector::const_iterator i = _mapf.modelLayers().begin();
+        i != _mapf.modelLayers().end();
+        ++i)
+    {
+        if ( i->get()->isTerrainPatch() )
+            _patchLayers.push_back( i->get() );
     }
 }
 
@@ -164,7 +201,15 @@ ElevationQuery::getElevation(const GeoPoint&         point,
                              double*                 out_actualResolution)
 {
     sync();
-    return getElevationImpl( point, out_elevation, desiredResolution, out_actualResolution );
+    if ( point.altitudeMode() == ALTMODE_ABSOLUTE )
+    {
+        return getElevationImpl( point, out_elevation, desiredResolution, out_actualResolution );
+    }
+    else
+    {
+        GeoPoint point_abs( point.getSRS(), point.x(), point.y(), 0.0, ALTMODE_ABSOLUTE );
+        return getElevationImpl( point_abs, out_elevation, desiredResolution, out_actualResolution );
+    }
 }
 
 
@@ -213,12 +258,83 @@ ElevationQuery::getElevations(const std::vector<osg::Vec3d>& points,
 }
 
 bool
-ElevationQuery::getElevationImpl(const GeoPoint& point,
+ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
                                  double&         out_elevation,
                                  double          desiredResolution,
                                  double*         out_actualResolution)
 {
-    osg::Timer_t start = osg::Timer::instance()->tick();
+    // assertion.
+    if ( !point.isAbsolute() )
+    {
+        OE_WARN << LC << "Assertion failure; input must be absolute" << std::endl;
+        return false;
+    }
+
+    osg::Timer_t begin = osg::Timer::instance()->tick();
+
+    // first try the terrain patches.
+    if ( _patchLayers.size() > 0 )
+    {
+        osgUtil::IntersectionVisitor iv;
+
+        for(std::vector<ModelLayer*>::iterator i = _patchLayers.begin(); i != _patchLayers.end(); ++i)
+        {
+            // find the scene graph for this layer:
+            osg::Node* node = (*i)->getSceneGraph( _mapf.getUID() );
+            if ( node )
+            {
+                // configure for intersection:
+                osg::Vec3d surface;
+                point.toWorld( surface );
+
+                // trivial bounds check:
+                if ( node->getBound().contains(surface) )
+                {
+                    osg::Vec3d nvector;
+                    point.createWorldUpVector(nvector);
+
+                    osg::Vec3d start( surface + nvector*5e5 );
+                    osg::Vec3d end  ( surface - nvector*5e5 );
+                
+                    // first time through, set up the intersector on demand
+                    if ( !_patchLayersLSI.valid() )
+                    {
+                        _patchLayersLSI = new DPLineSegmentIntersector(start, end);
+                        _patchLayersLSI->setIntersectionLimit( _patchLayersLSI->LIMIT_NEAREST );
+                    }
+                    else
+                    {
+                        _patchLayersLSI->reset();
+                        _patchLayersLSI->setStart( start );
+                        _patchLayersLSI->setEnd  ( end );
+                    }
+
+                    // try it.
+                    iv.setIntersector( _patchLayersLSI.get() );
+                    node->accept( iv );
+
+                    // check for a result!!
+                    if ( _patchLayersLSI->containsIntersections() )
+                    {
+                        osg::Vec3d isect = _patchLayersLSI->getIntersections().begin()->getWorldIntersectPoint();
+
+                        // transform back to input SRS:
+                        GeoPoint output;
+                        output.fromWorld( point.getSRS(), isect );
+                        out_elevation = output.z();
+                        if ( out_actualResolution )
+                            *out_actualResolution = 0.0;
+
+                        return true;
+                    }
+                }
+                else
+                {
+                    //OE_INFO << LC << "Trivial rejection (bounds check)" << std::endl;
+                }
+            }
+        }
+    }
 
     if ( _mapf.elevationLayers().empty() )
     {
@@ -322,7 +438,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
 
     osg::Timer_t end = osg::Timer::instance()->tick();
     _queries++;
-    _totalTime += osg::Timer::instance()->delta_s( start, end );
+    _totalTime += osg::Timer::instance()->delta_s( begin, end );
 
     return result;
 }

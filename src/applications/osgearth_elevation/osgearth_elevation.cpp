@@ -64,8 +64,11 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
         // look under the mouse:
         osg::Vec3d world;
-        if ( _terrain->getWorldCoordsUnderMouse(view, x, y, world) )
+        osgUtil::LineSegmentIntersector::Intersections hits;
+        if ( view->computeIntersections(x, y, hits) )
         {
+            world = hits.begin()->getWorldIntersectPoint();
+
             // convert to map coords:
             GeoPoint mapPoint;
             mapPoint.fromWorld( _terrain->getSRS(), world );

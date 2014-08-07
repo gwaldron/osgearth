@@ -62,5 +62,8 @@ PointSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "point-size") ) {
         style.getOrCreate<PointSymbol>()->size() = as<float>(c.value(), 1.0f);
     }
+    else if ( match(c.key(), "point-script") ) {
+        style.getOrCreate<PointSymbol>()->script() = StringExpression(c.value());
+    }
 }
 

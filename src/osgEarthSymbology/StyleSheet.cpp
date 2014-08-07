@@ -154,7 +154,7 @@ StyleSheet::getResourceLibrary( const std::string& name ) const
         return 0L;
 }
 
-void StyleSheet::setScript( Script* script )
+void StyleSheet::setScript( ScriptDef* script )
 {
   _script = script;
 }
@@ -191,11 +191,14 @@ StyleSheet::getConfig() const
     if ( _script.valid() )
     {
         Config scriptConf("script");
+
         if ( !_script->name.empty() )
             scriptConf.set( "name", _script->name );
         if ( !_script->language.empty() )
             scriptConf.set( "language", _script->language );
-        if ( !_script->code.empty() )
+        if ( !_script->uri.isSet() )
+            scriptConf.set( "url", _script->uri->base() );
+        else if ( !_script->code.empty() )
             scriptConf.value() = _script->code;
 
         conf.add( scriptConf );
@@ -221,19 +224,25 @@ StyleSheet::mergeConfig( const Config& conf )
     ConfigSet scripts = conf.children( "script" );
     for( ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i )
     {
-        // get the script code
-        std::string code = i->value();
+        _script = new ScriptDef();
 
-        // name is optional and unused at the moment
-        std::string name = i->value("name");
-
-        std::string lang = i->value("language");
-        if ( lang.empty() ) {
-            // default to javascript
-            lang = "javascript";
+        // load the code from a URI if there is one:
+        if ( i->hasValue("url") )
+        {
+            _script->uri = URI( i->value("url"), _uriContext );
+            OE_INFO << LC << "Loading script from \"" << _script->uri->full() << std::endl;
+            _script->code = _script->uri->getString();
+        }
+        else
+        {
+            _script->code = i->value();
         }
 
-        _script = new Script(code, lang, name);
+        // name is optional and unused at the moment
+        _script->name = i->value("name");
+
+        std::string lang = i->value("language");
+        _script->language = lang.empty() ? "javascript" : lang;
     }
 
     // read any style class definitions. either "class" or "selector" is allowed

@@ -25,10 +25,10 @@
 #include <osgEarth/Registry>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/Containers>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
-using namespace OpenThreads;
 
 #define LC "[SingleKeyNodeFactory] "
 
@@ -62,11 +62,37 @@ SingleKeyNodeFactory::getMinimumRequiredLevel()
         minLevel;
 }
 
+//Experimental: this speeds up tile loading a lot; it's sort of an alternative
+// to the OSG_MAX_PAGEDLOD cache.
+//#define EXPERIMENTAL_TILE_NODE_CACHE
+#ifdef EXPERIMENTAL_TILE_NODE_CACHE
+namespace
+{
+    typedef LRUCache<TileKey, osg::ref_ptr<TileNode> > TileNodeCache;
+    TileNodeCache cache(true, 16384);
+}
+#endif
+
 osg::Node*
 SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary)
 {
+#ifdef EXPERIMENTAL_TILE_NODE_CACHE
+    osg::ref_ptr<TileNode> tileNode;
+    TileNodeCache::Record rec;
+    cache.get(model->_tileKey, rec);
+    if ( rec.valid() )
+    {
+        tileNode = rec.value().get();
+    }
+    else
+    {
+        tileNode = _modelCompiler->compile( model, _frame );
+        cache.insert(model->_tileKey, tileNode);
+    }
+#else
     // compile the model into a node:
     TileNode* tileNode = _modelCompiler->compile( model, _frame );
+#endif
 
     // see if this tile might have children.
     bool prepareForChildren =

@@ -61,9 +61,9 @@ public:
     const MaskSourceOptions& getOptions() const { return _options; }
 
     //override
-    void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
+    void initialize(const osgDB::Options* dbOptions)
     {
-        MaskSource::initialize( dbOptions, map );
+        MaskSource::initialize( dbOptions );
 
         if ( _features.valid() )
         {
@@ -75,7 +75,7 @@ public:
         }
     }
 
-    osg::Vec3dArray* createBoundary( const SpatialReference* srs, ProgressCallback* progress )
+    osg::Vec3dArray* createBoundary(const SpatialReference* srs, ProgressCallback* progress)
     {
         if ( _failed )
             return 0L;
@@ -85,26 +85,24 @@ public:
             if ( _features->getFeatureProfile() )
             {
                 osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
-                if ( cursor )
+                if ( cursor.valid() && cursor->hasMore() )
                 {
-                    if ( cursor->hasMore() )
+                    Feature* f = cursor->nextFeature();
+                    if ( f && f->getGeometry() )
                     {
-                        Feature* f = cursor->nextFeature();
-                        if ( f && f->getGeometry() )
+                        // Init a filter to tranform feature in desired SRS 
+                        if (!srs->isEquivalentTo(_features->getFeatureProfile()->getSRS()))
                         {
-                            // Init a filter to tranform feature in desired SRS 
-                            if (!srs->isEquivalentTo(_features->getFeatureProfile()->getSRS())) {
-                                FilterContext cx;
-                                cx.setProfile( new FeatureProfile(_features->getFeatureProfile()->getExtent()) );
+                            FilterContext cx;
+                            cx.setProfile( new FeatureProfile(_features->getFeatureProfile()->getExtent()) );
 
-                                TransformFilter xform( srs );
-                                FeatureList featureList;
-                                featureList.push_back(f);
-                                cx = xform.push(featureList, cx);
-                            }
-
-                            return f->getGeometry()->toVec3dArray();
+                            TransformFilter xform( srs );
+                            FeatureList featureList;
+                            featureList.push_back(f);
+                            cx = xform.push(featureList, cx);
                         }
+
+                        return f->getGeometry()->toVec3dArray();
                     }
                 }
             }

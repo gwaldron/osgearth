@@ -425,7 +425,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    float exposure = atmos_exposure*clamp(1.0-atmos_space, 0.5, 1.0); \n"
 
         "    vec3 atmosColor = 1.0 - exp(-exposure * (atmos_color + sceneColor.rgb * attenuation)); \n"
-        "    color.rgb = atmosColor; \n"
+        "    color.rgb = gl_FrontMaterial.emission + atmosColor; \n"
         "} \n";
 
     //-- BASIC PHONG GROUND LIGHTING ------------------------------------------

@@ -32,17 +32,17 @@ Demonstrates how to select a style name using javascript.
             </style>
             
             <script language="javascript">
-            <![CDATA[
+              <![CDATA[
                 function getStyleClass()
                 {
-                    var pop = parseInt(feature.attributes['pop_cntry']);
+                    var pop = parseInt(feature.properties.pop_cntry);
                     if      ( pop <= 14045470 )  return "p1";
                     else if ( pop <= 43410900 )  return "p2";
                     else if ( pop <= 97228750 )  return "p3";
                     else if ( pop <= 258833000 ) return "p4";
                     else                         return "p5";
                 }
-            ]]>
+              ]]>
             </script>
             
             <selector class_expr="getStyleClass()"/>

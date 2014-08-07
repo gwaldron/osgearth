@@ -70,6 +70,20 @@ public:
             const Feature* feature = i->get();
             if ( !feature )
                 continue;
+            
+            // run a symbol script if present.
+            if ( text && text->script().isSet() )
+            {
+                StringExpression temp( text->script().get() );
+                feature->eval( temp, &context );
+            }
+            
+            // run a symbol script if present.
+            if ( icon && icon->script().isSet() )
+            {
+                StringExpression temp( icon->script().get() );
+                feature->eval( temp, &context );
+            }
 
             const Geometry* geom = feature->getGeometry();
             if ( !geom )

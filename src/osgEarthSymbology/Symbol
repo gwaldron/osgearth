@@ -21,6 +21,7 @@
 #define OSGEARTHSYMBOLOGY_SYMBOL_H 1
 
 #include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Expression>
 #include <osgEarth/Config>
 #include <osgEarth/URI>
 #include <osg/Referenced>
@@ -41,9 +42,14 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
     {
     public:
+        /** Script expression, optionally implemented by symbolizers. */
+        optional<StringExpression>& script() { return _script; }
+        const optional<StringExpression>& script() const { return _script; }
+
+        /** URI context (relative paths, etc) associated wtih this symbol */
         const URIContext& uriContext() const { return _uriContext; }
 
-        virtual Config getConfig() const { return Config(); }
+        virtual Config getConfig() const;
 
     public: // META_Symbol methods
         virtual bool isSameKindAs(const Symbol* sym) const =0;
@@ -51,14 +57,18 @@ namespace osgEarth { namespace Symbology
 
     protected:
         URIContext _uriContext;
+        optional<StringExpression> _script;
 
         static bool match(const std::string& key, const char* pattern);
 
         Symbol( const Config& conf =Config() );
 
+        void mergeConfig(const Config& conf);
+
         virtual ~Symbol() { }
     };
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
+
 
     /**
      * A Factory that can create a Symbol from a Config

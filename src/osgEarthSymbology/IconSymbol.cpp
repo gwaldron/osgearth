@@ -196,4 +196,7 @@ IconSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "icon-occlusion-cull-altitude") ) {
         style.getOrCreate<IconSymbol>()->occlusionCullAltitude() = as<float>(c.value(), *defaults.occlusionCullAltitude());
     }
+    else if ( match(c.key(), "icon-script") ) {
+        style.getOrCreate<IconSymbol>()->script() = StringExpression(c.value());
+    }
 }

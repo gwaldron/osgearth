@@ -76,6 +76,13 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
+        
+        // run a symbol script if present.
+        if ( _altitude.valid() && _altitude->script().isSet() )
+        {
+            StringExpression temp( _altitude->script().get() );
+            feature->eval( temp, &cx );
+        }
 
         double minHAT       =  DBL_MAX;
         double maxHAT       = -DBL_MAX;
@@ -152,6 +159,14 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
+        
+        // run a symbol script if present.
+        if ( _altitude.valid() && _altitude->script().isSet() )
+        {
+            StringExpression temp( _altitude->script().get() );
+            feature->eval( temp, &cx );
+        }
+
         double maxTerrainZ  = -DBL_MAX;
         double minTerrainZ  =  DBL_MAX;
         double minHAT       =  DBL_MAX;

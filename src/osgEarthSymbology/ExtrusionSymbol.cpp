@@ -82,4 +82,7 @@ ExtrusionSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "extrusion-wall-gradient") ) {
         style.getOrCreate<ExtrusionSymbol>()->wallGradientPercentage() = as<float>(c.value(), 0.0f);
     }
+    else if ( match(c.key(), "extrusion-script") ) {
+        style.getOrCreate<ExtrusionSymbol>()->script() = StringExpression(c.value());
+    }
 }

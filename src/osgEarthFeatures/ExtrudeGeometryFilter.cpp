@@ -818,6 +818,14 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
     {
         Feature* input = f->get();
 
+        // run a symbol script if present.
+        if ( _extrusionSymbol->script().isSet() )
+        {
+            StringExpression temp( _extrusionSymbol->script().get() );
+            input->eval( temp, &context );
+        }
+
+        // iterator over the parts.
         GeometryIterator iter( input->getGeometry(), false );
         while( iter.hasMore() )
         {

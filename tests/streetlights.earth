@@ -23,7 +23,7 @@ side of the road, and rotates them to face the road.
 		<!-- Center lines. The resampling filter gives us the spacing we need. -->
         <features name="street centerlines" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
-			<resample min_length="20" max_length="20"/>
+			<resample min_length="40" max_length="40"/>
 		</features>
 
         <layout tile_size_factor="5" crop_features="true">
@@ -44,90 +44,7 @@ side of the road, and rotates them to face the road.
                 }
             </style>
             
-			<!-- The object "feature" is available globally, and conforms to the GeoJSON standard. -->
-            <script language="javascript">
-              <![CDATA[
-                
-                offset = 4.0; // offset from road centerline (m)
-              
-			    // process all segments.
-                function positionAlongSegments() {
-                                                 
-                    var output = [];
-					feature.properties.heading = 0.0;
-                    
-                    if (feature.geometry.type == 'LineString') {
-                        doLineString(feature, feature.geometry, output);                        
-                    }
-                    else if (feature.geometry.type == 'MultiLineString') {
-                        var output = [];
-                        for(var i=0; i<feature.geometry.coordinates.length; ++i) {
-                            doLineString(feature, feature.geometry.coordinates[i], output);
-                        }
-                    }
-                    
-                    if ( output.length > 0 ) {
-                        feature.geometry.type = 'MultiPoint';
-                        feature.geometry.coordinates = output;
-                        feature.save();
-                    }
-                }
-
-				// process a single line string.
-                function doLineString(feature, geom, output) {
-
-                    for(i=0; i<geom.length-1; ++i) {
-                    
-                        var segment = { 
-                            p0: geom[i], 
-                            p1: geom[i+1]
-                        };
-						
-						// midpoint of segment:
-						var midpoint = {
-							x: 0.5*(segment.p0[0] + segment.p1[0]),
-							y: 0.5*(segment.p0[1] + segment.p1[1])
-						};
-                        
-                        // directional vector of the road segment:
-                        var vector = {
-                            x: segment.p1[0] - segment.p0[0],
-                            y: segment.p1[1] - segment.p0[1]
-                        };
-                        
-                        // normalize the vector:
-                        var veclen = Math.sqrt(vector.x*vector.x + vector.y*vector.y);
-                        vector.x /= veclen;
-                        vector.y /= veclen;
-                        
-                        // perpendicular vector:
-                        var pvector = {
-                            x: -vector.y,
-                            y:  vector.x
-                        };
-                        
-                        output.push( [
-                            midpoint.x + offset*pvector.x,
-                            midpoint.y + offset*pvector.y
-                        ] );
-                        
-						/* other side (commented out sine we cannot rotate twice)
-                        output.push( [
-                            midpoint.x - offset*pvector.x,
-                            midpoint.y - offset*pvector.y
-                        ] );
-						*/
-
-						// rotate the model to face the street. 
-						// caveat: only one 'heading' per feature!
-						var angle = 90 + Math.atan2(pvector.y, pvector.x)*57.2958;
-						if ( !isNaN(angle) ) {
-							feature.properties.heading = angle;
-						}
-                    }
-                }
-              ]]>
-            </script>
+            <script language="javascript" url="createLineOffsetPoints.js"/>
         </styles>   
     </model>
 	

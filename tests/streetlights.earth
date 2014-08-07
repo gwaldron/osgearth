@@ -23,7 +23,7 @@ side of the road, and rotates them to face the road.
 		<!-- Center lines. The resampling filter gives us the spacing we need. -->
         <features name="street centerlines" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
-			<resample min_length="40" max_length="40"/>
+			<resample min_length="30" max_length="30"/>
 		</features>
 
         <layout tile_size_factor="5" crop_features="true">
@@ -31,6 +31,7 @@ side of the road, and rotates them to face the road.
         </layout>
         
         <instancing>true</instancing>
+		<cluster_culling>false</cluster_culling>
         
         <styles>
             
@@ -44,7 +45,7 @@ side of the road, and rotates them to face the road.
                 }
             </style>
             
-            <script language="javascript" url="createLineOffsetPoints.js"/>
+            <script language="javascript" url="../data/scripts/createLineOffsetPoints.js"/>
         </styles>   
     </model>
 	
@@ -53,7 +54,7 @@ side of the road, and rotates them to face the road.
     <model name="Streets" driver="feature_geom" enabled="true">
         <features name="streets" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
-			<resample min_length="20" max_length="20"/>
+			<resample min_length="30" max_length="30"/>
         </features>
         
         <layout crop_features="true" tile_size_factor="7.5">

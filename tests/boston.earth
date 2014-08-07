@@ -80,7 +80,7 @@ to extruded buildings.
     <model name="Streets" driver="feature_geom" enabled="true">
         <features name="streets" driver="ogr" build_spatial_index="true">
             <url>../data/boston-scl-utm19n-meters.shp</url>
-            <resample max_length="25"/>
+			<resample min_length="25" max_length="25"/>
         </features>
         
         <layout crop_features="true" tile_size_factor="7.5">
@@ -90,13 +90,43 @@ to extruded buildings.
         <styles>
             <style type="text/css">
                 streets {
-                    stroke:                       #ffff007f;
+                    stroke:                       #ffff7f7f;
                     stroke-width:                 7.5m;
                     altitude-clamping:            terrain;
                     render-depth-offset-min-bias: 3.6;
                 }
             </style>
         </styles>        
+    </model>
+	
+	
+	<model name="streetlamps" driver="feature_geom">
+
+        <features name="street centerlines" driver="ogr" build_spatial_index="true">
+            <url>../data/boston-scl-utm19n-meters.shp</url>
+			<resample min_length="25" max_length="25"/>
+		</features>
+
+        <layout tile_size_factor="5" crop_features="true">
+            <level max_range="1000" style="default"/>
+        </layout>
+        
+        <instancing>true</instancing>
+		<cluster_culling>false</cluster_culling>
+        
+        <styles>
+            <style type="text/css">
+                default {
+                    model:             "../data/streetlight.osgb";
+                    model-script:      positionAlongSegments();
+					model-heading:     feature.properties.heading;
+                    altitude-clamping: terrain;
+                }
+            </style>
+            <script language="javascript">
+				<url>../data/scripts/createLineOffsetPoints.js</url>
+			</script>
+        </styles>   
     </model>
     
     

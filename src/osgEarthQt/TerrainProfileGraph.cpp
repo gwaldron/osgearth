@@ -194,8 +194,8 @@ void TerrainProfileGraph::mouseReleaseEvent(QMouseEvent* e)
     double endDistanceFactor = ((zoomEnd - _graphField.x()) / (double)_graphField.width());
 
     osg::Vec3d worldStart, worldEnd;
-    _calculator->getStart().toWorld(worldStart);
-    _calculator->getEnd().toWorld(worldEnd);
+    _calculator->getStart(ALTMODE_ABSOLUTE).toWorld(worldStart);
+    _calculator->getEnd(ALTMODE_ABSOLUTE).toWorld(worldEnd);
 
     double newStartWorldX = (worldEnd.x() - worldStart.x()) * startDistanceFactor + worldStart.x();
     double newStartWorldY = (worldEnd.y() - worldStart.y()) * startDistanceFactor + worldStart.y();
@@ -436,8 +436,8 @@ void TerrainProfileGraph::drawHoverCursor(const QPointF& position)
       double distanceFactor = ((xPos - _graphField.x()) / (double)_graphField.width());
 
       osg::Vec3d worldStart, worldEnd;
-      _calculator->getStart().toWorld(worldStart);
-      _calculator->getEnd().toWorld(worldEnd);
+      _calculator->getStart(ALTMODE_ABSOLUTE).toWorld(worldStart);
+      _calculator->getEnd(ALTMODE_ABSOLUTE).toWorld(worldEnd);
 
       double worldX = (worldEnd.x() - worldStart.x()) * distanceFactor + worldStart.x();
       double worldY = (worldEnd.y() - worldStart.y()) * distanceFactor + worldStart.y();

@@ -168,9 +168,19 @@ namespace osgEarth { namespace Util {
         const GeoPoint& getStart() const;
 
         /**
+         * Gets the start point of the terrain profile
+         */
+        GeoPoint getStart(AltitudeMode altMode) const;
+
+        /**
          * Gets the end point of the terrain profile
          */
         const GeoPoint& getEnd() const;
+
+        /**
+         * Gets the end point of the terrain profile
+         */
+        GeoPoint getEnd(AltitudeMode altMode) const;
 
         /**
          * Sets the start and end points of the terrain profile

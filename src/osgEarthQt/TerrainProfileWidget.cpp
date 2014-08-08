@@ -117,7 +117,7 @@ void TerrainProfileWidget::initialize()
   osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();
   ls->stroke()->color() = osgEarth::Symbology::Color::White;
   ls->stroke()->width() = 2.0f;
-  ls->tessellation() = 20;
+  ls->tessellation() = 500;
   _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
 
   // load marker image
@@ -270,7 +270,7 @@ void TerrainProfileWidget::drawProfileLine()
   line->push_back( _calculator->getEnd().vec3d() );
 
   osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(line, _mapNode->getMapSRS());
-  feature->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;    
+  feature->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;
   feature->style() = _lineStyle;
 
   if (!_lineNode.valid())

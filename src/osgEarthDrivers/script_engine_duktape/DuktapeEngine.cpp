@@ -17,12 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "DuktapeEngine"
+#include "JSGeometry"
 #include <osgEarth/JsonUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarthFeatures/GeometryUtils>
 #include <sstream>
 
-#define LC "[DuktapeEngine] "
+#undef  LC
+#define LC "[duktape] "
 
 // defining this will setup and tear down a complete duktape heap/context
 // for each and every invocation. Good for testing memory usage until we
@@ -37,6 +39,7 @@ using namespace osgEarth::Drivers::Duktape;
 
 namespace
 {
+    // generic logging function.
     static duk_ret_t log( duk_context *ctx ) {
         duk_idx_t i, n;
 
@@ -49,50 +52,6 @@ namespace
         }
         OE_WARN << LC << msg << std::endl;
         return 0;
-    }
-
-    // currently unused.
-    // might use this to populate geometry on demand (for performance)
-    static duk_ret_t oe_duk_load_geometry(duk_context* ctx)
-    {
-        // pull the feature ptr from argument #0
-        Feature* feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
-        
-        // Fetch the feature data from the global object:
-        duk_push_global_object(ctx);        // [global]
-        duk_push_string(ctx, "feature");    // [global, "feature"]
-        duk_get_prop(ctx, -2);              // [global, feature]
-
-        // add the GeoJSON-encoded geometry to the feature object
-        duk_push_string(ctx, "geometry");   // [global, feature, "geometry"]
-        std::string geomJSON = GeometryUtils::geometryToGeoJSON( feature->getGeometry() );
-        duk_push_string(ctx, geomJSON.c_str());
-        duk_json_decode(ctx, -1);           // [global, feature, "geometry", geojson]
-        duk_put_prop(ctx, -2);              // [global, feature]
-
-        duk_pop_2(ctx);                     // []
-        return 0;                           // 0 return values
-    }
-
-    static duk_ret_t oe_duk_geometry_buffer(duk_context* ctx)
-    {
-        // arg #0: feature
-        Feature* feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
-
-        // arg #1: buffer distance
-        double distance = duk_require_number(ctx, 1);
-
-        osg::ref_ptr<Geometry> output;
-        BufferParameters p;
-        p._cornerSegs = 0; // to speed it up.
-        p._joinStyle  = p.JOIN_ROUND;
-        p._capStyle   = p.CAP_FLAT;
-        if ( feature->getGeometry()->buffer(distance, output, p) )
-        {
-            duk_push_string(ctx, GeometryUtils::geometryToGeoJSON(output.get()).c_str());
-            duk_json_decode(ctx, -1);
-        }
-        return 1;
     }
 
     static duk_ret_t oe_duk_save_feature(duk_context* ctx)
@@ -108,7 +67,7 @@ namespace
 
         if (duk_get_prop_string(ctx, -1, "properties")) // [ptr, global, feature, props]
         {
-            duk_enum(ctx, -1, 0); //DUK_ENUM_INCLUDE_NONENUMERABLE); // [ptr, global, feature, props, enum]
+            duk_enum(ctx, -1, 0);                       // [ptr, global, feature, props, enum]
 
             while( duk_next(ctx, -1, 1/*get_value=true*/) )
             {
@@ -172,15 +131,14 @@ namespace
 
         // add the save() function and the "attributes" alias.
         duk_eval_string_noresult(ctx,
-            "feature.save = function() { oe_duk_save_feature(this.__ptr); } ");
+            "feature.save = function() {"
+            "    oe_duk_save_feature(this.__ptr);"
+            "} ");
+
         duk_eval_string_noresult(ctx,
             "Object.defineProperty(feature, 'attributes', {get:function() {return feature.properties;}});");
 
-        // buffer (test)
-        duk_eval_string_noresult(ctx,
-            "feature.geometry.buffer = function(distance) {"
-            "   return oe_duk_geometry_buffer(feature.__ptr, distance);"
-            "};");
+        GeometryAPI::bindToFeature(ctx);
 
         duk_pop(ctx); 
     }
@@ -224,9 +182,7 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
         duk_push_c_function(_ctx, oe_duk_save_feature, 1/*numargs*/); // [global, function]
         duk_put_prop_string(_ctx, -2, "oe_duk_save_feature");         // [global]
 
-        // feature.buffer()
-        duk_push_c_function(_ctx, oe_duk_geometry_buffer, 2/*numargs*/); // [global, function]        
-        duk_put_prop_string(_ctx, -2, "oe_duk_geometry_buffer");         // [global]
+        GeometryAPI::install(_ctx);
 
         duk_pop(_ctx); // []
     }

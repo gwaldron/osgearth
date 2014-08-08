@@ -5,6 +5,7 @@ IF(WITH_EXTERNAL_DUKTAPE)
 
     SET(TARGET_H
         DuktapeEngine
+		JSGeometry
     )
 
     SET(TARGET_SRC
@@ -19,6 +20,7 @@ ELSE(WITH_EXTERNAL_DUKTAPE)
     SET(TARGET_H
         duktape.h
         DuktapeEngine
+		JSGeometry
     )
 
     SET(TARGET_SRC

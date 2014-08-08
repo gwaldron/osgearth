@@ -150,6 +150,21 @@ osgEarth Sample - Annotations
                     render-lighting: false;
                 </style>
             </circle>
+
+            <feature name="Long Line">
+                <srs>wgs84</srs>
+                <geometry>
+                    LINESTRING(0 0, 0 65)
+                </geometry>
+                <style type="text/css">
+                    stroke:              #ffff00;
+                    stroke-width:        3;
+                    stroke-tessellation: 90;
+                    altitude-clamping:   relative;
+					altitude-technique:  scene;
+                    render-lighting:     false;
+                </style>
+            </feature>
             
         </annotations>
         

@@ -1,0 +1,139 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHDRIVERS_DUKTAPE_JS_GEOMETRY_H
+#define OSGEARTHDRIVERS_DUKTAPE_JS_GEOMETRY_H
+
+#include <osgEarthSymbology/Geometry>
+#include <osgEarthFeatures/GeometryUtils>
+#include "duktape.h"
+
+#define LC "[duktape] "
+
+namespace osgEarth { namespace Drivers { namespace Duktape
+{
+    using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
+
+    struct GeometryAPI
+    {
+        static void install(duk_context* ctx)
+        {
+            duk_push_c_function(ctx, GeometryAPI::buffer, 2/*numargs*/); // [global, function]        
+            duk_put_prop_string(ctx, -2, "oe_geometry_buffer");      // [global]
+
+            duk_push_c_function(ctx, GeometryAPI::getBounds, 1);
+            duk_put_prop_string(ctx, -2, "oe_geometry_getBounds");
+
+            duk_eval_string_noresult(ctx,
+                "oe_duk_bind_geometry_api = function(geometry) {"
+                "    geometry.getBounds = function() {"
+                "        return oe_geometry_getBounds(this);"
+                "    };"
+                "    geometry.buffer = function(distance) {"
+                "        var result = oe_geometry_buffer(this, distance);"
+                "        oe_duk_bind_geometry_api(result);"
+                "        return result;"
+                "    };"
+                "};"
+            );
+        }
+
+        static void bindToFeature(duk_context* ctx)
+        {
+            duk_eval_string_noresult(ctx,
+                "oe_duk_bind_geometry_api(feature.geometry);" );
+        }
+        
+        /**
+         * buffer operation
+         * input:  1) geometry GeoJSON, 2) distance
+         * output: geometry GeoJSON object, or undefined on fail
+         */
+        static duk_ret_t buffer(duk_context* ctx)
+        {
+            // arg#0: geometry object
+            if ( !duk_is_object(ctx, 0) && !duk_is_number(ctx, 1) )
+            {
+                OE_WARN << LC << "geometry.buffer(): illegal arguments" << std::endl;
+                return DUK_RET_TYPE_ERROR;
+            }
+
+            // arg#0 : geometry
+            std::string geomJSON = duk_json_encode(ctx, 0);
+            osg::ref_ptr<Geometry> input = GeometryUtils::geometryFromGeoJSON(geomJSON);
+            if ( !input.valid() )
+                return DUK_RET_TYPE_ERROR;
+        
+            // arg#1 : distance
+            double distance = duk_get_number(ctx, 1);
+
+            // run the buffer op:
+            osg::ref_ptr<Geometry> output;
+            BufferParameters p;
+            p._cornerSegs = 0; // speed it up
+            p._joinStyle  = p.JOIN_ROUND;
+            p._capStyle   = p.CAP_ROUND;
+            if ( input->buffer(distance, output, p) )
+            {
+                duk_push_string(ctx, GeometryUtils::geometryToGeoJSON(output.get()).c_str());
+                duk_json_decode(ctx, -1);
+            }
+            else
+            {
+                duk_push_undefined(ctx);
+            }
+            return 1;
+        }
+
+        // input: GeoJSON geometry
+        // output: bounds object, e.g. { xmin: num, ymin: num, xmax: num, ymax: num }
+        static duk_ret_t getBounds(duk_context* ctx)
+        {
+            if ( !duk_is_object(ctx, 0) ) 
+            {
+                OE_WARN << LC << "geometry.getBounds(): illegal arguments" << std::endl;
+                return DUK_RET_TYPE_ERROR;
+            }
+
+            // arg#0 : geometry
+            std::string geomJSON = duk_json_encode(ctx, 0);
+            osg::ref_ptr<Geometry> input = GeometryUtils::geometryFromGeoJSON(geomJSON);
+            if ( !input.valid() )
+                return DUK_RET_TYPE_ERROR;
+
+            Bounds b = input->getBounds();
+
+            duk_push_object(ctx);
+            duk_push_number(ctx, b.xMin());
+            duk_put_prop_string(ctx, -2, "xmin");
+            duk_push_number(ctx, b.yMin());
+            duk_put_prop_string(ctx, -2, "ymin");
+            duk_push_number(ctx, b.xMax());
+            duk_put_prop_string(ctx, -2, "xmax");
+            duk_push_number(ctx, b.yMax());
+            duk_put_prop_string(ctx, -2, "ymax");
+
+            return 1;
+        }
+    };
+
+} } } // namespace osgEarth::Drivers::Duktape
+
+#endif // OSGEARTHDRIVERS_DUKTAPE_JS_GEOMETRY_H

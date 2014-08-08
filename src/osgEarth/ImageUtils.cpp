@@ -1007,13 +1007,13 @@ ImageUtils::sameFormat(const osg::Image* lhs, const osg::Image* rhs)
 
 namespace
 {
-    //static const float r10= 1.0f/1023.0f;
-    //static const float r8 = 1.0f/255.0f;
-    //static const float r6 = 1.0f/63.0f;
-    static const float r5 = 1.0f/31.0f;
-    //static const float r4 = 1.0f/15.0f;
-    static const float r3 = 1.0f/7.0f;
-    static const float r2 = 1.0f/3.0f;
+    //static const double r10= 1.0/1023.0;
+    //static const double r8 = 1.0/255.0;
+    //static const double r6 = 1.0/63.0;
+    static const double r5 = 1.0/31.0;
+    //static const double r4 = 1.0/15.0;
+    static const double r3 = 1.0/7.0;
+    static const double r2 = 1.0/3.0;
 
     // The scale factors to convert from an image data type to a
     // float. This is copied from OSG; I think the factors for the signed
@@ -1023,37 +1023,37 @@ namespace
 
     template<> struct GLTypeTraits<GLbyte>
     {
-        static float scale() { return 1.0f/128.0f; } // XXX
+        static double scale() { return 1.0/128.0; } // XXX
     };
 
     template<> struct GLTypeTraits<GLubyte>
     {
-        static float scale() { return 1.0f/255.0f; }
+        static double scale() { return 1.0/255.0; }
     };
 
     template<> struct GLTypeTraits<GLshort>
     {
-        static float scale() { return 1.0f/32768.0f; } // XXX
+        static double scale() { return 1.0/32768.0; } // XXX
     };
 
     template<> struct GLTypeTraits<GLushort>
     {
-        static float scale() { return 1.0f/65535.0f; }
+        static double scale() { return 1.0/65535.0; }
     };
 
     template<> struct GLTypeTraits<GLint>
     {
-        static float scale() { return 1.0f/2147483648.0f; } // XXX
+        static double scale() { return 1.0/2147483648.0; } // XXX
     };
 
     template<> struct GLTypeTraits<GLuint>
     {
-        static float scale() { return 1.0f/4294967295.0f; }
+        static double scale() { return 1.0/4294967295.0; }
     };
 
     template<> struct GLTypeTraits<GLfloat>
     {
-        static float scale() { return 1.0f; }
+        static double scale() { return 1.0; }
     };
 
     // The Reader function that performs the read.

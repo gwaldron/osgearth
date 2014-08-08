@@ -153,9 +153,17 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 viewInverse.invert(view);
 
                 osg::Vec3d N(0, 0, 6356752); // north pole, more or less
+                osg::Vec3d b( -view(0,2), -view(1,2), -view(2,2) ); // look vector
                 osg::Vec3d E = osg::Vec3d(0,0,0)*viewInverse;
-                osg::Vec3d b( -view(0,2), -view(1,2), -view(2,2) );
                 osg::Vec3d u = E; u.normalize();
+
+                // account for looking straight downish
+                if ( osg::equivalent(b*u, -1.0, 1e-4) )
+                {
+                    // up vec becomes the look vec.
+                    b = osg::Matrixd::transform3x3(view, osg::Vec3f(0.0,1.0,0.0));
+                    b.normalize();
+                }
 
                 osg::Vec3d proj_d = b - u*(b*u);
                 osg::Vec3d n = N - E;
@@ -163,6 +171,8 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 osg::Vec3d proj_e = proj_n^u;
 
                 double cameraHeading = atan2(proj_e*proj_d, proj_n*proj_d);
+
+                //OE_NOTICE << "h=" << osg::RadiansToDegrees(cameraHeading) << std::endl;
 
                 while (cameraHeading < 0.0)
                     cameraHeading += osg::PI*2.0;

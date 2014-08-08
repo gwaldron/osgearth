@@ -43,6 +43,17 @@ AnnotationEventCallback::addHandler( AnnotationEventHandler* handler )
 }
 
 void
+AnnotationEventCallback::setHoverEnabled( bool hoverEnabled )
+{
+    // Does not unhover currently hovered annotations, so don't turn hovering off if there
+    // are currently items hovered
+    if(hoverEnabled || !_hovered.size() )
+    {
+      _hoverEnabled = hoverEnabled;
+    }
+}
+
+void
 AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
 {
     osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(nv);

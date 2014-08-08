@@ -145,8 +145,30 @@ const GeoPoint& TerrainProfileCalculator::getStart() const
     return _start;
 }
 
+GeoPoint TerrainProfileCalculator::getStart(AltitudeMode altMode) const
+{
+    if( _start.altitudeMode() != altMode )
+    {
+        double newAlt = 0.0;
+        _start.transformZ(altMode, _mapNode->getTerrain(), newAlt);
+        return GeoPoint(_start.getSRS(), _start.x(), _start.y(), newAlt);
+    }
+    return _start;
+}
+
 const GeoPoint& TerrainProfileCalculator::getEnd() const
 {
+    return _end;
+}
+
+GeoPoint TerrainProfileCalculator::getEnd(AltitudeMode altMode) const
+{
+    if( _end.altitudeMode() != altMode )
+    {
+        double newAlt = 0.0;
+        _end.transformZ(altMode, _mapNode->getTerrain(), newAlt);
+        return GeoPoint(_end.getSRS(), _end.x(), _end.y(), newAlt);
+    }
     return _end;
 }
 

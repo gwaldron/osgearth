@@ -43,6 +43,8 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+//#define PROFILING 1
+
 //-----------------------------------------------------------------------
 
 namespace
@@ -323,7 +325,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         altitude && (
             altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
             altitude->verticalOffset().isSet() ||
-            altitude->verticalScale().isSet() );
+            altitude->verticalScale().isSet() ||
+            altitude->script().isSet() );
 
     // marker substitution -- to be deprecated in favor of model/icon
     if ( marker )
@@ -548,8 +551,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 #ifdef PROFILING
     osg::Timer_t p_end = osg::Timer::instance()->tick();
     OE_INFO << LC
-        << "features = " << p_features <<
-        << " ,time = " << osg::Timer::instance()->delta_s(p_start, p_end) << " s." << std::endl;
+        << "features = " << p_features
+        << ", time = " << osg::Timer::instance()->delta_s(p_start, p_end) << " s." << std::endl;
 #endif
 
     return resultGroup.release();

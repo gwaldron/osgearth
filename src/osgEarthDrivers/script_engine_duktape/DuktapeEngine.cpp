@@ -51,7 +51,8 @@ namespace
         return 0;
     }
 
-
+    // currently unused.
+    // might use this to populate geometry on demand (for performance)
     static duk_ret_t oe_duk_load_geometry(duk_context* ctx)
     {
         // pull the feature ptr from argument #0
@@ -73,6 +74,27 @@ namespace
         return 0;                           // 0 return values
     }
 
+    static duk_ret_t oe_duk_geometry_buffer(duk_context* ctx)
+    {
+        // arg #0: feature
+        Feature* feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
+
+        // arg #1: buffer distance
+        double distance = duk_require_number(ctx, 1);
+
+        osg::ref_ptr<Geometry> output;
+        BufferParameters p;
+        p._cornerSegs = 0; // to speed it up.
+        p._joinStyle  = p.JOIN_ROUND;
+        p._capStyle   = p.CAP_FLAT;
+        if ( feature->getGeometry()->buffer(distance, output, p) )
+        {
+            duk_push_string(ctx, GeometryUtils::geometryToGeoJSON(output.get()).c_str());
+            duk_json_decode(ctx, -1);
+        }
+        return 1;
+    }
+
     static duk_ret_t oe_duk_save_feature(duk_context* ctx)
     {
         // stack: [ptr]
@@ -86,7 +108,7 @@ namespace
 
         if (duk_get_prop_string(ctx, -1, "properties")) // [ptr, global, feature, props]
         {
-            duk_enum(ctx, -1, DUK_ENUM_INCLUDE_NONENUMERABLE); // [ptr, global, feature, props, enum]
+            duk_enum(ctx, -1, 0); //DUK_ENUM_INCLUDE_NONENUMERABLE); // [ptr, global, feature, props, enum]
 
             while( duk_next(ctx, -1, 1/*get_value=true*/) )
             {
@@ -115,7 +137,9 @@ namespace
             std::string json( duk_json_encode(ctx, -1) ); // [ptr, global, feature, json]
             Geometry* newGeom = GeometryUtils::geometryFromGeoJSON(json);
             if ( newGeom )
+            {
                 feature->setGeometry( newGeom );
+            }
 
             duk_pop(ctx); // [ptr, global, feature]
         }
@@ -134,8 +158,8 @@ namespace
 
 namespace
 {
-    // Updates the global feature object with new attributes.
-    void updateFeature(duk_context* ctx, Feature const* feature)
+    // Create a "feature" object in the global namespace.
+    void setFeature(duk_context* ctx, Feature const* feature)
     {
         std::string geojson = feature->getGeoJSON();
         
@@ -151,6 +175,12 @@ namespace
             "feature.save = function() { oe_duk_save_feature(this.__ptr); } ");
         duk_eval_string_noresult(ctx,
             "Object.defineProperty(feature, 'attributes', {get:function() {return feature.properties;}});");
+
+        // buffer (test)
+        duk_eval_string_noresult(ctx,
+            "feature.geometry.buffer = function(distance) {"
+            "   return oe_duk_geometry_buffer(feature.__ptr, distance);"
+            "};");
 
         duk_pop(ctx); 
     }
@@ -190,8 +220,13 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
         duk_push_c_function( _ctx, log, DUK_VARARGS );
         duk_put_prop_string( _ctx, -2, "log" );
 
+        // feature.save() callback
         duk_push_c_function(_ctx, oe_duk_save_feature, 1/*numargs*/); // [global, function]
         duk_put_prop_string(_ctx, -2, "oe_duk_save_feature");         // [global]
+
+        // feature.buffer()
+        duk_push_c_function(_ctx, oe_duk_geometry_buffer, 2/*numargs*/); // [global, function]        
+        duk_put_prop_string(_ctx, -2, "oe_duk_geometry_buffer");         // [global]
 
         duk_pop(_ctx); // []
     }
@@ -243,9 +278,8 @@ DuktapeEngine::run(const std::string&   code,
 	if(feature) {
 		// encode the feature in the global object and push a
         // native pointer:
-		updateFeature(ctx, feature);
+		setFeature(ctx, feature);
 	}
-
 
     // run the script. On error, the top of stack will hold the error
     // message instead of the return value.

@@ -244,6 +244,12 @@ SkinResource*
 ResourceLibrary::getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::Options* dbOptions ) const
 {
     const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
+
+    if (symbol->name().isSet())
+    {
+        return getSkin(symbol->name()->eval(), dbOptions);
+    }
+
     SkinResourceVector candidates;
     getSkins( symbol, candidates );
     unsigned size = candidates.size();
@@ -264,6 +270,11 @@ ResourceLibrary::getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::O
 bool
 ResourceLibrary::matches( const SkinSymbol* q, SkinResource* s ) const
 {
+    if ( q->name().isSet() )
+    {
+        return osgEarth::ciEquals(q->name()->eval(), s->name());
+    }
+
     if (q->objectHeight().isSet())
     {
         if (s->minObjectHeight().isSet() && 

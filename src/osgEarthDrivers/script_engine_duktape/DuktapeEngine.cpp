@@ -62,13 +62,20 @@ namespace
         Feature* feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
 
         // Fetch the feature data:
-        duk_push_global_object(ctx);                    // [ptr, global]
-        duk_get_prop_string(ctx, -1, "feature");        // [ptr, global, feature]
+        duk_push_global_object(ctx);                    
+        // [ptr, global]
 
-        if (duk_get_prop_string(ctx, -1, "properties")) // [ptr, global, feature, props]
+        if ( !duk_get_prop_string(ctx, -1, "feature") || !duk_is_object(ctx, -1))
+            return 0;
+
+         // [ptr, global, feature]
+
+        if ( duk_get_prop_string(ctx, -1, "properties") && duk_is_object(ctx, -1) )
         {
-            duk_enum(ctx, -1, 0);                       // [ptr, global, feature, props, enum]
-
+            // [ptr, global, feature, props]
+            duk_enum(ctx, -1, 0);                       
+        
+            // [ptr, global, feature, props, enum]
             while( duk_next(ctx, -1, 1/*get_value=true*/) )
             {
                 std::string key( duk_get_string(ctx, -2) );
@@ -87,27 +94,34 @@ namespace
                 duk_pop_2(ctx);
             }
 
-            duk_pop_2(ctx); // [ptr, global, feature]
+            duk_pop_2(ctx);
+            // [ptr, global, feature]
+        }
+        else
+        {   // [ptr, global, feature, undefined]
+            duk_pop(ctx);
+            // [ptr, global, feature]
         }
 
         // save the geometry, if set:
-        if ( duk_get_prop_string(ctx, -1, "geometry") != 0 ) // [ptr, global, feature, geometry]
+        if ( duk_get_prop_string(ctx, -1, "geometry")&& duk_is_object(ctx, -1) )
         {
+            // [ptr, global, feature, geometry]
             std::string json( duk_json_encode(ctx, -1) ); // [ptr, global, feature, json]
             Geometry* newGeom = GeometryUtils::geometryFromGeoJSON(json);
             if ( newGeom )
             {
                 feature->setGeometry( newGeom );
             }
-
-            duk_pop(ctx); // [ptr, global, feature]
+            duk_pop(ctx);
+            // [ptr, global, feature]
         }
         else
         {
-            // failure pushed undefined: [ptr, global, feature, undefined]
-            duk_pop(ctx); // [ptr, global, feature]
+            // [ptr, global, feature, undefined]
         }
-
+        
+        // [ptr, global, feature]
         duk_pop_2(ctx);     // [ptr] (as we found it)
         return 0;           // no return values.
     }

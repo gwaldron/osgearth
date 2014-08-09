@@ -124,6 +124,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
 
+        optional<std::string>       _name;
         optional<URI>               _imageURI;
         optional<float>             _imageWidth;
         optional<float>             _imageHeight;
@@ -180,6 +181,10 @@ namespace osgEarth { namespace Symbology
         optional<unsigned>& randomSeed() { return _randomSeed; }
         const optional<unsigned>& randomSeed() const { return _randomSeed; }
 
+        /** Name of a specific skin in the catalog */
+        optional<StringExpression>& name() { return _name; }
+        const optional<StringExpression>& name() const { return _name; }
+
     public:
         void mergeConfig(const Config& conf);
         Config getConfig() const;
@@ -192,6 +197,7 @@ namespace osgEarth { namespace Symbology
         optional<float>       _maxObjHeight;
         optional<bool>        _isTiled;
         optional<unsigned>    _randomSeed;
+        optional<StringExpression> _name;
     };
 
     typedef std::vector< osg::ref_ptr<SkinResource> > SkinResourceVector;

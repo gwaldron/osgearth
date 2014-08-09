@@ -158,6 +158,7 @@ build(osg::ArgumentParser& arguments)
     catOut.close();
 
     OE_INFO << LC << "Wrote output catalog to \"" << outCatalogFile<< "\"" << std::endl;
+    return 0;
 }
 
 //----------------------------------------------------------------------

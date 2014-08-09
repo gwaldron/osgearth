@@ -36,10 +36,13 @@ namespace osgEarth { namespace Drivers { namespace Duktape
         static void install(duk_context* ctx)
         {
             duk_push_c_function(ctx, GeometryAPI::buffer, 2/*numargs*/); // [global, function]        
-            duk_put_prop_string(ctx, -2, "oe_geometry_buffer");      // [global]
+            duk_put_prop_string(ctx, -2, "oe_geometry_buffer");          // [global]
 
             duk_push_c_function(ctx, GeometryAPI::getBounds, 1);
             duk_put_prop_string(ctx, -2, "oe_geometry_getBounds");
+
+            duk_push_c_function(ctx, GeometryAPI::cloneAs, 2);
+            duk_put_prop_string(ctx, -2, "oe_geometry_cloneAs");
 
             duk_eval_string_noresult(ctx,
                 "oe_duk_bind_geometry_api = function(geometry) {"
@@ -48,9 +51,13 @@ namespace osgEarth { namespace Drivers { namespace Duktape
                 "    };"
                 "    geometry.buffer = function(distance) {"
                 "        var result = oe_geometry_buffer(this, distance);"
-                "        oe_duk_bind_geometry_api(result);"
-                "        return result;"
+                "        return oe_duk_bind_geometry_api(result);"
                 "    };"
+                "    geometry.cloneAs = function(typeName) {"
+                "        var result = oe_geometry_cloneAs(this, typeName);"
+                "        return oe_duk_bind_geometry_api(result);"
+                "    };"
+                "    return geometry;"
                 "};"
             );
         }
@@ -130,6 +137,40 @@ namespace osgEarth { namespace Drivers { namespace Duktape
             duk_push_number(ctx, b.yMax());
             duk_put_prop_string(ctx, -2, "ymax");
 
+            return 1;
+        }
+
+        // input: type name
+        // output: new geometry
+        static duk_ret_t cloneAs(duk_context* ctx)
+        {
+            // arg#0 : geometry
+            std::string geomJSON = duk_json_encode(ctx, 0);
+            osg::ref_ptr<Geometry> input = GeometryUtils::geometryFromGeoJSON(geomJSON);
+            if ( !input.valid() )
+                return DUK_RET_TYPE_ERROR;
+        
+            // arg#1 : type
+            std::string typeName = osgEarth::toLower( duk_get_string(ctx, 1) );
+            Geometry::Type type;
+            if ( typeName == "point" || typeName == "multipoint" )
+                type = Geometry::TYPE_POINTSET;
+            else if (typeName == "linestring" || typeName == "multilinestring")
+                type = Geometry::TYPE_LINESTRING;
+            else //if (typeName == "polygon")
+                type = Geometry::TYPE_POLYGON;
+
+            // run the buffer op:
+            osg::ref_ptr<Geometry> output = input->cloneAs(type);
+            if ( output.valid() )
+            {
+                duk_push_string(ctx, GeometryUtils::geometryToGeoJSON(output.get()).c_str());
+                duk_json_decode(ctx, -1);
+            }
+            else
+            {
+                duk_push_undefined(ctx);
+            }
             return 1;
         }
     };

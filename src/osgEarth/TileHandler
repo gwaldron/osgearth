@@ -34,12 +34,7 @@ namespace osgEarth
     */
     class OSGEARTH_EXPORT TileHandler : public osg::Referenced
     {
-    public:
-        /**
-         * Process a tile for the given key
-         */
-        virtual bool handleTile( const TileKey& key );
-
+    public:        
         /**
          * Process a tile - also provides a reference to the calling TileVisitor
          */

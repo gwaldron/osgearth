@@ -22,14 +22,9 @@
 
 using namespace osgEarth;
 
-bool TileHandler::handleTile(const TileKey& key)
-{
-    return true;
-}
-
 bool TileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
 {
-    return handleTile(key);
+    return true;    
 }
 
 bool TileHandler::hasData( const TileKey& key ) const

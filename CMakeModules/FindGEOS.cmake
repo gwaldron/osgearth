@@ -5,13 +5,13 @@
 # GEOS_FOUND, if false, do not try to link to geos
 # GEOS_INCLUDE_DIR, where to find the headers
 
-FIND_PATH(GEOS_INCLUDE_DIR geos.h
+FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
   $ENV{GEOS_DIR}
   NO_DEFAULT_PATH
     PATH_SUFFIXES include
 )
 
-FIND_PATH(GEOS_INCLUDE_DIR geos.h
+FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
   PATHS
   ~/Library/Frameworks/geos/Headers
   /Library/Frameworks/geos/Headers

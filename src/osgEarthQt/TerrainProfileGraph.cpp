@@ -21,7 +21,11 @@
 #include <osgEarthQt/GuiActions>
 
 #include <osgEarthUtil/TerrainProfile>
+#include <osgEarthUtil/LatLongFormatter>
 
+#include <QApplication>
+#include <QClipboard>
+#include <QMimeData>
 #include <QGraphicsLineItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsScene>
@@ -35,7 +39,6 @@
 #include <QRect>
 #include <QResizeEvent>
 #include <QToolTip>
-
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -115,7 +118,13 @@ TerrainProfileGraph::TerrainProfileGraph(TerrainProfileCalculator* calculator, T
   connect(this, SIGNAL(onNotifyTerrainGraphChanged()), this, SLOT(onTerrainGraphChanged()), Qt::QueuedConnection);
   //connect(_graphChangedCallback, SIGNAL(graphChanged()), this, SLOT(onGraphChanged()), Qt::QueuedConnection);
   if (_calculator.valid())
-    _calculator->addChangedCallback(_graphChangedCallback);
+  {
+      _calculator->addChangedCallback(_graphChangedCallback);
+  }
+
+  _coordinateFormatter = new osgEarth::Util::LatLongFormatter(
+    osgEarth::Util::LatLongFormatter::FORMAT_DECIMAL_DEGREES,
+    osgEarth::Util::LatLongFormatter::USE_COLONS);
 }
 
 TerrainProfileGraph::~TerrainProfileGraph()
@@ -123,6 +132,46 @@ TerrainProfileGraph::~TerrainProfileGraph()
     // removed: unnecessary now, since the callback is an observer list
   //if (_calculator.valid())
   //  _calculator->removeChangedCallback(_graphChangedCallback);
+}
+
+void TerrainProfileGraph::clear()
+{
+  _scene->clear();
+  _graphLines.clear();
+  _graphField.setCoords(0, 0, 0, 0);
+  _hoverLine = 0L;
+}
+
+void TerrainProfileGraph::onCopyToClipboard()
+{
+  const osgEarth::Util::TerrainProfile profile = _calculator->getProfile();
+  if (profile.getNumElevations() > 0)
+  {
+    const QLatin1String fieldSeparator(",");
+    GeoPoint startPt = _calculator->getStart(ALTMODE_ABSOLUTE);
+    GeoPoint endPt = _calculator->getEnd(ALTMODE_ABSOLUTE);
+    QString profileInfo = QString("Start:,%1,%2\nEnd:,%3,%4\n")
+      .arg(_coordinateFormatter->format(startPt).c_str()).arg(startPt.alt())
+      .arg(_coordinateFormatter->format(endPt).c_str()).arg(endPt.alt());
+    QString distanceInfo("Distance:");
+    QString elevationInfo("Elevation:");
+    for (unsigned int i = 0; i < profile.getNumElevations(); i++)
+    {
+      distanceInfo += fieldSeparator + QString::number(profile.getDistance(i));
+      elevationInfo += fieldSeparator + QString::number(profile.getElevation(i));
+    }
+    profileInfo += distanceInfo + QString("\n") + elevationInfo;
+
+    QImage graphImage(_graphWidth, _graphHeight, QImage::Format_RGB32);
+    QPainter p;
+    p.begin(&graphImage);
+    _scene->render(&p);
+    p.end();
+    QMimeData* clipData = new QMimeData();
+    clipData->setText(profileInfo);
+    clipData->setImageData(graphImage);
+    QApplication::clipboard()->setMimeData(clipData);
+  }
 }
 
 void TerrainProfileGraph::setBackgroundColor(const QColor& color)
@@ -157,6 +206,11 @@ void TerrainProfileGraph::setGraphFillColor(const QColor& color)
 {
   _graphFillColor = color;
   redrawGraph();
+}
+
+void TerrainProfileGraph::setCoordinateFormatter(osgEarth::Util::Formatter* formatter)
+{
+  _coordinateFormatter = formatter;
 }
 
 void TerrainProfileGraph::resizeEvent(QResizeEvent* e)
@@ -242,6 +296,10 @@ void TerrainProfileGraph::redrawGraph()
     _totalDistance = profile.getTotalDistance();
 
     int mag = (int)pow(10.0, (double)((int)log10(maxElevation - minElevation)));
+    if( mag == 0 )
+    {
+        mag = 1;
+    }
     _graphMinY = ((int)(minElevation / mag) - (minElevation < 0 ? 1 : 0)) * mag;
     _graphMaxY = ((int)(maxElevation / mag) + (maxElevation < 0 ? 0 : 1)) * mag;
 
@@ -465,7 +523,14 @@ void TerrainProfileGraph::drawHoverCursor(const QPointF& position)
   distanceText->setBrush(QBrush(_axesColor));
   distanceText->setFont(_graphFont);
   distanceText->setZValue(OVERLAY_Z);
-  distanceText->setPos(xPos - 2 - distanceText->boundingRect().width(), _graphField.y() + _graphField.height() + 2);
+  if(xPos - 2 - distanceText->boundingRect().width() > _graphField.x())
+  {
+      distanceText->setPos(xPos - 2 - distanceText->boundingRect().width(), _graphField.y() + _graphField.height() + 2);
+  }
+  else
+  {
+      distanceText->setPos(xPos + 2, _graphField.y() + _graphField.height() + 2);
+  }
   distanceText->setParentItem(_hoverLine);
 
   // Draw selection box

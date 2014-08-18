@@ -50,6 +50,8 @@ namespace osgEarth { namespace QtGui
 
       virtual ~TerrainProfileWidget();
 
+      void setCoordinateFormatter(osgEarth::Util::Formatter* coordinateFormatter);
+
       void setActiveView(osgViewer::View* view);
 
       void setActiveViews(const ViewVector& views);
@@ -63,6 +65,9 @@ namespace osgEarth { namespace QtGui
 
     signals:
         void onNotifyTerrainProfileChanged();
+
+    public slots:
+      void onClearProfiles();
 
     private slots:
       void onCaptureToggled(bool checked);
@@ -100,6 +105,8 @@ namespace osgEarth { namespace QtGui
       TerrainProfileGraph*                                    _graph;
       QAction*                                                _captureAction;
       QAction*                                                _undoZoomAction;
+      QAction*                                                _clearProfilesAction;
+      QAction*                                                _copyClipboardAction;
       osg::ref_ptr<osgGA::GUIEventHandler>                    _guiHandler;
       std::vector<StartEndPair>                               _profileStack;
       osg::ref_ptr<osgEarth::Annotation::FeatureNode>         _lineNode;

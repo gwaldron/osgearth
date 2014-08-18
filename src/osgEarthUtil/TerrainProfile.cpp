@@ -209,6 +209,10 @@ void TerrainProfileCalculator::recompute()
                 i->get()->onChanged(this);
         }
     }
+    else
+    {
+        _profile.clear();
+    }
 }
 
 void TerrainProfileCalculator::computeTerrainProfile( osgEarth::MapNode* mapNode, const GeoPoint& start, const GeoPoint& end, TerrainProfile& profile)

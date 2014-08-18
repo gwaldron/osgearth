@@ -25,6 +25,7 @@
 
 #include <osgEarth/Map>
 #include <osgEarthUtil/TerrainProfile>
+#include <osgEarthUtil/Formatter>
 
 #include <QGraphicsLineItem>
 #include <QGraphicsScene>
@@ -61,6 +62,8 @@ namespace osgEarth { namespace QtGui
 
       virtual ~TerrainProfileGraph();
 
+      void clear();
+
       void setBackgroundColor(const QColor& color);
       const QColor& getBackgroundColor() { return _backgroundColor; }
 
@@ -75,6 +78,8 @@ namespace osgEarth { namespace QtGui
 
       void setGraphFillColor(const QColor& color);
       const QColor& getGraphFillColor() { return _graphFillColor; }
+
+      void setCoordinateFormatter(osgEarth::Util::Formatter* formatter);
 
       void notifyTerrainGraphChanged() { emit onNotifyTerrainGraphChanged(); }
 
@@ -97,6 +102,9 @@ namespace osgEarth { namespace QtGui
       void drawHoverCursor(const QPointF& position);
       void drawSelectionBox(double position);
 
+    public slots:
+      void onCopyToClipboard();
+
     private slots:
       void onTerrainGraphChanged();
 
@@ -104,6 +112,7 @@ namespace osgEarth { namespace QtGui
       osg::ref_ptr<osgEarth::Util::TerrainProfileCalculator> _calculator;
       osg::ref_ptr<TerrainProfilePositionCallback> _positionCallback;
       osg::ref_ptr<TerrainProfileCalculator::ChangedCallback> _graphChangedCallback;
+      osg::ref_ptr<osgEarth::Util::Formatter> _coordinateFormatter;
       QGraphicsScene* _scene;
       QList<QLineF> _graphLines;
       QGraphicsLineItem* _hoverLine;

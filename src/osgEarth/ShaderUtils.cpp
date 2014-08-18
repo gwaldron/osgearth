@@ -132,10 +132,10 @@ namespace
 
 //------------------------------------------------------------------------
 
-namespace State_Utils
+namespace
 {
     // Code borrowed from osg::State.cpp
-    bool replace(std::string& str, const std::string& original_phrase, const std::string& new_phrase)
+    static bool replace(std::string& str, const std::string& original_phrase, const std::string& new_phrase)
     {
         bool replacedStr = false;
         std::string::size_type pos = 0;
@@ -161,7 +161,7 @@ namespace State_Utils
         return replacedStr;
     }
 
-    void replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix ="")
+    static void replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix ="")
     {
         if (replace(source, originalStr, newStr))
         {
@@ -197,7 +197,7 @@ ShaderPreProcessor::run(osg::Shader* shader)
 
         for( int i=0; i<maxLights; ++i )
         {
-            State_Utils::replaceAndInsertDeclaration(
+            replaceAndInsertDeclaration(
                 source, declPos,
                 Stringify() << "gl_LightSource[" << i << "]",
                 Stringify() << "osg_LightSource" << i,
@@ -205,7 +205,7 @@ ShaderPreProcessor::run(osg::Shader* shader)
                     << osg_LightSourceParameters::glslDefinition() << "\n"
                     << "uniform osg_LightSourceParameters " );
 
-            State_Utils::replaceAndInsertDeclaration(
+            replaceAndInsertDeclaration(
                 source, declPos,
                 Stringify() << "gl_FrontLightProduct[" << i << "]", 
                 Stringify() << "osg_FrontLightProduct" << i,

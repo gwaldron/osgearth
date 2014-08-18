@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TimeControl>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/ImageUtils>
 #include <osgEarthUtil/WMS>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -405,7 +406,7 @@ public:
     /** creates a 3D image from timestamped data. */
     osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
     {
-        osg::ImageSequence* seq = new SyncImageSequence();
+        osg::ref_ptr< osg::ImageSequence > seq = new SyncImageSequence();
         
         seq->setLoopingMode( osg::ImageStream::LOOPING );
         seq->setLength( _options.secondsPerFrame().value() * (double)_timesVec.size() );
@@ -424,8 +425,14 @@ public:
             }
         }
 
+        // Just return an empty image if we didn't get any images
+        if (seq->getNumImages() == 0)
+        {
+            return ImageUtils::createEmptyImage();
+        }
+
         _sequenceCache.insert( seq );
-        return seq;
+        return seq.release();
     }
 
 

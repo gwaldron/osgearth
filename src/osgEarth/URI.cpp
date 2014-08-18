@@ -386,8 +386,17 @@ namespace
 
         if ( !inputURI.empty() )
         {
-            // establish our IO options:            
-            const osgDB::Options* localOptions = dbOptions ? dbOptions : Registry::instance()->getDefaultOptions();
+            // establish our IO options:
+            osg::ref_ptr<const osgDB::Options> localOptions = dbOptions ? dbOptions : Registry::instance()->getDefaultOptions();
+
+            // if we have an option string, incorporate it.
+            if ( inputURI.optionString().isSet() )
+            {
+                osgDB::Options* newLocalOptions = osg::clone(localOptions.get());
+                newLocalOptions->setOptionString(
+                    inputURI.optionString().get() + " " + localOptions->getOptionString());
+                localOptions = newLocalOptions;
+            }
 
             READ_FUNCTOR reader;
 

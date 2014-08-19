@@ -426,7 +426,13 @@ public:
         }
 
         // Just return an empty image if we didn't get any images
-        if (seq->getNumImages() == 0)
+#if OSG_VERSION_LESS_THAN(3,1,4)
+        unsigned size = seq->getNumImages();
+#else
+        unsigned size = seq->getNumImageData();
+#endif
+
+        if (size == 0)
         {
             return ImageUtils::createEmptyImage();
         }

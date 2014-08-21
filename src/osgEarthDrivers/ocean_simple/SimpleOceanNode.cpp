@@ -51,8 +51,8 @@ namespace
 
         SimplexNoise noise;
         noise.setFrequency(SIR*512.0);
-        noise.setOctaves(10);
-        noise.setRange(1.0, 1.8);
+        noise.setOctaves(16);
+        noise.setRange(1.0, 2.6);
 
         ImageUtils::PixelWriter write(image);
         for(int s=0; s<image->s(); ++s)
@@ -72,7 +72,7 @@ namespace
 
                 double n = noise.getValue(x, y, z, w);
 
-                write( osg::Vec4(0.2*n, 0.3*n, 0.5*n, 0.95), s, t );
+                write( osg::Vec4(0.25*n, 0.3*n, 0.35*n, 1.0), s, t );
             }
         }
 
@@ -240,6 +240,15 @@ SimpleOceanNode::rebuild()
         ss->setAttributeAndModes( 
             new osg::CullFace(), 
             osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+
+        // Material.
+        osg::Material* m = new osg::Material();
+        m->setAmbient(m->FRONT_AND_BACK, osg::Vec4(0,0,0,1));
+        m->setDiffuse(m->FRONT_AND_BACK, osg::Vec4(1,1,1,1));
+        m->setSpecular(m->FRONT_AND_BACK, osg::Vec4(0.1,0.1,0.1,1));
+        m->setEmission(m->FRONT_AND_BACK, osg::Vec4(0,0,0,1));
+        m->setShininess(m->FRONT_AND_BACK, 32.0);
+        ss->setAttributeAndModes(m, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
 
         // force apply options:
         applyOptions();

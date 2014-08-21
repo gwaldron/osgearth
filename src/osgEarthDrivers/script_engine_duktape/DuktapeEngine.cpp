@@ -91,7 +91,11 @@ namespace
                 {
                     feature->set( key, duk_get_boolean(ctx, -1) );
                 }
-                duk_pop_2(ctx);
+                else if( duk_is_null_or_undefined( ctx, -1 ) )
+                {
+                    feature->setNull( key );
+                }
+                 duk_pop_2(ctx);
             }
 
             duk_pop_2(ctx);

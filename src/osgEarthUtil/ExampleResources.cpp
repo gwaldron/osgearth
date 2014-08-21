@@ -667,7 +667,10 @@ MapNodeHelper::parse(MapNode*             mapNode,
         OceanNode* ocean = OceanNode::create(OceanOptions(oceanConf), mapNode);
         if ( ocean )
         {
-            root->addChild( ocean );
+            // if there's a sky, we want to ocean under it
+            osg::Group* parent = osgEarth::findTopMostNodeOfType<SkyNode>(root);
+            if ( !parent ) parent = root;
+            parent->addChild( ocean );
 
             Control* c = OceanControlFactory().create(ocean);
             if ( c )

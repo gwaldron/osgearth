@@ -44,7 +44,7 @@ the entire map.
     <map>
         <options lighting                 = "true"
                  elevation_interpolation  = "bilinear"
-                 elevation_tile_size      = "8"
+                 elevation_tile_size      = "17"
                  overlay_texture_size     = "4096"
                  overlay_blending         = "true"
                  overlay_resolution_ratio = "3.0" >
@@ -67,9 +67,8 @@ the entire map.
 |                          |   :bilinear:    Linear interpolation in both axes                  |
 |                          |   :triangulate: Interp follows triangle slope                      |
 +--------------------------+--------------------------------------------------------------------+
-| elevation_tile_size      | Forces the number of posts to render for each terrain tile. By     |
-|                          | default, the engine will use the size of the largest available     |
-|                          | source.                                                            |
+| elevation_tile_size      | Sets the number of samples to render for each terrain tile         |
+|                          | (width and height)                                                 |
 +--------------------------+--------------------------------------------------------------------+
 | overlay_texture_size     | Sets the texture size to use for draping (projective texturing)    |
 +--------------------------+--------------------------------------------------------------------+

@@ -31,6 +31,11 @@ namespace osgEarth { namespace Util
      *
      * Note: If you have any RTT cameras that deal with depth data,
      * they need to use a log buffer as well! (e.g., ClampingTechnique)
+     *
+     * Another Note: For this to work properly, sufficient tessellation
+     * of objects very close to the camera is necessary. Huge polygons
+     * that intersect the near plane are likely to be clipped in their
+     * entirely. Increasing the tessellation can resolve that issue.
      */
     class OSGEARTHUTIL_EXPORT LogarithmicDepthBuffer
     {

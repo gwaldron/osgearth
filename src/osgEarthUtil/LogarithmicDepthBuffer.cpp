@@ -95,18 +95,6 @@ namespace
         osg::buffered_value<osg::ref_ptr<osg::StateSet> > _stateSets;
     };
 
-#if 0
-    const char* vertSource =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_ldb_far; \n"
-        "void oe_ldb_vert(inout vec4 clip) \n"
-        "{ \n"
-        "    const float C = 0.0005;\n"
-        "    float m = max(1e-6, C*clip.w+1.0);\n"
-        "    clip.z = (2.0*log2(m)/log2(C*oe_ldb_far+1.0)-1.0)*clip.w;\n"
-        "} \n";
-#else
     const char* vertSource =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
@@ -128,11 +116,6 @@ namespace
         "{\n"
         "    gl_FragDepth = logz; \n"
         "}\n";
-#endif
-
-    // NOTE: to do this properly we also need a fragment program that clamps depth
-    // so we don't clip polygons that cross the near plane. But that will disable
-    // early Z check so we will look into that later. -gw
 }
 
 //------------------------------------------------------------------------

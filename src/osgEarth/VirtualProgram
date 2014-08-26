@@ -23,6 +23,7 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ColorFilter>
+#include <osgEarth/Containers>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/StateAttribute>
@@ -278,11 +279,18 @@ namespace osgEarth
             bool operator < (const ShaderEntry& rhs) const;
         };
 
+        struct ProgramEntry
+        {
+            osg::ref_ptr<osg::Program> _program;
+            unsigned                   _frameLastUsed;
+        };
+
         typedef std::map< std::string, ShaderEntry > ShaderMap;
-        typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
         typedef std::map< std::string, std::string > AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias > AttribAliasVector;
+        //typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
+        typedef osgEarth::fast_map< ShaderVector, ProgramEntry > ProgramMap;
 
     public:
         /**
@@ -343,6 +351,11 @@ namespace osgEarth
             ShaderMap&         accumShaderMap,
             AttribBindingList& accumAttribBindings,
             AttribAliasMap&    accumAttribAliases);
+        
+        bool readProgramCache(
+            const ShaderVector& vec,
+            unsigned frameNumber,
+            osg::ref_ptr<osg::Program>& program);
     };
 
 } // namespace osgEarth

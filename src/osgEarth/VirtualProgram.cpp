@@ -723,7 +723,7 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
 
     for (ProgramMap::iterator i = _programCache.begin(); i != _programCache.end(); ++i)
     {
-        i->second->resizeGLObjectBuffers(maxSize);
+        i->second._program->resizeGLObjectBuffers(maxSize);
     }
 }
 
@@ -736,8 +736,8 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
 
     for (ProgramMap::const_iterator i = _programCache.begin(); i != _programCache.end(); ++i)
     {
-        if ( i->second->referenceCount() == 1 )
-            i->second->releaseGLObjects(state);
+        //if ( i->second->referenceCount() == 1 )
+            i->second._program->releaseGLObjects(state);
     }
 
     _programCache.clear();
@@ -1036,18 +1036,16 @@ VirtualProgram::apply( osg::State& state ) const
         }
     }
 
+    // current frame number, for shader program expiry.
+    unsigned frameNumber = state.getFrameStamp()->getFrameNumber();
+
     // see if there's already a program associated with this list:
     osg::ref_ptr<osg::Program> program;
 
     // look up the program:
     {
         Threading::ScopedReadLock shared( _programCacheMutex );
-
-        ProgramMap::const_iterator p = _programCache.find( vec );
-        if ( p != _programCache.end() )
-        {
-            program = p->second.get();
-        }
+        const_cast<VirtualProgram*>(this)->readProgramCache(vec, frameNumber, program);
     }
 
     // if not found, lock and build it:
@@ -1062,13 +1060,9 @@ VirtualProgram::apply( osg::State& state ) const
         {
             Threading::ScopedWriteLock exclusive( _programCacheMutex );
 
-            // double-check: look again ito negate race conditions
-            ProgramMap::const_iterator p = _programCache.find( vec );
-            if ( p != _programCache.end() )
-            {
-                program = p->second.get();
-            }
-            else
+            // double-check: look again to negate race conditions
+            const_cast<VirtualProgram*>(this)->readProgramCache(vec, frameNumber, program);
+            if ( !program.valid() )
             {
                 ShaderVector keyVector;
 
@@ -1085,10 +1079,22 @@ VirtualProgram::apply( osg::State& state ) const
                     keyVector);
 
                 // global sharing.
-                s_programRepo.share(program);
+                //s_programRepo.share(program);
 
                 // finally, put own new program in the cache.
-                _programCache[ keyVector ] = program;
+                ProgramEntry& pe = _programCache[keyVector];
+                pe._program = program.get();
+                pe._frameLastUsed = frameNumber;
+
+                // purge expired programs.
+                for(ProgramMap::iterator k=_programCache.begin(); k!=_programCache.end(); ) {
+                    if ( frameNumber - k->second._frameLastUsed > 2 )
+                        k = _programCache.erase(k);
+                    else
+                        ++k;
+                }
+
+                //OE_INFO << LC << "new, fn=" << frameNumber << ", cache size = " << _programCache.size() << std::endl;
             }
         }
     }
@@ -1162,6 +1168,30 @@ VirtualProgram::apply( osg::State& state ) const
         }
 #endif
     }
+}
+
+bool
+VirtualProgram::readProgramCache(const ShaderVector& vec, unsigned frameNumber, osg::ref_ptr<osg::Program>& program)
+{
+    ProgramMap::iterator p = _programCache.find( vec );
+    if ( p != _programCache.end() )
+    {
+        //OE_NOTICE << "found. fn=" << frameNumber << ", flu=" << p->second._frameLastUsed << std::endl;
+
+        // check for expiry..
+        if ( frameNumber - p->second._frameLastUsed <= 2 )
+        {
+            // update as current..
+            p->second._frameLastUsed = frameNumber;
+            program = p->second._program.get();
+        }
+        else
+        {
+            // remove it; it's too old.
+            _programCache.erase( p );
+        }
+    }
+    return program.valid();
 }
 
 void

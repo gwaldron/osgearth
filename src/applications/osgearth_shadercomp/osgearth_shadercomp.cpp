@@ -49,6 +49,7 @@ int usage( const std::string& msg )
         << "           [--test1]    : Run the function injection test \n"
         << "           [--test2]    : Run the accept callback test \n"
         << "           [--test3]    : Run the shader LOD test \n"
+        << "           [--test4]    : Run the memory test \n"
         << "           [--test5]    : Run the Program state set text \n"
         << std::endl;
 
@@ -183,6 +184,76 @@ namespace TEST_3
         return g;
     }
 }
+//-------------------------------------------------------------------
+
+// Tests memory management by installing and uninstalling shader
+// functions every frame.
+
+namespace TEST_4
+{
+    const char* fragShader =
+        "#version 110\n"
+        "void make_it_red(inout vec4 color) {\n"
+        "    color.r *= 1.5;\n"
+        "}\n";
+
+    struct Acceptor : public ShaderComp::AcceptCallback
+    {
+        osg::ref_ptr<osg::Array> _a;
+
+        Acceptor()
+        {
+            _a = new osg::Vec4Array(1024000);
+        }
+
+        bool operator()(const osg::State& state)
+        {
+            return true;
+        }
+    };
+
+    struct MyGroup : public osg::Group
+    {
+        bool _toggle;
+
+        MyGroup() : _toggle(false)
+        {
+            this->setNumChildrenRequiringUpdateTraversal(1);
+        }
+
+        void traverse(osg::NodeVisitor& nv)
+        {
+            if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+            {
+                if ( (nv.getFrameStamp()->getFrameNumber() % 2) == 0 )
+                {
+                    _toggle = !_toggle;
+
+                    VirtualProgram* vp = VirtualProgram::getOrCreate(this->getOrCreateStateSet());
+                    if ( _toggle )
+                    {
+                        vp->setFunction(
+                            "make_it_red", fragShader,
+                            osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING,
+                            new Acceptor() );
+                    }
+                    else
+                    {
+                        vp->removeShader("make_it_red");
+                    }
+                }
+            }
+            osg::Group::traverse(nv);
+        }
+    };
+
+    osg::Group* run(osg::Node* node)
+    {
+        MyGroup* g = new MyGroup();
+        g->addChild( node );
+        return g;
+    }
+}
 
 //-------------------------------------------------------------------------
 
@@ -233,8 +304,9 @@ int main(int argc, char** argv)
     bool test1 = arguments.read("--test1");
     bool test2 = arguments.read("--test2");
     bool test3 = arguments.read("--test3");
+    bool test4 = arguments.read("--test4");
     bool test5 = arguments.read("--test5");
-    bool ok    = test1 || test2 || test3 || test5; 
+    bool ok    = test1 || test2 || test3 || test4 || test5; 
 
     if ( !ok )
     {
@@ -274,6 +346,11 @@ int main(int argc, char** argv)
         {
             root->addChild( TEST_3::run(earthNode) );
             label->setText( "Shader LOD test: the map turns red between 500K and 1M meters altitude" );
+        }
+        else if ( test4 )
+        {
+            root->addChild( TEST_4::run(earthNode) );
+            label->setText("Memory management test; monitor memory for stability");
         }
         
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );

@@ -84,6 +84,12 @@ namespace osgEarth
         iterator end() { return _data.end(); }
 
         bool empty() const { return _data.empty(); }
+
+        void clear() { _data.clear(); }
+        
+        iterator erase(iterator& i) { return _data.erase( i ); }
+
+        int size() const { return _data.size(); }
     };
 
     //------------------------------------------------------------------------

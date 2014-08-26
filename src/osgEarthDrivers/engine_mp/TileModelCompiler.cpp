@@ -2090,11 +2090,11 @@ TileModelCompiler::compile(const TileModel* model,
     // tesselate the surface verts into triangles.
     tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
 
-    // installs the per-layer rendering data into the Geometry objects.
-    installRenderData( d );
-
     // performance optimizations.
     optimize( d );
+
+    // installs the per-layer rendering data into the Geometry objects.
+    installRenderData( d );
 
 #if 0 // this is covered by the opt above.
     // convert mask geometry to tris.

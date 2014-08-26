@@ -1274,7 +1274,14 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
                     double py = 2.0*(((vp->height()/2)+p.y())/vp->height())-1.0;
 
                     osg::Matrix projMatrix;
-                    projMatrix.makePerspective(_vfov, vp->width()/vp->height(), 1.0f, 10000.0f);
+
+                    // if we're in ortho, switch. If we are already in perspective, just
+                    // grab the active matrix so we can apply offsets to it.
+                    if ( isOrtho ) 
+                        projMatrix.makePerspective(_vfov, vp->width()/vp->height(), 1.0f, 10000.0f);
+                    else
+                        projMatrix = proj;
+
                     projMatrix.postMult( osg::Matrix::translate(px, py, 0.0) );
 
                     _viewCamera->setProjectionMatrix( projMatrix );

@@ -27,6 +27,7 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarthSymbology/ResourceCache>
+#include <osgEarthUtil/Tessellator>
 #include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -39,6 +40,7 @@
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
+#include <osgUtil/Simplifier>
 #include <osgUtil/SmoothingVisitor>
 #include <osgDB/WriteFile>
 #include <osg/Version>
@@ -130,11 +132,11 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
                 OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
 
                 MeshSubdivider ms( _world2local, _local2world );
-                //ms.setMaxElementsPerEBO( INT_MAX );
-                if ( input->geoInterp().isSet() )
-                    ms.run( *osgGeom, threshold, *input->geoInterp() );
-                else
-                    ms.run( *osgGeom, threshold, *_geoInterp );
+                ms.setMaxElementsPerEBO( INT_MAX );
+                //if ( input->geoInterp().isSet() )
+                //    ms.run( *osgGeom, threshold, *input->geoInterp() );
+                //else
+                //    ms.run( *osgGeom, threshold, *_geoInterp );
             }
 
             // assign the primary color array. PER_VERTEX required in order to support
@@ -467,10 +469,23 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
 
     if ( tessellate )
     {
-        osgUtil::Tessellator tess;
-        tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-        tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-        tess.retessellatePolygons( *osgGeom );
+        osgEarth::Util::Tessellator oeTess;
+        if (!oeTess.tessellateGeometry(*osgGeom))
+        {
+            //fallback to osg tessellator
+            OE_WARN << LC << "OE Tessellation failed! Using OSG tessellator." << std::endl;
+
+            osgUtil::Tessellator tess;
+            tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+            tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+            tess.retessellatePolygons( *osgGeom );
+        }
+
+        //osgUtil::Simplifier simple;
+        //simple.setSmoothing( smooth );
+        //osg::notify( osg::ALWAYS ) << " smoothing: " << smooth << std::endl;
+        //simple.setSampleRatio( 10.0 );
+        //simple.simplify(*osgGeom);
     }
 
     //// Normal computation.

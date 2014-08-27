@@ -2230,7 +2230,7 @@ EarthManipulator::rotate( double dx, double dy )
 
     bool tether = _tether_node.valid();
     double minp = osg::DegreesToRadians( osg::clampAbove(_settings->getMinPitch(), -89.9) );
-    double maxp = osg::DegreesToRadians( osg::clampBelow(_settings->getMaxPitch(), tether? 89.9 : -1.0) );
+    double maxp = osg::DegreesToRadians( osg::clampBelow(_settings->getMaxPitch(),  89.9) );//tether? 89.9 : -1.0) );
 
 #if 0
     OE_NOTICE << LC 

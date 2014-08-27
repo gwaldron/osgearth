@@ -22,7 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
-#include <osgEarth/Containers>
+#include <osgEarth/SharedSARepo>
 #include <osgEarth/Units>
 #include <osgEarth/ShaderGenerator>
 #include <OpenThreads/ReentrantMutex>
@@ -48,7 +48,7 @@ namespace osgEarth
     class ColorFilterRegistry;
     class StateSetCache;
     
-    typedef SAUniqueRepo<osg::Program> ProgramSharedRepo;
+    typedef SharedSARepo<osg::Program> ProgramSharedRepo;
 
     /**
      * Application-wide global repository.

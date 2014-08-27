@@ -1031,17 +1031,7 @@ VirtualProgram::apply( osg::State& state ) const
                 pe._frameLastUsed = frameNumber;
 
                 // purge expired programs.
-                if (frameNumber > 0)
-                {
-                    for(ProgramMap::iterator k=_programCache.begin(); k!=_programCache.end(); )
-                    {
-                        if ( frameNumber - k->second._frameLastUsed > 2 )
-                            k = _programCache.erase(k);
-                        else
-                            ++k;
-                    }
-                }
-                //OE_INFO << LC << "new, fn=" << frameNumber << ", cache size = " << _programCache.size() << std::endl;
+                const_cast<VirtualProgram*>(this)->removeExpiredProgramsFromCache(state, frameNumber);
             }
         }
     }
@@ -1114,6 +1104,30 @@ VirtualProgram::apply( osg::State& state ) const
             program->apply( state );
         }
 #endif
+    }
+}
+
+void
+VirtualProgram::removeExpiredProgramsFromCache(osg::State& state, unsigned frameNumber)
+{
+    if ( frameNumber > 0 )
+    {
+        // ASSUME a mutex lock on the cache.
+        for(ProgramMap::iterator k=_programCache.begin(); k!=_programCache.end(); )
+        {
+            if ( frameNumber - k->second._frameLastUsed > 2 )
+            {
+                if ( k->second._program->referenceCount() == 1 )
+                {
+                    k->second._program->releaseGLObjects(&state);
+                }
+                k = _programCache.erase(k);
+            }
+            else
+            {
+                ++k;
+            }
+        }
     }
 }
 

@@ -356,6 +356,10 @@ namespace osgEarth
             const ShaderVector& vec,
             unsigned frameNumber,
             osg::ref_ptr<osg::Program>& program);
+
+        void removeExpiredProgramsFromCache(
+            osg::State& state,
+            unsigned frameNumber);
     };
 
 } // namespace osgEarth

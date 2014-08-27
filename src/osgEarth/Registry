@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
+#include <osgEarth/Containers>
 #include <osgEarth/Units>
 #include <osgEarth/ShaderGenerator>
 #include <OpenThreads/ReentrantMutex>
@@ -46,6 +47,8 @@ namespace osgEarth
     class URIReadCallback;
     class ColorFilterRegistry;
     class StateSetCache;
+    
+    typedef SAUniqueRepo<osg::Program> ProgramSharedRepo;
 
     /**
      * Application-wide global repository.
@@ -157,6 +160,13 @@ namespace osgEarth
         void setStateSetCache( StateSetCache* cache );
         static StateSetCache* stateSetCache() { return instance()->getStateSetCache(); }
 
+        /**
+         * A shared cache for osg::Program objects created by the shader 
+         * composition subsystem (VirtualProgram).
+         */
+        ProgramSharedRepo* getProgramSharedRepo();
+        static ProgramSharedRepo* programSharedRepo() { return instance()->getProgramSharedRepo(); }
+        
         /**
          * Gets a reference to the global task service manager.
          */
@@ -275,6 +285,8 @@ namespace osgEarth
 
         std::set<std::string> _activities;
         mutable Threading::Mutex _activityMutex;
+        
+        ProgramSharedRepo _programRepo;
     };
 }
 

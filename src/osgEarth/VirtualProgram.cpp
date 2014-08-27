@@ -45,62 +45,6 @@ using namespace osgEarth::ShaderComp;
 
 namespace
 {
-    /**
-     * A thread-safe object sharing container for osg::StateAttribute's.
-     */
-    template<typename T>
-    struct SAUniqueRepo
-    {
-        typedef std::list< osg::observer_ptr<T> > SAUniqueSet;
-        SAUniqueSet      _set;
-        Threading::Mutex _mx;
-
-        void share(osg::ref_ptr<T>& out)
-        {
-            _mx.lock();
-
-            bool found = false;
-            for (typename SAUniqueSet::iterator i = _set.begin(); !found && i != _set.end(); )
-            {
-                osg::ref_ptr<T> temp;
-                if ( i->lock(temp) )
-                {
-                    if ( temp->compare( *out.get() ) == 0 )
-                    {
-                        out = temp.get();
-                        OE_DEBUG << LC << "Shared a program; repo size = " << _set.size() << std::endl;
-                        found = true;
-                    }
-                    else
-                    {
-                        ++i;
-                    }
-                }
-                else 
-                {
-                    // found an orphaned observer; prune it
-                    typename SAUniqueSet::iterator j = i++;
-                    _set.erase( j );
-                    OE_DEBUG << LC << "Pruned a program; repo size = " << _set.size() << std::endl;
-                }
-            }
-
-            if ( !found )
-            {
-                _set.push_back(out.get());
-                OE_DEBUG << LC << "Added a program; repo size = " << _set.size() << std::endl;
-            }
-
-            _mx.unlock();
-        }
-    };
-
-    typedef SAUniqueRepo<osg::Program> ProgramSharedRepo;
-
-    // global/static repo.
-    static ProgramSharedRepo s_programRepo;
-
-
     /** Locate a function by name in the location map. */
     bool findFunction(const std::string&               name, 
                       ShaderComp::FunctionLocationMap& flm, 
@@ -1079,7 +1023,7 @@ VirtualProgram::apply( osg::State& state ) const
                     keyVector);
 
                 // global sharing.
-                //s_programRepo.share(program);
+                Registry::programSharedRepo()->share( program );
 
                 // finally, put own new program in the cache.
                 ProgramEntry& pe = _programCache[keyVector];

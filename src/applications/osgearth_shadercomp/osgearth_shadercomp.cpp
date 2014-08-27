@@ -45,12 +45,12 @@ int usage( const std::string& msg )
 {    
     OE_NOTICE
         << msg << "\n\n"
-        << "USAGE: osgearth_shadercomp <earthfile> \n"
+        << "USAGE: osgearth_shadercomp \n"
         << "           [--test1]    : Run the function injection test \n"
         << "           [--test2]    : Run the accept callback test \n"
         << "           [--test3]    : Run the shader LOD test \n"
         << "           [--test4]    : Run the memory test \n"
-        << "           [--test5]    : Run the Program state set text \n"
+        << "           [--test5]    : Run the Program state set test \n"
         << std::endl;
 
     return -1;
@@ -326,7 +326,7 @@ int main(int argc, char** argv)
 
     if ( !test5 )
     {
-        osg::Node* earthNode = osgDB::readNodeFile( "http://osgearth.org/demo.earth" );
+        osg::Node* earthNode = osgDB::readNodeFile( "gdal_tiff.earth" );
         if (!earthNode)
         {
             return usage( "Unable to load earth model." );

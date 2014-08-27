@@ -537,6 +537,12 @@ Registry::getStateSetCache() const
     return _stateSetCache.get();
 }
 
+ProgramSharedRepo*
+Registry::getProgramSharedRepo()
+{
+    return &_programRepo;
+}
+
 void
 Registry::startActivity(const std::string& activity)
 {

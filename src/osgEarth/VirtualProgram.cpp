@@ -1037,7 +1037,7 @@ VirtualProgram::apply( osg::State& state ) const
     }
 
     // current frame number, for shader program expiry.
-    unsigned frameNumber = state.getFrameStamp()->getFrameNumber();
+    unsigned frameNumber = state.getFrameStamp() ? state.getFrameStamp()->getFrameNumber() : 0;
 
     // see if there's already a program associated with this list:
     osg::ref_ptr<osg::Program> program;
@@ -1087,13 +1087,16 @@ VirtualProgram::apply( osg::State& state ) const
                 pe._frameLastUsed = frameNumber;
 
                 // purge expired programs.
-                for(ProgramMap::iterator k=_programCache.begin(); k!=_programCache.end(); ) {
-                    if ( frameNumber - k->second._frameLastUsed > 2 )
-                        k = _programCache.erase(k);
-                    else
-                        ++k;
+                if (frameNumber > 0)
+                {
+                    for(ProgramMap::iterator k=_programCache.begin(); k!=_programCache.end(); )
+                    {
+                        if ( frameNumber - k->second._frameLastUsed > 2 )
+                            k = _programCache.erase(k);
+                        else
+                            ++k;
+                    }
                 }
-
                 //OE_INFO << LC << "new, fn=" << frameNumber << ", cache size = " << _programCache.size() << std::endl;
             }
         }
@@ -1179,7 +1182,7 @@ VirtualProgram::readProgramCache(const ShaderVector& vec, unsigned frameNumber, 
         //OE_NOTICE << "found. fn=" << frameNumber << ", flu=" << p->second._frameLastUsed << std::endl;
 
         // check for expiry..
-        if ( frameNumber - p->second._frameLastUsed <= 2 )
+        if ( frameNumber == 0 || (frameNumber - p->second._frameLastUsed <= 2) )
         {
             // update as current..
             p->second._frameLastUsed = frameNumber;

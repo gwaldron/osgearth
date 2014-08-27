@@ -56,7 +56,7 @@ struct TileSourceToTileSource : public TileHandler
         //nop
     }
 
-    bool handleTile(const TileKey& key)
+    bool handleTile(const TileKey& key, const TileVisitor& tv)
     {
         bool ok = false;
         if (_heightFields)
@@ -96,7 +96,7 @@ struct ImageLayerToTileSource : public TileHandler
         //nop
     }
 
-    bool handleTile(const TileKey& key)
+    bool handleTile(const TileKey& key, const TileVisitor& tv)
     {
         bool ok = false;
         GeoImage image = _source->createImage(key);
@@ -126,7 +126,7 @@ struct ElevationLayerToTileSource : public TileHandler
         //nop
     }
 
-    bool handleTile(const TileKey& key)
+    bool handleTile(const TileKey& key, const TileVisitor& tv)
     {
         bool ok = false;
         GeoHeightField hf = _source->createHeightField(key, 0L);

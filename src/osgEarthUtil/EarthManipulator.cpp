@@ -614,14 +614,17 @@ EarthManipulator::established()
 
     if ( needToReestablish )
     {
-        osg::ref_ptr<osg::Node> safeNode = _node.get();
-        if ( !safeNode.valid() )
+        osg::ref_ptr<osg::Node> safeNode;
+        if ( !_node.lock(safeNode) )
             return false;
 
         // find a map node.
         MapNode* mapNode = MapNode::findMapNode( safeNode.get(), _findNodeTraversalMask );        
         if ( mapNode)
-        {            
+        {
+            if ( _terrainCallback.valid() )
+                mapNode->getTerrain()->removeTerrainCallback( _terrainCallback.get() );
+
             _terrainCallback = new ManipTerrainCallback( this );
             mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
         }         
@@ -675,7 +678,7 @@ EarthManipulator::established()
         _cached_srs = NULL;
         _srs_lookup_failed = false;
 
-        //OE_DEBUG << "[EarthManip] new CSN established." << std::endl;
+        OE_INFO << "[EarthManip] new CSN established." << std::endl;
     }
 
     return _csn.valid() && _node.valid();
@@ -2076,15 +2079,15 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
 void
 EarthManipulator::recalculateCenter( const osg::CoordinateFrame& frame )
 {
-    osg::ref_ptr<osg::Node> safeNode = _node.get();
-    if ( safeNode.valid() )
+    osg::ref_ptr<osg::Node> node;
+    if ( _node.lock(node) )
     {
         bool hitFound = false;
 
         //osg::Vec3d eye = getMatrix().getTrans();
 
         // need to reintersect with the terrain
-        double ilen = safeNode->getBound().radius()*0.25f;
+        double ilen = node->getBound().radius()*0.25f;
 
         osg::Vec3d up = getUpVector(frame);
 
@@ -2320,8 +2323,10 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
     if ( !view || !view->getCamera() )
         return false;
 
-    osg::NodePath nodePath;
-    _csnObserverPath.getNodePath(nodePath);
+    osg::RefNodePath nodePath;
+    if ( !_csnObserverPath.getRefNodePath(nodePath) )
+        return false;
+
     if ( nodePath.empty() )
         return false;
 

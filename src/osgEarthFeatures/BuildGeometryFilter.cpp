@@ -120,23 +120,53 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
                 osgGeom->setName( name );
             }
 
+
+            // compute localizing matrices or use globals
+            osg::Matrixd w2l, l2w;
+            if (makeECEF)
+            {
+                osgEarth::GeoExtent featureExtent(featureSRS);
+                featureExtent.expandToInclude(part->getBounds());
+
+                computeLocalizers(context, featureExtent, w2l, l2w);
+            }
+            else
+            {
+                w2l = _world2local;
+                l2w = _local2world;
+            }
+
+
             // build the geometry:
-            buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom);
+            buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
 
             osg::Vec3Array* allPoints = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
             
             // subdivide the mesh if necessary to conform to an ECEF globe:
             if ( makeECEF )
             {
+
+                //convert back to world coords
+                for( osg::Vec3Array::iterator i = allPoints->begin(); i != allPoints->end(); ++i )
+                {
+                    osg::Vec3d v(*i);
+                    v = v * l2w;
+                    v = v * _world2local;
+
+                    (*i)._v[0] = v[0];
+                    (*i)._v[1] = v[1];
+                    (*i)._v[2] = v[2];
+                }
+
                 double threshold = osg::DegreesToRadians( *_maxAngle_deg );
                 OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
 
                 MeshSubdivider ms( _world2local, _local2world );
                 ms.setMaxElementsPerEBO( INT_MAX );
-                //if ( input->geoInterp().isSet() )
-                //    ms.run( *osgGeom, threshold, *input->geoInterp() );
-                //else
-                //    ms.run( *osgGeom, threshold, *_geoInterp );
+                if ( input->geoInterp().isSet() )
+                    ms.run( *osgGeom, threshold, *input->geoInterp() );
+                else
+                    ms.run( *osgGeom, threshold, *_geoInterp );
             }
 
             // assign the primary color array. PER_VERTEX required in order to support
@@ -436,14 +466,16 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
                                   const SpatialReference* mapSRS,
                                   bool                    makeECEF,
                                   bool                    tessellate,
-                                  osg::Geometry*          osgGeom)
+                                  osg::Geometry*          osgGeom,
+                                  const osg::Matrixd      &world2local)
 {
     if ( !ring->isValid() )
         return;
 
     int totalPoints = ring->getTotalPointCount();
+
     osg::Vec3Array* allPoints = new osg::Vec3Array();
-    transformAndLocalize( ring->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
+    transformAndLocalize( ring->asVector(), featureSRS, allPoints, mapSRS, world2local, makeECEF );
 
     GLenum mode = GL_LINE_LOOP;
     osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, 0, ring->size() ) );
@@ -458,7 +490,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
             Geometry* hole = h->get();
             if ( hole->isValid() )
             {
-                transformAndLocalize( hole->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
+                transformAndLocalize( hole->asVector(), featureSRS, allPoints, mapSRS, world2local, makeECEF );
 
                 osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, offset, hole->size() ) );
                 offset += hole->size();

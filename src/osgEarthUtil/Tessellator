@@ -35,7 +35,7 @@ namespace osgEarth { namespace Util {
 
     protected:
         bool isConvex(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor);
-        bool isEar(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor, bool &out_tradEar);
+        bool isEar(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor, bool &tradEar);
     };
 } } // namespace osgEarth::Util
 

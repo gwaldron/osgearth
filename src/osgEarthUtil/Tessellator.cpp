@@ -109,9 +109,16 @@ typedef std::vector<TriIndices> TriList;
 bool
 Tessellator::tessellateGeometry(osg::Geometry &geom)
 {
+    //TODO: Currently just assuming there is a single PrimitiveSet and that
+    //      all verts in the vertext array are part of the outer ring of the
+    //      polygon.  Need to iterate through the PrimitiveSets and handle
+    //      them appropriately...tessellate individually if they are separate
+    //      primitives, or use the coincident edge method to combine them
+    //      with the outer ring if they are holes.
+
     osg::Vec3Array* vertices = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
 
-    if (!vertices || vertices->empty() /*|| geom.getPrimitiveSetList().empty()*/) return false;
+    if (!vertices || vertices->empty() || geom.getPrimitiveSetList().empty()) return false;
 
     // we currently don't handle geometry which use indices...
     if (geom.getVertexIndices() ||
@@ -142,7 +149,7 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
     {
         if (isConvex(*vertices, activeVerts, cursor))
         {
-            bool tradEar;
+            bool tradEar = tradCursor != UINT_MAX;
             if (isEar(*vertices, activeVerts, cursor, tradEar))
             {
                 unsigned int prev = cursor == 0 ? activeVerts.size() - 1 : cursor - 1;
@@ -244,11 +251,29 @@ Tessellator::isConvex(const osg::Vec3Array &vertices, const std::vector<unsigned
     unsigned int b = activeVerts[cursor];
     unsigned int c = activeVerts[next];
 
-    return ((vertices[a].x() * (vertices[c].y() - vertices[b].y())) + (vertices[b].x() * (vertices[a].y() - vertices[c].y())) + (vertices[c].x() * (vertices[b].y() - vertices[a].y()))) < 0;
+    osg::Vec3d dataA;
+    dataA._v[0] = vertices[a][0];
+    dataA._v[1] = vertices[a][1];
+    dataA._v[2] = vertices[a][2];
+
+    osg::Vec3d dataB;
+    dataB._v[0] = vertices[b][0];
+    dataB._v[1] = vertices[b][1];
+    dataB._v[2] = vertices[b][2];
+
+    osg::Vec3d dataC;
+    dataC._v[0] = vertices[c][0];
+    dataC._v[1] = vertices[c][1];
+    dataC._v[2] = vertices[c][2];
+
+    //http://www.gamedev.net/topic/542870-determine-which-side-of-a-line-a-point-is/#entry4500667
+    //(Bx - Ax) * (Cy - Ay) - (By - Ay) * (Cx - Ax)
+
+    return (dataB.x() - dataA.x()) * (dataC.y() - dataA.y()) - (dataB.y() - dataA.y()) * (dataC.x() - dataA.x()) > 0.0;
 }
 
 bool
-Tessellator::isEar(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor, bool &out_tradEar)
+Tessellator::isEar(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor, bool &tradEar)
 {
     unsigned int prev = cursor == 0 ? activeVerts.size() - 1 : cursor - 1;
     unsigned int next = cursor == activeVerts.size() - 1 ? 0 : cursor + 1;
@@ -264,7 +289,6 @@ Tessellator::isEar(const osg::Vec3Array &vertices, const std::vector<unsigned in
 
 		// Check every point not part of the ear
     bool circEar = true;
-    out_tradEar = true;
 		while( nextNext != prev )
 		{
         unsigned int p = activeVerts[nextNext];
@@ -272,16 +296,20 @@ Tessellator::isEar(const osg::Vec3Array &vertices, const std::vector<unsigned in
         if (circEar && point_in_circle(vertices[p], cc))
         {
             circEar = false;
+
+            if (tradEar)
+              return false;
         }
 
-        if (poly.contains2D(vertices[p].x(), vertices[p].y()))
+        if (!tradEar && poly.contains2D(vertices[p].x(), vertices[p].y()))
 			  {
-            out_tradEar = false;
             return false;
 			  }
 
 			  nextNext = nextNext == activeVerts.size() - 1 ? 0 : nextNext + 1;
 		}
+
+    tradEar = true;
 
 		return circEar;
 }

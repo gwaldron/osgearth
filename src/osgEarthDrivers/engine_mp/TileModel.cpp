@@ -20,6 +20,7 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Registry>
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
 #include <osgTerrain/Locator>
@@ -152,7 +153,11 @@ _fallbackData( fallbackData )
         _texture = tex;
     }
 
-    _texture->setUnRefImageDataAfterApply(true);
+
+    const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
+    if ( unRefPolicy.isSet() )
+        _texture->setUnRefImageDataAfterApply( unRefPolicy.get() );
+
     _texture->setMaxAnisotropy( 4.0f );
     _texture->setResizeNonPowerOfTwoHint(false);
     _texture->setFilter( osg::Texture::MAG_FILTER, magFilter );

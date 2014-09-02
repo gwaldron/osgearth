@@ -229,6 +229,12 @@ namespace osgEarth
          */
         std::string getExtensionForMimeType(const std::string& mimeType);
 
+        /**
+         * Sets the policy for calling osg::Texture::setUnRefImageDataAfterApply
+         * in the osgEarth terrain engine.
+         */
+        optional<bool>& unRefImageDataAfterApply() { return _unRefImageDataAfterApply; }
+        const optional<bool>& unRefImageDataAfterApply() const { return _unRefImageDataAfterApply; }
 
     protected:
         virtual ~Registry();
@@ -287,6 +293,8 @@ namespace osgEarth
         mutable Threading::Mutex _activityMutex;
         
         ProgramSharedRepo _programRepo;
+
+        optional<bool> _unRefImageDataAfterApply;
     };
 }
 

@@ -83,6 +83,9 @@ _cacheDriver        ( "filesystem" )
     // performance boost
     _stateSetCache = new StateSetCache();
 
+    // Default unref-after apply policy:
+    _unRefImageDataAfterApply = true;
+
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );
     osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );

@@ -53,6 +53,19 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+namespace
+{
+    bool isCCW(double x1, double y1, double x2, double y2, double x3, double y3)
+    {
+        return (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1) > 0.0;
+    }
+
+    bool segmentsIntersect(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4)
+    {
+        return isCCW(x1, y1, x3, y3, x4, y4) != isCCW(x2, y2, x3, y3, x4, y4) && isCCW(x1, y1, x2, y2, x3, y3) != isCCW(x1, y1, x2, y2, x4, y4);
+    }
+}
+
 BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
 _maxAngle_deg ( 1.0 ),
@@ -162,7 +175,6 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
                 OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
 
                 MeshSubdivider ms( _world2local, _local2world );
-                ms.setMaxElementsPerEBO( INT_MAX );
                 if ( input->geoInterp().isSet() )
                     ms.run( *osgGeom, threshold, *input->geoInterp() );
                 else
@@ -472,13 +484,10 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
     if ( !ring->isValid() )
         return;
 
-    int totalPoints = ring->getTotalPointCount();
+    ring->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
 
     osg::Vec3Array* allPoints = new osg::Vec3Array();
     transformAndLocalize( ring->asVector(), featureSRS, allPoints, mapSRS, world2local, makeECEF );
-
-    GLenum mode = GL_LINE_LOOP;
-    osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, 0, ring->size() ) );
 
     Polygon* poly = dynamic_cast<Polygon*>(ring);
     if ( poly )
@@ -490,13 +499,91 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
             Geometry* hole = h->get();
             if ( hole->isValid() )
             {
-                transformAndLocalize( hole->asVector(), featureSRS, allPoints, mapSRS, world2local, makeECEF );
+                hole->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CW);
 
-                osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, offset, hole->size() ) );
-                offset += hole->size();
+                osg::ref_ptr<osg::Vec3Array> holePoints = new osg::Vec3Array();
+                transformAndLocalize( hole->asVector(), featureSRS, holePoints.get(), mapSRS, world2local, makeECEF );
+
+                // find the point with the highest x value
+                int hCursor = 0;
+                for (int i=1; i < holePoints->size(); i++)
+                {
+                    if ((*holePoints)[i].x() > (*holePoints)[hCursor].x())
+                      hCursor = i;
+                }
+
+                int pCursor = 0;
+                for (int i=0; i < allPoints->size(); i++)
+                {
+                    if ((*allPoints)[i].x() > (*holePoints)[hCursor].x())
+                    {
+                        bool intersects = false;
+                        for (int j=0; j < allPoints->size(); j++)
+                        {
+                            if (j == i)
+                              continue;
+
+                            if ((*allPoints)[j].x() > (*holePoints)[hCursor].x())
+                            {
+                                // check if the two line segments intersect
+                                int next = j == allPoints->size() - 1 ? 0 : j + 1;
+
+                                double x1 = (*holePoints)[hCursor].x();
+                                double y1 = (*holePoints)[hCursor].y();
+                                double x2 = (*allPoints)[i].x();
+                                double y2 = (*allPoints)[i].y();
+                                double x3 = (*allPoints)[j].x();
+                                double y3 = (*allPoints)[j].y();
+                                double x4 = (*allPoints)[next].x();
+                                double y4 = (*allPoints)[next].y();
+
+                                if (segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4))
+                                {
+                                    intersects = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!intersects)
+                        {
+                          //TODO: instead of going with the first point that works, could be smarter
+                          //      and find the closest point that works to minimize long triangles.
+                          //      This would be slower though, so it's a trade-off to consider.
+
+
+                          // (*allPoints)[i] is a mutually visible point, connect the hole to the outer
+                          //  polygon with two coincident lines to join them
+
+                          int location = i;
+                          int p = hCursor;
+                          do
+                          {
+                              location = location >= allPoints->size() - 1 ? 0 : location + 1;
+                              allPoints->insert(allPoints->begin() + location, (*holePoints)[p]);
+
+                              //p = p == 0 ? holePoints->size() - 1 : p - 1;
+                              p = p == holePoints->size() - 1 ? 0 : p + 1;
+
+                          } while(p != hCursor);
+
+                          location = location >= allPoints->size() - 1 ? 0 : location + 1;
+                          allPoints->insert(allPoints->begin() + location, (*holePoints)[hCursor]);
+
+                          location = location >= allPoints->size() - 1 ? 0 : location + 1;
+                          allPoints->insert(allPoints->begin() + location, (*allPoints)[i]);
+
+                          break;
+                        }
+                    }
+                }
             }            
         }
     }
+
+    GLenum mode = GL_LINE_LOOP;
+    osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, 0, allPoints->size() ) );
+
     osgGeom->setVertexArray( allPoints );
 
     if ( tessellate )

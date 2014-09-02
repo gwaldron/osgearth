@@ -109,8 +109,8 @@ typedef std::vector<TriIndices> TriList;
 bool
 Tessellator::tessellateGeometry(osg::Geometry &geom)
 {
-    //TODO: Currently just assuming there is a single PrimitiveSet and that
-    //      all verts in the vertext array are part of the outer ring of the
+    //TODO: Currently assumes there is a single PrimitiveSet and that all
+    //      verts in the vertext array are part of the outer ring of the
     //      polygon.  Need to iterate through the PrimitiveSets and handle
     //      them appropriately...tessellate individually if they are separate
     //      primitives, or use the coincident edge method to combine them

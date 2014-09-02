@@ -173,7 +173,8 @@ An *image layer* is a raster image overlaid on the map's geometry.
                shared         = "false"
                feather_pixels = "false"
                min_filter     = "LINEAR"
-               mag_filter     = "LINEAR" >
+               mag_filter     = "LINEAR" 
+               texture_compression = "auto" >
 
             <:ref:`cache_policy <CachePolicy>`>
             <:ref:`color_filters <ColorFilterChain>`>
@@ -236,6 +237,8 @@ An *image layer* is a raster image overlaid on the map's geometry.
 +-----------------------+--------------------------------------------------------------------+
 | mag_filter            | OpenGL texture magnification filter to use for this layer.         |
 |                       | Options are the same as for ``min_filter`` above.                  |
++-----------------------+--------------------------------------------------------------------+
+| texture_compression   | "auto" to compress textures on the GPU; "none" to disable.         |
 +-----------------------+--------------------------------------------------------------------+
 
 

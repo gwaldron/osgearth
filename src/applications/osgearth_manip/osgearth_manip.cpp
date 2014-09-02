@@ -397,5 +397,12 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
     viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
 
-    return viewer.run();
+    while(!viewer.done())
+    {
+        viewer.frame();
+
+        // simulate slow frame rate
+        //OpenThreads::Thread::microSleep(1000*1000);
+    }
+    return 0;
 }

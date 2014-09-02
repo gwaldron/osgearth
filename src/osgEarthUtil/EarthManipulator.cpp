@@ -1738,6 +1738,9 @@ EarthManipulator::serviceTask()
     {
         double dt = _time_s_now - _task->_time_last_service;
 
+        // cap the DT so we don't exceed the expected delta.
+        dt = osg::clampBelow( dt, _task->_duration_s );
+
         switch( _task->_type )
         {
             case TASK_PAN:

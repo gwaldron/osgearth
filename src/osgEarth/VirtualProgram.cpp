@@ -548,9 +548,13 @@ VirtualProgram::cloneOrCreate(osg::StateSet* stateset)
 
 VirtualProgram::VirtualProgram( unsigned mask ) : 
 _mask              ( mask ),
+_active            ( true ),
 _inherit           ( true ),
 _inheritSet        ( false )
 {
+    // Note: we cannot set _active here. Wait until apply().
+    // It will cause a conflict in the Registry.
+
     // check the the dump env var
     if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
     {
@@ -914,6 +918,15 @@ VirtualProgram::setInheritShaders( bool value )
 void
 VirtualProgram::apply( osg::State& state ) const
 {
+    if (_active.isSetTo(false))
+    {
+        return;
+    }
+    else if ( !_active.isSet() )
+    {
+        _active = Registry::capabilities().supportsGLSL();
+    }
+
     if (_shaderMap.empty() && !_inheritSet)
     {
         // If there's no data in the VP, and never has been, unload any existing program.

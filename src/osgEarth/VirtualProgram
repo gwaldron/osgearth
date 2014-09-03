@@ -334,6 +334,7 @@ namespace osgEarth
         mutable ProgramMap                _programCache;
         mutable Threading::ReadWriteMutex _programCacheMutex;
 
+        mutable optional<bool> _active;
         bool _inherit;
         bool _inheritSet;
 

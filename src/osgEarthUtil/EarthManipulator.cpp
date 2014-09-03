@@ -69,16 +69,12 @@ namespace
     {
         ManipTerrainCallback(EarthManipulator* manip) : _manip(manip) { }
 
-        void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
+        void onTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context)
         {
-            // Only do collision avoidance if it's enabled, we're not tethering and we're not in the middle of setting a viewpoint.            
-            if (!_manip->getSettings()->getDisableCollisionAvoidance() && !_manip->getTetherNode() && !_manip->isSettingViewpoint() )
-            {                
-                const GeoPoint& centerMap = _manip->centerMap();
-                if ( _manip.valid() && key.getExtent().contains(centerMap.x(), centerMap.y()) )
-                {
-                    _manip->recalculateCenter();
-                }
+            osg::ref_ptr<EarthManipulator> safe;
+            if ( _manip.lock(safe) )
+            {
+                safe->handleTileAdded(key, tile, context);
             }            
         }
 
@@ -685,6 +681,21 @@ EarthManipulator::established()
 }
 
 
+void 
+EarthManipulator::handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context)
+{
+    // Only do collision avoidance if it's enabled, we're not tethering and we're not in the middle of setting a viewpoint.            
+    if (!getSettings()->getDisableCollisionAvoidance() &&
+        !getTetherNode() &&
+        !isSettingViewpoint() )
+    {                
+        const GeoPoint& pt = centerMap();
+        if ( key.getExtent().contains(pt.x(), pt.y()) )
+        {
+            recalculateCenterFromLookVector();
+        }
+    }            
+}
 
 bool
 EarthManipulator::createLocalCoordFrame( const osg::Vec3d& worldPos, osg::CoordinateFrame& out_frame ) const
@@ -2032,17 +2043,14 @@ EarthManipulator::getInverseMatrix() const
 void
 EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,const osg::Vec3d& up)
 {
-    osg::ref_ptr<osg::Node> safeNode = _node.get();
-
-    if ( !safeNode.valid() ) return;
-
-    // compute rotation matrix
-    osg::Vec3d lv(center-eye);
-    setDistance( lv.length() );
-    setCenter( center );
-
-    if (_node.valid())
+    osg::ref_ptr<osg::Node> safeNode;
+    if ( _node.lock(safeNode) )
     {
+        // compute rotation matrix
+        osg::Vec3d lv(center-eye);
+        setDistance( lv.length() );
+        setCenter( center );
+
         bool hitFound = false;
 
         double distance = lv.length();
@@ -2080,15 +2088,22 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
 
 
 void
+EarthManipulator::recalculateCenterFromLookVector()
+{    
+    // just re-applying the lookat parameters will calculate a new coordinate
+    // frame based on a look-at intersection.
+    osg::Vec3d eye, lookat, up;
+    getInverseMatrix().getLookAt(eye, lookat, up);
+    setByLookAt(eye, lookat, _previousUp);
+}
+
+
+void
 EarthManipulator::recalculateCenter( const osg::CoordinateFrame& frame )
 {
     osg::ref_ptr<osg::Node> node;
     if ( _node.lock(node) )
     {
-        bool hitFound = false;
-
-        //osg::Vec3d eye = getMatrix().getTrans();
-
         // need to reintersect with the terrain
         double ilen = node->getBound().radius()*0.25f;
 
@@ -2104,35 +2119,15 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& frame )
             if (hit_ip2)
             {
                 setCenter( (_center-ip1).length2() < (_center-ip2).length2() ? ip1 : ip2 );
-                hitFound = true;
             }
             else
             {
                 setCenter( ip1 );
-                hitFound = true;
             }
         }
         else if (hit_ip2)
         {
             setCenter( ip2 );
-            hitFound = true;
-        }
-
-        if (hitFound)
-        {
-#if 0
-            // recalculate the distance based on the current eyepoint:
-            double oldDistance = _distance;
-            double newDistance = (eye-_center).length();
-            setDistance( newDistance );
-            OE_NOTICE << "OLD = " << oldDistance << ", NEW = " << newDistance << std::endl;
-#endif
-        }
-
-        else // if (!hitFound)
-        {
-            // ??
-            //OE_DEBUG<<"EarthManipulator unable to intersect with terrain."<<std::endl;
         }
     }
 }

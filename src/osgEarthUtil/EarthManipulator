@@ -730,7 +730,9 @@ namespace osgEarth { namespace Util
         virtual void getUsage(osg::ApplicationUsage& usage) const;
 
         virtual void computeHomePosition();
-
+        
+        // react to a tile-added event from the Terrain
+        virtual void handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);
 
     protected:
 
@@ -786,8 +788,14 @@ namespace osgEarth { namespace Util
         //void recalculateLocalPitchAndAzimuth();
         void getLocalEulerAngles( double* out_azim, double* out_pitch =0L ) const;
 
+        /**
+         * Fire a ray from the current eyepoint along the current look vector,
+         * intersect the terrain at the closest point, and reset the matrix parameters
+         * based on that point.
+         */
+        void recalculateCenterFromLookVector();
 
-        void recalculateCenter( const osg::CoordinateFrame& frame );
+        void recalculateCenter(const osg::CoordinateFrame& frame);
 
         osg::Matrixd getRotation(const osg::Vec3d& center) const;
         osg::Quat makeCenterRotation(const osg::Vec3d& center) const

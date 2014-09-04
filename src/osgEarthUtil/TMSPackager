@@ -63,32 +63,96 @@ namespace osgEarth { namespace Util
     {
     public:
         TMSPackager();      
+
+        /**
+         * Gets the destination directory
+         */
         const std::string& getDestination() const;
 
+        /**
+         * Sets the destination directory
+         */
         void setDestination( const std::string& destination);
 
+        /**
+         * Gets the extension to write the data with.
+         */
         const std::string& getExtension() const;
 
+        /**
+         * Sets the extension to write the data with.
+         */
         void setExtension( const std::string& extension);
 
-        void setElevationPixelDepth(unsigned value);
+        /**
+         * Gets the elevation pixel depth, either 16 or 32.
+         */
         unsigned getElevationPixelDepth() const;
+        
+        /**
+         * Sets the elevation pixel depth, either 16 or 32.
+         */
+        void setElevationPixelDepth(unsigned value);
+        
 
+        /**
+         * Gets whether to overwrite existing tiles or not.
+         */
         bool getOverwrite() const;
+
+        /**
+         * Sets whether to overwrite existing tiles or not.
+         */
         void setOverwrite(bool overwrite);
 
+        /**
+         * Gets whether to keep completely transparent images or not.
+         */
+        bool getKeepEmpties() const;
+
+        /**
+         * Sets whether to keep completely transparent or not.
+         */
+        void setKeepEmpties(bool keepEmpties);
+
+        /**
+         * Gets the image write options.
+         */
         osgDB::Options* getOptions() const;
+
+        /**
+         * Sets the image write options.
+         */
         void setWriteOptions( osgDB::Options* options );        
 
+        /**
+         * Gets the layer name to use in the TMS XML.
+         */
         const std::string& getLayerName() const;
+
+        /**
+         * Sets the layer name to use in the TMS XML.
+         */
         void setLayerName( const std::string& name);
 
+        /**
+         * Gets the TileVisitor used to traverse the tiles.
+         */
         TileVisitor* getTileVisitor() const;
 
+        /**
+         * Sets the TileVisitor used to traverse the tiles.
+         */
         void setVisitor(TileVisitor* visitor);
 
+        /**
+         * Build the tiles for the given layer and map.
+         */
         void run( TerrainLayer* layer, Map* map );
 
+        /**
+         * Write out the TMS XML for the given layer and map.
+         */
         void writeXML( TerrainLayer* layer, Map* map);
 
     protected:
@@ -102,6 +166,8 @@ namespace osgEarth { namespace Util
 
         unsigned int _width;
         unsigned int _height;
+
+        bool _keepEmpties;
 
         osg::ref_ptr< TileVisitor > _visitor;
         osg::ref_ptr< WriteTMSTileHandler > _handler;

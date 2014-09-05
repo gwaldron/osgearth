@@ -405,6 +405,8 @@ namespace osgEarth
 
         virtual void initTileSource();
 
+        void applyProfileOverrides();
+
         CacheBin* getCacheBin( const Profile* profile, const std::string& binId );
 
     protected:
@@ -417,6 +419,10 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options>   _dbOptions;
         osg::ref_ptr<MemCache>         _memCache;
 
+        // profile from tile source or cache, before any overrides applied
+        mutable osg::ref_ptr<const Profile> _profileOriginal;
+
+        // profile to use
         mutable osg::ref_ptr<const Profile> _profile;
 
         void setCachePolicy( const CachePolicy& cp );

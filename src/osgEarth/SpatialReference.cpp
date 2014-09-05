@@ -290,7 +290,7 @@ SpatialReference::create( const Key& key, bool useCache )
     }
 
     // next, resolve the vertical SRS:
-    if ( !key.vert.empty() )
+    if ( !key.vert.empty() && !ciEquals(key.vert, "geodetic") )
     {
         srs->_vdatum = VerticalDatum::get( key.vert );
         if ( !srs->_vdatum.valid() )

@@ -254,3 +254,58 @@ GeoMath::rhumbDestination(double lat1Rad, double lon1Rad,
   out_lonRad = lon2Rad;
 }
 
+unsigned
+GeoMath::interesectLineWithSphere(const osg::Vec3d& p0,
+                                  const osg::Vec3d& p1,
+                                  double            R,
+                                  osg::Vec3d&       out_i0,
+                                  osg::Vec3d&       out_i1)
+{
+    unsigned hits = 0;
+
+    // http://stackoverflow.com/questions/6533856/ray-sphere-intersection
+
+    osg::Vec3d d = p1-p0;
+
+    double A = d * d;
+    double B = 2.0 * (d * p0);
+    double C = (p0 * p0) - R*R;
+
+    // now solve the quadratic A + B*t + C*t^2 = 0.
+    double D = B*B - 4.0*A*C;
+    if ( D >= 0 )
+    {
+        if ( osg::equivalent(D, 0.0) )
+        {
+            // one root (line is tangent to sphere)
+            double t = -B/(2.0*A);
+            if (t >= 0.0 && t <= 1.0)
+            {
+                out_i0 = d*t;
+                ++hits;
+            }
+        }
+        else
+        {
+            // two roots (line passes through sphere twice)
+            // find the closer of the two.
+            double sqrtD = sqrt(D);
+            double t0 = (-B + sqrtD)/(2.0*A);
+            double t1 = (-B - sqrtD)/(2.0*A);
+            
+            if ( t0 >= 0.0 && t0 <= 1.0 )
+            {
+                out_i0 = d*t0;
+                ++hits;
+            }
+
+            if ( t1 >= 0.0 && t1 <= 1.0 )
+            {
+                out_i1 = d*t1;
+                ++hits;
+            }
+        }
+    }
+
+    return hits;
+}

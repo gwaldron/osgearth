@@ -2119,5 +2119,11 @@ TileModelCompiler::compile(const TileModel* model,
     SetDataVarianceVisitor sdv( osg::Object::DYNAMIC );
     tile->accept( sdv );
 
+#if 0
+    //test: run the geometry validator to make sure geometry it legal
+    osgEarth::GeometryValidator validator;
+    tile->accept(validator);
+#endif
+
     return tile;
 }

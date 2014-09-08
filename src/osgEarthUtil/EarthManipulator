@@ -751,9 +751,13 @@ namespace osgEarth { namespace Util
         // Add the current mouse osgGA::GUIEvent to internal stack.
         void addMouseEvent(const osgGA::GUIEventAdapter& ea);
 
-        // sets the camera position by doing a "look at" calculation. This is only used for
-        // the "home" function at the moment -- look into depcrecation -GW
-        void setByLookAt(const osg::Vec3d& eye, const osg::Vec3d& lv, const osg::Vec3d& up);
+        // sets the camera position by doing a "look at" calculation, converting the center
+        // point into a look vector and intersecting the terrain.
+        void setByLookAt(const osg::Vec3d& eye, const osg::Vec3d& center, const osg::Vec3d& up);
+
+        // sets the camera position by doing a "look at" calculation, but takes the target point
+        // "as-is" and does not try to find an intersection.
+        void setByLookAtRaw(const osg::Vec3d& eye, const osg::Vec3d& target, const osg::Vec3d& up);
 
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();

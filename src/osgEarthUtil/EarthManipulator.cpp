@@ -697,7 +697,7 @@ EarthManipulator::handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCa
         const GeoPoint& pt = centerMap();
         if ( key.getExtent().contains(pt.x(), pt.y()) )
         {
-            //recalculateCenterFromLookVector();
+            recalculateCenterFromLookVector();
         }
     }
 #endif
@@ -1176,14 +1176,18 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
                                       osg::Vec3d& out_target,
                                       osg::Vec3d& out_up ) const
 {
+    bool success = false;
+
     osg::ref_ptr<osg::Node> safeNode = _node.get();
     if ( safeNode.valid() )
     {
-        getInverseMatrix().getLookAt(out_eye, out_target, out_up, 1.0);
+        double R = getSRS()->getEllipsoid()->getRadiusEquator();
 
+        getInverseMatrix().getLookAt(out_eye, out_target, out_up, 1.0);
         osg::Vec3d look = out_target-out_eye;
+
 		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi =
-		    new osgEarth::DPLineSegmentIntersector(out_eye, out_eye+look*1e10);
+		    new osgEarth::DPLineSegmentIntersector(out_eye, out_eye+look*1e8);
 
         lsi->setIntersectionLimit(lsi->LIMIT_NEAREST);
 
@@ -1195,13 +1199,39 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
         if (lsi->containsIntersections())
         {
             out_target = lsi->getIntersections().begin()->getWorldIntersectPoint();
-            return true;
+            if ( GeoMath::isPointVisible(out_eye, out_target, R) )
+            {
+                success = true;
+            }
+        }
+
+        if ( !success )
+        {
+            // backup plan: intersect spheroid.
+
+            osg::Vec3d i0, i1;
+            unsigned hits = GeoMath::interesectLineWithSphere(out_eye, out_eye+look*1e8, R, i0, i1);
+            if ( hits > 0 )
+            {
+                if ( hits == 1 && GeoMath::isPointVisible(out_eye, i0, R) )
+                {
+                    out_target = i0;
+                    success = true;
+                }
+                else if ( hits == 2 )
+                {
+                    // select the closest hit
+                    out_target = (out_eye-i0).length2() < (out_eye-i1).length2() ? i0 : i1;
+                    if ( GeoMath::isPointVisible(out_eye, out_target, R) )
+                    {
+                        success = true;
+                    }
+                }
+            }
         }
     }
 
-    // backup plan: intersect spheroid?
-
-    return false;
+    return success;
 }
 
 void
@@ -2100,7 +2130,7 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
             !hitFound && i<2;
             ++i, endPoint = farPosition)
         {
-            // compute the intersection with the scene.s
+            // compute the intersection with the scene.
             
             osg::Vec3d ip;
             if (intersect(eye, endPoint, ip))
@@ -2125,6 +2155,22 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
     recalculateRoll();
 }
 
+void
+EarthManipulator::setByLookAtRaw(const osg::Vec3d& eye,const osg::Vec3d& center,const osg::Vec3d& up)
+{
+    // compute rotation matrix
+    osg::Vec3d lv(center-eye);
+    setDistance( lv.length() );
+    setCenter( center );
+
+    osg::Matrixd rotation_matrix = osg::Matrixd::lookAt(eye,center,up);
+    _centerRotation = getRotation(_center).getRotate().inverse();
+    _rotation = rotation_matrix.getRotate().inverse() * _centerRotation.inverse();
+    _previousUp = getUpVector(_centerLocalToWorld);
+
+    recalculateRoll();
+}
+
 
 bool
 EarthManipulator::recalculateCenterFromLookVector()
@@ -2134,7 +2180,12 @@ EarthManipulator::recalculateCenterFromLookVector()
     osg::Vec3d eye, target, up;
     bool intersected = intersectLookVector(eye, target, up);
     if (intersected)
-        setByLookAt(eye, target, up);
+    {
+        setByLookAtRaw(eye, target, up);
+        //GeoPoint p;
+        //p.fromWorld(getSRS(), target);
+        //OE_INFO << "center = " << p.x() << ", " << p.y() << ", " << p.alt() << "\n";
+    }
 
     return intersected;
 }
@@ -2216,7 +2267,7 @@ EarthManipulator::pan( double dx, double dy )
         osg::ref_ptr<osg::Node> safeNode;
         if ( _node.lock(safeNode) )
         {
-            recalculateCenter( oldCenterLocalToWorld );
+            //recalculateCenter( oldCenterLocalToWorld );
 
             osg::Vec3d new_localUp = getUpVector( _centerLocalToWorld );
 

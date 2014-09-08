@@ -215,6 +215,13 @@ namespace osgEarth
                                                  osg::Vec3d&       out_i0,
                                                  osg::Vec3d&       out_i1);
 
+        /**
+         * Whether the target point is visible from the eye point in a 
+         * spherical earth approximation with the given Radius.
+         */
+        static bool isPointVisible(const osg::Vec3d& eye,
+                                   const osg::Vec3d& target,
+                                   double radius = osg::WGS_84_RADIUS_EQUATOR);
     };
 };
 

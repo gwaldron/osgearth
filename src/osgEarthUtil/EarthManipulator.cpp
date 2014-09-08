@@ -19,6 +19,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/GeoMath>
 #include <osg/Quat>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
@@ -60,7 +61,7 @@ namespace
 }
 
 
-
+#if 0
 namespace
 {
     // Callback that notifies the manipulator whenever the terrain changes
@@ -81,6 +82,7 @@ namespace
         osg::observer_ptr<EarthManipulator> _manip;
     };
 }
+#endif
 
 
 //------------------------------------------------------------------------
@@ -613,7 +615,8 @@ EarthManipulator::established()
         osg::ref_ptr<osg::Node> safeNode;
         if ( !_node.lock(safeNode) )
             return false;
-
+        
+#if 0
         // find a map node.
         MapNode* mapNode = MapNode::findMapNode( safeNode.get(), _findNodeTraversalMask );        
         if ( mapNode)
@@ -623,7 +626,8 @@ EarthManipulator::established()
 
             _terrainCallback = new ManipTerrainCallback( this );
             mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
-        }         
+        }  
+#endif       
 
         // find a CSN node - if there is one, we want to attach the manip to that
         _csn = findRelativeNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), _findNodeTraversalMask );
@@ -684,6 +688,7 @@ EarthManipulator::established()
 void 
 EarthManipulator::handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context)
 {
+#if 0
     // Only do collision avoidance if it's enabled, we're not tethering and we're not in the middle of setting a viewpoint.            
     if (!getSettings()->getDisableCollisionAvoidance() &&
         !getTetherNode() &&
@@ -692,9 +697,10 @@ EarthManipulator::handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCa
         const GeoPoint& pt = centerMap();
         if ( key.getExtent().contains(pt.x(), pt.y()) )
         {
-            recalculateCenterFromLookVector();
+            //recalculateCenterFromLookVector();
         }
-    }            
+    }
+#endif
 }
 
 bool
@@ -979,7 +985,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
                     new_center.z(),
                     geocentric.x(), geocentric.y(), geocentric.z() );
 
-                new_center = geocentric;            
+                new_center = geocentric;
             }
         }
 
@@ -1162,6 +1168,39 @@ EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg:
             return true;
         }
     }
+    return false;
+}
+
+bool
+EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
+                                      osg::Vec3d& out_target,
+                                      osg::Vec3d& out_up ) const
+{
+    osg::ref_ptr<osg::Node> safeNode = _node.get();
+    if ( safeNode.valid() )
+    {
+        getInverseMatrix().getLookAt(out_eye, out_target, out_up, 1.0);
+
+        osg::Vec3d look = out_target-out_eye;
+		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi =
+		    new osgEarth::DPLineSegmentIntersector(out_eye, out_eye+look*1e10);
+
+        lsi->setIntersectionLimit(lsi->LIMIT_NEAREST);
+
+        osgUtil::IntersectionVisitor iv(lsi.get());        
+        iv.setTraversalMask(_intersectTraversalMask);
+
+        safeNode->accept(iv);
+
+        if (lsi->containsIntersections())
+        {
+            out_target = lsi->getIntersections().begin()->getWorldIntersectPoint();
+            return true;
+        }
+    }
+
+    // backup plan: intersect spheroid?
+
     return false;
 }
 
@@ -2087,14 +2126,17 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
 }
 
 
-void
+bool
 EarthManipulator::recalculateCenterFromLookVector()
 {    
     // just re-applying the lookat parameters will calculate a new coordinate
     // frame based on a look-at intersection.
-    osg::Vec3d eye, lookat, up;
-    getInverseMatrix().getLookAt(eye, lookat, up);
-    setByLookAt(eye, lookat, _previousUp);
+    osg::Vec3d eye, target, up;
+    bool intersected = intersectLookVector(eye, target, up);
+    if (intersected)
+        setByLookAt(eye, target, up);
+
+    return intersected;
 }
 
 
@@ -2138,6 +2180,10 @@ EarthManipulator::pan( double dx, double dy )
 {
     if (!_tether_node.valid())
     {
+        // to pan, we need a focus point on the terrain:
+        if ( !recalculateCenterFromLookVector() )
+            return;
+
         double scale = -0.3f*_distance;
         double old_azim;
         getLocalEulerAngles( &old_azim );
@@ -2163,12 +2209,12 @@ EarthManipulator::pan( double dx, double dy )
         // save the previous CF so we can do azimuth locking:
         osg::CoordinateFrame oldCenterLocalToWorld = _centerLocalToWorld;
 
-        // move the cente rpoint:
+        // move the center point:
         setCenter( _center + dv );
 
         // need to recompute the intersection point along the look vector.
-        osg::ref_ptr<osg::Node> safeNode = _node.get();
-        if (safeNode.valid())
+        osg::ref_ptr<osg::Node> safeNode;
+        if ( _node.lock(safeNode) )
         {
             recalculateCenter( oldCenterLocalToWorld );
 
@@ -2272,9 +2318,13 @@ EarthManipulator::rotate( double dx, double dy )
 
 void
 EarthManipulator::zoom( double dx, double dy )
-{    
+{   
+    // in normal (non-tethered mode) we need a valid zoom point.
+    if ( !_tether_node.valid() )
+        recalculateCenterFromLookVector();
+
     double scale = 1.0f + dy;
-    setDistance( _distance * scale );    
+    setDistance( _distance * scale );
 }
 
 

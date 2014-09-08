@@ -740,6 +740,8 @@ namespace osgEarth { namespace Util
         
         bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const;
 
+        bool intersectLookVector(osg::Vec3d& eye, osg::Vec3d& out_target, osg::Vec3d& up) const;
+
         // resets the mouse event stack and pushes the provided event.
         void resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack=true);
 
@@ -793,7 +795,7 @@ namespace osgEarth { namespace Util
          * intersect the terrain at the closest point, and reset the matrix parameters
          * based on that point.
          */
-        void recalculateCenterFromLookVector();
+        bool recalculateCenterFromLookVector();
 
         void recalculateCenter(const osg::CoordinateFrame& frame);
 

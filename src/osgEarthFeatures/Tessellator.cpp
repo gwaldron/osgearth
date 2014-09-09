@@ -16,12 +16,12 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthUtil/Tessellator>
+#include <osgEarthFeatures/Tessellator>
 
 #include <osgEarthSymbology/Geometry>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
+using namespace osgEarth::Features;
 
 
 #define LC "[Tessellator] "

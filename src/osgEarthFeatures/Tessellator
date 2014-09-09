@@ -19,16 +19,16 @@
 #ifndef OSGEARTHUTIL_TESSELLATOR
 #define OSGEARTHUTIL_TESSELLATOR
 
-#include <osgEarthUtil/Common>
+#include <osgEarthFeatures/Common>
 
 #include <osg/Geometry>
     
-namespace osgEarth { namespace Util {
+namespace osgEarth { namespace Features {
 
     /**
      * Polygon tessellator using a modified ear clipping technique
      */
-    class OSGEARTHUTIL_EXPORT Tessellator
+    class OSGEARTHFEATURES_EXPORT Tessellator
     {
     public:
         bool tessellateGeometry(osg::Geometry &geom);

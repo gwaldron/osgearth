@@ -51,7 +51,6 @@ SET(HEADERS_ROOT
     SpatialData
     StarData
     TerrainProfile
-    Tessellator
 	TextureSplatter
     TileIndex
     TileIndexBuilder
@@ -105,7 +104,6 @@ SET(SOURCES_ROOT
     SpatialData.cpp
     Sky.cpp
     TerrainProfile.cpp
-    Tessellator.cpp
 	TextureSplatter.cpp
     TileIndex.cpp
     TileIndexBuilder.cpp

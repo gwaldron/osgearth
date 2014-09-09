@@ -27,7 +27,7 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarthSymbology/ResourceCache>
-#include <osgEarthUtil/Tessellator>
+#include <osgEarthFeatures/Tessellator>
 #include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -658,7 +658,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
 
     if ( tessellate )
     {
-        osgEarth::Util::Tessellator oeTess;
+        osgEarth::Features::Tessellator oeTess;
         if (!oeTess.tessellateGeometry(*osgGeom))
         {
             //fallback to osg tessellator
@@ -669,12 +669,6 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
             tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
             tess.retessellatePolygons( *osgGeom );
         }
-
-        //osgUtil::Simplifier simple;
-        //simple.setSmoothing( smooth );
-        //osg::notify( osg::ALWAYS ) << " smoothing: " << smooth << std::endl;
-        //simple.setSampleRatio( 10.0 );
-        //simple.simplify(*osgGeom);
     }
 
     //// Normal computation.

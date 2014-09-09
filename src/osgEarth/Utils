@@ -193,6 +193,16 @@ namespace osgEarth
         void apply( osg::Geode& node );
         osg::Object::DataVariance _value;
     };
+
+    /**
+     * Scans geometry and validates that it's set up properly.
+     */    
+    struct OSGEARTH_EXPORT GeometryValidator : public osg::NodeVisitor
+    {
+        GeometryValidator();
+        void apply(osg::Geode& geode);
+        void apply(osg::Geometry& geom);
+    };
 }
 
 #endif // OSGEARTH_UTILS_H

@@ -730,13 +730,17 @@ namespace osgEarth { namespace Util
         virtual void getUsage(osg::ApplicationUsage& usage) const;
 
         virtual void computeHomePosition();
-
+        
+        // react to a tile-added event from the Terrain
+        virtual void handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);
 
     protected:
 
         virtual ~EarthManipulator();
         
         bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const;
+
+        bool intersectLookVector(osg::Vec3d& eye, osg::Vec3d& out_target, osg::Vec3d& up) const;
 
         // resets the mouse event stack and pushes the provided event.
         void resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack=true);
@@ -747,9 +751,13 @@ namespace osgEarth { namespace Util
         // Add the current mouse osgGA::GUIEvent to internal stack.
         void addMouseEvent(const osgGA::GUIEventAdapter& ea);
 
-        // sets the camera position by doing a "look at" calculation. This is only used for
-        // the "home" function at the moment -- look into depcrecation -GW
-        void setByLookAt(const osg::Vec3d& eye, const osg::Vec3d& lv, const osg::Vec3d& up);
+        // sets the camera position by doing a "look at" calculation, converting the center
+        // point into a look vector and intersecting the terrain.
+        void setByLookAt(const osg::Vec3d& eye, const osg::Vec3d& center, const osg::Vec3d& up);
+
+        // sets the camera position by doing a "look at" calculation, but takes the target point
+        // "as-is" and does not try to find an intersection.
+        void setByLookAtRaw(const osg::Vec3d& eye, const osg::Vec3d& target, const osg::Vec3d& up);
 
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
@@ -786,8 +794,14 @@ namespace osgEarth { namespace Util
         //void recalculateLocalPitchAndAzimuth();
         void getLocalEulerAngles( double* out_azim, double* out_pitch =0L ) const;
 
+        /**
+         * Fire a ray from the current eyepoint along the current look vector,
+         * intersect the terrain at the closest point, and reset the matrix parameters
+         * based on that point.
+         */
+        bool recalculateCenterFromLookVector();
 
-        void recalculateCenter( const osg::CoordinateFrame& frame );
+        void recalculateCenter(const osg::CoordinateFrame& frame);
 
         osg::Matrixd getRotation(const osg::Vec3d& center) const;
         osg::Quat makeCenterRotation(const osg::Vec3d& center) const

@@ -389,3 +389,108 @@ SetDataVarianceVisitor::apply(osg::Geode& geode)
 
     traverse(geode);
 }
+
+//-----------------------------------------------------------------------------
+
+namespace
+{
+    template<typename DE>
+    void validateDE( DE* de, unsigned maxIndex, unsigned numVerts )
+    {
+        for( unsigned i=0; i<de->getNumIndices(); ++i )
+        {
+            typename DE::value_type index = de->getElement(i);
+            if ( index > maxIndex )
+            {
+                OE_WARN << "MAXIMUM Index exceeded in DrawElements" << std::endl;
+                break;
+            }
+            else if ( index > numVerts-1 )
+            {
+                OE_WARN << "INDEX OUT OF Range in DrawElements" << std::endl;
+            }
+        }
+    }
+}
+
+
+GeometryValidator::GeometryValidator()
+{
+    setVisitorType(this->NODE_VISITOR);
+    setTraversalMode(this->TRAVERSE_ALL_CHILDREN);
+    setNodeMaskOverride(~0);
+}
+
+void
+GeometryValidator::apply(osg::Geometry& geom)
+{
+    unsigned numVerts = geom.getVertexArray()->getNumElements();
+
+    if ( geom.getColorArray() )
+    {
+        if ( geom.getColorBinding() == osg::Geometry::BIND_OVERALL && geom.getColorArray()->getNumElements() != 1 )
+        {
+            OE_WARN << "Color: BIND_OVERALL with wrong number of elements" << std::endl;
+        }
+        else if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX && geom.getColorArray()->getNumElements() != numVerts )
+        {
+            OE_WARN << "Color: BIND_PER_VERTEX with color.size != verts.size" << std::endl;
+        }
+    }
+
+    if ( geom.getNormalArray() )
+    {
+        if ( geom.getNormalBinding() == osg::Geometry::BIND_OVERALL && geom.getNormalArray()->getNumElements() != 1 )
+        {
+            OE_WARN << "Normal: BIND_OVERALL with wrong number of elements" << std::endl;
+        }
+        else if ( geom.getNormalBinding() == osg::Geometry::BIND_PER_VERTEX && geom.getNormalArray()->getNumElements() != numVerts )
+        {
+            OE_WARN << "Normal: BIND_PER_VERTEX with color.size != verts.size" << std::endl;
+        }
+    }
+
+    const osg::Geometry::PrimitiveSetList& plist = geom.getPrimitiveSetList();
+
+    for( osg::Geometry::PrimitiveSetList::const_iterator p = plist.begin(); p != plist.end(); ++p )
+    {
+        osg::PrimitiveSet* pset = p->get();
+
+        osg::DrawElementsUByte* de_byte = dynamic_cast<osg::DrawElementsUByte*>(pset);
+        if ( de_byte )
+        {
+            if ( numVerts > 0xFF )
+            {
+                OE_WARN << "DrawElementsUByte used when numVerts > 255 (" << numVerts << ")" << std::endl;
+            }
+            validateDE(de_byte, 0xFF, numVerts );
+        }
+
+        osg::DrawElementsUShort* de_short = dynamic_cast<osg::DrawElementsUShort*>(pset);
+        if ( de_short )
+        {
+            if ( numVerts > 0xFFFF )
+            {
+                OE_WARN << "DrawElementsUShort used when numVerts > 65535 (" << numVerts << ")" << std::endl;
+            }
+            validateDE(de_short, 0xFFFF, numVerts );
+        }
+
+        osg::DrawElementsUInt* de_int = dynamic_cast<osg::DrawElementsUInt*>(pset);
+        if ( de_int )
+        {
+            validateDE(de_int, 0xFFFFFFFF, numVerts );
+        }
+    }
+}
+
+void
+GeometryValidator::apply(osg::Geode& geode)
+{
+    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+    {
+        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+        if ( geom )
+            apply( *geom );
+    }
+}

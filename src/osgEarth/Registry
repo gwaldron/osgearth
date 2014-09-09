@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
+#include <osgEarth/SharedSARepo>
 #include <osgEarth/Units>
 #include <osgEarth/ShaderGenerator>
 #include <OpenThreads/ReentrantMutex>
@@ -46,6 +47,8 @@ namespace osgEarth
     class URIReadCallback;
     class ColorFilterRegistry;
     class StateSetCache;
+    
+    typedef SharedSARepo<osg::Program> ProgramSharedRepo;
 
     /**
      * Application-wide global repository.
@@ -158,6 +161,13 @@ namespace osgEarth
         static StateSetCache* stateSetCache() { return instance()->getStateSetCache(); }
 
         /**
+         * A shared cache for osg::Program objects created by the shader 
+         * composition subsystem (VirtualProgram).
+         */
+        ProgramSharedRepo* getProgramSharedRepo();
+        static ProgramSharedRepo* programSharedRepo() { return instance()->getProgramSharedRepo(); }
+        
+        /**
          * Gets a reference to the global task service manager.
          */
         TaskServiceManager* getTaskServiceManager() {
@@ -219,6 +229,12 @@ namespace osgEarth
          */
         std::string getExtensionForMimeType(const std::string& mimeType);
 
+        /**
+         * Sets the policy for calling osg::Texture::setUnRefImageDataAfterApply
+         * in the osgEarth terrain engine.
+         */
+        optional<bool>& unRefImageDataAfterApply() { return _unRefImageDataAfterApply; }
+        const optional<bool>& unRefImageDataAfterApply() const { return _unRefImageDataAfterApply; }
 
     protected:
         virtual ~Registry();
@@ -275,6 +291,10 @@ namespace osgEarth
 
         std::set<std::string> _activities;
         mutable Threading::Mutex _activityMutex;
+        
+        ProgramSharedRepo _programRepo;
+
+        optional<bool> _unRefImageDataAfterApply;
     };
 }
 

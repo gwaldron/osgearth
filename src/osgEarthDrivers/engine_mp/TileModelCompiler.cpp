@@ -1878,6 +1878,12 @@ namespace
         // For vertex cache optimization to work, all the arrays must be in
         // the geometry. MP doesn't store texture/tile coords in the geometry
         // so we need to temporarily add them.
+        //
+        // Note: the MeshOptimizer will duplicate shared arrays if it finds any.
+        // We don't want that. And since we already have pointers to our texture
+        // arrays elsewhere, it mistakingly thinks there are shared (sine they
+        // have refcount>1). So we need to UNREF them, optimize, and then RE-REF
+        // them afterwards. :/ -gw
 
 #if OSG_MIN_VERSION_REQUIRED(3, 1, 8) // after osg::Geometry API changes
 
@@ -1890,22 +1896,26 @@ namespace
             {
                 r->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
                 surface_tdl->push_back( r->_texCoords.get() );
+                r->_texCoords->unref_nodelete();
             }
             if ( stitch_tdl && r->_stitchTexCoords.valid() )
             {
                 r->_stitchTexCoords->setBinding( osg::Array::BIND_PER_VERTEX );
                 stitch_tdl->push_back( r->_stitchTexCoords.get() );
+                r->_stitchTexCoords->unref_nodelete();
             }
         }
         if ( d.renderTileCoords.valid() && d.ownsTileCoords )
         {
             d.renderTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
             surface_tdl->push_back( d.renderTileCoords.get() );
+            d.renderTileCoords->unref_nodelete();
         }
         if ( stitch_tdl && d.stitchTileCoords.valid() && d.ownsTileCoords )
         {
             d.stitchTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
             stitch_tdl->push_back( d.stitchTileCoords.get() );
+            d.stitchTileCoords->unref_nodelete();
         }
 
 #else // OSG version < 3.1.8 (before osg::Geometry API changes)
@@ -1918,19 +1928,23 @@ namespace
             if ( r->_ownsTexCoords && r->_texCoords.valid() )
             {
                 surface_tdl->push_back( osg::Geometry::ArrayData(r->_texCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+                r->_texCoords->unref_nodelete();
             }
             if ( stitch_tdl && r->_stitchTexCoords.valid() )
             {
                 stitch_tdl->push_back( osg::Geometry::ArrayData(r->_stitchTexCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+                r->_stitchTexCoords->unref_nodelete();
             }
         }
         if ( d.renderTileCoords.valid() && d.ownsTileCoords )
         {
             surface_tdl->push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+            d.renderTileCoords->unref_nodelete();
         }
         if ( stitch_tdl && d.stitchTileCoords.valid() && d.ownsTileCoords )
         {
             stitch_tdl->push_back( osg::Geometry::ArrayData(d.stitchTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+            d.stitchTileCoords->unref_nodelete();
         }
 
 #endif
@@ -1946,7 +1960,6 @@ namespace
 		}
        
 
-#if 1
         d.surface->setUseVertexBufferObjects(false);
         d.surface->setUseVertexBufferObjects(true);
 
@@ -1955,7 +1968,29 @@ namespace
             d.stitchGeom->setUseVertexBufferObjects(false);
             d.stitchGeom->setUseVertexBufferObjects(true);
         }
-#endif
+
+        // re-ref all the things we un-ref'd earlier.
+        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        {
+            if ( r->_texCoords.valid() && r->_ownsTexCoords )
+            {
+                r->_texCoords->ref();
+            }
+            if ( stitch_tdl && r->_stitchTexCoords.valid() )
+            {
+                r->_stitchTexCoords->ref();
+            }
+        }
+        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
+        {
+            d.renderTileCoords->ref();
+        }
+        if ( stitch_tdl && d.stitchTileCoords.valid() && d.ownsTileCoords )
+        {
+            d.stitchTileCoords->ref();
+        }
+
+        // clear the data out of the actual geometry now that we're done optimizing.
         surface_tdl->clear();
 
         if (stitch_tdl)
@@ -2055,11 +2090,11 @@ TileModelCompiler::compile(const TileModel* model,
     // tesselate the surface verts into triangles.
     tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
 
-    // installs the per-layer rendering data into the Geometry objects.
-    installRenderData( d );
-
     // performance optimizations.
     optimize( d );
+
+    // installs the per-layer rendering data into the Geometry objects.
+    installRenderData( d );
 
 #if 0 // this is covered by the opt above.
     // convert mask geometry to tris.
@@ -2083,6 +2118,12 @@ TileModelCompiler::compile(const TileModel* model,
     // NOTE: cannot set this until optimizations (above) are complete
     SetDataVarianceVisitor sdv( osg::Object::DYNAMIC );
     tile->accept( sdv );
+
+#if 0
+    //test: run the geometry validator to make sure geometry it legal
+    osgEarth::GeometryValidator validator;
+    tile->accept(validator);
+#endif
 
     return tile;
 }

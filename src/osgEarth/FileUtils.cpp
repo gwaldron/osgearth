@@ -123,6 +123,9 @@
 #endif
 
 
+#define LC "[FileUtils] "
+
+
 using namespace osgEarth;
 
 bool osgEarth::isRelativePath(const std::string& fileName)
@@ -219,8 +222,24 @@ osgEarth::isArchive(const std::string& path)
     return false;
 }
 
+bool
+osgEarth::isPathToArchivedFile(const std::string& path)
+{
+    osgDB::Registry::ArchiveExtensionList list = osgDB::Registry::instance()->getArchiveExtensions();
+    for( osgDB::Registry::ArchiveExtensionList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        if (path.find("."+*i+"/")  != std::string::npos ||
+            path.find("."+*i+"\\") != std::string::npos)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool osgEarth::isZipPath(const std::string &path)
 {
+    OE_WARN << LC << "FileUtils::isZipPath is deprecated; use isPathToArchivedFile instead" << std::endl;
     return (path.find(".zip") != std::string::npos);
 }
 

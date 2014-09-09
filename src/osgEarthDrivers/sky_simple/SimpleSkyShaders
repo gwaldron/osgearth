@@ -316,7 +316,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
         "    // Calculate the ray's starting position, then calculate its scattering offset \n"
         "    float fDepth = exp((atmos_fInnerRadius - atmos_fCameraHeight) / atmos_fScaleDepth);\n"
-        "    float fCameraAngle = dot(-v3Ray, normal); \n"
+        "    float fCameraAngle = max(0.0, dot(-v3Ray, normal)); \n"
         "    float fLightAngle = dot(atmos_lightDir, normal); \n"
         "    float fCameraScale = atmos_scale(fCameraAngle); \n"
         "    float fLightScale = atmos_scale(fLightAngle); \n"
@@ -386,7 +386,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "    vec3 N = normalize(oe_Normal); \n"
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
         "    vec3 U = normalize(atmos_up); \n"
-        "    float NdotL = max(dot(N,L), 0.0); \n"
+        "    float NdotL = (dot(N,L)+1.0)*0.5;\n" //max(dot(N,L), 0.0); \n"
 
         // Calculate how much normal-based shading should be applied.
         // Between "low" and "high" (which are NdotL's) we phase out the
@@ -397,18 +397,21 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         // normal-based shading at shallower sun angles (i.e. it will
         // become more prominent. Perhaps it makes sense in the future to
         // make this a "scattering effect" uniform or something -gw)
-        "    const float low = 0.4; \n"
+        "    const float low = 0.6; \n"
         "    const float high = 0.9; \n"
         "    float UdotL = clamp(dot(U,L), low, high); \n"
         "    float shadeFactor = 1.0 - (UdotL-low)/(high-low); \n"
 
         // start applying normal-based shading when we're at twice the 
         // altitude of the atmosphere's outer radius:
-        "    float normFactor = 1.0-(2.0*atmos_space); \n"
+        "    float normFactor = max(0.0, 1.0-(2.0*atmos_space)); \n"
+
+        // try to brighten up surfaces the sun is shining on
+        "    float overExposure = 1.0+(max(NdotL-0.5, 0.0)*0.25);\n"
 
         // calculate the base scene color. Skip ambience since we'll be
         // factoring that in later.
-        "    vec4 sceneColor = mix(color, color*NdotL, normFactor*shadeFactor); \n"
+        "    vec4 sceneColor = mix(color*overExposure, color*NdotL, normFactor*shadeFactor); \n"
 
         "    if (NdotL > 0.0 ) { \n"
         "        vec3 V = normalize(atmos_vert); \n"

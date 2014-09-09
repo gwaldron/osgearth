@@ -22,6 +22,7 @@
 #include <osg/Notify>
 #include <osg/Timer>
 #include <osg/ShapeDrawable>
+#include <osg/PositionAttitudeTransform>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
@@ -259,15 +260,21 @@ namespace
      */
     struct Simulator : public osgGA::GUIEventHandler
     {
-        Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode )
-            : _manip(manip), _mapnode(mapnode), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
+        Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode, osg::Node* model)
+            : _manip(manip), _mapnode(mapnode), _model(model), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
         {
-            osg::Node* geode = AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
+            if ( !model )
+            { 
+                _model = AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
+            }
             
             _xform = new GeoTransform();
             _xform->setTerrain(mapnode->getTerrain());
 
-            _xform->addChild( geode );
+            _pat = new osg::PositionAttitudeTransform();
+            _pat->addChild( _model );
+
+            _xform->addChild( _pat );
 
             _cam = new osg::Camera();
             _cam->setRenderOrder( osg::Camera::NESTED_RENDER, 1 );
@@ -291,7 +298,9 @@ namespace
                 double lat, lon;
                 GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
                 GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
+                double bearing = GeoMath::bearing(D2R*_lat1, D2R*_lon1, lat, lon);
                 _xform->setPosition( p );
+                _pat->setAttitude(osg::Quat(bearing, osg::Vec3d(0,0,1)));
                 _label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
@@ -310,8 +319,10 @@ namespace
         EarthManipulator*                  _manip;
         osg::ref_ptr<osg::Camera>          _cam;
         osg::ref_ptr<GeoTransform>         _xform;
+        osg::ref_ptr<osg::PositionAttitudeTransform> _pat;
         double                             _lat0, _lon0, _lat1, _lon1;
         LabelNode*                         _label;
+        osg::Node*                         _model;
     };
 }
 
@@ -319,7 +330,13 @@ namespace
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+
+    if (arguments.read("--help") || argc==1)
+    {
+        OE_WARN << "Usage: " << argv[0] << " [earthFile] [--model modelToLoad]"
+            << std::endl;
+        return 0;
+    }
 
     osgViewer::Viewer viewer(arguments);
 
@@ -353,8 +370,14 @@ int main(int argc, char** argv)
         }
     }
 
+    // user model?
+    osg::Node* model = 0L;
+    std::string modelFile;
+    if (arguments.read("--model", modelFile))
+        model = osgDB::readNodeFile(modelFile);
+
     // Simulator for tethering:
-    viewer.addEventHandler( new Simulator(root, manip, mapNode) );
+    viewer.addEventHandler( new Simulator(root, manip, mapNode, model) );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 
@@ -374,5 +397,12 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
     viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
 
-    return viewer.run();
+    while(!viewer.done())
+    {
+        viewer.frame();
+
+        // simulate slow frame rate
+        //OpenThreads::Thread::microSleep(1000*1000);
+    }
+    return 0;
 }

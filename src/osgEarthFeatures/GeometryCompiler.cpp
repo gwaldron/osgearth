@@ -33,6 +33,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/Utils>
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>
@@ -553,6 +554,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     OE_INFO << LC
         << "features = " << p_features
         << ", time = " << osg::Timer::instance()->delta_s(p_start, p_end) << " s." << std::endl;
+#endif
+
+#if 0
+    //test: run the geometry validator to make sure geometry it legal
+    osgEarth::GeometryValidator validator;
+    resultGroup->accept(validator);
 #endif
 
     return resultGroup.release();

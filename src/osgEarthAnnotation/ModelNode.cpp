@@ -113,15 +113,9 @@ ModelNode::init()
                 {
                     // generate shader code for the loaded model:
                     Registry::shaderGenerator().run(
-                        this,
+                        node.get(),
                         "osgEarth.ModelNode",
                         Registry::stateSetCache() );
-
-                    // do we really need this? perhaps
-#if 0
-                    // better: put your modelnode under the mapnode?
-                    node->addCullCallback( new UpdateLightingUniformsHelper() );
-#endif
                 }
 
                 // attach to the transform:

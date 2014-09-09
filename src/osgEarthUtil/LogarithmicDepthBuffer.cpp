@@ -64,12 +64,13 @@ namespace
                 }
 
                 // the uniform conveying the far clip plane:
-                osg::Uniform* u = stateset->getOrCreateUniform("oe_logdepth_farplane", osg::Uniform::FLOAT);
+                osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_far", osg::Uniform::FLOAT);
 
                 // calculate the far plane based on the camera location:
                 osg::Vec3d E, C, U;
                 camera->getViewMatrixAsLookAt(E, C, U);                
                 double farplane = E.length() + 1e6;
+                const double nearplane = 1.0;
                 
                 // set for culling purposes:
                 double L, R, B, T, N, F;
@@ -94,19 +95,27 @@ namespace
         osg::buffered_value<osg::ref_ptr<osg::StateSet> > _stateSets;
     };
 
-    const char* vertexSource =
+    const char* vertSource =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_logdepth_farplane; \n"
-        "void oe_logdepth_vert(inout vec4 clip) \n"
+        "uniform float oe_ldb_far; \n"
+        "varying float logz; \n"
+        "void oe_ldb_vert(inout vec4 clip) \n"
         "{ \n"
         "    const float C = 0.0005; \n"
-        "    clip.z = (2.0*log2(C*clip.w+1.0)/log2(C*oe_logdepth_farplane+1.0)-1.0)*clip.w;\n"
+        "    float FC = 1.0/log2(oe_ldb_far*C + 1.0); \n"
+        "    logz = log2(clip.w*C + 1.0)*FC; \n"
+        "    clip.z = (2.0*logz - 1.0)*clip.w; \n"
         "} \n";
 
-    // NOTE: to do this properly we also need a fragment program that clamps depth
-    // so we don't clip polygons that cross the near plane. But that will disable
-    // early Z check so we will look into that later. -gw
+    const char* fragSource =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "varying float logz; \n"
+        "void oe_ldb_frag(inout vec4 clip) \n"
+        "{\n"
+        "    gl_FragDepth = logz; \n"
+        "}\n";
 }
 
 //------------------------------------------------------------------------
@@ -133,7 +142,8 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
         osg::StateSet* stateset = camera->getOrCreateStateSet();
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
-        vp->setFunction( "oe_logdepth_vert", vertexSource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );
+        vp->setFunction( "oe_ldb_vert", vertSource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );
+        vp->setFunction( "oe_ldb_frag", fragSource, ShaderComp::LOCATION_FRAGMENT_LIGHTING, FLT_MAX );
 
         // configure the camera:
         camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
@@ -156,10 +166,10 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
             VirtualProgram* vp = VirtualProgram::get( camera->getStateSet() );
             if ( vp )
             {
-                vp->removeShader( "oe_logdepth_vert" );
+                vp->removeShader( "oe_ldb_vert" );
             }
 
-            stateset->removeUniform( "oe_logdepth_farplane" );
+            stateset->removeUniform( "oe_ldb_far" );
         }
     }
 }

@@ -61,30 +61,6 @@ namespace
 }
 
 
-#if 0
-namespace
-{
-    // Callback that notifies the manipulator whenever the terrain changes
-    // around its center point.
-    struct ManipTerrainCallback : public TerrainCallback
-    {
-        ManipTerrainCallback(EarthManipulator* manip) : _manip(manip) { }
-
-        void onTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context)
-        {
-            osg::ref_ptr<EarthManipulator> safe;
-            if ( _manip.lock(safe) )
-            {
-                safe->handleTileAdded(key, tile, context);
-            }            
-        }
-
-        osg::observer_ptr<EarthManipulator> _manip;
-    };
-}
-#endif
-
-
 //------------------------------------------------------------------------
 
 
@@ -614,20 +590,7 @@ EarthManipulator::established()
     {
         osg::ref_ptr<osg::Node> safeNode;
         if ( !_node.lock(safeNode) )
-            return false;
-        
-#if 0
-        // find a map node.
-        MapNode* mapNode = MapNode::findMapNode( safeNode.get(), _findNodeTraversalMask );        
-        if ( mapNode)
-        {
-            if ( _terrainCallback.valid() )
-                mapNode->getTerrain()->removeTerrainCallback( _terrainCallback.get() );
-
-            _terrainCallback = new ManipTerrainCallback( this );
-            mapNode->getTerrain()->addTerrainCallback( _terrainCallback );
-        }  
-#endif       
+            return false;      
 
         // find a CSN node - if there is one, we want to attach the manip to that
         _csn = findRelativeNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), _findNodeTraversalMask );
@@ -1537,7 +1500,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
    
     // form the current Action based on the event type:
     Action action = ACTION_NULL;
-    _time_s_now = osg::Timer::instance()->time_s();
+    //_time_s_now = osg::Timer::instance()->time_s();
 
     // if tethering is active, check to see whether the incoming event 
     // will break the tether.
@@ -1687,7 +1650,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                         aa.requestRedraw();
 
                     if ( _continuous && !wasContinuous )
-                        _last_continuous_action_time = _time_s_now;
+                        _last_continuous_action_time = time_s_now; //_time_s_now;
 
                     aa.requestContinuousUpdate(_continuous);
                     _thrown = false;
@@ -1838,30 +1801,35 @@ EarthManipulator::serviceTask()
     if ( _task.valid() && _task->_type != TASK_NONE )
     {
         double dt = _time_s_now - _task->_time_last_service;
-
-        // cap the DT so we don't exceed the expected delta.
-        dt = osg::clampBelow( dt, _task->_duration_s );
-
-        switch( _task->_type )
+        if ( dt > 0.0 )
         {
-            case TASK_PAN:
-                pan( dt * _task->_dx, dt * _task->_dy );
-                break;
-            case TASK_ROTATE:
-                rotate( dt * _task->_dx, dt * _task->_dy );
-                break;
-            case TASK_ZOOM:
-                zoom( dt * _task->_dx, dt * _task->_dy );
-                break;
-            default: break;
-        }
+            //OE_INFO << "serviceTask: fr="<<_frame_count<<", dt=" << dt << ", clamped = " << osg::clampBelow(dt,_task->_duration_s)
+            //    << std::endl;
 
-        _task->_duration_s -= dt;
-        _task->_time_last_service = _time_s_now;
+            // cap the DT so we don't exceed the expected delta.
+            dt = osg::clampBelow( dt, _task->_duration_s );
 
-        if ( _task->_duration_s <= 0.0 )
-        {
-            _task->_type = TASK_NONE;
+            switch( _task->_type )
+            {
+                case TASK_PAN:
+                    pan( dt * _task->_dx, dt * _task->_dy );
+                    break;
+                case TASK_ROTATE:
+                    rotate( dt * _task->_dx, dt * _task->_dy );
+                    break;
+                case TASK_ZOOM:
+                    zoom( dt * _task->_dx, dt * _task->_dy );
+                    break;
+                default: break;
+            }
+
+            _task->_duration_s -= dt;
+            _task->_time_last_service = _time_s_now;
+
+            if ( _task->_duration_s <= 0.0 )
+            {
+                _task->_type = TASK_NONE;
+            }
         }
     }
 

@@ -1215,11 +1215,17 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
                 unsigned hits = GeoMath::interesectLineWithSphere(out_eye, out_eye+look*1e8, R, i0, i1);
                 if ( hits > 0 )
                 {
+                    // Need to check not only for intersection, but also visibility
+                    // over the horizon.
+
+                    // one hit? look vec is tangent to sphere, or camera is underground
                     if ( hits == 1 && GeoMath::isPointVisible(out_eye, i0, R) )
                     {
                         out_target = i0;
                         success = true;
                     }
+
+                    // two hits? look vec intersects sphere (in two places)
                     else if ( hits == 2 )
                     {
                         // select the closest hit

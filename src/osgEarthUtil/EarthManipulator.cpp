@@ -1207,25 +1207,40 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
 
         if ( !success )
         {
-            // backup plan: intersect spheroid.
+            // backup plan: intersect spheroid (if geocentric) or base plane (if projected)
 
-            osg::Vec3d i0, i1;
-            unsigned hits = GeoMath::interesectLineWithSphere(out_eye, out_eye+look*1e8, R, i0, i1);
-            if ( hits > 0 )
+            if ( _is_geocentric )
             {
-                if ( hits == 1 && GeoMath::isPointVisible(out_eye, i0, R) )
+                osg::Vec3d i0, i1;
+                unsigned hits = GeoMath::interesectLineWithSphere(out_eye, out_eye+look*1e8, R, i0, i1);
+                if ( hits > 0 )
+                {
+                    if ( hits == 1 && GeoMath::isPointVisible(out_eye, i0, R) )
+                    {
+                        out_target = i0;
+                        success = true;
+                    }
+                    else if ( hits == 2 )
+                    {
+                        // select the closest hit
+                        out_target = (out_eye-i0).length2() < (out_eye-i1).length2() ? i0 : i1;
+                        if ( GeoMath::isPointVisible(out_eye, out_target, R) )
+                        {
+                            success = true;
+                        }
+                    }
+                }
+            }
+
+            else // !_is_geocentric
+            {
+                osg::Vec3d i0;
+                osg::Plane zup(0, 0, 1, 0);
+                unsigned hits = GeoMath::intersectLineWithPlane(out_eye, out_eye+look, zup, i0);
+                if (hits > 0)
                 {
                     out_target = i0;
                     success = true;
-                }
-                else if ( hits == 2 )
-                {
-                    // select the closest hit
-                    out_target = (out_eye-i0).length2() < (out_eye-i1).length2() ? i0 : i1;
-                    if ( GeoMath::isPointVisible(out_eye, out_target, R) )
-                    {
-                        success = true;
-                    }
                 }
             }
         }

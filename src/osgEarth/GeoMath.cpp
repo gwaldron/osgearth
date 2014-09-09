@@ -312,6 +312,41 @@ GeoMath::interesectLineWithSphere(const osg::Vec3d& p0,
     return hits;
 }
 
+unsigned
+GeoMath::intersectLineWithPlane(const osg::Vec3d& p0,
+                                const osg::Vec3d& p1,
+                                const osg::Plane& plane,
+                                osg::Vec3d&       out_p)
+{
+    osg::Vec3d V = p1-p0;
+    V.normalize();
+    double denom = plane.dotProductNormal(V);
+
+    // if N*V == 0, line is parallel to the plane
+    if ( osg::equivalent(denom, 0.0) )
+    {
+        // if p0 lies on the plane, line is coincident with plane
+        // and intersections are infinite
+        if ( osg::equivalent(plane.distance(p0), 0.0) )
+        {
+            out_p = p0;
+            return 2;
+        }
+        else
+        {
+            // line does not intersect plane.
+            return 0;
+        }
+    }
+    else
+    {
+        // one intersection:
+        double t = -(plane.dotProductNormal(p0) + plane[3])/denom;
+        out_p = p0 + V*t;
+        return 1;
+    }
+}
+
 bool
 GeoMath::isPointVisible(const osg::Vec3d& eye,
                         const osg::Vec3d& target,

@@ -208,8 +208,7 @@ makeTMS( osg::ArgumentParser& args )
 
     osg::ref_ptr<osgDB::Options> options = new osgDB::Options( dbOptions );
 
-    // whether to keep 'empty' tiles
-    //TODO:  Add support
+    // whether to keep 'empty' tiles    
     bool keepEmpties = args.read( "--keep-empties" );
 
     //TODO:  Single color
@@ -326,6 +325,7 @@ makeTMS( osg::ArgumentParser& args )
     packager.setElevationPixelDepth(elevationPixelDepth);
     packager.setWriteOptions(options);    
     packager.setOverwrite(overwrite);
+    packager.setKeepEmpties(keepEmpties);
 
 
     // new map for an output earth file if necessary.

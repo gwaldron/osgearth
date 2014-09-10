@@ -504,7 +504,7 @@ CubeSpatialReference::postTransform( std::vector<osg::Vec3d>& points) const
         if ( !CubeUtils::faceToCube( out_x, out_y, face ) )
         {
             OE_WARN << LC << "fromFace(" << out_x << "," << out_y << "," << face << ") failed" << std::endl;
-            return false;
+            return 0L;
         }
         
         p.x() = out_x;

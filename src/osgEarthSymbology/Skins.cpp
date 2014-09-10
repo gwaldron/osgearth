@@ -210,6 +210,7 @@ SkinSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "max_object_height",   _maxObjHeight );
     conf.getIfSet( "tiled",               _isTiled );
     conf.getIfSet( "random_seed",         _randomSeed );
+    conf.getObjIfSet( "name",                _name );
 
     addTags( conf.value("tags" ) );
 }
@@ -226,6 +227,7 @@ SkinSymbol::getConfig() const
     conf.addIfSet( "max_object_height",   _maxObjHeight );
     conf.addIfSet( "tiled",               _isTiled );
     conf.addIfSet( "random_seed",         _randomSeed );
+    conf.addObjIfSet( "name",                _name );
 
     std::string tagstring = this->tagString();
     if ( !tagstring.empty() )
@@ -259,6 +261,9 @@ SkinSymbol::parseSLD(const Config& c, Style& style)
     }
     else if (match(c.key(), "skin-random-seed") ) {
         style.getOrCreate<SkinSymbol>()->randomSeed() = as<unsigned>( c.value(), 0u );
+    }
+    else if (match(c.key(), "skin-name")) {
+        style.getOrCreate<SkinSymbol>()->name() = StringExpression(c.value());
     }
 }
 

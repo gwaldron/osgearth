@@ -206,8 +206,8 @@ public:
       virtual void operator()(ProgressCallback* progress )
       {         
           if (_handler.valid())
-          {             
-              _handler->handleTile( _key );
+          {                           
+              _handler->handleTile( _key, *_visitor.get() );
               _visitor->incrementProgress(1);
           }
       }
@@ -268,7 +268,7 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
 }
 
 bool MultithreadedTileVisitor::handleTile( const TileKey& key )        
-{
+{    
     // Add the tile to the task queue.
     _taskService->add( new HandleTileTask(_tileHandler, this, key ) );
     return true;
@@ -490,7 +490,7 @@ void TileKeyListVisitor::run(const Profile* mapProfile)
     {
         if (_tileHandler)
         {
-            _tileHandler->handleTile( *itr );
+            _tileHandler->handleTile( *itr, *this );
             incrementProgress(1);
         }
     }

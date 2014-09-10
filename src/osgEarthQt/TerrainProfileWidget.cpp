@@ -94,17 +94,23 @@ void TerrainProfileWidget::initialize()
   _captureAction = new QAction(QIcon(":/images/crosshair.png"), tr(""), this);
   _captureAction->setToolTip(tr("Capture map clicks"));
   _captureAction->setCheckable(true);
-  connect(_captureAction, SIGNAL(toggled(bool)), this, SLOT(onCaptureToggled(bool)));
 
   _undoZoomAction = new QAction(QIcon(":/images/undo.png"), tr(""), this);
   _undoZoomAction->setToolTip(tr("Undo zoom"));
-  connect(_undoZoomAction, SIGNAL(triggered()), this, SLOT(onUndoZoom()));
   _undoZoomAction->setEnabled(false);
+
+  _clearProfilesAction = new QAction(QIcon(":/images/close.png"), tr(""), this);
+  _clearProfilesAction->setToolTip(tr("Clear profiles"));
+
+  _copyClipboardAction = new QAction(QIcon(":/images/copy.png"), tr(""), this);
+  _copyClipboardAction->setToolTip(tr("Copy"));
 
   // create toolbar
   QToolBar *buttonToolbar = new QToolBar(tr("Action Toolbar"));
   buttonToolbar->setIconSize(QSize(24, 24));
   buttonToolbar->addAction(_captureAction);
+  buttonToolbar->addAction(_clearProfilesAction);
+  buttonToolbar->addAction(_copyClipboardAction);
   buttonToolbar->addSeparator();
   buttonToolbar->addAction(_undoZoomAction);
   vStack->addWidget(buttonToolbar);
@@ -113,11 +119,17 @@ void TerrainProfileWidget::initialize()
   _graph = new TerrainProfileGraph(_calculator, new UpdatePositionShim(this));
   vStack->addWidget(_graph);
 
+  // Connect the action signals/slots
+  connect(_captureAction, SIGNAL(toggled(bool)), this, SLOT(onCaptureToggled(bool)));
+  connect(_undoZoomAction, SIGNAL(triggered()), this, SLOT(onUndoZoom()));
+  connect(_clearProfilesAction, SIGNAL(triggered()), this, SLOT(onClearProfiles()));
+  connect(_copyClipboardAction, SIGNAL(triggered()), _graph, SLOT(onCopyToClipboard()));
+
   // define a style for the line
   osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();
   ls->stroke()->color() = osgEarth::Symbology::Color::White;
   ls->stroke()->width() = 2.0f;
-  ls->tessellation() = 20;
+  ls->tessellation() = 500;
   _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
 
   // load marker image
@@ -143,6 +155,14 @@ void TerrainProfileWidget::initialize()
 
   // setup placemark style
   _placeStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+}
+
+void TerrainProfileWidget::setCoordinateFormatter(osgEarth::Util::Formatter* coordinateFormatter)
+{
+  if(_graph)
+  {
+    _graph->setCoordinateFormatter(coordinateFormatter);
+  }
 }
 
 void TerrainProfileWidget::setActiveView(osgViewer::View* view)
@@ -257,6 +277,25 @@ void TerrainProfileWidget::onCaptureToggled(bool checked)
   ((TerrainProfileMouseHandler*)_guiHandler.get())->setCapturing(checked);
 }
 
+void TerrainProfileWidget::onClearProfiles()
+{
+  if (_lineNode.valid())
+  {
+    _root->removeChild(_lineNode.get());
+    _lineNode = 0;
+  }
+  if (_markerNode.valid())
+  {
+    _root->removeChild(_markerNode.get());
+    _markerNode = 0;
+  }
+  _profileStack.clear();
+  _undoZoomAction->setEnabled(false);
+  _calculator->setStartEnd(GeoPoint::INVALID, GeoPoint::INVALID);
+  _graph->clear();
+  refreshViews();
+}
+
 void TerrainProfileWidget::onUndoZoom()
 {
   _profileStack.pop_back();
@@ -270,7 +309,7 @@ void TerrainProfileWidget::drawProfileLine()
   line->push_back( _calculator->getEnd().vec3d() );
 
   osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(line, _mapNode->getMapSRS());
-  feature->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;    
+  feature->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;
   feature->style() = _lineStyle;
 
   if (!_lineNode.valid())

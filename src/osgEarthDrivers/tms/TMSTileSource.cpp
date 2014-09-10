@@ -60,9 +60,12 @@ TMSTileSource::initialize(const osgDB::Options* dbOptions)
         OE_INFO << LC << "Repo is remote; opening in read-only mode" << std::endl;
     }
 
-    // Is this a new repo? (You can only create a new repo at a local URI.)
+    // Is this a new repo? (You can only create a new repo at a local non-archive URI.)
     bool isNewRepo = false;
-    if ( !tmsURI.isRemote() && !osgDB::fileExists(tmsURI.full()) )
+
+    if (!tmsURI.isRemote() && 
+        !osgEarth::isPathToArchivedFile(tmsURI.full()) &&
+        !osgDB::fileExists(tmsURI.full()) )
     {
         isNewRepo = true;
 

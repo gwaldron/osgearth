@@ -102,6 +102,7 @@ SET(LIB_PUBLIC_HEADERS
     ShaderFactory
     ShaderGenerator
     ShaderUtils
+	SharedSARepo
     SparseTexture2DArray
     SpatialReference
     StateSetCache

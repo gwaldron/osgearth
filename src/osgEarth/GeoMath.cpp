@@ -254,3 +254,140 @@ GeoMath::rhumbDestination(double lat1Rad, double lon1Rad,
   out_lonRad = lon2Rad;
 }
 
+unsigned
+GeoMath::interesectLineWithSphere(const osg::Vec3d& p0,
+                                  const osg::Vec3d& p1,
+                                  double            R,
+                                  osg::Vec3d&       out_i0,
+                                  osg::Vec3d&       out_i1)
+{
+    unsigned hits = 0;
+
+    // http://stackoverflow.com/questions/6533856/ray-sphere-intersection
+
+    osg::Vec3d d = p1-p0;
+
+    double A = d * d;
+    double B = 2.0 * (d * p0);
+    double C = (p0 * p0) - R*R;
+
+    // now solve the quadratic A + B*t + C*t^2 = 0.
+    double D = B*B - 4.0*A*C;
+    if ( D >= 0 )
+    {
+        if ( osg::equivalent(D, 0.0) )
+        {
+            // one root (line is tangent to sphere)
+            double t = -B/(2.0*A);
+            //if (t >= 0.0 && t <= 1.0)
+            {
+                out_i0 = p0 + d*t;
+                ++hits;
+            }
+        }
+        else
+        {
+            // two roots (line passes through sphere twice)
+            double sqrtD = sqrt(D);
+            double t0 = (-B + sqrtD)/(2.0*A);
+            double t1 = (-B - sqrtD)/(2.0*A);
+            
+            //if ( t0 >= 0.0 && t0 <= 1.0 )
+            {
+                out_i0 = p0 + d*t0;
+                ++hits;
+            }
+
+            //if ( t1 >= 0.0 && t1 <= 1.0 )
+            {
+                if (hits == 0)
+                    out_i0 = p0 + d*t1;
+                else
+                    out_i1 = p0 + d*t1;
+                ++hits;
+            }
+        }
+    }
+
+    return hits;
+}
+
+unsigned
+GeoMath::intersectLineWithPlane(const osg::Vec3d& p0,
+                                const osg::Vec3d& p1,
+                                const osg::Plane& plane,
+                                osg::Vec3d&       out_p)
+{
+    osg::Vec3d V = p1-p0;
+    V.normalize();
+    double denom = plane.dotProductNormal(V);
+
+    // if N*V == 0, line is parallel to the plane
+    if ( osg::equivalent(denom, 0.0) )
+    {
+        // if p0 lies on the plane, line is coincident with plane
+        // and intersections are infinite
+        if ( osg::equivalent(plane.distance(p0), 0.0) )
+        {
+            out_p = p0;
+            return 2;
+        }
+        else
+        {
+            // line does not intersect plane.
+            return 0;
+        }
+    }
+    else
+    {
+        // one intersection:
+        double t = -(plane.dotProductNormal(p0) + plane[3])/denom;
+        out_p = p0 + V*t;
+        return 1;
+    }
+}
+
+bool
+GeoMath::isPointVisible(const osg::Vec3d& eye,
+                        const osg::Vec3d& target,
+                        double            R)
+{
+    double r2 = R*R;
+
+    // same quadrant:
+    if ( eye * target >= 0.0 )
+    {
+        double d2 = eye.length2();
+        double horiz2 = d2 - r2;
+        double dist2 = (target-eye).length2();
+        if ( dist2 < horiz2 )
+        {
+            return true;
+        }
+    }
+
+    // different quadrants:
+    else
+    {
+        // there's a horizon between them; now see if the thing is visible.
+        // find the triangle formed by the viewpoint, the target point, and 
+        // the center of the earth.
+        double a = (target-eye).length();
+        double b = target.length();
+        double c = eye.length();
+
+        // Heron's formula for triangle area:
+        double s = 0.5*(a+b+c);
+        double area = 0.25*sqrt( s*(s-a)*(s-b)*(s-c) );
+
+        // Get the triangle's height:
+        double h = (2*area)/a;
+
+        if ( h >= R )
+        {
+            return true;
+        }
+    }
+
+    return false;
+}

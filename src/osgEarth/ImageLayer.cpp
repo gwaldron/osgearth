@@ -69,7 +69,7 @@ ImageLayerOptions::setDefaults()
     _featherPixels.init( false );
     _minFilter.init( osg::Texture::LINEAR_MIPMAP_LINEAR );
     _magFilter.init( osg::Texture::LINEAR );
-    _texcomp.init( (osg::Texture::InternalFormatMode)~0 );
+    _texcomp.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
 }
 
 void
@@ -157,6 +157,7 @@ ImageLayerOptions::getConfig( bool isolate ) const
 
     conf.updateIfSet("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
     conf.updateIfSet("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
+    conf.updateIfSet("texture_compression", "on",   _texcomp, (osg::Texture::InternalFormatMode)~0);
     //TODO add all the enums
 
     return conf;

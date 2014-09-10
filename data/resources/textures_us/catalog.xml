@@ -1,6 +1,15 @@
 <?xml version="1.0" ?>
 <resources name="texlib-us">
 
+  <!-- tiled repeatables -->
+    <skin name="asphalt" tags="asphalt road rock">
+	    <url>misc/asphalt.jpg</url>
+		<tiled>true</tiled>
+		<image_width>20</image_width>
+		<image_height>30</image_height>
+		<texture_mode>modulate</texture_mode>
+	</skin>
+
   <!-- tiled barriers textures -->
 
     <skin name="fence" tags="barrier fence">

@@ -21,6 +21,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
+#include <osg/observer_ptr>
+#include <osg/State>
 #include <list>
 #include <vector>
 
@@ -84,6 +86,12 @@ namespace osgEarth
         iterator end() { return _data.end(); }
 
         bool empty() const { return _data.empty(); }
+
+        void clear() { _data.clear(); }
+        
+        iterator erase(iterator& i) { return _data.erase( i ); }
+
+        int size() const { return _data.size(); }
     };
 
     //------------------------------------------------------------------------

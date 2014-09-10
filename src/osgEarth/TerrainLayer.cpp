@@ -237,6 +237,10 @@ TerrainLayer::setCache( Cache* cache )
                 hashConf.remove( "cache_enabled" );
                 hashConf.remove( "cache_policy" );
                 hashConf.remove( "cacheid" );
+                
+                // need this, b/c data is vdatum-transformed before caching.
+                if ( layerConf.hasValue("vdatum") )
+                    hashConf.add("vdatum", layerConf.value("vdatum"));
 
                 cacheId = Stringify() << std::hex << osgEarth::hashString(hashConf.toJSON());
 
@@ -373,7 +377,7 @@ TerrainLayer::isDynamic() const
 }
 
 CacheBin*
-TerrainLayer::getCacheBin( const Profile* profile )
+TerrainLayer::getCacheBin(const Profile* profile)
 {
     // make sure we've initialized the tile source first.
     getTileSource();
@@ -390,7 +394,7 @@ TerrainLayer::getCacheBin( const Profile* profile )
 }
 
 CacheBin*
-TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
+TerrainLayer::getCacheBin(const Profile* profile, const std::string& binId)
 {
     // make sure we've initialized the tile source first.
     TileSource* tileSource = getTileSource();
@@ -501,6 +505,9 @@ TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
 
             OE_INFO << LC <<
                 "Opened cache bin [" << binId << "]" << std::endl;
+
+            // If we loaded a profile from the cache metadata, apply the overrides:
+            applyProfileOverrides();
         }
         else
         {
@@ -615,21 +622,12 @@ TerrainLayer::initTileSource()
             _profile = _tileSource->getProfile();
         }
 
-        // check for a vertical datum override:
-        if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
-        {
-            std::string vdatum = *_runtimeOptions->verticalDatum();
-            if ( !ciEquals(_profile->getSRS()->getVertInitString(), vdatum) )
-            {
-                OE_INFO << LC << "Overriding vdatum with: " << vdatum << std::endl;
-                ProfileOptions po = _profile->toProfileOptions();
-                po.vsrsString() = vdatum;
-                _profile = Profile::create(po);
-            }
-        }
 
         if ( _profile.valid() )
         {
+            // create the final profile from any overrides:
+            applyProfileOverrides();
+
             OE_INFO << LC << "Profile=" << _profile->toString() << std::endl;
         }
     }
@@ -640,6 +638,30 @@ TerrainLayer::initTileSource()
     {
         OE_NOTICE << LC << "Could not initialize TileSource " << _name << ", but a cache exists. Setting layer to cache-only mode." << std::endl;
         setCachePolicy( CachePolicy::CACHE_ONLY );
+    }
+}
+
+void
+TerrainLayer::applyProfileOverrides()
+{
+    // Check for a vertical datum override.
+    bool changed = false;
+    if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
+    {
+        std::string vdatum = *_runtimeOptions->verticalDatum();
+        OE_INFO << "override vdatum = " << vdatum << ", profile vdatum = " << _profile->getSRS()->getVertInitString() << std::endl;
+        if ( !ciEquals(_profile->getSRS()->getVertInitString(), vdatum) )
+        {
+            ProfileOptions po = _profile->toProfileOptions();
+            po.vsrsString() = vdatum;
+            _profile = Profile::create(po);
+            changed = true;
+        }
+    }
+
+    if (changed && _profile.valid())
+    {
+        OE_INFO << LC << "Override profile: " << _profile->toString() << std::endl;
     }
 }
 

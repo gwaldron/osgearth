@@ -17,12 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "DuktapeEngine"
+#include "JSGeometry"
 #include <osgEarth/JsonUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarthFeatures/GeometryUtils>
 #include <sstream>
 
-#define LC "[DuktapeEngine] "
+#undef  LC
+#define LC "[duktape] "
 
 // defining this will setup and tear down a complete duktape heap/context
 // for each and every invocation. Good for testing memory usage until we
@@ -37,6 +39,7 @@ using namespace osgEarth::Drivers::Duktape;
 
 namespace
 {
+    // generic logging function.
     static duk_ret_t log( duk_context *ctx ) {
         duk_idx_t i, n;
 
@@ -51,28 +54,6 @@ namespace
         return 0;
     }
 
-
-    static duk_ret_t oe_duk_load_geometry(duk_context* ctx)
-    {
-        // pull the feature ptr from argument #0
-        Feature* feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
-        
-        // Fetch the feature data from the global object:
-        duk_push_global_object(ctx);        // [global]
-        duk_push_string(ctx, "feature");    // [global, "feature"]
-        duk_get_prop(ctx, -2);              // [global, feature]
-
-        // add the GeoJSON-encoded geometry to the feature object
-        duk_push_string(ctx, "geometry");   // [global, feature, "geometry"]
-        std::string geomJSON = GeometryUtils::geometryToGeoJSON( feature->getGeometry() );
-        duk_push_string(ctx, geomJSON.c_str());
-        duk_json_decode(ctx, -1);           // [global, feature, "geometry", geojson]
-        duk_put_prop(ctx, -2);              // [global, feature]
-
-        duk_pop_2(ctx);                     // []
-        return 0;                           // 0 return values
-    }
-
     static duk_ret_t oe_duk_save_feature(duk_context* ctx)
     {
         // stack: [ptr]
@@ -81,13 +62,20 @@ namespace
         Feature* feature = reinterpret_cast<Feature*>(duk_require_pointer(ctx, 0));
 
         // Fetch the feature data:
-        duk_push_global_object(ctx);                    // [ptr, global]
-        duk_get_prop_string(ctx, -1, "feature");        // [ptr, global, feature]
+        duk_push_global_object(ctx);                    
+        // [ptr, global]
 
-        if (duk_get_prop_string(ctx, -1, "properties")) // [ptr, global, feature, props]
+        if ( !duk_get_prop_string(ctx, -1, "feature") || !duk_is_object(ctx, -1))
+            return 0;
+
+         // [ptr, global, feature]
+
+        if ( duk_get_prop_string(ctx, -1, "properties") && duk_is_object(ctx, -1) )
         {
-            duk_enum(ctx, -1, DUK_ENUM_INCLUDE_NONENUMERABLE); // [ptr, global, feature, props, enum]
-
+            // [ptr, global, feature, props]
+            duk_enum(ctx, -1, 0);                       
+        
+            // [ptr, global, feature, props, enum]
             while( duk_next(ctx, -1, 1/*get_value=true*/) )
             {
                 std::string key( duk_get_string(ctx, -2) );
@@ -103,28 +91,41 @@ namespace
                 {
                     feature->set( key, duk_get_boolean(ctx, -1) );
                 }
-                duk_pop_2(ctx);
+                else if( duk_is_null_or_undefined( ctx, -1 ) )
+                {
+                    feature->setNull( key );
+                }
+                 duk_pop_2(ctx);
             }
 
-            duk_pop_2(ctx); // [ptr, global, feature]
+            duk_pop_2(ctx);
+            // [ptr, global, feature]
+        }
+        else
+        {   // [ptr, global, feature, undefined]
+            duk_pop(ctx);
+            // [ptr, global, feature]
         }
 
         // save the geometry, if set:
-        if ( duk_get_prop_string(ctx, -1, "geometry") != 0 ) // [ptr, global, feature, geometry]
+        if ( duk_get_prop_string(ctx, -1, "geometry")&& duk_is_object(ctx, -1) )
         {
+            // [ptr, global, feature, geometry]
             std::string json( duk_json_encode(ctx, -1) ); // [ptr, global, feature, json]
             Geometry* newGeom = GeometryUtils::geometryFromGeoJSON(json);
             if ( newGeom )
+            {
                 feature->setGeometry( newGeom );
-
-            duk_pop(ctx); // [ptr, global, feature]
+            }
+            duk_pop(ctx);
+            // [ptr, global, feature]
         }
         else
         {
-            // failure pushed undefined: [ptr, global, feature, undefined]
-            duk_pop(ctx); // [ptr, global, feature]
+            // [ptr, global, feature, undefined]
         }
-
+        
+        // [ptr, global, feature]
         duk_pop_2(ctx);     // [ptr] (as we found it)
         return 0;           // no return values.
     }
@@ -134,8 +135,8 @@ namespace
 
 namespace
 {
-    // Updates the global feature object with new attributes.
-    void updateFeature(duk_context* ctx, Feature const* feature)
+    // Create a "feature" object in the global namespace.
+    void setFeature(duk_context* ctx, Feature const* feature)
     {
         std::string geojson = feature->getGeoJSON();
         
@@ -148,9 +149,14 @@ namespace
 
         // add the save() function and the "attributes" alias.
         duk_eval_string_noresult(ctx,
-            "feature.save = function() { oe_duk_save_feature(this.__ptr); } ");
+            "feature.save = function() {"
+            "    oe_duk_save_feature(this.__ptr);"
+            "} ");
+
         duk_eval_string_noresult(ctx,
             "Object.defineProperty(feature, 'attributes', {get:function() {return feature.properties;}});");
+
+        GeometryAPI::bindToFeature(ctx);
 
         duk_pop(ctx); 
     }
@@ -190,8 +196,11 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options)
         duk_push_c_function( _ctx, log, DUK_VARARGS );
         duk_put_prop_string( _ctx, -2, "log" );
 
+        // feature.save() callback
         duk_push_c_function(_ctx, oe_duk_save_feature, 1/*numargs*/); // [global, function]
         duk_put_prop_string(_ctx, -2, "oe_duk_save_feature");         // [global]
+
+        GeometryAPI::install(_ctx);
 
         duk_pop(_ctx); // []
     }
@@ -243,9 +252,8 @@ DuktapeEngine::run(const std::string&   code,
 	if(feature) {
 		// encode the feature in the global object and push a
         // native pointer:
-		updateFeature(ctx, feature);
+		setFeature(ctx, feature);
 	}
-
 
     // run the script. On error, the top of stack will hold the error
     // message instead of the return value.

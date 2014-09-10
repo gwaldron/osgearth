@@ -6,26 +6,26 @@ This example shows how you can combine multiple layers into a single logical lay
 
 <map type="geocentric" version="2">
 
-    <image name="composite" driver="composite">
+    <image name="imagery" driver="composite">
         <!-- We specify an explicit profile for the layers so the underlying sources will be reprojected -->
         <profile>global-geodetic</profile>
 
         <image name="world" driver="gdal">
             <url>../data/world.tif</url>
         </image>
-        
+
         <image name="boston_inset" driver="gdal">
             <url>../data/boston-inset.tif</url>
         </image>
-                
+
         <image name="nyc_inset" driver="gdal">
             <url>../data/nyc-inset-wgs84.tif</url>
-        </image>            
-    </image>      
+        </image>
+    </image>
 
 
-    <!--Load a folder full of terrain data as an elevation source-->    
-    <heightfield name="composite" driver="composite">
+    <!--Load a folder full of terrain data as an elevation source-->
+    <heightfield name="elevation" driver="composite">
 
         <profile>global-geodetic</profile>
 
@@ -41,7 +41,7 @@ This example shows how you can combine multiple layers into a single logical lay
             <url>..\data\terrain\mt_everest_90m.tif</url>
         </heightfield>
 
-    </heightfield>            
+    </heightfield>
 
 
     <external>
@@ -51,7 +51,7 @@ This example shows how you can combine multiple layers into a single logical lay
             <viewpoint name="Mt. Rainier" heading="2.223594737679109" height="1208.956551751122" lat="46.74140839003859" long="-121.7424887439202" pitch="-4.067959191450896" range="35228"/>
             <viewpoint name="Mt Fuji" heading="-6.643219911388552" height="2101.307753395289" lat="35.33034430791985" long="138.7457492897105" pitch="-4.09203778742571" range="52569" />
             <viewpoint name="Mt Everest" heading="-18.85968142919705" height="1333.456559479237" lat="27.33113859513453" long="86.70948397529442" pitch="-4.022572666642375" range="106303"/>
-        </viewpoints>        
+        </viewpoints>
     </external>
 
 </map>

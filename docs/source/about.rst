@@ -4,19 +4,12 @@ About the Project
 Introduction
 ------------
 
-osgEarth_ is a 3D mapping SDK for OpenSceneGraph_ applications.
-It's different from traditional terrain engines in an important way:
-osgEarth_ does not require you to build a 3D terrain model before you
-display it. 
-Instead, it will access the raw data sources at application run time and
-composite them into a 3D map *on the fly*.
-No terrain model is actually stored to disk, though it does use caching
-techniques to speed up the rendering of the map.
+osgEarth_ is a geospatial SDK and terrain engine for OpenSceneGraph_ applications.
 
 The goals of osgEarth_ are to:
 
 - Enable the development of 3D geospatial appliations on top of OpenSceneGraph_.
-- Make it as easy as possible to visualize terrian models and 3D maps.
+- Make it as easy as possible to visualize terrian models and imagery directly from source data.
 - Interoperate with open mapping standards, technologies, and data.
 
 
@@ -27,10 +20,9 @@ So: does osgEarth replace the need for offline terrain database creation tools? 
 Consider using osgEarth_ if you need to:
 
     - Get a terrain base map up and running quickly and easily
-    - Access open-standards map data services like WMS, WCS, or TMS
-    - Integrate locally-stored data with web-service-based data
+    - Access open-standards map data services like WMS or TMS
+    - Integrate locally-stored data with web-service-based imagery
     - Incorporate new geospatial data layers at run-time
-    - Run in a "thin-client" environment
     - Deal with data that may change over time
     - Integrate with a commercial data provider
 
@@ -86,7 +78,7 @@ to testing, adding features, and fixing bugs.
 License
 -------
 
-`Pelican Mapping`_ licenses osgEarth_ under the LGPL_ free open source license. 
+osgEarth_ is licensed under the LGPL_ free open source license. 
 
 This means that:
 
@@ -114,9 +106,7 @@ That's it.
 Maintainers
 -----------
 
-`Pelican Mapping`_ maintains osgEarth_. We are located in the Washington, DC area.
-
-Pelican is Glenn_, Jason_, Jeff_, and Paul_.
+`Pelican Mapping`_ maintains osgEarth_.
 
 
 .. _osgEarth:        http://osgEarth.org

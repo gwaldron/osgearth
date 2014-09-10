@@ -612,44 +612,23 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, unsigned localLOD, std::
     int tileMinX, tileMaxX;
     int tileMinY, tileMaxY;
 
-    // Special path for mercator (does NOT work for cube, e.g.)
-    if ( key_ext.getSRS()->isMercator() )
-    {
-        int precision = 5;
-        double eps = 0.001;
+    double destTileWidth, destTileHeight;
+    getTileDimensions(localLOD, destTileWidth, destTileHeight);
 
-        double keyWidth = round(key_ext.width(), precision);
-        int destLOD = 0;
-        double w, h;
-        getTileDimensions(0, w, h);
-        for(; (round(w,precision) - keyWidth) > eps; w*=0.5, h*=0.5, destLOD++ );
+    //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
+    //OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
 
-        double destTileWidth, destTileHeight;
-        getTileDimensions( destLOD, destTileWidth, destTileHeight );
-        destTileWidth = round(destTileWidth, precision);
-        destTileHeight = round(destTileHeight, precision);
+    double east = key_ext.xMax() - _extent.xMin();
+    bool xMaxOnTileBoundary = fmod(east, destTileWidth) == 0.0;
 
-        tileMinX = quantize( ((key_ext.xMin() - _extent.xMin()) / destTileWidth), eps );
-        tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
+    double south = _extent.yMax() - key_ext.yMin();
+    bool yMaxOnTileBoundary = fmod(south, destTileHeight) == 0.0;
 
-        tileMinY = quantize( ((_extent.yMax() - key_ext.yMax()) / destTileHeight), eps );
-        tileMaxY = (int) ((_extent.yMax() - key_ext.yMin()) / destTileHeight);
-    }
+    tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
+    tileMaxX = (int)(east / destTileWidth) - (xMaxOnTileBoundary ? 1 : 0);
 
-    else
-    {
-        double destTileWidth, destTileHeight;
-        getTileDimensions(localLOD, destTileWidth, destTileHeight);
-
-        //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
-        //OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
-
-        tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
-        tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
-
-        tileMinY = (int)((_extent.yMax() - key_ext.yMax()) / destTileHeight); 
-        tileMaxY = (int)((_extent.yMax() - key_ext.yMin()) / destTileHeight); 
-    }
+    tileMinY = (int)((_extent.yMax() - key_ext.yMax()) / destTileHeight); 
+    tileMaxY = (int)(south / destTileHeight) - (yMaxOnTileBoundary ? 1 : 0);
 
     unsigned int numWide, numHigh;
     getNumTiles(localLOD, numWide, numHigh);

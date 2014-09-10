@@ -120,6 +120,23 @@ namespace osgEarth
     /**
      * Represents the location of a resource, providing the raw (original, possibly
      * relative) and absolute forms.
+     *
+     * URI is serializable and may be used in an earth file, like in the following
+     * example. Note that in earth files, the URI is actually called "url"; this is
+     * simply because of an old convention and we wish to avoid breaking backwards
+     * compatibility.
+     *
+     *   <url>../path/relative/to/earth/file</url>
+     *
+     * Note also that a relative URI will be relative to the location of the 
+     * parent resource (usually the earth file itself). 
+     *
+     * You can also specify osgDB plugin options; for example:
+     *
+     *   <url options_string="JPEG_QUALITY 60">../path/to/image.jpg</url>
+     *
+     * Of course, options are particular to OSG plugins, so please consult the
+     * code for your plugin for more information.
      */
     class OSGEARTH_EXPORT URI
     {
@@ -173,6 +190,9 @@ namespace osgEarth
         /** String used for keying the cache */
         const std::string& cacheKey() const { return !_cacheKey.empty() ? _cacheKey : _fullURI; }
 
+        /** osgDB::Options option string (plugin options) */
+        optional<std::string>& optionString() { return _optionString; }
+        const optional<std::string>& optionString() const { return _optionString; }
 
     public:
 
@@ -228,14 +248,27 @@ namespace osgEarth
         /** Copier */
         URI( const URI& rhs ) : _baseURI(rhs._baseURI), _fullURI(rhs._fullURI), _context(rhs._context) { }
 
-    public:
-        //TODO: methods to load data from the URI.
+
+    public: // config methods
+
+        Config getConfig() const
+        {
+            Config conf("uri", base());
+            conf.addIfSet("option_string", _optionString);
+            return conf;
+        }
+
+        void mergeConfig(const Config& conf)
+        {
+            conf.getIfSet("option_string", _optionString);
+        }
 
     protected:
         std::string _baseURI;
         std::string _fullURI;
         std::string _cacheKey;
         URIContext  _context;
+        optional<std::string> _optionString;
     };
     
 
@@ -373,19 +406,21 @@ namespace osgEarth
     template <> inline
     void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
-            Config conf(key, opt->base());
-            conf.setReferrer(opt->context().referrer());
-            add( conf );
+            add(key, opt->getConfig());
+            //Config conf(key, opt->base());
+            //conf.setReferrer(opt->context().referrer());
+            //add( conf );
         }
     }
 
     template<> inline
     void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
-            remove(key);
-            Config conf(key, opt->base());
-            conf.setReferrer(opt->context().referrer());
-            add( conf );
+            //remove(key);
+            update(key, opt->getConfig());
+            //Config conf(key, opt->base());
+            //conf.setReferrer(opt->context().referrer());
+            //add( conf );
         }
     }
 
@@ -393,6 +428,7 @@ namespace osgEarth
     bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
         if ( hasValue(key) ) {
             output = URI( value(key), referrer(key) );
+            output->mergeConfig(*this);
             return true;
         }
         else

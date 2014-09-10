@@ -77,7 +77,13 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
         GeoImage geoImage = imageLayer->createImage( key );
 
         if (geoImage.valid())
-        {                 
+        {                             
+            if (!_packager->getKeepEmpties() && ImageUtils::isEmptyImage(geoImage.getImage()))
+            {
+                OE_INFO << "Not writing completely transparent image for key " << key.str() << std::endl;
+                return false;
+            }
+
             // mask out areas not included in the request:
             for(std::vector<GeoExtent>::const_iterator g = tv.getExtents().begin();
                 g != tv.getExtents().end();
@@ -176,7 +182,8 @@ _visitor(new TileVisitor()),
     _elevationPixelDepth(32),
     _width(0),
     _height(0),
-    _overwrite(false)
+    _overwrite(false),
+    _keepEmpties(false)
 {
 }
 
@@ -238,6 +245,16 @@ bool TMSPackager::getOverwrite() const
 void TMSPackager::setOverwrite(bool overwrite)
 {
     _overwrite = overwrite;
+}
+
+bool TMSPackager::getKeepEmpties() const
+{
+    return _keepEmpties;
+}
+
+void TMSPackager::setKeepEmpties(bool keepEmpties)
+{
+    _keepEmpties = keepEmpties;
 }
 
 TileVisitor* TMSPackager::getTileVisitor() const

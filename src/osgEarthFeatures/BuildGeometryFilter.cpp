@@ -27,7 +27,7 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarthSymbology/ResourceCache>
-#include <osgEarthFeatures/Tessellator>
+#include <osgEarth/Tessellator>
 #include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -658,7 +658,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
 
     if ( tessellate )
     {
-        osgEarth::Features::Tessellator oeTess;
+        osgEarth::Tessellator oeTess;
         if (!oeTess.tessellateGeometry(*osgGeom))
         {
             //fallback to osg tessellator

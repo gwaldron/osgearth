@@ -16,12 +16,9 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthFeatures/Tessellator>
-
-#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Tessellator>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
 
 #define LC "[Tessellator] "
@@ -87,6 +84,22 @@ inline bool point_in_circle(const osg::Vec3 &point, const osg::Vec3 &circle)
         (point.y() - circle.y()) * (point.y() - circle.y());
     return r2 <= circle.z()*circle.z();
 //    return r2 <= circle.z();
+}
+
+int checkCCW(double x1, double y1, double x2, double y2, double x3, double y3)
+{
+    double v = (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1);
+    return (v == 0.0 ? 0 : (v > 0.0 ? 1 : -1));
+}
+
+//bool point_in_tri(const osg::Vec3 &p, const osg::Vec3 &t1, const osg::Vec3 &t2, const osg::Vec3 &t3)
+bool point_in_tri(double xp, double yp, double x1, double y1, double x2, double y2, double x3, double y3)
+{
+  int t1 = checkCCW(xp, yp, x1, y1, x2, y2);
+  int t2 = checkCCW(xp, yp, x2, y2, x3, y3);
+  int t3 = checkCCW(xp, yp, x3, y3, x1, y1);
+
+  return t1 == t2 && t2 == t3;
 }
 
 struct TriIndices
@@ -280,11 +293,6 @@ Tessellator::isEar(const osg::Vec3Array &vertices, const std::vector<unsigned in
 
     osg::Vec3d cc(compute_circumcircle(vertices[activeVerts[prev]], vertices[activeVerts[cursor]], vertices[activeVerts[next]]));
 
-    osgEarth::Symbology::Polygon poly(3);
-    poly.push_back(vertices[activeVerts[prev]]);
-    poly.push_back(vertices[activeVerts[cursor]]);
-    poly.push_back(vertices[activeVerts[next]]);
-
     unsigned int nextNext = next == activeVerts.size() - 1 ? 0 : next + 1;
 
 		// Check every point not part of the ear
@@ -301,7 +309,11 @@ Tessellator::isEar(const osg::Vec3Array &vertices, const std::vector<unsigned in
               return false;
         }
 
-        if (!tradEar && poly.contains2D(vertices[p].x(), vertices[p].y()))
+        if (!tradEar &&
+            point_in_tri(vertices[p].x(), vertices[p].y(),
+                         vertices[activeVerts[prev]].x(), vertices[activeVerts[prev]].y(),
+                         vertices[activeVerts[cursor]].x(), vertices[activeVerts[cursor]].y(),
+                         vertices[activeVerts[next]].x(), vertices[activeVerts[next]].y()))
 			  {
             return false;
 			  }

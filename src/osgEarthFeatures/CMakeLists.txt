@@ -49,7 +49,6 @@ SET(LIB_PUBLIC_HEADERS
     ScriptEngine
     SubstituteModelFilter
     TessellateOperator
-    Tessellator
     TextSymbolizer
     TransformFilter
     VirtualFeatureSource
@@ -92,7 +91,6 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ScriptEngine.cpp
     SubstituteModelFilter.cpp
     TessellateOperator.cpp
-    Tessellator.cpp
     TextSymbolizer.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp

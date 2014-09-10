@@ -16,19 +16,19 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTHUTIL_TESSELLATOR
-#define OSGEARTHUTIL_TESSELLATOR
+#ifndef OSGEARTH_TESSELLATOR_H
+#define OSGEARTH_TESSELLATOR_H 1
 
-#include <osgEarthFeatures/Common>
+#include <osgEarth/Common>
 
 #include <osg/Geometry>
     
-namespace osgEarth { namespace Features {
+namespace osgEarth {
 
     /**
      * Polygon tessellator using a modified ear clipping technique
      */
-    class OSGEARTHFEATURES_EXPORT Tessellator
+    class OSGEARTH_EXPORT Tessellator
     {
     public:
         bool tessellateGeometry(osg::Geometry &geom);
@@ -37,6 +37,6 @@ namespace osgEarth { namespace Features {
         bool isConvex(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor);
         bool isEar(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor, bool &tradEar);
     };
-} } // namespace osgEarth::Util
+} // namespace osgEarth
 
-#endif // OSGEARTHUTIL_TESSELLATOR
+#endif // OSGEARTH_TESSELLATOR_H

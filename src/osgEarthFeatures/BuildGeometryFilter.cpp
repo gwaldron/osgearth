@@ -662,7 +662,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
         if (!oeTess.tessellateGeometry(*osgGeom))
         {
             //fallback to osg tessellator
-            OE_WARN << LC << "OE Tessellation failed! Using OSG tessellator. (" << osgGeom->getName() << ")" << std::endl;
+            OE_NOTICE << LC << "OE Tessellation failed! Using OSG tessellator. (" << osgGeom->getName() << ")" << std::endl;
 
             osgUtil::Tessellator tess;
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );

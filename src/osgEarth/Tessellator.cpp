@@ -122,13 +122,6 @@ typedef std::vector<TriIndices> TriList;
 bool
 Tessellator::tessellateGeometry(osg::Geometry &geom)
 {
-    //TODO: Currently assumes there is a single PrimitiveSet and that all
-    //      verts in the vertext array are part of the outer ring of the
-    //      polygon.  Need to iterate through the PrimitiveSets and handle
-    //      them appropriately...tessellate individually if they are separate
-    //      primitives, or use the coincident edge method to combine them
-    //      with the outer ring if they are holes.
-
     osg::Vec3Array* vertices = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
 
     if (!vertices || vertices->empty() || geom.getPrimitiveSetList().empty()) return false;
@@ -146,8 +139,103 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
         if (geom.getTexCoordIndices(unit)) return false;
     }
 
+    // copy the original primitive set list
+    osg::Geometry::PrimitiveSetList originalPrimitives = geom.getPrimitiveSetList();
+
+    // clear the primitive sets
+    unsigned int nprimsetoriginal= geom.getNumPrimitiveSets();
+    if (nprimsetoriginal) geom.removePrimitiveSet(0, nprimsetoriginal);
+
+    bool success = true;
+    for (unsigned int i=0; i < originalPrimitives.size(); i++)
+    {
+        osg::ref_ptr<osg::PrimitiveSet> primitive = originalPrimitives[i].get();
+
+        if (primitive->getMode()==osg::PrimitiveSet::POLYGON || primitive->getMode()==osg::PrimitiveSet::LINE_LOOP)
+        {
+            if (primitive->getType()==osg::PrimitiveSet::DrawArrayLengthsPrimitiveType)
+            {
+                osg::DrawArrayLengths* drawArrayLengths = static_cast<osg::DrawArrayLengths*>(primitive.get());
+                unsigned int first = drawArrayLengths->getFirst();
+                for(osg::DrawArrayLengths::iterator itr=drawArrayLengths->begin();
+                    itr!=drawArrayLengths->end();
+                    ++itr)
+                {
+                    unsigned int last = first + *itr;
+                    osg::PrimitiveSet* newPrimitive = tessellatePrimitive(first, last, vertices);
+                    if (newPrimitive)
+                    {
+                        geom.addPrimitiveSet(newPrimitive);
+                    }
+                    else
+                    {
+                        // tessellation failed, add old primitive set back
+                        geom.addPrimitiveSet(primitive);
+                        success = false;
+                    }
+
+                    first = last;
+                }
+            }
+            else
+            {
+                if (primitive->getNumIndices()>3)
+                {
+                    osg::PrimitiveSet* newPrimitive = tessellatePrimitive(primitive.get(), vertices);
+                    if (newPrimitive)
+                    {
+                        geom.addPrimitiveSet(newPrimitive);
+                    }
+                    else
+                    {
+                        // tessellation failed, add old primitive set back
+                        geom.addPrimitiveSet(primitive);
+                        success = false;
+                    }
+                }
+            }
+        }
+        else
+        {
+            //
+            // TODO: handle more primitive modes
+            //
+        }
+    }
+
+    return success;
+}
+
+
+osg::PrimitiveSet*
+Tessellator::tessellatePrimitive(osg::PrimitiveSet* primitive, osg::Vec3Array* vertices)
+{
+    //
+    //TODO: Hnadle more primitive types
+    //
+
+    switch(primitive->getType())
+    {
+    case(osg::PrimitiveSet::DrawArraysPrimitiveType):
+        {
+            osg::DrawArrays* drawArray = static_cast<osg::DrawArrays*>(primitive);
+            unsigned int first = drawArray->getFirst();
+            unsigned int last = first+drawArray->getCount();
+            return tessellatePrimitive(first, last, vertices);
+         }
+    default:
+        OE_NOTICE << LC << "Primitive type " << primitive->getType()<< " not handled" << std::endl;
+        break;
+    }
+
+    return 0L;
+}
+
+osg::PrimitiveSet*
+Tessellator::tessellatePrimitive(unsigned int first, unsigned int last, osg::Vec3Array* vertices)
+{
     std::vector<unsigned int> activeVerts;
-    for (unsigned int i=0; i < vertices->size(); i++)
+    for (unsigned int i=first; i < last; i++)
     {
         activeVerts.push_back(i);
     }
@@ -196,9 +284,6 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
             {
                 // No ear was found with circumcircle test, use first traditional ear found
 
-                //TODO: could improve by tracking and using the traditional ear with that is
-                //      the least skinny instead of just the first found
-
                 cursor = tradCursor;
 
                 unsigned int prev = cursor == 0 ? activeVerts.size() - 1 : cursor - 1;
@@ -231,10 +316,6 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
             tris.push_back(TriIndices(activeVerts[0], activeVerts[1], activeVerts[2]));
         }
 
-        // remove the existing primitives.
-        unsigned int nprimsetoriginal= geom.getNumPrimitiveSets();
-        if (nprimsetoriginal) geom.removePrimitiveSet(0, nprimsetoriginal);
-
         osg::DrawElementsUInt* triElements = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
         for (TriList::const_iterator it = tris.begin(); it != tris.end(); ++it)
         {
@@ -243,16 +324,17 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
             triElements->push_back(it->c);
         }
 
-        geom.addPrimitiveSet(triElements);
+        return triElements;
     }
     else
     {
-        //TODO: handle
-        OE_WARN << LC << "Tessellation failed!" << std::endl;
+        //TODO: handle?
+        OE_NOTICE << LC << "Tessellation failed!" << std::endl;
     }
 
-    return success;
+    return 0L;
 }
+
 
 bool
 Tessellator::isConvex(const osg::Vec3Array &vertices, const std::vector<unsigned int> &activeVerts, unsigned int cursor)

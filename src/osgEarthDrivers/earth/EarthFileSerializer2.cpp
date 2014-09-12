@@ -19,6 +19,7 @@
 #include "EarthFileSerializer"
 #include <osgEarth/FileUtils>
 #include <osgEarth/MapFrame>
+#include <osgEarth/Extension>
 
 using namespace osgEarth_osgearth;
 using namespace osgEarth;
@@ -113,12 +114,31 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
 
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
 
+    // Extensions/externals:
+
     // External configs:
     Config ext = conf.child( "external" );
+    if ( ext.empty() )
+        ext = conf.child( "extensions" );
+
     if ( !ext.empty() )
     {
+        // save the configuration in case we need to write it back out later
         mapNode->externalConfig() = ext;
+
+        // locate and install any registered extensions.
+        ConfigSet extensions = ext.children();
+        for(ConfigSet::const_iterator i = extensions.begin(); i != extensions.end(); ++i)
+        {
+            std::string name = i->key();
+            Extension* extension = Extension::create( name, *i );
+            if ( extension )
+            {
+                mapNode->addExtension( extension );
+            }
+        }
     }
+
 
     return mapNode;
 }

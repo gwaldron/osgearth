@@ -114,9 +114,8 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
 
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
 
-    // Extensions/externals:
+    // External configs. Support both "external" and "extensions" tags.
 
-    // External configs:
     Config ext = conf.child( "external" );
     if ( ext.empty() )
         ext = conf.child( "extensions" );

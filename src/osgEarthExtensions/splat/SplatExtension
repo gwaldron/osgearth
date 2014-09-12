@@ -39,7 +39,7 @@ namespace osgEarth { namespace Extensions { namespace Splat
 
     public: // Extension
 
-        void startup(MapNode* mapNode);
+        void startup(MapNode* mapNode, const osgDB::Options* dbOptions);
 
         void shutdown(MapNode* mapNode);
 

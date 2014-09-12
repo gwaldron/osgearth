@@ -437,12 +437,12 @@ MapNode::getTerrainEngine() const
 }
 
 void
-MapNode::addExtension(Extension* extension)
+MapNode::addExtension(Extension* extension, const osgDB::Options* options)
 {
     if ( extension )
     {
         _extensions.push_back( extension );
-        extension->startup( this );
+        extension->startup( this, options );
     }
 }
 

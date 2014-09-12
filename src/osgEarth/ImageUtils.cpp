@@ -1003,6 +1003,16 @@ ImageUtils::sameFormat(const osg::Image* lhs, const osg::Image* rhs)
         lhs->getDataType()    == rhs->getDataType();
 }
 
+bool
+ImageUtils::textureArrayCompatible(const osg::Image* lhs, const osg::Image* rhs)
+{
+    return
+        sameFormat(lhs, rhs) &&
+        lhs->s() == rhs->s() &&
+        lhs->t() == rhs->t() &&
+        lhs->r() == rhs->r();
+}
+
 //------------------------------------------------------------------------
 
 namespace

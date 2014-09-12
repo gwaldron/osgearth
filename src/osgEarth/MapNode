@@ -166,7 +166,7 @@ namespace osgEarth
         /**
          * Adds an Extension and calls its startup method with this MapNode.
          */
-        void addExtension(Extension* extension);
+        void addExtension(Extension* extension, const osgDB::Options* options =0L);
 
         /**
          * Removes an extension, and calls its shutdown method with this MapNode.

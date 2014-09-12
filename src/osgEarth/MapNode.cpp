@@ -21,6 +21,7 @@
 #include <osgEarth/ClampableNode>
 #include <osgEarth/ClampingTechnique>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Extension>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapNodeObserver>
@@ -81,6 +82,8 @@ namespace
 
         osg::observer_ptr<MapNode> _mapNode;
     };
+
+    typedef std::vector< osg::ref_ptr<Extension> > Extensions;
 }
 
 //---------------------------------------------------------------------------
@@ -373,6 +376,8 @@ MapNode::~MapNode()
     {
         this->onModelLayerRemoved( itr->get() );
     }
+
+    this->clearExtensions();
 }
 
 osg::BoundingSphere
@@ -429,6 +434,40 @@ MapNode::getTerrainEngine() const
         me->dirtyBound();
     }
     return _terrainEngine;
+}
+
+void
+MapNode::addExtension(Extension* extension)
+{
+    if ( extension )
+    {
+        _extensions.push_back( extension );
+        extension->startup( this );
+    }
+}
+
+void
+MapNode::removeExtension(Extension* extension)
+{
+    Extensions::iterator i = std::find(_extensions.begin(), _extensions.end(), extension);
+    if ( i != _extensions.end() )
+    {
+        i->get()->shutdown( this );
+        _extensions.erase( i );
+    }
+}
+
+void
+MapNode::clearExtensions()
+{
+    for(Extensions::iterator i = _extensions.begin();
+        i != _extensions.end(); 
+        ++i)
+    {
+        i->get()->shutdown( this );
+    }
+
+    _extensions.clear();
 }
 
 osg::Group*

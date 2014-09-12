@@ -31,6 +31,7 @@ namespace osgEarth
     class OverlayDecorator;
     class Terrain;
     class MapNodeCullData;
+    class Extension;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
@@ -162,6 +163,21 @@ namespace osgEarth
         Config& externalConfig() { return _externalConf; }
         const Config& externalConfig() const { return _externalConf; }
 
+        /**
+         * Adds an Extension and calls its startup method with this MapNode.
+         */
+        void addExtension(Extension* extension);
+
+        /**
+         * Removes an extension, and calls its shutdown method with this MapNode.
+         */
+        void removeExtension(Extension* extension);
+
+        /**
+         * Removes all extensions, calling each one's shutdown method this this MapNode.
+         */
+        void clearExtensions();
+
 
     public: // special purpose
 
@@ -202,6 +218,9 @@ namespace osgEarth
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
 
+        std::vector<osg::ref_ptr<Extension> > _extensions;
+        //typedef std::vector<osg::ref_ptr<Extension> > Extensions;
+        //Extensions _extensions;
 
     public: // MapCallback proxy
 

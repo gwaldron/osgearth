@@ -90,36 +90,42 @@ FeaturesToNodeFilter::~FeaturesToNodeFilter()
 void
 FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
 {
+    computeLocalizers(context, context.extent().get(), _world2local, _local2world);
+}
+
+void
+FeaturesToNodeFilter::computeLocalizers( const FilterContext& context, const osgEarth::GeoExtent &extent, osg::Matrixd &out_w2l, osg::Matrixd &out_l2w )
+{
     if ( context.isGeoreferenced() )
     {
         if ( context.getSession()->getMapInfo().isGeocentric() )
         {
             const SpatialReference* geogSRS = context.profile()->getSRS()->getGeographicSRS();
-            GeoExtent geodExtent = context.extent()->transform( geogSRS );
+            GeoExtent geodExtent = extent.transform( geogSRS );
             if ( geodExtent.width() < 180.0 )
             {
                 osg::Vec3d centroid, centroidECEF;
                 geodExtent.getCentroid( centroid.x(), centroid.y() );
                 geogSRS->transform( centroid, geogSRS->getECEF(), centroidECEF );
-                geogSRS->getECEF()->createLocalToWorld( centroidECEF, _local2world );
-                _world2local.invert( _local2world );
+                geogSRS->getECEF()->createLocalToWorld( centroidECEF, out_l2w );
+                out_w2l.invert( out_l2w );
             }
         }
 
         else // projected
         {
-            if ( context.extent().isSet() )
+            if ( extent.isValid() )
             {
                 osg::Vec3d centroid;
-                context.extent()->getCentroid(centroid.x(), centroid.y());
+                extent.getCentroid(centroid.x(), centroid.y());
 
-                context.extent()->getSRS()->transform(
+                extent.getSRS()->transform(
                     centroid,
                     context.getSession()->getMapInfo().getProfile()->getSRS(),
                     centroid );
 
-                _world2local.makeTranslate( -centroid );
-                _local2world.invert( _world2local );
+                out_w2l.makeTranslate( -centroid );
+                out_l2w.invert( out_w2l );
             }
         }
     }
@@ -232,8 +238,14 @@ FeaturesToNodeFilter::transformAndLocalize(const osg::Vec3d&              input,
 osg::Node*
 FeaturesToNodeFilter::delocalize( osg::Node* node ) const
 {
-    if ( !_local2world.isIdentity() ) 
-        return delocalizeAsGroup( node );
+    return delocalize(node, _local2world);
+}
+
+osg::Node*
+FeaturesToNodeFilter::delocalize( osg::Node* node, const osg::Matrixd &local2world) const
+{
+    if ( !local2world.isIdentity() ) 
+        return delocalizeAsGroup( node, local2world );
     else
         return node;
 }
@@ -241,7 +253,13 @@ FeaturesToNodeFilter::delocalize( osg::Node* node ) const
 osg::Group*
 FeaturesToNodeFilter::delocalizeAsGroup( osg::Node* node ) const
 {
-    osg::Group* group = createDelocalizeGroup();
+    return delocalizeAsGroup( node, _local2world );
+}
+
+osg::Group*
+FeaturesToNodeFilter::delocalizeAsGroup( osg::Node* node, const osg::Matrixd &local2world ) const
+{
+    osg::Group* group = createDelocalizeGroup(local2world);
     if ( node )
         group->addChild( node );
     return group;
@@ -250,9 +268,15 @@ FeaturesToNodeFilter::delocalizeAsGroup( osg::Node* node ) const
 osg::Group*
 FeaturesToNodeFilter::createDelocalizeGroup() const
 {
-    osg::Group* group = _local2world.isIdentity() ?
+    return createDelocalizeGroup( _local2world );
+}
+
+osg::Group*
+FeaturesToNodeFilter::createDelocalizeGroup( const osg::Matrixd &local2world ) const
+{
+    osg::Group* group = local2world.isIdentity() ?
         new osg::Group() :
-        new osg::MatrixTransform( _local2world );
+        new osg::MatrixTransform( local2world );
 
     return group;
 }

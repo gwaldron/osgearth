@@ -27,6 +27,7 @@
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarthSymbology/ResourceCache>
+#include <osgEarth/Tessellator>
 #include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -39,6 +40,7 @@
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
+#include <osgUtil/Simplifier>
 #include <osgUtil/SmoothingVisitor>
 #include <osgDB/WriteFile>
 #include <osg/Version>
@@ -50,6 +52,44 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
+
+namespace
+{
+    bool isCCW(double x1, double y1, double x2, double y2, double x3, double y3)
+    {
+        return (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1) > 0.0;
+    }
+
+    bool segmentsIntersect(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4)
+    {
+        return isCCW(x1, y1, x3, y3, x4, y4) != isCCW(x2, y2, x3, y3, x4, y4) && isCCW(x1, y1, x2, y2, x3, y3) != isCCW(x1, y1, x2, y2, x4, y4);
+    }
+
+    bool holeCompare(osgEarth::Symbology::Ring* i, osgEarth::Symbology::Ring* j)
+    {
+        return i->getBounds().xMax() > j->getBounds().xMax();
+    }
+
+    bool segmentsIntersect(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4, double &xi, double &yi)
+    {
+        double d = (y4-y3) * (x2-x1) - (x4-x3) * (y2-y1);
+
+        if (d == 0) return false; // parallel
+
+        double ua = ((x4-x3) * (y1-y3) - (y4-y3) * (x1-x3)) / d;
+        double ub = ((x2-x1) * (y1-y3) - (y2-y1) * (x1-x3)) / d;
+
+        if (ua >= 0.0 && ua <= 1.0 && ub >= 0.0 && ub <= 1.0)
+        {
+            xi = x1 + ua * (x2 - x1);
+            yi = y1 + ua * (y2 - y1);
+
+            return true;
+        }
+
+        return false;
+    }
+}
 
 BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
@@ -118,19 +158,48 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
                 osgGeom->setName( name );
             }
 
+
+            // compute localizing matrices or use globals
+            osg::Matrixd w2l, l2w;
+            if (makeECEF)
+            {
+                osgEarth::GeoExtent featureExtent(featureSRS);
+                featureExtent.expandToInclude(part->getBounds());
+
+                computeLocalizers(context, featureExtent, w2l, l2w);
+            }
+            else
+            {
+                w2l = _world2local;
+                l2w = _local2world;
+            }
+
+
             // build the geometry:
-            buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom);
+            buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
 
             osg::Vec3Array* allPoints = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
             
             // subdivide the mesh if necessary to conform to an ECEF globe:
             if ( makeECEF )
             {
+
+                //convert back to world coords
+                for( osg::Vec3Array::iterator i = allPoints->begin(); i != allPoints->end(); ++i )
+                {
+                    osg::Vec3d v(*i);
+                    v = v * l2w;
+                    v = v * _world2local;
+
+                    (*i)._v[0] = v[0];
+                    (*i)._v[1] = v[1];
+                    (*i)._v[2] = v[2];
+                }
+
                 double threshold = osg::DegreesToRadians( *_maxAngle_deg );
                 OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
 
                 MeshSubdivider ms( _world2local, _local2world );
-                //ms.setMaxElementsPerEBO( INT_MAX );
                 if ( input->geoInterp().isSet() )
                     ms.run( *osgGeom, threshold, *input->geoInterp() );
                 else
@@ -434,43 +503,172 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
                                   const SpatialReference* mapSRS,
                                   bool                    makeECEF,
                                   bool                    tessellate,
-                                  osg::Geometry*          osgGeom)
+                                  osg::Geometry*          osgGeom,
+                                  const osg::Matrixd      &world2local)
 {
     if ( !ring->isValid() )
         return;
 
-    int totalPoints = ring->getTotalPointCount();
-    osg::Vec3Array* allPoints = new osg::Vec3Array();
-    transformAndLocalize( ring->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
+    ring->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
 
-    GLenum mode = GL_LINE_LOOP;
-    osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, 0, ring->size() ) );
+    osg::Vec3Array* allPoints = new osg::Vec3Array();
+    transformAndLocalize( ring->asVector(), featureSRS, allPoints, mapSRS, world2local, makeECEF );
 
     Polygon* poly = dynamic_cast<Polygon*>(ring);
     if ( poly )
     {
-        int offset = ring->size();
+        RingCollection ordered(poly->getHoles().begin(), poly->getHoles().end());
+        std::sort(ordered.begin(), ordered.end(), holeCompare);
 
         for( RingCollection::const_iterator h = poly->getHoles().begin(); h != poly->getHoles().end(); ++h )
         {
             Geometry* hole = h->get();
             if ( hole->isValid() )
             {
-                transformAndLocalize( hole->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
+                hole->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CW);
 
-                osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, offset, hole->size() ) );
-                offset += hole->size();
-            }            
+                osg::ref_ptr<osg::Vec3Array> holePoints = new osg::Vec3Array();
+                transformAndLocalize( hole->asVector(), featureSRS, holePoints.get(), mapSRS, world2local, makeECEF );
+
+                // find the point with the highest x value
+                unsigned int hCursor = 0;
+                for (unsigned int i=1; i < holePoints->size(); i++)
+                {
+                    if ((*holePoints)[i].x() > (*holePoints)[hCursor].x())
+                      hCursor = i;
+                }
+
+                double x1 = (*holePoints)[hCursor].x();
+                double y1 = (*holePoints)[hCursor].y();
+                double y2 = (*holePoints)[hCursor].y();
+
+                unsigned int edgeCursor = UINT_MAX;
+                double edgeDistance = DBL_MAX;
+                unsigned int foundPointCursor = UINT_MAX;
+                for (unsigned int i=0; i < allPoints->size(); i++)
+                {
+                    unsigned int next = i == allPoints->size() - 1 ? 0 : i + 1;
+                    double xMax = osg::maximum((*allPoints)[i].x(), (*allPoints)[next].x());
+
+                    if (xMax > (*holePoints)[hCursor].x())
+                    {
+                        double x2 = xMax + 1.0;
+                        double x3 = (*allPoints)[i].x();
+                        double y3 = (*allPoints)[i].y();
+                        double x4 = (*allPoints)[next].x();
+                        double y4 = (*allPoints)[next].y();
+
+                        double xi=0.0, yi=0.0;
+                        bool intersects = false;
+                        unsigned int hitPointCursor = UINT_MAX;
+                        if (y1 == y3 && x3 > x1)
+                        {
+                            xi = x3;
+                            hitPointCursor = i;
+                            intersects = true;
+                        }
+                        else if (y1 == y4 && x4 > x1)
+                        {
+                            xi = x4;
+                            hitPointCursor = next;
+                            intersects = true;
+                        }
+                        else if (segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4, xi, yi))
+                        {
+                            intersects = true;
+                        }
+
+                        double dist = (osg::Vec2d(xi, yi) - osg::Vec2d(x1, y1)).length();
+                        if (intersects && dist < edgeDistance)
+                        {
+                            foundPointCursor = hitPointCursor;
+                            edgeCursor = hitPointCursor != UINT_MAX ? hitPointCursor : (x3 >= x4 ? i : next);
+                            edgeDistance = dist;
+                        }
+                    }
+                }
+
+                if (foundPointCursor == UINT_MAX && edgeCursor != UINT_MAX)
+                {
+                    // test for intersecting edges between x1 and x2
+                    // (skipping the two segments for which edgeCursor is a vert)
+
+                    double x2 = (*allPoints)[edgeCursor].x();
+                    y2 = (*allPoints)[edgeCursor].y();
+
+                    bool foundIntersection = false;
+                    for (unsigned int i=0; i < allPoints->size(); i++)
+                    {
+                        unsigned int next = i == allPoints->size() - 1 ? 0 : i + 1;
+
+                        if (i == edgeCursor || next == edgeCursor)
+                          continue;
+
+                        double x3 = (*allPoints)[i].x();
+                        double y3 = (*allPoints)[i].y();
+                        double x4 = (*allPoints)[next].x();
+                        double y4 = (*allPoints)[next].y();
+
+                        foundIntersection = foundIntersection || segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4);
+
+                        if (foundIntersection)
+                        {
+                            unsigned int prev = i == 0 ? allPoints->size() - 1 : i - 1;
+
+                            if (!isCCW((*allPoints)[prev].x(), (*allPoints)[prev].y(), x3, y3, x4, y4))
+                            {
+                                edgeCursor = i;
+                                x2 = (*allPoints)[edgeCursor].x();
+                                y2 = (*allPoints)[edgeCursor].y();
+                                foundIntersection = false;
+                            }
+                        }
+
+                    }
+                }
+
+                if (edgeCursor != UINT_MAX)
+                {
+                    // build array of correctly ordered new points to add to the outer loop
+                    osg::ref_ptr<osg::Vec3Array> insertPoints = new osg::Vec3Array();
+                    insertPoints->reserve(holePoints->size() + 2);
+
+                    unsigned int p = hCursor;
+                    do
+                    {
+                        insertPoints->push_back((*holePoints)[p]);
+                        p = p == holePoints->size() - 1 ? 0 : p + 1;
+                    } while(p != hCursor);
+
+                    insertPoints->push_back((*holePoints)[hCursor]);
+                    insertPoints->push_back((*allPoints)[edgeCursor]);
+                    
+                    // insert new points into outer loop
+                    osg::Vec3Array::iterator it = edgeCursor == allPoints->size() - 1 ? allPoints->end() : allPoints->begin() + (edgeCursor + 1);
+                    allPoints->insert(it, insertPoints->begin(), insertPoints->end());
+                }
+            }
         }
     }
+
+    GLenum mode = GL_LINE_LOOP;
+    osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, 0, allPoints->size() ) );
+
     osgGeom->setVertexArray( allPoints );
 
     if ( tessellate )
     {
-        osgUtil::Tessellator tess;
-        tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-        tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-        tess.retessellatePolygons( *osgGeom );
+        osgEarth::Tessellator oeTess;
+        if (!oeTess.tessellateGeometry(*osgGeom))
+        {
+            //fallback to osg tessellator
+            OE_NOTICE << LC << "OE Tessellation failed! Using OSG tessellator. (" << osgGeom->getName() << ")" << std::endl;
+
+            osgUtil::Tessellator tess;
+            tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+            tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+            tess.retessellatePolygons( *osgGeom );
+        }
     }
 
     //// Normal computation.

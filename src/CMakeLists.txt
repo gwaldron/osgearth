@@ -4,7 +4,8 @@ FOREACH( lib
          osgEarthAnnotation
          osgEarthFeatures
          osgEarthUtil
-         osgEarthSymbology )
+         osgEarthSymbology
+ )
 
     ADD_SUBDIRECTORY(${lib})
     
@@ -13,6 +14,7 @@ FOREACH( lib
 ENDFOREACH( lib )
 
 ADD_SUBDIRECTORY( osgEarthDrivers )
+ADD_SUBDIRECTORY( osgEarthExtensions )
 
 IF(NOT OSG_BUILD_PLATFORM_IPHONE AND NOT OSG_BUILD_PLATFORM_IPHONE_SIMULATOR AND NOT ANDROID)
 ADD_SUBDIRECTORY( applications )

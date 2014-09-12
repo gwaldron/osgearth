@@ -912,6 +912,7 @@ namespace osgEarth { namespace Util
         // The world coordinate of the Viewpoint focal point.
         osg::Vec3d              _center;
         GeoPoint                _centerMap;
+        double                  _centerHeight;
 
         // local2world matrix for the center point.
         osg::CoordinateFrame    _centerLocalToWorld;

@@ -688,6 +688,10 @@ EarthManipulator::setCenter( const osg::Vec3d& worldPos )
     {
         _centerMap.fromWorld( _cached_srs.get(), worldPos );
     }
+
+    // cache the "last known" focal point height so we can use it as a
+    // backup if necessary.
+    _centerHeight = _is_geocentric ? _center.length() : _center.z();
 }
 
 
@@ -1144,7 +1148,7 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
     osg::ref_ptr<osg::Node> safeNode = _node.get();
     if ( safeNode.valid() )
     {
-        double R = getSRS()->getEllipsoid()->getRadiusEquator();
+        double R = _centerHeight; // = getSRS()->getEllipsoid()->getRadiusEquator();
 
         getInverseMatrix().getLookAt(out_eye, out_target, out_up, 1.0);
         osg::Vec3d look = out_target-out_eye;
@@ -1162,7 +1166,7 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
         if (lsi->containsIntersections())
         {
             out_target = lsi->getIntersections().begin()->getWorldIntersectPoint();
-            if ( GeoMath::isPointVisible(out_eye, out_target, R) )
+            if ( !_is_geocentric || GeoMath::isPointVisible(out_eye, out_target, R) )
             {
                 success = true;
             }
@@ -1171,7 +1175,6 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
         if ( !success )
         {
             // backup plan: intersect spheroid (if geocentric) or base plane (if projected)
-
             if ( _is_geocentric )
             {
                 osg::Vec3d i0, i1;

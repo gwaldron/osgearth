@@ -122,6 +122,11 @@ SplatCatalog::createTextureAndIndex(const osgDB::Options* options,
 
     out_texture = new osg::Texture2DArray();
     out_texture->setTextureSize( images[0]->s(), images[0]->t(), images.size() );
+    out_texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
+    out_texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+    out_texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+    out_texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    out_texture->setResizeNonPowerOfTwoHint( false );
 
     for(unsigned i=0; i<images.size(); ++i)
     {

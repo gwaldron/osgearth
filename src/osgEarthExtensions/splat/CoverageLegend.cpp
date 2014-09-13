@@ -22,7 +22,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Extensions::Splat;
 
-#define LC "[SplatClassificationMap] "
+#define LC "[CoverageLegend] "
 
 //............................................................................
 
@@ -34,15 +34,44 @@ CoverageLegend::CoverageLegend()
 void
 CoverageLegend::fromConfig(const Config& conf)
 {
-    
+    conf.getIfSet("name",   _name);
+    conf.getIfSet("source", _source);
+
+    ConfigSet predicatesConf = conf.child("mappings").children();
+    for(ConfigSet::const_iterator i = predicatesConf.begin(); i != predicatesConf.end(); ++i)
+    {
+        osg::ref_ptr<CoverageValuePredicate> p = new CoverageValuePredicate();
+
+        i->getIfSet( "name",  p->_description );
+        i->getIfSet( "value", p->_exactValue );
+        i->getIfSet( "class", p->_mappedClassName );
+        
+        if ( p->_mappedClassName.isSet() )
+        {
+            _predicates.push_back( p.get() );
+        }
+    }
 }
 
 Config
 CoverageLegend::getConfig() const
 {
     Config conf;
+    
+    conf.addIfSet("name",   _name);
+    conf.addIfSet("source", _source);
 
-    OE_WARN << LC << "*** CoverageLegend::getConfig is not yet implemented ***\n";
-    //todo
+    Config preds;
+    for(Predicates::const_iterator i = _predicates.begin(); i != _predicates.end(); ++i)
+    {
+        CoverageValuePredicate* p = i->get();
+        Config pred;
+        pred.addIfSet( "name",  p->_description );
+        pred.addIfSet( "value", p->_exactValue );
+        pred.addIfSet( "class", p->_mappedClassName );
+        preds.add(pred);
+    }
+    conf.add( "mappings", preds );
+
     return conf;
 }

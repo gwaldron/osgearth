@@ -69,6 +69,11 @@ namespace osgEarth { namespace Extensions { namespace Splat
         SplatCatalog();
 
         /**
+         * The splatting classifications set.
+         */
+        const SplatClasses& getClasses() const { return _classes; }
+
+        /**
          * Create a texture array from the images in the catalog.
          */
         bool createTextureAndIndex(

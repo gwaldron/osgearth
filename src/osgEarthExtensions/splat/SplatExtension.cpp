@@ -55,9 +55,9 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
         return;
     }
 
-    if ( !_options.classMapURI().isSet() )
+    if ( !_options.legendURI().isSet() )
     {
-        OE_WARN << LC << "Illegal: classification map URI is required" << std::endl;
+        OE_WARN << LC << "Illegal: legend URI is required" << std::endl;
         return;
     }
 
@@ -72,7 +72,7 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
             conf.fromJSON( json );
             catalog->fromConfig( conf );
 
-            OE_INFO << LC << "Catalog: " << catalog->getConfig().toJSON(true) << "\n";
+            OE_INFO << LC << "Catalog: " << catalog->getClasses().size() << " classes\n";
         }
         else
         {
@@ -83,7 +83,7 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
         }
     }
 
-    // Read in the classification map.
+    // Read in the legend.
     osg::ref_ptr<CoverageLegend> legend = new CoverageLegend();
     {
         ReadResult result = _options.legendURI()->readString( dbOptions );
@@ -92,6 +92,8 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
             Config conf;
             conf.fromJSON( result.getString() );
             legend->fromConfig( conf );
+
+            OE_INFO << LC << "Legend: " << legend->getPredicates().size() << " mappings \n";
         }
         else
         {

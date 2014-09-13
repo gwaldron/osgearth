@@ -6,17 +6,20 @@ SET(TARGET_SRC
 	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
-	CoverageLegend.cpp)
+	SplatTerrainEffect.cpp
+	SplatCoverageLegend.cpp)
 	
 SET(LIB_PUBLIC_HEADERS
-	SplatOptions)
+	SplatCoverageLegend
+	SplatCatalog
+	SplatExtension
+	SplatOptions
+	SplatTerrainEffect)
 	
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS}
 	SplatExport
-	SplatExtension
-	SplatCatalog
-	CoverageLegend)
+	SplatShaders)
 	
 SETUP_EXTENSION(osgearth_splat)
 

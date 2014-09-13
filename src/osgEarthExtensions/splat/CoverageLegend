@@ -31,15 +31,15 @@ namespace osgEarth { namespace Extensions { namespace Splat
      * of a splat class.
      */
     template<typename T>
-    class CoverageValuePredicateT : osg::Referenced
+    class CoverageValuePredicateT : public osg::Referenced
     {
     public:
         optional<T> _exactValue;
         optional<T> _minValue;
         optional<T> _maxValue;
 
-        std::string _description;
-        std::string _mappedClassName;
+        optional<std::string> _description;
+        optional<std::string> _mappedClassName;
 
         bool match(const T& testValue) const
         {
@@ -71,6 +71,13 @@ namespace osgEarth { namespace Extensions { namespace Splat
     public:
         CoverageLegend();
 
+    public:
+        typedef std::vector< osg::ref_ptr<CoverageValuePredicate> > Predicates;
+
+        /**
+         * The collection of value->class mapping predicates
+         */
+        const Predicates& getPredicates() const { return _predicates; }
 
     public: // serialization
 
@@ -86,7 +93,9 @@ namespace osgEarth { namespace Extensions { namespace Splat
         virtual ~CoverageLegend() { }
 
         optional<std::string> _name;
-        optional<std::string> _description;
+        optional<std::string> _source;
+
+        Predicates _predicates;
     };
 
 } } } // namespace osgEarth::Extensions::Splat

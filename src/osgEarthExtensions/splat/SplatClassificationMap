@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_SPLAT_SPLAT_CLASSMAP
-#define OSGEARTH_SPLAT_SPLAT_CLASSMAP 1
+#ifndef OSGEARTH_SPLAT_COVERAGE_LEGEND
+#define OSGEARTH_SPLAT_COVERAGE_LEGEND 1
 
 #include "SplatExport"
 #include <osgEarth/Config>
@@ -63,13 +63,13 @@ namespace osgEarth { namespace Extensions { namespace Splat
      */
 
     /**
-     * Catalog of texture-splatting classes. Usually these correspond
-     * to land use.
+     * Legend that maps coverage values (or value predicates) to splat
+     * catalog classes.
      */
-    class SplatClassificationMap : public osg::Referenced
+    class CoverageLegend : public osg::Referenced
     {
     public:
-        SplatClassificationMap();
+        CoverageLegend();
 
 
     public: // serialization
@@ -83,7 +83,7 @@ namespace osgEarth { namespace Extensions { namespace Splat
 
     protected:
 
-        virtual ~SplatClassificationMap() { }
+        virtual ~CoverageLegend() { }
 
         optional<std::string> _name;
         optional<std::string> _description;
@@ -91,4 +91,4 @@ namespace osgEarth { namespace Extensions { namespace Splat
 
 } } } // namespace osgEarth::Extensions::Splat
 
-#endif // OSGEARTH_SPLAT_SPLAT_CLASSMAP
+#endif // OSGEARTH_SPLAT_COVERAGE_LEGEND

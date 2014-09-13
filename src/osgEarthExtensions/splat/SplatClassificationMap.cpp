@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "SplatClassificationMap"
+#include "CoverageLegend"
 #include <osgEarth/Config>
 
 using namespace osgEarth;
@@ -26,23 +26,23 @@ using namespace osgEarth::Extensions::Splat;
 
 //............................................................................
 
-SplatClassificationMap::SplatClassificationMap()
+CoverageLegend::CoverageLegend()
 {
     //nop
 }
 
 void
-SplatClassificationMap::fromConfig(const Config& conf)
+CoverageLegend::fromConfig(const Config& conf)
 {
-    //todo
+    
 }
 
 Config
-SplatClassificationMap::getConfig() const
+CoverageLegend::getConfig() const
 {
     Config conf;
 
-    OE_WARN << LC << "*** SplatClassificationMap::getConfig is not yet implemented ***\n";
+    OE_WARN << LC << "*** CoverageLegend::getConfig is not yet implemented ***\n";
     //todo
     return conf;
 }

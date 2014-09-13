@@ -32,8 +32,8 @@ namespace osgEarth { namespace Extensions { namespace Splat
         optional<URI>& catalogURI() { return _catalogURI; }
         const optional<URI>& catalogURI() const { return _catalogURI; }
         
-        optional<URI>& classMapURI() { return _classMapURI; }
-        const optional<URI>& classMapURI() const { return _classMapURI; }
+        optional<URI>& legendURI() { return _legendURI; }
+        const optional<URI>& legendURI() const { return _legendURI; }
 
     public:
         SplatOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
@@ -48,7 +48,7 @@ namespace osgEarth { namespace Extensions { namespace Splat
         Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
             conf.updateIfSet("catalog", _catalogURI);
-            conf.updateIfSet("classmap", _classMapURI);
+            conf.updateIfSet("legend",  _legendURI);
             return conf;
         }
 
@@ -61,11 +61,11 @@ namespace osgEarth { namespace Extensions { namespace Splat
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet("catalog", _catalogURI);
-            conf.getIfSet("classmap", _classMapURI);
+            conf.getIfSet("legend",  _legendURI);
         }
 
         optional<URI> _catalogURI;
-        optional<URI> _classMapURI;
+        optional<URI> _legendURI;
     };
 
 } } } // namespace osgEarth::Extensions::Splat

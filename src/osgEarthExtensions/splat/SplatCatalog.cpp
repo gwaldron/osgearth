@@ -71,8 +71,20 @@ SplatCatalog::getConfig() const
 {
     Config conf;
 
-    OE_WARN << LC << "*** SplatCatalog::getConfig is not yet implemented ***\n";
-    //todo
+    conf.addIfSet("name", _name);
+    conf.addIfSet("description", _description);
+    
+    Config classes("classes");
+    {
+        for(SplatClasses::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
+        {
+            Config classConf( i->_name );
+            classConf.addIfSet( "url", i->_imageURI );
+            classes.add( classConf );
+        }
+    }    
+    conf.add( classes );
+
     return conf;
 }
 

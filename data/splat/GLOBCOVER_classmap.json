@@ -1,119 +1,121 @@
 {
-    name: "GLOBCOVER 2009",
-	url:  "GLOBCOVER_L4_200901_200912_V2.3_tiled.tif",
-    mappings: [
+    "name" : "GLOBCOVER 2009",
+	"url" :  "GLOBCOVER_L4_200901_200912_V2.3_tiled.tif",
+    "mappings" : [
         {
-            value: "11", 
-            name:  "Post-flooding or irrigated croplands (or aquatic)",
-            class: "cropland"
+            "value" : "11", 
+            "name"  : "Post-flooding or irrigated croplands (or aquatic)",
+            "class" : "cropland"
+		},
         {
-            value: "14",
-            name:  "Rainfed croplands",
-            class: "cropland"
+            "value" : "14",
+            "name"  : "Rainfed croplands",
+            "class" : "cropland"
         },
         {
-            value: "20",
-            name:  "Mosaic cropland (50-70%) / vegetation (grassland/shrubland/forest) (20-50%)",
-            class: "cropland"
+            "value" : "20",
+            "name"  : "Mosaic cropland (50-70%) / vegetation (grassland/shrubland/forest) (20-50%)",
+            "class" : "cropland"
+		},
         {
-            value: "30",
-            name:  "Mosaic vegetation (grassland/shrubland/forest) (50-70%) / cropland (20-50%)",
-            class:  "cropland"
+            "value" : "30",
+            "name"  :  "Mosaic vegetation (grassland/shrubland/forest) (50-70%) / cropland (20-50%)",
+            "class" :  "cropland"
         },
         {
-            value: "40",
-            name:  "Closed to open (>15%) broadleaved evergreen or semi-deciduous forest (>5m)",
-            class: "forest"
+            "value" : "40",
+            "name"  : "Closed to open (>15%) broadleaved evergreen or semi-deciduous forest (>5m)",
+            "class" : "forest"
         },
         {
-            value: "50",
-            name:  "Closed (>40%) broadleaved deciduous forest (>5m)",
-            class: "forest"
+            "value" : "50",
+            "name"  : "Closed (>40%) broadleaved deciduous forest (>5m)",
+            "class" : "forest"
         },
         {
-            value: "60",
-            name:  "Open (15-40%) broadleaved deciduous forest/woodland (>5m)",
-            class: "forest",
+            "value" : "60",
+            "name"  : "Open (15-40%) broadleaved deciduous forest/woodland (>5m)",
+            "class" : "forest"
         },
         {
-            value: "70",
-            name:  "Closed (>40%) needleleaved evergreen forest (>5m)",
-            class: "forest"
+            "value" : "70",
+            "name"  : "Closed (>40%) needleleaved evergreen forest (>5m)",
+            "class" : "forest"
         },
         {
-            value: "90",
-            name:  "Open (15-40%) needleleaved deciduous or evergreen forest (>5m)",
-            class: "forest"
+            "value" : "90",
+            "name"  : "Open (15-40%) needleleaved deciduous or evergreen forest (>5m)",
+            "class" : "forest"
         },
         {
-            value: "100",
-            name:  "Closed to open (>15%) mixed broadleaved and needleleaved forest (>5m)",
-            class: "forest"
+            "value" : "100",
+            "name"  : "Closed to open (>15%) mixed broadleaved and needleleaved forest (>5m)",
+            "class" : "forest"
         },
         {
-            value: "110",
-            name:  "Mosaic forest or shrubland (50-70%) / grassland (20-50%)",
-            class: "grassland"
+            "value" : "110",
+            "name"  : "Mosaic forest or shrubland (50-70%) / grassland (20-50%)",
+            "class" : "grassland"
         },
         {
-            value: "120",
-            name:  "Mosaic grassland (50-70%) / forest or shrubland (20-50%)",
-            class: "grassland"
+            "value" : "120",
+            "name"  :  "Mosaic grassland (50-70%) / forest or shrubland (20-50%)",
+            "class" : "grassland"
         },
         {
-            value: "130",
-            name:  "Closed to open (>15%) (broadleaved or needleleaved, evergreen or deciduous) shrubland (<5m)",
-            class: "savanna"
+            "value" : "130",
+            "name"  : "Closed to open (>15%) (broadleaved or needleleaved, evergreen or deciduous) shrubland (<5m)",
+            "class" : "savanna"
         },
         {
-            value: "140",
-            name:  "Closed to open (>15%) herbaceous vegetation (grassland, savannas or lichens/mosses)",
-            class: "savanna"
+            "value" : "140",
+            "name"  : "Closed to open (>15%) herbaceous vegetation (grassland, savannas or lichens/mosses)",
+            "class" : "savanna"
         },
         {
-            value: "150",
-            name:  "Sparse (<15%) vegetation",
-            class: "desert"
+            "value" : "150",
+            "name"  : "Sparse (<15%) vegetation",
+            "class" : "desert"
         },
         {
-            value: "160",
-            name:  "Closed to open (>15%) broadleaved forest regularly flooded (semi-permanently or temporarily) - Fresh or brackish water",
-            class: "swamp"
+            "value" : "160",
+            "name"  : "Closed to open (>15%) broadleaved forest regularly flooded (semi-permanently or temporarily) - Fresh or brackish water",
+            "class" : "swamp"
         },
         {
-            value: "170",
-            name:  "Closed (>40%) broadleaved forest or shrubland permanently flooded - Saline or brackish water",
-            class: "swamp"
+            "value" : "170",
+            "name"  : "Closed (>40%) broadleaved forest or shrubland permanently flooded - Saline or brackish water",
+            "class" : "swamp"
         },
         {
-            value: "180",
-            name:  "Closed to open (>15%) grassland or woody vegetation on regularly flooded or waterlogged soil - Fresh, brackish or saline water",
-            class: "swamp"
+            "value" : "180",
+            "name"  : "Closed to open (>15%) grassland or woody vegetation on regularly flooded or waterlogged soil - Fresh, brackish or saline water",
+            "class" : "swamp"
         },
         {
-            value: "190",
-            name:  "Artificial surfaces and associated areas (Urban areas >50%)",
-            class: "urban"
+            "value" : "190",
+            "name"  : "Artificial surfaces and associated areas (Urban areas >50%)",
+            "class" : "urban"
         },
         {
-            value: "200",
-            name:  "Bare areas",
-            class: "desert"
+            "value" : "200",
+            "name"  : "Bare areas",
+            "class" : "desert"
         },
         {
-            value: "210",
-            name:  "Water bodies",
-            class: "water"
+            "value" : "210",
+            "name"  : "Water bodies",
+            "class" : "water"
         },
         {
-            value: "220",
-            name:  "Permanent snow and ice",
-            class: "tundra"
+            "value" : "220",
+            "name"  : "Permanent snow and ice",
+            "class" : "tundra"
         },
         {
-            value: "230",
-            name:  "No data",
-            class: ""
+            "value" : "230",
+            "name"  : "No data",
+            "class" : ""
         }
-    }
+    ]
 }

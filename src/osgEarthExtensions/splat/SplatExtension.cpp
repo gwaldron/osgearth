@@ -18,7 +18,7 @@
  */
 #include "SplatExtension"
 #include "SplatCatalog"
-#include "SplatClassificationMap"
+#include "CoverageLegend"
 
 #include <osgEarth/MapNode>
 
@@ -68,8 +68,11 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
         if ( result.succeeded() )
         {
             Config conf;
-            conf.fromJSON( result.getString() );
+            std::string json = result.getString();
+            conf.fromJSON( json );
             catalog->fromConfig( conf );
+
+            OE_INFO << LC << "Catalog: " << catalog->getConfig().toJSON(true) << "\n";
         }
         else
         {
@@ -81,20 +84,20 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
     }
 
     // Read in the classification map.
-    osg::ref_ptr<SplatClassificationMap> classmap = new SplatClassificationMap();
+    osg::ref_ptr<CoverageLegend> legend = new CoverageLegend();
     {
-        ReadResult result = _options.classMapURI()->readString( dbOptions );
+        ReadResult result = _options.legendURI()->readString( dbOptions );
         if ( result.succeeded() )
         {
             Config conf;
             conf.fromJSON( result.getString() );
-            classmap->fromConfig( conf );
+            legend->fromConfig( conf );
         }
         else
         {
             OE_WARN << LC
-                << "Failed to read classification map from \""
-                << _options.classMapURI()->full() << "\"\n";
+                << "Failed to read legend from \""
+                << _options.legendURI()->full() << "\"\n";
             return;
         }
     }

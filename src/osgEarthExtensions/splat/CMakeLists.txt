@@ -6,7 +6,7 @@ SET(TARGET_SRC
 	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
-	SplatClassificationMap.cpp)
+	CoverageLegend.cpp)
 	
 SET(LIB_PUBLIC_HEADERS
 	SplatOptions)
@@ -16,7 +16,7 @@ SET(TARGET_H
 	SplatExport
 	SplatExtension
 	SplatCatalog
-	SplatClassificationMap)
+	CoverageLegend)
 	
 SETUP_EXTENSION(osgearth_splat)
 

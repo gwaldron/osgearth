@@ -126,19 +126,6 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
 
     if (!vertices || vertices->empty() || geom.getPrimitiveSetList().empty()) return false;
 
-    // we currently don't handle geometry which use indices...
-    if (geom.getVertexIndices() ||
-        geom.getNormalIndices() ||
-        geom.getColorIndices() ||
-        geom.getSecondaryColorIndices() ||
-        geom.getFogCoordIndices()) return false;
-
-    // not even text coord indices don't handle geometry which use indices...
-    for(unsigned int unit=0;unit<geom.getNumTexCoordArrays();++unit)
-    {
-        if (geom.getTexCoordIndices(unit)) return false;
-    }
-
     // copy the original primitive set list
     osg::Geometry::PrimitiveSetList originalPrimitives = geom.getPrimitiveSetList();
 

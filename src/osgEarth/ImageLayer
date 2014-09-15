@@ -101,6 +101,14 @@ namespace osgEarth
         const optional<bool>& shared() const { return _shared; }
 
         /**
+         * Whether this is a "coverage" layer, i.e a layer that conveys discrete semantic
+         * values rather than color data. This is a hint to disable any features that would
+         * corrupt the data, like filtering, interpolation, or lossy compression.
+         */
+        optional<bool>& coverage() { return _coverage; }
+        const optional<bool>& coverage() const { return _coverage; }
+
+        /**
          * Whether to feather out alpha regions for this image layer with the featherAlphaRegions function.
          * Used to get proper blending when you have datasets that abutt exactly with no overlap.
          */
@@ -146,6 +154,7 @@ namespace osgEarth
         optional<bool>        _lodBlending;
         ColorFilterChain      _colorFilters;
         optional<bool>        _shared;
+        optional<bool>        _coverage;
         optional<bool>        _featherPixels;
         optional<osg::Texture::FilterMode> _minFilter;
         optional<osg::Texture::FilterMode> _magFilter;
@@ -275,6 +284,12 @@ namespace osgEarth
          * Whether this layer is marked for render sharing
          */
         bool isShared() const { return *_runtimeOptions.shared() == true; }
+
+        /**
+         * Whether this layer represents coverage data that should not be subject
+         * to color-space filtering, interpolation, or compression.
+         */
+        bool isCoverage() const { return *_runtimeOptions.coverage() == true; }
 
         /**
          * When isShared() == true, the engine will call this function to bind the

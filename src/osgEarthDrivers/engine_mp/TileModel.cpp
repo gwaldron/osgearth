@@ -158,21 +158,32 @@ _fallbackData( fallbackData )
     if ( unRefPolicy.isSet() )
         _texture->setUnRefImageDataAfterApply( unRefPolicy.get() );
 
-    _texture->setMaxAnisotropy( 4.0f );
-    _texture->setResizeNonPowerOfTwoHint(false);
-    _texture->setFilter( osg::Texture::MAG_FILTER, magFilter );
-    _texture->setFilter( osg::Texture::MIN_FILTER, minFilter  );
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    _texture->setResizeNonPowerOfTwoHint(false);
+
+    if ( layer->isCoverage() )
+    {
+        // coverages: no filtering or compression allowed.
+        _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+        _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
+        _texture->setMaxAnisotropy( 1.0f );
+    }
+    else
+    {
+        _texture->setMaxAnisotropy( 4.0f );
+        _texture->setFilter( osg::Texture::MAG_FILTER, magFilter );
+        _texture->setFilter( osg::Texture::MIN_FILTER, minFilter  );
+
+        // Disable mip mapping for npot tiles
+        if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))
+        {
+            OE_DEBUG<<"Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+            _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+        }    
+    }
 
     layer->applyTextureCompressionMode( _texture.get() );
-
-    // Disable mip mapping for npot tiles
-    if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))
-    {
-        OE_DEBUG<<"Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
-        _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-    }    
 
     _hasAlpha = image && ImageUtils::hasTransparency(image);
 }

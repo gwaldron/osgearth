@@ -70,6 +70,8 @@ ImageLayerOptions::setDefaults()
     _minFilter.init( osg::Texture::LINEAR_MIPMAP_LINEAR );
     _magFilter.init( osg::Texture::LINEAR );
     _texcomp.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
+    _shared.init( false );
+    _coverage.init( false );
 }
 
 void
@@ -88,6 +90,7 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "max_range",      _maxRange );
     conf.getIfSet( "lod_blending",   _lodBlending );
     conf.getIfSet( "shared",         _shared );
+    conf.getIfSet( "coverage",       _coverage );
     conf.getIfSet( "feather_pixels", _featherPixels);
 
     if ( conf.hasValue( "transparent_color" ) )
@@ -128,6 +131,7 @@ ImageLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "max_range",      _maxRange );
     conf.updateIfSet( "lod_blending",   _lodBlending );
     conf.updateIfSet( "shared",         _shared );
+    conf.updateIfSet( "coverage",       _coverage );
     conf.updateIfSet( "feather_pixels", _featherPixels );
 
     if (_transparentColor.isSet())
@@ -809,7 +813,13 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
     if ( tex == 0L )
         return;
 
-    if ( _runtimeOptions.textureCompression() == (osg::Texture::InternalFormatMode)~0 )
+    // Coverages are not allowed to use compression since it will corrupt the data
+    if ( isCoverage() )
+    {
+        tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
+    }
+
+    else if ( _runtimeOptions.textureCompression() == (osg::Texture::InternalFormatMode)~0 )
     {
         // auto mode:
         if ( Registry::capabilities().isGLES() )

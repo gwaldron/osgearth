@@ -37,7 +37,7 @@ namespace
         "}\n"
 
         "vec3 oe_splat_permute(vec3 x) {\n"
-        "   return mod289(((x*34.0)+1.0)*x);\n"
+        "   return oe_splat_mod289(((x*34.0)+1.0)*x);\n"
         "}\n"
 
         "float oe_splat_snoise(vec2 v)\n"
@@ -57,8 +57,8 @@ namespace
         "    x12.xy -= i1;\n"
 
         // Permutations
-        "    i = mod289(i);\n" // Avoid truncation effects in permutation
-        "    vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))\n"
+        "    i = oe_splat_mod289(i);\n" // Avoid truncation effects in permutation
+        "    vec3 p = oe_splat_permute( oe_splat_permute( i.y + vec3(0.0, i1.y, 1.0 ))\n"
         "              + i.x + vec3(0.0, i1.x, 1.0 ));\n"
 
         "    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);\n"

@@ -1,0 +1,81 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H
+#define OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H
+
+#include "SplatCatalog"
+#include "SplatCoverageLegend"
+#include <osgEarth/TerrainEffect>
+#include <osgEarth/ImageLayer>
+#include <osg/Image>
+#include <osg/Uniform>
+#include <osg/Texture2DArray>
+
+using namespace osgEarth;
+using namespace osgEarth::Extensions::Splat;
+
+namespace osgEarth { namespace Extensions { namespace Splat
+{
+    /**
+     * Effect that applies texture splatting to the terrain.
+     */
+    class SplatTerrainEffect : public TerrainEffect
+    {
+    public:
+        /** construct a new terrain effect. */
+        SplatTerrainEffect(
+            SplatCatalog*         catalog,
+            SplatCoverageLegend*  legend,
+            const osgDB::Options* dbOptions);
+
+        /**
+         * Sets the image layer that supplies the coverage values.
+         */
+        void setCoverageLayer(const ImageLayer* layer) { _coverageLayer = layer; }
+        const ImageLayer* getCoverageLayer() { return _coverageLayer.get(); }
+
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+
+        void onUninstall(TerrainEngineNode* engine);
+
+
+    protected:
+        virtual ~SplatTerrainEffect() { }
+
+        std::string generateSamplingFunction();
+
+        bool                                _ok;
+        osg::ref_ptr<osg::Texture2DArray>   _splatTex;
+        SplatArrayIndex                     _splatTexIndex;
+        int                                 _splatTexUnit;
+        osg::ref_ptr<osg::Uniform>          _splatTexUniform;
+        osg::ref_ptr<osg::Uniform>          _coverageTexUniform;
+        osg::ref_ptr<osg::Uniform>          _startLODUniform;
+        osg::ref_ptr<osg::Uniform>          _scaleUniform;
+        osg::ref_ptr<osg::Uniform>          _intensityUniform;
+        osg::ref_ptr<SplatCoverageLegend>   _legend;
+        osg::observer_ptr<const ImageLayer> _coverageLayer;
+    };
+
+} } } // namespace osgEarth::Extensions::Splat
+
+#endif // OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H

@@ -1,0 +1,74 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_EXTENSION_H
+#define OSGEARTH_EXTENSION_H 1
+
+#include <osgEarth/Common>
+#include <osg/Object>
+#include <osgDB/Options>
+
+namespace osgEarth
+{
+    class MapNode;
+    class ConfigOptions;
+}
+
+namespace osgEarth
+{
+    /**
+     * An Extension is an object that has access to a MapNode and
+     * can do anything it wants.
+     */
+    class OSGEARTH_EXPORT Extension : public osg::Object // header-only
+    {
+    public:
+        /**
+         * Associate this extension with a MapNode.
+         */
+        virtual void startup(MapNode* mapNode, const osgDB::Options* options) =0;
+
+        /**
+         * Disassociate this extension from a MapNode. The extension
+         * is responsible for undo-ing whatever it did between
+         * startup() and this call.
+         */
+        virtual void shutdown(MapNode* mapNode) =0;
+
+    protected:
+        Extension() { }
+
+    protected:
+        virtual ~Extension() { }
+
+    public:
+        /**
+         * Attempts to create an instance of an named extension.
+         */
+        static Extension* create(const std::string& name, const ConfigOptions& options);
+
+        /**
+         * Fetch configuration options from a plugin loader
+         */
+        static const ConfigOptions& getConfigOptions(const osgDB::Options*);
+    };
+
+} // namespace osgEarth
+
+#endif

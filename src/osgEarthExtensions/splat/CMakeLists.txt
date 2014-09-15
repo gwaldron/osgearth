@@ -19,7 +19,8 @@ SET(LIB_PUBLIC_HEADERS
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS}
 	SplatExport
-	SplatShaders)
+	SplatShaders
+	NoiseShaders)
 	
 SETUP_EXTENSION(osgearth_splat)
 

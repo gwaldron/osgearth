@@ -1,3 +1,11 @@
+<!--
+|  Texture splatting test.
+|
+|  Run with uniforms to enable tweaking:
+|
+|   osgearth_viewer splat-test.earth --uniform oe_splat_L0 1 10 --uniform oe_splat_scale 1 10 --uniform oe_splat_intensity 0 1
+-->
+
 <map>
         
 	<options min_lod="20"/>
@@ -14,7 +22,7 @@
     <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true">
         <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
         <cache_policy usage="none"/>
-		<!-- <interpolation>nearest</interpolation> -->
+		<interpolation>nearest</interpolation>
     </image>
 
     <extensions>

@@ -50,6 +50,10 @@ namespace
 
         "void oe_splat_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
+        // We can only scale the splatting texture coordinates so much in 
+        // single-precision space, hence the need for the L0. There is likely
+        // a way to reduce this to one uniform; i.e. automatically set L0 to
+        // be max(tile_key.z, 7) and adjust the scale factor accordingly.
         "    float dL = oe_tile_key.z - oe_splat_L0; \n"
         "    float twoPowDeltaL = float(oe_splat_ipow(2, int(abs(dL)))); \n"
         "    float factor = dL >= 0.0 ? twoPowDeltaL : 1.0/twoPowDeltaL; \n"
@@ -60,9 +64,12 @@ namespace
         "    vec2 offset = (oe_tile_key.xy-b)/(c-b); \n"
         "    vec2 scale = vec2(1.0/factor); \n"
 
+        // calculate the splat texture coordinates based on the scale calculation.
         "    float tscale = pow(2.0, oe_splat_scale-1.0); \n"
         "    oe_splat_tc = tscale * ((oe_layer_tilec.st * scale) + offset); \n"
         
+        // calculate the coverage sampling coordinates. The matrix accounts for
+        // any super-sampling that might be in effect that the current LOD.
         "    oe_splat_covtc = ($COVERAGE_TEXMAT_UNIFORM * oe_layer_tilec).st;\n"
         "} \n";
 

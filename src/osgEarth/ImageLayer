@@ -271,13 +271,24 @@ namespace osgEarth
         float getMaxVisibleRange() const { return *_runtimeOptions.maxVisibleRange();}
         void setMaxVisibleRange( float maxVisibleRange );
 
-        // whether this layer is marked for render sharing
+        /**
+         * Whether this layer is marked for render sharing
+         */
         bool isShared() const { return *_runtimeOptions.shared() == true; }
 
-        // when isShared() == true, the engine will call this function to bind the
-        // shared layer to a texture image unit.
+        /**
+         * When isShared() == true, the engine will call this function to bind the
+         * shared layer to a texture image unit.
+         */
         optional<int>& shareImageUnit() { return _shareImageUnit; }
         const optional<int>& shareImageUnit() const { return _shareImageUnit; }
+
+        /**
+         * When isShared() == true, this will return the name of the uniform holding the
+         * image's texture matrix. 
+         */
+        optional<std::string>& shareTexMatUniformName() { return _shareTexMatUniformName; }
+        const optional<std::string>& shareTexMatUniformName() const { return _shareTexMatUniformName; }
 
 
     public: // methods
@@ -327,6 +338,7 @@ namespace osgEarth
         osg::ref_ptr<osg::Image>                 _emptyImage;
         ImageLayerCallbackList                   _callbacks;
         optional<int>                            _shareImageUnit;
+        optional<std::string>                    _shareTexMatUniformName;
 
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );

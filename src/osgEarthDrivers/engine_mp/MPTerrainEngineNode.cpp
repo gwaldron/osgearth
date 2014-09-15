@@ -599,6 +599,12 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                     OE_WARN << LC << "Insufficient GPU image units to share layer " << layerAdded->getName() << std::endl;
                 }
             }
+
+            optional<std::string>& texMatUniformName = layerAdded->shareTexMatUniformName();
+            if ( !texMatUniformName.isSet() )
+            {
+                texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texmat";
+            }
         }
     }
 

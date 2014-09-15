@@ -44,9 +44,16 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          */
         struct Layer
         {
+            Layer()
+            {
+                _texMatUniformID = ~0;
+            }
+
             osgEarth::UID                  _layerID;
             osg::ref_ptr<const ImageLayer> _imageLayer;
             osg::ref_ptr<osg::Texture>     _tex;
+            osg::Matrixf                   _texMat;          // yes, must be a float matrix
+            unsigned                       _texMatUniformID; // uniform location ID (for shared layers)
             osg::ref_ptr<osg::Vec2Array>   _texCoords;
             osg::ref_ptr<osg::Texture>     _texParent;
             osg::Matrixf                   _texMatParent; // yes, must be a float matrix

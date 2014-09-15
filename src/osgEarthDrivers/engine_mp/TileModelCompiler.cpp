@@ -1832,6 +1832,26 @@ namespace
                 (layer._tex.valid() && !r->_layer.hasAlpha()) &&
                 (!layer._texParent.valid() || !r->_layerParent.hasAlpha());
 
+            // texture matrix: scale/bias matrix of the texture. Currently we don't use
+            // this for rendering because the scale/bias is already baked into the 
+            // texture coordinates. BUT we still need it for sampling shared rasters etc.
+            if ( r->_layer._locator.valid() )
+            {
+                osg::Matrixd sbmatrix;
+
+                r->_layer._locator->createScaleBiasMatrix(
+                    d.model->_tileLocator->getDataExtent(),
+                    sbmatrix );
+
+                layer._texMat = sbmatrix;
+
+                // a shared layer needs access to a static uniform name.
+                if ( layer._imageLayer->isShared() )
+                {
+                    layer._texMatUniformID = osg::Uniform::getNameID( layer._imageLayer->shareTexMatUniformName().get() );
+                }
+            }
+
             // parent texture matrix: it's a scale/bias matrix encoding the difference
             // between the two locators.
             if ( r->_layerParent.getLocator() )

@@ -18,7 +18,8 @@
  */
 #include "SplatExtension"
 #include "SplatCatalog"
-#include "CoverageLegend"
+#include "SplatCoverageLegend"
+#include "SplatTerrainEffect"
 
 #include <osgEarth/MapNode>
 
@@ -61,6 +62,24 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
         return;
     }
 
+    if ( !_options.coverageLayerName().isSet() )
+    {
+        OE_WARN << LC << "Illegal: coverage layer name is required" << std::endl;
+        return;
+    }
+
+    // Locate the coverage layer in the map.
+    const Map* map = mapNode->getMap();
+    const ImageLayer* coverageLayer = map->getImageLayerByName( _options.coverageLayerName().get() );
+    if ( !coverageLayer )
+    {
+        OE_WARN << LC << "Coverage layer \""
+            << _options.coverageLayerName().get()
+            << "\" not found in map"
+            << std::endl;
+        return;
+    }
+
     // Read in the catalog.
     osg::ref_ptr<SplatCatalog> catalog = new SplatCatalog();
     {
@@ -68,6 +87,8 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
         if ( result.succeeded() )
         {
             Config conf;
+            conf.setReferrer(_options.catalogURI()->full());
+
             std::string json = result.getString();
             conf.fromJSON( json );
             catalog->fromConfig( conf );
@@ -84,12 +105,14 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
     }
 
     // Read in the legend.
-    osg::ref_ptr<CoverageLegend> legend = new CoverageLegend();
+    osg::ref_ptr<SplatCoverageLegend> legend = new SplatCoverageLegend();
     {
         ReadResult result = _options.legendURI()->readString( dbOptions );
         if ( result.succeeded() )
         {
             Config conf;
+            conf.setReferrer(_options.legendURI()->full());
+
             conf.fromJSON( result.getString() );
             legend->fromConfig( conf );
 
@@ -103,6 +126,11 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
             return;
         }
     }
+
+    // Install the splatter on the terrain engine.
+    SplatTerrainEffect* effect = new SplatTerrainEffect( catalog, legend, dbOptions );
+    effect->setCoverageLayer( coverageLayer );
+    mapNode->getTerrainEngine()->addEffect( effect );
 }
 
 void

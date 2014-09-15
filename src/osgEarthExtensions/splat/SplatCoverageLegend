@@ -66,10 +66,10 @@ namespace osgEarth { namespace Extensions { namespace Splat
      * Legend that maps coverage values (or value predicates) to splat
      * catalog classes.
      */
-    class CoverageLegend : public osg::Referenced
+    class SplatCoverageLegend : public osg::Referenced
     {
     public:
-        CoverageLegend();
+        SplatCoverageLegend();
 
     public:
         typedef std::vector< osg::ref_ptr<CoverageValuePredicate> > Predicates;
@@ -90,7 +90,7 @@ namespace osgEarth { namespace Extensions { namespace Splat
 
     protected:
 
-        virtual ~CoverageLegend() { }
+        virtual ~SplatCoverageLegend() { }
 
         optional<std::string> _name;
         optional<std::string> _source;

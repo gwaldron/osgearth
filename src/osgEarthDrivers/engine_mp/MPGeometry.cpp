@@ -54,7 +54,7 @@ _imageUnit       ( imageUnit )
     _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
     _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
-    _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_matrix" );
+    _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_texmat" );
 
     // we will set these later (in TileModelCompiler)
     this->setUseVertexBufferObjects(false);
@@ -184,9 +184,22 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     int sharedUnit = layer._imageLayer->shareImageUnit().get();
                     {
                         state.setActiveTextureUnit( sharedUnit );
+
                         state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
                         // bind the texture for this layer to the active share unit.
                         layer._tex->apply( state );
+
+                        // Shared layers need a texture matrix since the terrain engine doesn't
+                        // provide a "current texture coordinate set" uniform (i.e. oe_layer_texc)
+                        GLint texMatLocation = 0;
+                        if ( pcp )
+                        {
+                            texMatLocation = pcp->getUniformLocation( layer._texMatUniformID );
+                            if ( texMatLocation >= 0 )
+                            {
+                                ext->glUniformMatrix4fv( texMatLocation, 1, GL_FALSE, layer._texMat.ptr() );
+                            }
+                        }
 
                         // no texture LOD blending for shared layers for now. maybe later.
                     }

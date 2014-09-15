@@ -16,23 +16,23 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "CoverageLegend"
+#include "SplatCoverageLegend"
 #include <osgEarth/Config>
 
 using namespace osgEarth;
 using namespace osgEarth::Extensions::Splat;
 
-#define LC "[CoverageLegend] "
+#define LC "[SplatCoverageLegend] "
 
 //............................................................................
 
-CoverageLegend::CoverageLegend()
+SplatCoverageLegend::SplatCoverageLegend()
 {
     //nop
 }
 
 void
-CoverageLegend::fromConfig(const Config& conf)
+SplatCoverageLegend::fromConfig(const Config& conf)
 {
     conf.getIfSet("name",   _name);
     conf.getIfSet("source", _source);
@@ -54,7 +54,7 @@ CoverageLegend::fromConfig(const Config& conf)
 }
 
 Config
-CoverageLegend::getConfig() const
+SplatCoverageLegend::getConfig() const
 {
     Config conf;
     
@@ -75,3 +75,4 @@ CoverageLegend::getConfig() const
 
     return conf;
 }
+

@@ -96,7 +96,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
             vp->setFunction( "oe_splat_vertex",   vertexShader,        ShaderComp::LOCATION_VERTEX_VIEW );
-            vp->setFunction( "oe_splat_fragment", splatFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
+            vp->setFunction( "oe_splat_fragment", splatFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, -1.0 );
 
             // support shaders
             osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noise4Dshaders);

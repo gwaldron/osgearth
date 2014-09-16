@@ -25,7 +25,7 @@
         {
             "value" : "40",
             "name"  : "Closed to open (>15%) broadleaved evergreen or semi-deciduous forest (>5m)",
-            "class" : "forest",
+            "class" : "forest"
         },
         {
             "value" : "50",

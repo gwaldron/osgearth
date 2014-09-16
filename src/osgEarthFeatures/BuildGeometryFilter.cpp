@@ -520,7 +520,7 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
         RingCollection ordered(poly->getHoles().begin(), poly->getHoles().end());
         std::sort(ordered.begin(), ordered.end(), holeCompare);
 
-        for( RingCollection::const_iterator h = poly->getHoles().begin(); h != poly->getHoles().end(); ++h )
+        for( RingCollection::const_iterator h = ordered.begin(); h != ordered.end(); ++h )
         {
             Geometry* hole = h->get();
             if ( hole->isValid() )

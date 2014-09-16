@@ -75,7 +75,8 @@ namespace
 
 
     const char* splatFragmentShader =
-        "#version " GLSL_VERSION_STR "\n"
+        //"#version " GLSL_VERSION_STR "\n"
+        "#version 120\n"
         "#extension GL_EXT_texture_array : enable\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         
@@ -88,25 +89,33 @@ namespace
         "uniform float oe_splat_L0; \n"
         "uniform float oe_splat_scale; \n"
         "uniform float oe_splat_intensity; \n"
+        "uniform float oe_splat_warp; \n"
+        "uniform float oe_splat_samples; \n"
+
         "uniform sampler2D oe_coverage_tex; \n"
         "uniform sampler2DArray oe_splat_tex; \n"
 
-        "uniform float oe_splat_warp;\n"
-        
-        "float oe_splat_noise_circle(in vec2);\n" // doesn't work correctly, not sure why :(
         "float oe_splat_noise2(in vec2);\n"
 
-        "vec4 oe_splat_getTexel(in float index, in vec2 splat_tc);\n" // generated in code
+        // creates a texel by sampling the splatting texture based
+        // on the coverage value. (Generated in code)
+        "vec4 oe_splat_getTexel(in float value, in vec2 splat_tc);\n"
+                
+        // rotates a vector.
+        "vec2 oe_splat_rot(vec2 p, float a) { \n"
+        "    float s = sin(a), c = cos(a); \n"
+        "    return vec2(p.x*c - p.y*s, p.x*s + p.y*s); \n"
+        "}\n"
 
         // Applies the warping factor to the coverage sampling coordinates
         // to mitigate blockiness.
-        "vec2 oe_splat_warp_texcoord(in float q)\n"
+        "vec2 oe_splat_warp_texcoord(in float q, in float a)\n"
         "{\n"
-        "    vec2 sp2 = oe_splat_tc + q*oe_splat_warp; \n" // try a Poisson disc?
+        "    vec2 sp2 = oe_splat_tc + q*oe_splat_warp; \n"
         "    sp2 = mod(sp2, 1.0); \n"
         "    float n1 = oe_splat_noise2(sp2*oe_splat_scale);\n"
-        "    vec2 tc = oe_splat_covtc;\n"
-        "    tc += n1*oe_splat_warp;\n"
+        "    vec2 v = oe_splat_rot(vec2(0,1),a) * n1; \n" // rotate the noise value
+        "    vec2 tc = oe_splat_covtc + v*oe_splat_warp;\n"
         "    tc = clamp(tc, 0.0, 1.0);\n"
         "    return tc;\n"
         "}\n"
@@ -120,20 +129,22 @@ namespace
         //           Set this to 0 for a single sample (regardless of the value of SAMPLES)
         //
         // TODO: consider using a Poisson disc to select "q".
-        "vec4 oe_splat_multi_texel(in float samples, in float range) \n"
+        "vec4 oe_splat_multi_texel(in float samples) \n"
         "{ \n"
-        "    float step = range > 0.0 ? (2.0*range+1.0)/(samples-1.0) : 1.0; \n"
+        "    float step = 2.0/(samples-1.0); \n"
         "    vec4 texel = vec4(0.0, 0.0, 0.0, 1.0);\n"
 
-        "    for(float q=0.0-range; q<=range; q += step) \n"
+        "    float a = 0.0; \n"
+        "    for(float q=-1.0; q<=1.0; q += step) \n"
         "    {\n"
-        "        vec2 warped_tc = oe_splat_warp_texcoord(q);\n"
+        "        a += 7.0/samples; \n" // rotation..
+        "        vec2 warped_tc = oe_splat_warp_texcoord(q, a);\n"
         "        vec4 cov = texture2D(oe_coverage_tex, warped_tc); \n"
         "        vec4 tex = oe_splat_getTexel(cov.r*255.0, oe_splat_tc); \n"
         "        texel.rgb += tex.rgb;\n"
         "    }\n"
 
-        "    texel.rgb /= (range > 0.0 ? samples : 1.0); \n"
+        "    texel.rgb /= samples; \n"
         "    return texel; \n"
         "} \n"
 
@@ -141,10 +152,7 @@ namespace
         "void oe_splat_fragment(inout vec4 color) \n"
         "{ \n"
         "    if (oe_tile_key.z < oe_splat_L0) return;\n"
-
-        "    float samples = 8.0; \n" // how many samples to take
-        "    float range  = 20.0; \n" // distance factor of samples
-        "    vec4 texel = oe_splat_multi_texel(samples, range); \n"
+        "    vec4 texel = oe_splat_multi_texel(ceil(oe_splat_samples)); \n"
         "    color = mix(color, texel, oe_splat_intensity*texel.a); \n"
         "}\n";
 }

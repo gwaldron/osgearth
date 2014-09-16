@@ -55,7 +55,8 @@ _ok    ( false )
     _startLODUniform  = new osg::Uniform("oe_splat_L0",        1.0f);
     _scaleUniform     = new osg::Uniform("oe_splat_scale",     8.0f);
     _intensityUniform = new osg::Uniform("oe_splat_intensity", 1.0f);
-    _warpUniform      = new osg::Uniform("oe_warp_uniform",    0.003f);
+    _warpUniform      = new osg::Uniform("oe_splat_warp",    0.004f);
+    _samplesUniform   = new osg::Uniform("oe_splat_samples",   1.0f);
 }
 
 void
@@ -88,6 +89,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform( _scaleUniform.get() );
             stateset->addUniform( _intensityUniform.get() );
             stateset->addUniform( _warpUniform.get() );
+            stateset->addUniform( _samplesUniform.get() );
 
             // configure shaders
             std::string vertexShader = splatVertexShader;
@@ -122,6 +124,7 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( _startLODUniform.get() );
             stateset->removeUniform( _scaleUniform.get() );
             stateset->removeUniform( _warpUniform.get() );
+            stateset->removeUniform( _samplesUniform.get() );
             stateset->removeUniform( _intensityUniform.get() );
             stateset->removeUniform( _splatTexUniform.get() );
             stateset->removeUniform( _coverageTexUniform.get() );

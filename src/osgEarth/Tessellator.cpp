@@ -180,6 +180,11 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
                         success = false;
                     }
                 }
+                else
+                {
+                    // only 3 verts so just add the original primitive set back
+                    geom.addPrimitiveSet(primitive);
+                }
             }
         }
         else

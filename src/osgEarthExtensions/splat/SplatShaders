@@ -86,17 +86,45 @@ namespace
         "varying vec2 oe_splat_covtc; \n"
 
         "uniform float oe_splat_L0; \n"
+        "uniform float oe_splat_scale; \n"
         "uniform float oe_splat_intensity; \n"
         "uniform sampler2D oe_coverage_tex; \n"
         "uniform sampler2DArray oe_splat_tex; \n"
 
-        "vec4 oe_splat_getTexel(in float index, in vec2 tc);\n" // generated in code
+        "uniform float oe_splat_warp;\n"
+        
+        "float oe_splat_noise_circle(in vec2);\n"
+        "float oe_splat_noise2(in vec2);\n"
+
+        "vec4 oe_splat_getTexel(in float index, in vec2 splat_tc);\n" // generated in code
+
+        "vec2 oe_splat_warp_texcoord(in float q)\n"
+        "{\n"
+        "    vec2 sp2 = oe_splat_tc + q; \n"
+        "    sp2 = mod(sp2, 1.0); \n"
+        "    float n1 = oe_splat_noise2(sp2*oe_splat_scale);\n"
+        "    vec2 tc = oe_splat_covtc;\n"
+        "    tc += n1*oe_splat_warp;\n"
+        "    tc = clamp(tc, 0.0, 1.0);\n"
+        "    return tc;\n"
+        "}\n"
 
         "void oe_splat_fragment(inout vec4 color) \n"
         "{ \n"
         "    if (oe_tile_key.z < oe_splat_L0) return;\n"
-        "    vec4 cov = texture2D(oe_coverage_tex, oe_splat_covtc); \n"
+
+        //"    float n1 = oe_splat_noise2(oe_splat_tc.st*oe_splat_scale);\n"
+        //"    float n2 = oe_splat_noise2(oe_splat_tc.ts*oe_splat_scale);\n"
+        //"    vec2 c2 = oe_splat_covtc;\n"
+        //"    c2 = mod(c2,1.0);\n"
+        //"    c2.x += n1*oe_splat_warp;\n"
+        //"    c2.y += n2*oe_splat_warp;\n"
+        //"    c2 = clamp(c2, 0.0, 1.0);\n"
+
+        "    vec2 c2 = oe_splat_warp_texcoord(0.0);\n"
+        "    vec4 cov = texture2D(oe_coverage_tex, c2); \n"
         "    vec4 texel = oe_splat_getTexel(cov.r*255.0, oe_splat_tc); \n"
+
         "    color = mix(color, texel, oe_splat_intensity*texel.a);\n"
         "} \n";
 }

@@ -8,13 +8,19 @@
 
 <map>
         
-	<options min_lod="20"/>
+	<options min_lod="20">
+		<terrain normalize_edges="true"/>
+	</options>
 	
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
+    
+    <image name="readymap_imagery" driver="tms" enabled="false">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
 	
-    <image name="mapquest_osm" driver="xyz">
+    <image name="mapquest_osm" driver="xyz" enabled="false">
         <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
         <profile>global-mercator</profile>
     </image>
@@ -22,7 +28,7 @@
     <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true">
         <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
         <cache_policy usage="none"/>
-		<interpolation>nearest</interpolation>
+		<!-- <interpolation>nearest</interpolation> -->
     </image>
 
     <extensions>

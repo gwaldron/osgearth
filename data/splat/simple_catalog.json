@@ -6,19 +6,19 @@
 			"url": "cropland.jpg"
 		},
 		"forest" : {
-			"url": "forest.jpg"
+			"url": "forest2.jpg"
 		},
 		"grassland" : {
 			"url": "grass.jpg"
 		},
 		"savanna": {
-			"url": "dirt.jpg"
+			"url": "grass3.jpg"
 		},
 		"swamp" : {
 			"url": "swamp.jpg"
 		},
 		"desert" : {
-			"url": "desert.jpg"
+			"url": "desert2.jpg"
 		},
 		"water": {
 			"url": "water.jpg"

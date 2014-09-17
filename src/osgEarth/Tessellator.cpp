@@ -168,7 +168,7 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
             }
             else
             {
-                if (primitive->getNumIndices()>3)
+                if (primitive->getNumIndices()>=3)
                 {
                     osg::PrimitiveSet* newPrimitive = tessellatePrimitive(primitive.get(), vertices);
                     if (newPrimitive)

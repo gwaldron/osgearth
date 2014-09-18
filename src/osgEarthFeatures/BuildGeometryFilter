@@ -87,7 +87,8 @@ namespace osgEarth { namespace Features
             const SpatialReference* mapSRS,
             bool                    makeECEF,
             bool                    tessellate,
-            osg::Geometry*          osgGeom);
+            osg::Geometry*          osgGeom,
+            const osg::Matrixd      &world2local);
 
         osg::Geode* processPolygons        (FeatureList& input, const FilterContext& cx);
         osg::Geode* processLines           (FeatureList& input, const FilterContext& cx);

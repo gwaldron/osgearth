@@ -114,6 +114,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainLayer
     TerrainOptions
     TerrainEngineNode
+    Tessellator
     TextureCompositor
     TileKey
     TileHandler
@@ -252,6 +253,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    Tessellator.cpp
     TextureCompositor.cpp
     TileKey.cpp
     TileHandler.cpp

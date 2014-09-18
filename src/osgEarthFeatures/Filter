@@ -152,11 +152,15 @@ namespace osgEarth { namespace Features
 
         // computes the matricies required to localizer/delocalize double-precision coords
         void computeLocalizers( const FilterContext& context );
+        void computeLocalizers( const FilterContext& context, const osgEarth::GeoExtent &extent, osg::Matrixd &out_w2l, osg::Matrixd &out_l2w );
 
         /** Parents the node with a localizer group if necessary */
         osg::Node*  delocalize( osg::Node* node ) const;
+        osg::Node*  delocalize( osg::Node* node, const osg::Matrixd &local2World ) const;
         osg::Group* delocalizeAsGroup( osg::Node* node ) const;
+        osg::Group* delocalizeAsGroup( osg::Node* node, const osg::Matrixd &local2World ) const;
         osg::Group* createDelocalizeGroup() const;
+        osg::Group* createDelocalizeGroup( const osg::Matrixd &local2World) const;
 
         void transformAndLocalize(
             const std::vector<osg::Vec3d>& input,

@@ -695,13 +695,16 @@ MapNode::traverse( osg::NodeVisitor& nv )
             const SpatialReference* srs = getMapSRS();
             if ( srs && !srs->isProjected() )
             {
-                GeoPoint ecef;
-                ecef.fromWorld( srs, eye );
-                cullData->_cameraAltitude = ecef.alt();
+                GeoPoint lla;
+                lla.fromWorld( srs, eye );
+                cullData->_cameraAltitude = lla.alt();
+                cullData->_cameraAltitudeUniform->set( (float)lla.alt() );
+                //OE_INFO << lla.alt() << std::endl;
             }
             else
             {
                 cullData->_cameraAltitude = eye.z();
+                cullData->_cameraAltitudeUniform->set( (float)eye.z() );
             }
 
             // window matrix:

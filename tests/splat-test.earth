@@ -28,7 +28,6 @@
     <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true">
         <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
         <cache_policy usage="none"/>
-		<!-- <interpolation>nearest</interpolation> -->
     </image>
 
     <extensions>
@@ -37,6 +36,13 @@
             <legend>../data/splat/GLOBCOVER_legend.json</legend>
             <catalog>../data/splat/simple_catalog.json</catalog>
         </splat>
+		
+		<viewpoints>
+			<viewpoint name="Mt R. Nadir 30K" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>
+			<viewpoint name="Mt R. Nadir 7K" heading="0.5013039415314375" height="2030.938670247793" lat="46.81069413427294" long="-121.7931474749483" pitch="-89.43231466772511" range="7035.645515411795"/>
+			<viewpoint name="Mr R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
+			<viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>
+		</viewpoints>
     </extensions>
 
 </map>

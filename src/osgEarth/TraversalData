@@ -69,6 +69,7 @@ namespace osgEarth
         osg::ref_ptr<osg::StateSet>      _stateSet;
         osg::ref_ptr<osg::Uniform>       _windowMatrixUniform;
         double                           _cameraAltitude;
+        osg::ref_ptr<osg::Uniform>       _cameraAltitudeUniform;
 
     protected:
         virtual ~MapNodeCullData() { }

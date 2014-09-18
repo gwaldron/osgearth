@@ -181,7 +181,7 @@ SplatTerrainEffect::generateSamplingFunction()
     }
 
     buf << "    vec4 texel = texture2DArray(" SPLAT_SAMPLER ", vec3(splat_tc, max(i,0.0)));\n"
-        << "    if ( i < 0.0 ) texel = vec4(1,0,0,1); \n"
+        << "    if ( i < 0.0 ) texel.a = 0.0; \n" //texel = vec4(1,0,0,1); \n"
         << "    return texel; \n"
         << "}\n";
 

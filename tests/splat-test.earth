@@ -25,17 +25,31 @@
         <profile>global-mercator</profile>
     </image>
 
-    <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true">
+    <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true" enabled="true">
         <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
         <cache_policy usage="none"/>
     </image>
 
+    <image name="NLCD" driver="gdal" shared="true" visible="false" coverage="true" enabled="false">
+        <url>H:/data/NLCD/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
+        <cache_policy usage="none"/>
+    </image>
+
     <extensions>
+	
         <splat>
             <coverage>GLOBCOVER</coverage>
-            <legend>../data/splat/GLOBCOVER_legend.json</legend>
+            <legend>H:/data/ESA/GLOBCOVER_legend.json</legend>
             <catalog>../data/splat/simple_catalog.json</catalog>
         </splat>
+	
+	<!--
+        <splat>
+            <coverage>NLCD</coverage>
+            <legend>H:/data/NLCD/NLCD_legend.json</legend>
+            <catalog>../data/splat/simple_catalog.json</catalog>
+        </splat>
+	-->
 		
 		<viewpoints>
 			<viewpoint name="Mt R. Nadir 30K" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>

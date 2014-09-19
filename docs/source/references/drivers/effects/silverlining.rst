@@ -10,13 +10,13 @@ Example usage::
 
     <map>
         <options>
-            <sky driver              = "silverlining"
-			     hours               = "0.0"
+            <sky driver = "silverlining"
+                 hours               = "0.0"
                  ambient             = "0.05"
-				 user                = "myname"
-				 license_code        = "mycode"
-				 clouds              = "false"
-				 clouds_max_altitude = "0.0 />
+                 user                = "myname"
+                 license_code        = "mycode"
+                 clouds              = "false"
+                 clouds_max_altitude = "0.0 />
 
 Properties:
 

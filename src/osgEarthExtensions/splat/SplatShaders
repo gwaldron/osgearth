@@ -33,14 +33,12 @@ namespace
         "varying vec4 oe_layer_tilec; \n"
 
         "uniform float oe_splat_L0; \n"
-        //"uniform float oe_splat_scale; \n"
-        //"varying vec2 oe_splat_tc; \n"
         
         "uniform mat4 $COVERAGE_TEXMAT_UNIFORM; \n"
-        "varying vec2 oe_splat_covtc; \n"
 
         "varying float oe_splat_distance; \n"
         "varying vec2 oe_splat_tileScaleBias; \n"
+        "varying vec2 oe_splat_covtc; \n"
 
         "int oe_splat_ipow(in int x, in int y) { \n"
         "   int r = 1; \n"
@@ -51,13 +49,19 @@ namespace
         "   return r; \n"
         "}\n"
 
+        "#define L0SPLIT 5.0\n"
+
         "void oe_splat_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
         // We can only scale the splatting texture coordinates so much in 
         // single-precision space, hence the need for the L0. There is likely
         // a way to reduce this to one uniform; i.e. automatically set L0 to
         // be max(tile_key.z, 7) and adjust the scale factor accordingly.
-        "    float dL = oe_tile_key.z - oe_splat_L0; \n"
+
+        "    float L0 = 0.0; \n"
+        //"    float L0 = oe_tile_key.z >= L0SPLIT ? L0SPLIT : 0.0; \n"
+
+        "    float dL = oe_tile_key.z - L0; \n" //oe_splat_L0; \n"
         "    float twoPowDeltaL = float(oe_splat_ipow(2, int(abs(dL)))); \n"
         "    float factor = dL >= 0.0 ? twoPowDeltaL : 1.0/twoPowDeltaL; \n"
 
@@ -86,12 +90,11 @@ namespace
         "varying vec4 oe_layer_tilec; \n"
 
         "uniform vec4 oe_tile_key; \n"
-        "varying vec2 oe_splat_covtc; \n"
 
         "varying float oe_splat_distance; \n"
-        "varying vec2  oe_splat_tileScaleBias; \n"
+        "varying vec2 oe_splat_tileScaleBias; \n"
+        "varying vec2 oe_splat_covtc; \n"
 
-        "uniform float oe_splat_L0; \n"
         "uniform float oe_splat_intensity; \n"
         "uniform float oe_splat_warp; \n"
         "uniform float oe_splat_samples; \n"
@@ -116,6 +119,7 @@ namespace
         "}\n"        
         
         // permutation vectors for the warper.
+        // highly unlikely that we will use more than 2 or 3 of these in practice.
         "#define OE_SPLAT_MAX_SAMPLES 15\n"
         "const vec2 oe_splat_warp_vecs[OE_SPLAT_MAX_SAMPLES] = vec2[]( vec2( -0.942016, -0.399062 ), vec2( 0.845586, -0.768907 ), vec2( 0.344959, 0.293878 ), vec2( -0.915886, 0.457714 ), vec2( -0.815442, -0.879125 ), vec2( -0.382775, 0.276768 ), vec2( 0.974844, 0.756484 ), vec2( 0.443233, -0.975116 ), vec2( 0.53743, -0.473734 ), vec2( -0.264969, -0.41893 ), vec2( 0.791975, 0.190909 ), vec2( -0.241888, 0.997065 ), vec2( -0.8141, 0.914376 ), vec2( 0.199841, 0.786414 ), vec2( 0.143832, -0.141008 )); \n"
 
@@ -163,15 +167,17 @@ namespace
         // Main entry point for fragment shader.
         "void oe_splat_fragment(inout vec4 color) \n"
         "{ \n"
-        "    if (oe_tile_key.z < oe_splat_L0) return;\n"
+        //"    if (oe_tile_key.z < oe_splat_L0) return;\n"
+
+        "    float scaleOffset = 0.0; \n" //oe_tile_key.z >= 8.0 ? -7.0 : 0.0; \n"
 
         // Quantize the sample count.
         "    float isamples = min(ceil(oe_splat_samples), OE_SPLAT_MAX_SAMPLES-1.0); \n"
 
         // View Range and Scale factor mappings.
         "#define RANGE_COUNT 7\n"
-        "    const float ranges[RANGE_COUNT] = float[](     0.0, 4000.0, 30000.0, 150000.0, 300000.0, 1000000.0, 5000000.0 );\n"
-        "    const float scales[RANGE_COUNT] = float[](    16.0,   14.0,    12.0,      9.0,      8.0,       6.0,       2.0 ); \n"
+        "    const float ranges[RANGE_COUNT] = float[](  0.0, 4000.0, 30000.0, 150000.0, 300000.0, 1000000.0, 5000000.0 );\n"
+        "    const float scales[RANGE_COUNT] = float[]( 16.0,   14.0,    12.0,      9.0,      8.0,       6.0,       2.0 ); \n"
 
         // Choose the best range based on distance to camera.
         "    float d = clamp(oe_splat_distance, ranges[0], ranges[RANGE_COUNT-1]); \n"
@@ -182,15 +188,18 @@ namespace
         "    { \n"
         "        if ( d >= ranges[i] && d <= ranges[i+1] ) \n"
         "        { \n"
-        "            vec2 splat_tc0 = pow(2.0, scales[i]-1.0) * oe_splat_tileScaleBias;\n"
-        "            vec4 texel0 = oe_splat_samples <= 1.0 ? \n"
-        "               oe_splat_single_texel(splat_tc0, scales[i]) : \n"
-        "               oe_splat_multi_texel(isamples, splat_tc0, scales[i]); \n"
+        "            float scale0 = scales[i] + scaleOffset; \n"
+        "            float scale1 = scales[i+1] + scaleOffset; \n"
 
-        "            vec2 splat_tc1 = pow(2.0, scales[i+1]-1.0) * oe_splat_tileScaleBias;\n"
+        "            vec2 splat_tc0 = pow(2.0, scale0-1.0) * oe_splat_tileScaleBias;\n"
+        "            vec4 texel0 = oe_splat_samples <= 1.0 ? \n"
+        "               oe_splat_single_texel(splat_tc0, scale0) : \n"
+        "               oe_splat_multi_texel(isamples, splat_tc0, scale0); \n"
+
+        "            vec2 splat_tc1 = pow(2.0, scale1-1.0) * oe_splat_tileScaleBias;\n"
         "            vec4 texel1 = oe_splat_samples <= 1.0 ? \n"
-        "               oe_splat_single_texel(splat_tc1, scales[i+1]) : \n"
-        "               oe_splat_multi_texel(isamples, splat_tc1, scales[i+1]); \n"
+        "               oe_splat_single_texel(splat_tc1, scale1) : \n"
+        "               oe_splat_multi_texel(isamples, splat_tc1, scale1); \n"
 
         "            float r = (d-ranges[i])/(ranges[i+1]-ranges[i]); \n"
         "            texel = mix(texel0, texel1, r); \n"

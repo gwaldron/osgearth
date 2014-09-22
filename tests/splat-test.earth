@@ -30,10 +30,66 @@
         <cache_policy usage="none"/>
     </image>
 
-    <image name="NLCD" driver="gdal" shared="true" visible="false" coverage="true" enabled="false">
+    <image name="NLCD" driver="gdal" shared="true" visible="false" coverage="true" enabled="true">
         <url>H:/data/NLCD/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
         <cache_policy usage="none"/>
     </image>
+    
+    <model name="trees" driver="feature_geom" enabled="true">
+        <features name="trees" driver="ogr">
+			<geometry>
+				POLYGON((-121.82 46.833, -121.82 46.754, -121.63 46.754, -121.63 46.836))
+			</geometry>
+        </features>
+        
+        <instancing>true</instancing>
+        
+        <fading 
+            duration="1.0"
+            max_range="12000"
+            attenuation_distance="11000"/>
+        
+        <layout>
+            <tile_size_factor>3.5</tile_size_factor>
+            <crop_features>true</crop_features>
+            <level max_range="12000" style="parks-0"/>
+            <level max_range="3000" style="parks-2"/>
+            <level max_range="1000" style="parks-1"/>
+        </layout>
+             
+        <styles>
+            <style type="text/css">
+                parks-0 {
+                   model:               "../data/pinetree.ive";
+                   model-placement:     random;
+                   model-density:       50;
+                   model-scale:         24.0;
+                   altitude-clamping:   terrain;
+                   altitude-resolution: 0.001;
+				   render-min-alpha:    0.15;
+                }            
+                parks-1 {
+                   model:               "../data/tree.ive";
+                   model-placement:     random;
+                   model-density:       650;
+                   model-scale:         3.0;
+                   altitude-clamping:   terrain;
+                   altitude-resolution: 0.001;
+				   render-min-alpha:  0.15;
+                }            
+                parks-2 {
+                   model:               "../data/pinetree.ive";
+                   model-placement:     random;
+                   model-density:       350;
+                   model-scale:         20.5;
+                   model-random-seed:   1;
+                   altitude-clamping:   terrain;
+                   altitude-resolution: 0.001;
+				   render-min-alpha:  0.15;
+                }              
+            </style>
+        </styles>        
+    </model>
 
     <extensions>
 	

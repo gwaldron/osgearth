@@ -44,6 +44,7 @@
 #include <osgUtil/SmoothingVisitor>
 #include <osgDB/WriteFile>
 #include <osg/Version>
+#include <iterator>
 
 #define LC "[BuildGeometryFilter] "
 
@@ -176,7 +177,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
 
             // build the geometry:
-            buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
+            tileAndBuildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
+            //buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
 
             osg::Vec3Array* allPoints = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
             
@@ -496,6 +498,106 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
     return geode;
 }
 
+#define CROP_POLYS_BEFORE_TESSELLATING 1
+
+void
+BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
+                                         const SpatialReference* featureSRS,
+                                         const SpatialReference* mapSRS,
+                                         bool                    makeECEF,
+                                         bool                    tessellate,
+                                         osg::Geometry*          osgGeom,
+                                         const osg::Matrixd      &world2local)
+{
+#ifdef CROP_POLYS_BEFORE_TESSELLATING
+
+#define MAX_POINTS_PER_CROP_TILE 1024
+
+    unsigned count = ring->getTotalPointCount();
+    if ( count > MAX_POINTS_PER_CROP_TILE )
+    {
+        unsigned tiles = (count / MAX_POINTS_PER_CROP_TILE) + 1u;
+        double tx = ceil(sqrt((double)tiles));
+        double ty = tx;
+        Bounds b = ring->getBounds();
+        double tw = b.width() / tx;
+        double th = b.height() / ty;
+
+        OE_DEBUG << "Found " << count << " points; cropping to " << tx << " x " << ty << std::endl;
+
+        osg::ref_ptr<Polygon> poly = new Polygon;
+        poly->resize( 4 );
+
+        for(int x=0; x<(int)tx; ++x)
+        {
+            for(int y=0; y<(int)ty; ++y)
+            {
+                (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     0.0 );
+                (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     0.0 );
+                (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), 0.0 );
+                (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), 0.0 );
+                
+                osg::ref_ptr<Geometry> ringTile;
+                if ( ring->crop(poly.get(), ringTile) )
+                {
+                    // Use an iterator sine crop count return a multi-polygon
+                    GeometryIterator gi( ringTile.get(), false );
+                    while( gi.hasMore() )
+                    {
+                        Geometry* geom = gi.next();
+                        buildPolygon(geom, featureSRS, mapSRS, makeECEF, tessellate, osgGeom, world2local);
+                    }
+                }
+                else 
+                {
+                    // This just means the crop resulted in empty geometry, which is legal.
+                    //OE_WARN << LC << "Crop failed; tile skipped!" << std::endl;
+                }
+            }
+        }
+    }
+    else
+    {
+        buildPolygon(ring, featureSRS, mapSRS, makeECEF, tessellate, osgGeom, world2local);
+    }
+    
+
+    if ( tessellate )
+    {
+        osgEarth::Tessellator oeTess;
+        if (!oeTess.tessellateGeometry(*osgGeom))
+        {
+            //fallback to osg tessellator
+            OE_INFO << LC << "OE Tessellation failed! Using OSG tessellator. (" << osgGeom->getName() << ")" << std::endl;
+
+            osgUtil::Tessellator tess;
+            tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+            tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+            tess.retessellatePolygons( *osgGeom );
+        }
+    }
+
+#else
+
+    // non-cropped way
+    buildPolygon(ring, featureSRS, mapSRS, makeECEF, tessellate, osgGeom, world2local);
+    if ( tessellate )
+    {
+        osgEarth::Tessellator oeTess;
+        if (!oeTess.tessellateGeometry(*osgGeom))
+        {
+            //fallback to osg tessellator
+            OE_INFO << LC << "OE Tessellation failed! Using OSG tessellator. (" << osgGeom->getName() << ")" << std::endl;
+
+            osgUtil::Tessellator tess;
+            tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+            tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+            tess.retessellatePolygons( *osgGeom );
+        }
+    }
+#endif
+}
+
 // builds and tessellates a polygon (with or without holes)
 void
 BuildGeometryFilter::buildPolygon(Geometry*               ring,
@@ -511,8 +613,8 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
 
     ring->rewind(osgEarth::Symbology::Geometry::ORIENTATION_CCW);
 
-    osg::Vec3Array* allPoints = new osg::Vec3Array();
-    transformAndLocalize( ring->asVector(), featureSRS, allPoints, mapSRS, world2local, makeECEF );
+    osg::ref_ptr<osg::Vec3Array> allPoints = new osg::Vec3Array();
+    transformAndLocalize( ring->asVector(), featureSRS, allPoints.get(), mapSRS, world2local, makeECEF );
 
     Polygon* poly = dynamic_cast<Polygon*>(ring);
     if ( poly )
@@ -650,25 +752,19 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
             }
         }
     }
-
+    
     GLenum mode = GL_LINE_LOOP;
-    osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, 0, allPoints->size() ) );
-
-    osgGeom->setVertexArray( allPoints );
-
-    if ( tessellate )
+    if ( osgGeom->getVertexArray() == 0L )
     {
-        osgEarth::Tessellator oeTess;
-        if (!oeTess.tessellateGeometry(*osgGeom))
-        {
-            //fallback to osg tessellator
-            OE_NOTICE << LC << "OE Tessellation failed! Using OSG tessellator. (" << osgGeom->getName() << ")" << std::endl;
-
-            osgUtil::Tessellator tess;
-            tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-            tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-            tess.retessellatePolygons( *osgGeom );
-        }
+        osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, 0, allPoints->size() ) );
+        osgGeom->setVertexArray( allPoints.get() );
+    }
+    else
+    {
+        osg::Vec3Array* v = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
+        osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, v->size(), allPoints->size() ) );
+        //v->reserve(v->size() + allPoints->size());
+        std::copy(allPoints->begin(), allPoints->end(), std::back_inserter(*v));
     }
 
     //// Normal computation.

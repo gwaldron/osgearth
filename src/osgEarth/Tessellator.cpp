@@ -318,7 +318,7 @@ Tessellator::tessellatePrimitive(unsigned int first, unsigned int last, osg::Vec
     else
     {
         //TODO: handle?
-        OE_NOTICE << LC << "Tessellation failed!" << std::endl;
+        OE_DEBUG << LC << "Tessellation failed!" << std::endl;
     }
 
     return 0L;

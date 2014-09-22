@@ -22,26 +22,34 @@ on the map using the overlay technique.
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
             <buffer distance="-0.05"/>
+			<resample max_length="5.0"/>
         </features>
+		
+		<geo_interpolation>great_circle</geo_interpolation>
         
         <styles>
         
             <style type="text/css">
                 p1 {
                    fill:               #ffff8066;
-                   altitude-clamping:  terrain-drape;
+				   render-depth-test:  false;
+				   altitude-clamping:  terrain-drape;
                 }       
                 p2 {
                    fill:               #80ffff66;
+				   render-depth-test:  false;
                 }   
                 p3 {
                    fill:               #ff80ff66;
+				   render-depth-test:  false;
                 }       
                 p4 {
                    fill:               #ff808066;
+				   render-depth-test:  false;
                 }     
                 p5 {
                    fill:               #80ff8066;
+				   render-depth-test:  false;
                 }                                      
             </style>
         

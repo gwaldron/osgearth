@@ -550,10 +550,18 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
 
 #ifdef PROFILING
+    static double totalTime = 0.0;
+    static Threading::Mutex totalTimeMutex;
     osg::Timer_t p_end = osg::Timer::instance()->tick();
+    double t = osg::Timer::instance()->delta_s(p_start, p_end);
+    totalTimeMutex.lock();
+    totalTime += t;
+    totalTimeMutex.unlock();
     OE_INFO << LC
         << "features = " << p_features
-        << ", time = " << osg::Timer::instance()->delta_s(p_start, p_end) << " s." << std::endl;
+        << ", time = " << t << " s.  cummulative = " 
+        << totalTime << " s."
+        << std::endl;
 #endif
 
 #if 0

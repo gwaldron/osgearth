@@ -94,7 +94,7 @@ namespace
 
 BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
-_maxAngle_deg ( 1.0 ),
+_maxAngle_deg ( 180.0 ),
 _geoInterp    ( GEOINTERP_RHUMB_LINE )
 {
     //nop
@@ -568,7 +568,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         if (!oeTess.tessellateGeometry(*osgGeom))
         {
             //fallback to osg tessellator
-            OE_INFO << LC << "OE Tessellation failed! Using OSG tessellator. (" << osgGeom->getName() << ")" << std::endl;
+            OE_INFO << LC << "Falling back on OSG tessellator (" << osgGeom->getName() << ")" << std::endl;
 
             osgUtil::Tessellator tess;
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );

@@ -224,12 +224,14 @@ osg::PrimitiveSet*
 Tessellator::tessellatePrimitive(unsigned int first, unsigned int last, osg::Vec3Array* vertices)
 {
     std::vector<unsigned int> activeVerts;
+    activeVerts.reserve( last-first+1 );
     for (unsigned int i=first; i < last; i++)
     {
         activeVerts.push_back(i);
     }
 
     TriList tris;
+    tris.reserve( activeVerts.size() );
 
     bool success = true;
     unsigned int cursor = 0;
@@ -306,6 +308,7 @@ Tessellator::tessellatePrimitive(unsigned int first, unsigned int last, osg::Vec
         }
 
         osg::DrawElementsUInt* triElements = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
+        triElements->reserve( tris.size() * 3 );
         for (TriList::const_iterator it = tris.begin(); it != tris.end(); ++it)
         {
             triElements->push_back(it->a);

@@ -95,7 +95,7 @@ GeometryCompilerOptions::setDefaults(const GeometryCompilerOptions& defaults)
 
 // defaults.
 GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
-_maxGranularity_deg    ( 1.0 ),
+_maxGranularity_deg    ( 10.0 ),
 _mergeGeometry         ( false ),
 _clustering            ( false ),
 _instancing            ( false ),
@@ -477,10 +477,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         BuildGeometryFilter filter( style );
-        if ( _options.maxGranularity().isSet() )
-            filter.maxGranularity() = *_options.maxGranularity();
-        if ( _options.geoInterp().isSet() )
-            filter.geoInterp() = *_options.geoInterp();
+        filter.maxGranularity() = *_options.maxGranularity();
+        filter.geoInterp()      = *_options.geoInterp();
+
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
 

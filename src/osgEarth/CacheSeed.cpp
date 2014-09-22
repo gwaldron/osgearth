@@ -27,13 +27,14 @@
 
 using namespace osgEarth;
 using namespace OpenThreads;
+
 CacheTileHandler::CacheTileHandler( TerrainLayer* layer, Map* map ):
 _layer( layer ),
 _map( map )
 {
 }
 
-bool CacheTileHandler::handleTile( const TileKey& key )
+bool CacheTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
 {        
     ImageLayer* imageLayer = dynamic_cast< ImageLayer* >( _layer.get() );
     ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer* >( _layer.get() );    

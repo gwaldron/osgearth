@@ -84,8 +84,6 @@ int
         << "        [--max-level level]             ; Highest LOD level to seed (defaut=highest available)" << std::endl
         << "        [--bounds xmin ymin xmax ymax]* ; Geospatial bounding box to seed (in map coordinates; default=entire map)" << std::endl
         << "        [--index shapefile]             ; Use the feature extents in a shapefile to set the bounding boxes for seeding" << std::endl
-        << "        [--cache-path path]             ; Overrides the cache path in the .earth file" << std::endl
-        << "        [--cache-type type]             ; Overrides the cache type in the .earth file" << std::endl
         << "        [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
         << "        [--mt]                          ; Use multithreading to process the tiles." << std::endl
         << "        [--concurrency]                 ; The number of threads or proceses to use if --mp or --mt are provided." << std::endl
@@ -114,11 +112,11 @@ int
     osgDB::Registry::instance()->getReaderWriterForExtension("tiff");
 
     //Read the min level
-    unsigned int minLevel = 0;
+    int minLevel = -1;
     while (args.read("--min-level", minLevel));
 
     //Read the max level
-    unsigned int maxLevel = 5;
+    int maxLevel = -1;
     while (args.read("--max-level", maxLevel));
 
     bool estimate = args.read("--estimate");        
@@ -136,14 +134,6 @@ int
 
     std::string tileList;
     while (args.read( "--tiles", tileList ) );
-
-    //Read the cache override directory
-    std::string cachePath;
-    while (args.read("--cache-path", cachePath));
-
-    //Read the cache type
-    std::string cacheType;
-    while (args.read("--cache-type", cacheType));
 
     bool verbose = args.read("--verbose");
 
@@ -198,8 +188,10 @@ int
     if (estimate)
     {        
         CacheEstimator est;
-        est.setMinLevel( minLevel );
-        est.setMaxLevel( maxLevel );
+        if ( minLevel >= 0 )
+            est.setMinLevel( minLevel );
+        if ( maxLevel >= 0 )
+            est.setMaxLevel( maxLevel );
         est.setProfile( mapNode->getMap()->getProfile() );
 
         for (unsigned int i = 0; i < bounds.size(); i++)
@@ -291,8 +283,10 @@ int
         visitor->setProgressCallback( progress );
     }
 
-    visitor->setMinLevel( minLevel );
-    visitor->setMaxLevel( maxLevel );        
+    if ( minLevel >= 0 )
+        visitor->setMinLevel( minLevel );
+    if ( maxLevel >= 0 )
+        visitor->setMaxLevel( maxLevel );        
 
 
     for (unsigned int i = 0; i < bounds.size(); i++)

@@ -105,19 +105,27 @@ These are not part of the cache policy, but instead control a particular cache i
 Precedence of Cache Policy Settings
 -----------------------------------
 Since you can set caching policies in various places, we need to establish
-precendence. The order of precendece, from highest to lowest, is:
-
-- **Driver policy hints**. Sometimes a driver will tell osgEarth to *never* cache
-  data that it provides, and osgEarth obeys.
-
-- **Environment variables**. These, and anything else stored in the Registry's
-  ``overrideCachePolicy`` will hide settings in the map or in a layer.
-
-- **Layer settings**. This is a cache policy set in a ``ImageLayer`` or ``ElevationLayer``
-  object, or in one of the map layers in an earth file.
+precendence. Here are the rules.
 
 - **Map settings**. This is a cache policy set in the ``Map`` object on in the 
-  ``<map><options>`` block in an earth file.
+  ``<map><options>`` block in an earth file. This sets the default cache policy for every
+  layer in the map. This is the weakest policy setting; it can be overridden by any of
+  the settings below.
+
+- **Layer settings**. This is a cache policy set in a ``ImageLayer`` or ``ElevationLayer``
+  object (or in the ``<map><image>`` or ``<map><elevation>`` block in an earth file).
+  This will override the top-level setting in the Map, but it will NOT override a cache
+  policy set by environment (see below). (It is also the ONLY way to override a driver
+  policy hint (see below), but it is rare that you every need to do this.)
+
+- **Environment variables**. These are read and stored in the Registry's
+  ``overrideCachePolicy`` and they will override the settings in the map or in a layer.
+  They will however NOT override driver policy hints.
+
+- **Driver policy hints**. Sometimes a driver will tell osgEarth to *never* cache
+  data that it provides, and osgEarth obeys. The only way to override this is to
+  expressly set a caching policy on the layer itself. (You will rarely have to 
+  worry about this.)
 
 
 Seeding the Cache

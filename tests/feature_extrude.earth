@@ -6,6 +6,7 @@ Footprint Extrusion using the "feature_geom" driver.
 
 <map name="Extrusion Demo" type="geocentric" version="2">
       
+	
     <!-- Our features layer. The "feature_geom" driver will analyze the
          style sheet and determine how to render the feature data. -->
          
@@ -36,8 +37,13 @@ Footprint Extrusion using the "feature_geom" driver.
 
         <lighting>true</lighting>
     </model>
+	
+    <image name="mapquest_osm" driver="xyz" max_level="14">
+        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
+        <profile>global-mercator</profile>
+    </image>
     
-    <image name="ReadyMap.org - Imagery" driver="tms">
+    <image name="ReadyMap.org - Imagery" driver="tms" enabled="false">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
     

@@ -24,11 +24,8 @@ on the map using the overlay technique.
             <buffer distance="-0.05"/>
 			<resample max_length="5.0"/>
         </features>
-		
-		<geo_interpolation>great_circle</geo_interpolation>
         
-        <styles>
-        
+        <styles>        
             <style type="text/css">
                 p1 {
                    fill:               #ffff8066;

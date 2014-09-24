@@ -83,7 +83,12 @@ TextSymbolizer::create(Feature*             feature,
 
     osgText::Font* font = 0L;
     if ( _symbol.valid() && _symbol->font().isSet() )
+    {
         font = osgText::readFontFile( *_symbol->font() );
+        // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
+        if ( font )
+            font->setGlyphImageMargin( 2 );
+    }
     if ( !font )
         font = Registry::instance()->getDefaultFont();
     if ( font )

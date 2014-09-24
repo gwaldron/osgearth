@@ -138,9 +138,11 @@ namespace osgEarth { namespace Annotation
 
         osg::Vec3d adjustOcclusionCullingPoint( const osg::Vec3d& world );
 
+    protected:
         // required by META_Node, but this object is not cloneable
-        OrthoNode( const OrthoNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
+        OrthoNode( const OrthoNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) : PositionedAnnotationNode(rhs, op) { }
 
+    private:
         // autoclamping.
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
 

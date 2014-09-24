@@ -123,7 +123,7 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<osg::Geode> _geode;
 
         /** Copy constructor */
-        LabelNode( const LabelNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
+        LabelNode( const LabelNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) : OrthoNode(rhs, op) { }
     };
 
 } } // namespace osgEarth::Annotation

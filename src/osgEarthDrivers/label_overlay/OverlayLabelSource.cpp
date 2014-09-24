@@ -63,7 +63,13 @@ public:
             //if ( symbol->size().isSet() )
             //    label->setFontSize( *symbol->size() );
             if ( symbol->font().isSet() )
-                label->setFont( osgText::readFontFile(*symbol->font()) );
+            {
+                osgText::Font* font = osgText::readFontFile(*symbol->font() );
+                // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
+                if ( font )
+                    font->setGlyphImageMargin( 2 );
+                label->setFont( font );
+            }
             if ( symbol->encoding().isSet() )
             {
                 osgText::String::Encoding enc;
@@ -144,7 +150,14 @@ public:
                 //if ( text->size().isSet() )
                 //    label->setFontSize( *text->size() );
                 if ( text->font().isSet() )
-                    label->setFont( osgText::readFontFile(*text->font()) );
+                {
+                    // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
+                    osgText::Font* font = osgText::readFontFile(*text->font() );
+                    // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
+                    if ( font )
+                        font->setGlyphImageMargin( 2 );
+                    label->setFont( font );
+                }
 
                 Controls::ControlNode* node = new Controls::ControlNode( label, priority );
 

@@ -95,7 +95,7 @@ GeometryCompilerOptions::setDefaults(const GeometryCompilerOptions& defaults)
 
 // defaults.
 GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
-_maxGranularity_deg    ( 1.0 ),
+_maxGranularity_deg    ( 10.0 ),
 _mergeGeometry         ( false ),
 _clustering            ( false ),
 _instancing            ( false ),
@@ -477,10 +477,9 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         BuildGeometryFilter filter( style );
-        if ( _options.maxGranularity().isSet() )
-            filter.maxGranularity() = *_options.maxGranularity();
-        if ( _options.geoInterp().isSet() )
-            filter.geoInterp() = *_options.geoInterp();
+        filter.maxGranularity() = *_options.maxGranularity();
+        filter.geoInterp()      = *_options.geoInterp();
+
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
 
@@ -550,10 +549,18 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
 
 #ifdef PROFILING
+    static double totalTime = 0.0;
+    static Threading::Mutex totalTimeMutex;
     osg::Timer_t p_end = osg::Timer::instance()->tick();
+    double t = osg::Timer::instance()->delta_s(p_start, p_end);
+    totalTimeMutex.lock();
+    totalTime += t;
+    totalTimeMutex.unlock();
     OE_INFO << LC
         << "features = " << p_features
-        << ", time = " << osg::Timer::instance()->delta_s(p_start, p_end) << " s." << std::endl;
+        << ", time = " << t << " s.  cummulative = " 
+        << totalTime << " s."
+        << std::endl;
 #endif
 
 #if 0

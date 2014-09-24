@@ -192,7 +192,7 @@ namespace osgEarth { namespace Annotation
         AnnotationNode( MapNode* mapNode, const Config& conf );
 
         // hidden copy ctor
-        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
+        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : osg::Group(rhs, op) { }
 
         osg::ref_ptr< TerrainCallback > _autoClampCallback;
 
@@ -238,6 +238,7 @@ namespace osgEarth { namespace Annotation
         PositionedAnnotationNode(MapNode* mapNode, const Config& conf)
             : AnnotationNode( mapNode, conf ) { }
         
+        PositionedAnnotationNode(const PositionedAnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) : AnnotationNode(rhs, op) { }
     };
 
 } } // namespace osgEarth::Annotation

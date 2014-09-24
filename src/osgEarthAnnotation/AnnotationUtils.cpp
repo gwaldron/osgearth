@@ -135,7 +135,12 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     osgText::Font* font = 0L;
     if ( symbol && symbol->font().isSet() )
+    {
         font = osgText::readFontFile( *symbol->font() );
+        // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
+        if ( font )
+          font->setGlyphImageMargin( 2 );
+    }
     if ( !font )
         font = Registry::instance()->getDefaultFont();
     if ( font )

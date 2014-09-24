@@ -35,7 +35,7 @@ namespace osgEarth
     {
     public:
         CacheTileHandler( TerrainLayer* layer, Map* map );
-        virtual bool handleTile( const TileKey& key );
+        virtual bool handleTile( const TileKey& key, const TileVisitor& tv );
         virtual bool hasData( const TileKey& key ) const;
 
         virtual std::string getProcessString() const;

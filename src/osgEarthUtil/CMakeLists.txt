@@ -20,7 +20,6 @@ SET(HEADERS_ROOT
     ClampCallback
     DataScanner
     DateTime
-    DetailTexture
     EarthManipulator
 	Ephemeris
     ExampleResources
@@ -51,7 +50,6 @@ SET(HEADERS_ROOT
     SpatialData
     StarData
     TerrainProfile
-	TextureSplatter
     TileIndex
     TileIndexBuilder
     TFS
@@ -76,8 +74,7 @@ SET(SOURCES_ROOT
     ClampCallback.cpp
     Controls.cpp
     ContourMap.cpp
-    DataScanner.cpp    
-    DetailTexture.cpp
+    DataScanner.cpp
     EarthManipulator.cpp
 	Ephemeris.cpp
     ExampleResources.cpp
@@ -104,7 +101,6 @@ SET(SOURCES_ROOT
     SpatialData.cpp
     Sky.cpp
     TerrainProfile.cpp
-	TextureSplatter.cpp
     TileIndex.cpp
     TileIndexBuilder.cpp
     TFS.cpp

@@ -31,11 +31,9 @@
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 
 #include <osgEarthUtil/NormalMap>
-#include <osgEarthUtil/DetailTexture>
 #include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
 #include <osgEarthUtil/ContourMap>
-#include <osgEarthUtil/TextureSplatter>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>

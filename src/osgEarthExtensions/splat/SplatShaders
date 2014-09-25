@@ -147,9 +147,9 @@ namespace
         "    float scaleOffset = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset); \n"
 
         // Mapping of view ranges to splat texture levels of detail.
-        "#define RANGE_COUNT 9\n"
-        "    const float ranges[RANGE_COUNT] = float[](  500.0, 750.0, 1000.0, 4000.0, 30000.0, 150000.0, 300000.0, 1000000.0, 5000000.0 );\n"
-        "    const float lods  [RANGE_COUNT] = float[](   20.0,  18.0,   16.0,   14.0,    12.0,     10.0,      8.0,       6.0,       2.0 ); \n"
+        "#define RANGE_COUNT 7\n"
+        "    const float ranges[RANGE_COUNT] = float[](  1000.0, 4000.0, 30000.0, 150000.0, 300000.0, 1000000.0, 5000000.0 );\n"
+        "    const float lods  [RANGE_COUNT] = float[](    16.0,   14.0,    12.0,     10.0,      8.0,       6.0,       2.0 ); \n"
 
         // Choose the best range based on distance to camera.
         "    float d = clamp(oe_splat_distance, ranges[0], ranges[RANGE_COUNT-1]); \n"

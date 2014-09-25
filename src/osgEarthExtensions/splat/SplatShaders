@@ -60,6 +60,7 @@ namespace
         "uniform float oe_splat_intensity; \n"
         "uniform float oe_splat_warp; \n"
         "uniform float oe_splat_samples; \n"
+        "uniform float oe_splat_scaleOffset; \n"
 
         "uniform sampler2D oe_coverage_tex; \n"
         "uniform sampler2DArray oe_splat_tex; \n"
@@ -142,6 +143,7 @@ namespace
         "{ \n"
         // Quantize the sample count.
         "    float isamples = min(ceil(oe_splat_samples), OE_SPLAT_MAX_SAMPLES-1.0); \n"
+        "    float scaleOffset = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset); \n"
 
         // Mapping of view ranges to splat texture levels of detail.
         "#define RANGE_COUNT 11\n"
@@ -158,13 +160,13 @@ namespace
         "    { \n"
         "        if ( d >= ranges[i] && d <= ranges[i+1] ) \n"
         "        { \n"        
-        "            float lod0 = lods[i]; \n"
+        "            float lod0 = lods[i] + scaleOffset; \n"
         "            vec2 splat_tc0 = oe_splat_getSplatCoords(lod0); \n"
         "            vec4 texel0 = oe_splat_samples <= 1.0 ? \n"
         "               oe_splat_singleTexel(splat_tc0, lod0) : \n"
         "               oe_splat_multiTexel(isamples, splat_tc0, lod0); \n"
         
-        "            float lod1 = lods[i+1]; \n"
+        "            float lod1 = lods[i+1] + scaleOffset; \n"
         "            vec2 splat_tc1 = oe_splat_getSplatCoords(lod1); \n"
         "            vec4 texel1 = oe_splat_samples <= 1.0 ? \n"
         "               oe_splat_singleTexel(splat_tc1, lod1) : \n"

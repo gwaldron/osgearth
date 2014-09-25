@@ -69,8 +69,7 @@ namespace osgEarth { namespace Extensions { namespace Splat
         int                                 _splatTexUnit;
         osg::ref_ptr<osg::Uniform>          _splatTexUniform;
         osg::ref_ptr<osg::Uniform>          _coverageTexUniform;
-        osg::ref_ptr<osg::Uniform>          _startLODUniform;
-        osg::ref_ptr<osg::Uniform>          _scaleUniform;
+        osg::ref_ptr<osg::Uniform>          _scaleOffsetUniform;
         osg::ref_ptr<osg::Uniform>          _intensityUniform;
         osg::ref_ptr<osg::Uniform>          _warpUniform;
         osg::ref_ptr<osg::Uniform>          _samplesUniform;

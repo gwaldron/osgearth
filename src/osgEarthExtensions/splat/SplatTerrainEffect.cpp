@@ -36,7 +36,7 @@
 
 // Tile LOD offset of the "Level 0" splatting scale. This is necessary
 // to get rid of precision issues when scaling the splats up high.
-#define L0_OFFSET "10.0"
+//#define L0_OFFSET "10.0"
 
 using namespace osgEarth;
 using namespace osgEarth::Extensions::Splat;
@@ -56,11 +56,10 @@ _ok    ( false )
         }
     }
 
-    _startLODUniform  = new osg::Uniform("oe_splat_L0",        1.0f);
-    _scaleUniform     = new osg::Uniform("oe_splat_scale",     8.0f);
-    _intensityUniform = new osg::Uniform("oe_splat_intensity", 1.0f);
-    _warpUniform      = new osg::Uniform("oe_splat_warp",    0.004f);
-    _samplesUniform   = new osg::Uniform("oe_splat_samples",   1.0f);
+    _scaleOffsetUniform = new osg::Uniform("oe_splat_scaleOffset", 0.0f);
+    _intensityUniform   = new osg::Uniform("oe_splat_intensity",   1.0f);
+    _warpUniform        = new osg::Uniform("oe_splat_warp",      0.004f);
+    _samplesUniform     = new osg::Uniform("oe_splat_samples",     1.0f);
 }
 
 void
@@ -89,8 +88,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             _coverageTexUniform->set( _coverageLayer->shareImageUnit().get() );
 
             // control uniforms
-            stateset->addUniform( _startLODUniform.get() );
-            stateset->addUniform( _scaleUniform.get() );
+            stateset->addUniform( _scaleOffsetUniform.get() );
             stateset->addUniform( _intensityUniform.get() );
             stateset->addUniform( _warpUniform.get() );
             stateset->addUniform( _samplesUniform.get() );
@@ -100,8 +98,8 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             std::string fragmentShader = splatFragmentShader;
 
             osgEarth::replaceIn( vertexShader,   "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
-            osgEarth::replaceIn( vertexShader,   "$L0_OFFSET", L0_OFFSET );
-            osgEarth::replaceIn( fragmentShader, "$L0_OFFSET", L0_OFFSET );
+            //osgEarth::replaceIn( vertexShader,   "$L0_OFFSET", L0_OFFSET );
+            //osgEarth::replaceIn( fragmentShader, "$L0_OFFSET", L0_OFFSET );
 
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
@@ -129,8 +127,7 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
     {
         if ( _splatTexUniform.valid() )
         {
-            stateset->removeUniform( _startLODUniform.get() );
-            stateset->removeUniform( _scaleUniform.get() );
+            stateset->removeUniform( _scaleOffsetUniform.get() );
             stateset->removeUniform( _warpUniform.get() );
             stateset->removeUniform( _samplesUniform.get() );
             stateset->removeUniform( _intensityUniform.get() );

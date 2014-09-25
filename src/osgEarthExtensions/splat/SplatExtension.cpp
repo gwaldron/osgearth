@@ -158,3 +158,21 @@ SplatExtension::disconnect(MapNode* mapNode)
     _effect = 0L;
     return true;
 }
+
+bool
+SplatExtension::connect(Control* control)
+{
+    Container* container = dynamic_cast<Container*>(control);
+    if ( container )
+    {
+        container->addControl( new LabelControl("Splatting is on!") );
+    }
+    return true;
+}
+
+bool
+SplatExtension::disconnect(Control* control)
+{
+    // NOP
+    return true;
+}

@@ -24,14 +24,19 @@
 #include "SplatTerrainEffect"
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
+#include <osgEarthUtil/Controls>
 
 namespace osgEarth { namespace Extensions { namespace Splat
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Util::Controls;
+
     /**
      * Extension for loading the splatting effect on demand.
      */
-    class SplatExtension : public osgEarth::Extension,
-                           public osgEarth::ExtensionInterface<MapNode>
+    class SplatExtension : public Extension,
+                           public ExtensionInterface<MapNode>,
+                           public ExtensionInterface<Control>
     {
     public:
         META_Object(osgearth_ext_splat, SplatExtension);
@@ -54,6 +59,13 @@ namespace osgEarth { namespace Extensions { namespace Splat
         bool connect(MapNode* mapNode);
 
         bool disconnect(MapNode* mapNode);
+
+
+    public: // ExtensionInterface<Control>
+
+        bool connect(Control* control);
+
+        bool disconnect(Control* control);
 
 
     protected: // Object

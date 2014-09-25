@@ -21,6 +21,9 @@ SET(TARGET_H
 	SplatExport
 	SplatShaders
 	NoiseShaders)
+
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
+    osgEarthUtil)
 	
 SETUP_EXTENSION(osgearth_splat)
 

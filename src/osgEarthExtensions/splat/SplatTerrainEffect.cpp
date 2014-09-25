@@ -30,7 +30,7 @@
 
 #define LC "[Splat] "
 
-#define COVERAGE_SAMPLER "oe_coverage_tex"
+#define COVERAGE_SAMPLER "oe_splat_coverage_tex"
 #define SPLAT_SAMPLER    "oe_splat_tex"
 #define SPLAT_FUNC       "oe_splat_getTexel"
 

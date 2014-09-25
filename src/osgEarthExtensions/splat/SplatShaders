@@ -50,19 +50,20 @@ namespace
         "#version 120\n"
         "#extension GL_EXT_texture_array : enable\n"
         
+        // from the terrain engine:
         "varying vec4 oe_layer_tilec; \n"
-
         "uniform vec4 oe_tile_key; \n"
 
+        // from the vertex shader:
         "varying float oe_splat_distance; \n"
         "varying vec2 oe_splat_covtc; \n"
 
+        // from SplatTerrainEffect:
         "uniform float oe_splat_intensity; \n"
         "uniform float oe_splat_warp; \n"
         "uniform float oe_splat_samples; \n"
         "uniform float oe_splat_scaleOffset; \n"
-
-        "uniform sampler2D oe_coverage_tex; \n"
+        "uniform sampler2D oe_splat_coverage_tex; \n"
         "uniform sampler2DArray oe_splat_tex; \n"
 
         // See NoiseShaders
@@ -91,7 +92,7 @@ namespace
         "vec4 oe_splat_singleTexel(in vec2 splat_tc, in float lod) \n"
         "{ \n"
         "    vec2 warped_tc = oe_splat_warpCoverageCoords(0, splat_tc, lod);\n"
-        "    vec4 cov = texture2D(oe_coverage_tex, warped_tc); \n"
+        "    vec4 cov = texture2D(oe_splat_coverage_tex, warped_tc); \n"
         "    return oe_splat_getTexel(cov.r*255.0, splat_tc); \n"
         "} \n"
 
@@ -105,7 +106,7 @@ namespace
         "    for(int sample=0; sample<isamples; ++sample) \n"
         "    {\n"
         "        vec2 warped_tc = oe_splat_warpCoverageCoords(sample, splat_tc, lod);\n"
-        "        vec4 cov = texture2D(oe_coverage_tex, warped_tc); \n"
+        "        vec4 cov = texture2D(oe_splat_coverage_tex, warped_tc); \n"
         "        vec4 tex = oe_splat_getTexel(cov.r*255.0, splat_tc); \n"
         "        texel.rgb += tex.rgb;\n"
         "    }\n"

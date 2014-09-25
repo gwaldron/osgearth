@@ -510,6 +510,24 @@ MapNodeHelper::load(osg::ArgumentParser& args,
         configureView( view );
     }
 
+    // Process extensions.
+    for(std::vector<osg::ref_ptr<Extension> >::const_iterator eiter = mapNode->getExtensions().begin();
+        eiter != mapNode->getExtensions().end();
+        ++eiter)
+    {
+        Extension* e = eiter->get();
+
+        // Check for a View interface:
+        ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get( e );
+        if ( viewIF )
+            viewIF->connect( view );
+
+        // Check for a Control interface:
+        ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get( e );
+        if ( controlIF )
+            controlIF->connect( userControl );
+    }
+    
     return root;
 }
 

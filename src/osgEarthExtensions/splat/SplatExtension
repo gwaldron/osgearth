@@ -23,6 +23,7 @@
 #include "SplatOptions"
 #include "SplatTerrainEffect"
 #include <osgEarth/Extension>
+#include <osgEarth/MapNode>
 
 namespace osgEarth { namespace Extensions { namespace Splat
 {

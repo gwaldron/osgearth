@@ -21,7 +21,6 @@
 #include <osgEarth/ClampableNode>
 #include <osgEarth/ClampingTechnique>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/Extension>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/MapNodeObserver>

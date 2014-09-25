@@ -25,13 +25,13 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Extension>
 
 namespace osgEarth
 {
     class OverlayDecorator;
     class Terrain;
     class MapNodeCullData;
-    class Extension;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
@@ -178,6 +178,11 @@ namespace osgEarth
          */
         void clearExtensions();
 
+        /**
+         * Access the extensions vector.
+         */
+        const std::vector< osg::ref_ptr<Extension> >& getExtensions() const { return _extensions; }
+
 
     public: // special purpose
 
@@ -218,7 +223,7 @@ namespace osgEarth
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
 
-        std::vector<osg::ref_ptr<Extension> > _extensions;
+        std::vector< osg::ref_ptr<Extension> > _extensions;
 
     public: // MapCallback proxy
 

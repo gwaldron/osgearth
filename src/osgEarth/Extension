@@ -26,7 +26,6 @@
 
 namespace osgEarth
 {
-    class MapNode;
     class ConfigOptions;
 }
 

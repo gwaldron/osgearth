@@ -34,6 +34,10 @@
 #define SPLAT_SAMPLER    "oe_splat_tex"
 #define SPLAT_FUNC       "oe_splat_getTexel"
 
+// Tile LOD offset of the "Level 0" splatting scale. This is necessary
+// to get rid of precision issues when scaling the splats up high.
+#define L0_OFFSET "10.0"
+
 using namespace osgEarth;
 using namespace osgEarth::Extensions::Splat;
 
@@ -93,12 +97,16 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             // configure shaders
             std::string vertexShader = splatVertexShader;
-            osgEarth::replaceIn( vertexShader, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
+            std::string fragmentShader = splatFragmentShader;
+
+            osgEarth::replaceIn( vertexShader,   "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
+            osgEarth::replaceIn( vertexShader,   "$L0_OFFSET", L0_OFFSET );
+            osgEarth::replaceIn( fragmentShader, "$L0_OFFSET", L0_OFFSET );
 
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            vp->setFunction( "oe_splat_vertex",   vertexShader,        ShaderComp::LOCATION_VERTEX_VIEW );
-            vp->setFunction( "oe_splat_fragment", splatFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, -1.0 );
+            vp->setFunction( "oe_splat_vertex",   vertexShader,   ShaderComp::LOCATION_VERTEX_VIEW );
+            vp->setFunction( "oe_splat_fragment", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, -1.0 );
 
             // support shaders
             osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noise4Dshaders);

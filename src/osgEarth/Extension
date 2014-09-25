@@ -33,23 +33,29 @@ namespace osgEarth
 namespace osgEarth
 {
     /**
-     * An Extension is an object that has access to a MapNode and
-     * can do anything it wants.
+     * An Extension is an object that can be loaded on demand (from a plugin) 
+     * and can have multiple object-specific interfaces.
+     *
+     * For example, the pattern for declaring an Extension that connects to a
+     * MapNode looks like:
+     *
+     *   public MyExtension : public Extension, public ExtensionInterface<MapNode>
+     *
+     * You can implement more than one interface. This one would connect to a
+     * MapNode and to a UI Control:
+     *
+     *   public MyExtension : public Extension,
+     *                        public ExtensionInterface<MapNode>,
+     *                        public ExtensionInterface<Control>
      */
     class OSGEARTH_EXPORT Extension : public osg::Object // header-only
     {
     public:
         /**
-         * Associate this extension with a MapNode.
+         * Sets DB options that this extension should use when doing IO operations.
          */
-        virtual void startup(MapNode* mapNode, const osgDB::Options* options) =0;
+        virtual void setDBOptions(const osgDB::Options* options) =0;
 
-        /**
-         * Disassociate this extension from a MapNode. The extension
-         * is responsible for undo-ing whatever it did between
-         * startup() and this call.
-         */
-        virtual void shutdown(MapNode* mapNode) =0;
 
     protected:
         Extension() { }
@@ -67,6 +73,33 @@ namespace osgEarth
          * Fetch configuration options from a plugin loader
          */
         static const ConfigOptions& getConfigOptions(const osgDB::Options*);
+    };
+
+    
+    /**
+     * This template lets you create object-specific interfaces in an extension.
+     */
+    template<typename T> class ExtensionInterface
+    {
+    public:
+        /**
+         * Connects the extension to an object.
+         */
+        virtual bool connect(T* object) =0;
+
+        /**
+         * Disconnects the extension from an object. This should be the
+         * same object used to call connect().
+         */
+        virtual bool disconnect(T* object) =0;
+        
+        /**
+         * Cast a base extension to this interface, or return NULL
+         * if the extenstion doesn't implemenent this inteface.
+         */
+        static ExtensionInterface<T>* get(Extension* e) {
+            return dynamic_cast< ExtensionInterface<T>* >(e);
+        }
     };
 
 } // namespace osgEarth

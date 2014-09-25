@@ -442,7 +442,17 @@ MapNode::addExtension(Extension* extension, const osgDB::Options* options)
     if ( extension )
     {
         _extensions.push_back( extension );
-        extension->startup( this, options );
+
+        // set the IO options is they were provided:
+        if ( options )
+            extension->setDBOptions( options );
+        
+        // start it.
+        ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get(extension);
+        if ( extensionIF )
+        {
+            extensionIF->connect( this );
+        }
     }
 }
 
@@ -452,7 +462,11 @@ MapNode::removeExtension(Extension* extension)
     Extensions::iterator i = std::find(_extensions.begin(), _extensions.end(), extension);
     if ( i != _extensions.end() )
     {
-        i->get()->shutdown( this );
+        ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get( i->get() );
+        if ( extensionIF )
+        {
+            extensionIF->disconnect( this );
+        }
         _extensions.erase( i );
     }
 }
@@ -460,11 +474,13 @@ MapNode::removeExtension(Extension* extension)
 void
 MapNode::clearExtensions()
 {
-    for(Extensions::iterator i = _extensions.begin();
-        i != _extensions.end(); 
-        ++i)
+    for(Extensions::iterator i = _extensions.begin(); i != _extensions.end(); ++i)
     {
-        i->get()->shutdown( this );
+        ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get( i->get() );
+        if ( extensionIF )
+        {
+            extensionIF->disconnect( this );
+        }
     }
 
     _extensions.clear();

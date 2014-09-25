@@ -909,7 +909,6 @@ namespace osgEarth { namespace Util { namespace Controls
         };
     };
 
-
 } } } // namespace osgEarth::Util::Controls
 
 #endif // OSGEARTHUTIL_CONTROLS

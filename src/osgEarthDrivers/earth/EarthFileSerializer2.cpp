@@ -112,7 +112,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         osgDB::Registry::instance()->getDataFilePathList().push_back( path );
     }
 
-    MapNode* mapNode = new MapNode( map, mapNodeOptions );
+    osg::ref_ptr<MapNode> mapNode = new MapNode( map, mapNodeOptions );
 
     // External configs. Support both "external" and "extensions" tags.
 
@@ -138,8 +138,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         }
     }
 
-
-    return mapNode;
+    return mapNode.release();
 }
 
 

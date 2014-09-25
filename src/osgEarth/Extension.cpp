@@ -31,8 +31,6 @@ using namespace osgEarth;
 Extension*
 Extension::create(const std::string& name, const ConfigOptions& options)
 {
-    osg::ref_ptr<Extension> extension;
-
     if ( name.empty() )
     {
         OE_WARN << LC << "ILLEGAL- no driver set for tile source" << std::endl;
@@ -45,23 +43,23 @@ Extension::create(const std::string& name, const ConfigOptions& options)
 
     std::string pluginExtension = std::string( ".osgearth_" ) + name;
 
-    osg::ref_ptr<osg::Object> result = osgDB::readObjectFile( pluginExtension, dbopt.get() );
-    if ( !result.valid() )
+    // use this instead of osgDB::readObjectFile b/c the latter prints a warning msg.
+    osgDB::ReaderWriter::ReadResult rr = osgDB::Registry::instance()->readObject( pluginExtension, dbopt.get() );
+    if ( !rr.validObject() || rr.error() )
     {
-        // be quiet.
-        //OE_WARN << LC << "Failed to load Extension \"" << name << "\"" << std::endl;
+        // quietly fail so we don't get tons of msgs.
         return 0L;
     }
 
-    // make sure it's actually an Extension:
-    extension = dynamic_cast<Extension*>( result.release() );
-    if ( !extension )
+    Extension* extension = dynamic_cast<Extension*>( rr.getObject() );
+    if ( extension == 0L )
     {
         OE_WARN << LC << "Plugin \"" << name << "\" is not an Extension" << std::endl;
         return 0L;
     }
 
-    return extension.release();
+    rr.takeObject();
+    return extension;
 }
 
 

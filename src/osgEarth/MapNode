@@ -219,8 +219,6 @@ namespace osgEarth
         osg::Group*              _terrainEngineContainer;
 
         std::vector<osg::ref_ptr<Extension> > _extensions;
-        //typedef std::vector<osg::ref_ptr<Extension> > Extensions;
-        //Extensions _extensions;
 
     public: // MapCallback proxy
 

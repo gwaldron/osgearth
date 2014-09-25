@@ -26,20 +26,25 @@ namespace osgEarth { namespace Extensions { namespace Splat
 {
     using namespace osgEarth;
 
+    /**
+     * Options governing the classification splatting engine.
+     */
     class SplatOptions : public DriverConfigOptions // NO EXPORT; header only
     {
     public:
+        /** URI of the splat texture catalog description file */
         optional<URI>& catalogURI() { return _catalogURI; }
         const optional<URI>& catalogURI() const { return _catalogURI; }
         
+        /** URI of the legend that describes the values in the coverage layer and maps them
+            to the catalog. */
         optional<URI>& legendURI() { return _legendURI; }
         const optional<URI>& legendURI() const { return _legendURI; }
 
+        /** Name of the coverage layer. The layer should be installed in the Map and
+            should be marked as shared. */
         optional<std::string>& coverageLayerName() { return _coverageLayerName; }
         const optional<std::string>& coverageLayerName() const { return _coverageLayerName; }
-
-        optional<float>& scale() { return _scale; }
-        const optional<float>& scale() const { return _scale; }
 
     public:
         SplatOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
@@ -56,7 +61,6 @@ namespace osgEarth { namespace Extensions { namespace Splat
             conf.updateIfSet("catalog",  _catalogURI);
             conf.updateIfSet("legend",   _legendURI);
             conf.updateIfSet("coverage", _coverageLayerName );
-            conf.updateIfSet("scale",    _scale );
             return conf;
         }
 
@@ -71,13 +75,11 @@ namespace osgEarth { namespace Extensions { namespace Splat
             conf.getIfSet("catalog",  _catalogURI);
             conf.getIfSet("legend",   _legendURI);
             conf.getIfSet("coverage", _coverageLayerName );
-            conf.getIfSet("scale",    _scale );
         }
 
         optional<URI>         _catalogURI;
         optional<URI>         _legendURI;
         optional<std::string> _coverageLayerName;
-        optional<float>       _scale;
     };
 
 } } } // namespace osgEarth::Extensions::Splat

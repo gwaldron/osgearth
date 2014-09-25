@@ -46,26 +46,38 @@ SplatExtension::~SplatExtension()
 }
 
 void
-SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
+SplatExtension::setDBOptions(const osgDB::Options* dbOptions)
 {
-    OE_INFO << LC << "Startup.\n";
+    _dbOptions = dbOptions;
+}
+
+bool
+SplatExtension::connect(MapNode* mapNode)
+{
+    if ( !mapNode )
+    {
+        OE_WARN << LC << "Illegal: MapNode cannot be null." << std::endl;
+        return false;
+    }
+
+    OE_INFO << LC << "Connecting to MapNode.\n";
 
     if ( !_options.catalogURI().isSet() )
     {
         OE_WARN << LC << "Illegal: catalog URI is required" << std::endl;
-        return;
+        return false;
     }
 
     if ( !_options.legendURI().isSet() )
     {
         OE_WARN << LC << "Illegal: legend URI is required" << std::endl;
-        return;
+        return false;
     }
 
     if ( !_options.coverageLayerName().isSet() )
     {
         OE_WARN << LC << "Illegal: coverage layer name is required" << std::endl;
-        return;
+        return false;
     }
 
     // Locate the coverage layer in the map.
@@ -75,15 +87,15 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
     {
         OE_WARN << LC << "Coverage layer \""
             << _options.coverageLayerName().get()
-            << "\" not found in map"
+            << "\" not found in map."
             << std::endl;
-        return;
+        return false;
     }
 
     // Read in the catalog.
     osg::ref_ptr<SplatCatalog> catalog = new SplatCatalog();
     {
-        ReadResult result = _options.catalogURI()->readString( dbOptions );
+        ReadResult result = _options.catalogURI()->readString( _dbOptions.get() );
         if ( result.succeeded() )
         {
             Config conf;
@@ -100,14 +112,14 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
             OE_WARN << LC
                 << "Failed to read catalog from \""
                 << _options.catalogURI()->full() << "\"\n";
-            return;
+            return false;
         }
     }
 
     // Read in the legend.
     osg::ref_ptr<SplatCoverageLegend> legend = new SplatCoverageLegend();
     {
-        ReadResult result = _options.legendURI()->readString( dbOptions );
+        ReadResult result = _options.legendURI()->readString( _dbOptions.get() );
         if ( result.succeeded() )
         {
             Config conf;
@@ -123,18 +135,26 @@ SplatExtension::startup(MapNode* mapNode, const osgDB::Options* dbOptions)
             OE_WARN << LC
                 << "Failed to read legend from \""
                 << _options.legendURI()->full() << "\"\n";
-            return;
+            return false;
         }
     }
 
     // Install the splatter on the terrain engine.
-    SplatTerrainEffect* effect = new SplatTerrainEffect( catalog, legend, dbOptions );
-    effect->setCoverageLayer( coverageLayer );
-    mapNode->getTerrainEngine()->addEffect( effect );
+    _effect = new SplatTerrainEffect( catalog, legend, _dbOptions.get() );
+    _effect->setCoverageLayer( coverageLayer );
+
+    mapNode->getTerrainEngine()->addEffect( _effect.get() );
+
+    return true;
 }
 
-void
-SplatExtension::shutdown(MapNode* mapNode)
+bool
+SplatExtension::disconnect(MapNode* mapNode)
 {
-    OE_INFO << LC << "Shutdown.\n";
+    if ( mapNode )
+    {
+        mapNode->getTerrainEngine()->removeEffect( _effect.get() );
+    }
+    _effect = 0L;
+    return true;
 }

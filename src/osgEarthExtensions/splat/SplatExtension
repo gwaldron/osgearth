@@ -21,11 +21,16 @@
 
 #include "SplatExport"
 #include "SplatOptions"
+#include "SplatTerrainEffect"
 #include <osgEarth/Extension>
 
 namespace osgEarth { namespace Extensions { namespace Splat
 {
-    class SplatExtension : public osgEarth::Extension
+    /**
+     * Extension for loading the splatting effect on demand.
+     */
+    class SplatExtension : public osgEarth::Extension,
+                           public osgEarth::ExtensionInterface<MapNode>
     {
     public:
         META_Object(osgearth_ext_splat, SplatExtension);
@@ -37,17 +42,26 @@ namespace osgEarth { namespace Extensions { namespace Splat
         // DTOR
         virtual ~SplatExtension();
 
+
     public: // Extension
 
-        void startup(MapNode* mapNode, const osgDB::Options* dbOptions);
+        void setDBOptions(const osgDB::Options* dbOptions);
 
-        void shutdown(MapNode* mapNode);
+
+    public: // ExtensionInterface<MapNode>
+
+        bool connect(MapNode* mapNode);
+
+        bool disconnect(MapNode* mapNode);
+
 
     protected: // Object
         SplatExtension(const SplatExtension& rhs, const osg::CopyOp& op) { }
 
     private:
-        const SplatOptions _options;
+        const SplatOptions                 _options;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<SplatTerrainEffect>   _effect;
     };
 
 } } } // namespace osgEarth::Extensions::Splat

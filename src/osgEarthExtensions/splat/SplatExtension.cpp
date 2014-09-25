@@ -162,6 +162,7 @@ SplatExtension::disconnect(MapNode* mapNode)
 bool
 SplatExtension::connect(Control* control)
 {
+    //TODO add a UI.
     Container* container = dynamic_cast<Container*>(control);
     if ( container )
     {

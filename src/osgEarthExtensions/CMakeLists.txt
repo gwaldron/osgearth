@@ -23,3 +23,5 @@ SET(OSGEARTH_EXTENSIONS_FOLDER Extensions)
 
 add_subdirectory(splat)
 
+add_subdirectory(viewpoints)
+

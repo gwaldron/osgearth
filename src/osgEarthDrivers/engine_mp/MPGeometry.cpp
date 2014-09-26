@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2013 Pelican Mapping
+* Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -30,10 +30,6 @@ using namespace osgEarth;
 
 #define LC "[MPGeometry] "
 
-
-//----------------------------------------------------------------------------
-
-//osg::buffered_object<MPGeometry::PerGC> MPGeometry::_perGC;
 
 MPGeometry::MPGeometry(const TileKey& key, const MapFrame& frame, int imageUnit) : 
 osg::Geometry    ( ),
@@ -446,12 +442,6 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 void 
 MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 {
-    //if (!_supportsGLSL)
-    //{
-    //    osg::Geometry::drawImplementation(renderInfo);
-    //    return;
-    //}
-
     // See if this is a pre-render depth-only camera. If so we can skip all the layers
     // and just render the primitive sets.
     osg::Camera* camera = renderInfo.getCurrentCamera();
@@ -461,8 +451,7 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
     osg::State& state = *renderInfo.getState();
 
-    bool usingVertexBufferObjects = _useVertexBufferObjects && state.isVertexBufferObjectSupported();
-    bool handleVertexAttributes = !_vertexAttribList.empty();
+    bool hasVertexAttributes = !_vertexAttribList.empty();
 
     osg::ArrayDispatchers& arrayDispatchers = state.getArrayDispatchers();
 
@@ -470,31 +459,19 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     arrayDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
 
 
-    //Remove 
+    //Remove?
 #if OSG_VERSION_LESS_THAN(3,1,8)
     arrayDispatchers.setUseGLBeginEndAdapter(false);
 #endif
 
 #if OSG_MIN_VERSION_REQUIRED(3,1,8)
     arrayDispatchers.activateNormalArray(_normalArray.get());
-    if (renderColor)
-    {
-        arrayDispatchers.activateColorArray(_colorArray.get());
-        arrayDispatchers.activateSecondaryColorArray(_secondaryColorArray.get());
-        arrayDispatchers.activateFogCoordArray(_fogCoordArray.get());
-    }
 #else
     arrayDispatchers.activateNormalArray(_normalData.binding, _normalData.array.get(), _normalData.indices.get());
-    if (renderColor)
-    {
-        arrayDispatchers.activateColorArray(_colorData.binding, _colorData.array.get(), _colorData.indices.get());
-        arrayDispatchers.activateSecondaryColorArray(_secondaryColorData.binding, _secondaryColorData.array.get(), _secondaryColorData.indices.get());
-        arrayDispatchers.activateFogCoordArray(_fogCoordData.binding, _fogCoordData.array.get(), _fogCoordData.indices.get());
-    }
 #endif
     
 
-    if (handleVertexAttributes)
+    if (hasVertexAttributes)
     {
         for(unsigned int unit=0;unit<_vertexAttribList.size();++unit)
         {
@@ -518,47 +495,15 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
     if (_normalArray.valid() && _normalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
         state.setNormalPointer(_normalArray.get());
-
-    if (renderColor && _colorArray.valid() && _colorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setColorPointer(_colorArray.get());
-
-    if (renderColor && _secondaryColorArray.valid() && _secondaryColorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setSecondaryColorPointer(_secondaryColorArray.get());
-
-    if (renderColor && _fogCoordArray.valid() && _fogCoordArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setFogCoordPointer(_fogCoordArray.get());
 #else
     if( _vertexData.array.valid() )
         state.setVertexPointer(_vertexData.array.get());
 
     if (_normalData.binding==BIND_PER_VERTEX && _normalData.array.valid())
         state.setNormalPointer(_normalData.array.get());
+#endif
 
-    if (renderColor && _colorData.binding==BIND_PER_VERTEX && _colorData.array.valid())
-        state.setColorPointer(_colorData.array.get());
-
-    if (renderColor && _secondaryColorData.binding==BIND_PER_VERTEX && _secondaryColorData.array.valid())
-        state.setSecondaryColorPointer(_secondaryColorData.array.get());
-
-    if (renderColor && _fogCoordData.binding==BIND_PER_VERTEX && _fogCoordData.array.valid())
-        state.setFogCoordPointer(_fogCoordData.array.get());
-#endif    
-        
-    for(unsigned int unit=0;unit<_texCoordList.size();++unit)
-    {
-#if OSG_MIN_VERSION_REQUIRED( 3, 1, 8)
-        const Array* array = _texCoordList[unit].get();
-        if (array)
-        {
-            state.setTexCoordPointer(unit,array);
-        }
-#else
-        const osg::Array* array = _texCoordList[unit].array.get();
-        if (array) state.setTexCoordPointer(unit,array);
-#endif        
-    }
-
-    if( handleVertexAttributes )
+    if( hasVertexAttributes )
     {
         for(unsigned int index = 0; index < _vertexAttribList.size(); ++index )
         {
@@ -592,7 +537,7 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     state.applyDisablingOfVertexAttributes();
 
     // draw the multipass geometry.
-    renderPrimitiveSets(state, renderColor, usingVertexBufferObjects);
+    renderPrimitiveSets(state, renderColor, true);
 
     // unbind the VBO's if any are used.
     state.unbindVertexBufferObject();

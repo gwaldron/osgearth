@@ -23,8 +23,7 @@ is randomized, but it is randomized exactly the same way each time.
             <build_spatial_index>true</build_spatial_index>
         </features>
         
-        <!-- Instancing enables GL's "DrawInstanced" support. -->
-             
+        <!-- Instancing enables GL's "DrawInstanced" support. -->             
         <instancing>true</instancing>
         
         <!-- Disables feature indexing, since the trees are not mapped 1-to-1 to
@@ -78,7 +77,7 @@ is randomized, but it is randomized exactly the same way each time.
     </model>
     
     
-    <model name="parks" driver="feature_geom" enabled="false">
+    <model name="parks" driver="feature_geom" enabled="true">
         <features name="parks" driver="ogr">
             <url>../data/parks.shp</url>
             <build_spatial_index>false</build_spatial_index>
@@ -87,16 +86,12 @@ is randomized, but it is randomized exactly the same way each time.
             <style type="text/css">      
                 default {
                    fill:                #00ff007f;
-                   altitide-clamping:   terrain-drape;
+                   altitude-clamping:   terrain-drape;
                 }                
             </style>
         </styles>
     </model>
     
-    
-    <options>
-        <lighting>false</lighting>
-    </options> 
     
     <image name="mapquest_open_aerial" driver="xyz">
         <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>

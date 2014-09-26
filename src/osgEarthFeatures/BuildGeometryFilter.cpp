@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2013 Pelican Mapping
+ * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -570,7 +570,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         if (!oeTess.tessellateGeometry(*osgGeom))
         {
             //fallback to osg tessellator
-            OE_INFO << LC << "Falling back on OSG tessellator (" << osgGeom->getName() << ")" << std::endl;
+            OE_DEBUG << LC << "Falling back on OSG tessellator (" << osgGeom->getName() << ")" << std::endl;
 
             osgUtil::Tessellator tess;
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );

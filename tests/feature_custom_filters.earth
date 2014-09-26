@@ -1,6 +1,10 @@
 <!--
 osgEarth Sample
-This example shows how you can use a custom FeatureFilter, even one that is defined in an Earth File!  Run this example with the osgearth_feature_filter example
+Run this example with:
+
+  osgearth_featurefilter feature_custom_features.earth
+
+Shows how you can use a custom FeatureFilter, even one that is defined in an Earth File!  
 -->
 
 <map name="Feature Custom Filter Demo" type="geocentric" version="2">

@@ -359,7 +359,7 @@ MPTerrainEngineNode::createTerrain()
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        osg::ref_ptr<osg::Node> node = factory->createNode( keys[i], true, 0L );
+        osg::ref_ptr<osg::Node> node = factory->createNode( keys[i], true, true, 0L );
         if ( node.valid() )
         {
             root->addChild( node.get() );
@@ -487,7 +487,7 @@ MPTerrainEngineNode::createNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    return getKeyNodeFactory()->createNode( key, true, progress );
+    return getKeyNodeFactory()->createNode( key, true, true, progress );
 }
 
 osg::Node*
@@ -501,14 +501,15 @@ MPTerrainEngineNode::createStandaloneNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create standalone node for \"" << key.str() << "\"" << std::endl;
 
-    return getKeyNodeFactory()->createNode( key, false, progress );
+    return getKeyNodeFactory()->createNode( key, true, false, progress );
 }
 
 osg::Node*
 MPTerrainEngineNode::createTile( const TileKey& key )
 {
-    // make a node, but don't include any subtile information
-    return getKeyNodeFactory()->createNode( key, false, 0L );
+    // make a node, but don't include any subtile information and don't
+    // accumulate data from parents.
+    return getKeyNodeFactory()->createNode( key, false, false, 0L );
 }
 
 

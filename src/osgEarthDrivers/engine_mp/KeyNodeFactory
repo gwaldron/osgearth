@@ -38,7 +38,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /**
         * Creates a node for a tile key.
         */
-        virtual osg::Node* createNode( const TileKey& key, bool setupChildren, ProgressCallback* progress) =0;
+        virtual osg::Node* createNode(
+            const TileKey&    key, 
+            bool              accumulate,
+            bool              setupChildren,
+            ProgressCallback* progress ) =0;
 
 
     protected:

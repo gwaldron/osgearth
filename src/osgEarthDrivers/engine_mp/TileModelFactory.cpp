@@ -204,86 +204,6 @@ namespace
 
 //------------------------------------------------------------------------
 
-namespace
-{
-    struct BuildElevationData
-    {
-        void init(const TileKey& key, const MapFrame& mapf, const MPTerrainEngineOptions& opt, 
-                  TileNodeRegistry* tiles, TileModel* model, HeightFieldCache* hfCache)
-        {
-            _key     = key;
-            _mapf    = &mapf;
-            _opt     = &opt;
-            _tiles   = tiles;
-            _model   = model;
-            _hfCache = hfCache;
-        }
-
-        void execute(ProgressCallback* progress)
-        {            
-            const MapInfo& mapInfo = _mapf->getMapInfo();
-
-            const osgEarth::ElevationInterpolation& interp =
-                _mapf->getMapOptions().elevationInterpolation().get();
-
-            // Request a heightfield from the map, falling back on lower resolution tiles
-            // if necessary (fallback=true)
-            osg::ref_ptr<osg::HeightField> hf;
-            bool isFallback = false;
-
-            if (_hfCache->getOrCreateHeightField( *_mapf, _key, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
-            {
-                _model->_elevationData = TileModel::ElevationData(
-                    hf,
-                    GeoLocator::createForKey( _key, mapInfo ),
-                    isFallback );
-
-                if ( _opt->normalizeEdges().value() == true )
-                {
-                    // next, query the neighboring tiles to get adjacency information.
-                    for( int x=-1; x<=1; x++ )
-                    {
-                        for( int y=-1; y<=1; y++ )
-                        {
-                            if ( x != 0 || y != 0 )
-                            {
-                                TileKey nk = _key.createNeighborKey(x, y);
-                                if ( nk.valid() )
-                                {
-                                    osg::ref_ptr<osg::HeightField> hf;
-                                    if (_hfCache->getOrCreateHeightField( *_mapf, nk, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
-                                    {
-                                        _model->_elevationData.setNeighbor( x, y, hf.get() );
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // parent too.
-                    if ( _key.getLOD() > 0 )
-                    {
-                        osg::ref_ptr<osg::HeightField> hf;
-                        if ( _hfCache->getOrCreateHeightField( *_mapf, _key.createParentKey(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
-                        {
-                            _model->_elevationData.setParent( hf.get() );
-                        }
-                    }
-                }
-            }
-        }
-
-        TileKey                        _key;
-        const MapFrame*                _mapf;
-        const MPTerrainEngineOptions*  _opt;
-        TileNodeRegistry*              _tiles;
-        TileModel*                     _model;
-        osg::ref_ptr<HeightFieldCache> _hfCache;
-    };
-}
-
-//------------------------------------------------------------------------
-
 TileModelFactory::TileModelFactory(TileNodeRegistry*             liveTiles,
                                    const MPTerrainEngineOptions& terrainOptions ) :
 _liveTiles     ( liveTiles ),
@@ -300,8 +220,70 @@ TileModelFactory::getHeightFieldCache() const
 
 
 void
+TileModelFactory::buildElevation(const TileKey&    key,
+                                 const MapFrame&   frame,
+                                 bool              accumulate,
+                                 TileModel*        model,
+                                 ProgressCallback* progress)
+{     
+    const MapInfo& mapInfo = frame.getMapInfo();
+
+    const osgEarth::ElevationInterpolation& interp =
+        frame.getMapOptions().elevationInterpolation().get();
+
+    // Request a heightfield from the map, falling back on lower resolution tiles
+    // if necessary (fallback=true)
+    osg::ref_ptr<osg::HeightField> hf;
+
+    bool isFallback = false;
+
+    if (_hfCache->getOrCreateHeightField(frame, key, accumulate, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
+    {
+        model->_elevationData = TileModel::ElevationData(
+            hf,
+            GeoLocator::createForKey( key, mapInfo ),
+            isFallback );
+
+        // Edge normalization: requires adjacency information
+        if ( _terrainOptions.normalizeEdges() == true )
+        {
+            for( int x=-1; x<=1; x++ )
+            {
+                for( int y=-1; y<=1; y++ )
+                {
+                    if ( x != 0 || y != 0 )
+                    {
+                        TileKey nk = key.createNeighborKey(x, y);
+                        if ( nk.valid() )
+                        {
+                            osg::ref_ptr<osg::HeightField> hf;
+                            if (_hfCache->getOrCreateHeightField(frame, nk, accumulate, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                            {
+                                model->_elevationData.setNeighbor( x, y, hf.get() );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // parent too.
+            if ( key.getLOD() > 0 )
+            {
+                osg::ref_ptr<osg::HeightField> hf;
+                if ( _hfCache->getOrCreateHeightField(frame, key.createParentKey(), accumulate, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                {
+                    model->_elevationData.setParent( hf.get() );
+                }
+            }
+        }
+    }
+}
+
+
+void
 TileModelFactory::createTileModel(const TileKey&           key, 
                                   const MapFrame&          frame,
+                                  bool                     accumulate,
                                   osg::ref_ptr<TileModel>& out_model,
                                   ProgressCallback*        progress)
 {
@@ -341,9 +323,7 @@ TileModelFactory::createTileModel(const TileKey&           key,
     OE_START_TIMER(fetch_elevation);
 
     // make an elevation layer.
-    BuildElevationData build;
-    build.init( key, frame, _terrainOptions, _liveTiles.get(), model.get(), _hfCache.get() );
-    build.execute(progress);
+    buildElevation(key, frame, accumulate, model.get(), progress);
 
     if (progress)
         progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);

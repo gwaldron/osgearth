@@ -109,7 +109,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         TileKey                            _key;
         osg::ref_ptr<const TileModel>      _model;
-        osg::ref_ptr<osg::Uniform>         _tileParentMatrixUniform;
         unsigned                           _lastTraversalFrame;
         Revision                           _maprevision;
         bool                               _outOfDate;

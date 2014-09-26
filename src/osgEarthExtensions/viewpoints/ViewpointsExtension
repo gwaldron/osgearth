@@ -32,7 +32,8 @@ namespace osgEarth { namespace Extensions { namespace Viewpoints
     using namespace osgEarth::Util::Controls;
 
     /**
-     * Extension for loading the splatting effect on demand.
+     * Loads a collection of viewpoints and makes them available
+     * through a Controls UI.
      */
     class ViewpointsExtension : public Extension,
                                 public ExtensionInterface<osg::View>,

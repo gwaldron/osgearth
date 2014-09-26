@@ -107,7 +107,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             vp->setFunction( "oe_splat_fragment", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, -1.0 );
 
             // support shaders
-            osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noise4Dshaders);
+            osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaders);
             vp->setShader( NOISE_FUNC, noiseShader );
 
             // sampling function

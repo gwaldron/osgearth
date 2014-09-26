@@ -56,6 +56,14 @@ bool CacheTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
             return true;
         }            
     }
+
+    // If we didn't produce a result but the key isn't within range then we should continue to 
+    // traverse the children b/c a min level was set.
+    if (!_layer->isKeyInRange(key))
+    {
+        return true;
+    }
+
     return false;        
 }   
 

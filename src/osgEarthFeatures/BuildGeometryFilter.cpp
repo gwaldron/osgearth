@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2013 Pelican Mapping
+ * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -181,45 +181,47 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
             //buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom, w2l);
 
             osg::Vec3Array* allPoints = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
-            
-            // subdivide the mesh if necessary to conform to an ECEF globe:
-            if ( makeECEF )
+            if (allPoints && allPoints->size() > 0)
             {
-
-                //convert back to world coords
-                for( osg::Vec3Array::iterator i = allPoints->begin(); i != allPoints->end(); ++i )
+                // subdivide the mesh if necessary to conform to an ECEF globe:
+                if ( makeECEF )
                 {
-                    osg::Vec3d v(*i);
-                    v = v * l2w;
-                    v = v * _world2local;
 
-                    (*i)._v[0] = v[0];
-                    (*i)._v[1] = v[1];
-                    (*i)._v[2] = v[2];
+                    //convert back to world coords
+                    for( osg::Vec3Array::iterator i = allPoints->begin(); i != allPoints->end(); ++i )
+                    {
+                        osg::Vec3d v(*i);
+                        v = v * l2w;
+                        v = v * _world2local;
+
+                        (*i)._v[0] = v[0];
+                        (*i)._v[1] = v[1];
+                        (*i)._v[2] = v[2];
+                    }
+
+                    double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+                    OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
+
+                    MeshSubdivider ms( _world2local, _local2world );
+                    if ( input->geoInterp().isSet() )
+                        ms.run( *osgGeom, threshold, *input->geoInterp() );
+                    else
+                        ms.run( *osgGeom, threshold, *_geoInterp );
                 }
 
-                double threshold = osg::DegreesToRadians( *_maxAngle_deg );
-                OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;
+                // assign the primary color array. PER_VERTEX required in order to support
+                // vertex optimization later
+                osg::Vec4Array* colors = new osg::Vec4Array;
+                colors->assign( osgGeom->getVertexArray()->getNumElements(), primaryColor );
+                osgGeom->setColorArray( colors );
+                osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
-                MeshSubdivider ms( _world2local, _local2world );
-                if ( input->geoInterp().isSet() )
-                    ms.run( *osgGeom, threshold, *input->geoInterp() );
-                else
-                    ms.run( *osgGeom, threshold, *_geoInterp );
+                geode->addDrawable( osgGeom );
+
+                // record the geometry's primitive set(s) in the index:
+                if ( context.featureIndex() )
+                    context.featureIndex()->tagPrimitiveSets( osgGeom, input );
             }
-
-            // assign the primary color array. PER_VERTEX required in order to support
-            // vertex optimization later
-            osg::Vec4Array* colors = new osg::Vec4Array;
-            colors->assign( osgGeom->getVertexArray()->getNumElements(), primaryColor );
-            osgGeom->setColorArray( colors );
-            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-
-            geode->addDrawable( osgGeom );
-
-            // record the geometry's primitive set(s) in the index:
-            if ( context.featureIndex() )
-                context.featureIndex()->tagPrimitiveSets( osgGeom, input );
         }
     }
     
@@ -568,7 +570,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         if (!oeTess.tessellateGeometry(*osgGeom))
         {
             //fallback to osg tessellator
-            OE_INFO << LC << "Falling back on OSG tessellator (" << osgGeom->getName() << ")" << std::endl;
+            OE_DEBUG << LC << "Falling back on OSG tessellator (" << osgGeom->getName() << ")" << std::endl;
 
             osgUtil::Tessellator tess;
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );

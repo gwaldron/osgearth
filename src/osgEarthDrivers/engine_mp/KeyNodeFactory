@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2013 Pelican Mapping
+* Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -38,7 +38,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /**
         * Creates a node for a tile key.
         */
-        virtual osg::Node* createNode( const TileKey& key, bool setupChildren, ProgressCallback* progress) =0;
+        virtual osg::Node* createNode(
+            const TileKey&    key, 
+            bool              accumulate,
+            bool              setupChildren,
+            ProgressCallback* progress ) =0;
 
 
     protected:

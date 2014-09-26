@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2013 Pelican Mapping
+* Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -169,6 +169,7 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
 
 osg::Node*
 SingleKeyNodeFactory::createNode(const TileKey&    key, 
+                                 bool              accumulate,
                                  bool              setupChildren,
                                  ProgressCallback* progress )
 {
@@ -186,7 +187,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
             return 0L;
         
         TileKey child = key.createChildKey(q);
-        _modelFactory->createTileModel( child, _frame, model[q], progress );
+        _modelFactory->createTileModel( child, _frame, accumulate, model[q], progress );
 
         // if any one of the TileModel creations fail, we will be unable to build
         // this quadtile. So goodbye.

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2013 Pelican Mapping
+* Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -70,14 +70,15 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         bool getOrCreateHeightField( 
                 const MapFrame&                 frame,
                 const TileKey&                  key,
-                osg::ref_ptr<osg::HeightField>& hf,
-                bool&                           isFallback,
+                bool                            cummulative,  // whether to start with the parent as a template
+                osg::ref_ptr<osg::HeightField>& out_hf,
+                bool&                           out_isFallback,
                 ElevationSamplePolicy           samplePolicy,
                 ElevationInterpolation          interp,
                 ProgressCallback*               progress )
         {                
             // default
-            isFallback = false;
+            out_isFallback = false;
 
             // check the quick cache.
             HFKey cachekey;
@@ -92,8 +93,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             LRUCache<HFKey,HFValue>::Record rec;
             if ( _cache.get(cachekey, rec) )
             {
-                hf = rec.value()._hf.get();
-                isFallback = rec.value()._isFallback;
+                out_hf = rec.value()._hf.get();
+                out_isFallback = rec.value()._isFallback;
 
                 if (progress)
                 {
@@ -105,36 +106,39 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             }
 
             // Find the parent tile and start with its heightfield.
-            osg::ref_ptr<TileNode> parentNode;
-            TileKey parentKey = key.createParentKey();
-            if ( _tiles->get(parentKey, parentNode) )
+            if ( cummulative )
             {
-                const TileModel* parentModel = parentNode->getTileModel();
-                if ( parentModel )
+                osg::ref_ptr<TileNode> parentNode;
+                TileKey parentKey = key.createParentKey();
+                if ( _tiles->get(parentKey, parentNode) )
                 {
-                    osg::HeightField* parentHF = parentModel->_elevationData.getHeightField();
-                    if ( parentHF )
+                    const TileModel* parentModel = parentNode->getTileModel();
+                    if ( parentModel )
                     {
-                        hf = HeightFieldUtils::createSubSample(
-                            parentHF,
-                            parentKey.getExtent(),
-                            key.getExtent(),
-                            interp );
+                        osg::HeightField* parentHF = parentModel->_elevationData.getHeightField();
+                        if ( parentHF )
+                        {
+                            out_hf = HeightFieldUtils::createSubSample(
+                                parentHF,
+                                parentKey.getExtent(),
+                                key.getExtent(),
+                                interp );
+                        }
                     }
+                }
+
+                if ( !out_hf.valid() && ((int)key.getLOD())-1 > _firstLOD )
+                {
+                    // This most likely means that a parent tile expired while we were building the child.
+                    // No harm done in that case as this tile will soo be discarded as well.
+                    OE_DEBUG << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry"
+                        << std::endl;
+                    return false;
                 }
             }
 
-            if ( !hf.valid() && ((int)key.getLOD())-1 > _firstLOD )
-            {
-                // This most likely means that a parent tile expired while we were building the child.
-                // No harm done in that case as this tile will soo be discarded as well.
-                OE_DEBUG << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry"
-                    << std::endl;
-                return false;
-            }
-
             bool populated = frame.populateHeightField(
-                hf,
+                out_hf,
                 key,
                 true, // convertToHAE
                 samplePolicy,
@@ -145,16 +149,16 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             const MapInfo& mapInfo = frame.getMapInfo();
             if ( mapInfo.isPlateCarre() )
             {
-                HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
+                HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
             }
 
             // cache it.
             HFValue cacheval;
-            cacheval._hf = hf.get();
+            cacheval._hf = out_hf.get();
             cacheval._isFallback = !populated;
             _cache.insert( cachekey, cacheval );
 
-            isFallback = !populated;
+            out_isFallback = !populated;
             return true;
         }
 
@@ -191,16 +195,24 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         virtual ~TileModelFactory() { }
 
         void createTileModel(
-            const TileKey&           key,
-            const MapFrame&          frame,
-            osg::ref_ptr<TileModel>& out_model,
-            ProgressCallback*        progress);
+            const TileKey&           key,           // key for which to create model
+            const MapFrame&          frame,         // map frame from which to get data
+            bool                     accumulate,    // whether to accumulate values from parent tile(s)
+            osg::ref_ptr<TileModel>& out_model,     // output or NULL upon failure
+            ProgressCallback*        progress);     // progess tracking
 
     private:        
 
         osg::ref_ptr<TileNodeRegistry>   _liveTiles;
         const MPTerrainEngineOptions&    _terrainOptions;
         osg::ref_ptr< HeightFieldCache > _hfCache;
+        
+        void buildElevation(
+            const TileKey&    key,
+            const MapFrame&   frame,
+            bool              accumulate,
+            TileModel*        model,
+            ProgressCallback* progress);
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

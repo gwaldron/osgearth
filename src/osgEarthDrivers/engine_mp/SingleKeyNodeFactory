@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2013 Pelican Mapping
+* Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -54,12 +54,17 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          * Creates a TileNode or TileGroup corresponding to the TileKey.
          *
          * @param key           TileKey for which to create a new node
+         * @param accumulate    Whether to accumulate data from parent tiles if necessary
          * @param setupChildren When true, build and include the necessary structures to
          *                      page in subtiles if and when necessary. If false, you just get
          *                      the tile alone with no paging support.
          * @param progress      Callback for cancelation and progress reporting
          */
-        osg::Node* createNode( const TileKey& key, bool setupChildren, ProgressCallback* progress );
+        osg::Node* createNode(
+            const TileKey&    key, 
+            bool              accumulate,
+            bool              setupChildren,
+            ProgressCallback* progress );
 
     protected:
         osg::Node* createTile(TileModel* model, bool setupChildren);

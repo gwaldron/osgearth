@@ -13,7 +13,7 @@ following exceptions and stipulations:
    the LGPL.
    
 3. The text herein comprises the definitive licensing information for the osgEarth
-   library, and supercedes any licensing text found in osgEarth source files,
+   library, and supersedes any licensing text found in osgEarth source files,
    header files, or documentation.
 
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2013 Pelican Mapping
+ * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -321,13 +321,13 @@ _supportsRGTC           ( false )
         }
 #endif
 
-        OE_INFO << LC << "  prefer DL for static geom = " << SAYBOOL(_preferDLforStaticGeom) << std::endl;
+        //OE_INFO << LC << "  prefer DL for static geom = " << SAYBOOL(_preferDLforStaticGeom) << std::endl;
 
         // ATI workarounds:
         bool isATI = _vendor.find("ATI ") == 0;
 
         _supportsMipmappedTextureUpdates = isATI && enableATIworkarounds ? false : true;
-        OE_INFO << LC << "  Mipmapped texture updates = " << SAYBOOL(_supportsMipmappedTextureUpdates) << std::endl;
+        //OE_INFO << LC << "  Mipmapped texture updates = " << SAYBOOL(_supportsMipmappedTextureUpdates) << std::endl;
 
 #if 0
         // Intel workarounds:
@@ -339,7 +339,7 @@ _supportsRGTC           ( false )
 
         _maxFastTextureSize = _maxTextureSize;
 
-        OE_INFO << LC << "  Max Fast Texture Size = " << _maxFastTextureSize << std::endl;
+        //OE_INFO << LC << "  Max Fast Texture Size = " << _maxFastTextureSize << std::endl;
 
         // tetxure compression
         OE_INFO << LC << "  Compression = ";

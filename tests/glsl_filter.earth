@@ -1,15 +1,6 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
+osgEarth Sample
+Use a simple GLSL code snippet to adjust the color of a layer.
 -->
 <map name="readymap.org" type="geocentric" version="2">
 
@@ -21,15 +12,5 @@ http://readymap.org
 			</glsl>
         </color_filters>
     </image>
-        
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
-    </elevation>
-    
-    <options>
-		<lighting>false</lighting>
-		<elevation_tile_size>7</elevation_tile_size>
-        <terrain first_lod="1"/>
-    </options>
     
 </map>

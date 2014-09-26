@@ -709,7 +709,8 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
 
     osg::Vec4Array* color = new osg::Vec4Array();
     outline->setColorArray( color );
-    outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+    outline->setColorBinding( osg::Geometry::BIND_OVERALL );
+    color->push_back( outlineColor );
 
     osg::DrawElements* de = new osg::DrawElementsUInt(GL_LINES);
     outline->addPrimitiveSet(de);
@@ -736,13 +737,11 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( drawPost || drawCrossbar )
             {
                 verts->push_back( f->left.roof );
-                color->push_back( outlineColor );
             }
 
             if ( drawPost )
             {
                 verts->push_back( f->left.base );
-                color->push_back( outlineColor );
                 de->addElement(vertptr);
                 de->addElement(verts->size()-1);
             }
@@ -750,7 +749,6 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( drawCrossbar )
             {
                 verts->push_back( f->right.roof );
-                color->push_back( outlineColor );
 
                 de->addElement(vertptr);
                 de->addElement(verts->size()-1);
@@ -766,10 +764,8 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
         {
             Faces::const_iterator last = e->faces.end()-1;
             verts->push_back( last->right.roof );
-            color->push_back( outlineColor );
             de->addElement( verts->size()-1 );
             verts->push_back( last->right.base );
-            color->push_back( outlineColor );
             de->addElement( verts->size()-1 );
         }
     }

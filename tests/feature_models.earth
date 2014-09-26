@@ -1,11 +1,5 @@
-<map name="Model Auto-Scale Demo" type="geocentric" version="2">
-
-    <options lighting="false">
-    </options>
-      
-    <!-- Our features layer. The "feature_geom" driver will analyze the
-         style sheet and determine how to render the feature data. -->
-         
+<map name="Model Demo" type="geocentric" version="2">
+               
     <model name="points" driver="feature_geom">
                       
         <features name="points" driver="ogr">
@@ -30,7 +24,9 @@
     </image>
 	
     <external>	  
-        <viewpoint name="Models" lat="25.311" long="-80.807" pitch="-21" range="177351"/>        
+		<viewpoints>
+			<viewpoint name="Models" lat="25.311" long="-80.807" pitch="-21" range="177351"/>
+		</viewpoints>
     </external>
   
 </map>

@@ -1,6 +1,6 @@
 <!--
 osgEarth Sample
-Shows how to use Javascript to create geometry parametrically.
+Shows how to use JavaScript to create geometry parametrically.
 -->
 
 <map name="City Populations" type="geocentric" version="2">
@@ -12,7 +12,7 @@ Shows how to use Javascript to create geometry parametrically.
     <model name="cities" driver="feature_geom">
 
         <features name="cities" driver="ogr" build_spatial_index="true">
-            <url>../data/ne_cities_merc.shp</url>
+            <url>../data/ne_cities.shp</url>
         </features>
 
         <styles>
@@ -70,14 +70,13 @@ Shows how to use Javascript to create geometry parametrically.
 					text-content:   [name];
 					text-size:      16.0;
 					text-align:     center_center;
-					text-halo:      #3f3f3f;
+					text-halo:      #1f1f1f;
 					text-priority:  [rank_max];
 				}
             </style>
         </styles>
         
     </model>
-    <options lighting="false"/>
     
     <external>
         <decluttering>

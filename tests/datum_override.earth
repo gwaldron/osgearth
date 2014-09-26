@@ -18,8 +18,8 @@ http://spatialreference.org
         <lighting>false</lighting>
         <profile srs="+proj=longlat +ellps=clrk66 +datum=NAD27 +no_defs"/>
     </options> 
-    
-    <image name="pelican nasa blue marble" driver="tms">
-        <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
+        
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
 </map>

@@ -118,14 +118,6 @@ namespace
         // just for now.... TODO: allow thi later
         if ( geom.getVertexAttribArrayList().size() > 0 )
             return false;
-        //{
-        //    unsigned n = geom.getVertexAttribArrayList().size();
-        //    for( unsigned i=0; i<n; ++i ) 
-        //    {
-        //        if ( geom.getVertexAttribBinding( i ) != osg::Geometry::BIND_PER_VERTEX )
-        //            return false;
-        //    }
-        //}
 
         // check that all primitive sets share the same user data
         osg::Geometry::PrimitiveSetList& pslist = geom.getPrimitiveSetList();
@@ -504,7 +496,7 @@ MeshConsolidator::run( osg::Geode& geode )
         {
             if ( canOptimize(*geom) )
             {
-                // convert all primitives to triangles.
+                // convert all surface primitives to triangles.
                 convertToTriangles( *geom );
 
                 // NOTE!! tex/attrib array counts much already be equal.

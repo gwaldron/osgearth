@@ -570,7 +570,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         if (!oeTess.tessellateGeometry(*osgGeom))
         {
             //fallback to osg tessellator
-            OE_INFO << LC << "Falling back on OSG tessellator (" << osgGeom->getName() << ")" << std::endl;
+            OE_DEBUG << LC << "Falling back on OSG tessellator (" << osgGeom->getName() << ")" << std::endl;
 
             osgUtil::Tessellator tess;
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );

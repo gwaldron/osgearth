@@ -48,6 +48,7 @@ SET(LIB_PUBLIC_HEADERS
     DrapingTechnique
     DrawInstanced
     ECEF
+    ElevationField
     ElevationLayer
     ElevationLOD
     ElevationQuery
@@ -195,6 +196,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     DrapingTechnique.cpp
     DrawInstanced.cpp
     ECEF.cpp
+    ElevationField.cpp
     ElevationLayer.cpp
     ElevationLOD.cpp
     ElevationQuery.cpp

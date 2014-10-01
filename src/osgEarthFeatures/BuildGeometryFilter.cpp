@@ -542,7 +542,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                 osg::ref_ptr<Geometry> ringTile;
                 if ( ring->crop(poly.get(), ringTile) )
                 {
-                    // Use an iterator sine crop count return a multi-polygon
+                    // Use an iterator since crop could return a multi-polygon
                     GeometryIterator gi( ringTile.get(), false );
                     while( gi.hasMore() )
                     {

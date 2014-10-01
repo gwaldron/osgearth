@@ -193,9 +193,14 @@ namespace
     // extracts a CacheBin from the dboptions; if one cannot be found, fall back on the
     // default CacheBin of a Cache found in the dboptions; failing that, call back on
     // the default CacheBin of the registry-wide cache.
-    CacheBin* s_getCacheBin( const osgDB::Options* dbOptions )
+    CacheBin* s_getCacheBin(const osgDB::Options* dbOptions)
     {
-        const osgDB::Options* o = dbOptions ? dbOptions : Registry::instance()->getDefaultOptions();
+        const osgDB::Options* o = dbOptions;
+        
+        if ( o == 0L )
+        {
+            o = Registry::instance()->getDefaultOptions();
+        }
 
         CacheBin* bin = CacheBin::get( o );
         if ( !bin )
@@ -405,14 +410,14 @@ namespace
             bool gotResultFromCallback = false;
 
             // check if there's an alias map, and if so, attempt to resolve the alias:
-            URIAliasMap* aliasMap = URIAliasMap::from( localOptions );
+            URIAliasMap* aliasMap = URIAliasMap::from( localOptions.get() );
             if ( aliasMap )
             {
                 uri = aliasMap->resolve(inputURI.full(), inputURI.context());
             }
 
             // check if there's a URI cache in the options.
-            URIResultCache* memCache = URIResultCache::from( localOptions );
+            URIResultCache* memCache = URIResultCache::from( localOptions.get() );
             if ( memCache )
             {
                 URIResultCache::Record rec;
@@ -434,7 +439,7 @@ namespace
                     if ( cb )
                     {
                         // if this returns "not implemented" we fill fall back
-                        result = reader.fromCallback( cb, uri.full(), localOptions );
+                        result = reader.fromCallback( cb, uri.full(), localOptions.get() );
 
                         if ( result.code() != ReadResult::RESULT_NOT_IMPLEMENTED )
                         {
@@ -457,14 +462,14 @@ namespace
 
                     // establish the caching policy.
                     optional<CachePolicy> cp;
-                    CachePolicy::fromOptions(localOptions, cp);
+                    CachePolicy::fromOptions(localOptions.get(), cp);
                     Registry::instance()->resolveCachePolicy( cp );                    
 
                     // get a cache bin if we need it:
                     CacheBin* bin = 0L;
                     if ( (cp->usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
                     {
-                        bin = s_getCacheBin( dbOptions );
+                        bin = s_getCacheBin( localOptions.get() );
                     }                    
 
 

@@ -287,7 +287,7 @@ LevelDBCacheBin::read(const std::string& key, const Reader& reader)
         
     if ( _debug )
     {
-        OE_NOTICE << LC << "Read (" << key << ") from bin " << getID() << std::endl;
+        OE_NOTICE << LC << "Bin " << getID() << ": read (" << key << ")\n";
     }
 
     // if there's a size limit, we need to 'touch' the record.
@@ -378,7 +378,7 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
             
             if ( _debug )
             {
-                OE_NOTICE << LC << "Wrote (" << dataKey(key) << ") to bin " << getID() << std::endl;
+                OE_NOTICE << LC << "Bin " << getID() << ": wrote (" << key << ")\n";
             }
         }
     }
@@ -386,8 +386,8 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
         
     if ( !objWriteOK )
     {
-        OE_WARN << LC << "FAILED to write \"" << key << "\" to bin " << getID()
-            << "; msg = \"" << r.message() << "\"" << std::endl;
+        OE_WARN << LC << "Bin " << getID() << ": FAILED to write (" << key << "); msg = \"" 
+            << r.message() << "\"\n";
     }
 
     return objWriteOK;
@@ -521,7 +521,7 @@ LevelDBCacheBin::touch(const std::string& key)
     }
     else if ( _debug )
     {
-        OE_NOTICE << LC << "Touched (" << key << ") in bin " << getID() << std::endl;
+        OE_NOTICE << LC << "Bin " << getID() << ": touch (" << key << ")\n";
     }
     return status.ok();
 }

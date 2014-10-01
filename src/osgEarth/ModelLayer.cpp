@@ -338,6 +338,7 @@ ModelLayer::setLightingEnabled( bool value )
             }
         }
     }
+    _mutex.unlock();
 }
 
 bool

@@ -195,9 +195,11 @@ Geometry::buffer(double distance,
                 outGeom = bufBuilder.buffer(inGeom, distance);
             }
         }
-        catch( const util::TopologyException& ex )
+        catch(const geos::util::GEOSException& ex)
         {
-            OE_WARN << LC << "GEOS buffer: " << ex.what() << std::endl;
+            OE_NOTICE << LC << "buffer(GEOS): "
+                << (ex.what()? ex.what() : " no error message")
+                << std::endl;
             outGeom = 0L;
         }
 
@@ -244,9 +246,11 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
                 cropGeom,
                 overlay::OverlayOp::opINTERSECTION );
         }
-        catch( ... ) {
+        catch(const geos::util::GEOSException& ex) {
+            OE_NOTICE << LC << "Crop(GEOS): "
+                << (ex.what()? ex.what() : " no error message")
+                << std::endl;
             outGeom = 0L;
-            OE_NOTICE << LC << "::crop, GEOS overlay op exception, skipping feature" << std::endl;
         }
 
         if ( outGeom )
@@ -295,9 +299,11 @@ Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output
                 diffGeom,
                 overlay::OverlayOp::opDIFFERENCE );
         }
-        catch( ... ) {
+        catch(const geos::util::GEOSException& ex) {
+            OE_NOTICE << LC << "Diff(GEOS): "
+                << (ex.what()? ex.what() : " no error message")
+                << std::endl;
             outGeom = 0L;
-            OE_NOTICE << LC << "::difference, GEOS overlay op exception, skipping feature" << std::endl;
         }
 
         if ( outGeom )

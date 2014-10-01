@@ -24,6 +24,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 
+#include <osgUtil/IncrementalCompileOperation>
+
 using namespace osg;
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
@@ -437,18 +439,67 @@ MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
     }
 }
 
+namespace
+{
+    void compileBufferObject(BufferObject* bo, unsigned contextID)
+    {
+        if ( bo )
+        {
+            GLBufferObject* glBufferObject = bo->getOrCreateGLBufferObject(contextID);
+            if (glBufferObject && glBufferObject->isDirty())
+            {
+                glBufferObject->compileBuffer();
+            }
+        }
+    }
+    void compileBufferObject(osg::Array* a, unsigned contextID)
+    {
+        if ( a )
+        {
+            compileBufferObject( a->getBufferObject(), contextID );
+        }
+    }
+}
+
 
 void 
 MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 {
-    osg::Geometry::compileGLObjects( renderInfo );
+    //osg::Geometry::compileGLObjects( renderInfo );
+    
+    State& state = *renderInfo.getState();
+    unsigned contextID = state.getContextID();
+    GLBufferObject::Extensions* extensions = GLBufferObject::getExtensions(contextID, true);
+    if (!extensions)
+        return;
 
+    MPGeometry* ncthis = const_cast<MPGeometry*>(this);
+
+    //ncthis->validate();
+
+    compileBufferObject(ncthis->getVertexArray(), contextID);
+    compileBufferObject(ncthis->getNormalArray(), contextID);
+
+    for(unsigned i=0; i<getVertexAttribArrayList().size(); ++i) 
+        compileBufferObject( getVertexAttribArrayList()[i].array.get(), contextID );
+    
+    for(PrimitiveSetList::const_iterator i = _primitives.begin(); i != _primitives.end(); ++i )
+        compileBufferObject( i->get()->getBufferObject(), contextID );
+    
+    // compile the layer-specific things:
     for(unsigned i=0; i<_layers.size(); ++i)
     {
         const Layer& layer = _layers[i];
+
+        compileBufferObject( layer._texCoords.get(), contextID );
+
         if ( layer._tex.valid() )
             layer._tex->apply( *renderInfo.getState() );
     }
+
+    // unbind the BufferObjects
+    extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
+    extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
 }
 
 

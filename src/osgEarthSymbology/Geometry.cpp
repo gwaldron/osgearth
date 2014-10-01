@@ -230,6 +230,8 @@ bool
 Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
 {
 #ifdef OSGEARTH_HAVE_GEOS
+    bool success = false;
+    output = 0L;
 
     GEOSContext gc;
 
@@ -256,12 +258,30 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
         if ( outGeom )
         {
             output = gc.exportGeometry( outGeom );
-            gc.disposeGeometry( outGeom );
 
-            if ( output.valid() && !output->isValid() )
+            if ( output.valid())
             {
-                output = 0L;
+                if ( output->isValid() )
+                {
+                    success = true;
+                }
+                else
+                {
+                    // GEOS result is invalid
+                    output = 0L;
+                }
             }
+            else
+            {
+                // set output to empty geometry to indicate the (valid) empty case,
+                // still returning false but allows for check.
+                if (outGeom->getNumPoints() == 0)
+                {
+                    output = new osgEarth::Symbology::Geometry();
+                }
+            }
+
+            gc.disposeGeometry( outGeom );
         }
     }
 
@@ -269,7 +289,7 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
     gc.disposeGeometry( cropGeom );
     gc.disposeGeometry( inGeom );
 
-    return output.valid();
+    return success;
 
 #else // OSGEARTH_HAVE_GEOS
 

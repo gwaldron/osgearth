@@ -66,6 +66,9 @@ namespace
         "uniform sampler2D oe_splat_coverage_tex; \n"
         "uniform sampler2DArray oe_splat_tex; \n"
 
+        "uniform sampler2D oe_terrain_tex; \n"
+        "uniform float oe_splat_snow;\n"
+
         // See NoiseShaders
         "float oe_splat_noise2(in vec2);\n"
 
@@ -115,12 +118,23 @@ namespace
         "    return texel; \n"
         "} \n"
 
+        // Detail splatter. This will splat additional things. And such.
+        "void oe_splat_detail(in vec2 splat_tc, inout vec4 texel) \n"
+        "{ \n"
+        "    float h = texture2D(oe_terrain_tex, oe_layer_tilec.st); \n"
+        "    if ( h > oe_splat_snow ) \n"
+        "    { \n"
+        "        float snowiness = clamp(max(0.0, h-oe_splat_snow)/oe_splat_snow, 0.0, 0.8); \n"
+        "        vec4 snow  = oe_splat_getTexel(220.0, splat_tc*8.0); \n"
+        "        texel.rgb = mix(texel.rgb, snow.rgb, snowiness); \n"
+        "    } \n"
+        "} \n"
+
         // Scales the incoming tile splat coordinates to match the requested
         // LOD level. We offset the level from the current tile key's LOD (.z)
         // because otherwise you run into single-precision jitter at high LODs.
         "vec2 oe_splat_getSplatCoords(float lod)"
         "{ \n"
-        //"    float dL = (oe_tile_key.z - $L0_OFFSET) - (lod - $L0_OFFSET); \n"
         "    float dL = oe_tile_key.z - lod; \n"
         "    float factor = pow(2.0, dL); \n"
         "    vec2 scale = vec2(1.0/factor); \n"
@@ -175,6 +189,8 @@ namespace
 
         "            float r = (d-ranges[i])/(ranges[i+1]-ranges[i]); \n"
         "            texel = mix(texel0, texel1, r); \n"
+        
+        //"            oe_splat_detail(splat_tc1, texel);\n"
 
         "            break; \n"
         "        }\n"

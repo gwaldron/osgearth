@@ -281,6 +281,8 @@ namespace osgEarth
         virtual void fireCallback( ModelLayerCallbackMethodPtr method );
 
         void copyOptions();
+
+        void setLightingEnabledNoLock(bool value);
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;

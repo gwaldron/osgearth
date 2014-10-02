@@ -328,10 +328,16 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     }
 }
 
-#if OSG_VERSION_GREATER_THAN(3,3,1)
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
 #    define COMPUTE_BOUND computeBoundingBox
 #else
 #    define COMPUTE_BOUND computeBound
+#endif
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
+#   define GET_ARRAY(a) (a)
+#else
+#   define GET_ARRAY(a) (a).array
 #endif
 
 osg::BoundingBox
@@ -468,10 +474,15 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
     compileBufferObject(ncthis->getNormalArray(), contextID);
 
     for(unsigned i=0; i<getVertexAttribArrayList().size(); ++i) 
-        compileBufferObject( getVertexAttribArrayList()[i].array.get(), contextID );
+    {
+        osg::Array* a = GET_ARRAY( getVertexAttribArrayList()[i] ).get();
+        compileBufferObject( a, contextID );
+    }
     
     for(PrimitiveSetList::const_iterator i = _primitives.begin(); i != _primitives.end(); ++i )
+    {
         compileBufferObject( i->get()->getBufferObject(), contextID );
+    }
     
     // compile the layer-specific things:
     for(unsigned i=0; i<_layers.size(); ++i)

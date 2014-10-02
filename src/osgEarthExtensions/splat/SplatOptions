@@ -46,10 +46,16 @@ namespace osgEarth { namespace Extensions { namespace Splat
         optional<std::string>& coverageLayerName() { return _coverageLayerName; }
         const optional<std::string>& coverageLayerName() const { return _coverageLayerName; }
 
+        /** Whether to splat the terrain after drawing the map's image layers. The default
+            setting is to splat first and then draw imagery. */
+        optional<bool>& drawAfterImageLayers() { return _drawAfterImageLayers; }
+        const optional<bool>& drawAfterImageLayers() const { return _drawAfterImageLayers; }
+
     public:
         SplatOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
         {
             setDriver( "splat" );
+            _drawAfterImageLayers.init(false);
             fromConfig( _conf );
         }
 
@@ -61,6 +67,7 @@ namespace osgEarth { namespace Extensions { namespace Splat
             conf.updateIfSet("catalog",  _catalogURI);
             conf.updateIfSet("legend",   _legendURI);
             conf.updateIfSet("coverage", _coverageLayerName );
+            conf.updateIfSet("draw_after_image_layers", _drawAfterImageLayers);
             return conf;
         }
 
@@ -75,11 +82,13 @@ namespace osgEarth { namespace Extensions { namespace Splat
             conf.getIfSet("catalog",  _catalogURI);
             conf.getIfSet("legend",   _legendURI);
             conf.getIfSet("coverage", _coverageLayerName );
+            conf.getIfSet("draw_after_image_layers", _drawAfterImageLayers);
         }
 
         optional<URI>         _catalogURI;
         optional<URI>         _legendURI;
         optional<std::string> _coverageLayerName;
+        optional<bool>        _drawAfterImageLayers;
     };
 
 } } } // namespace osgEarth::Extensions::Splat

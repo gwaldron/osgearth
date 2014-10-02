@@ -6,7 +6,7 @@
 |   osgearth_viewer splat-test.earth
 |       --uniform oe_splat_warp 0 0.01
 |       --uniform oe_splat_samples 0 3
-|       --uniform oe_splat_scale 1 10
+|       --uniform oe_splat_scaleOffset 1 10
 |       --uniform oe_splat_intensity 0 1
 -->
 
@@ -66,11 +66,10 @@
                 parks {
                    model:               "../data/pinetree.ive";
                    model-placement:     random;
-                   model-density:       2500;
-                   model-scale:         2.0;
+                   model-density:       4500;
+                   model-scale:         5.0;
                    altitude-clamping:   terrain;
                    altitude-resolution: 0.001;
-				   //render-min-alpha:    0.15;
                 }
             </style>
         </styles>        
@@ -83,15 +82,14 @@
             <legend>H:/data/ESA/GLOBCOVER_legend.json</legend>
             <catalog>../data/splat/simple_catalog.json</catalog>
         </splat>
-	
-	<!--
+
+<!--		
         <splat>
             <coverage>NLCD</coverage>
             <legend>H:/data/NLCD/NLCD_legend.json</legend>
             <catalog>../data/splat/simple_catalog.json</catalog>
         </splat>
-	-->
-	
+-->	
 		
 		<viewpoints>
 			<viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>
@@ -100,6 +98,8 @@
 			<viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
 			<viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>
 		</viewpoints>
+		
+		<sky driver="gl"/>
     </extensions>
 
 </map>

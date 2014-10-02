@@ -45,10 +45,22 @@ namespace osgEarth { namespace Extensions { namespace Splat
             const osgDB::Options* dbOptions);
 
         /**
-         * Sets the image layer that supplies the coverage values.
+         * Sets the image layer that supplies the coverage values. This value
+         * is mandatory, and you must call it prior to installing the effect.
          */
         void setCoverageLayer(const ImageLayer* layer) { _coverageLayer = layer; }
         const ImageLayer* getCoverageLayer() { return _coverageLayer.get(); }
+
+        /**
+         * Sets the draw priority of the splat effect. Default is -1.0, which means
+         * the splat will render before the terrain engine renders any image layers.
+         * You can set it to 1.0 to splat after drawing image layers.
+         *
+         * This is options, but if you call it you must do so prior to installing
+         * the effect.
+         */
+        void setRenderOrder(float value) { _renderOrder = value; }
+        float getRenderOrder() const { return _renderOrder; }
 
 
     public: // TerrainEffect interface
@@ -75,6 +87,7 @@ namespace osgEarth { namespace Extensions { namespace Splat
         osg::ref_ptr<osg::Uniform>          _samplesUniform;
         osg::ref_ptr<SplatCoverageLegend>   _legend;
         osg::observer_ptr<const ImageLayer> _coverageLayer;
+        float                               _renderOrder;
     };
 
 } } } // namespace osgEarth::Extensions::Splat

@@ -44,8 +44,9 @@ using namespace osgEarth::Extensions::Splat;
 SplatTerrainEffect::SplatTerrainEffect(SplatCatalog*         catalog,
                                        SplatCoverageLegend*  legend,
                                        const osgDB::Options* dbOptions) :
-_legend( legend ),
-_ok    ( false )
+_legend     ( legend ),
+_ok         ( false ),
+_renderOrder( -1.0f )
 {
     if ( catalog )
     {
@@ -97,14 +98,12 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             std::string vertexShader = splatVertexShader;
             std::string fragmentShader = splatFragmentShader;
 
-            osgEarth::replaceIn( vertexShader,   "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
-            //osgEarth::replaceIn( vertexShader,   "$L0_OFFSET", L0_OFFSET );
-            //osgEarth::replaceIn( fragmentShader, "$L0_OFFSET", L0_OFFSET );
+            osgEarth::replaceIn( vertexShader, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
 
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
             vp->setFunction( "oe_splat_vertex",   vertexShader,   ShaderComp::LOCATION_VERTEX_VIEW );
-            vp->setFunction( "oe_splat_fragment", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, -1.0 );
+            vp->setFunction( "oe_splat_fragment", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, _renderOrder );
 
             // support shaders
             osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaders);

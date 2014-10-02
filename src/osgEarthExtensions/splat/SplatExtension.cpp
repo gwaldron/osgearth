@@ -141,7 +141,13 @@ SplatExtension::connect(MapNode* mapNode)
 
     // Install the splatter on the terrain engine.
     _effect = new SplatTerrainEffect( catalog, legend, _dbOptions.get() );
+
+    // set the coverage layer (mandatory)
     _effect->setCoverageLayer( coverageLayer );
+
+    // set the render order (optional)
+    if ( _options.drawAfterImageLayers() == true )
+        _effect->setRenderOrder( 1.0f );
 
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
 

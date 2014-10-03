@@ -22,16 +22,16 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
-namespace osgEarth { namespace Extensions { namespace Viewpoints
+namespace osgEarth { namespace Viewpoints
 {
     /**
      * Plugin entry point
      */
-    class SplatPlugin : public osgDB::ReaderWriter
+    class ViewpointsPlugin : public osgDB::ReaderWriter
     {
     public: // Plugin stuff
 
-        SplatPlugin() {
+        ViewpointsPlugin() {
             supportsExtension( "osgearth_viewpoints", "osgEarth Viewpoints Extension" );
         }
         
@@ -39,7 +39,7 @@ namespace osgEarth { namespace Extensions { namespace Viewpoints
             return "osgEarth Viewpoints Extension";
         }
 
-        virtual ~SplatPlugin() { }
+        virtual ~ViewpointsPlugin() { }
 
         ReadResult readObject(const std::string& filename, const osgDB::Options* dbOptions) const
         {
@@ -50,6 +50,6 @@ namespace osgEarth { namespace Extensions { namespace Viewpoints
         }
     };
 
-    REGISTER_OSGPLUGIN(osgearth_splat, SplatPlugin)
+    REGISTER_OSGPLUGIN(osgearth_viewpoints, ViewpointsPlugin)
 
-} } } // namespace osgEarth::Extensions::Splat
+} } // namespace osgEarth::Viewpoints

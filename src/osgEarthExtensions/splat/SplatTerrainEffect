@@ -28,9 +28,8 @@
 #include <osg/Texture2DArray>
 
 using namespace osgEarth;
-using namespace osgEarth::Extensions::Splat;
 
-namespace osgEarth { namespace Extensions { namespace Splat
+namespace osgEarth { namespace Splat
 {
     /**
      * Effect that applies texture splatting to the terrain.
@@ -90,6 +89,6 @@ namespace osgEarth { namespace Extensions { namespace Splat
         float                               _renderOrder;
     };
 
-} } } // namespace osgEarth::Extensions::Splat
+} } // namespace osgEarth::Splat
 
 #endif // OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H

@@ -23,7 +23,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
-namespace osgEarth { namespace Extensions { namespace NormalMap
+namespace osgEarth { namespace NormalMap
 {
     /**
      * Plugin entry point
@@ -53,4 +53,4 @@ namespace osgEarth { namespace Extensions { namespace NormalMap
 
     REGISTER_OSGPLUGIN(osgearth_normalmap, NormalMapPlugin)
 
-} } } // namespace osgEarth::Extensions::NormalMap
+} } // namespace osgEarth::NormalMap

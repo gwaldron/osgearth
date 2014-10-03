@@ -22,7 +22,7 @@
 #include <osg/Texture2DArray>
 
 using namespace osgEarth;
-using namespace osgEarth::Extensions::Splat;
+using namespace osgEarth::Splat;
 
 #define LC "[SplatCatalog] "
 

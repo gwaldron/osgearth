@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/URI>
 
-namespace osgEarth { namespace Extensions { namespace NormalMap
+namespace osgEarth { namespace NormalMap
 {
     using namespace osgEarth;
 
@@ -65,7 +65,7 @@ namespace osgEarth { namespace Extensions { namespace NormalMap
         optional<URI> _imageURI;
     };
 
-} } } // namespace osgEarth::Extensions::NormalMap
+} } // namespace osgEarth::NormalMap
 
 #endif // OSGEARTH_DRIVER_NORMALMAP_OPTIONS
 

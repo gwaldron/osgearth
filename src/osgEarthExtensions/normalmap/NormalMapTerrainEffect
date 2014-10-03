@@ -27,7 +27,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace Extensions { namespace NormalMap
+namespace osgEarth { namespace NormalMap
 {
     /**
      * Effect that applies normal mapping to the terrain.
@@ -61,6 +61,6 @@ namespace osgEarth { namespace Extensions { namespace NormalMap
         osg::ref_ptr<osg::Uniform>   _intensityUniform;
     };
 
-} } } // namespace osgEarth::Extensions::NormalMap
+} } // namespace osgEarth::NormalMap
 
 #endif // OSGEARTH_NORMALMAP_TERRAIN_EFFECT_H

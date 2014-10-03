@@ -24,7 +24,7 @@
 #include <osg/Referenced>
 #include <string>
 
-namespace osgEarth { namespace Extensions { namespace Splat
+namespace osgEarth { namespace Splat
 {
     /**
      * Associates a specific source data coverage value to the name
@@ -98,6 +98,6 @@ namespace osgEarth { namespace Extensions { namespace Splat
         Predicates _predicates;
     };
 
-} } } // namespace osgEarth::Extensions::Splat
+} } // namespace osgEarth::Splat
 
 #endif // OSGEARTH_SPLAT_COVERAGE_LEGEND

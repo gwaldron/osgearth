@@ -23,7 +23,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
-namespace osgEarth { namespace Extensions { namespace Splat
+namespace osgEarth { namespace Splat
 {
     /**
      * Plugin entry point
@@ -53,4 +53,4 @@ namespace osgEarth { namespace Extensions { namespace Splat
 
     REGISTER_OSGPLUGIN(osgearth_splat, SplatPlugin)
 
-} } } // namespace osgEarth::Extensions::Splat
+} } // namespace osgEarth::Splat

@@ -25,7 +25,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Extensions::Viewpoints;
+using namespace osgEarth::Viewpoints;
 
 #define LC "[ViewpointsExtension] "
 

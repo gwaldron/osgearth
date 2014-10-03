@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/URI>
 
-namespace osgEarth { namespace Extensions { namespace Splat
+namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
 
@@ -91,7 +91,7 @@ namespace osgEarth { namespace Extensions { namespace Splat
         optional<bool>        _drawAfterImageLayers;
     };
 
-} } } // namespace osgEarth::Extensions::Splat
+} } // namespace osgEarth::Splat
 
 #endif // OSGEARTH_DRIVER_SPLAT_OPTIONS
 

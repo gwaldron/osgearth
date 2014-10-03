@@ -26,7 +26,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/Controls>
 
-namespace osgEarth { namespace Extensions { namespace Splat
+namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
     using namespace osgEarth::Util::Controls;
@@ -77,6 +77,6 @@ namespace osgEarth { namespace Extensions { namespace Splat
         osg::ref_ptr<SplatTerrainEffect>   _effect;
     };
 
-} } } // namespace osgEarth::Extensions::Splat
+} } // namespace osgEarth::Splat
 
 #endif // OSGEARTH_SPLAT_SPLAT_EXTENSION

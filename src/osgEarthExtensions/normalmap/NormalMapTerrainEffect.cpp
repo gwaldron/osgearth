@@ -34,7 +34,7 @@
 //#define L0_OFFSET "10.0"
 
 using namespace osgEarth;
-using namespace osgEarth::Extensions::NormalMap;
+using namespace osgEarth::NormalMap;
 
 NormalMapTerrainEffect::NormalMapTerrainEffect(const osgDB::Options* dbOptions)
 {

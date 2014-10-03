@@ -25,7 +25,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/Controls>
 
-namespace osgEarth { namespace Extensions { namespace NormalMap
+namespace osgEarth { namespace NormalMap
 {
     using namespace osgEarth;
     using namespace osgEarth::Util::Controls;
@@ -68,6 +68,6 @@ namespace osgEarth { namespace Extensions { namespace NormalMap
         osg::ref_ptr<NormalMapTerrainEffect>   _effect;
     };
 
-} } } // namespace osgEarth::Extensions::NormalMap
+} } // namespace osgEarth::NormalMap
 
 #endif // OSGEARTH_NORMALMAP_EXTENSION

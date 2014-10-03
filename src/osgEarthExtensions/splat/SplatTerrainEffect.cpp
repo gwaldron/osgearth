@@ -39,7 +39,7 @@
 //#define L0_OFFSET "10.0"
 
 using namespace osgEarth;
-using namespace osgEarth::Extensions::Splat;
+using namespace osgEarth::Splat;
 
 SplatTerrainEffect::SplatTerrainEffect(SplatCatalog*         catalog,
                                        SplatCoverageLegend*  legend,

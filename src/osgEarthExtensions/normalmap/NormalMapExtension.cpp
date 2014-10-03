@@ -22,7 +22,7 @@
 #include <osgEarth/MapNode>
 
 using namespace osgEarth;
-using namespace osgEarth::Extensions::NormalMap;
+using namespace osgEarth::NormalMap;
 
 #define LC "[NormalMapExtension] "
 

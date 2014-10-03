@@ -26,7 +26,7 @@
 #include <osg/View>
 #include <vector>
 
-namespace osgEarth { namespace Extensions { namespace Viewpoints
+namespace osgEarth { namespace Viewpoints
 {
     using namespace osgEarth;
     using namespace osgEarth::Util::Controls;
@@ -78,6 +78,6 @@ namespace osgEarth { namespace Extensions { namespace Viewpoints
         osg::ref_ptr<osgGA::GUIEventHandler> _handler;
     };
 
-} } } // namespace osgEarth::Extensions::Splat
+} } // namespace osgEarth::Viewpoints
 
 #endif // OSGEARTH_VIEWPOINTS_EXTENSION

@@ -32,7 +32,7 @@ namespace osgDB {
     class Options;
 }
 
-namespace osgEarth { namespace Extensions { namespace Splat
+namespace osgEarth { namespace Splat
 {
     /**
      * A single splatting class.
@@ -100,6 +100,6 @@ namespace osgEarth { namespace Extensions { namespace Splat
         SplatClasses          _classes;
     };
 
-} } } // namespace osgEarth::Extensions::Splat
+} } // namespace osgEarth::Splat
 
 #endif // OSGEARTH_SPLAT_SPLAT_CATALOG

@@ -233,6 +233,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         float                        _sampleRatio;
         osg::ref_ptr<osg::StateSet>  _parentStateSet;
         osg::observer_ptr<const TileModel> _parentModel;
+        osg::ref_ptr<osg::Texture>   _elevationTexture;
 
         // convenience funciton to pull out a layer by its UID.
         bool getColorData( UID layerUID, ColorData& out ) const {
@@ -247,6 +248,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         bool requiresUpdateTraverse() const;
 
         void updateTraverse(osg::NodeVisitor&) const;
+
+        void generateElevationTexture();
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

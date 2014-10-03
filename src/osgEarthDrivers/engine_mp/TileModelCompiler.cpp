@@ -1837,6 +1837,9 @@ namespace
                 mr->_geom->_layers[order] = layer;
             }
         }
+
+        // elevation texture.
+        d.surface->_elevTex = d.model->_elevationTexture.get();
     }
 
 

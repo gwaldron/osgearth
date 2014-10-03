@@ -339,6 +339,9 @@ MPTerrainEngineNode::createTerrain()
         this->getTextureCompositor()->reserveTextureImageUnit( _secondaryUnit );
     }
 
+    // testing
+    this->getTextureCompositor()->reserveTextureImageUnit( _elevationTextureUnit );
+
     // Factory to create the root keys:
     KeyNodeFactory* factory = getKeyNodeFactory();
 
@@ -822,6 +825,10 @@ MPTerrainEngineNode::updateState()
             // binding for the secondary texture (for LOD blending)
             terrainStateSet->getOrCreateUniform(
                 "oe_layer_tex_parent", osg::Uniform::SAMPLER_2D )->set( _secondaryUnit );
+
+            // uniform for accessing the elevation texture sampler.
+            terrainStateSet->getOrCreateUniform(
+                "oe_terrain_tex", osg::Uniform::SAMPLER_2D)->set( _elevationTextureUnit );
 
             // binding for the default secondary texture matrix
             osg::Matrixf parent_mat;

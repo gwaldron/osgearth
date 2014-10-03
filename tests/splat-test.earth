@@ -12,7 +12,7 @@
 
 <map>
         
-	<options min_lod="20">
+	<options min_lod="20" elevation_tile_size="47">
 		<terrain normalize_edges="true"/>
 	</options>
 	
@@ -41,7 +41,7 @@
 	
 	<image driver="debug" enabled="false"/>
 	
-    <model name="trees" driver="feature_geom" enabled="true">
+    <model name="trees" driver="feature_geom" enabled="false">
         <features name="trees" driver="ogr">
 			<geometry>
 				POLYGON((-180 -90, 180 -90, 180 90, -180 90))
@@ -90,6 +90,10 @@
             <catalog>../data/splat/simple_catalog.json</catalog>
         </splat>
 -->	
+
+		<normalmap>
+			<image>../data/moss_bump.jpg</image>
+		</normalmap>
 		
 		<viewpoints>
 			<viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>
@@ -99,7 +103,6 @@
 			<viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>
 		</viewpoints>
 		
-		<sky driver="gl"/>
     </extensions>
 
 </map>

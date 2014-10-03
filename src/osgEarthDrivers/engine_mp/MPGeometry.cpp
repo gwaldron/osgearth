@@ -46,6 +46,8 @@ _imageUnit       ( imageUnit )
 
     _imageUnitParent = _imageUnit + 1; // temp
 
+    _elevUnit = _imageUnit + 2; // temp
+
     // establish uniform name IDs.
     _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
     _birthTimeUniformNameID    = osg::Uniform::getNameID( "oe_tile_birthtime" );
@@ -158,6 +160,15 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     }
 #endif
+
+    // activate the elevation texture if there is one. Same for all layers.
+    if ( _elevTex.valid() )
+    {
+        state.setActiveTextureUnit( _imageUnit+2 );
+        state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() ); // necessary?? since we do it above
+        _elevTex->apply( state );
+        // todo: probably need an elev texture matrix as well. -gw
+    }
 
     if ( _layers.size() > 0 )
     {
@@ -507,6 +518,9 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
         if ( layer._tex.valid() )
             layer._tex->apply( *renderInfo.getState() );
     }
+
+    if ( _elevTex.valid() )
+        _elevTex->apply( *renderInfo.getState() );
 
     // unbind the BufferObjects
     extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);

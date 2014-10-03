@@ -276,6 +276,8 @@ TileModelFactory::buildElevation(const TileKey&    key,
                 }
             }
         }
+
+        model->generateElevationTexture();
     }
 }
 

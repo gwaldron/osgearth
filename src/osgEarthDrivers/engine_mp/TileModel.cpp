@@ -20,6 +20,7 @@
 #include <osgEarth/MapInfo>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
@@ -300,6 +301,39 @@ void
 TileModel::setParentTileModel(const TileModel* parent)
 {
     _parentModel = parent;
+}
+
+void
+TileModel::generateElevationTexture()
+{
+    osg::Image* image = 0L;
+    osg::HeightField* hf = _elevationData.getHeightField();
+    if ( hf )
+    {
+        ImageToHeightFieldConverter conv;
+        image = conv.convert( hf, 32 );
+    }
+    else
+    {
+        // no heightfield; create one and initialize it to zero.
+        image = new osg::Image();
+        image->allocateImage(32, 32, 1, GL_LUMINANCE, GL_FLOAT);
+        ImageUtils::PixelWriter write(image);
+        for(int s=0; s<image->s(); ++s)
+            for(int t=0; t<image->t(); ++t)
+                write(osg::Vec4(0,0,0,0), s, t);        
+    }
+
+    _elevationTexture = new osg::Texture2D( image );
+
+    _elevationTexture->setInternalFormat(GL_LUMINANCE32F_ARB);
+    _elevationTexture->setSourceFormat(GL_LUMINANCE);
+    _elevationTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    _elevationTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+    _elevationTexture->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
+    _elevationTexture->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
+    _elevationTexture->setResizeNonPowerOfTwoHint( false );
+    _elevationTexture->setMaxAnisotropy( 1.0f );
 }
 
 void

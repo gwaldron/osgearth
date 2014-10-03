@@ -230,7 +230,6 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
         "varying vec3 atmos_color; \n"         // primary sky light color
         "varying vec3 atmos_atten; \n"         // sky light attenuation factor
-        "varying vec3 oe_Normal; \n"           // surface normal (from osgEarth)
         "varying vec3 atmos_lightDir; \n"      // light direction in view space
         
         "float atmos_fCameraHeight;            // The camera's current height \n"		
@@ -239,6 +238,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "varying vec3 atmos_up; \n"            // earth up vector at vertex location (not the normal)
         "varying float atmos_space; \n"        // [0..1]: camera: 0=inner radius (ground); 1.0=outer radius
         "varying vec3 atmos_vert; \n"
+
+        "vec3 oe_global_Normal; \n"            // surface normal (from osgEarth)
 
         "float atmos_scale(float fCos) \n"	
         "{ \n"
@@ -372,12 +373,13 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "uniform float atmos_exposure; \n"  // scene exposure (ground level)
         "varying vec3 atmos_lightDir; \n"   // light direction (view coords)
-        "varying vec3 oe_Normal; \n"        // vertex normal (view coords)
         "varying vec3 atmos_color; \n"      // atmospheric lighting color
         "varying vec3 atmos_atten; \n"      // atmospheric lighting attentuation factor
         "varying vec3 atmos_up; \n"         // earth up vector at fragment (in view coords)
         "varying float atmos_space; \n"     // camera altitude (0=ground, 1=atmos outer radius)
         "varying vec3 atmos_vert; \n"
+        
+        "vec3 oe_global_Normal; \n"         // surface normal (from osgEarth)
 
         "void atmos_fragment_main(inout vec4 color) \n"
         "{ \n"
@@ -385,7 +387,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
         "    vec3 ambient = gl_LightSource[0].ambient.rgb;\n"
 
-        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 N = normalize(oe_global_Normal); \n"
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
         "    vec3 U = normalize(atmos_up); \n"
         "    float NdotL = max(dot(N,L), 0.0); \n"
@@ -445,14 +447,15 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec4 oe_lighting_adjustment; \n"
         "varying vec4 oe_lighting_zero_vec; \n"
-        "varying vec3 oe_Normal; \n"
+
+        "vec3 oe_global_Normal; \n"
 
         "void atmos_vertex_main(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    oe_lighting_adjustment = vec4(1.0); \n"
         "    if (oe_mode_GL_LIGHTING) \n"
         "    { \n"
-        "        vec3 N = oe_Normal; \n"
+        "        vec3 N = oe_global_Normal; \n"
         "        float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
         "        NdotL = max( 0.0, NdotL ); \n"
 
@@ -513,7 +516,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec3 atmos_vertexView3; \n"
-        "varying vec3 oe_Normal; \n"
+
+        "vec3 oe_global_Normal; \n"
 
         "void atmos_fragment_main(inout vec4 color) \n"
         "{ \n"        
@@ -521,7 +525,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
 
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
         "    vec3 V = normalize(atmos_vertexView3); \n"
-        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 N = normalize(oe_global_Normal); \n"
         "    vec3 R = normalize(-reflect(L,N)); \n"
 
         "    float NdotL = max(dot(N,L), 0.0); \n"

@@ -96,8 +96,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         int _imageUnit;          // image unit for primary texture
         int _imageUnitParent;    // image unit for secondary (parent) texture
+        int _elevUnit;           // image unit for elevation texture
 
         bool _supportsGLSL;
+
+        osg::ref_ptr<osg::Texture> _elevTex;
 
     public:
         

@@ -515,6 +515,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 
 #define MAX_POINTS_PER_CROP_TILE 1024
 
+    bool built = false;
     unsigned count = ring->getTotalPointCount();
     if ( count > MAX_POINTS_PER_CROP_TILE )
     {
@@ -530,6 +531,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         osg::ref_ptr<Polygon> poly = new Polygon;
         poly->resize( 4 );
 
+        built = true;
         for(int x=0; x<(int)tx; ++x)
         {
             for(int y=0; y<(int)ty; ++y)
@@ -542,7 +544,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                 osg::ref_ptr<Geometry> ringTile;
                 if ( ring->crop(poly.get(), ringTile) )
                 {
-                    // Use an iterator sine crop count return a multi-polygon
+                    // Use an iterator since crop could return a multi-polygon
                     GeometryIterator gi( ringTile.get(), false );
                     while( gi.hasMore() )
                     {
@@ -552,13 +554,30 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                 }
                 else 
                 {
-                    // This just means the crop resulted in empty geometry, which is legal.
-                    //OE_WARN << LC << "Crop failed; tile skipped!" << std::endl;
+                    // If crop resulted in empty geometry (valid case) ringTile will still be valid,
+                    // otherwise we need to process the entire polygon without tiling.
+                    if (!ringTile.valid())
+                    {
+                        //clean up geometry
+                        osgGeom->setVertexArray(0L);
+                        if (osgGeom->getNumPrimitiveSets())
+                            osgGeom->removePrimitiveSet(0, osgGeom->getNumPrimitiveSets());
+
+                        OE_NOTICE << LC << "GEOS crop failed, tessellating feature without tiling." << std::endl;
+
+                        built = false;
+                        break;
+                    }
                 }
             }
+
+            // GEOS failed 
+            if (!built)
+                break;
         }
     }
-    else
+
+    if ( !built )
     {
         buildPolygon(ring, featureSRS, mapSRS, makeECEF, tessellate, osgGeom, world2local);
     }

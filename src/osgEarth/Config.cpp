@@ -217,7 +217,8 @@ namespace
                             {
                                 array_value.append( conf2json(*j, nicer, depth+1) );
                             }
-                            value[array_key] = array_value;
+                            value = array_value;
+                            //value[array_key] = array_value;
                         }
                     }
                 }
@@ -277,14 +278,23 @@ namespace
                         conf.add( element );
                     }
                 }
-                else if ( value.isArray() && endsWith(*i, "_$set") )
+                else if ( value.isArray() )
                 {
-                    std::string key = i->substr(0, i->length()-5);
-                    for( Json::Value::const_iterator j = value.begin(); j != value.end(); ++j )
+                    if ( endsWith(*i, "_$set") )
                     {
-                        Config child( key );
-                        json2conf( *j, child, depth+1 );
-                        conf.add( child );
+                        std::string key = i->substr(0, i->length()-5);
+                        for( Json::Value::const_iterator j = value.begin(); j != value.end(); ++j )
+                        {
+                            Config child( key );
+                            json2conf( *j, child, depth+1 );
+                            conf.add( child );
+                        }
+                    }
+                    else
+                    {
+                        Config element( *i );
+                        json2conf( value, element, depth+1 );
+                        conf.add( element );
                     }
                 }
                 else if ( (*i) == "$key" )
@@ -298,12 +308,6 @@ namespace
                 else if ( (*i) == "$children" && value.isArray() )
                 {
                     json2conf( value, conf, depth+1 );
-                }
-                else if ( value.isArray() )
-                {
-                    Config element( *i );
-                    json2conf( value, element, depth+1 );
-                    conf.add( element );
                 }
                 else
                 {
@@ -347,6 +351,13 @@ Config::fromJSON( const std::string& input )
     {
         json2conf( root, *this, 0 );
         return true;
+    }
+    else
+    {
+        OE_WARN 
+            << "JSON decoding error: "
+            << reader.getFormatedErrorMessages() 
+            << std::endl;
     }
     return false;
 }

@@ -195,9 +195,11 @@ Geometry::buffer(double distance,
                 outGeom = bufBuilder.buffer(inGeom, distance);
             }
         }
-        catch( const util::TopologyException& ex )
+        catch(const geos::util::GEOSException& ex)
         {
-            OE_WARN << LC << "GEOS buffer: " << ex.what() << std::endl;
+            OE_NOTICE << LC << "buffer(GEOS): "
+                << (ex.what()? ex.what() : " no error message")
+                << std::endl;
             outGeom = 0L;
         }
 
@@ -228,6 +230,8 @@ bool
 Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
 {
 #ifdef OSGEARTH_HAVE_GEOS
+    bool success = false;
+    output = 0L;
 
     GEOSContext gc;
 
@@ -244,20 +248,40 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
                 cropGeom,
                 overlay::OverlayOp::opINTERSECTION );
         }
-        catch( ... ) {
+        catch(const geos::util::GEOSException& ex) {
+            OE_NOTICE << LC << "Crop(GEOS): "
+                << (ex.what()? ex.what() : " no error message")
+                << std::endl;
             outGeom = 0L;
-            OE_NOTICE << LC << "::crop, GEOS overlay op exception, skipping feature" << std::endl;
         }
 
         if ( outGeom )
         {
             output = gc.exportGeometry( outGeom );
-            gc.disposeGeometry( outGeom );
 
-            if ( output.valid() && !output->isValid() )
+            if ( output.valid())
             {
-                output = 0L;
+                if ( output->isValid() )
+                {
+                    success = true;
+                }
+                else
+                {
+                    // GEOS result is invalid
+                    output = 0L;
+                }
             }
+            else
+            {
+                // set output to empty geometry to indicate the (valid) empty case,
+                // still returning false but allows for check.
+                if (outGeom->getNumPoints() == 0)
+                {
+                    output = new osgEarth::Symbology::Geometry();
+                }
+            }
+
+            gc.disposeGeometry( outGeom );
         }
     }
 
@@ -265,7 +289,7 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
     gc.disposeGeometry( cropGeom );
     gc.disposeGeometry( inGeom );
 
-    return output.valid();
+    return success;
 
 #else // OSGEARTH_HAVE_GEOS
 
@@ -295,9 +319,11 @@ Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output
                 diffGeom,
                 overlay::OverlayOp::opDIFFERENCE );
         }
-        catch( ... ) {
+        catch(const geos::util::GEOSException& ex) {
+            OE_NOTICE << LC << "Diff(GEOS): "
+                << (ex.what()? ex.what() : " no error message")
+                << std::endl;
             outGeom = 0L;
-            OE_NOTICE << LC << "::difference, GEOS overlay op exception, skipping feature" << std::endl;
         }
 
         if ( outGeom )

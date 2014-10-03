@@ -25,6 +25,7 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Extension>
 
 namespace osgEarth
 {
@@ -162,6 +163,26 @@ namespace osgEarth
         Config& externalConfig() { return _externalConf; }
         const Config& externalConfig() const { return _externalConf; }
 
+        /**
+         * Adds an Extension and calls its startup method with this MapNode.
+         */
+        void addExtension(Extension* extension, const osgDB::Options* options =0L);
+
+        /**
+         * Removes an extension, and calls its shutdown method with this MapNode.
+         */
+        void removeExtension(Extension* extension);
+
+        /**
+         * Removes all extensions, calling each one's shutdown method this this MapNode.
+         */
+        void clearExtensions();
+
+        /**
+         * Access the extensions vector.
+         */
+        const std::vector< osg::ref_ptr<Extension> >& getExtensions() const { return _extensions; }
+
 
     public: // special purpose
 
@@ -202,6 +223,7 @@ namespace osgEarth
         bool                     _terrainEngineInitialized;
         osg::Group*              _terrainEngineContainer;
 
+        std::vector< osg::ref_ptr<Extension> > _extensions;
 
     public: // MapCallback proxy
 

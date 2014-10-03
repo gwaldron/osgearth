@@ -81,6 +81,8 @@ namespace
 
         osg::observer_ptr<MapNode> _mapNode;
     };
+
+    typedef std::vector< osg::ref_ptr<Extension> > Extensions;
 }
 
 //---------------------------------------------------------------------------
@@ -373,6 +375,8 @@ MapNode::~MapNode()
     {
         this->onModelLayerRemoved( itr->get() );
     }
+
+    this->clearExtensions();
 }
 
 osg::BoundingSphere
@@ -429,6 +433,56 @@ MapNode::getTerrainEngine() const
         me->dirtyBound();
     }
     return _terrainEngine;
+}
+
+void
+MapNode::addExtension(Extension* extension, const osgDB::Options* options)
+{
+    if ( extension )
+    {
+        _extensions.push_back( extension );
+
+        // set the IO options is they were provided:
+        if ( options )
+            extension->setDBOptions( options );
+        
+        // start it.
+        ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get(extension);
+        if ( extensionIF )
+        {
+            extensionIF->connect( this );
+        }
+    }
+}
+
+void
+MapNode::removeExtension(Extension* extension)
+{
+    Extensions::iterator i = std::find(_extensions.begin(), _extensions.end(), extension);
+    if ( i != _extensions.end() )
+    {
+        ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get( i->get() );
+        if ( extensionIF )
+        {
+            extensionIF->disconnect( this );
+        }
+        _extensions.erase( i );
+    }
+}
+
+void
+MapNode::clearExtensions()
+{
+    for(Extensions::iterator i = _extensions.begin(); i != _extensions.end(); ++i)
+    {
+        ExtensionInterface<MapNode>* extensionIF = ExtensionInterface<MapNode>::get( i->get() );
+        if ( extensionIF )
+        {
+            extensionIF->disconnect( this );
+        }
+    }
+
+    _extensions.clear();
 }
 
 osg::Group*
@@ -656,13 +710,16 @@ MapNode::traverse( osg::NodeVisitor& nv )
             const SpatialReference* srs = getMapSRS();
             if ( srs && !srs->isProjected() )
             {
-                GeoPoint ecef;
-                ecef.fromWorld( srs, eye );
-                cullData->_cameraAltitude = ecef.alt();
+                GeoPoint lla;
+                lla.fromWorld( srs, eye );
+                cullData->_cameraAltitude = lla.alt();
+                cullData->_cameraAltitudeUniform->set( (float)lla.alt() );
+                //OE_INFO << lla.alt() << std::endl;
             }
             else
             {
                 cullData->_cameraAltitude = eye.z();
+                cullData->_cameraAltitudeUniform->set( (float)eye.z() );
             }
 
             // window matrix:

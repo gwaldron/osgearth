@@ -1105,7 +1105,7 @@ VirtualProgram::apply( osg::State& state ) const
                 // program not usable, fallback to fixed function.
                 extensions->glUseProgram( 0 );
                 state.setLastAppliedProgramObject(0);
-                OE_WARN << LC << "Program link failure!" << std::endl;
+                OE_DEBUG << LC << "Program link failure!" << std::endl;
             }
         }
 

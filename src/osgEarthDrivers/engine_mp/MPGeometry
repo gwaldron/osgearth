@@ -44,6 +44,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          */
         struct Layer
         {
+            Layer()
+            {
+                _texMatUniformID = ~0;
+            }
+
             osgEarth::UID                  _layerID;
             osg::ref_ptr<const ImageLayer> _imageLayer;
             osg::ref_ptr<osg::Texture>     _tex;
@@ -52,6 +57,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             osg::Matrixf                   _texMatParent; // yes, must be a float matrix
             float                          _alphaThreshold;
             bool                           _opaque;
+
+            // for shared layers only:
+            osg::Matrixf                   _texMat;          // yes, must be a float matrix
+            unsigned                       _texMatUniformID; // uniform location ID
 
             // in support of std::find
             inline bool operator == (const osgEarth::UID& rhs) const {
@@ -87,8 +96,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         int _imageUnit;          // image unit for primary texture
         int _imageUnitParent;    // image unit for secondary (parent) texture
+        int _elevUnit;           // image unit for elevation texture
 
         bool _supportsGLSL;
+
+        osg::ref_ptr<osg::Texture> _elevTex;
 
     public:
         

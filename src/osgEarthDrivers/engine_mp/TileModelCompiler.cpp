@@ -436,19 +436,6 @@ namespace
                     r._texCoords->reserve( d.numVerticesInSurface );
                     r._ownsTexCoords = true;
 #endif
-
-#if 0
-                    osg::ref_ptr<osg::Vec2Array>& skirtTexCoords = cache._skirtTexCoordArrays.get( mat, d.numCols, d.numRows );
-                    if ( !skirtTexCoords.valid() )
-                    {
-                        // Note: anything in the cache must have its own VBO. No sharing!
-                        skirtTexCoords = new osg::Vec2Array();
-                        skirtTexCoords->setVertexBufferObject( new osg::VertexBufferObject() );
-                        skirtTexCoords->reserve( d.numVerticesInSkirt );
-                        r._ownsSkirtTexCoords = true;
-                    }
-                    r._skirtTexCoords = skirtTexCoords.get();
-#endif
                 }
 
                 else
@@ -581,20 +568,6 @@ namespace
 				        d.indices[iv] = -2;
 				    
 				    }
-                    //for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
-                    //{
-                    //    if(ndc.x() >= ((*mr)._ndcMin.x()) && ndc.x() <= ((*mr)._ndcMax.x()) &&
-                    //        ndc.y() >= ((*mr)._ndcMin.y()) && ndc.y() <= ((*mr)._ndcMax.y()))
-						
-                    //    {
-                    //        validValue = false;
-                    //        d.indices[iv] = -2;
-
-                    //       // (*mr)._internal->push_back(ndc);
-
-                    //        break;
-                    //    }
-                    //}
                 }
                 
                 if ( validValue )
@@ -793,18 +766,6 @@ namespace
                             if ( d.model->_elevationData.getHeight( ndc, d.model->_tileLocator.get(), value, INTERP_BILINEAR ) )
                                 ndc.z() = value * d.heightScale + d.heightOffset;
                         }
-
-#if 0
-                        if (elevationLayer)
-                        {
-                            unsigned int i_equiv = d.i_sampleFactor==1.0 ? max_i : (unsigned int) (double(max_i)*d.i_sampleFactor);
-                            unsigned int j_equiv = d.j_sampleFactor==1.0 ? min_j + j + 1 : (unsigned int) (double(min_j + j + 1)*d.j_sampleFactor);
-
-                            float value = 0.0f;
-                            if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
-                                ndc.z() = value * d.heightScale + d.heightOffset;
-                        }
-#endif
 
                         (*maskSkirtPoly)[j + num_i] = ndc;
                     }
@@ -1832,6 +1793,26 @@ namespace
                 (layer._tex.valid() && !r->_layer.hasAlpha()) &&
                 (!layer._texParent.valid() || !r->_layerParent.hasAlpha());
 
+            // texture matrix: scale/bias matrix of the texture. Currently we don't use
+            // this for rendering because the scale/bias is already baked into the 
+            // texture coordinates. BUT we still need it for sampling shared rasters etc.
+            if ( r->_layer._locator.valid() )
+            {
+                osg::Matrixd sbmatrix;
+
+                r->_layer._locator->createScaleBiasMatrix(
+                    d.model->_tileLocator->getDataExtent(),
+                    sbmatrix );
+
+                layer._texMat = sbmatrix;
+
+                // a shared layer needs access to a static uniform name.
+                if ( layer._imageLayer->isShared() )
+                {
+                    layer._texMatUniformID = osg::Uniform::getNameID( layer._imageLayer->shareTexMatUniformName().get() );
+                }
+            }
+
             // parent texture matrix: it's a scale/bias matrix encoding the difference
             // between the two locators.
             if ( r->_layerParent.getLocator() )
@@ -1856,25 +1837,29 @@ namespace
                 mr->_geom->_layers[order] = layer;
             }
         }
+
+        // elevation texture.
+        d.surface->_elevTex = d.model->_elevationTexture.get();
+    }
+
+
+    void allocateVBOs( Data& d )
+    {
+        d.surface->setUseVertexBufferObjects(false);
+        d.surface->setUseVertexBufferObjects(true);
+
+        if ( d.stitchGeom )
+        {
+            d.stitchGeom->setUseVertexBufferObjects(false);
+            d.stitchGeom->setUseVertexBufferObjects(true);
+        }
     }
 
 
     // Optimize the data. Convert all modes to GL_TRIANGLES and run the
     // critical vertex cache optimizations.
-    void optimize( Data& d )
-    {
-#if 0
-        // the optimization pass is incompatible with the shared arrays used
-        // during masking.
-        if ( d.maskRecords.size() > 0 )
-        {
-            OE_DEBUG
-                << LC << "Skipping optimization pass for tile " << d.model->_tileKey.str()
-                << " because it contains masking geometry" <<std::endl;
-            return;
-        }
-#endif
- 
+    void optimize( Data& d, bool runMeshOptimizers )
+    { 
         // For vertex cache optimization to work, all the arrays must be in
         // the geometry. MP doesn't store texture/tile coords in the geometry
         // so we need to temporarily add them.
@@ -1949,25 +1934,18 @@ namespace
 
 #endif
 
-		if (d.maskRecords.size()<1)
+		if (runMeshOptimizers && d.maskRecords.size() < 1)
 		{
 			osgUtil::Optimizer o;
-
+            
 			o.optimize( d.surfaceGeode,
 				osgUtil::Optimizer::VERTEX_PRETRANSFORM |
 				osgUtil::Optimizer::INDEX_MESH |
 				osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 		}
-       
 
-        d.surface->setUseVertexBufferObjects(false);
-        d.surface->setUseVertexBufferObjects(true);
-
-        if ( d.stitchGeom )
-        {
-            d.stitchGeom->setUseVertexBufferObjects(false);
-            d.stitchGeom->setUseVertexBufferObjects(true);
-        }
+        // do this while all the objects are in the geometry.
+        allocateVBOs( d );
 
         // re-ref all the things we un-ref'd earlier.
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
@@ -1996,6 +1974,7 @@ namespace
         if (stitch_tdl)
             stitch_tdl->clear();
     }
+
 
 
     struct CullByTraversalMask : public osg::Drawable::CullCallback
@@ -2071,7 +2050,7 @@ TileModelCompiler::compile(const TileModel* model,
     if ( sampleRatio <= 0.0f )
         sampleRatio = osg::clampBetween( model->_tileKey.getLOD()/20.0, 0.0625, 1.0 );
 
-    setupGeometryAttributes( d, sampleRatio ); //, *_options.color() );
+    setupGeometryAttributes( d, sampleRatio );
 
     // set up the list of layers to render and their shared arrays.
     setupTextureAttributes( d, _cache );
@@ -2091,18 +2070,10 @@ TileModelCompiler::compile(const TileModel* model,
     tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
 
     // performance optimizations.
-    optimize( d );
+    optimize( d, _options.optimizeTiles() == true );
 
     // installs the per-layer rendering data into the Geometry objects.
     installRenderData( d );
-
-#if 0 // this is covered by the opt above.
-    // convert mask geometry to tris.
-    for (MaskRecordVector::iterator mr = d.maskRecords.begin(); mr != d.maskRecords.end(); ++mr)
-    {
-        MeshConsolidator::convertToTriangles( *((*mr)._geom), true );
-    }
-#endif
     
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())

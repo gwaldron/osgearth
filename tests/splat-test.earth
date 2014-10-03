@@ -1,0 +1,108 @@
+<!--
+|  Texture splatting test.
+|
+|  Run with uniforms to enable tweaking:
+|
+|   osgearth_viewer splat-test.earth
+|       --uniform oe_splat_warp 0 0.01
+|       --uniform oe_splat_samples 0 3
+|       --uniform oe_splat_scaleOffset 1 10
+|       --uniform oe_splat_intensity 0 1
+-->
+
+<map>
+        
+	<options min_lod="20" elevation_tile_size="47">
+		<terrain normalize_edges="true"/>
+	</options>
+	
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+    
+    <image name="readymap_imagery" driver="tms" enabled="false">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+	
+    <image name="mapquest_osm" driver="xyz" enabled="false">
+        <url>http://otile[1234].mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg</url>
+        <profile>global-mercator</profile>
+    </image>
+
+    <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true" enabled="true">
+        <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
+        <cache_policy usage="none"/>
+    </image>
+
+    <image name="NLCD" driver="gdal" shared="true" visible="false" coverage="true" enabled="false">
+        <url>H:/data/NLCD/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
+        <cache_policy usage="none"/>
+    </image>
+	
+	<image driver="debug" enabled="false"/>
+	
+    <model name="trees" driver="feature_geom" enabled="false">
+        <features name="trees" driver="ogr">
+			<geometry>
+				POLYGON((-180 -90, 180 -90, 180 90, -180 90))
+			</geometry>
+        </features>
+        
+        <instancing>true</instancing>
+        
+        <fading 
+            duration="1.0"
+            max_range="6000"
+            attenuation_distance="5000"/>
+        
+        <layout>
+            <tile_size_factor>1</tile_size_factor>
+            <crop_features>true</crop_features>
+            <level max_range="1000" style="parks"/>
+        </layout>
+             
+        <styles>
+            <style type="text/css">
+                parks {
+                   model:               "../data/pinetree.ive";
+                   model-placement:     random;
+                   model-density:       4500;
+                   model-scale:         5.0;
+                   altitude-clamping:   terrain;
+                   altitude-resolution: 0.001;
+                }
+            </style>
+        </styles>        
+    </model>
+
+    <extensions>
+	
+        <splat>
+            <coverage>GLOBCOVER</coverage>
+            <legend>H:/data/ESA/GLOBCOVER_legend.json</legend>
+            <catalog>../data/splat/simple_catalog.json</catalog>
+        </splat>
+
+<!--		
+        <splat>
+            <coverage>NLCD</coverage>
+            <legend>H:/data/NLCD/NLCD_legend.json</legend>
+            <catalog>../data/splat/simple_catalog.json</catalog>
+        </splat>
+-->	
+
+		<normalmap>
+			<image>../data/test_bump.png</image>
+		</normalmap>
+		
+		<viewpoints>
+			<viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>
+			<viewpoint name="Mt R. Nadir 30K" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>
+			<viewpoint name="Mt R. Nadir 7K" heading="0.5013039415314375" height="2030.938670247793" lat="46.81069413427294" long="-121.7931474749483" pitch="-89.43231466772511" range="7035.645515411795"/>
+			<viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
+			<viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>
+		</viewpoints>
+		
+    </extensions>
+
+</map>

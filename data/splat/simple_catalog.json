@@ -1,0 +1,39 @@
+{
+	"name" : "Default detail catalog",
+	"description" : "This is a description of the default detail catalog",
+	"classes" : {
+		"cropland" : {
+			"url": "cropland.jpg"
+		},
+		"desert" : {
+			"url": "desert2.jpg"
+		},
+		"forest" : {
+			"url": "forest2.jpg"
+		},
+		"grassland" : {
+			"url": "grass.jpg"
+		},
+		"mountain": {
+			"url": "rock.jpg"
+		},
+		"savanna": {
+			"url": "grass3.jpg"
+		},
+		"snow": {
+			"url": "snow.jpg"
+		},
+		"swamp" : {
+			"url": "swamp.jpg"
+		},
+		"tundra": {
+			"url": "snow.jpg"
+		},
+		"urban": {
+			"url": "asphalt.jpg"
+		},
+		"water": {
+			"url": "water.jpg"
+		}
+	}
+}

@@ -339,6 +339,9 @@ MPTerrainEngineNode::createTerrain()
         this->getTextureCompositor()->reserveTextureImageUnit( _secondaryUnit );
     }
 
+    // testing
+    this->getTextureCompositor()->reserveTextureImageUnit( _elevationTextureUnit );
+
     // Factory to create the root keys:
     KeyNodeFactory* factory = getKeyNodeFactory();
 
@@ -359,7 +362,7 @@ MPTerrainEngineNode::createTerrain()
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        osg::ref_ptr<osg::Node> node = factory->createNode( keys[i], true, 0L );
+        osg::ref_ptr<osg::Node> node = factory->createNode( keys[i], true, true, 0L );
         if ( node.valid() )
         {
             root->addChild( node.get() );
@@ -487,7 +490,7 @@ MPTerrainEngineNode::createNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    return getKeyNodeFactory()->createNode( key, true, progress );
+    return getKeyNodeFactory()->createNode( key, true, true, progress );
 }
 
 osg::Node*
@@ -501,14 +504,15 @@ MPTerrainEngineNode::createStandaloneNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create standalone node for \"" << key.str() << "\"" << std::endl;
 
-    return getKeyNodeFactory()->createNode( key, false, progress );
+    return getKeyNodeFactory()->createNode( key, true, false, progress );
 }
 
 osg::Node*
 MPTerrainEngineNode::createTile( const TileKey& key )
 {
-    // make a node, but don't include any subtile information
-    return getKeyNodeFactory()->createNode( key, false, 0L );
+    // make a node, but don't include any subtile information and don't
+    // accumulate data from parents.
+    return getKeyNodeFactory()->createNode( key, false, false, 0L );
 }
 
 
@@ -598,6 +602,12 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 {
                     OE_WARN << LC << "Insufficient GPU image units to share layer " << layerAdded->getName() << std::endl;
                 }
+            }
+
+            optional<std::string>& texMatUniformName = layerAdded->shareTexMatUniformName();
+            if ( !texMatUniformName.isSet() )
+            {
+                texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texmat";
             }
         }
     }
@@ -815,6 +825,10 @@ MPTerrainEngineNode::updateState()
             // binding for the secondary texture (for LOD blending)
             terrainStateSet->getOrCreateUniform(
                 "oe_layer_tex_parent", osg::Uniform::SAMPLER_2D )->set( _secondaryUnit );
+
+            // uniform for accessing the elevation texture sampler.
+            terrainStateSet->getOrCreateUniform(
+                "oe_terrain_tex", osg::Uniform::SAMPLER_2D)->set( _elevationTextureUnit );
 
             // binding for the default secondary texture matrix
             osg::Matrixf parent_mat;

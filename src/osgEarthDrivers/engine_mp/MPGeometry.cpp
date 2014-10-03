@@ -24,6 +24,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 
+#include <osgUtil/IncrementalCompileOperation>
+
 using namespace osg;
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
@@ -44,13 +46,15 @@ _imageUnit       ( imageUnit )
 
     _imageUnitParent = _imageUnit + 1; // temp
 
+    _elevUnit = _imageUnit + 2; // temp
+
     // establish uniform name IDs.
     _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
     _birthTimeUniformNameID    = osg::Uniform::getNameID( "oe_tile_birthtime" );
     _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
     _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
-    _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_matrix" );
+    _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_texmat" );
 
     // we will set these later (in TileModelCompiler)
     this->setUseVertexBufferObjects(false);
@@ -157,6 +161,15 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     }
 #endif
 
+    // activate the elevation texture if there is one. Same for all layers.
+    if ( _elevTex.valid() )
+    {
+        state.setActiveTextureUnit( _imageUnit+2 );
+        state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() ); // necessary?? since we do it above
+        _elevTex->apply( state );
+        // todo: probably need an elev texture matrix as well. -gw
+    }
+
     if ( _layers.size() > 0 )
     {
         float prev_opacity        = -1.0f;
@@ -180,9 +193,22 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     int sharedUnit = layer._imageLayer->shareImageUnit().get();
                     {
                         state.setActiveTextureUnit( sharedUnit );
+
                         state.setTexCoordPointer( sharedUnit, layer._texCoords.get() );
                         // bind the texture for this layer to the active share unit.
                         layer._tex->apply( state );
+
+                        // Shared layers need a texture matrix since the terrain engine doesn't
+                        // provide a "current texture coordinate set" uniform (i.e. oe_layer_texc)
+                        GLint texMatLocation = 0;
+                        if ( pcp )
+                        {
+                            texMatLocation = pcp->getUniformLocation( layer._texMatUniformID );
+                            if ( texMatLocation >= 0 )
+                            {
+                                ext->glUniformMatrix4fv( texMatLocation, 1, GL_FALSE, layer._texMat.ptr() );
+                            }
+                        }
 
                         // no texture LOD blending for shared layers for now. maybe later.
                     }
@@ -326,10 +352,16 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     }
 }
 
-#if OSG_VERSION_GREATER_THAN(3,3,1)
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
 #    define COMPUTE_BOUND computeBoundingBox
 #else
 #    define COMPUTE_BOUND computeBound
+#endif
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
+#   define GET_ARRAY(a) (a)
+#else
+#   define GET_ARRAY(a) (a).array
 #endif
 
 osg::BoundingBox
@@ -424,18 +456,75 @@ MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
     }
 }
 
+namespace
+{
+    void compileBufferObject(BufferObject* bo, unsigned contextID)
+    {
+        if ( bo )
+        {
+            GLBufferObject* glBufferObject = bo->getOrCreateGLBufferObject(contextID);
+            if (glBufferObject && glBufferObject->isDirty())
+            {
+                glBufferObject->compileBuffer();
+            }
+        }
+    }
+    void compileBufferObject(osg::Array* a, unsigned contextID)
+    {
+        if ( a )
+        {
+            compileBufferObject( a->getBufferObject(), contextID );
+        }
+    }
+}
+
 
 void 
 MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 {
-    osg::Geometry::compileGLObjects( renderInfo );
+    //osg::Geometry::compileGLObjects( renderInfo );
+    
+    State& state = *renderInfo.getState();
+    unsigned contextID = state.getContextID();
+    GLBufferObject::Extensions* extensions = GLBufferObject::getExtensions(contextID, true);
+    if (!extensions)
+        return;
 
+    MPGeometry* ncthis = const_cast<MPGeometry*>(this);
+
+    //ncthis->validate();
+
+    compileBufferObject(ncthis->getVertexArray(), contextID);
+    compileBufferObject(ncthis->getNormalArray(), contextID);
+
+    for(unsigned i=0; i<getVertexAttribArrayList().size(); ++i) 
+    {
+        osg::Array* a = GET_ARRAY( getVertexAttribArrayList()[i] ).get();
+        compileBufferObject( a, contextID );
+    }
+    
+    for(PrimitiveSetList::const_iterator i = _primitives.begin(); i != _primitives.end(); ++i )
+    {
+        compileBufferObject( i->get()->getBufferObject(), contextID );
+    }
+    
+    // compile the layer-specific things:
     for(unsigned i=0; i<_layers.size(); ++i)
     {
         const Layer& layer = _layers[i];
+
+        compileBufferObject( layer._texCoords.get(), contextID );
+
         if ( layer._tex.valid() )
             layer._tex->apply( *renderInfo.getState() );
     }
+
+    if ( _elevTex.valid() )
+        _elevTex->apply( *renderInfo.getState() );
+
+    // unbind the BufferObjects
+    extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
+    extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
 }
 
 

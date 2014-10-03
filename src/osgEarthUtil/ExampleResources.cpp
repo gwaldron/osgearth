@@ -31,11 +31,9 @@
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 
 #include <osgEarthUtil/NormalMap>
-#include <osgEarthUtil/DetailTexture>
 #include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
 #include <osgEarthUtil/ContourMap>
-#include <osgEarthUtil/TextureSplatter>
 
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
@@ -125,78 +123,6 @@ namespace
     };
 }
 
-//------------------------------------------------------------------------
-
-namespace
-{
-    struct ViewpointHandler : public osgGA::GUIEventHandler
-    {
-        ViewpointHandler( const std::vector<Viewpoint>& viewpoints, osgViewer::View* view )
-            : _viewpoints( viewpoints ),
-              _manip( dynamic_cast<EarthManipulator*>(view->getCameraManipulator()) ) { }
-
-        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-        {
-            if ( ea.getEventType() == ea.KEYDOWN )
-            {
-                if ( !_viewpoints.empty() )
-                {
-                    int index = (int)ea.getKey() - (int)'1';
-                    if ( index >= 0 && index < (int)_viewpoints.size() )
-                    {
-                        flyToViewpoint( _manip, _viewpoints[index] );
-                    }
-                }
-                if ( ea.getKey() == 'v' )
-                {
-                    XmlDocument xml( _manip->getViewpoint().getConfig() );
-                    xml.store( std::cout );
-                    std::cout << std::endl;
-                }
-                aa.requestRedraw();
-            }
-            return false;
-        }
-
-        std::vector<Viewpoint> _viewpoints;
-        EarthManipulator*      _manip;
-    };
-}
-
-
-Control*
-ViewpointControlFactory::create(const std::vector<Viewpoint>& viewpoints,
-                                osgViewer::View*              view) const
-{
-    Grid* grid = 0L;
-
-    if ( viewpoints.size() > 0 )
-    {
-        // the viewpoint container:
-        grid = new Grid();
-        grid->setChildSpacing( 0 );
-        grid->setChildVertAlign( Control::ALIGN_CENTER );
-
-        for( unsigned i=0; i<viewpoints.size(); ++i )
-        {
-            const Viewpoint& vp = viewpoints[i];
-            Control* num = new LabelControl(Stringify() << (i+1), 16.0f, osg::Vec4f(1,1,0,1));
-            num->setPadding( 4 );
-            grid->setControl( 0, i, num );
-
-            Control* vpc = new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName(), 16.0f);
-            vpc->setPadding( 4 );
-            vpc->setHorizFill( true );
-            vpc->setActiveColor( Color::Blue );
-            vpc->addEventHandler( new ClickViewpointHandler(vp, view->getCameraManipulator()) );
-            grid->setControl( 1, i, vpc );
-        }
-    }
-
-    view->addEventHandler( new ViewpointHandler(viewpoints, view) );
-
-    return grid;
-}
 
 //------------------------------------------------------------------------
 
@@ -509,7 +435,7 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     {
         configureView( view );
     }
-
+    
     return root;
 }
 
@@ -586,42 +512,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
     const Config& oceanConf       = externals.child("ocean");
     const Config& annoConf        = externals.child("annotations");
     const Config& declutterConf   = externals.child("decluttering");
-    Config        viewpointsConf  = externals.child("viewpoints");
 
     // some terrain effects.
     const Config& normalMapConf   = externals.child("normal_map");
-    const Config& detailTexConf   = externals.child("detail_texture");
     const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
     const Config& contourMapConf  = externals.child("contour_map");
-    const Config& texSplatConf    = externals.child("texture_splatter");
-
-    // backwards-compatibility: read viewpoints at the top level:
-    const ConfigSet& old_viewpoints = externals.children("viewpoint");
-    for( ConfigSet::const_iterator i = old_viewpoints.begin(); i != old_viewpoints.end(); ++i )
-        viewpointsConf.add( *i );
-
-    // Loading a viewpoint list from the earth file:
-    if ( !viewpointsConf.empty() )
-    {
-        std::vector<Viewpoint> viewpoints;
-
-        const ConfigSet& children = viewpointsConf.children();
-        if ( children.size() > 0 )
-        {
-            for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
-            {
-                viewpoints.push_back( Viewpoint(*i) );
-            }
-        }
-
-        if ( viewpoints.size() > 0 )
-        {
-            Control* c = ViewpointControlFactory().create(viewpoints, view);
-            if ( c )
-                mainContainer->addControl( c );
-        }
-    }
 
     // Adding a sky model:
     if ( useSky || !skyConf.empty() )
@@ -828,23 +724,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
         }
     }
 
-    // Install a detail texturer
-    if ( !detailTexConf.empty() )
-    {
-        osg::ref_ptr<DetailTexture> effect = new DetailTexture(detailTexConf, mapNode->getMap());
-        if ( true ) //effect->getImage() )
-        {
-            mapNode->getTerrainEngine()->addEffect( effect.get() );
-        }
-    }
-
-    // Install a texture splatter
-    if ( !texSplatConf.empty() )
-    {
-        osg::ref_ptr<TextureSplatter> effect = new TextureSplatter(texSplatConf, mapNode->getMap());
-        mapNode->getTerrainEngine()->addEffect( effect.get() );
-    }
-
     // Install elevation morphing
     if ( !lodBlendingConf.empty() )
     {
@@ -889,6 +768,25 @@ MapNodeHelper::parse(MapNode*             mapNode,
             uniformBox->addControl( box );
             OE_INFO << LC << "Installed uniform controller for " << name << std::endl;
         }
+    }
+    
+
+    // Process extensions.
+    for(std::vector<osg::ref_ptr<Extension> >::const_iterator eiter = mapNode->getExtensions().begin();
+        eiter != mapNode->getExtensions().end();
+        ++eiter)
+    {
+        Extension* e = eiter->get();
+
+        // Check for a View interface:
+        ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get( e );
+        if ( viewIF )
+            viewIF->connect( view );
+
+        // Check for a Control interface:
+        ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get( e );
+        if ( controlIF )
+            controlIF->connect( mainContainer );
     }
 
     root->addChild( canvas );

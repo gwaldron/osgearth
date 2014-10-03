@@ -171,6 +171,7 @@ An *image layer* is a raster image overlaid on the map's geometry.
                enabled        = "true"
                visible        = "true"
                shared         = "false"
+               coverage       = "false"
                feather_pixels = "false"
                min_filter     = "LINEAR"
                mag_filter     = "LINEAR" 
@@ -226,6 +227,13 @@ An *image layer* is a raster image overlaid on the map's geometry.
 +-----------------------+--------------------------------------------------------------------+
 | shared                | Generates a secondary, dedicated sampler for this layer so that it |
 |                       | may be accessed globally by custom shaders.                        |
++-----------------------+--------------------------------------------------------------------+
+| coverage              | Indicates that this is a coverage layer, i.e. a layer that conveys |
+|                       | discrete values with particular semantics. An example would be a   |
+|                       | "land use" layer in which each pixel holds a value that indicates  |
+|                       | whether the area is grassland, desert, etc. Marking a layer as a   |
+|                       | coverage disables any interpolation, filtering, or compression as  |
+|                       | these will corrupt the sampled data values on the GPU.             |
 +-----------------------+--------------------------------------------------------------------+
 | feather_pixels        | Whether to feather out alpha regions for this image layer with the |
 |                       | featherAlphaRegions function. Used to get proper blending when you |

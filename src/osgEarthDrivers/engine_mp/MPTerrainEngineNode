@@ -154,6 +154,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         double     _tileCreationTime;
         int        _primaryUnit;
         int        _secondaryUnit;
+        int        _elevationTextureUnit;
 
         osg::Uniform* _verticalScaleUniform;
 

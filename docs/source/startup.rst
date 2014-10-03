@@ -49,9 +49,6 @@ will be missing:
 
     * LevelDB_ - Google's embedded key/value store. Include this if you want to build
       osgEarth's optional "leveldb" cache driver.
-
-    * Duktape_ - Embedded JavaScript engine. Include this is you want to embed JavaScript
-      code in your earth files to control feature styling.
     
 **Deprecated dependencies**: osgEarth can still use these, but they will probably go away
 in the future:
@@ -84,7 +81,7 @@ Here are a few tips.
       that is separate from the source code. This makes it easier to maintain separate
       versions and to keep GIT updates clean.
       
-    * For optional dependencies (like GEOS_ or V8_), just leave the CMake field blank
+    * For optional dependencies (like GEOS_), just leave the CMake field blank
       if you are not using it.
       
     * For the OSG dependencies, just input the **OSG_DIR** variable, and when you generate
@@ -114,4 +111,3 @@ Here are a few tips.
 .. _Mike Weiblen:   http://mew.cx/osg/
 .. _the forum:      http://forum.osgearth.org
 .. _LevelDB:        https://github.com/pelicanmapping/leveldb
-.. _Duktape:        http://duktape.org

@@ -236,7 +236,7 @@ ModelLayer::getOrCreateSceneGraph(const Map*            map,
 
             if ( _runtimeOptions.lightingEnabled().isSet() )
             {
-                setLightingEnabled( *_runtimeOptions.lightingEnabled() );
+                setLightingEnabledNoLock( *_runtimeOptions.lightingEnabled() );
             }
 
             if ( _modelSource->getOptions().depthTestEnabled() == false )
@@ -318,9 +318,15 @@ ModelLayer::setOpacity(float opacity)
 void
 ModelLayer::setLightingEnabled( bool value )
 {
+    Threading::ScopedMutexLock lock(_mutex);
+    setLightingEnabledNoLock( value );
+}
+
+void
+ModelLayer::setLightingEnabledNoLock(bool value)
+{
     _runtimeOptions.lightingEnabled() = value;
 
-    _mutex.lock();
     for(Graphs::iterator i = _graphs.begin(); i != _graphs.end(); ++i)
     {
         if ( i->second.valid() )

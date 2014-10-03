@@ -1,0 +1,106 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2013 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_EXTENSION_H
+#define OSGEARTH_EXTENSION_H 1
+
+#include <osgEarth/Common>
+#include <osg/Object>
+#include <osgDB/Options>
+
+namespace osgEarth
+{
+    class ConfigOptions;
+}
+
+namespace osgEarth
+{
+    /**
+     * An Extension is an object that can be loaded on demand (from a plugin) 
+     * and can have multiple object-specific interfaces.
+     *
+     * For example, the pattern for declaring an Extension that connects to a
+     * MapNode looks like:
+     *
+     *   public MyExtension : public Extension, public ExtensionInterface<MapNode>
+     *
+     * You can implement more than one interface. This one would connect to a
+     * MapNode and to a UI Control:
+     *
+     *   public MyExtension : public Extension,
+     *                        public ExtensionInterface<MapNode>,
+     *                        public ExtensionInterface<Control>
+     */
+    class OSGEARTH_EXPORT Extension : public osg::Object // header-only
+    {
+    public:
+        /**
+         * Sets DB options that this extension should use when doing IO operations.
+         */
+        virtual void setDBOptions(const osgDB::Options* options) =0;
+
+
+    protected:
+        Extension() { }
+
+    protected:
+        virtual ~Extension() { }
+
+    public:
+        /**
+         * Attempts to create an instance of an named extension.
+         */
+        static Extension* create(const std::string& name, const ConfigOptions& options);
+
+        /**
+         * Fetch configuration options from a plugin loader
+         */
+        static const ConfigOptions& getConfigOptions(const osgDB::Options*);
+    };
+
+    
+    /**
+     * This template lets you create object-specific interfaces in an extension.
+     */
+    template<typename T> class ExtensionInterface
+    {
+    public:
+        /**
+         * Connects the extension to an object.
+         */
+        virtual bool connect(T* object) =0;
+
+        /**
+         * Disconnects the extension from an object. This should be the
+         * same object used to call connect().
+         */
+        virtual bool disconnect(T* object) =0;
+        
+        /**
+         * Cast a base extension to this interface, or return NULL
+         * if the extenstion doesn't implemenent this inteface.
+         */
+        static ExtensionInterface<T>* get(Extension* e) {
+            return dynamic_cast< ExtensionInterface<T>* >(e);
+        }
+    };
+
+} // namespace osgEarth
+
+#endif

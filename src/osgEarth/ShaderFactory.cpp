@@ -241,9 +241,12 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
 
     buf << 
         "varying vec4 osg_FrontColor; \n"
+        "varying vec3 oe_Normal; \n"
+        "vec3 oe_global_Normal; \n" // stage-global
         "void main(void) \n"
         "{ \n"
-        INDENT "vec4 color = osg_FrontColor; \n";
+        INDENT "vec4 color = osg_FrontColor; \n"
+        INDENT "oe_global_Normal = oe_Normal; \n";
 
     int coloringPass = _fragStageOrder == FRAGMENT_STAGE_ORDER_COLORING_LIGHTING ? 0 : 1;
     int lightingPass = 1-coloringPass;

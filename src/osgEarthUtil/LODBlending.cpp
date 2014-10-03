@@ -57,7 +57,7 @@ namespace
         "uniform float oe_lodblend_delay; \n"
         "uniform float oe_lodblend_duration; \n"
 
-        "uniform mat4 oe_layer_parent_matrix; \n"
+        "uniform mat4 oe_layer_parent_texmat; \n"
         "varying vec4 oe_layer_texc; \n"
         "varying vec4 oe_lodblend_texc; \n"
         "varying float oe_lodblend_r; \n"
@@ -73,8 +73,8 @@ namespace
         "    float r_time     = 1.0 - clamp(osg_FrameTime-(oe_tile_birthtime+oe_lodblend_delay), 0.0, oe_lodblend_duration)/oe_lodblend_duration; \n"
         "    float r          = max(r_dist, r_time); \n"
 
-        "    oe_lodblend_texc = oe_layer_parent_matrix * oe_layer_texc; \n"
-        "    oe_lodblend_r    = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n" // obe?
+        "    oe_lodblend_texc = oe_layer_parent_texmat * oe_layer_texc; \n"
+        "    oe_lodblend_r    = oe_layer_parent_texmat[0][0] > 0.0 ? r : 0.0; \n" // obe?
         "} \n";
 
     const char* vs_elevation =
@@ -130,7 +130,7 @@ namespace
         "uniform float oe_lodblend_duration; \n"
         "uniform float oe_lodblend_vscale; \n"
 
-        "uniform mat4 oe_layer_parent_matrix; \n"
+        "uniform mat4 oe_layer_parent_texmat; \n"
         "varying vec4 oe_layer_texc; \n"
         "varying vec4 oe_lodblend_texc; \n"
         "varying float oe_lodblend_r; \n"
@@ -155,8 +155,8 @@ namespace
         "    vec3  blendOffset  = upVector * r * oe_lodblend_vscale * (elevOld-elev); \n"
         "    VertexMODEL       += vec4( (vscaleOffset + blendOffset)*VertexMODEL.w, 0.0 ); \n"
 
-        "    oe_lodblend_texc = oe_layer_parent_matrix * oe_layer_texc; \n"
-        "    oe_lodblend_r    = oe_layer_parent_matrix[0][0] > 0.0 ? r : 0.0; \n" // obe?
+        "    oe_lodblend_texc = oe_layer_parent_texmat * oe_layer_texc; \n"
+        "    oe_lodblend_r    = oe_layer_parent_texmat[0][0] > 0.0 ? r : 0.0; \n" // obe?
 
         "    oe_Normal = normalize(mix(normalize(oe_Normal), oe_terrain_attr2.xyz, r)); \n"
         "} \n";

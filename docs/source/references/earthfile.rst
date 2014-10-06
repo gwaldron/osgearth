@@ -246,7 +246,9 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | mag_filter            | OpenGL texture magnification filter to use for this layer.         |
 |                       | Options are the same as for ``min_filter`` above.                  |
 +-----------------------+--------------------------------------------------------------------+
-| texture_compression   | "auto" to compress textures on the GPU; "none" to disable.         |
+| texture_compression   | "auto" to compress textures on the GPU;                            |
+|                       | "none" to disable.                                                 |
+|                       | "fastdxt" to use the FastDXT real time DXT compressor              |
 +-----------------------+--------------------------------------------------------------------+
 
 

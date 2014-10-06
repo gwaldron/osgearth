@@ -117,6 +117,7 @@ ImageLayerOptions::fromConfig( const Config& conf )
 
     conf.getIfSet("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
     conf.getIfSet("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
+    conf.getIfSet("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 }
 
@@ -162,6 +163,7 @@ ImageLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet("texture_compression", "none", _texcomp, osg::Texture::USE_IMAGE_DATA_FORMAT);
     conf.updateIfSet("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
     conf.updateIfSet("texture_compression", "on",   _texcomp, (osg::Texture::InternalFormatMode)~0);
+    conf.updateIfSet("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
 
     return conf;
@@ -819,6 +821,7 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
         tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
     }
 
+
     else if ( _runtimeOptions.textureCompression() == (osg::Texture::InternalFormatMode)~0 )
     {
         // auto mode:
@@ -840,7 +843,42 @@ ImageLayer::applyTextureCompressionMode(osg::Texture* tex) const
             }
         }
     }
+    else if ( _runtimeOptions.textureCompression() == (osg::Texture::InternalFormatMode)(~0 - 1))
+    {
+        osg::Timer_t start = osg::Timer::instance()->tick();
+        osgDB::ImageProcessor* imageProcessor = osgDB::Registry::instance()->getImageProcessorForExtension("fastdxt");
+        if (imageProcessor)
+        {
+            osg::Texture::InternalFormatMode mode;
+            // RGB uses DXT1
+            if (tex->getImage(0)->getPixelFormat() == GL_RGB)
+            {
+                mode = osg::Texture::USE_S3TC_DXT1_COMPRESSION;
+            }
+            // RGBA uses DXT5
+            else if (tex->getImage(0)->getPixelFormat() == GL_RGBA)
+            {         
+                mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
+            }
+            else
+            {
+                OE_INFO << "FastDXT only works on GL_RGBA or GL_RGB images" << std::endl;
+                return;
+            }
 
+            osg::Image *image = tex->getImage(0);
+            imageProcessor->compress(*image, mode, false, true, osgDB::ImageProcessor::USE_CPU, osgDB::ImageProcessor::FASTEST);
+            osg::Timer_t end = osg::Timer::instance()->tick();
+            image->dirty();
+            tex->setImage(0, image);
+            OE_INFO << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;        
+        }
+        else
+        {
+            OE_WARN << "Failed to get ImageProcessor fastdxt" << std::endl;
+        }
+
+    }
     else if ( _runtimeOptions.textureCompression().isSet() )
     {
         // use specifically picked a mode.

@@ -30,7 +30,6 @@
 #include <osgEarthUtil/ActivityMonitorTool>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 
-#include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
 #include <osgEarthUtil/ContourMap>
@@ -514,7 +513,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     const Config& declutterConf   = externals.child("decluttering");
 
     // some terrain effects.
-    const Config& normalMapConf   = externals.child("normal_map");
+    // TODO: Most of these are likely to move into extensions.
     const Config& lodBlendingConf = externals.child("lod_blending");
     const Config& vertScaleConf   = externals.child("vertical_scale");
     const Config& contourMapConf  = externals.child("contour_map");
@@ -712,16 +711,6 @@ MapNodeHelper::parse(MapNode*             mapNode,
             mapNode->getMap()->endUpdate();
         }
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
-    }
-
-    // Install a normal map layer.
-    if ( !normalMapConf.empty() )
-    {
-        osg::ref_ptr<NormalMap> effect = new NormalMap(normalMapConf, mapNode->getMap());
-        if ( effect->getNormalMapLayer() )
-        {
-            mapNode->getTerrainEngine()->addEffect( effect.get() );
-        }
     }
 
     // Install elevation morphing

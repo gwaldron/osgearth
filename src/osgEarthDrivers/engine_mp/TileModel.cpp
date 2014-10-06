@@ -184,9 +184,9 @@ _fallbackData( fallbackData )
         }    
     }
 
-    layer->applyTextureCompressionMode( _texture.get() );
-
     _hasAlpha = image && ImageUtils::hasTransparency(image);
+
+    layer->applyTextureCompressionMode( _texture.get() );    
 }
 
 TileModel::ColorData::ColorData(const TileModel::ColorData& rhs) :

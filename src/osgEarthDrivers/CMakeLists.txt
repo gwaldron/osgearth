@@ -1,5 +1,5 @@
 #---------------------------------------------------
-# OSG CMAKE SUPPORT 
+# OSG CMAKE SUPPORT
 # (C) by Michael Wagner, mtw@shared-reality.com 2005
 # (C) Eric Wing, Luigi Calori and Robert Osfield 2006-2007
 #---------------------------------------------------
@@ -20,7 +20,7 @@ SET(TARGET_DEFAULT_PREFIX "osgdb_")
 SET(TARGET_DEFAULT_LABEL_PREFIX "Plugin")
 
 #OpenThreads, osg, osgDB and osgUtil are included elsewhere.
-SET(TARGET_COMMON_LIBRARIES 
+SET(TARGET_COMMON_LIBRARIES
     osgEarth
 )
 
@@ -60,7 +60,7 @@ ADD_SUBDIRECTORY(colorramp)
 IF(GDAL_FOUND)
   ADD_SUBDIRECTORY(gdal)
   ADD_SUBDIRECTORY(feature_ogr)
-  ADD_SUBDIRECTORY(feature_wfs)  
+  ADD_SUBDIRECTORY(feature_wfs)
   ADD_SUBDIRECTORY(feature_tfs)
   ADD_SUBDIRECTORY(model_feature_stencil)
   ADD_SUBDIRECTORY(model_feature_geom)
@@ -104,6 +104,12 @@ ADD_SUBDIRECTORY(ocean_simple)
 IF(TRITON_FOUND)
   ADD_SUBDIRECTORY(ocean_triton)
 ENDIF(TRITON_FOUND)
+
+OPTION(ENABLE_FASTDXT "Set to ON to build optional FastDXT image compressor." OFF)
+IF(ENABLE_FASTDXT)
+  ADD_SUBDIRECTORY(fastdxt)
+ENDIF(ENABLE_FASTDXT)
+
 
 # temporary
 ADD_SUBDIRECTORY(template_matclass)

@@ -27,7 +27,7 @@ namespace
 
     const char* NormalMapVertexShader = MULTILINE(
 
-        #version 110\n
+        \n#version 110\n
 
         varying vec3 oe_nmap_tangent;
         varying vec3 oe_nmap_bitangent;
@@ -49,7 +49,7 @@ namespace
 
     const char* NormalMapFragmentShader = MULTILINE(
 
-        #version 110\n
+        \n#version 110\n
 
         vec3 oe_global_Normal;
 

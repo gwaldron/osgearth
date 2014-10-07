@@ -20,11 +20,11 @@ http://readymap.org
     <image name="clouds" driver="xyz">
         <url>http://[abc].tile.openweathermap.org/map/clouds/{z}/{x}/{y}.png</url>
         <profile>spherical-mercator</profile>
+        <cache_policy usage="no_cache"/>
     </image>
 
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
-
 
 </map>

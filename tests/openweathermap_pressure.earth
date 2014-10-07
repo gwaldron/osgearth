@@ -1,5 +1,5 @@
 <!--
-osgEarth Sample - OpenWeatherMap Precipitation
+osgEarth Sample - OpenWeatherMap Pressure
 
 ReadyMap.ORG provides free global base map data for osgEarth developers!
 This tiled, worldwide dataset of imagery, elevation, and street map data
@@ -18,7 +18,7 @@ http://readymap.org
     </image>
 
     <image name="clouds" driver="xyz">
-        <url>http://[abc].tile.openweathermap.org/map/precipitation/{z}/{x}/{y}.png</url>
+        <url>http://[abc].tile.openweathermap.org/map/pressure_cntr/{z}/{x}/{y}.png</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="no_cache"/>
     </image>

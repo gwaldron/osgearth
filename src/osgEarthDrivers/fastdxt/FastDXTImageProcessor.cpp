@@ -29,10 +29,10 @@ class FastDXTProcessor : public osgDB::ImageProcessor
 {
 public:
     virtual void compress(osg::Image& image, osg::Texture::InternalFormatMode compressedFormat, bool generateMipMap, bool resizeToPowerOfTwo, CompressionMethod method, CompressionQuality quality)
-    {     
-        //Resize the image to the nearest power of two 
+    {
+        //Resize the image to the nearest power of two
         if (!osgEarth::ImageUtils::isPowerOfTwo( &image ))
-        {            
+        {
             unsigned int s = osg::Image::computeNearestPowerOfTwo( image.s() );
             unsigned int t = osg::Image::computeNearestPowerOfTwo( image.t() );
             image.scaleImage(s, t, image.r());
@@ -43,7 +43,7 @@ public:
         //FastDXT only works on RGBA imagery so we must convert it
         osg::ref_ptr< osg::Image > rgba;
         if (image.getPixelFormat() != GL_RGBA)
-        {         
+        {
             osg::Timer_t start = osg::Timer::instance()->tick();
             rgba = osgEarth::ImageUtils::convertToRGBA8( &image );
             osg::Timer_t end = osg::Timer::instance()->tick();
@@ -69,7 +69,7 @@ public:
             OSG_WARN << "Unhandled compressed format" << compressedFormat << std::endl;
             return;
             break;
-        }    
+        }
 
         //Copy over the source data to an array
         unsigned char *in = 0;
@@ -88,15 +88,15 @@ public:
         OE_INFO << "compression took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
 
         //Allocate and copy over the output data to the correct size array.
-        unsigned char* data = (unsigned char*)malloc(outputBytes);        
-        memcpy(data, out, outputBytes);        
-        aligned_free(out);
-        aligned_free(in);
+        unsigned char* data = (unsigned char*)malloc(outputBytes);
+        memcpy(data, out, outputBytes);
+        memfree(out);
+        memfree(in);
         image.setImage(image.s(), image.t(), image.r(), pixelFormat, pixelFormat, GL_UNSIGNED_BYTE, data, osg::Image::USE_MALLOC_FREE);
     }
 
     virtual void generateMipMap(osg::Image& image, bool resizeToPowerOfTwo, CompressionMethod method)
-    {        
+    {
         OSG_WARN << "FastDXT: generateMipMap not implemented" << std::endl;
     }
 };

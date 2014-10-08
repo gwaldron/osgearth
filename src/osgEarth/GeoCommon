@@ -19,6 +19,9 @@
 #ifndef OSGEARTH_GEOCOMMON_H
 #define OSGEARTH_GEOCOMMON_H 1
 
+// For FLT_MAX
+#include <limits.h>
+
 namespace osgEarth
 {
     // Default normalized no-data value for elevation

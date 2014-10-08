@@ -21,6 +21,7 @@
 
 // For FLT_MAX
 #include <limits.h>
+#include <cfloat>
 
 namespace osgEarth
 {

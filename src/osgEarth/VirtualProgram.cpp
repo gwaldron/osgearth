@@ -581,8 +581,13 @@ _functions         ( rhs._functions ),
 _inherit           ( rhs._inherit ),
 _inheritSet        ( rhs._inheritSet ),
 _template          ( osg::clone(rhs._template.get()) )
-{
-    //nop
+{    
+    // Attribute bindings.
+    const osg::Program::AttribBindingList &abl = rhs.getAttribBindingList();
+    for( osg::Program::AttribBindingList::const_iterator attribute = abl.begin(); attribute != abl.end(); ++attribute )
+    {
+        addBindAttribLocation( attribute->first, attribute->second );
+    }
 }
 
 int

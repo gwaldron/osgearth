@@ -766,6 +766,7 @@ TileMapServiceReader::read( const Config& conf, TileMapEntryList& tileMaps)
     if (!TileMapServiceConf)
     {
         OE_NOTICE << "Couldn't find root TileMapService element" << std::endl;
+        return false;
     }
 
     const Config* TileMapsConf = TileMapServiceConf->find("tilemaps");

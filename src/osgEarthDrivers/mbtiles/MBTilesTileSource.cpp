@@ -146,7 +146,16 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
         std::string metaDataFormat;
         getMetaData( "format", metaDataFormat );
         if ( !metaDataFormat.empty() )
-            _tileFormat = metaDataFormat;
+            _tileFormat = metaDataFormat;        
+
+        // Try to get it from the options.
+        if (_tileFormat.empty())
+        {
+            if ( _options.format().isSet() )
+            {
+                _tileFormat = _options.format().value();
+            }
+        }
 
         // By this point, we require a valid tile format.
         if ( _tileFormat.empty() )

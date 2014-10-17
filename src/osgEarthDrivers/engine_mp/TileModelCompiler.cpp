@@ -367,6 +367,16 @@ namespace
         // array, saving on memory.
         d.renderLayers.reserve( d.model->_colorData.size() );
 
+        if ( d.maskRecords.size() > 0 )
+        {
+            //r._stitchTexCoords->setVertexBufferObject( d.stitchGeom->getOrCreateVertexBufferObject() );
+            if ( !d.stitchTileCoords.valid() )
+            {
+                d.stitchTileCoords = new osg::Vec2Array();
+                //d.stitchTileCoords->setVertexBufferObject( d.stitchGeom->getOrCreateVertexBufferObject() );
+            }
+        }
+
 #ifdef USE_TEXCOORD_CACHE
         // unit tile coords - [0..1] always across the tile.
         osg::Vec4d idmat;
@@ -447,13 +457,7 @@ namespace
 
                     if ( d.maskRecords.size() > 0 )
                     {
-                        r._stitchTexCoords = new osg::Vec2Array();
-                        //r._stitchTexCoords->setVertexBufferObject( d.stitchGeom->getOrCreateVertexBufferObject() );
-                        if ( !d.stitchTileCoords.valid() )
-                        {
-                            d.stitchTileCoords = new osg::Vec2Array();
-                            //d.stitchTileCoords->setVertexBufferObject( d.stitchGeom->getOrCreateVertexBufferObject() );
-                        }
+                        r._stitchTexCoords = new osg::Vec2Array();                        
                     }
                 }
 

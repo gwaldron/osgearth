@@ -42,18 +42,23 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
      * a TileModel (and corresponds to one TileKey). The matrixtransform
      * localizes the TileNode within the terrain.
      */
-    class TileNode : public osg::MatrixTransform, public TileNodeContainer
+    class TileNode : public osgEarth::TileNode, public TileNodeContainer
     {
+    public: // osgEarth::TileNode
+        
+        const TileKey& getKey() const { return _key; }
+
+        const osg::Texture* getElevationTexture() const;
+
+        const osg::Matrix& getElevationTextureMatrix() const;
+
+
     public:
         /**
          * Constructs a new tile node
          */
-        TileNode( const TileKey& key, const TileModel* model );
+        TileNode(const TileKey& key, const TileModel* model, const osg::Matrixd& matrix);
 
-        /**
-         * The tilekey associated with this tile
-         */
-        const TileKey& getKey() const { return _key; }
 
         /**
          * True if this is a valid tile node.
@@ -126,7 +131,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     class InvalidTileNode : public TileNode
     {
     public:
-        InvalidTileNode(const TileKey& key) : TileNode(key, 0L) { }
+        InvalidTileNode(const TileKey& key) : TileNode(key, 0L, osg::Matrix()) { }
         bool isValid() const { return false; }
     protected:
         virtual ~InvalidTileNode() { }

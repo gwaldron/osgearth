@@ -203,8 +203,11 @@ ConvertToDrawInstanced::apply( osg::Geode& geode )
                 geom->setUseVertexBufferObjects( true );
             }
 
-            geom->setComputeBoundingBoxCallback( _staticBBoxCallback.get() ); 
-            geom->dirtyBound();
+            if ( _staticBBoxCallback.valid() )
+            {
+                geom->setComputeBoundingBoxCallback( _staticBBoxCallback.get() ); 
+                geom->dirtyBound();
+            }
 
             // convert to use DrawInstanced
             for( unsigned p=0; p<geom->getNumPrimitiveSets(); ++p )

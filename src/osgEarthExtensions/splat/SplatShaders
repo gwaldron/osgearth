@@ -190,7 +190,7 @@ namespace
         "            float r = (d-ranges[i])/(ranges[i+1]-ranges[i]); \n"
         "            texel = mix(texel0, texel1, r); \n"
         
-        //"            oe_splat_detail(splat_tc1, texel);\n"
+        "            oe_splat_detail(splat_tc1, texel);\n"
 
         "            break; \n"
         "        }\n"

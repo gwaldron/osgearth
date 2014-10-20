@@ -329,7 +329,7 @@ TileModel::generateElevationTexture()
     _elevationTexture->setInternalFormat(GL_LUMINANCE32F_ARB);
     _elevationTexture->setSourceFormat(GL_LUMINANCE);
     _elevationTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    _elevationTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+    _elevationTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     _elevationTexture->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
     _elevationTexture->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
     _elevationTexture->setResizeNonPowerOfTwoHint( false );

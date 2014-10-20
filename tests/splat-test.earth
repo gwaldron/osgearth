@@ -12,11 +12,11 @@
 
 <map>
         
-	<options min_lod="20" elevation_tile_size="47">
-		<terrain normalize_edges="true"/>
+	<options elevation_tile_size="16">
+		<terrain min_lod="22" normalize_edges="true"/>
 	</options>
 	
-    <elevation name="readymap_elevation" driver="tms">
+    <elevation name="readymap_elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
 
@@ -29,6 +29,7 @@
         <url>H:/data/NLCD/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
         <cache_policy usage="none"/>
     </image>
+	
 	
     <model name="trees" driver="feature_geom" enabled="false">
         <features name="trees" driver="ogr">
@@ -94,6 +95,7 @@
 			<viewpoint name="Mt R. Nadir 7K" heading="0.5013039415314375" height="2030.938670247793" lat="46.81069413427294" long="-121.7931474749483" pitch="-89.43231466772511" range="7035.645515411795"/>
 			<viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
 			<viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>
+			<viewpoint name="Nepal" heading="-31.88332651933247" height="6543.718174060807" lat="27.9438350018333" long="86.94718559626058" pitch="-8.689781496210518" range="10319.10580082614"/>
 		</viewpoints>
 		
     </extensions>

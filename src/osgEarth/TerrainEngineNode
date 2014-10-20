@@ -78,6 +78,18 @@ namespace osgEarth
         void invalidateRegion(const GeoExtent& extent) {
             invalidateRegion(extent, 0u, INT_MAX);
         }
+
+    public:
+        struct TileNodeCallback : public osg::Referenced
+        {
+            // Careful: runs in a terrain engine background thread.
+            virtual void operator()(const TileKey& key, osg::Node* tileNode) =0;
+        };
+
+        // adds a callback that will be fired while the terrain engine is building
+        // a tile node in a background thread.
+        void addTileNodeCallback(TileNodeCallback* cb);
+        void removeTileNodeCallback(TileNodeCallback* cb);
             
 
     public: // Runtime properties
@@ -116,6 +128,9 @@ namespace osgEarth
 
         // signals that a redraw is needed because something changed.
         virtual void dirty();
+
+        // called to fire callbacks as a new tile is being created in a background thread.
+        void notifyOfTileNode(osg::Node* node);
 
         // allow subclasses direct access for convenience.
         osg::ref_ptr<TextureCompositor> _texCompositor;
@@ -171,6 +186,10 @@ namespace osgEarth
 
         typedef std::vector<osg::ref_ptr<TerrainEffect> > TerrainEffectVector;
         TerrainEffectVector effects_;
+
+        typedef std::vector<osg::ref_ptr<TileNodeCallback> > TileNodeCallbackVector;
+        TileNodeCallbackVector _tileNodeCallbacks;
+        mutable Threading::Mutex _tileNodeCallbacksMutex;
 
     public:
 

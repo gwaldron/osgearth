@@ -2010,18 +2010,19 @@ TileNode*
 TileModelCompiler::compile(const TileModel* model,
                            const MapFrame&  frame)
 {
-    TileNode* tile = new TileNode( model->_tileKey, model );
 
     // Working data for the build.
     Data d(model, frame, _maskLayers, _modelLayers);
 
+    // build the localization matrix for this tile:
+    model->_tileLocator->unitToModel( osg::Vec3(0.5f, 0.5f, 0.0), d.centerModel );
+    //tile->setMatrix( osg::Matrix::translate(d.centerModel) );
+
+    TileNode* tile = new TileNode( model->_tileKey, model, osg::Matrix::translate(d.centerModel) );
+
     d.parentModel = model->getParentTileModel();
     d.heightScale = *_options.verticalScale();
     d.heightOffset = *_options.verticalOffset();
-
-    // build the localization matrix for this tile:
-    model->_tileLocator->unitToModel( osg::Vec3(0.5f, 0.5f, 0.0), d.centerModel );
-    tile->setMatrix( osg::Matrix::translate(d.centerModel) );
 
     // A Geode/Geometry for the surface:
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );

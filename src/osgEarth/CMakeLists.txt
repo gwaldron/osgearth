@@ -120,8 +120,9 @@ SET(LIB_PUBLIC_HEADERS
     TextureCompositor
     TileKey
     TileHandler
-    TileVisitor
+	TileNode
     TileSource
+    TileVisitor
     TimeControl
     TraversalData
     ThreadingUtils

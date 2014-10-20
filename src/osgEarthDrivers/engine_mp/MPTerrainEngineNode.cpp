@@ -510,9 +510,58 @@ MPTerrainEngineNode::createStandaloneNode(const TileKey&    key,
 osg::Node*
 MPTerrainEngineNode::createTile( const TileKey& key )
 {
-    // make a node, but don't include any subtile information and don't
-    // accumulate data from parents.
-    return getKeyNodeFactory()->createNode( key, false, false, 0L );
+    osg::ref_ptr<TileModel> model = new TileModel( _update_mapf->getRevision(), _update_mapf->getMapInfo() );
+    model->_tileKey = key;
+    model->_tileLocator = GeoLocator::createForKey(key, _update_mapf->getMapInfo());
+
+    // Build the heightfield
+
+    const MapInfo& mapInfo = _update_mapf->getMapInfo();
+
+    const osgEarth::ElevationInterpolation& interp = _update_mapf->getMapOptions().elevationInterpolation().get();
+
+    // Request a heightfield from the map, falling back on lower resolution tiles
+    osg::ref_ptr<osg::HeightField> hf;
+
+    TileKey sampleKey = key;
+    bool populated = false;
+    if (_update_mapf->elevationLayers().size() > 0)
+    {
+        while (!populated)
+        {
+            populated = _update_mapf->populateHeightField(hf, sampleKey, true, SAMPLE_FIRST_VALID);
+            if (!populated)
+            {
+                // Fallback on the parent
+                sampleKey = sampleKey.createParentKey();
+                if (!sampleKey.valid())
+                {
+                    // If we reached the root and still have no data then stop.
+                    break;
+                }
+            }
+        }       
+    }
+    else
+    {
+        // We have no heightfield so just create a reference heightfield.
+        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
+    }
+
+    model->_elevationData = TileModel::ElevationData(
+            hf,
+            GeoLocator::createForKey( sampleKey, mapInfo ),
+            false );        
+
+    bool optimizeTriangleOrientation = getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
+
+    osg::ref_ptr<TileModelCompiler> compiler = new TileModelCompiler(
+            _update_mapf->terrainMaskLayers(),
+            _update_mapf->modelLayers(),
+            _primaryUnit,
+            optimizeTriangleOrientation,
+            _terrainOptions );
+    return compiler->compile(model.get(), *_update_mapf);
 }
 
 

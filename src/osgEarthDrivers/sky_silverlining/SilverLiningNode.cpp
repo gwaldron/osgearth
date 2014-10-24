@@ -63,12 +63,12 @@ _lastAltitude(DBL_MAX)
 
     // Draws the sky:
     _skyDrawable = new SkyDrawable( _SL.get() );
-    //_skyDrawable->getOrCreateStateSet()->setRenderBinDetails( 98, "RenderBin" );
+    _skyDrawable->getOrCreateStateSet()->setRenderBinDetails( 98, "RenderBin" );
     _geode->addDrawable( _skyDrawable );
 
     // Clouds
     _cloudsDrawable = new CloudsDrawable( _SL.get() );
-    //_cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "RenderBin" );
+    _cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "RenderBin" );
     _geode->addDrawable( _cloudsDrawable.get() );
 
     // scene lighting
@@ -78,8 +78,8 @@ _lastAltitude(DBL_MAX)
     _lighting->attach( stateset );
 
     // ensure it's depth sorted and draws after the terrain
-    //stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-    //getOrCreateStateSet()->setRenderBinDetails( 100, "RenderBin" );
+    stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+    getOrCreateStateSet()->setRenderBinDetails( 100, "RenderBin" );
 
     // SL requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
@@ -132,7 +132,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
                 {
                     if ( _cloudsDrawable->getNumParents() == 0 )
                         _geode->addDrawable( _cloudsDrawable.get() );
-                    
+
                     _cloudsDrawable->dirtyBound();
                 }
                 else

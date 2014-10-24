@@ -59,7 +59,7 @@ makeFrustumFromCamera( osg::Camera* camera )
     {
         near = proj(3,2) / (proj(2,2)-1.0);
         far = proj(3,2) / (1.0+proj(2,2));
-        
+
         nLeft = near * (proj(2,0)-1.0) / proj(0,0);
         nRight = near * (1.0+proj(2,0)) / proj(0,0);
         nTop = near * (1.0+proj(2,1)) / proj(1,1);
@@ -192,7 +192,7 @@ CreateTextureQuadOverlay( osg::Texture * texture, float x, float y, float w, flo
 }
 #endif /* DEBUG_HEIGHTMAP */
 
-struct PassHeightMapToTritonCallback : public osg::Camera::DrawCallback 
+struct PassHeightMapToTritonCallback : public osg::Camera::DrawCallback
 {
     PassHeightMapToTritonCallback(TritonContext* triton) : _TRITON(triton), _enable(false), _id(0) { _ptrEnable = const_cast<bool*> (&_enable); };
     virtual void operator()( osg::RenderInfo& renderInfo ) const
@@ -362,14 +362,14 @@ _mapNode(mapNode)
     setDataVariance( osg::Object::DYNAMIC );
 
     this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-    //this->getOrCreateStateSet()->setRenderBinDetails( 97, "RenderBin" );
+    this->getOrCreateStateSet()->setRenderBinDetails( 97, "RenderBin" );
 }
 
 void
 TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     osg::State& state = *renderInfo.getState();
-    
+
     state.disableAllVertexArrays();
 
     _TRITON->initialize( renderInfo );
@@ -506,7 +506,7 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     _heightCamera->setAllowEventFocus(false);
     _heightCamera->setFinalDrawCallback(new PassHeightMapToTritonCallback(_TRITON.get()));
 
-    // Install the shaders. We also bind osgEarth's elevation data attribute, which the 
+    // Install the shaders. We also bind osgEarth's elevation data attribute, which the
     // terrain engine automatically generates at the specified location.
     osgEarth::VirtualProgram* heightProgram = new osgEarth::VirtualProgram();
     heightProgram->setFunction( "setupContour", vertexShader,   osgEarth::ShaderComp::LOCATION_VERTEX_MODEL);

@@ -3,34 +3,35 @@
 	"description" : "This is a description of the default detail catalog",
 	"classes" : {
 		"cropland" : {
-			"url": "cropland.jpg"
+			"image": "cropland.jpg"
 		},
 		"forest" : {
-			"url": "forest.jpg"
+			"image": "forest.jpg",
+			"model": "../pinetree.ive"
 		},
 		"grassland" : {
-			"url": "grassland.jpg"
+			"image": "grassland.jpg"
 		},
 		"savanna": {
-			"url": "savanna.jpg"
+			"image": "savanna.jpg"
 		},
 		"swamp" : {
-			"url": "swamp.jpg"
+			"image": "swamp.jpg"
 		},
 		"desert" : {
-			"url": "desert.jpg"
+			"image": "desert.jpg"
 		},
 		"water": {
-			"url": "water.jpg"
+			"image": "water.jpg"
 		},
 		"mountain": {
-			"url": "mountain.jpg"
+			"image": "mountain.jpg"
 		},
 		"tundra": {
-			"url": "tundra.jpg"
+			"image": "tundra.jpg"
 		},
 		"urban": {
-			"url": "urban.jpg"
+			"image": "urban.jpg"
 		}
 	}
 }

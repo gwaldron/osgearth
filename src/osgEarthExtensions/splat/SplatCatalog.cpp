@@ -36,7 +36,10 @@ SplatClass::SplatClass()
 SplatClass::SplatClass(const Config& conf)
 {
     _name = conf.key();
-    conf.getIfSet("url", _imageURI);
+    conf.getIfSet("image", _imageURI);
+    conf.getIfSet("model", _modelURI);
+    conf.getIfSet("modelCount", _modelCount);
+    conf.getIfSet("modelLevel", _modelLevel);
 }
 
 //............................................................................
@@ -79,7 +82,10 @@ SplatCatalog::getConfig() const
         for(SplatClasses::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
         {
             Config classConf( i->_name );
-            classConf.addIfSet( "url", i->_imageURI );
+            classConf.addIfSet( "image", i->_imageURI );
+            classConf.addIfSet( "model", i->_modelURI );
+            classConf.addIfSet( "modelCount", i->_modelCount );
+            classConf.addIfSet( "modelLevel", i->_modelLevel );
             classes.add( classConf );
         }
     }    

@@ -13,7 +13,7 @@
 <map>
         
 	<options elevation_tile_size="16">
-		<terrain min_lod="22" normalize_edges="true"/>
+		<terrain min_lod="19" normalize_edges="true"/>
 	</options>
 	
     <elevation name="readymap_elevation" driver="tms" enabled="true">
@@ -30,6 +30,7 @@
         <cache_policy usage="none"/>
     </image>
 	
+	<image driver="debug" enabled="false"/>
 	
     <model name="trees" driver="feature_geom" enabled="false">
         <features name="trees" driver="ogr">

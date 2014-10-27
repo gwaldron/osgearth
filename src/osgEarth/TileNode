@@ -27,14 +27,44 @@
 
 namespace osgEarth
 {
-    class /*header-only*/ TileNode : public osg::MatrixTransform
+    /**
+     * Base class for a terrain engine's representation of a tile.
+     * This is largely for internal use and subject to change, so
+     * be careful relying on the structure of this object.
+     */
+    class /*header-only*/ TerrainTileNode : public osg::MatrixTransform
     {
     public:
         virtual const TileKey& getKey() const =0;
 
         virtual osg::Texture* getElevationTexture() const =0;
 
-        virtual osg::Matrix& getElevationTextureMatrix() const =0;
+        virtual osg::RefMatrix* getElevationTextureMatrix() const =0;
+    };
+
+    /**
+     * Interface for notification of the creation of TerrainTileNodes by
+     * the terrain engine.
+     */
+    class TerrainTileNodeBroker
+    {
+    public:
+        /**
+         * Terrain engine calls this when it finishes creating a single tile node
+         * for a given tile key. (Typically that will happen in a pager thread.)
+         */
+        virtual void notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node* node) =0;
+    };
+
+    /**
+     * Callback you can install on a TerrainEngineNode to get a first look at
+     * a TerrainTileNode when it's created.
+     */
+    class TerrainTileNodeCallback : public osg::Referenced
+    {
+    public:
+        // Careful: runs in a terrain engine background thread.
+        virtual void operator()(const TileKey& key, osg::Node* tileNode) =0;
     };
 };
 

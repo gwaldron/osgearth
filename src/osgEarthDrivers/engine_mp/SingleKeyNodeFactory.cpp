@@ -39,14 +39,16 @@ SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
                                            TileNodeRegistry*             liveTiles,
                                            TileNodeRegistry*             deadTiles,
                                            const MPTerrainEngineOptions& options,
-                                           UID                           engineUID ) :
+                                           UID                           engineUID,
+                                           TerrainTileNodeBroker*        tileNodeBroker ) :
 _frame           ( map ),
 _modelFactory    ( modelFactory ),
 _modelCompiler   ( modelCompiler ),
 _liveTiles       ( liveTiles ),
 _deadTiles       ( deadTiles ),
 _options         ( options ),
-_engineUID       ( engineUID )
+_engineUID       ( engineUID ),
+_tileNodeBroker  ( tileNodeBroker )
 {
     //nop
 }
@@ -250,7 +252,9 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
 
         for( unsigned q=0; q<4; ++q )
         {
-            quad->addChild( createTile(model[q].get(), setupChildren) );
+            osg::ref_ptr<osg::Node> tile = createTile(model[q].get(), setupChildren);
+            _tileNodeBroker->notifyOfTerrainTileNodeCreation( model[q]->_tileKey, tile.get() );
+            quad->addChild( tile.get() );
         }
     }
 

@@ -22,6 +22,11 @@
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
 #include <osg/Uniform>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/ShaderGenerator>
+#include <osgEarth/DrawInstanced>
+#include <osgEarth/Registry>
+#include <osgUtil/Optimizer>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
@@ -30,9 +35,7 @@ using namespace OpenThreads;
 #define LC "[TileNode] "
 
 
-//----------------------------------------------------------------------------
-
-TileNode::TileNode( const TileKey& key, const TileModel* model ) :
+TileNode::TileNode(const TileKey& key, const TileModel* model, const osg::Matrixd& matrix) :
 _key               ( key ),
 _model             ( model ),
 _lastTraversalFrame( 0 ),
@@ -40,6 +43,7 @@ _dirty             ( false ),
 _outOfDate         ( false )
 {
     this->setName( key.str() );
+    this->setMatrix( matrix );
 
     // revisions are initially in sync:
     if ( model )
@@ -49,7 +53,34 @@ _outOfDate         ( false )
         {
             this->setNumChildrenRequiringUpdateTraversal(1);
         }
+        
+        if ( model->_elevationData.getLocator() )
+        {
+            osg::Matrixd elevMatrix;
+
+            model->_tileLocator->createScaleBiasMatrix(
+                model->_elevationData.getLocator()->getDataExtent(),
+                elevMatrix);
+
+            _elevTexMat = new osg::RefMatrix(elevMatrix);
+        }
     }
+}
+
+
+osg::Texture*
+TileNode::getElevationTexture() const
+{
+    return _model.valid() ?
+        _model->_elevationTexture.get() :
+        0L;
+}
+
+
+osg::RefMatrix*
+TileNode::getElevationTextureMatrix() const
+{
+    return _elevTexMat.get();
 }
 
 

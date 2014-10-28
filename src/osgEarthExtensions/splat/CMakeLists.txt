@@ -7,14 +7,16 @@ SET(TARGET_SRC
 	SplatExtension.cpp
 	SplatCatalog.cpp
 	SplatTerrainEffect.cpp
-	SplatCoverageLegend.cpp)
+	SplatCoverageLegend.cpp
+	ModelSplatter.cpp)
 	
 SET(LIB_PUBLIC_HEADERS
 	SplatCoverageLegend
 	SplatCatalog
 	SplatExtension
 	SplatOptions
-	SplatTerrainEffect)
+	SplatTerrainEffect
+	ModelSplatter)
 	
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS}

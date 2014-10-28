@@ -23,7 +23,6 @@
 #include <osg/NodeVisitor>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
-using namespace osgEarth;
 
 #define LC "[TileGroup] "
 

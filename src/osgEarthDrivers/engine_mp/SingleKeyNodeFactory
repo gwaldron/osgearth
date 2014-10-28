@@ -42,7 +42,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
             const MPTerrainEngineOptions&       options,
-            UID                                 engineUID );
+            UID                                 engineUID,
+            TerrainTileNodeBroker*              tileNodeBroker );
 
         /** dtor */
         virtual ~SingleKeyNodeFactory() { }
@@ -76,6 +77,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::ref_ptr<TileNodeRegistry>      _deadTiles;
         const MPTerrainEngineOptions&       _options;
         UID                                 _engineUID;
+        TerrainTileNodeBroker*              _tileNodeBroker;
 
         unsigned getMinimumRequiredLevel();
     };

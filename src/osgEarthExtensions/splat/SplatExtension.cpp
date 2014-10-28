@@ -151,6 +151,39 @@ SplatExtension::connect(MapNode* mapNode)
 
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
 
+    
+    // Install a model splatter.
+    const SplatClasses& classes = catalog->getClasses();
+    for(SplatClasses::const_iterator i = classes.begin(); i != classes.end(); ++i )
+    {
+        osg::ref_ptr<osg::Node> model;
+        if ( i->_modelURI.isSet() )
+        {
+            model = i->_modelURI->getNode(_dbOptions.get());
+            if ( model.valid() )
+            {
+                if ( !_modelSplatter.valid() )
+                {
+                    _modelSplatter = new ModelSplatter();
+                }
+
+                _modelSplatter->setModel( model.get() );
+
+                if ( i->_modelCount.isSet() )
+                    _modelSplatter->setNumInstances( i->_modelCount.get() );
+
+                if ( i->_modelLevel.isSet() )
+                    _modelSplatter->setMinLOD( i->_modelLevel.get() );
+            }
+        }
+    }
+
+    // Install the model splatter if we made one.
+    if ( _modelSplatter.valid() )
+    {
+        mapNode->getTerrainEngine()->addTileNodeCallback( _modelSplatter.get() );
+    }
+
     return true;
 }
 

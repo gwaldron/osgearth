@@ -23,7 +23,7 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/Terrain>
 #include <osgEarth/TerrainEffect>
-#include <osgEarth/TileNode>
+#include <osgEarth/TerrainTileNode>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderUtils>
 #include <osg/CoordinateSystemNode>

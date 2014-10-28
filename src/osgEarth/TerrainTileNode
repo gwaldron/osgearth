@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_TILE_NODE_H
-#define OSGEARTH_TILE_NODE_H 1
+#ifndef OSGEARTH_TERRAIN_TILE_NODE_H
+#define OSGEARTH_TERRAIN_TILE_NODE_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
@@ -40,13 +40,16 @@ namespace osgEarth
         virtual osg::Texture* getElevationTexture() const =0;
 
         virtual osg::RefMatrix* getElevationTextureMatrix() const =0;
+
+    protected:
+        virtual ~TerrainTileNode() { }
     };
 
     /**
      * Interface for notification of the creation of TerrainTileNodes by
      * the terrain engine.
      */
-    class TerrainTileNodeBroker
+    class /*header-only*/ TerrainTileNodeBroker
     {
     public:
         /**
@@ -60,11 +63,14 @@ namespace osgEarth
      * Callback you can install on a TerrainEngineNode to get a first look at
      * a TerrainTileNode when it's created.
      */
-    class TerrainTileNodeCallback : public osg::Referenced
+    class /*header-only*/ TerrainTileNodeCallback : public osg::Referenced
     {
     public:
         // Careful: runs in a terrain engine background thread.
         virtual void operator()(const TileKey& key, osg::Node* tileNode) =0;
+
+    protected:
+        virtual ~TerrainTileNodeCallback() { }
     };
 };
 

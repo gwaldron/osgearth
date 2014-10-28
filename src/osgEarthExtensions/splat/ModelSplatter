@@ -22,7 +22,7 @@
 #include "SplatExport"
 #include "SplatOptions"
 #include <osgEarth/TileKey>
-#include <osgEarth/TileNode>
+#include <osgEarth/TerrainTileNode>
 
 namespace osgEarth { namespace Splat
 {

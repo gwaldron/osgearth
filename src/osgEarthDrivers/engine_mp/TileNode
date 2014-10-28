@@ -21,7 +21,7 @@
 
 #include "Common"
 #include "TileModel"
-#include <osgEarth/TileNode>
+#include <osgEarth/TerrainTileNode>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {

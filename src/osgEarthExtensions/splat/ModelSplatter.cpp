@@ -22,7 +22,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DrawInstanced>
-#include <osgEarth/TileNode>
+#include <osgEarth/TerrainTileNode>
 #include <osgEarth/NodeUtils>
 
 #include <osgUtil/Optimizer>

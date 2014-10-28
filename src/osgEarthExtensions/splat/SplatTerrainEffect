@@ -84,6 +84,7 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Uniform>          _intensityUniform;
         osg::ref_ptr<osg::Uniform>          _warpUniform;
         osg::ref_ptr<osg::Uniform>          _samplesUniform;
+        osg::ref_ptr<osg::Uniform>          _snowUniform;
         osg::ref_ptr<SplatCoverageLegend>   _legend;
         osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;

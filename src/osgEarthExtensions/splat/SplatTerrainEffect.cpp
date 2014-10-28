@@ -61,6 +61,7 @@ _renderOrder( -1.0f )
     _intensityUniform   = new osg::Uniform("oe_splat_intensity",   1.0f);
     _warpUniform        = new osg::Uniform("oe_splat_warp",      0.004f);
     _samplesUniform     = new osg::Uniform("oe_splat_samples",     1.0f);
+    _snowUniform        = new osg::Uniform("oe_splat_snow",    10000.0f);
 }
 
 void
@@ -93,6 +94,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform( _intensityUniform.get() );
             stateset->addUniform( _warpUniform.get() );
             stateset->addUniform( _samplesUniform.get() );
+            stateset->addUniform( _snowUniform.get() );
 
             // configure shaders
             std::string vertexShader = splatVertexShader;
@@ -129,6 +131,7 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( _scaleOffsetUniform.get() );
             stateset->removeUniform( _warpUniform.get() );
             stateset->removeUniform( _samplesUniform.get() );
+            stateset->removeUniform( _snowUniform.get() );
             stateset->removeUniform( _intensityUniform.get() );
             stateset->removeUniform( _splatTexUniform.get() );
             stateset->removeUniform( _coverageTexUniform.get() );

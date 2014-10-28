@@ -61,6 +61,23 @@ namespace osgEarth { namespace Splat
         void setRenderOrder(float value) { _renderOrder = value; }
         float getRenderOrder() const { return _renderOrder; }
 
+        /**
+         * Uniform that governs coverage sample warping. The value is type FLOAT.
+         * This warps the texture coordinates used to sample the coverage data
+         * using a simplex noise function. This can help to mitigate the "blockiness"
+         * that somes from low resolution coverage data.
+         * Reasonable values are in the range [0 .. 0.01]
+         */
+        osg::Uniform* getCoverageWarpUniform() { return _warpUniform.get(); }
+
+        /**
+         * Uniform that governs the scale level-of-detail offset when sampling 
+         * splat textures. Defaults to 0. This is an integer such that for a
+         * value of N, the texture coordinates are scaled by 2^N when sampling
+         * splat textures.
+         */
+        osg::Uniform* getScaleLevelOffsetUniform() { return _scaleOffsetUniform.get(); }
+
 
     public: // TerrainEffect interface
 

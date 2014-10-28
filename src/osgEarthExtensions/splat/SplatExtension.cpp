@@ -139,7 +139,7 @@ SplatExtension::connect(MapNode* mapNode)
         }
     }
 
-    // Install the splatter on the terrain engine.
+    // Terrain effect that implements splatting.
     _effect = new SplatTerrainEffect( catalog, legend, _dbOptions.get() );
 
     // set the coverage layer (mandatory)
@@ -149,10 +149,22 @@ SplatExtension::connect(MapNode* mapNode)
     if ( _options.drawAfterImageLayers() == true )
         _effect->setRenderOrder( 1.0f );
 
+    // set the various rendering options.
+    if ( _options.coverageWarp().isSet() )
+        _effect->getCoverageWarpUniform()->set( _options.coverageWarp().get() );
+
+    if ( _options.scaleLevelOffset().isSet() )
+        _effect->getScaleLevelOffsetUniform()->set( (float)_options.scaleLevelOffset().get() );
+
+
+    // add it to the terrain.
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
 
     
-    // Install a model splatter.
+    // TEMPORARY. This is just a quick hack to test the tile-based model splatter.
+    // It finds any occurance of a model in the catalog and just installs that in
+    // a single splatter. Doesn't support multiple models, classifications, or 
+    // anything interesting quite yet.
     const SplatClasses& classes = catalog->getClasses();
     for(SplatClasses::const_iterator i = classes.begin(); i != classes.end(); ++i )
     {

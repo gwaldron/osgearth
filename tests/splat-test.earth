@@ -76,6 +76,7 @@
 			-->
 			<legend>../data/splat/paul/GLOBCOVER_legend.json</legend>
             <catalog>../data/splat/paul/simple_catalog.json</catalog>
+			<coverage_warp>0.004</coverage_warp>
         </splat>
 
 <!--		

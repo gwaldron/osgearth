@@ -155,6 +155,34 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 |                                    | are provided                                                       | 
 +------------------------------------+--------------------------------------------------------------------+
 
+osgearth_conv
+----------------
+osgearth_conv copies the contents of one TileSource to another. All arguments are Config name/value pairs,
+so you need to look in the header file for each driver's Options structure for options. Of course, the output
+driver must support writing (by implementing the ReadWriteTileSource interface). The "in" properties come
+from the GDALOptions getConfig method. The "out" properties come from the MBTilesOptions getConfig method.
+
+**Sample Usage**
+::
+    osgearth_conv --in driver gdal --in url world.tif --out driver mbtiles --out filename world.db
+
++------------------------------------+--------------------------------------------------------------------+
+| Argument                           | Description                                                        |
++====================================+====================================================================+
+| ``--elevation``                    | convert as elevation data (instead of image data)                  |
++------------------------------------+--------------------------------------------------------------------+
+| ``--profile [profile]``            | reproject to the target profile, e.g. "wgs84"                      |
++------------------------------------+--------------------------------------------------------------------+
+| ``--min-level [int]``              | min level of detail to copy                                        |
++------------------------------------+--------------------------------------------------------------------+
+| ``--max-level [int]``              | max level of detail to copy                                        |
++------------------------------------+--------------------------------------------------------------------+
+| ``--threads [n]``                  | threads to use (Careful, may crash. Doesn't help with GDAL inputs) |
++------------------------------------+--------------------------------------------------------------------+
+| ``--extents [minLat] [minLong]``   | Lat/Long extends to copy                                           |
+| ``[maxLat] [maxLong]``             |                                                                    |
++------------------------------------+--------------------------------------------------------------------+
+
 osgearth_tfs
 ------------
 osgearth_tfs generates a TFS dataset from a feature source such as a shapefile.  By pre-processing your features

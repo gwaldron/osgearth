@@ -152,6 +152,9 @@ SplatExtension::connect(MapNode* mapNode)
     // set the various rendering options.
     if ( _options.coverageWarp().isSet() )
         _effect->getCoverageWarpUniform()->set( _options.coverageWarp().get() );
+    
+    if ( _options.coverageBlur().isSet() )
+        _effect->getCoverageBlurUniform()->set( _options.coverageBlur().get() );
 
     if ( _options.scaleLevelOffset().isSet() )
         _effect->getScaleLevelOffsetUniform()->set( (float)_options.scaleLevelOffset().get() );

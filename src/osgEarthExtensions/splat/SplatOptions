@@ -56,6 +56,11 @@ namespace osgEarth { namespace Splat
         optional<float>& coverageWarp() { return _coverageWarp; }
         const optional<float>& coverageWarp() const { return _coverageWarp; }
 
+        /** Blurring factor for coverage sampling. Please refer to
+            SplatTerrainEffect::getCoverageBlurUniform() for details. */
+        optional<float>& coverageBlur() { return _coverageBlur; }
+        const optional<float>& coverageBlur() const { return _coverageBlur; }
+
         /** Level-of-detail offset for scaling the splat textures. */
         optional<int>& scaleLevelOffset() { return _scaleLevelOffset; }
         const optional<int>& scaleLevelOffset() const { return _scaleLevelOffset; }
@@ -79,6 +84,7 @@ namespace osgEarth { namespace Splat
             conf.updateIfSet("coverage", _coverageLayerName );
             conf.updateIfSet("draw_after_image_layers", _drawAfterImageLayers);
             conf.updateIfSet("coverage_warp", _coverageWarp );
+            conf.updateIfSet("coverage_blur", _coverageBlur );
             conf.updateIfSet("scale_level_offset", _scaleLevelOffset );
             return conf;
         }
@@ -96,6 +102,7 @@ namespace osgEarth { namespace Splat
             conf.getIfSet("coverage", _coverageLayerName );
             conf.getIfSet("draw_after_image_layers", _drawAfterImageLayers);
             conf.getIfSet("coverage_warp", _coverageWarp );
+            conf.getIfSet("coverage_blur", _coverageBlur );
             conf.getIfSet("scale_level_offset", _scaleLevelOffset );
         }
 
@@ -104,6 +111,7 @@ namespace osgEarth { namespace Splat
         optional<std::string> _coverageLayerName;
         optional<bool>        _drawAfterImageLayers;
         optional<float>       _coverageWarp;
+        optional<float>       _coverageBlur;
         optional<int>         _scaleLevelOffset;
     };
 

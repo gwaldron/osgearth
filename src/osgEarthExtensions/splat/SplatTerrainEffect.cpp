@@ -60,7 +60,7 @@ _renderOrder( -1.0f )
     _scaleOffsetUniform = new osg::Uniform("oe_splat_scaleOffset", 0.0f);
     _intensityUniform   = new osg::Uniform("oe_splat_intensity",   1.0f);
     _warpUniform        = new osg::Uniform("oe_splat_warp",      0.004f);
-    _samplesUniform     = new osg::Uniform("oe_splat_samples",     1.0f);
+    _blurUniform        = new osg::Uniform("oe_splat_blur",        1.0f);
     _snowUniform        = new osg::Uniform("oe_splat_snow",    10000.0f);
 }
 
@@ -93,7 +93,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform( _scaleOffsetUniform.get() );
             stateset->addUniform( _intensityUniform.get() );
             stateset->addUniform( _warpUniform.get() );
-            stateset->addUniform( _samplesUniform.get() );
+            stateset->addUniform( _blurUniform.get() );
             stateset->addUniform( _snowUniform.get() );
 
             // configure shaders
@@ -130,7 +130,7 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
         {
             stateset->removeUniform( _scaleOffsetUniform.get() );
             stateset->removeUniform( _warpUniform.get() );
-            stateset->removeUniform( _samplesUniform.get() );
+            stateset->removeUniform( _blurUniform.get() );
             stateset->removeUniform( _snowUniform.get() );
             stateset->removeUniform( _intensityUniform.get() );
             stateset->removeUniform( _splatTexUniform.get() );
@@ -181,14 +181,13 @@ SplatTerrainEffect::generateSamplingFunction()
             else
                 buf << "    ";
 
-            //buf << "if (v <= float(" << p->get()->_exactValue.get() << ")) i="
             buf << "if (abs(v-float(" << p->get()->_exactValue.get() << "))<0.01) i = "
                 << "float(" << _splatTexIndex[p->get()->_mappedClassName.get()] << ");\n";
         }
     }
 
     buf << "    vec4 texel = texture2DArray(" SPLAT_SAMPLER ", vec3(splat_tc, max(i,0.0)));\n"
-        << "    if ( i < 0.0 ) texel.a = 0.0; \n" //texel = vec4(1,0,0,1); \n"
+        << "    if ( i < 0.0 ) texel.a = 0.0; \n"
         << "    return texel; \n"
         << "}\n";
 

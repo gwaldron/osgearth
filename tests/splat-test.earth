@@ -5,7 +5,7 @@
 |
 |   osgearth_viewer splat-test.earth
 |       --uniform oe_splat_warp 0 0.01
-|       --uniform oe_splat_samples 0 3
+|       --uniform oe_splat_blur 1 8
 |       --uniform oe_splat_scaleOffset 1 10
 |       --uniform oe_splat_intensity 0 1
 -->
@@ -29,8 +29,6 @@
         <url>H:/data/NLCD/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
         <cache_policy usage="none"/>
     </image>
-	
-	<image driver="debug" enabled="false"/>
 	
     <model name="trees" driver="feature_geom" enabled="false">
         <features name="trees" driver="ogr">

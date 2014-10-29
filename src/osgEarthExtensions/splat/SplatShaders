@@ -47,7 +47,7 @@ namespace
 
 
     const char* splatFragmentShader =
-        "#version 120\n"
+        "#version 130\n"
         "#extension GL_EXT_texture_array : enable\n"
         
         // from the terrain engine:
@@ -61,13 +61,14 @@ namespace
         // from SplatTerrainEffect:
         "uniform float oe_splat_intensity; \n"
         "uniform float oe_splat_warp; \n"
-        "uniform float oe_splat_samples; \n"
         "uniform float oe_splat_scaleOffset; \n"
         "uniform sampler2D oe_splat_coverage_tex; \n"
         "uniform sampler2DArray oe_splat_tex; \n"
 
         "uniform sampler2D oe_terrain_tex; \n"
         "uniform float oe_splat_snow;\n"
+
+        "uniform float oe_splat_blur; \n"
 
         // See NoiseShaders
         "float oe_splat_noise2(in vec2);\n"
@@ -91,35 +92,65 @@ namespace
         "    return clamp(tc, 0.0, 1.0); \n"
         "}\n"
 
-        // Single-sample splatter.
-        "vec4 oe_splat_singleTexel(in vec2 splat_tc) \n"
+        // Generates a texel using nearest-neigher coverage sampling.
+        "vec4 oe_splat_nearest(in vec2 splat_tc) \n"
         "{ \n"
         "    vec2 warped_tc = oe_splat_warpCoverageCoords(0, splat_tc);\n"
-        "    vec4 cov = texture2D(oe_splat_coverage_tex, warped_tc); \n"
-        "    return oe_splat_getTexel(cov.r*255.0, splat_tc); \n"
+        "    float value  = texture2D(oe_splat_coverage_tex, warped_tc).r; \n"
+        "    return oe_splat_getTexel(value*255.0, splat_tc); \n"
         "} \n"
 
-        // Multi-sample splatter.
-        "vec4 oe_splat_multiTexel(in vec2 splat_tc, in float samples) \n"
+        // Generates a texel using bilinear filtering on the coverage data.
+        "vec4 oe_splat_bilinear(in vec2 splat_tc) \n"
         "{ \n"
-        "    float step = samples > 1.0 ? 2.0/(samples-1.0) : 2.0; \n"
-        "    vec4 texel = vec4(0.0, 0.0, 0.0, 1.0);\n"
-        
-        "    int isamples = int(samples); \n"
-        "    for(int sample=0; sample<isamples; ++sample) \n"
-        "    {\n"
-        "        vec2 warped_tc = oe_splat_warpCoverageCoords(sample, splat_tc);\n"
-        "        vec4 cov = texture2D(oe_splat_coverage_tex, warped_tc); \n"
-        "        vec4 tex = oe_splat_getTexel(cov.r*255.0, splat_tc); \n"
-        "        texel.rgb += tex.rgb;\n"
-        "    }\n"
+        "    vec2 warped_tc = oe_splat_warpCoverageCoords(0, splat_tc);\n"
+        "    float pixelWidth = oe_splat_blur/256.0; \n"
+        "    float halfPixelWidth = 0.5*pixelWidth; \n"
 
-        "    texel.rgb /= samples; \n"
+        "    vec4 texel = vec4(0,0,0,1); \n"
+
+        "    vec2 rem = mod(warped_tc, pixelWidth); \n"
+        "    vec2 sw = vec2(0); \n"
+        "    vec2 ne = vec2(0); \n"
+
+        "    if ( rem.x >= halfPixelWidth ) { \n"
+        "        sw.x = warped_tc.x - rem.x + halfPixelWidth; \n"
+        "        ne.x = sw.x + pixelWidth; \n"
+        "    } \n"
+        "    else { \n"
+        "        sw.x = warped_tc.x - rem.x - halfPixelWidth; \n"
+        "        ne.x = sw.x + pixelWidth; \n"
+        "    } \n"
+
+        "    if ( rem.y >= halfPixelWidth ) { \n"
+        "        sw.y = warped_tc.y - rem.y + halfPixelWidth; \n"
+        "        ne.y = sw.y + pixelWidth; \n"
+        "    } \n"
+        "    else { \n"
+        "        sw.y = warped_tc.y - rem.y - halfPixelWidth; \n"
+        "        ne.y = sw.y + pixelWidth; \n"
+        "    } \n"
+
+        "    vec2 sw_weight = 1.0-(abs(warped_tc-sw)/pixelWidth); \n"
+        "    vec2 ne_weight = 1.0-sw_weight; \n"
+
+        "    float val_sw = texture2D(oe_splat_coverage_tex, clamp(sw,0.0,1.0)).r; \n"
+        "    float val_se = texture2D(oe_splat_coverage_tex, clamp(vec2(ne.x,sw.y),0.0,1.0)).r; \n"
+        "    float val_ne = texture2D(oe_splat_coverage_tex, clamp(ne,0.0,1.0)).r; \n"
+        "    float val_nw = texture2D(oe_splat_coverage_tex, clamp(vec2(sw.x,ne.y),0.0,1.0)).r; \n"
+
+        "    texel.rgb = \n"
+        "        sw_weight.x * sw_weight.y * oe_splat_getTexel( val_sw*255.0, splat_tc ).rgb + \n"
+        "        ne_weight.x * sw_weight.y * oe_splat_getTexel( val_se*255.0, splat_tc ).rgb + \n"
+        "        ne_weight.x * ne_weight.y * oe_splat_getTexel( val_ne*255.0, splat_tc ).rgb + \n"
+        "        sw_weight.x * ne_weight.y * oe_splat_getTexel( val_nw*255.0, splat_tc ).rgb; \n"
+
         "    return texel; \n"
         "} \n"
 
-        // Detail splatter. This will splat additional things. And such.
-        "void oe_splat_detail(in vec2 splat_tc, inout vec4 texel) \n"
+
+        // Snow splatter. This will whiten the texel based on elevation.
+        "void oe_splat_winter(in vec2 splat_tc, inout vec4 texel) \n"
         "{ \n"
         "    float h = texture2D(oe_terrain_tex, oe_layer_tilec.st); \n"
         "    if ( h > oe_splat_snow ) \n"
@@ -129,6 +160,7 @@ namespace
         "        texel.rgb = mix(texel.rgb, snow.rgb, snowiness); \n"
         "    } \n"
         "} \n"
+
 
         // Scales the incoming tile splat coordinates to match the requested
         // LOD level. We offset the level from the current tile key's LOD (.z)
@@ -156,8 +188,6 @@ namespace
         // Main entry point for fragment shader.
         "void oe_splat_fragment(inout vec4 color) \n"
         "{ \n"
-        // Quantize the sample count.
-        "    float isamples = min(ceil(oe_splat_samples), OE_SPLAT_MAX_SAMPLES-1.0); \n"
         "    float scaleOffset = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset); \n"
 
         // Mapping of view ranges to splat texture levels of detail.
@@ -177,20 +207,16 @@ namespace
         "        { \n"        
         "            float lod0 = lods[i] + scaleOffset; \n"
         "            vec2 splat_tc0 = oe_splat_getSplatCoords(lod0); \n"
-        "            vec4 texel0 = oe_splat_samples <= 1.0 ? \n"
-        "               oe_splat_singleTexel(splat_tc0) : \n"
-        "               oe_splat_multiTexel (splat_tc0, isamples); \n"
+        "            vec4 texel0 = oe_splat_bilinear(splat_tc0); \n"
         
         "            float lod1 = lods[i+1] + scaleOffset; \n"
         "            vec2 splat_tc1 = oe_splat_getSplatCoords(lod1); \n"
-        "            vec4 texel1 = oe_splat_samples <= 1.0 ? \n"
-        "               oe_splat_singleTexel(splat_tc1) : \n"
-        "               oe_splat_multiTexel (splat_tc1, isamples); \n"
+        "            vec4 texel1 = oe_splat_bilinear(splat_tc1); \n"
 
         "            float r = (d-ranges[i])/(ranges[i+1]-ranges[i]); \n"
         "            texel = mix(texel0, texel1, r); \n"
         
-        "            oe_splat_detail(splat_tc1, texel);\n"
+        "            oe_splat_winter(splat_tc1, texel);\n"
 
         "            break; \n"
         "        }\n"

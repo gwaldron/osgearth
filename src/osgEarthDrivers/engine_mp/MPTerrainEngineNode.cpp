@@ -473,7 +473,8 @@ MPTerrainEngineNode::getKeyNodeFactory()
             _liveTiles.get(),
             _deadTiles.get(),
             _terrainOptions,
-            _uid );
+            _uid,
+            this );
     }
 
     return knf.release();
@@ -490,7 +491,14 @@ MPTerrainEngineNode::createNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    return getKeyNodeFactory()->createNode( key, true, true, progress );
+    // create the node:
+    osg::ref_ptr<osg::Node> node = getKeyNodeFactory()->createNode( key, true, true, progress );
+
+    // notify anyone listening of the new node:
+    //this->notifyOfTileNode( key, node.get() );
+
+    // release the reference and return it.
+    return node.release();
 }
 
 osg::Node*

@@ -23,7 +23,6 @@
 #include <osg/NodeVisitor>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
-using namespace osgEarth;
 
 #define LC "[TileGroup] "
 
@@ -95,6 +94,13 @@ TileGroup::applyUpdate(osg::Node* node)
     if ( node )
     {
         OE_DEBUG << LC << "Update received for tile " << _key.str() << std::endl;
+
+        InvalidTileNode* invalid = dynamic_cast<InvalidTileNode*>( node );
+        if ( invalid )
+        {
+            OE_WARN << LC << "Invalid node received (" << _key.str() << ")\n";
+            return;
+        }
 
         TileGroup* update = dynamic_cast<TileGroup*>( node );
         if ( !update )

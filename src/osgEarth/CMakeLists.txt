@@ -116,12 +116,13 @@ SET(LIB_PUBLIC_HEADERS
     TerrainLayer
     TerrainOptions
     TerrainEngineNode
+    TerrainTileNode
     Tessellator
     TextureCompositor
     TileKey
     TileHandler
+	TileSource
     TileVisitor
-    TileSource
     TimeControl
     TraversalData
     ThreadingUtils

@@ -325,6 +325,36 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     osg::CoordinateSystemNode::traverse( nv );
 }
 
+void
+TerrainEngineNode::addTileNodeCallback(TerrainTileNodeCallback* cb)
+{
+    Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
+    _tileNodeCallbacks.push_back( cb );
+}
+
+void
+TerrainEngineNode::removeTileNodeCallback(TerrainTileNodeCallback* cb)
+{
+    Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
+    for(TerrainTileNodeCallbackVector::iterator i = _tileNodeCallbacks.begin(); i != _tileNodeCallbacks.end(); ++i)
+    {
+        if ( i->get() == cb )
+        {
+            _tileNodeCallbacks.erase( i );
+            break;
+        }
+    }
+}
+
+void
+TerrainEngineNode::notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node* node)
+{
+    Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
+    for(unsigned i=0; i<_tileNodeCallbacks.size(); ++i)
+        _tileNodeCallbacks[i]->operator()(key, node);
+}
+
+
 //------------------------------------------------------------------------
 
 #undef LC

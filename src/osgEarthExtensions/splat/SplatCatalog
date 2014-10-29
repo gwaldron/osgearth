@@ -37,10 +37,13 @@ namespace osgEarth { namespace Splat
     /**
      * A single splatting class.
      */
-    struct SplatClass // : public osg::Referenced
+    struct SplatClass
     {
         std::string   _name;
         optional<URI> _imageURI;
+        optional<URI> _modelURI;
+        optional<int> _modelCount;
+        optional<int> _modelLevel;
 
         SplatClass();
         SplatClass(const Config& conf);

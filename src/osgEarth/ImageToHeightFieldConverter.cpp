@@ -182,8 +182,7 @@ osg::Image* ImageToHeightFieldConverter::convert32(const osg::HeightField* hf) c
   }
 
   osg::Image* image = new osg::Image();
-  image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RED, GL_FLOAT ); //GL_LUMINANCE, GL_FLOAT);
-
+  image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_LUMINANCE, GL_FLOAT );
   memcpy( image->data(), &hf->getFloatArray()->front(), sizeof(float) * hf->getFloatArray()->size() );
 
   return image;

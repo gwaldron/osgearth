@@ -49,6 +49,11 @@ will be missing:
 
     * LevelDB_ - Google's embedded key/value store. Include this if you want to build
       osgEarth's optional "leveldb" cache driver.
+	
+	* SQLite_ - Self-contained, serverless, zero-configuration, transactional SQL database engine.
+	  Used for accessing sqlite/mbtiles datasets. You may need these tips to create the necessary
+	  .lib file from the .def and .dll files included in the Windows binaries:
+	  http://eli.thegreenplace.net/2009/09/23/compiling-sqlite-on-windows
     
 **Deprecated dependencies**: osgEarth can still use these, but they will probably go away
 in the future:
@@ -111,3 +116,4 @@ Here are a few tips.
 .. _Mike Weiblen:   http://mew.cx/osg/
 .. _the forum:      http://forum.osgearth.org
 .. _LevelDB:        https://github.com/pelicanmapping/leveldb
+.. _SQLite:         http://www.sqlite.org/

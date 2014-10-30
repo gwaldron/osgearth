@@ -544,8 +544,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
                 sampleKey = sampleKey.createParentKey();
                 if (!sampleKey.valid())
                 {
-                    // If we reached the root and still have no data then stop.
-                    break;
+                    return 0;
                 }
             }
         }       

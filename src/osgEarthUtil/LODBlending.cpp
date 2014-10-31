@@ -298,6 +298,8 @@ LODBlending::onInstall(TerrainEngineNode* engine)
             vp->setFunction("oe_lodblend_imagery_vertex", vs_imagery, ShaderComp::LOCATION_VERTEX_VIEW);
             vp->setFunction("oe_lodblend_imagery_fragment", fs_imagery, ShaderComp::LOCATION_FRAGMENT_COLORING);
         }
+
+        OE_INFO << LC << "On!\n";
     }
 }
 

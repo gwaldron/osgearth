@@ -641,7 +641,7 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 void
 MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
 {
-    if ( layerAdded )
+    if ( layerAdded && layerAdded->getEnabled() )
     {
         // for a shared layer, allocate a shared image unit if necessary.
         if ( layerAdded->isShared() )
@@ -679,7 +679,7 @@ MPTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
     if ( layerRemoved )
     {
         // for a shared layer, release the shared image unit.
-        if ( layerRemoved->isShared() )
+        if ( layerRemoved->getEnabled() && layerRemoved->isShared() )
         {
             if ( layerRemoved->shareImageUnit().isSet() )
             {
@@ -701,7 +701,7 @@ MPTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInde
 void
 MPTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
-    if ( !layer )
+    if ( layer == 0L || layer->getEnabled() == false )
         return;
 
     layer->addCallback( _elevationCallback.get() );
@@ -712,6 +712,9 @@ MPTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 void
 MPTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 {
+    if ( layerRemoved->getEnabled() == false )
+        return;
+
     layerRemoved->removeCallback( _elevationCallback.get() );
 
     refresh();

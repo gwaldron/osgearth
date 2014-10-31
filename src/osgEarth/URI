@@ -244,6 +244,10 @@ namespace osgEarth
 
         bool operator < ( const URI& rhs ) const { return _fullURI < rhs._fullURI; }
 
+        bool operator == ( const URI& rhs ) const { return _fullURI.compare(rhs._fullURI) == 0; }
+
+        bool operator != ( const URI& rhs ) const { return _fullURI.compare(rhs._fullURI) != 0; }
+
     public:
         /** Copier */
         URI( const URI& rhs ) : _baseURI(rhs._baseURI), _fullURI(rhs._fullURI), _context(rhs._context) { }

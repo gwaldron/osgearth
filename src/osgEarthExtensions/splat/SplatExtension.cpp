@@ -159,17 +159,16 @@ SplatExtension::connect(MapNode* mapNode)
     if ( _options.scaleLevelOffset().isSet() )
         _effect->getScaleLevelOffsetUniform()->set( (float)_options.scaleLevelOffset().get() );
 
-
     // add it to the terrain.
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
 
-    
+#if 0
     // TEMPORARY. This is just a quick hack to test the tile-based model splatter.
     // It finds any occurance of a model in the catalog and just installs that in
     // a single splatter. Doesn't support multiple models, classifications, or 
     // anything interesting quite yet.
-    const SplatClasses& classes = catalog->getClasses();
-    for(SplatClasses::const_iterator i = classes.begin(); i != classes.end(); ++i )
+    const SplatClassVector& classes = catalog->getClasses();
+    for(SplatClassVector::const_iterator i = classes.begin(); i != classes.end(); ++i )
     {
         osg::ref_ptr<osg::Node> model;
         if ( i->_modelURI.isSet() )
@@ -198,6 +197,7 @@ SplatExtension::connect(MapNode* mapNode)
     {
         mapNode->getTerrainEngine()->addTileNodeCallback( _modelSplatter.get() );
     }
+#endif
 
     return true;
 }

@@ -26,6 +26,36 @@ using namespace osgEarth::Splat;
 
 #define LC "[SplatCatalog] "
 
+#define SPLAT_CATALOG_CURRENT_VERSION 1
+
+//............................................................................
+
+SplatData::SplatData()
+{
+    //nop
+}
+
+SplatData::SplatData(const Config& conf)
+{
+    conf.getIfSet("expression", _expression);
+    conf.getIfSet("image",      _imageURI);
+    conf.getIfSet("model",      _modelURI);
+    conf.getIfSet("modelCount", _modelCount);
+    conf.getIfSet("modelLevel", _modelLevel);
+}
+
+Config
+SplatData::getConfig() const
+{
+    Config conf;
+    conf.addIfSet("expression", _expression);
+    conf.addIfSet("image",      _imageURI);
+    conf.addIfSet("model",      _modelURI);
+    conf.addIfSet("modelCount", _modelCount);
+    conf.addIfSet("modelLevel", _modelLevel);
+    return conf;
+}
+
 //............................................................................
 
 SplatClass::SplatClass()
@@ -36,30 +66,46 @@ SplatClass::SplatClass()
 SplatClass::SplatClass(const Config& conf)
 {
     _name = conf.key();
-    conf.getIfSet("image", _imageURI);
-    conf.getIfSet("model", _modelURI);
-    conf.getIfSet("modelCount", _modelCount);
-    conf.getIfSet("modelLevel", _modelLevel);
+
+    // read the data definitions in order:
+    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+    {
+        if ( !i->empty() )
+        {
+            _data.push_back(SplatData(*i));
+        }
+    }
+}
+
+Config
+SplatClass::getConfig() const
+{
+    Config conf( _name );
+    for(SplatDataVector::const_iterator i = _data.begin(); i != _data.end(); ++i)
+    {
+        conf.add( i->getConfig() );
+    }
+    return conf;
 }
 
 //............................................................................
 
 SplatCatalog::SplatCatalog()
 {
-    //nop
+    _version = SPLAT_CATALOG_CURRENT_VERSION;
 }
 
 void
 SplatCatalog::fromConfig(const Config& conf)
 {
+    conf.getIfSet("version",     _version);
     conf.getIfSet("name",        _name);
     conf.getIfSet("description", _description);
 
-    Config classesObj = conf.child("classes");
-    if ( !classesObj.empty() )
+    Config classesConf = conf.child("classes");
+    if ( !classesConf.empty() )
     {
-        ConfigSet classes = classesObj.children();
-        for(ConfigSet::const_iterator i = classes.begin(); i != classes.end(); ++i)
+        for(ConfigSet::const_iterator i = classesConf.children().begin(); i != classesConf.children().end(); ++i)
         {
             if ( !i->key().empty() )
             {
@@ -73,20 +119,15 @@ Config
 SplatCatalog::getConfig() const
 {
     Config conf;
-
-    conf.addIfSet("name", _name);
+    conf.addIfSet("version",     _version);
+    conf.addIfSet("name",        _name);
     conf.addIfSet("description", _description);
     
     Config classes("classes");
     {
-        for(SplatClasses::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
+        for(SplatClassVector::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
         {
-            Config classConf( i->_name );
-            classConf.addIfSet( "image", i->_imageURI );
-            classConf.addIfSet( "model", i->_modelURI );
-            classConf.addIfSet( "modelCount", i->_modelCount );
-            classConf.addIfSet( "modelLevel", i->_modelLevel );
-            classes.add( classConf );
+            classes.add( i->getConfig() );
         }
     }    
     conf.add( classes );
@@ -95,49 +136,110 @@ SplatCatalog::getConfig() const
 }
 
 bool
-SplatCatalog::createTextureAndIndex(const osgDB::Options* options,
-                                    osg::ref_ptr<osg::Texture2DArray>& out_texture,
-                                    SplatArrayIndex&                   out_index) const
+SplatCatalog::createSplatTextureDef(const osgDB::Options* options,
+                                    SplatTextureDef&      out      ) const
 {
-    out_texture = 0L;
-    out_index.clear();
+    // Load all the splatting images, preventing duplicates. If a splatting
+    // texture fails to load, it will not appear in the array and it will be
+    // ignored in the selection code.
+    typedef osgEarth::fast_map<URI, unsigned> ImageIndexTable;
+    ImageIndexTable imageIndexByURI;
+    std::vector< osg::ref_ptr<osg::Image> > imagesInOrder;
 
-    // load the images and build the index along the way.
-    std::vector< osg::ref_ptr<osg::Image> > images;
+    unsigned    index       = 0;
+    osg::Image* firstImage  = 0L;
 
-    for(unsigned i=0; i<_classes.size(); ++i)
+    for(SplatClassVector::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
     {
-        ReadResult result = _classes[i]._imageURI->readImage(options);
-        if ( result.succeeded() )
+        const SplatClass& c = *i;
+        for(SplatDataVector::const_iterator j = c._data.begin(); j != c._data.end(); ++j)
         {
-            osg::ref_ptr<osg::Image> image = result.getImage();
-
-            // ensure all images are compatible.
-            // todo: perhaps in the "future" we can forcably make them the same
-            if ( i == 0 || ImageUtils::textureArrayCompatible(image.get(), images.back().get()) )
+            // if the URI is set and it's not already in the table:
+            if (j->_imageURI.isSet() && imageIndexByURI.find(j->_imageURI.get()) == imageIndexByURI.end())
             {
-                images.push_back( image );
-                out_index[_classes[i]._name] = i;
+                // try to load the image:
+                ReadResult result = j->_imageURI->readImage(options);
+                if ( result.succeeded() )
+                {
+                    bool okToAdd = true;
+
+                    // if this is the first image loaded, remember it so we can ensure that
+                    // all images are copatible.
+                    if ( firstImage == 0L )
+                    {
+                        firstImage = result.getImage();
+                    }
+                    else
+                    {
+                        // ensure compatibility, a requirement for texture arrays.
+                        // In the future perhaps we can resize/convert instead.
+                        if ( !ImageUtils::textureArrayCompatible(result.getImage(), firstImage) )
+                        {
+                            okToAdd = false;
+
+                            OE_WARN << LC << "Image " << j->_imageURI->base()
+                                << " was found, but cannot be used because it is not compatible with "
+                                << "other splat images (same dimensions, pixel format, etc.)\n";
+                        }
+                    }
+
+                    if ( okToAdd )
+                    {
+                        // Assign the image the next available array index and put it in the table.
+                        imageIndexByURI[j->_imageURI.get()] = index++;
+                        imagesInOrder.push_back(result.getImage());
+                    }
+                }
             }
         }
     }
 
-    // create the texture array:
-    if ( images.size() == 0 )
-        return false;
-
-    out_texture = new osg::Texture2DArray();
-    out_texture->setTextureSize( images[0]->s(), images[0]->t(), images.size() );
-    out_texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
-    out_texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
-    out_texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-    out_texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    out_texture->setResizeNonPowerOfTwoHint( false );
-
-    for(unsigned i=0; i<images.size(); ++i)
+    // Next, go through the classes and build the splat lookup table.
+    for(SplatClassVector::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
     {
-        out_texture->setImage( i, images[i].get() );
+        const SplatClass& c = *i;
+
+        // selectors for this class (ordered):
+        SplatIndexSelectorSet selectors;
+
+        // check each data element:
+        for(SplatDataVector::const_iterator j = c._data.begin(); j != c._data.end(); ++j)
+        {
+            const SplatData& d = *j;
+
+            // If the image exists, look up its index and add it to the selector set.
+            ImageIndexTable::const_iterator k = imageIndexByURI.find( d._imageURI.get() );
+            if ( k != imageIndexByURI.end() )
+            {
+                OE_DEBUG << "Class " << c._name << ", index " << k->second << " : expression = " << d._expression.get() << "\n";
+                selectors.push_back( SplatIndexSelector(d._expression.get(), k->second) );
+            }
+        }
+
+        // put it in the lookup table for this class:
+        if ( selectors.size() > 0 )
+        {
+            out._lut[c._name] = selectors;
+        }
     }
 
-    return true;
+    // Create the texture array.
+    if ( imagesInOrder.size() > 0 )
+    {
+        out._texture = new osg::Texture2DArray();
+        out._texture->setTextureSize( firstImage->s(), firstImage->t(), imagesInOrder.size() );
+        out._texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
+        out._texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+        out._texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+        out._texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+        out._texture->setResizeNonPowerOfTwoHint( false );
+        out._texture->setMaxAnisotropy( 4.0f );
+
+        for(unsigned i=0; i<imagesInOrder.size(); ++i)
+        {
+            out._texture->setImage( i, imagesInOrder[i].get() );
+        }
+    }
+
+    return out._texture.valid();
 }

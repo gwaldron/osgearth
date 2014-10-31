@@ -59,19 +59,22 @@ namespace
         "void oe_modelsplat_vert_model(inout vec4 VertexMODEL) \n" 
         "{ \n"
         "    vec4 v = oe_trees_local2ltp * VertexMODEL; \n"
+        
+        //"    v.xyz /= v.w; \n"
+        //"    float delta = clamp(20.0 - oe_tile_key.z, 1.0, 8.0); \n"
+        //"    v.xyz *= delta; \n"
+
         "    vec2 span = oe_trees_span; \n"
         "    float fInstanceID = float(gl_InstanceID); \n"
-        //"    float rx = clamp(oe_modelsplat_rand( vec2(fInstanceID, oe_tile_key.z)), 0.0, 0.95); \n"
-        //"    float ry = clamp(oe_modelsplat_rand( vec2(rx, -fInstanceID)), 0.0, 0.95); \n"
         "    float rx = oe_modelsplat_rand( vec2(fInstanceID, oe_tile_key.z)); \n"
         "    float ry = oe_modelsplat_rand( vec2(rx, -fInstanceID)); \n"
         "    vec2 rxy = vec2(rx, ry); \n"
         "    vec2 offset = -0.5*span + span*rxy; \n"
         "    v.xy += offset; \n"
 
-        "    float a = osg_FrameTime+rx; \n"
-        "    float c = sin(a); \n"
-        "    v.xy += 0.1*c*v.z; \n"
+        //"    float a = osg_FrameTime+rx; \n"
+        //"    float c = sin(a); \n"
+        //"    v.xy += 0.1*c*v.z; \n"
 
         // matrix mult probably unnecessary 
         "    vec4 rc = oe_terrain_tex_matrix * vec4(rx, ry, 0.0, 1.0); \n"

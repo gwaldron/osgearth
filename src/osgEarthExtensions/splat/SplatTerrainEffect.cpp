@@ -50,7 +50,7 @@ _renderOrder( -1.0f )
 {
     if ( catalog )
     {
-        _ok = catalog->createTextureAndIndex( dbOptions, _splatTex, _splatTexIndex );
+        _ok = catalog->createSplatTextureDef(dbOptions, _splatDef);
         if ( !_ok )
         {
             OE_WARN << LC << "Failed to create texture array from splat catalog\n";
@@ -83,7 +83,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             // splat sampler
             _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
             _splatTexUniform->set( _splatTexUnit );
-            stateset->setTextureAttribute( _splatTexUnit, _splatTex.get(), osg::StateAttribute::ON );
+            stateset->setTextureAttribute( _splatTexUnit, _splatDef._texture.get(), osg::StateAttribute::ON );
 
             // coverage sampler
             _coverageTexUniform = stateset->getOrCreateUniform( COVERAGE_SAMPLER, osg::Uniform::SAMPLER_2D );
@@ -114,7 +114,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             // sampling function
             std::string sfunc = generateSamplingFunction();
             osg::Shader* sfuncShader = new osg::Shader(osg::Shader::FRAGMENT, sfunc);
-            vp->setShader( SPLAT_FUNC, sfuncShader );
+            vp->setShader( SPLAT_FUNC, sfuncShader );            
         }
     }
 }
@@ -155,6 +155,7 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
     }
 }
 
+#define IND "    "
 
 std::string
 SplatTerrainEffect::generateSamplingFunction()
@@ -164,31 +165,75 @@ SplatTerrainEffect::generateSamplingFunction()
         "#version " GLSL_VERSION_STR "\n"
         "#extension GL_EXT_texture_array : enable\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform sampler2DArray " << SPLAT_SAMPLER << ";\n"
-        "float " NOISE_FUNC "(in vec2);\n"
-        "vec4 " SPLAT_FUNC "(in float v, in vec2 splat_tc) \n"
+        "uniform sampler2DArray " << SPLAT_SAMPLER << ";\n";
+    
+    // This must match the def in SplatShaders
+    // reminder: struct defs cannot include newlines (for GLES)
+    buf <<
+        "struct oe_SplatEnv { "
+        " float range; "
+        " float elevation; "
+        "}; \n";
+
+    buf <<
+        "vec4 " SPLAT_FUNC "(in float v, in vec2 splat_tc, in oe_SplatEnv env) \n"
         "{\n"
-        "    float i = -1.0;\n";
+        IND "float i = -1.0;\n";
 
     unsigned count = 0;
     const SplatCoverageLegend::Predicates& preds = _legend->getPredicates();
     for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p, ++count)
     {
-        if ( p->get()->_exactValue.isSet() )
-        {
-            if ( count > 0 )
-                buf << "    else ";
-            else
-                buf << "    ";
+        const CoverageValuePredicate* pred = p->get();
 
-            buf << "if (abs(v-float(" << p->get()->_exactValue.get() << "))<0.01) i = "
-                << "float(" << _splatTexIndex[p->get()->_mappedClassName.get()] << ");\n";
+        if ( pred->_exactValue.isSet() )
+        {
+            if ( count > 0 ) buf << IND "else ";
+            else             buf << IND ;
+
+            buf << "if (abs(v-float(" << pred->_exactValue.get() << "))<0.001) { \n";
+            
+            const std::string& className = pred->_mappedClassName.get();
+            const SplatTextureLUT::const_iterator i = _splatDef._lut.find(className);
+            if ( i != _splatDef._lut.end() )
+            {
+                int selectorCount = 0;
+                const SplatIndexSelectorSet& selectors = i->second;
+
+                OE_DEBUG << LC << "Class " << className << " has " << selectors.size() << " selectors.\n";
+
+                for(SplatIndexSelectorSet::const_iterator j = selectors.begin(); j != selectors.end(); ++j)
+                {
+                    const std::string& expression = j->first;
+                    unsigned           index      = j->second;
+
+                    if ( selectorCount > 0 ) buf << IND IND "else ";
+                    else                     buf << IND IND ;
+
+                    if ( !expression.empty() )
+                    {
+                        buf << "if (" << expression << ") ";
+                    }
+
+                    buf << "i = float(" << index << ");"
+                        << "\n";
+
+                    ++selectorCount;
+
+                    // once we find an empty expression, we are finished because any
+                    // subsequent selectors are unreachable.
+                    if ( expression.empty() )
+                        break;
+                }
+            }
+
+            buf << IND "}\n";
         }
     }
 
-    buf << "    vec4 texel = texture2DArray(" SPLAT_SAMPLER ", vec3(splat_tc, max(i,0.0)));\n"
-        << "    if ( i < 0.0 ) texel.a = 0.0; \n"
-        << "    return texel; \n"
+    buf << IND "vec4 texel = texture2DArray(" SPLAT_SAMPLER ", vec3(splat_tc, max(i,0.0)));\n"
+        << IND "if ( i < 0.0 ) texel.a = 0.0; \n"
+        << IND "return texel; \n"
         << "}\n";
 
     return buf.str();

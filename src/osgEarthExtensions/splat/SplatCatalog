@@ -35,29 +35,56 @@ namespace osgDB {
 namespace osgEarth { namespace Splat
 {
     /**
-     * A single splatting class.
+     * Defines a single splatting appearance that will be used if its
+     * selector expression evaluates to true.
+     */
+    struct SplatData
+    {
+        optional<std::string> _expression;
+        optional<URI>         _imageURI;
+        optional<URI>         _modelURI;
+        optional<int>         _modelCount;
+        optional<int>         _modelLevel;
+
+        SplatData();
+        SplatData(const Config& conf);
+        Config getConfig() const;
+    };
+
+    typedef std::vector<SplatData> SplatDataVector;
+
+    /**
+     * A single splatting class. One class may have multiple
+     * data definitions, which are evaluated in order of appearance.
      */
     struct SplatClass
     {
-        std::string   _name;
-        optional<URI> _imageURI;
-        optional<URI> _modelURI;
-        optional<int> _modelCount;
-        optional<int> _modelLevel;
+        std::string     _name;
+        SplatDataVector _data;
 
         SplatClass();
         SplatClass(const Config& conf);
+        Config getConfig() const;
     };
 
-    /**
-     * Lookup table of splatting classes.
-     */
-    typedef std::vector<SplatClass> SplatClasses;
+    typedef std::vector<SplatClass> SplatClassVector;
+    
+    // Associates a selector expression that, if it evaluates to true, will
+    // select the specified splat texture index
+    typedef std::pair<std::string, unsigned> SplatIndexSelector;
 
-    /**
-     * An index that maps each class name to a texture array index.
-     */
-    typedef osgEarth::fast_map<std::string, unsigned> SplatArrayIndex;
+    // Vector of selectors
+    typedef std::vector<SplatIndexSelector> SplatIndexSelectorSet;
+
+    // Maps splat class names to texture data selectors.
+    typedef osgEarth::fast_map<std::string, SplatIndexSelectorSet> SplatTextureLUT;
+
+    // Defines the splatting texture and associated lookup table.
+    struct SplatTextureDef
+    {
+        osg::ref_ptr<osg::Texture2DArray> _texture;
+        SplatTextureLUT                   _lut;
+    };
 
     /**
      * Catalog of texture-splatting classes. Usually these correspond
@@ -74,15 +101,15 @@ namespace osgEarth { namespace Splat
         /**
          * The splatting classifications set.
          */
-        const SplatClasses& getClasses() const { return _classes; }
+        const SplatClassVector& getClasses() const { return _classes; }
 
         /**
-         * Create a texture array from the images in the catalog.
+         * Create a texture array from the images in the catalog, along
+         * with a definition of how to map classifications to texture
+         * array indices.
          */
-        bool createTextureAndIndex(
-            const osgDB::Options*              options,
-            osg::ref_ptr<osg::Texture2DArray>& out_texture,
-            SplatArrayIndex&                   out_index) const;
+        bool createSplatTextureDef(const osgDB::Options* options,
+                                   SplatTextureDef&      out_def ) const;
 
 
     public: // serialization
@@ -98,9 +125,10 @@ namespace osgEarth { namespace Splat
 
         virtual ~SplatCatalog() { }
 
+        optional<int>         _version;
         optional<std::string> _name;
         optional<std::string> _description;
-        SplatClasses          _classes;
+        SplatClassVector      _classes;
     };
 
 } } // namespace osgEarth::Splat

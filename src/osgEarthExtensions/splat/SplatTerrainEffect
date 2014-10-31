@@ -99,8 +99,7 @@ namespace osgEarth { namespace Splat
         std::string generateSamplingFunction();
 
         bool                                _ok;
-        osg::ref_ptr<osg::Texture2DArray>   _splatTex;
-        SplatArrayIndex                     _splatTexIndex;
+        SplatTextureDef                     _splatDef;
         int                                 _splatTexUnit;
         osg::ref_ptr<osg::Uniform>          _splatTexUniform;
         osg::ref_ptr<osg::Uniform>          _coverageTexUniform;

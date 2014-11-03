@@ -96,6 +96,17 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform( _blurUniform.get() );
             stateset->addUniform( _snowUniform.get() );
 
+            // debugging
+            stateset->getOrCreateUniform("freq", osg::Uniform::FLOAT)->set(32.0f);
+            stateset->getOrCreateUniform("pers", osg::Uniform::FLOAT)->set(0.8f);
+            stateset->getOrCreateUniform("lac",  osg::Uniform::FLOAT)->set(2.2f);
+            stateset->getOrCreateUniform("octaves", osg::Uniform::FLOAT)->set(7.0f);
+            stateset->getOrCreateUniform("saturate", osg::Uniform::FLOAT)->set(0.98f);
+            stateset->getOrCreateUniform("thresh", osg::Uniform::FLOAT)->set(0.57f);
+            stateset->getOrCreateUniform("slope", osg::Uniform::FLOAT)->set(0.47f);
+
+            stateset->getOrCreateUniform("oe_splat_max_range", osg::Uniform::FLOAT)->set(250000.0f);
+
             // configure shaders
             std::string vertexShader = splatVertexShader;
             std::string fragmentShader = splatFragmentShader;
@@ -136,6 +147,16 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( _splatTexUniform.get() );
             stateset->removeUniform( _coverageTexUniform.get() );
             stateset->removeTextureAttribute( _splatTexUnit, osg::StateAttribute::TEXTURE );
+
+            stateset->removeUniform( "freq" );
+            stateset->removeUniform( "pers" );
+            stateset->removeUniform( "lac" );
+            stateset->removeUniform( "octaves" );
+            stateset->removeUniform( "saturate" );
+            stateset->removeUniform( "thresh" );
+            stateset->removeUniform( "slope" );
+
+            stateset->removeUniform( "oe_splat_max_range" );
         }
 
         VirtualProgram* vp = VirtualProgram::get(stateset);
@@ -173,6 +194,7 @@ SplatTerrainEffect::generateSamplingFunction()
         "struct oe_SplatEnv { "
         " float range; "
         " float elevation; "
+        " float noise; "
         "}; \n";
 
     buf <<

@@ -12,8 +12,8 @@
 
 <map>
         
-	<options elevation_tile_size="16">
-		<terrain min_lod="19" normalize_edges="true"/>
+	<options elevation_tile_size="31">
+		<terrain min_lod="18" normalize_edges="true"/>
 	</options>
 	
     <elevation name="readymap_elevation" driver="tms" enabled="true">
@@ -69,12 +69,10 @@
 	
         <splat>
             <coverage>GLOBCOVER</coverage>
-			<!--
-            <legend>H:/data/ESA/GLOBCOVER_legend.json</legend>
-			-->
 			<legend>../data/splat/paul/GLOBCOVER_legend.json</legend>
             <catalog>../data/splat/paul/simple_catalog.json</catalog>
 			<coverage_warp>0.004</coverage_warp>
+			<normal_map>../data/rock_hard.jpg</normal_map>
         </splat>
 
 <!--		
@@ -89,15 +87,22 @@
 			<image>../data/rock_hard.jpg</image>
 		</normalmap>
 		
+		<lod_blending>
+			<duration>1.0</duration>
+			<blend_imagery>false</blend_imagery>
+			<blend_elevation>true</blend_elevation>
+		</lod_blending>
+		
 		<viewpoints>
 			<viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>
 			<viewpoint name="Mt R. Nadir 30K" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>
 			<viewpoint name="Mt R. Nadir 7K" heading="0.5013039415314375" height="2030.938670247793" lat="46.81069413427294" long="-121.7931474749483" pitch="-89.43231466772511" range="7035.645515411795"/>
 			<viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
 			<viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>
-			<viewpoint name="Nepal" heading="-31.88332651933247" height="6543.718174060807" lat="27.9438350018333" long="86.94718559626058" pitch="-8.689781496210518" range="10319.10580082614"/>
+			<viewpoint name="Mt R. Slope" heading="-70.22873221693601" height="3160.756061628461" lat="46.83660282836279" long="-121.7442624846425" pitch="-25.89746948655256" range="9233.647682022791"/>
+			<viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
+			<viewpoint name="Nepal NF" heading="-49.14546953546358" height="6334.332569343038" lat="27.9421778947837" long="86.9935949004298" pitch="-3.643325527310435" range="13302.81192964212"/>
 		</viewpoints>
-		
     </extensions>
 
 </map>

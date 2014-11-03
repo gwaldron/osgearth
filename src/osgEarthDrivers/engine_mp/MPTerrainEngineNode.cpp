@@ -529,7 +529,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     const osgEarth::ElevationInterpolation& interp = _update_mapf->getMapOptions().elevationInterpolation().get();
 
     // Request a heightfield from the map, falling back on lower resolution tiles
-    osg::ref_ptr<osg::HeightField> hf;
+    osg::ref_ptr<osg::HeightField> hf;    
 
     TileKey sampleKey = key;
     bool populated = false;
@@ -544,16 +544,17 @@ MPTerrainEngineNode::createTile( const TileKey& key )
                 sampleKey = sampleKey.createParentKey();
                 if (!sampleKey.valid())
                 {
-                    // If we reached the root and still have no data then stop.
-                    break;
+                    return 0;
                 }
             }
         }       
     }
-    else
+
+    if (!populated)
     {
         // We have no heightfield so just create a reference heightfield.
         hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
+        sampleKey = key;
     }
 
     model->_elevationData = TileModel::ElevationData(

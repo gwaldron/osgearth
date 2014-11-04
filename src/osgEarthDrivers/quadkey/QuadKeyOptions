@@ -33,9 +33,6 @@ namespace osgEarth { namespace Drivers
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
 
-        optional<bool>& invertY() { return _invertY; }
-        const optional<bool>& invertY() const { return _invertY; }
-
         optional<std::string>& format() { return _format; }
         const optional<std::string>& format() const { return _format; }
 
@@ -77,10 +74,9 @@ namespace osgEarth { namespace Drivers
 
         optional<URI>         _url;
         optional<std::string> _format;
-        optional<bool>        _invertY;
     };
 
 } } // namespace osgEarth::Drivers
 
-#endif // OSGEARTH_DRIVER_XYZ_OPTIONS
+#endif // OSGEARTH_DRIVER_QUADKEY_OPTIONS
 

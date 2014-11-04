@@ -98,13 +98,6 @@ public:
         unsigned x, y;
         key.getTileXY( x, y );
 
-        if ( _options.invertY() == true )
-        {
-            unsigned cols=0, rows=0;
-            key.getProfile()->getNumTiles( key.getLevelOfDetail(), cols, rows );
-            y = rows - y - 1;
-        }
-
         std::string location = _template;
 
         std::string quadkey = getQuadKey(key);

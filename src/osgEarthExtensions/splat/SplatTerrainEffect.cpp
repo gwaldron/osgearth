@@ -106,7 +106,8 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->getOrCreateUniform("oe_splat_thresh", osg::Uniform::FLOAT)->set(0.57f);
             stateset->getOrCreateUniform("oe_splat_slopeFactor", osg::Uniform::FLOAT)->set(0.47f);
 
-            stateset->getOrCreateUniform("oe_splat_max_range", osg::Uniform::FLOAT)->set(250000.0f);
+            stateset->getOrCreateUniform("oe_splat_blending_range", osg::Uniform::FLOAT)->set(250000.0f);
+            stateset->getOrCreateUniform("oe_splat_detail_range", osg::Uniform::FLOAT)->set(100000.0f);
 
             // Configure the vertex shader:
             std::string vertexShader = splatVertexShader;
@@ -160,7 +161,8 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( "oe_splat_thresh" );
             stateset->removeUniform( "oe_splat_slopeFactor" );
 
-            stateset->removeUniform( "oe_splat_max_range" );
+            stateset->removeUniform( "oe_splat_blending_range" );
+            stateset->removeUniform( "oe_splat_detail_range" );
         }
 
         VirtualProgram* vp = VirtualProgram::get(stateset);

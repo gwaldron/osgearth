@@ -68,9 +68,9 @@ namespace
         "uniform vec4 oe_tile_key; \n"
 
         // from the vertex shader:
-        "varying float oe_splat_range; \n"
         "varying float oe_splat_slope; \n"
         "varying vec2 oe_splat_covtc; \n"
+        "varying float oe_splat_range; \n"
 
         // from SplatTerrainEffect:
         "uniform float oe_splat_intensity; \n"
@@ -83,7 +83,8 @@ namespace
         "uniform sampler2D oe_terrain_tex; \n"
         "uniform mat4 oe_terrain_tex_mat; \n"
         "uniform float oe_splat_snow;\n"
-        "uniform float oe_splat_max_range;\n"
+        "uniform float oe_splat_blending_range; \n"
+        "uniform float oe_splat_detail_range; \n"
         
         // noise controllers.
         // we will probably replace the first 4 with a texture at some point.
@@ -222,18 +223,29 @@ namespace
         "    vec3 ne_primary = oe_splat_getTexel(ri_ne.primaryIndex, splat_tc).rgb; \n"
         "    vec3 nw_primary = oe_splat_getTexel(ri_nw.primaryIndex, splat_tc).rgb; \n"
 
+        "    if (env.range < oe_splat_detail_range) \n"
+        "    { \n"
         // Detail splat - weighting is in the alpha channel
-        "    vec4 sw_detail = oe_splat_getDetailTexel(ri_sw, splat_tc, env); \n"
-        "    vec4 se_detail = oe_splat_getDetailTexel(ri_se, splat_tc, env); \n"
-        "    vec4 ne_detail = oe_splat_getDetailTexel(ri_ne, splat_tc, env); \n"
-        "    vec4 nw_detail = oe_splat_getDetailTexel(ri_nw, splat_tc, env); \n"
+        "        vec4 sw_detail = oe_splat_getDetailTexel(ri_sw, splat_tc, env); \n"
+        "        vec4 se_detail = oe_splat_getDetailTexel(ri_se, splat_tc, env); \n"
+        "        vec4 ne_detail = oe_splat_getDetailTexel(ri_ne, splat_tc, env); \n"
+        "        vec4 nw_detail = oe_splat_getDetailTexel(ri_nw, splat_tc, env); \n"
 
         // Combine them based on their weighting:
-        "    texel.rgb = \n"
-        "        sw_weight * mix(sw_primary, sw_detail.rgb, sw_detail.a) + \n"
-        "        se_weight * mix(se_primary, se_detail.rgb, se_detail.a) + \n"
-        "        ne_weight * mix(ne_primary, ne_detail.rgb, ne_detail.a) + \n"
-        "        nw_weight * mix(nw_primary, nw_detail.rgb, nw_detail.a); \n"
+        "        texel.rgb = \n"
+        "            sw_weight * mix(sw_primary, sw_detail.rgb, sw_detail.a) + \n"
+        "            se_weight * mix(se_primary, se_detail.rgb, se_detail.a) + \n"
+        "            ne_weight * mix(ne_primary, ne_detail.rgb, ne_detail.a) + \n"
+        "            nw_weight * mix(nw_primary, nw_detail.rgb, nw_detail.a); \n"
+        "    } \n"
+        "    else \n"
+        "    { \n"
+        "        texel.rgb = \n"
+        "            sw_weight * sw_primary + \n"
+        "            se_weight * se_primary + \n"
+        "            ne_weight * ne_primary + \n"
+        "            nw_weight * nw_primary; \n"
+        "    } \n"
 
         "    return texel; \n"
         "} \n"
@@ -300,7 +312,7 @@ namespace
         "    float d = clamp(oe_splat_range, ranges[0], ranges[RANGE_COUNT-1]); \n"
 
         "    vec4 texel; \n"
-        "    bool detail = d < oe_splat_max_range; \n"
+        "    bool bilinear = d < oe_splat_blending_range; \n"
 
         // Find the 2 ranges bookending the camera range, and blend between then.
         // TODO: replace bilinear with nearest for far ranges?
@@ -310,11 +322,11 @@ namespace
         "        { \n"
         "            float lod0 = lods[i] + scaleOffset; \n"
         "            vec2 splat_tc0 = oe_splat_getSplatCoords(lod0); \n"
-        "            vec4 texel0 = detail ? oe_splat_bilinear(splat_tc0, env) : oe_splat_nearest(splat_tc0, env); \n"
+        "            vec4 texel0 = bilinear ? oe_splat_bilinear(splat_tc0, env) : oe_splat_nearest(splat_tc0, env); \n"
         
         "            float lod1 = lods[i+1] + scaleOffset; \n"
         "            vec2 splat_tc1 = oe_splat_getSplatCoords(lod1); \n"
-        "            vec4 texel1 = detail ? oe_splat_bilinear(splat_tc1, env) : oe_splat_nearest(splat_tc1, env); \n"
+        "            vec4 texel1 = bilinear ? oe_splat_bilinear(splat_tc1, env) : oe_splat_nearest(splat_tc1, env); \n"
 
         "            float r = (d-ranges[i])/(ranges[i+1]-ranges[i]); \n"
         "            texel = mix(texel0, texel1, r); \n"

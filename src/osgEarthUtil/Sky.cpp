@@ -99,7 +99,7 @@ SkyNode::setLighting(osg::StateAttribute::OverrideValue value)
     _lightingUniform = Registry::shaderFactory()->createUniformForGLMode(
         GL_LIGHTING, value );
 
-    this->getOrCreateStateSet()->addUniform( _lightingUniform.get() );
+    this->getOrCreateStateSet()->addUniform( _lightingUniform.get(), value );
 }
 
 void

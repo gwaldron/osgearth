@@ -62,6 +62,8 @@ _renderOrder( -1.0f )
     _warpUniform        = new osg::Uniform("oe_splat_warp",      0.004f);
     _blurUniform        = new osg::Uniform("oe_splat_blur",        1.0f);
     _snowUniform        = new osg::Uniform("oe_splat_snow",    10000.0f);
+
+    _edit = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L);
 }
 
 void
@@ -96,22 +98,29 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform( _blurUniform.get() );
             stateset->addUniform( _snowUniform.get() );
 
-            // debugging
-            stateset->getOrCreateUniform("freq", osg::Uniform::FLOAT)->set(32.0f);
-            stateset->getOrCreateUniform("pers", osg::Uniform::FLOAT)->set(0.8f);
-            stateset->getOrCreateUniform("lac",  osg::Uniform::FLOAT)->set(2.2f);
-            stateset->getOrCreateUniform("octaves", osg::Uniform::FLOAT)->set(7.0f);
-            stateset->getOrCreateUniform("saturate", osg::Uniform::FLOAT)->set(0.98f);
-            stateset->getOrCreateUniform("thresh", osg::Uniform::FLOAT)->set(0.57f);
-            stateset->getOrCreateUniform("slope", osg::Uniform::FLOAT)->set(0.47f);
+            stateset->getOrCreateUniform("oe_splat_freq", osg::Uniform::FLOAT)->set(32.0f);
+            stateset->getOrCreateUniform("oe_splat_pers", osg::Uniform::FLOAT)->set(0.8f);
+            stateset->getOrCreateUniform("oe_splat_lac",  osg::Uniform::FLOAT)->set(2.2f);
+            stateset->getOrCreateUniform("oe_splat_octaves", osg::Uniform::FLOAT)->set(7.0f);
+            stateset->getOrCreateUniform("oe_splat_saturate", osg::Uniform::FLOAT)->set(0.98f);
+            stateset->getOrCreateUniform("oe_splat_thresh", osg::Uniform::FLOAT)->set(0.57f);
+            stateset->getOrCreateUniform("oe_splat_slopeFactor", osg::Uniform::FLOAT)->set(0.47f);
 
             stateset->getOrCreateUniform("oe_splat_max_range", osg::Uniform::FLOAT)->set(250000.0f);
 
-            // configure shaders
+            // Configure the vertex shader:
             std::string vertexShader = splatVertexShader;
-            std::string fragmentShader = splatFragmentShader;
-
             osgEarth::replaceIn( vertexShader, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
+            
+            // Configure the fragment shader:
+            std::string fragmentShader = splatFragmentShader;
+            std::string samplingCode = generateSamplingCode();
+            osgEarth::replaceIn( fragmentShader, "$COVERAGE_SELECT_INDICES", samplingCode );
+
+            if ( _edit )
+                osgEarth::replaceIn( fragmentShader, "$SPLAT_EDIT", "#define SPLAT_EDIT 1\n" );
+            else
+                osgEarth::replaceIn( fragmentShader, "$SPLAT_EDIT", "" );
 
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
@@ -121,11 +130,6 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             // support shaders
             osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaders);
             vp->setShader( NOISE_FUNC, noiseShader );
-
-            // sampling function
-            std::string sfunc = generateSamplingFunction();
-            osg::Shader* sfuncShader = new osg::Shader(osg::Shader::FRAGMENT, sfunc);
-            vp->setShader( SPLAT_FUNC, sfuncShader );            
         }
     }
 }
@@ -148,13 +152,13 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( _coverageTexUniform.get() );
             stateset->removeTextureAttribute( _splatTexUnit, osg::StateAttribute::TEXTURE );
 
-            stateset->removeUniform( "freq" );
-            stateset->removeUniform( "pers" );
-            stateset->removeUniform( "lac" );
-            stateset->removeUniform( "octaves" );
-            stateset->removeUniform( "saturate" );
-            stateset->removeUniform( "thresh" );
-            stateset->removeUniform( "slope" );
+            stateset->removeUniform( "oe_splat_freq" );
+            stateset->removeUniform( "oe_splat_pers" );
+            stateset->removeUniform( "oe_splat_lac" );
+            stateset->removeUniform( "oe_splat_octaves" );
+            stateset->removeUniform( "oe_splat_saturate" );
+            stateset->removeUniform( "oe_splat_thresh" );
+            stateset->removeUniform( "oe_splat_slopeFactor" );
 
             stateset->removeUniform( "oe_splat_max_range" );
         }
@@ -179,28 +183,9 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
 #define IND "    "
 
 std::string
-SplatTerrainEffect::generateSamplingFunction()
+SplatTerrainEffect::generateSamplingCode()
 {
     std::stringstream buf;
-    buf <<
-        "#version " GLSL_VERSION_STR "\n"
-        "#extension GL_EXT_texture_array : enable\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform sampler2DArray " << SPLAT_SAMPLER << ";\n";
-    
-    // This must match the def in SplatShaders
-    // reminder: struct defs cannot include newlines (for GLES)
-    buf <<
-        "struct oe_SplatEnv { "
-        " float range; "
-        " float elevation; "
-        " float noise; "
-        "}; \n";
-
-    buf <<
-        "vec4 " SPLAT_FUNC "(in float v, in vec2 splat_tc, in oe_SplatEnv env) \n"
-        "{\n"
-        IND "float i = -1.0;\n";
 
     unsigned count = 0;
     const SplatCoverageLegend::Predicates& preds = _legend->getPredicates();
@@ -213,32 +198,48 @@ SplatTerrainEffect::generateSamplingFunction()
             if ( count > 0 ) buf << IND "else ";
             else             buf << IND ;
 
-            buf << "if (abs(v-float(" << pred->_exactValue.get() << "))<0.001) { \n";
+            buf << "if (abs(value-float(" << pred->_exactValue.get() << "))<0.001) { \n";
             
+            // Look up by class name:
             const std::string& className = pred->_mappedClassName.get();
-            const SplatTextureLUT::const_iterator i = _splatDef._lut.find(className);
-            if ( i != _splatDef._lut.end() )
+            const SplatLUT::const_iterator i = _splatDef._splatLUT.find(className);
+            if ( i != _splatDef._splatLUT.end() )
             {
+                // found it; loop over the range selectors:
                 int selectorCount = 0;
-                const SplatIndexSelectorSet& selectors = i->second;
+                const SplatSelectorVector& selectors = i->second;
 
                 OE_DEBUG << LC << "Class " << className << " has " << selectors.size() << " selectors.\n";
 
-                for(SplatIndexSelectorSet::const_iterator j = selectors.begin(); j != selectors.end(); ++j)
+                for(SplatSelectorVector::const_iterator selector = selectors.begin();
+                    selector != selectors.end();
+                    ++selector)
                 {
-                    const std::string& expression = j->first;
-                    unsigned           index      = j->second;
+                    const std::string&    expression = selector->first;
+                    const SplatRangeData& rangeData  = selector->second;
 
                     if ( selectorCount > 0 ) buf << IND IND "else ";
                     else                     buf << IND IND ;
 
                     if ( !expression.empty() )
                     {
-                        buf << "if (" << expression << ") ";
+                        buf << "if (" << expression << ") \n";
                     }
+                    buf << IND IND "{ \n";
 
-                    buf << "i = float(" << index << ");"
-                        << "\n";
+                    buf << IND IND IND "primary = float(" << rangeData._textureIndex << "); \n";
+
+                    if ( rangeData._detail->_textureIndex >= 0 )
+                    {
+                        buf << IND IND IND "detail  = float(" << rangeData._detail->_textureIndex << "); \n";
+                        if ( rangeData._detail->_saturation.isSet() )
+                            buf << IND IND IND "saturation = float(" << rangeData._detail->_saturation.get() << "); \n";
+                        if ( rangeData._detail->_threshold.isSet() )
+                            buf << IND IND IND "threshold = float(" << rangeData._detail->_threshold.get() << "); \n";
+                        if ( rangeData._detail->_slope.isSet() )
+                            buf << IND IND IND "slope = float(" << rangeData._detail->_slope.get() << "); \n";
+                    }
+                    buf << IND IND "}\n";
 
                     ++selectorCount;
 
@@ -252,11 +253,6 @@ SplatTerrainEffect::generateSamplingFunction()
             buf << IND "}\n";
         }
     }
-
-    buf << IND "vec4 texel = texture2DArray(" SPLAT_SAMPLER ", vec3(splat_tc, max(i,0.0)));\n"
-        << IND "if ( i < 0.0 ) texel.a = 0.0; \n"
-        << IND "return texel; \n"
-        << "}\n";
 
     return buf.str();
 }

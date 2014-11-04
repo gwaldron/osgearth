@@ -35,23 +35,46 @@ namespace osgDB {
 namespace osgEarth { namespace Splat
 {
     /**
-     * Defines a single splatting appearance that will be used if its
-     * selector expression evaluates to true.
+     * Defines the parameters for noise-generated detail splatting
+     * for a given class/range.
      */
-    struct SplatData
+    struct SplatDetailData
     {
-        optional<std::string> _expression;
         optional<URI>         _imageURI;
-        optional<URI>         _modelURI;
-        optional<int>         _modelCount;
-        optional<int>         _modelLevel;
+        optional<float>       _saturation;
+        optional<float>       _threshold;
+        optional<float>       _slope;
 
-        SplatData();
-        SplatData(const Config& conf);
+        // catalog will populate this value
+        int _textureIndex;
+
+        SplatDetailData();
+        SplatDetailData(const Config& conf);
         Config getConfig() const;
     };
 
-    typedef std::vector<SplatData> SplatDataVector;
+    /**
+     * Defines a single splatting appearance that will be used if its
+     * selector expression evaluates to true.
+     */
+    struct SplatRangeData
+    {
+        optional<float>           _minRange;
+        optional<URI>             _imageURI;
+        optional<URI>             _modelURI;
+        optional<int>             _modelCount;
+        optional<int>             _modelLevel;
+        optional<SplatDetailData> _detail;
+
+        // catalog will populate this value
+        int _textureIndex;
+
+        SplatRangeData();
+        SplatRangeData(const Config& conf);
+        Config getConfig() const;
+    };
+
+    typedef std::vector<SplatRangeData> SplatRangeDataVector;
 
     /**
      * A single splatting class. One class may have multiple
@@ -59,31 +82,32 @@ namespace osgEarth { namespace Splat
      */
     struct SplatClass
     {
-        std::string     _name;
-        SplatDataVector _data;
+        std::string          _name;
+        SplatRangeDataVector _ranges;
 
         SplatClass();
         SplatClass(const Config& conf);
         Config getConfig() const;
     };
-
-    typedef std::vector<SplatClass> SplatClassVector;
+    
+    typedef osgEarth::fast_map<std::string, SplatClass> SplatClassMap;
+    //typedef std::vector<SplatClass> SplatClassVector;
     
     // Associates a selector expression that, if it evaluates to true, will
-    // select the specified splat texture index
-    typedef std::pair<std::string, unsigned> SplatIndexSelector;
+    // select the specified splat texture
+    typedef std::pair<std::string /*expression*/, SplatRangeData> SplatSelector;
 
     // Vector of selectors
-    typedef std::vector<SplatIndexSelector> SplatIndexSelectorSet;
+    typedef std::vector<SplatSelector> SplatSelectorVector;
 
-    // Maps splat class names to texture data selectors.
-    typedef osgEarth::fast_map<std::string, SplatIndexSelectorSet> SplatTextureLUT;
+    // Maps splat class names to texture data renderers
+    typedef osgEarth::fast_map<std::string /*className*/, SplatSelectorVector> SplatLUT;
 
     // Defines the splatting texture and associated lookup table.
     struct SplatTextureDef
     {
         osg::ref_ptr<osg::Texture2DArray> _texture;
-        SplatTextureLUT                   _lut;
+        SplatLUT                          _splatLUT;
     };
 
     /**
@@ -101,7 +125,7 @@ namespace osgEarth { namespace Splat
         /**
          * The splatting classifications set.
          */
-        const SplatClassVector& getClasses() const { return _classes; }
+        const SplatClassMap& getClasses() const { return _classes; }
 
         /**
          * Create a texture array from the images in the catalog, along
@@ -109,7 +133,7 @@ namespace osgEarth { namespace Splat
          * array indices.
          */
         bool createSplatTextureDef(const osgDB::Options* options,
-                                   SplatTextureDef&      out_def ) const;
+                                   SplatTextureDef&      out_def );
 
 
     public: // serialization
@@ -128,7 +152,7 @@ namespace osgEarth { namespace Splat
         optional<int>         _version;
         optional<std::string> _name;
         optional<std::string> _description;
-        SplatClassVector      _classes;
+        SplatClassMap         _classes;
     };
 
 } } // namespace osgEarth::Splat

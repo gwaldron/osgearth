@@ -96,7 +96,7 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~SplatTerrainEffect() { }
 
-        std::string generateSamplingFunction();
+        std::string generateSamplingCode();
 
         bool                                _ok;
         SplatTextureDef                     _splatDef;
@@ -112,6 +112,7 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<SplatCoverageLegend>   _legend;
         osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;
+        bool                                _edit;
     };
 
 } } // namespace osgEarth::Splat

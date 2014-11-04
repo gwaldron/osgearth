@@ -1,13 +1,7 @@
 <!--
 |  Texture splatting test.
 |
-|  Run with uniforms to enable tweaking:
-|
-|   osgearth_viewer splat-test.earth
-|       --uniform oe_splat_warp 0 0.01
-|       --uniform oe_splat_blur 1 8
-|       --uniform oe_splat_scaleOffset 1 10
-|       --uniform oe_splat_intensity 0 1
+|  Run with splat.bat, (or splat-edit.bat for tweakery)
 -->
 
 <map>
@@ -69,10 +63,9 @@
 	
         <splat>
             <coverage>GLOBCOVER</coverage>
-			<legend>../data/splat/paul/GLOBCOVER_legend.json</legend>
-            <catalog>../data/splat/paul/simple_catalog.json</catalog>
+			<legend>../data/splat/GLOBCOVER_legend.json</legend>
+            <catalog>../data/splat/splat_catalog.json</catalog>
 			<coverage_warp>0.004</coverage_warp>
-			<normal_map>../data/rock_hard.jpg</normal_map>
         </splat>
 
 <!--		
@@ -86,12 +79,6 @@
 		<normalmap>
 			<image>../data/rock_hard.jpg</image>
 		</normalmap>
-		
-		<lod_blending>
-			<duration>1.0</duration>
-			<blend_imagery>false</blend_imagery>
-			<blend_elevation>true</blend_elevation>
-		</lod_blending>
 		
 		<viewpoints>
 			<viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>

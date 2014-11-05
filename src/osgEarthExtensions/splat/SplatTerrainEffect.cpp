@@ -187,21 +187,28 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
 std::string
 SplatTerrainEffect::generateSamplingCode()
 {
-    std::stringstream buf;
+    std::stringstream
+        weightBuf,
+        primaryBuf,
+        detailBuf,
+        saturationBuf,
+        thresholdBuf,
+        slopeBuf;
 
-    unsigned count = 0;
+    unsigned
+        primaryCount    = 0,
+        detailCount     = 0,
+        saturationCount = 0,
+        thresholdCount  = 0,
+        slopeCount      = 0;
+
     const SplatCoverageLegend::Predicates& preds = _legend->getPredicates();
-    for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p, ++count)
+    for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p)
     {
         const CoverageValuePredicate* pred = p->get();
 
         if ( pred->_exactValue.isSet() )
         {
-            if ( count > 0 ) buf << IND "else ";
-            else             buf << IND ;
-
-            buf << "if (abs(value-float(" << pred->_exactValue.get() << "))<0.001) { \n";
-            
             // Look up by class name:
             const std::string& className = pred->_mappedClassName.get();
             const SplatLUT::const_iterator i = _splatDef._splatLUT.find(className);
@@ -220,41 +227,84 @@ SplatTerrainEffect::generateSamplingCode()
                     const std::string&    expression = selector->first;
                     const SplatRangeData& rangeData  = selector->second;
 
-                    if ( selectorCount > 0 ) buf << IND IND "else ";
-                    else                     buf << IND IND ;
+                    std::string val = pred->_exactValue.get();
 
-                    if ( !expression.empty() )
+                    weightBuf
+                        << IND "float w" << val
+                        << " = (1.0-clamp(abs(value-" << val << ".0),0.0,1.0));\n";
+
+                    // Primary texture index:
+                    if ( primaryCount == 0 )
+                        primaryBuf << IND "primary += ";
+                    else
+                        primaryBuf << " + ";
+
+                    // the "+1" is because "primary" starts out at -1.
+                    primaryBuf << "w"<<val << "*" << (rangeData._textureIndex + 1) << ".0";
+                    primaryCount++;
+
+                    // Detail texture index:
+                    if ( rangeData._detail.isSet() )
                     {
-                        buf << "if (" << expression << ") \n";
-                    }
-                    buf << IND IND "{ \n";
+                        if ( detailCount == 0 )
+                            detailBuf << IND "detail += ";
+                        else
+                            detailBuf << " + ";
+                        // the "+1" is because "detail" starts out at -1.
+                        detailBuf << "w"<<val << "*" << (rangeData._detail->_textureIndex + 1) << ".0";
+                        detailCount++;
 
-                    buf << IND IND IND "primary = float(" << rangeData._textureIndex << "); \n";
-
-                    if ( rangeData._detail->_textureIndex >= 0 )
-                    {
-                        buf << IND IND IND "detail  = float(" << rangeData._detail->_textureIndex << "); \n";
                         if ( rangeData._detail->_saturation.isSet() )
-                            buf << IND IND IND "saturation = float(" << rangeData._detail->_saturation.get() << "); \n";
+                        {
+                            if ( saturationCount == 0 )
+                                saturationBuf << IND "saturation += ";
+                            else
+                                saturationBuf << " + ";
+                            saturationBuf << "w"<<val << "*" << rangeData._detail->_saturation.get();
+                            saturationCount++;
+                        }
+
                         if ( rangeData._detail->_threshold.isSet() )
-                            buf << IND IND IND "threshold = float(" << rangeData._detail->_threshold.get() << "); \n";
+                        {
+                            if ( thresholdCount == 0 )
+                                thresholdBuf << IND "threshold += ";
+                            else
+                                thresholdBuf << " + ";
+                            thresholdBuf << "w"<<val << "*" << rangeData._detail->_threshold.get();
+                            thresholdCount++;
+                        }
+
                         if ( rangeData._detail->_slope.isSet() )
-                            buf << IND IND IND "slope = float(" << rangeData._detail->_slope.get() << "); \n";
-                    }
-                    buf << IND IND "}\n";
-
-                    ++selectorCount;
-
-                    // once we find an empty expression, we are finished because any
-                    // subsequent selectors are unreachable.
-                    if ( expression.empty() )
-                        break;
+                        {
+                            if ( slopeCount == 0 )
+                                slopeBuf << IND "slope += ";
+                            else
+                                slopeBuf << " + ";
+                            slopeBuf << "w"<<val << "*" << rangeData._detail->_slope.get();
+                            slopeCount++;
+                        }
+                    }                    
                 }
             }
-
-            buf << IND "}\n";
         }
     }
 
-    return buf.str();
+    if ( primaryCount > 0 )
+        primaryBuf << ";\n";
+
+    if ( detailCount > 0 )
+        detailBuf << ";\n";
+
+    if ( saturationCount > 0 )
+        saturationBuf << ";\n";
+
+    if ( thresholdCount > 0 )
+        thresholdBuf << ";\n";
+
+    if ( slopeCount > 0 )
+        slopeBuf << ";\n";
+
+    return
+        weightBuf.str() + primaryBuf.str() + detailBuf.str() + 
+        saturationBuf.str() + thresholdBuf.str() + slopeBuf.str();
 }

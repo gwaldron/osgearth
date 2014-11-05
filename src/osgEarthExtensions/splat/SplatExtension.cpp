@@ -167,13 +167,14 @@ SplatExtension::connect(MapNode* mapNode)
     // It finds any occurance of a model in the catalog and just installs that in
     // a single splatter. Doesn't support multiple models, classifications, or 
     // anything interesting quite yet.
-    const SplatClassVector& classes = catalog->getClasses();
-    for(SplatClassVector::const_iterator i = classes.begin(); i != classes.end(); ++i )
-    {
+    //const SplatClassVector& classes = catalog->getClasses();
+    //for(SplatClassVector::const_iterator i = classes.begin(); i != classes.end(); ++i )
+    //{
         osg::ref_ptr<osg::Node> model;
-        if ( i->_modelURI.isSet() )
-        {
-            model = i->_modelURI->getNode(_dbOptions.get());
+        //if ( i->_modelURI.isSet() )
+        //{
+            model = URI("../data/tree.ive").getNode(_dbOptions.get());
+            //model = i->_modelURI->getNode(_dbOptions.get());
             if ( model.valid() )
             {
                 if ( !_modelSplatter.valid() )
@@ -183,21 +184,21 @@ SplatExtension::connect(MapNode* mapNode)
 
                 _modelSplatter->setModel( model.get() );
 
-                if ( i->_modelCount.isSet() )
-                    _modelSplatter->setNumInstances( i->_modelCount.get() );
+                //if ( i->_modelCount.isSet() )
+                //    _modelSplatter->setNumInstances( i->_modelCount.get() );
 
-                if ( i->_modelLevel.isSet() )
-                    _modelSplatter->setMinLOD( i->_modelLevel.get() );
+                //if ( i->_modelLevel.isSet() )
+                //    _modelSplatter->setMinLOD( i->_modelLevel.get() );
             }
-        }
-    }
+    //    }
+    //}
+#endif
 
     // Install the model splatter if we made one.
     if ( _modelSplatter.valid() )
     {
         mapNode->getTerrainEngine()->addTileNodeCallback( _modelSplatter.get() );
     }
-#endif
 
     return true;
 }

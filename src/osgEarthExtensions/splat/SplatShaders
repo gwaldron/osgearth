@@ -35,10 +35,12 @@ namespace
         
         "uniform mat4 osg_ViewMatrixInverse; \n"
         "uniform mat4 $COVERAGE_TEXMAT_UNIFORM; \n"
+        "uniform float oe_splat_scaleOffset; \n"
 
         "varying float oe_splat_range; \n"
         "varying float oe_splat_slope; \n"
         "varying vec2 oe_splat_covtc; \n"
+        "varying float oe_splat_scaleOffsetInt; \n"
 
         "void oe_splat_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
@@ -48,6 +50,9 @@ namespace
         // calculate the coverage sampling coordinates. The texture matrix accounts
         // for any super-sampling that might be in effect for the current LOD.
         "    oe_splat_covtc = ($COVERAGE_TEXMAT_UNIFORM * oe_layer_tilec).st;\n"
+
+        // quantize the scale offset so we take the hit in the FS
+        "    oe_splat_scaleOffsetInt = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset);\n"
 
         // calculate the approximate slope of the terrain at this vert.
         // [0..1] where 0=flat and 1=vertical.
@@ -71,12 +76,12 @@ namespace
         "varying float oe_splat_slope; \n"
         "varying vec2 oe_splat_covtc; \n"
         "varying float oe_splat_range; \n"
+        "varying float oe_splat_scaleOffsetInt; \n"
 
         // from SplatTerrainEffect:
         "uniform float oe_splat_intensity; \n"
         "uniform float oe_splat_warp; \n"
         "uniform float oe_splat_blur; \n"
-        "uniform float oe_splat_scaleOffset; \n"
         "uniform sampler2D oe_splat_coverage_tex; \n"
         "uniform sampler2DArray oe_splat_tex; \n"
 
@@ -141,22 +146,15 @@ namespace
         // Returns the weighting factor in the alpha channel.
         "vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEnv env) \n"
         "{ \n"
-        "    vec4 result = vec4(0,0,0,0); \n"
-        "    if (ri.detailIndex > 0.0) \n"
-        "    { \n"
         "#ifdef SPLAT_EDIT\n"
-        "        float noiseADJ = pow(env.noise, 1.0-oe_splat_saturate);\n"
-        "        float threshADJ = clamp( oe_splat_thresh + oe_splat_slopeFactor*(1.0-oe_splat_slope), 0.0, 1.0); \n"
+        "    float noiseADJ = pow(env.noise, 1.0-oe_splat_saturate);\n"
+        "    float threshADJ = clamp( oe_splat_thresh + oe_splat_slopeFactor*(1.0-oe_splat_slope), 0.0, 1.0); \n"
         "#else\n"
-        "        float noiseADJ = pow(env.noise, 1.0-ri.saturation); \n"
-        "        float threshADJ = clamp( ri.threshold + ri.slope*(1.0-oe_splat_slope), 0.0, 1.0); \n"
+        "    float noiseADJ = pow(env.noise, 1.0-ri.saturation); \n"
+        "    float threshADJ = clamp( ri.threshold + ri.slope*(1.0-oe_splat_slope), 0.0, 1.0); \n"
         "#endif\n"
-        "        if ( noiseADJ > threshADJ ) \n"
-        "        { \n"
-        "            result = oe_splat_getTexel(ri.detailIndex, tc); \n"
-        "            result.a = clamp((noiseADJ-threshADJ)/(1.0-threshADJ),0.0,1.0); \n"
-        "        } \n"
-        "    } \n"
+        "    vec4 result = oe_splat_getTexel( max(ri.detailIndex,0), tc); \n"
+        "    result.a = clamp((noiseADJ-threshADJ)/(1.0-threshADJ),0.0,1.0); \n"
         "    return result; \n"
         "} \n"
 
@@ -185,6 +183,7 @@ namespace
         "vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env) \n"
         "{ \n"
         "    vec2 warped_tc = oe_splat_warpCoverageCoords(0, splat_tc);\n"
+        //"    vec2 warped_tc = oe_splat_covtc;\n"//oe_splat_warpCoverageCoords(0, splat_tc);\n"
         "    float pixelWidth = oe_splat_blur/256.0; \n"
         "    float halfPixelWidth = 0.5*pixelWidth; \n"
 
@@ -222,30 +221,21 @@ namespace
         "    vec3 se_primary = oe_splat_getTexel(ri_se.primaryIndex, splat_tc).rgb; \n"
         "    vec3 ne_primary = oe_splat_getTexel(ri_ne.primaryIndex, splat_tc).rgb; \n"
         "    vec3 nw_primary = oe_splat_getTexel(ri_nw.primaryIndex, splat_tc).rgb; \n"
-
-        "    if (env.range < oe_splat_detail_range) \n"
-        "    { \n"
+        
         // Detail splat - weighting is in the alpha channel
-        "        vec4 sw_detail = oe_splat_getDetailTexel(ri_sw, splat_tc, env); \n"
-        "        vec4 se_detail = oe_splat_getDetailTexel(ri_se, splat_tc, env); \n"
-        "        vec4 ne_detail = oe_splat_getDetailTexel(ri_ne, splat_tc, env); \n"
-        "        vec4 nw_detail = oe_splat_getDetailTexel(ri_nw, splat_tc, env); \n"
+        // TODO: Pointless to have a detail range? -gw
+        "    float detailToggle = env.range < oe_splat_detail_range ? 1.0 : 0.0;\n"
+        "    vec4 sw_detail = detailToggle * oe_splat_getDetailTexel(ri_sw, splat_tc, env); \n"
+        "    vec4 se_detail = detailToggle * oe_splat_getDetailTexel(ri_se, splat_tc, env); \n"
+        "    vec4 ne_detail = detailToggle * oe_splat_getDetailTexel(ri_ne, splat_tc, env); \n"
+        "    vec4 nw_detail = detailToggle * oe_splat_getDetailTexel(ri_nw, splat_tc, env); \n"
 
-        // Combine them based on their weighting:
-        "        texel.rgb = \n"
-        "            sw_weight * mix(sw_primary, sw_detail.rgb, sw_detail.a) + \n"
-        "            se_weight * mix(se_primary, se_detail.rgb, se_detail.a) + \n"
-        "            ne_weight * mix(ne_primary, ne_detail.rgb, ne_detail.a) + \n"
-        "            nw_weight * mix(nw_primary, nw_detail.rgb, nw_detail.a); \n"
-        "    } \n"
-        "    else \n"
-        "    { \n"
-        "        texel.rgb = \n"
-        "            sw_weight * sw_primary + \n"
-        "            se_weight * se_primary + \n"
-        "            ne_weight * ne_primary + \n"
-        "            nw_weight * nw_primary; \n"
-        "    } \n"
+        // Combine everything based on weighting:
+        "    texel.rgb = \n"
+        "        sw_weight * mix(sw_primary, sw_detail.rgb, sw_detail.a) + \n"
+        "        se_weight * mix(se_primary, se_detail.rgb, se_detail.a) + \n"
+        "        ne_weight * mix(ne_primary, ne_detail.rgb, ne_detail.a) + \n"
+        "        nw_weight * mix(nw_primary, nw_detail.rgb, nw_detail.a); \n"
 
         "    return texel; \n"
         "} \n"
@@ -254,11 +244,11 @@ namespace
         // Snow splatter. This will whiten the texel based on elevation.
         "void oe_splat_winter(in vec2 splat_tc, in oe_SplatEnv env, inout vec4 texel) \n"
         "{ \n"
-        "    if ( env.elevation > oe_splat_snow ) \n"
+        "    float snowToggle = env.elevation > oe_splat_snow ? 1.0 : 0.0;\n"
         "    { \n"
         "        float snowiness = clamp(max(0.0, env.elevation-oe_splat_snow)/oe_splat_snow, 0.0, 0.8); \n"
         "        vec4 snow = vec4(1,1,1,1); \n"
-        "        texel.rgb = mix(texel.rgb, snow.rgb, snowiness); \n"
+        "        texel.rgb = mix(texel.rgb, snow.rgb, snowiness*snowToggle); \n"
         "    } \n"
         "} \n"
 
@@ -281,13 +271,13 @@ namespace
         "    vec2 result = oe_layer_tilec.st * scale; \n"
 
         // For upsampling we need to calculate an offset as well
-        "    if ( factor >= 1.0 ) \n"
+        "    float upSampleToggle = clamp(floor(factor), 0.0, 1.0);\n" // if (factor >= 1.0)
         "    { \n"
         "        vec2 a = floor(oe_tile_key.xy / factor); \n"
         "        vec2 b = a * factor; \n"
         "        vec2 c = (a+1.0) * factor; \n"
         "        vec2 offset = (oe_tile_key.xy-b)/(c-b); \n"
-        "        result += offset; \n"
+        "        result += upSampleToggle * offset; \n"
         "    } \n"
 
         "    return result; \n"
@@ -296,11 +286,9 @@ namespace
         // Main entry point for fragment shader.
         "void oe_splat_fragment(inout vec4 color) \n"
         "{ \n"
-        "    float scaleOffset = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset); \n"
-
         // Populate the environment:
-        "    float elevation = texture2D(oe_terrain_tex, oe_layer_tilec.st).r; \n"
-        "    float noise = oe_splat_getNoise(oe_splat_covtc); \n"
+        "    float noise = oe_splat_getNoise(oe_splat_covtc); \n" //TODO: use a texture instead; VERY EXPENSIVE
+        "    float elevation = texture2D(oe_terrain_tex, oe_layer_tilec.st).r; \n" //TODO: eliminate if unused
         "    oe_SplatEnv env = oe_SplatEnv(oe_splat_range, elevation, noise); \n"
 
         // Mapping of view ranges to splat texture levels of detail.
@@ -312,7 +300,7 @@ namespace
         "    float d = clamp(oe_splat_range, ranges[0], ranges[RANGE_COUNT-1]); \n"
 
         "    vec4 texel; \n"
-        "    bool bilinear = d < oe_splat_blending_range; \n"
+        //"    bool bilinear = d < oe_splat_blending_range; \n"
 
         // Find the 2 ranges bookending the camera range, and blend between then.
         // TODO: replace bilinear with nearest for far ranges?
@@ -320,13 +308,13 @@ namespace
         "    { \n"
         "        if ( d >= ranges[i] && d <= ranges[i+1] ) \n"
         "        { \n"
-        "            float lod0 = lods[i] + scaleOffset; \n"
+        "            float lod0 = lods[i] + oe_splat_scaleOffsetInt; \n"
         "            vec2 splat_tc0 = oe_splat_getSplatCoords(lod0); \n"
-        "            vec4 texel0 = bilinear ? oe_splat_bilinear(splat_tc0, env) : oe_splat_nearest(splat_tc0, env); \n"
+        "            vec4 texel0 = oe_splat_bilinear(splat_tc0, env); \n" //bilinear ? oe_splat_bilinear(splat_tc0, env) : oe_splat_nearest(splat_tc0, env); \n"
         
-        "            float lod1 = lods[i+1] + scaleOffset; \n"
+        "            float lod1 = lods[i+1] + oe_splat_scaleOffsetInt; \n"
         "            vec2 splat_tc1 = oe_splat_getSplatCoords(lod1); \n"
-        "            vec4 texel1 = bilinear ? oe_splat_bilinear(splat_tc1, env) : oe_splat_nearest(splat_tc1, env); \n"
+        "            vec4 texel1 = oe_splat_bilinear(splat_tc1, env);\n"//bilinear ? oe_splat_bilinear(splat_tc1, env) : oe_splat_nearest(splat_tc1, env); \n"
 
         "            float r = (d-ranges[i])/(ranges[i+1]-ranges[i]); \n"
         "            texel = mix(texel0, texel1, r); \n"

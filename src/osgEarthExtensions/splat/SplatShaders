@@ -32,6 +32,9 @@ namespace
         // from the terrain engine
         "varying vec4 oe_layer_tilec; \n"
         "varying vec3 oe_Normal; \n"
+
+        // xyz = up vector, w = elevation
+        "attribute vec4 oe_terrain_attr; \n"
         
         "uniform mat4 osg_ViewMatrixInverse; \n"
         "uniform mat4 $COVERAGE_TEXMAT_UNIFORM; \n"
@@ -56,9 +59,8 @@ namespace
 
         // calculate the approximate slope of the terrain at this vert.
         // [0..1] where 0=flat and 1=vertical.
-        "    vec4 w4 = osg_ViewMatrixInverse * VertexVIEW; \n"
-        //"    vec3 w3 = normalize(w4.xyz/w4.w); \n" // probably unnecessary
-        "    oe_splat_slope = 1.0-dot( normalize(gl_NormalMatrix*w4.xyz), oe_Normal ); \n"
+        "    vec3 upView = gl_NormalMatrix * oe_terrain_attr.xyz; \n"
+        "    oe_splat_slope = 1.0-dot(upView, oe_Normal); \n"
         "} \n";
 
 
@@ -82,6 +84,7 @@ namespace
         "uniform float oe_splat_intensity; \n"
         "uniform float oe_splat_warp; \n"
         "uniform float oe_splat_blur; \n"
+        "uniform float oe_splat_covlod; \n"
         "uniform sampler2D oe_splat_coverage_tex; \n"
         "uniform sampler2DArray oe_splat_tex; \n"
 
@@ -146,6 +149,8 @@ namespace
         // Returns the weighting factor in the alpha channel.
         "vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEnv env) \n"
         "{ \n"
+        // TODO: pow() function is slow. Consider something faster
+        "    float hasDetail = ri.detailIndex >= 0.0 ? 1.0 : 0.0;\n"
         "#ifdef SPLAT_EDIT\n"
         "    float noiseADJ = pow(env.noise, 1.0-oe_splat_saturate);\n"
         "    float threshADJ = clamp( oe_splat_thresh + oe_splat_slopeFactor*(1.0-oe_splat_slope), 0.0, 1.0); \n"
@@ -154,7 +159,7 @@ namespace
         "    float threshADJ = clamp( ri.threshold + ri.slope*(1.0-oe_splat_slope), 0.0, 1.0); \n"
         "#endif\n"
         "    vec4 result = oe_splat_getTexel( max(ri.detailIndex,0), tc); \n"
-        "    result.a = clamp((noiseADJ-threshADJ)/(1.0-threshADJ),0.0,1.0); \n"
+        "    result.a = hasDetail * clamp((noiseADJ-threshADJ)/(1.0-threshADJ),0.0,1.0); \n"
         "    return result; \n"
         "} \n"
 
@@ -167,7 +172,8 @@ namespace
         "    float threshold = 0.0; \n"  // default noise function threshold
         "    float slope = 0.0; \n"      // default slope integration factor
         "    float value = 255.0 * texture2D(oe_splat_coverage_tex, tc).r; \n"
-        "$COVERAGE_SELECT_INDICES"
+        //"    float value = 255.0 * texture2DLod(oe_splat_coverage_tex, tc, int(oe_splat_covlod)).r; \n"
+        "$COVERAGE_BUILD_RENDER_INFO"
         "    return oe_SplatRenderInfo(primary, detail, saturation, threshold, slope); \n"
         "}\n"
 
@@ -182,8 +188,8 @@ namespace
         // Generates a texel using bilinear filtering on the coverage data.
         "vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env) \n"
         "{ \n"
+             //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
         "    vec2 warped_tc = oe_splat_warpCoverageCoords(0, splat_tc);\n"
-        //"    vec2 warped_tc = oe_splat_covtc;\n"//oe_splat_warpCoverageCoords(0, splat_tc);\n"
         "    float pixelWidth = oe_splat_blur/256.0; \n"
         "    float halfPixelWidth = 0.5*pixelWidth; \n"
 
@@ -253,7 +259,7 @@ namespace
         "} \n"
 
         // Gets the noise value at the given coordinates.
-        // TODO: "if" this to use a texture versus the noise function.
+        // TODO: change this to use a texture versus the noise function. Noise is EXPENSIVE
         "float oe_splat_getNoise(in vec2 tc) \n"
         "{ \n"
         "    float n = oe_noise_fractal_2d(tc, oe_splat_freq, oe_splat_pers, oe_splat_lac, int(oe_splat_octaves)); \n"
@@ -265,15 +271,18 @@ namespace
         // because otherwise you run into single-precision jitter at high LODs.
         "vec2 oe_splat_getSplatCoords(float lod)"
         "{ \n"
+             //TODO: move the computation of "factor" to the vertex shader to avoid the expensive pow?
+             // or perhaps convert it to a const lookup table?
         "    float dL = oe_tile_key.z - lod; \n"
-        "    float factor = pow(2.0, dL); \n"
-        "    vec2 scale = vec2(1.0/factor); \n"
+        "    float factor = exp2(dL); \n"
+        "    float invFactor = 1.0/factor; \n"
+        "    vec2 scale = vec2(invFactor); \n"
         "    vec2 result = oe_layer_tilec.st * scale; \n"
 
         // For upsampling we need to calculate an offset as well
-        "    float upSampleToggle = clamp(floor(factor), 0.0, 1.0);\n" // if (factor >= 1.0)
+        "    float upSampleToggle = factor >= 1.0 ? 1.0 : 0.0;\n"
         "    { \n"
-        "        vec2 a = floor(oe_tile_key.xy / factor); \n"
+        "        vec2 a = floor(oe_tile_key.xy * invFactor); \n"
         "        vec2 b = a * factor; \n"
         "        vec2 c = (a+1.0) * factor; \n"
         "        vec2 offset = (oe_tile_key.xy-b)/(c-b); \n"

@@ -116,7 +116,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             // Configure the fragment shader:
             std::string fragmentShader = splatFragmentShader;
             std::string samplingCode = generateSamplingCode();
-            osgEarth::replaceIn( fragmentShader, "$COVERAGE_SELECT_INDICES", samplingCode );
+            osgEarth::replaceIn( fragmentShader, "$COVERAGE_BUILD_RENDER_INFO", samplingCode );
 
             if ( _edit )
                 osgEarth::replaceIn( fragmentShader, "$SPLAT_EDIT", "#define SPLAT_EDIT 1\n" );

@@ -178,8 +178,8 @@ ImageUtils::createBumpMap(const osg::Image* input)
 }
 
 bool
-ImageUtils::resizeImage(const osg::Image* input, 
-                        unsigned int out_s, unsigned int out_t, 
+ImageUtils::resizeImage(const osg::Image* input,
+                        unsigned int out_s, unsigned int out_t,
                         osg::ref_ptr<osg::Image>& output,
                         unsigned int mipmapLevel,
                         bool bilinear)
@@ -298,7 +298,19 @@ ImageUtils::resizeImage(const osg::Image* input,
                     }
                     else
                     {
-                        color = read( (int)input_col, (int)input_row, layer ); // read pixel from mip level 0
+                        // nearest neighbor:
+                        int col = (input_col-(int)input_col) <= (ceil(input_col)-input_col) ?
+                            (int)input_col :
+                            std::min( 1+(int)input_col, (int)in_s-1 );
+
+                        int row = (input_row-(int)input_row) <= (ceil(input_row)-input_row) ?
+                            (int)input_row :
+                            std::min( 1+(int)input_row, (int)in_t-1 );
+
+                        color = read(col, row, layer); // read pixel from mip level 0.
+
+                        // old code
+                        //color = read( (int)input_col, (int)input_row, layer ); // read pixel from mip level 0
                     }
 
                     write( color, output_col, output_row, layer, mipmapLevel ); // write to target mip level
@@ -341,6 +353,59 @@ ImageUtils::flattenImage(osg::Image*                             input,
     }
 
     return true;
+}
+
+osg::Image*
+ImageUtils::buildNearestNeighborMipmaps(const osg::Image* input)
+{
+    // first, build the image that will hold all the mipmap levels.
+    int numMipmapLevels = osg::Image::computeNumberOfMipmapLevels( input->s(), input->t() );
+    int pixelSizeBytes  = osg::Image::computeRowWidthInBytes( input->s(), input->getPixelFormat(), input->getDataType(), input->getPacking() ) / input->s();
+    int totalSizeBytes  = 0;
+    std::vector< unsigned int > mipmapDataOffsets;
+
+    mipmapDataOffsets.reserve( numMipmapLevels-1 );
+
+    for( int i=0; i<numMipmapLevels; ++i )
+    {
+        if ( i > 0 )
+            mipmapDataOffsets.push_back( totalSizeBytes );
+
+        int level_s = input->s() >> i;
+        int level_t = input->t() >> i;
+        int levelSizeBytes = level_s * level_t * pixelSizeBytes;
+
+        totalSizeBytes += levelSizeBytes;
+    }
+
+    unsigned char* data = new unsigned char[totalSizeBytes];
+
+    osg::ref_ptr<osg::Image> result = new osg::Image();
+    result->setImage(
+        input->s(), input->t(), 1,
+        input->getInternalTextureFormat(), 
+        input->getPixelFormat(), 
+        input->getDataType(), 
+        data, osg::Image::USE_NEW_DELETE );
+
+    result->setMipmapLevels( mipmapDataOffsets );
+
+    // now, populate the image levels.
+    int level_s = input->s();
+    int level_t = input->t();
+
+    osg::ref_ptr<const osg::Image> input2 = input;
+    for( int level=0; level<numMipmapLevels; ++level )
+    {
+        osg::ref_ptr<osg::Image> temp;
+        ImageUtils::resizeImage(input2, level_s, level_t, result, level, false);
+        ImageUtils::resizeImage(input2, level_s, level_t, temp, 0, false);
+        level_s >>= 1;
+        level_t >>= 1;
+        input2 = temp.get();
+    }
+
+    return result.release();
 }
 
 osg::Image*

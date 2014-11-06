@@ -135,7 +135,15 @@ _fallbackData( fallbackData )
 
     if (image->r() <= 1)
     {
-        _texture = new osg::Texture2D( image );
+        if ( layer->isCoverage() )
+        {
+            osg::ref_ptr<osg::Image> imageWithMM = ImageUtils::buildNearestNeighborMipmaps(image);
+            _texture = new osg::Texture2D( imageWithMM.get() );
+        }
+        else
+        {
+            _texture = new osg::Texture2D( image );
+        }
     }
     else // image->r() > 1
     {
@@ -167,7 +175,8 @@ _fallbackData( fallbackData )
     {
         // coverages: no filtering or compression allowed.
         _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-        _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
+        //_texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST_MIPMAP_NEAREST);
+        _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST);
         _texture->setMaxAnisotropy( 1.0f );
     }
     else

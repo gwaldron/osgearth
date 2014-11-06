@@ -799,21 +799,16 @@ MPTerrainEngineNode::updateState()
                 << (useTerrainColor ?
                 "    color = oe_terrain_color; \n" : ""
                 ) <<
-                "    vec4 texel; \n"
-                "    if ( oe_layer_uid >= 0 ) { \n"
-                "        texel = texture2D(oe_layer_tex, oe_layer_texc.st); \n"
-                "        texel.a *= oe_layer_opacity; \n"
-                "    } \n"
-                "    else { \n"
-                "        texel = color; \n"
-                "    }\n"
+                "    float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;\n"
+                "    vec4 texel = mix(color, texture2D(oe_layer_tex, oe_layer_texc.st), applyImagery); \n"
+                "    texel.a = mix(texel.a, texel.a*oe_layer_opacity, applyImagery); \n"
+
                 << (useBlending ?
-                "    if ( oe_layer_order == 0 ) { \n"
-                "        color = texel*texel.a + color*(1.0-texel.a); \n" // simulate src_alpha, 1-src_alpha blens
-                "    } \n"
-                "    else \n" : ""
-                ) <<
-                "        color = texel; \n"
+                "    float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0; \n"
+                "    color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer); \n"
+                :
+                "    color = texel; \n"
+                    ) <<
                 "} \n";
 
             // Color filter frag function:

@@ -78,8 +78,7 @@
 				"image": "barren.jpg",
 				"detail" : {
 					"image"      : "rock_dark.jpg",
-					"saturation" : 1.0,
-					"threshold"  : 0.7
+					"saturation" : 0.98
 				}
 			}
         ],

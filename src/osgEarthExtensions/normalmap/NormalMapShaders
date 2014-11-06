@@ -29,31 +29,24 @@ namespace
 
         \n#version 110\n
 
-        varying vec3 oe_nmap_up;
-        varying vec3 oe_nmap_tangent;
-        varying vec3 oe_nmap_bitangent;
+        attribute vec4 oe_terrain_attr;
+        varying vec3 oe_Normal;
 
-        uniform mat4 osg_ViewMatrixInverse;
+        varying vec3 oe_nmap_T;
+        varying vec3 oe_nmap_B;
+        varying vec3 oe_nmap_N;
+        varying float oe_nmap_slope;
 
-        void oe_nmap_vertex(inout vec4 VertexMODEL)
+        void oe_nmap_vertex(inout vec4 VertexVIEW)
         {
-            vec4 VertexVIEW = gl_ModelViewMatrix * VertexMODEL;
-            vec3 world = normalize((osg_ViewMatrixInverse * VertexVIEW).xyz);
-            vec3 t = cross(world, vec3(0,0,1));
-            vec3 b = cross(world, t);
+            vec3 t = cross(vec3(0,0,1), oe_terrain_attr.xyz); // geocentric only
+            vec3 b = cross(oe_terrain_attr.xyz, t);
 
-            // note: I think the following statement is a lie, the tile is translated but
-            // not rotated by the engine. Need to change that. So in the meantime, we'll
-            // just cheat and use the world up vector
-            // since a terrain tile is always local x-east, tangent vector is:
-//            vec3 t = cross(gl_Normal, vec3(0,-1,0));
-//            vec3 b = cross(gl_Normal, t);
-
-            // convert to view space
-            oe_nmap_tangent = normalize(gl_NormalMatrix * t);
-            oe_nmap_bitangent = normalize(gl_NormalMatrix * b);
-
-            oe_nmap_up = gl_NormalMatrix * world;
+            oe_nmap_T = normalize(t);
+            oe_nmap_B = normalize(b);
+            oe_nmap_N = oe_terrain_attr.xyz;
+            
+            oe_nmap_slope = clamp(2.5*(1.0-dot(gl_NormalMatrix * oe_terrain_attr.xyz, oe_Normal)),0.0,1.0);
         }
     );
 
@@ -66,45 +59,63 @@ namespace
 
         vec3 oe_global_Normal;
 
+        uniform vec4 oe_tile_key;
         uniform sampler2D oe_nmap_tex;
         uniform float oe_nmap_intensity;
         uniform float oe_nmap_scale;
+        
+        varying vec3 oe_nmap_T;
+        varying vec3 oe_nmap_B;
+        varying vec3 oe_nmap_N;
 
-        // from vertex shader
         varying vec3 oe_nmap_up;
-        varying vec3 oe_nmap_tangent;
-        varying vec3 oe_nmap_bitangent;
-
+        varying float oe_nmap_slope;
         varying vec4 oe_layer_tilec;
+
+        vec2 oe_nmap_scaleCoords(in vec2 coords, in float targetLOD)
+        {            
+            float dL = oe_tile_key.z - targetLOD;
+            float factor = exp2(dL);
+            float invFactor = 1.0/factor;
+            vec2 scale = vec2(invFactor);
+            vec2 result = coords * scale;
+
+            // For upsampling we need to calculate an offset as well\n
+            float upSampleToggle = factor >= 1.0 ? 1.0 : 0.0;
+            {
+                vec2 a = floor(oe_tile_key.xy * invFactor);
+                vec2 b = a * factor;
+                vec2 c = (a+1.0) * factor;
+                vec2 offset = (oe_tile_key.xy-b)/(c-b);
+                result += upSampleToggle * offset;
+            }
+
+            return result;
+        }
 
         void oe_nmap_fragment(inout vec4 color)
         {
-            // quantize the scale factor
+            // quantize the scale factor\n
             float iscale = float(int(oe_nmap_scale));
-
-            float intensity = oe_nmap_intensity;
-
-            // The TBN "matrix" takes a vector from view space into tangent space.
-            vec3 T = normalize(oe_nmap_tangent);
-            vec3 B = normalize(oe_nmap_bitangent);
-            vec3 N = normalize(oe_global_Normal);
     
-            // sample the bump map, which is in model space.
-            vec3 bump = normalize(texture2D(oe_nmap_tex, oe_layer_tilec.st*iscale).xyz * 2.0 - 1.0);
+            // scale sampling coordinates to a target LOD.
+            const float targetLOD = 13.0;
+            vec2 coords = oe_nmap_scaleCoords(oe_layer_tilec.st, targetLOD);
 
-            // model to view space:
-            bump = gl_NormalMatrix * bump;
+            // sample the bump map, which is in tangent space.
+            vec3 bump = normalize(texture2D(oe_nmap_tex, coords.st*iscale).xyz * 2.0 - 1.0);
 
-            //// view to tangent space:
-            //bump = normalize(vec3(dot(bump,T), dot(bump,B), dot(bump,N)));
+            // The TBN "matrix" xforms tangent space vector to model space:
+            vec3 T = normalize(oe_nmap_T);
+            vec3 B = normalize(oe_nmap_B);
+            vec3 N = normalize(oe_nmap_N);
 
-            // just for fun.
-            float slope = 2.0 * (1.0-dot(N, normalize(oe_nmap_up)));
+            // Transform the bump vector: tangent->model->view.
+            bump = normalize(gl_NormalMatrix * vec3(dot(bump,T), dot(bump,B), dot(bump,N)));
 
             // permute the normal with the bump.
-            oe_global_Normal = normalize(oe_global_Normal + bump*intensity*slope);
+            oe_global_Normal = normalize(oe_global_Normal + bump*oe_nmap_intensity*oe_nmap_slope);
         }
-
 
     );
 }

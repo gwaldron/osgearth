@@ -1232,7 +1232,7 @@ GeoExtent(extent)
 
 DataExtent::DataExtent(const osgEarth::GeoExtent& extent, unsigned minLevel) :
 GeoExtent(extent),
-_maxLevel( 0 )
+_maxLevel( 25 )
 {
     _minLevel = minLevel;
 }
@@ -1240,7 +1240,7 @@ _maxLevel( 0 )
 DataExtent::DataExtent(const osgEarth::GeoExtent& extent ) :
 GeoExtent(extent),
 _minLevel( 0 ),
-_maxLevel( 0 )
+_maxLevel( 25 )
 {
     //nop
 }

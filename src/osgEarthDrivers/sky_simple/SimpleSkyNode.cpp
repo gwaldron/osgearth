@@ -676,7 +676,7 @@ SimpleSkyNode::makeStars()
 
     _stars = buildStarGeometry(stars);
 
-    // make the moon's transform:
+    // make the stars' transform:
     _starsXform = new osg::MatrixTransform();
     _starsXform->addChild( _stars.get() );
 
@@ -738,7 +738,7 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
     osg::Program* program = new osg::Program;
     program->addShader( new osg::Shader(osg::Shader::VERTEX, starVertSource) );
     program->addShader( new osg::Shader(osg::Shader::FRAGMENT, starFragSource) );
-    sset->setAttributeAndModes( program, osg::StateAttribute::ON );
+    sset->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 
     sset->setRenderBinDetails( BIN_STARS, "RenderBin");
     sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
@@ -751,6 +751,7 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
     osg::Camera* cam = new osg::Camera();
     cam->getOrCreateStateSet()->setRenderBinDetails( BIN_STARS, "RenderBin" );
     cam->setRenderOrder( osg::Camera::NESTED_RENDER );
+    cam->setNearFarRatio(1e-9);
     cam->setComputeNearFarMode( osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES );
     cam->addChild( starGeode );
 

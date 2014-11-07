@@ -135,12 +135,27 @@ _fallbackData( fallbackData )
 
     if (image->r() <= 1)
     {
-        if ( layer->isCoverage() )
-        {
-            osg::ref_ptr<osg::Image> imageWithMM = ImageUtils::buildNearestNeighborMipmaps(image);
-            _texture = new osg::Texture2D( imageWithMM.get() );
-        }
-        else
+        // won't work, needs to be pre-compositing
+        //if ( layer->isCoverage() )
+        //{
+        //    // for coverage data, quantize the alpha values to some arbitrary level for now
+        //    ImageUtils::PixelReader read(image);
+        //    ImageUtils::PixelWriter write(image);
+        //    for(int s=0; s<image->s(); ++s) {
+        //        for(int t=0; t<image->t(); ++t) {
+        //            osg::Vec4f rgba = read(s,t);
+        //            rgba.a() = rgba.a() < 0.2 ? 0.0 : 1.0;
+        //            write(rgba, s, t);
+        //        }
+        //    }
+        //}
+
+        //if ( layer->isCoverage() )
+        //{
+        //    osg::ref_ptr<osg::Image> imageWithMM = ImageUtils::buildNearestNeighborMipmaps(image);
+        //    _texture = new osg::Texture2D( imageWithMM.get() );
+        //}
+        //else
         {
             _texture = new osg::Texture2D( image );
         }
@@ -178,6 +193,9 @@ _fallbackData( fallbackData )
         //_texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST_MIPMAP_NEAREST);
         _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST);
         _texture->setMaxAnisotropy( 1.0f );
+
+        // testing: to support upsampling.
+        //_texture->setUnRefImageDataAfterApply( false );
     }
     else
     {

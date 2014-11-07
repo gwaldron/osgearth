@@ -36,7 +36,6 @@ namespace
         // xyz = up vector, w = elevation
         "attribute vec4 oe_terrain_attr; \n"
         
-        "uniform mat4 osg_ViewMatrixInverse; \n"
         "uniform mat4 $COVERAGE_TEXMAT_UNIFORM; \n"
         "uniform float oe_splat_scaleOffset; \n"
 
@@ -188,33 +187,42 @@ namespace
         // Generates a texel using bilinear filtering on the coverage data.
         "vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env) \n"
         "{ \n"
+        "    vec4 texel = vec4(0,0,0,1); \n"
+
              //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
         "    vec2 warped_tc = oe_splat_warpCoverageCoords(0, splat_tc);\n"
+
         "    float pixelWidth = oe_splat_blur/256.0; \n"
         "    float halfPixelWidth = 0.5*pixelWidth; \n"
-
-        "    vec4 texel = vec4(0,0,0,1); \n"
+        "    float pixelWidth2 = pixelWidth*pixelWidth; \n"
         
         // Find the four quantized coverage coordinates that form a box around the actual
         // coverage coordinates, where each quantized coord is at the center of a coverage texel.
-        "    vec2 sw = vec2(0); \n"
-        "    vec2 ne = vec2(0); \n"
         "    vec2 rem = mod(warped_tc, pixelWidth); \n"
+        "    vec2 sw = vec2(0); \n"
         "    sw.x = warped_tc.x - rem.x + (rem.x >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth); \n"
         "    sw.y = warped_tc.y - rem.y + (rem.y >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth); \n"
-        "    ne = sw + pixelWidth; \n"
+        "    vec2 ne = sw + pixelWidth; \n"
         "    vec2 nw = vec2(sw.x, ne.y); \n"
         "    vec2 se = vec2(ne.x, sw.y); \n"
 
-        // Calculate the four corner weights.
-        // Weighting of each coverage sample is the distance from the actual coord to the center point.
-        "    vec2 ll_weight = 1.0-(abs(warped_tc-sw)/pixelWidth); \n"
-        "    vec2 ur_weight = 1.0-ll_weight; \n"
-        
-        "    float sw_weight = ll_weight.x * ll_weight.y; \n"
-        "    float se_weight = ur_weight.x * ll_weight.y; \n"
-        "    float ne_weight = ur_weight.x * ur_weight.y; \n"
-        "    float nw_weight = ll_weight.x * ur_weight.y; \n"
+        // Calculate the weighting for each corner.
+        "    vec2 dsw = warped_tc-sw;\n"
+        "    vec2 dse = warped_tc-se;\n"
+        "    vec2 dne = warped_tc-ne;\n"
+        "    vec2 dnw = warped_tc-nw;\n"
+
+        "    float sw_weight = max(pixelWidth2-dot(dsw,dsw),0.0); \n"
+        "    float se_weight = max(pixelWidth2-dot(dse,dse),0.0); \n"
+        "    float ne_weight = max(pixelWidth2-dot(dne,dne),0.0); \n"
+        "    float nw_weight = max(pixelWidth2-dot(dnw,dnw),0.0); \n"
+
+        // normalize the weights so they total 1.0
+        "    float invTotalWeight = 1.0/(sw_weight+se_weight+ne_weight+nw_weight);\n"
+        "    sw_weight *= invTotalWeight; \n"
+        "    se_weight *= invTotalWeight; \n"
+        "    ne_weight *= invTotalWeight; \n"
+        "    nw_weight *= invTotalWeight; \n"
 
         // Sample coverage values using quantized corner coords:
         "    oe_SplatRenderInfo ri_sw = oe_splat_getRenderInfo( clamp(sw, 0.0, 1.0), env ); \n"

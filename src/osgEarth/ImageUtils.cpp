@@ -21,6 +21,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Random>
 #include <osg/Notify>
 #include <osg/Texture>
 #include <osg/ImageSequence>
@@ -669,6 +670,119 @@ ImageUtils::createOnePixelImage(const osg::Vec4& color)
     PixelWriter write(image);
     write(color, 0, 0);
     return image;
+}
+
+osg::Image*
+ImageUtils::upSampleNN(const osg::Image* src, int quadrant)
+{
+    int soff = quadrant == 0 || quadrant == 2 ? 0 : src->s()/2;
+    int toff = quadrant == 2 || quadrant == 3 ? 0 : src->t()/2;
+    osg::Image* dst = new osg::Image();
+    dst->allocateImage(src->s(), src->t(), 1, src->getPixelFormat(), src->getDataType(), src->getPacking());
+
+    PixelReader readSrc(src);
+    PixelWriter writeDst(dst);
+
+    // first, copy the quadrant into the new image at every other pixel (s and t).
+    for(int s=0; s<src->s()/2; ++s)
+    {
+        for(int t=0; t<src->t()/2; ++t)
+        {           
+            writeDst(readSrc(soff+s,toff+t), 2*s, 2*t);
+        }
+    }
+
+    // next fill in the rows - simply copy the pixel from the left.
+    PixelReader readDst(dst);
+    int seed = *(int*)dst->data(0,0);
+
+    Random rng(seed+quadrant);
+    int c = 0;
+
+    for(int t=0; t<dst->t(); t+=2)
+    {
+        for(int s=1; s<dst->s(); s+=2)
+        {
+            int ss = rng.next(2)%2 && s<dst->s()-1 ? s+1 : s-1;
+            writeDst( readDst(ss,t), s, t );
+        }
+    }
+
+    // fill in the columns - copy the pixel above.
+    for(int t=1; t<dst->t(); t+=2)
+    {
+        for(int s=0; s<dst->s(); s+=2)
+        {
+            int tt = rng.next(2)%2 && t<dst->t()-1 ? t+1 : t-1;
+            writeDst( readDst(s,tt), s, t );
+        }
+    }
+
+    // fill in the LRs.
+    for(int t=1; t<dst->t(); t+=2)
+    {
+        bool last_t = t+2 >= dst->t();
+        for(int s=1; s<dst->s(); s+=2)
+        {
+            bool last_s = s+2 >= dst->s();
+
+            if (!last_s && !last_t)
+            {
+                bool d1 = readDst(s-1,t-1)==readDst(s+1,t+1);
+                bool d2 = readDst(s-1,t+1)==readDst(s+1,t-1);
+
+                if (d1 && !d2)
+                {
+                    writeDst( readDst(s-1,t-1), s, t);
+                }
+                else if (!d1 && d2)
+                {
+                    writeDst( readDst(s+1,t-1), s, t);
+                }
+                else if (d1 && d2)
+                {
+                    writeDst( readDst(s-1,t-1), s, t);
+                }
+                else
+                {
+                    int ss = rng.next(2)%2 ? s+1 : s-1, tt = rng.next(2)%2 ? t+1 : t-1;
+                    //int ss = (c++)%2? s+1, s-1, tt = (c++)%2? t+1 : t-1;
+                    writeDst( readDst(ss, tt), s, t );
+                }
+
+            }
+            else if ( last_s && !last_t )
+            {
+                writeDst( readDst(s,t-1), s, t );
+                //if ( readDst(s, t-1) == readDst(s, t+1) )
+                //{
+                //    writeDst( readDst(s, t-1), s, t );
+                //}
+                //else
+                //{
+                //    writeDst( readDst(s-1, t-1), s, t );
+                //}
+            }
+            else if ( !last_s && last_t )
+            {
+                writeDst( readDst(s-1,t), s, t );
+                //if ( readDst(s-1, t) == readDst(s+1, t) )
+                //{
+                //    writeDst( readDst(s-1,t), s, t );
+                //}
+                //else
+                //{
+                //    writeDst( readDst(s-1,t-1), s, t );
+                //}
+            }
+            else
+            {
+                writeDst( readDst(s-1,t-1), s, t);
+            }
+        }
+    }
+
+    return dst;
 }
 
 bool

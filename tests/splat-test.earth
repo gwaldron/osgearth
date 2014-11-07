@@ -13,11 +13,52 @@
     <elevation name="readymap_elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
-
+	
     <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true" enabled="true">
         <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
         <cache_policy usage="none"/>
     </image>
+	
+	<image name="GLOBCOVER2" driver="agglite" shared="true" visible="false" coverage="true" enabled="false">
+		<features driver="ogr" build_spatial_index="true">
+			<url>H:/data/naturalearth/vector-10m/ne_10m_rivers_lake_centerlines_scale_rank.shp</url>
+		</features>
+		<gamma>1.0</gamma>
+		<styles>
+			<style type="text/css">
+				default {
+					stroke: #d5d5d5;
+					stroke-width: 25m;
+				}
+			</style>
+		</styles>
+		<cache_policy usage="no_cache"/>
+	</image>
+	
+	<image name="GLOBCOVER3" driver="composite" shared="true" visible="false" coverage="true" enabled="false">
+		
+		<image name="g1" driver="gdal" coverage="true">
+			<url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
+			<cache_policy usage="none"/>
+		</image>
+	
+		<image name="g2" driver="agglite" coverage="true" min_level="8">
+			<features driver="ogr" build_spatial_index="true">
+				<url>H:/data/naturalearth/vector-10m/ne_10m_lakes.shp</url>
+			</features>
+			<gamma>1</gamma>
+			<styles>
+				<style type="text/css">
+					default {
+						fill: #d5d5d5ff;
+					}
+				</style>
+			</styles>
+			<cache_policy usage="no_cache"/>
+		</image>
+		
+		<cache_policy usage="no_cache"/>
+	</image>
 
     <image name="NLCD" driver="gdal" shared="true" visible="false" coverage="true" enabled="false">
         <url>H:/data/NLCD/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>

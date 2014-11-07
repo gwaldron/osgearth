@@ -288,6 +288,11 @@ namespace osgEarth
             osg::Texture::InternalFormatMode& out_mode);
 
         /**
+         * 
+         */
+        static osg::Image* upSampleNN(const osg::Image* src, int quadrant);
+
+        /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader

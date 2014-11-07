@@ -1106,9 +1106,12 @@ namespace
                         {
                             const osg::Vec2& tc = (*d.renderLayers[i]._texCoords.get())[orig_i];
                             d.renderLayers[i]._texCoords->push_back( tc );
-                        }
+                        }                        
                     }
                 }
+
+                const osg::Vec2& tilec = (*d.renderTileCoords.get())[orig_i];
+                d.renderTileCoords->push_back( tilec );
 
                 elements->addElement(orig_i);
                 elements->addElement(skirtVerts->size()-1);
@@ -1151,6 +1154,9 @@ namespace
                     }
                 }
 
+                const osg::Vec2& tilec = (*d.renderTileCoords.get())[orig_i];
+                d.renderTileCoords->push_back( tilec );
+
                 elements->addElement(orig_i);
                 elements->addElement(skirtVerts->size()-1);
             }
@@ -1192,6 +1198,9 @@ namespace
                     }
                 }
 
+                const osg::Vec2& tilec = (*d.renderTileCoords.get())[orig_i];
+                d.renderTileCoords->push_back( tilec );
+
                 elements->addElement(orig_i);
                 elements->addElement(skirtVerts->size()-1);
             }
@@ -1232,6 +1241,9 @@ namespace
                         }
                     }
                 }
+
+                const osg::Vec2& tilec = (*d.renderTileCoords.get())[orig_i];
+                d.renderTileCoords->push_back( tilec );
 
                 elements->addElement(orig_i);
                 elements->addElement(skirtVerts->size()-1);

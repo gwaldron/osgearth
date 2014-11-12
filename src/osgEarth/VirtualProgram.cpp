@@ -27,6 +27,7 @@
 #include <osg/Program>
 #include <osg/State>
 #include <osg/Notify>
+#include <fstream>
 #include <sstream>
 #include <OpenThreads/Thread>
 
@@ -550,7 +551,9 @@ VirtualProgram::VirtualProgram( unsigned mask ) :
 _mask              ( mask ),
 _active            ( true ),
 _inherit           ( true ),
-_inheritSet        ( false )
+_inheritSet        ( false ),
+_logShaders        ( false ),
+_logPath           ( "" )
 {
     // Note: we cannot set _active here. Wait until apply().
     // It will cause a conflict in the Registry.
@@ -580,6 +583,8 @@ _mask              ( rhs._mask ),
 _functions         ( rhs._functions ),
 _inherit           ( rhs._inherit ),
 _inheritSet        ( rhs._inheritSet ),
+_logShaders        ( rhs._logShaders ),
+_logPath           ( rhs._logPath ),
 _template          ( osg::clone(rhs._template.get()) )
 {    
     // Attribute bindings.
@@ -720,6 +725,8 @@ VirtualProgram::setShader(const std::string&                 shaderID,
         setInheritShaders( true );
     }
 
+    checkSharing();
+
     // set the name to the ID:
     shader->setName( shaderID );
 
@@ -767,6 +774,8 @@ VirtualProgram::setShader(osg::Shader*                       shader,
     // lock the data model while changing it.
     {
         Threading::ScopedWriteLock exclusive( _dataModelMutex );
+
+        checkSharing();
         
         ShaderEntry& entry = _shaderMap[shader->getName()];
         entry._shader        = shader;
@@ -803,6 +812,8 @@ VirtualProgram::setFunction(const std::string&           functionName,
     // lock the functions map while iterating and then modifying it:
     {
         Threading::ScopedWriteLock exclusive( _dataModelMutex );
+
+        checkSharing();
 
         OrderedFunctionMap& ofm = _functions[location];
 
@@ -852,6 +863,8 @@ VirtualProgram::setFunctionMinRange(const std::string& name, float minRange)
     // lock the functions map while making changes:
     Threading::ScopedWriteLock exclusive( _dataModelMutex );
 
+    checkSharing();
+
     ShaderComp::Function* function;
     if ( findFunction(name, _functions, &function) )
     {
@@ -864,6 +877,8 @@ VirtualProgram::setFunctionMaxRange(const std::string& name, float maxRange)
 {
     // lock the functions map while making changes:
     Threading::ScopedWriteLock exclusive( _dataModelMutex );
+
+    checkSharing();
 
     ShaderComp::Function* function;
     if ( findFunction(name, _functions, &function) )
@@ -1040,6 +1055,34 @@ VirtualProgram::apply( osg::State& state ) const
                     _template.get(),
                     keyVector);
 
+                if ( _logShaders && program.valid() )
+                {
+                    std::stringstream buf;
+                    for (int i=0; i < program->getNumShaders(); i++)
+                    {
+                        buf << program->getShader(i)->getShaderSource() << std::endl << std::endl;
+                    }
+
+                    if ( _logPath.length() > 0 )
+                    {
+                        std::ofstream outStream;
+                        outStream.open(_logPath.c_str());
+                        if (outStream.fail())
+                        {
+                            OE_WARN << LC << "Unable to open " << _logPath << " for logging shaders." << std::endl;
+                        }
+                        else
+                        {
+                            outStream << buf.str();
+                            outStream.close();
+                        }
+                    }
+                    else
+                    {
+                      OE_NOTICE << LC << "Shader source: " << getName() << std::endl << "===============" << std::endl << buf.str() << std::endl << "===============" << std::endl;
+                    }
+                }
+
                 // global sharing.
                 Registry::programSharedRepo()->share( program );
 
@@ -1171,6 +1214,19 @@ VirtualProgram::readProgramCache(const ShaderVector& vec, unsigned frameNumber, 
         }
     }
     return program.valid();
+}
+
+
+bool
+VirtualProgram::checkSharing()
+{
+  if ( ::getenv("OSGEARTH_SHARED_VP_WARNING") && getNumParents() > 1)
+  {
+      OE_WARN << LC << "Modified VirtualProgram may be shared." << std::endl;
+      return true;
+  }
+
+  return false;
 }
 
 void
@@ -1344,4 +1400,15 @@ VirtualProgram::getShaders(const osg::State&                        state,
     {
         output.push_back( i->second._shader.get() );
     }
+}
+
+void VirtualProgram::setShaderLogging( bool log )
+{
+    setShaderLogging(log, "");
+}
+
+void VirtualProgram::setShaderLogging( bool log, const std::string& filepath )
+{
+    _logShaders = log;
+    _logPath = filepath;
 }

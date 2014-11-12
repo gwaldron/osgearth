@@ -83,17 +83,23 @@ public:
 
                 std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON()) << "_tfs";
                 _cacheBin = cache->addBin( binId );
-                
-                // write a metadata record just for reference purposes.. we don't actually use it
-                Config metadata = _cacheBin->readMetadata();
-                if ( metadata.empty() )
-                {
-                    _cacheBin->writeMetadata( optionsConf );
-                }
-
                 if ( _cacheBin.valid() )
+                {                
+                    // write a metadata record just for reference purposes.. we don't actually use it
+                    Config metadata = _cacheBin->readMetadata();
+                    if ( metadata.empty() )
+                    {
+                        _cacheBin->writeMetadata( optionsConf );
+                    }
+
+                    if ( _cacheBin.valid() )
+                    {
+                        _cacheBin->apply( _dbOptions.get() );
+                    }
+                }
+                else
                 {
-                    _cacheBin->apply( _dbOptions.get() );
+                    OE_INFO << LC << "Failed to open cache bin \"" << binId << "\"\n";
                 }
             }
         }     

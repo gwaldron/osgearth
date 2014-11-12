@@ -289,8 +289,8 @@ public:
                    agg::rasterizer& ras, agg::renderer<agg::span_abgr32>& ren)
     {
         osg::Vec4 c = color;
-        unsigned int a = (unsigned int)(127+(c.a()*255)/2); // scale alpha up
-        agg::rgba8 fgColor( (unsigned int)(c.r()*255), (unsigned int)(c.g()*255), (unsigned int)(c.b()*255), a );
+        unsigned int a = (unsigned int)(127.0f+(c.a()*255.0f)/2.0f); // scale alpha up
+        agg::rgba8 fgColor( (unsigned int)(c.r()*255.0f), (unsigned int)(c.g()*255.0f), (unsigned int)(c.b()*255.0f), a );
 
         ras.filling_rule( agg::fill_even_odd );
 

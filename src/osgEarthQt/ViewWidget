@@ -47,12 +47,24 @@ namespace osgEarth { namespace QtGui
          *
          * @param[in ] view   View to attach to this widget. The widget will install
          *             a new camera in the view. (NOTE: this widget does not take
-         *             ownership of the View. You are still respsonsile for its
+         *             ownership of the View. You are still responsible for its
          *             destruction)
          * @param[in ] gcToShare Graphics context to share with this new view.
          *             Usually you should just leave this NULL
          */
         ViewWidget(osgViewer::View* view, osg::GraphicsContext* gcToShare =0L);
+
+        /**
+        * Constructs a new ViewWidget, attaching an existing view, with specific GL Format.
+        *
+        * @param[in ] view   View to attach to this widget. The widget will install
+        *             a new camera in the view. (NOTE: this widget does not take
+        *             ownership of the View. You are still responsible for its
+        *             destruction)
+        * @param[in ] format  GL format for the graphics context.  Use this parameter to
+        *             specify multisampling, for example.
+        */
+        ViewWidget(osgViewer::View* view, const QGLFormat& format);
 
         /**
          * Access the underlying view.

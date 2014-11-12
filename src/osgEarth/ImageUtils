@@ -73,8 +73,7 @@ namespace osgEarth
             int dst_start_col, int dst_start_row);
 
         /**
-         * Resizes an image using nearest-neighbor resampling. Returns a new image, leaving
-         * the input image unaltered.
+         * Resizes an image. Returns a new image, leaving the input image unaltered.
          *
          * Note. If the output parameter is NULL, this method will allocate a new image and
          * resize into that new image. If the output parameter is non-NULL, this method will
@@ -89,7 +88,7 @@ namespace osgEarth
             const osg::Image* input, 
             unsigned int new_s, unsigned int new_t,
             osg::ref_ptr<osg::Image>& output,
-            unsigned int mipmapLevel =0, bool bilinear=false );
+            unsigned int mipmapLevel =0, bool bilinear=true );
 
         /**
          * Crops the input image to the dimensions provided and returns a
@@ -129,6 +128,13 @@ namespace osgEarth
         static osg::Image* createMipmapBlendedImage(
             const osg::Image* primary,
             const osg::Image* secondary );
+        
+        /**
+         * Creates a new image containing mipmaps built with nearest-neighbor
+         * sampling.
+         */
+        static osg::Image* buildNearestNeighborMipmaps(
+            const osg::Image* image);
 
         /**
          * Blends the "src" image into the "dest" image, based on the "a" value.
@@ -280,6 +286,11 @@ namespace osgEarth
         static bool computeTextureCompressionMode(
             const osg::Image* image,
             osg::Texture::InternalFormatMode& out_mode);
+
+        /**
+         * 
+         */
+        static osg::Image* upSampleNN(const osg::Image* src, int quadrant);
 
         /**
          * Reads color data out of an image, regardles of its internal pixel format.

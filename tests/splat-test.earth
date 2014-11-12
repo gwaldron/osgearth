@@ -1,81 +1,78 @@
 <!--
 |  Texture splatting test.
 |
-|  Run with uniforms to enable tweaking:
-|
-|   osgearth_viewer splat-test.earth
-|       --uniform oe_splat_warp 0 0.01
-|       --uniform oe_splat_samples 0 3
-|       --uniform oe_splat_scaleOffset 1 10
-|       --uniform oe_splat_intensity 0 1
+|  Run with splat.bat, (or splat-edit.bat for tweakery)
 -->
 
 <map>
         
-	<options elevation_tile_size="16">
-		<terrain min_lod="19" normalize_edges="true"/>
+	<options>
+		<terrain normalize_edges="true"/>
 	</options>
 	
     <elevation name="readymap_elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>
-
+	
     <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true" enabled="true">
         <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
         <cache_policy usage="none"/>
     </image>
+	
+	<image name="GLOBCOVER2" driver="agglite" shared="true" visible="false" coverage="true" enabled="false">
+		<features driver="ogr" build_spatial_index="true">
+			<url>H:/data/naturalearth/vector-10m/ne_10m_rivers_lake_centerlines_scale_rank.shp</url>
+		</features>
+		<gamma>1.0</gamma>
+		<styles>
+			<style type="text/css">
+				default {
+					stroke: #d5d5d5;
+					stroke-width: 25m;
+				}
+			</style>
+		</styles>
+		<cache_policy usage="no_cache"/>
+	</image>
+	
+	<image name="GLOBCOVER3" driver="composite" shared="true" visible="false" coverage="true" enabled="false">
+		
+		<image name="g1" driver="gdal" coverage="true">
+			<url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
+			<cache_policy usage="none"/>
+		</image>
+	
+		<image name="g2" driver="agglite" coverage="true" min_level="8">
+			<features driver="ogr" build_spatial_index="true">
+				<url>H:/data/naturalearth/vector-10m/ne_10m_lakes.shp</url>
+			</features>
+			<gamma>1</gamma>
+			<styles>
+				<style type="text/css">
+					default {
+						fill: #d2d2dff;
+					}
+				</style>
+			</styles>
+			<cache_policy usage="no_cache"/>
+		</image>
+		
+		<cache_policy usage="no_cache"/>
+	</image>
 
     <image name="NLCD" driver="gdal" shared="true" visible="false" coverage="true" enabled="false">
         <url>H:/data/NLCD/nlcd_2011_landcover_2011_edition_2014_03_31.tif</url>
         <cache_policy usage="none"/>
     </image>
 	
-	<image driver="debug" enabled="false"/>
-	
-    <model name="trees" driver="feature_geom" enabled="false">
-        <features name="trees" driver="ogr">
-			<geometry>
-				POLYGON((-180 -90, 180 -90, 180 90, -180 90))
-			</geometry>
-        </features>
-        
-        <instancing>true</instancing>
-        
-        <fading 
-            duration="1.0"
-            max_range="6000"
-            attenuation_distance="5000"/>
-        
-        <layout>
-            <tile_size_factor>1</tile_size_factor>
-            <crop_features>true</crop_features>
-            <level max_range="1000" style="parks"/>
-        </layout>
-             
-        <styles>
-            <style type="text/css">
-                parks {
-                   model:               "../data/pinetree.ive";
-                   model-placement:     random;
-                   model-density:       4500;
-                   model-scale:         5.0;
-                   altitude-clamping:   terrain;
-                   altitude-resolution: 0.001;
-				   render-min-alpha:    0.15;
-                }
-            </style>
-        </styles>        
-    </model>
+	<!-- <image driver="debug"/> -->
 
     <extensions>
 	
         <splat>
             <coverage>GLOBCOVER</coverage>
-			<!--
-            <legend>H:/data/ESA/GLOBCOVER_legend.json</legend>
-			-->
-			<legend>../data/splat/paul/GLOBCOVER_legend.json</legend>
-            <catalog>../data/splat/paul/simple_catalog.json</catalog>
+			<legend>../data/splat/GLOBCOVER_legend.json</legend>
+            <catalog>../data/splat/splat_catalog.json</catalog>
 			<coverage_warp>0.004</coverage_warp>
         </splat>
 
@@ -83,7 +80,7 @@
         <splat>
             <coverage>NLCD</coverage>
             <legend>H:/data/NLCD/NLCD_legend.json</legend>
-            <catalog>../data/splat/simple_catalog.json</catalog>
+            <catalog>../data/splat/splat_catalog.json</catalog>
         </splat>
 -->	
 
@@ -97,9 +94,10 @@
 			<viewpoint name="Mt R. Nadir 7K" heading="0.5013039415314375" height="2030.938670247793" lat="46.81069413427294" long="-121.7931474749483" pitch="-89.43231466772511" range="7035.645515411795"/>
 			<viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
 			<viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>
-			<viewpoint name="Nepal" heading="-31.88332651933247" height="6543.718174060807" lat="27.9438350018333" long="86.94718559626058" pitch="-8.689781496210518" range="10319.10580082614"/>
+			<viewpoint name="Mt R. Slope" heading="-70.22873221693601" height="3160.756061628461" lat="46.83660282836279" long="-121.7442624846425" pitch="-25.89746948655256" range="9233.647682022791"/>
+			<viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
+			<viewpoint name="Nepal NF" heading="-49.14546953546358" height="6334.332569343038" lat="27.9421778947837" long="86.9935949004298" pitch="-3.643325527310435" range="13302.81192964212"/>
 		</viewpoints>
-		
     </extensions>
 
 </map>

@@ -24,8 +24,14 @@
 #include <osgUtil/CullVisitor>
 #include <osg/Uniform>
 #include <osg/buffered_value>
+#include <cmath>
 
 #define LC "[LogarithmicDepthBuffer] "
+
+#define DEFAULT_NEAR_PLANE     0.1
+#define NEAR_RES_COEFF      0.0005  // a.k.a. "C"
+#define NEAR_RES_COEFF_STR "0.0005"
+#define LOG2(X) (::log((double)(X))/::log(2.0))
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -64,21 +70,21 @@ namespace
                 }
 
                 // the uniform conveying the far clip plane:
-                osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_far", osg::Uniform::FLOAT);
+                //osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_far", osg::Uniform::FLOAT);
+                osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_FC", osg::Uniform::FLOAT);
 
                 // calculate the far plane based on the camera location:
-                osg::Vec3d E, C, U;
-                camera->getViewMatrixAsLookAt(E, C, U);                
+                osg::Vec3d E, A, U;
+                camera->getViewMatrixAsLookAt(E, A, U);                
                 double farplane = E.length() + 1e6;
-                const double nearplane = 1.0;
                 
                 // set for culling purposes:
                 double L, R, B, T, N, F;
                 camera->getProjectionMatrixAsFrustum(L, R, B, T, N, F);                
-                camera->setProjectionMatrixAsFrustum(L, R, B, T, N, farplane);
+                camera->setProjectionMatrixAsFrustum(L, R, B, T, DEFAULT_NEAR_PLANE, farplane);
 
                 // communicate to the shader:
-                u->set( (float)farplane );
+                u->set( (float)(2.0/LOG2(farplane*NEAR_RES_COEFF + 1.0)) );
 
                 // and continue traversal of the camera's subgraph.
                 cv->pushStateSet( stateset );
@@ -98,23 +104,23 @@ namespace
     const char* vertSource =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_ldb_far; \n"
-        "varying float logz; \n"
+        "uniform float oe_ldb_FC; \n"
+        "varying float oe_ldb_logz; \n"
         "void oe_ldb_vert(inout vec4 clip) \n"
         "{ \n"
-        "    const float C = 0.0005; \n"
-        "    float FC = 1.0/log2(oe_ldb_far*C + 1.0); \n"
-        "    logz = log2(clip.w*C + 1.0)*FC; \n"
-        "    clip.z = (2.0*logz - 1.0)*clip.w; \n"
+        "    const float C = " NEAR_RES_COEFF_STR ";\n"
+        "    oe_ldb_logz = max(1e-6, clip.w*C + 1.0); \n"
+        "    clip.z = log2(oe_ldb_logz)*oe_ldb_FC - 1.0; \n"
         "} \n";
 
     const char* fragSource =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "varying float logz; \n"
-        "void oe_ldb_frag(inout vec4 clip) \n"
+        "uniform float oe_ldb_FC; \n"
+        "varying float oe_ldb_logz; \n"
+        "void oe_ldb_frag(inout vec4 color) \n"
         "{\n"
-        "    gl_FragDepth = logz; \n"
+        "    gl_FragDepth = log2(oe_ldb_logz)*0.5*oe_ldb_FC; \n"
         "}\n";
 }
 
@@ -143,10 +149,13 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
         vp->setFunction( "oe_ldb_vert", vertSource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );
-        vp->setFunction( "oe_ldb_frag", fragSource, ShaderComp::LOCATION_FRAGMENT_LIGHTING, FLT_MAX );
+        vp->setFunction( "oe_ldb_frag", fragSource, ShaderComp::LOCATION_FRAGMENT_LIGHTING, FLT_MAX );        
 
         // configure the camera:
         camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
+        double fovy, ar, zn, zf;
+        camera->getProjectionMatrixAsPerspective(fovy, ar, zn ,zf);
+        camera->setProjectionMatrixAsPerspective(fovy, ar, DEFAULT_NEAR_PLANE, zf);
 
         // install a cull callback to control the far plane:
         camera->addCullCallback( _cullCallback.get() );

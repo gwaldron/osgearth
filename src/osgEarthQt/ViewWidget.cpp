@@ -30,9 +30,18 @@ using namespace osgEarth::QtGui;
 
 
 ViewWidget::ViewWidget(osgViewer::View* view, osg::GraphicsContext* gc) :
+osgQt::GLWidget(),
 _view( view )
 {
     init( gc );
+}
+
+
+ViewWidget::ViewWidget(osgViewer::View* view, const QGLFormat& format) :
+osgQt::GLWidget(format),
+_view( view )
+{
+    init( NULL );
 }
 
 

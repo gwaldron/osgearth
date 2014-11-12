@@ -134,6 +134,25 @@ const char* noiseShaders = MULTILINE(
         return t;\n
     }\n
 
+    // Generates a fractal simplex noise value.
+    float oe_noise_fractal_2d(in vec2 seed, in float frequency, in float persistence, in float lacunarity, in int octaves)
+    {
+        float f = frequency;
+        float amp = 1.0;
+        float maxAmp = 0.0;
+        float n = 0.0;
+
+        for(int i=0; i<octaves; ++i)
+        {
+            n += oe_splat_noise2(seed*f) * amp;
+            maxAmp += amp;
+            amp *= persistence;
+            f *= lacunarity;
+        }
+        return n / maxAmp;
+    }\n
+
+
 ); // end MULTILINE
 
 }

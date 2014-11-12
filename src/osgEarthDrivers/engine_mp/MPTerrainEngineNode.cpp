@@ -529,7 +529,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     const osgEarth::ElevationInterpolation& interp = _update_mapf->getMapOptions().elevationInterpolation().get();
 
     // Request a heightfield from the map, falling back on lower resolution tiles
-    osg::ref_ptr<osg::HeightField> hf;
+    osg::ref_ptr<osg::HeightField> hf;    
 
     TileKey sampleKey = key;
     bool populated = false;
@@ -544,16 +544,17 @@ MPTerrainEngineNode::createTile( const TileKey& key )
                 sampleKey = sampleKey.createParentKey();
                 if (!sampleKey.valid())
                 {
-                    // If we reached the root and still have no data then stop.
-                    break;
+                    return 0;
                 }
             }
         }       
     }
-    else
+
+    if (!populated)
     {
         // We have no heightfield so just create a reference heightfield.
         hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
+        sampleKey = key;
     }
 
     model->_elevationData = TileModel::ElevationData(
@@ -641,7 +642,7 @@ MPTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 void
 MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
 {
-    if ( layerAdded )
+    if ( layerAdded && layerAdded->getEnabled() )
     {
         // for a shared layer, allocate a shared image unit if necessary.
         if ( layerAdded->isShared() )
@@ -679,7 +680,7 @@ MPTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
     if ( layerRemoved )
     {
         // for a shared layer, release the shared image unit.
-        if ( layerRemoved->isShared() )
+        if ( layerRemoved->getEnabled() && layerRemoved->isShared() )
         {
             if ( layerRemoved->shareImageUnit().isSet() )
             {
@@ -701,7 +702,7 @@ MPTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInde
 void
 MPTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
-    if ( !layer )
+    if ( layer == 0L || layer->getEnabled() == false )
         return;
 
     layer->addCallback( _elevationCallback.get() );
@@ -712,6 +713,9 @@ MPTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 void
 MPTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 {
+    if ( layerRemoved->getEnabled() == false )
+        return;
+
     layerRemoved->removeCallback( _elevationCallback.get() );
 
     refresh();
@@ -795,21 +799,16 @@ MPTerrainEngineNode::updateState()
                 << (useTerrainColor ?
                 "    color = oe_terrain_color; \n" : ""
                 ) <<
-                "    vec4 texel; \n"
-                "    if ( oe_layer_uid >= 0 ) { \n"
-                "        texel = texture2D(oe_layer_tex, oe_layer_texc.st); \n"
-                "        texel.a *= oe_layer_opacity; \n"
-                "    } \n"
-                "    else { \n"
-                "        texel = color; \n"
-                "    }\n"
+                "    float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;\n"
+                "    vec4 texel = mix(color, texture2D(oe_layer_tex, oe_layer_texc.st), applyImagery); \n"
+                "    texel.a = mix(texel.a, texel.a*oe_layer_opacity, applyImagery); \n"
+
                 << (useBlending ?
-                "    if ( oe_layer_order == 0 ) { \n"
-                "        color = texel*texel.a + color*(1.0-texel.a); \n" // simulate src_alpha, 1-src_alpha blens
-                "    } \n"
-                "    else \n" : ""
-                ) <<
-                "        color = texel; \n"
+                "    float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0; \n"
+                "    color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer); \n"
+                :
+                "    color = texel; \n"
+                    ) <<
                 "} \n";
 
             // Color filter frag function:

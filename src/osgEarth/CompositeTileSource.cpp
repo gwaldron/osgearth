@@ -209,7 +209,8 @@ CompositeTileSource::createImage(const TileKey&    key,
                 if (image.valid())
                 {                                        
                     // TODO:  Bilinear options?
-                    GeoImage cropped = image.crop( key.getExtent(), true, textureSize.x(), textureSize.y(), true);
+                    bool bilinear = layer->isCoverage() ? false : true;
+                    GeoImage cropped = image.crop( key.getExtent(), true, textureSize.x(), textureSize.y(), bilinear);
                     info.image = cropped.getImage();
                 }                    
             }

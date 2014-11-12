@@ -71,6 +71,13 @@ namespace osgEarth { namespace Splat
         osg::Uniform* getCoverageWarpUniform() { return _warpUniform.get(); }
 
         /**
+         * Uniform that governs the bilinear sampling of the coverage texture.
+         * The default is 1.0, at which normal bilinear sampling occurs.
+         * Higher values will blur the splatting, and lower values will sharpen it.
+         */
+        osg::Uniform* getCoverageBlurUniform() { return _blurUniform.get(); }
+
+        /**
          * Uniform that governs the scale level-of-detail offset when sampling 
          * splat textures. Defaults to 0. This is an integer such that for a
          * value of N, the texture coordinates are scaled by 2^N when sampling
@@ -89,22 +96,23 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~SplatTerrainEffect() { }
 
-        std::string generateSamplingFunction();
+        std::string generateSamplingCode();
 
         bool                                _ok;
-        osg::ref_ptr<osg::Texture2DArray>   _splatTex;
-        SplatArrayIndex                     _splatTexIndex;
+        SplatTextureDef                     _splatDef;
         int                                 _splatTexUnit;
         osg::ref_ptr<osg::Uniform>          _splatTexUniform;
         osg::ref_ptr<osg::Uniform>          _coverageTexUniform;
         osg::ref_ptr<osg::Uniform>          _scaleOffsetUniform;
         osg::ref_ptr<osg::Uniform>          _intensityUniform;
         osg::ref_ptr<osg::Uniform>          _warpUniform;
+        osg::ref_ptr<osg::Uniform>          _blurUniform;
         osg::ref_ptr<osg::Uniform>          _samplesUniform;
         osg::ref_ptr<osg::Uniform>          _snowUniform;
         osg::ref_ptr<SplatCoverageLegend>   _legend;
         osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;
+        bool                                _edit;
     };
 
 } } // namespace osgEarth::Splat

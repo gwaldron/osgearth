@@ -5,6 +5,7 @@
 # LEVELDB_INCLUDE_DIR, where to find the headers
 
 FIND_PATH(LEVELDB_INCLUDE_DIR leveldb/db.h
+  PATHS
   $ENV{LEVELDB_DIR}
   NO_DEFAULT_PATH
     PATH_SUFFIXES include

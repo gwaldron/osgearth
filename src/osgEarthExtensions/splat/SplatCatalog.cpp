@@ -198,6 +198,10 @@ namespace
                 }
             }
         }
+        else
+        {
+            OE_WARN << LC << "Image " << uri.base() << " referenced in the catalog but couldn't be loaded.\n";
+        }
 
         return result.releaseImage();
     }

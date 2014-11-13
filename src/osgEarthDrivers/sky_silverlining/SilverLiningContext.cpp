@@ -42,6 +42,14 @@ _clouds               ( 0L )
         options.licenseCode()->c_str() );
 }
 
+SilverLiningContext::~SilverLiningContext()
+{
+    if ( _atmosphere )
+        delete _atmosphere;
+
+    OE_INFO << LC << "Destroyed\n";
+}
+
 void
 SilverLiningContext::setLight(osg::Light* light)
 {
@@ -96,6 +104,7 @@ SilverLiningContext::initialize(osg::RenderInfo& renderInfo)
 
                 if ( _options.drawClouds() == true )
                 {
+                    OE_INFO << LC << "Initializing clouds\n";
                     setupClouds();
                 }
             }
@@ -216,10 +225,4 @@ SilverLiningContext::updateLocation()
         }
 #endif
     }
-}
-
-SilverLiningContext::~SilverLiningContext()
-{
-    // clean up all the SL handles.
-    delete _atmosphere;
 }

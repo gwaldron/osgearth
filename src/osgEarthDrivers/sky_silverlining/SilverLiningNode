@@ -56,7 +56,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         virtual ~SilverLiningNode();
 
         osg::ref_ptr<SilverLiningContext> _SL;
-		osg::Geode* _geode;
+		osg::ref_ptr<osg::Geode> _geode;
         osg::Drawable* _skyDrawable;
 		osg::ref_ptr<osg::Drawable> _cloudsDrawable;
         osg::ref_ptr<osg::Light> _light;

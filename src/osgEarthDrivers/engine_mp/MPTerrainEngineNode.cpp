@@ -748,8 +748,9 @@ MPTerrainEngineNode::updateState()
 
         // Sort drawable front to back to minimize overdraw in fragment shaders.
         // This can have a huge impact on performance if the renderer is
-        // fragment/fill bound.
-        terrainStateSet->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
+        // fragment/fill bound. The "-1" encourages the terrain to render before
+        // any model layers or other geometry.
+        terrainStateSet->setRenderBinDetails(-1, "SORT_FRONT_TO_BACK");
         
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(

@@ -477,7 +477,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
             this );
     }
 
-    return knf.release();
+    return knf.get();
 }
 
 osg::Node*

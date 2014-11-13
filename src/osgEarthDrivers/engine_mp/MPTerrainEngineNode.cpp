@@ -745,6 +745,11 @@ MPTerrainEngineNode::updateState()
     else
     {
         osg::StateSet* terrainStateSet = _terrain->getOrCreateStateSet();
+
+        // Sort drawable front to back to minimize overdraw in fragment shaders.
+        // This can have a huge impact on performance if the renderer is
+        // fragment/fill bound.
+        terrainStateSet->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
         
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(

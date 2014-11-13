@@ -26,6 +26,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Registry>
+#include <osgEarth/CullingUtils>
 #include <osgUtil/Optimizer>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
@@ -98,12 +99,6 @@ TileNode::traverse( osg::NodeVisitor& nv )
     {
         if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
-            osg::ClusterCullingCallback* ccc = dynamic_cast<osg::ClusterCullingCallback*>(getCullCallback());
-            if (ccc)
-            {
-                if (ccc->cull(&nv,0,static_cast<osg::State *>(0))) return;
-            }
-
             // if this tile is marked dirty, bump the marker so the engine knows it
             // needs replacing.
             if ( _dirty || _model->_revision != _maprevision )

@@ -132,7 +132,6 @@ namespace
         "void oe_ldb_vert(inout vec4 clip) \n"
         "{ \n"
         "    const float C = " NEAR_RES_COEFF_STR ";\n"
-        //"    clip.z = (2.0*log2(C*clip.w+1.0)/log2(C*oe_logdepth_farplane+1.0)-1.0)*clip.w; \n"
         "    clip.z = (log2(C*clip.w+1.0)*oe_ldb_FC - 1.0) * clip.w;\n"
         "} \n";
 }

@@ -1,6 +1,6 @@
 osgearth_viewer splat-test.earth ^
 	--ico ^
-	--logdepth ^
+	--logdepth2 ^
 	--sky ^
 	--uniform oe_splat_blending_range 200000 0 ^
 	--uniform oe_splat_detail_range 100000 0 ^

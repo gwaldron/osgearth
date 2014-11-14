@@ -1874,7 +1874,7 @@ namespace
 
     // Optimize the data. Convert all modes to GL_TRIANGLES and run the
     // critical vertex cache optimizations.
-    void optimize( Data& d, bool runMeshOptimizers )
+    void optimize( Data& d, bool runMeshOptimizers, ProgressCallback* progress )
     { 
         // For vertex cache optimization to work, all the arrays must be in
         // the geometry. MP doesn't store texture/tile coords in the geometry
@@ -1952,12 +1952,17 @@ namespace
 
 		if (runMeshOptimizers && d.maskRecords.size() < 1)
 		{
+            OE_START_TIMER(index_mesh_time);
 			osgUtil::Optimizer o;
-            
-			o.optimize( d.surfaceGeode,
-				osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-				osgUtil::Optimizer::INDEX_MESH |
-				osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+			o.optimize( d.surfaceGeode, osgUtil::Optimizer::INDEX_MESH );
+
+            // removed these since the gain was nominal and time to optimize 2.5ms
+				//osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+				//osgUtil::Optimizer::INDEX_MESH |
+				//osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
+            if (progress)
+                progress->stats()["index_mesh_time"] += OE_STOP_TIMER(index_mesh_time);
 		}
 
         // do this while all the objects are in the geometry.
@@ -2023,8 +2028,9 @@ _textureImageUnit      ( texImageUnit )
 
 
 TileNode*
-TileModelCompiler::compile(const TileModel* model,
-                           const MapFrame&  frame)
+TileModelCompiler::compile(const TileModel*  model,
+                           const MapFrame&   frame,
+                           ProgressCallback* progress)
 {
 
     // Working data for the build.
@@ -2087,7 +2093,7 @@ TileModelCompiler::compile(const TileModel* model,
     tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
 
     // performance optimizations.
-    optimize( d, _options.optimizeTiles() == true );
+    optimize( d, _options.optimizeTiles() == true, progress );
 
     // installs the per-layer rendering data into the Geometry objects.
     installRenderData( d );

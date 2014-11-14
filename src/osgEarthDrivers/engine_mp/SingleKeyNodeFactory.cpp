@@ -76,7 +76,9 @@ namespace
 #endif
 
 osg::Node*
-SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary)
+SingleKeyNodeFactory::createTile(TileModel*        model,
+                                 bool              setupChildrenIfNecessary,
+                                 ProgressCallback* progress)
 {
 #ifdef EXPERIMENTAL_TILE_NODE_CACHE
     osg::ref_ptr<TileNode> tileNode;
@@ -93,7 +95,7 @@ SingleKeyNodeFactory::createTile(TileModel* model, bool setupChildrenIfNecessary
     }
 #else
     // compile the model into a node:
-    TileNode* tileNode = _modelCompiler->compile( model, _frame );
+    TileNode* tileNode = _modelCompiler->compile(model, _frame, progress);
 #endif
 
     // see if this tile might have children.
@@ -252,7 +254,7 @@ SingleKeyNodeFactory::createNode(const TileKey&    key,
 
         for( unsigned q=0; q<4; ++q )
         {
-            osg::ref_ptr<osg::Node> tile = createTile(model[q].get(), setupChildren);
+            osg::ref_ptr<osg::Node> tile = createTile(model[q].get(), setupChildren, progress);
             _tileNodeBroker->notifyOfTerrainTileNodeCreation( model[q]->_tileKey, tile.get() );
             quad->addChild( tile.get() );
         }

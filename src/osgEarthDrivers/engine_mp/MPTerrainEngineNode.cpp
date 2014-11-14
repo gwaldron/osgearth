@@ -570,7 +570,8 @@ MPTerrainEngineNode::createTile( const TileKey& key )
             _primaryUnit,
             optimizeTriangleOrientation,
             _terrainOptions );
-    return compiler->compile(model.get(), *_update_mapf);
+
+    return compiler->compile(model.get(), *_update_mapf, 0L);
 }
 
 

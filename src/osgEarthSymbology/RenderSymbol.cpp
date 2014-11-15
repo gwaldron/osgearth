@@ -48,6 +48,7 @@ RenderSymbol::getConfig() const
     conf.addObjIfSet( "order",            _order );
     conf.addIfSet   ( "clip_plane",       _clipPlane );
     conf.addIfSet   ( "min_alpha",        _minAlpha );
+    conf.addIfSet   ( "render_bin",       _renderBin );
     return conf;
 }
 
@@ -61,6 +62,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "order",            _order );
     conf.getIfSet   ( "clip_plane",       _clipPlane );
     conf.getIfSet   ( "min_alpha",        _minAlpha );
+    conf.getIfSet   ( "render_bin",       _renderBin );
 }
 
 void
@@ -104,5 +106,8 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "render-min-alpha") ) {
         style.getOrCreate<RenderSymbol>()->minAlpha() = as<float>(c.value(), *defaults.minAlpha() );
+    }
+    else if ( match(c.key(), "render-bin") ) {
+        style.getOrCreate<RenderSymbol>()->renderBin() = c.value();
     }
 }

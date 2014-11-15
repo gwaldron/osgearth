@@ -465,6 +465,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool animateSky    = args.read("--animate-sky");
     bool showActivity  = args.read("--activity");
     bool useLogDepth   = args.read("--logdepth");
+    bool useLogDepth2  = args.read("--logdepth2");
 
     if (args.read("--verbose"))
         osgEarth::setNotifyLevel(osg::INFO);
@@ -684,6 +685,15 @@ MapNodeHelper::parse(MapNode*             mapNode,
     {
         OE_INFO << LC << "Activating logarithmic depth buffer on main camera" << std::endl;
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
+        logDepth.setUseFragDepth( true );
+        logDepth.install( view->getCamera() );
+    }
+
+    else if ( useLogDepth2 )
+    {
+        OE_INFO << LC << "Activating logarithmic depth buffer (vertex-only) on main camera" << std::endl;
+        osgEarth::Util::LogarithmicDepthBuffer logDepth;
+        logDepth.setUseFragDepth( false );
         logDepth.install( view->getCamera() );
     }
 

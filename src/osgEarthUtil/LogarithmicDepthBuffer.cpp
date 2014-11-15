@@ -70,7 +70,6 @@ namespace
                 }
 
                 // the uniform conveying the far clip plane:
-                //osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_far", osg::Uniform::FLOAT);
                 osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_FC", osg::Uniform::FLOAT);
 
                 // calculate the far plane based on the camera location:
@@ -132,7 +131,7 @@ namespace
         "void oe_ldb_vert(inout vec4 clip) \n"
         "{ \n"
         "    const float C = " NEAR_RES_COEFF_STR ";\n"
-        "    clip.z = (log2(C*clip.w+1.0)*oe_ldb_FC - 1.0) * clip.w;\n"
+        "    clip.z = (log2(max(1e-6,C*clip.w+1.0))*oe_ldb_FC - 1.0) * clip.w;\n"
         "} \n";
 }
 

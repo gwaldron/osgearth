@@ -86,7 +86,7 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            vp->setFunction( "oe_nmap_vertex",   vertShader, ShaderComp::LOCATION_VERTEX_VIEW );
+            vp->setFunction( "oe_nmap_vertex",   vertShader, ShaderComp::LOCATION_VERTEX_MODEL );
             vp->setFunction( "oe_nmap_fragment", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, -1.0f);
 
             stateset->addUniform( _scaleUniform.get() );

@@ -7,11 +7,11 @@
 <map>
         
 	<options>
-		<terrain normalize_edges="true"/>
+		<terrain normalize_edges="true" min_lod="18" />
 	</options>
 	
     <elevation name="readymap_elevation" driver="tms" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/111/</url>
     </elevation>
 	
     <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true" enabled="true">
@@ -73,16 +73,7 @@
             <coverage>GLOBCOVER</coverage>
 			<legend>../data/splat/GLOBCOVER_legend.json</legend>
             <catalog>../data/splat/splat_catalog.json</catalog>
-			<coverage_warp>0.004</coverage_warp>
         </splat>
-
-<!--		
-        <splat>
-            <coverage>NLCD</coverage>
-            <legend>H:/data/NLCD/NLCD_legend.json</legend>
-            <catalog>../data/splat/splat_catalog.json</catalog>
-        </splat>
--->	
 
 		<normalmap>
 			<image>../data/rock_hard.jpg</image>
@@ -98,6 +89,7 @@
 			<viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
 			<viewpoint name="Nepal NF" heading="-49.14546953546358" height="6334.332569343038" lat="27.9421778947837" long="86.9935949004298" pitch="-3.643325527310435" range="13302.81192964212"/>
 		</viewpoints>
+		
     </extensions>
 
 </map>

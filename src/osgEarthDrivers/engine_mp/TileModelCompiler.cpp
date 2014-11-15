@@ -34,6 +34,7 @@
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
 #include <osg/GL2Extensions>
+#include <osg/ComputeBoundsVisitor>
 #include <osgUtil/DelaunayTriangulator>
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>
@@ -2162,12 +2163,16 @@ TileModelCompiler::compile(const TileModel*  model,
     // debugging tools.
     if (_debug)
     {
+#if 0 // crashes when there's a mask
         //test: run the geometry validator to make sure geometry it legal
         osgEarth::GeometryValidator validator;
         tile->accept(validator);
+#endif
 
         //test: show the tile bounding boxes
-        tile->addChild( makeBBox(d.surface->getBound()) );
+        osg::ComputeBoundsVisitor cbv;
+        d.surfaceGeode->accept( cbv );
+        tile->addChild( makeBBox( cbv.getBoundingBox() ) );
     }
 
     return tile;

@@ -59,7 +59,7 @@ _renderOrder( -1.0f )
 
     _scaleOffsetUniform = new osg::Uniform("oe_splat_scaleOffset", 0.0f);
     _intensityUniform   = new osg::Uniform("oe_splat_intensity",   1.0f);
-    _warpUniform        = new osg::Uniform("oe_splat_warp",      0.004f);
+    _warpUniform        = new osg::Uniform("oe_splat_warp",        0.0f);
     _blurUniform        = new osg::Uniform("oe_splat_blur",        1.0f);
     _snowUniform        = new osg::Uniform("oe_splat_snow",    10000.0f);
 
@@ -110,8 +110,9 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->getOrCreateUniform("oe_splat_detail_range", osg::Uniform::FLOAT)->set(100000.0f);
 
             // Configure the vertex shader:
-            std::string vertexShader = splatVertexShader;
-            osgEarth::replaceIn( vertexShader, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
+            std::string vertexShaderModel = splatVertexShaderModel;
+            std::string vertexShaderView = splatVertexShaderView;
+            osgEarth::replaceIn( vertexShaderView, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
             // Configure the fragment shader:
             std::string fragmentShader = splatFragmentShader;
@@ -125,8 +126,9 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            vp->setFunction( "oe_splat_vertex",   vertexShader,   ShaderComp::LOCATION_VERTEX_VIEW );
-            vp->setFunction( "oe_splat_fragment", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, _renderOrder );
+            vp->setFunction( "oe_splat_vertex_model", vertexShaderModel, ShaderComp::LOCATION_VERTEX_MODEL );
+            vp->setFunction( "oe_splat_vertex_view",  vertexShaderView,  ShaderComp::LOCATION_VERTEX_VIEW );
+            vp->setFunction( "oe_splat_fragment",     fragmentShader,    ShaderComp::LOCATION_FRAGMENT_COLORING, _renderOrder );
 
             // support shaders
             osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaders);

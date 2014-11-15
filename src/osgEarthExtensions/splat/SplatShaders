@@ -21,30 +21,34 @@
 
 namespace
 {
+    const char* splatVertexShaderModel =
+        "#version 120\n"
+        "varying vec3 oe_Normal; \n"
+        "varying float oe_splat_slope;\n"
+        "void oe_splat_vertex_model(inout vec4 VertexMODEL) \n"
+        "{ \n"
+        "    oe_splat_slope = 1.0-oe_Normal.z; \n"
+        "} \n";
+
     /**
      * NOTE: tokens of the form "$TOKEN" will be replaced at run time.
      */
-    const char* splatVertexShader =
+    const char* splatVertexShaderView =
         "#version 120\n"
 
         "#pragma osgEarth include noise.glsl \n"
 
         // from the terrain engine
         "varying vec4 oe_layer_tilec; \n"
-        "varying vec3 oe_Normal; \n"
-
-        // xyz = up vector, w = elevation
-        "attribute vec4 oe_terrain_attr; \n"
         
         "uniform mat4 $COVERAGE_TEXMAT_UNIFORM; \n"
         "uniform float oe_splat_scaleOffset; \n"
 
         "varying float oe_splat_range; \n"
-        "varying float oe_splat_slope; \n"
         "varying vec2 oe_splat_covtc; \n"
         "varying float oe_splat_scaleOffsetInt; \n"
 
-        "void oe_splat_vertex(inout vec4 VertexVIEW) \n"
+        "void oe_splat_vertex_view(inout vec4 VertexVIEW) \n"
         "{ \n"
         // range from camera to vertex
         "    oe_splat_range = -VertexVIEW.z/VertexVIEW.w; \n"        
@@ -55,11 +59,6 @@ namespace
 
         // quantize the scale offset so we take the hit in the FS
         "    oe_splat_scaleOffsetInt = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset);\n"
-
-        // calculate the approximate slope of the terrain at this vert.
-        // [0..1] where 0=flat and 1=vertical.
-        "    vec3 upView = gl_NormalMatrix * oe_terrain_attr.xyz; \n"
-        "    oe_splat_slope = 1.0-dot(upView, oe_Normal); \n"
         "} \n";
 
 
@@ -90,7 +89,6 @@ namespace
         "uniform sampler2D oe_terrain_tex; \n"
         "uniform mat4 oe_terrain_tex_mat; \n"
         "uniform float oe_splat_snow;\n"
-        "uniform float oe_splat_blending_range; \n"
         "uniform float oe_splat_detail_range; \n"
         
         // noise controllers.
@@ -317,7 +315,6 @@ namespace
         "    float d = clamp(oe_splat_range, ranges[0], ranges[RANGE_COUNT-1]); \n"
 
         "    vec4 texel; \n"
-        //"    bool bilinear = d < oe_splat_blending_range; \n"
 
         // Find the 2 ranges bookending the camera range, and blend between then.
         // TODO: replace bilinear with nearest for far ranges?
@@ -345,7 +342,7 @@ namespace
         "    color = mix(color, texel, oe_splat_intensity*texel.a); \n"
 
         // uncomment to visualize slope.
-        //"    color.rgb = vec3(oe_splat_slope,0,0);\n"
+        //"    color.rgba = vec4(oe_splat_slope,0,0,1);\n"
         "}\n";
 }
 

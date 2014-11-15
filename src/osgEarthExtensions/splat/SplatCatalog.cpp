@@ -200,7 +200,10 @@ namespace
         }
         else
         {
-            OE_WARN << LC << "Image " << uri.base() << " referenced in the catalog but couldn't be loaded.\n";
+            OE_WARN << LC
+                << "Image in the splat catalog failed to load: "
+                << uri.full() << "; message = " << result.getResultCodeString()
+                << std::endl;
         }
 
         return result.releaseImage();
@@ -333,6 +336,7 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
         {
             out._texture->setImage( i, imagesInOrder[i].get() );
         }
+
     }
 
     return out._texture.valid();

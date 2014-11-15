@@ -45,7 +45,8 @@ _mercatorFastPath( true ),
 _minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
 _magFilter( osg::Texture::LINEAR),
 _primaryTraversalMask  ( 0xFFFFFFFF ),
-_secondaryTraversalMask( 0x80000000 )
+_secondaryTraversalMask( 0x80000000 ),
+_debug( false )
 {
     fromConfig( _conf );
 }
@@ -76,6 +77,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "mercator_fast_path", _mercatorFastPath );
     conf.updateIfSet( "primary_traversal_mask", _primaryTraversalMask );
     conf.updateIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
+    conf.updateIfSet( "debug", _debug );
 
     //Save the filter settings
 	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
@@ -117,6 +119,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "mercator_fast_path", _mercatorFastPath );
     conf.getIfSet( "primary_traversal_mask", _primaryTraversalMask );
     conf.getIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
+    conf.getIfSet( "debug", _debug );
 
     //Load the filter settings
 	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);

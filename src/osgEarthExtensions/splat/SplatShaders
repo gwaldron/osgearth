@@ -190,7 +190,8 @@ namespace
              //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
         "    vec2 warped_tc = oe_splat_warpCoverageCoords(0, splat_tc);\n"
 
-        "    float pixelWidth = oe_splat_blur/256.0; \n"
+        "    float a = oe_splat_blur;\n"
+        "    float pixelWidth = a/256.0; \n" // 256 = hard-coded cov tex size //TODO 
         "    float halfPixelWidth = 0.5*pixelWidth; \n"
         "    float pixelWidth2 = pixelWidth*pixelWidth; \n"
         

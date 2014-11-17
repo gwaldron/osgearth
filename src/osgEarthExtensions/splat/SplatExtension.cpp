@@ -162,7 +162,8 @@ SplatExtension::connect(MapNode* mapNode)
     // add it to the terrain.
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
 
-#if 0
+    if ( ::getenv("OSGEARTH_SPLAT_MODELS") )
+    {
     // TEMPORARY. This is just a quick hack to test the tile-based model splatter.
     // It finds any occurance of a model in the catalog and just installs that in
     // a single splatter. Doesn't support multiple models, classifications, or 
@@ -195,8 +196,7 @@ SplatExtension::connect(MapNode* mapNode)
                 OE_WARN << LC << "Can't load the tree!\n";
             }
     //    }
-    //}
-#endif
+    }
 
     // Install the model splatter if we made one.
     if ( _modelSplatter.valid() )

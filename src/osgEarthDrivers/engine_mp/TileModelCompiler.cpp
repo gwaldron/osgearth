@@ -38,6 +38,7 @@
 #include <osgUtil/DelaunayTriangulator>
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>
+#include <osgText/Text>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
@@ -2011,19 +2012,16 @@ namespace
     };
 
 
-    osg::Geode* makeBBox(const osg::BoundingBox& bbox)
-    {
+    osg::Geode* makeBBox(const Data& d)
+    {        
+        osg::ComputeBoundsVisitor cbv;
+        d.surfaceGeode->accept( cbv );
+
         osg::Geometry* geom = new osg::Geometry();
         
         osg::Vec3Array* v = new osg::Vec3Array();
-        {
-            
-            for(int i=0; i<8; ++i) {
-                osg::Vec3 c = bbox.corner(i);
-                v->push_back(c);
-                //OE_INFO << LC << c.x() << ", " << c.y() << ", " << c.z() << "\n";
-            }
-        }
+        for(int i=0; i<8; ++i)
+            v->push_back(cbv.getBoundingBox().corner(i));
         geom->setVertexArray(v);
 
         osg::DrawElementsUByte* de = new osg::DrawElementsUByte(GL_LINES);
@@ -2042,12 +2040,30 @@ namespace
         geom->addPrimitiveSet(de);
 
         osg::Vec4Array* c= new osg::Vec4Array();
-        c->push_back(osg::Vec4(1,0,0,1));
+        c->push_back(osg::Vec4(0,1,1,1));
         geom->setColorArray(c);
         geom->setColorBinding(geom->BIND_OVERALL);
 
         osg::Geode* geode = new osg::Geode();
         geode->addDrawable(geom);
+
+        osgText::Text* t = new osgText::Text();
+        t->setText( d.model->_tileKey.str() );
+        t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
+        t->setCharacterSizeMode(t->SCREEN_COORDS);
+        t->setCharacterSize(36.0f);
+        t->setAlignment(t->CENTER_CENTER);
+        t->setColor(osg::Vec4(1,1,1,1));
+        t->setBackdropColor(osg::Vec4(0,0,0,1));
+        t->setBackdropType(t->OUTLINE);
+        t->setPosition(osg::Vec3(0,0,cbv.getBoundingBox().zMax()));
+        geode->addDrawable(t);
+
+        geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
+        geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+
+        
+
         return geode;
     }
 }
@@ -2170,9 +2186,7 @@ TileModelCompiler::compile(const TileModel*  model,
 #endif
 
         //test: show the tile bounding boxes
-        osg::ComputeBoundsVisitor cbv;
-        d.surfaceGeode->accept( cbv );
-        tile->addChild( makeBBox( cbv.getBoundingBox() ) );
+        tile->addChild( makeBBox(d) );
     }
 
     return tile;

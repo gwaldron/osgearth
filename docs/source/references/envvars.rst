@@ -25,7 +25,9 @@ Debugging:
                                 and ``WARN``. Default is ``NOTICE``. (This is distinct from
                                 OSG's notify level.)
     :OSGEARTH_MP_PROFILE:       Dumps verbose profiling and timing data about the terrain engine's
-                                tile generator to the console.
+                                tile generator to the console. Set to 1 for detailed per-tile
+                                timings; Set to 2 for average tile load time calculations
+    :OSGEARTH_MP_DEBUG:         Draws tile bounding boxes and tilekey labels atop the map
     :OSGEARTH_MERGE_SHADERS:    Consolidate all shaders within a single shader program; this
                                 is required for GLES (mobile devices) and is therefore useful
                                 for testing. (set to 1).

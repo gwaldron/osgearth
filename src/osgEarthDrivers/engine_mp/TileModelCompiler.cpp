@@ -2016,12 +2016,13 @@ namespace
     {        
         osg::ComputeBoundsVisitor cbv;
         d.surfaceGeode->accept( cbv );
+        const osg::BoundingBox& bbox = cbv.getBoundingBox();
 
         osg::Geometry* geom = new osg::Geometry();
         
         osg::Vec3Array* v = new osg::Vec3Array();
         for(int i=0; i<8; ++i)
-            v->push_back(cbv.getBoundingBox().corner(i));
+            v->push_back(bbox.corner(i));
         geom->setVertexArray(v);
 
         osg::DrawElementsUByte* de = new osg::DrawElementsUByte(GL_LINES);
@@ -2048,7 +2049,7 @@ namespace
         geode->addDrawable(geom);
 
         osgText::Text* t = new osgText::Text();
-        t->setText( d.model->_tileKey.str() );
+        t->setText( Stringify() << d.model->_tileKey.str() << "\n" << bbox.xMax()-bbox.xMin() );
         t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
         t->setCharacterSizeMode(t->SCREEN_COORDS);
         t->setCharacterSize(36.0f);
@@ -2056,13 +2057,11 @@ namespace
         t->setColor(osg::Vec4(1,1,1,1));
         t->setBackdropColor(osg::Vec4(0,0,0,1));
         t->setBackdropType(t->OUTLINE);
-        t->setPosition(osg::Vec3(0,0,cbv.getBoundingBox().zMax()));
+        t->setPosition(osg::Vec3(0,0,bbox.zMax()));
         geode->addDrawable(t);
 
         geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
-        geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
-
-        
+        geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);        
 
         return geode;
     }

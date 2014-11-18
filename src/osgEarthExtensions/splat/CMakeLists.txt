@@ -2,13 +2,27 @@
 # texture splatting plugin
 #
 
+set(TARGET_GLSL
+    Noise.glsl
+    Splat.vert.model.glsl
+    Splat.vert.view.glsl
+    Splat.frag.glsl)
+
+set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+
+configure_shaders(
+    SplatShaders.cpp.in
+    ${SHADERS_CPP}
+    ${TARGET_GLSL} )
+
 SET(TARGET_SRC
 	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
 	SplatTerrainEffect.cpp
 	SplatCoverageLegend.cpp
-	ModelSplatter.cpp)
+	ModelSplatter.cpp
+    ${SHADERS_CPP})
 	
 SET(LIB_PUBLIC_HEADERS
 	SplatCoverageLegend

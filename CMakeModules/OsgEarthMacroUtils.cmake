@@ -483,7 +483,7 @@ macro(configure_shaders templateFile autoGenCppFile)
 		COMMAND
 			"${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
 		DEPENDS
-			"${GLSL_FILES}" 
+			${GLSL_FILES}
 			"${TEMPLATE_FILE}"
 			"${CMAKE_SOURCE_DIR}/CMakeModules/ConfigureShaders.cmake.in" )
 	

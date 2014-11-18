@@ -194,6 +194,7 @@ MACRO(SETUP_PLUGIN PLUGIN_NAME)
     #MESSAGE("in -->SETUP_PLUGIN<-- ${TARGET_NAME}-->${TARGET_SRC} <--> ${TARGET_H}<--")
     
     SOURCE_GROUP( "Header Files" FILES ${TARGET_H} )
+    SOURCE_GROUP( "Shader Files" FILES ${TARGET_GLSL} )
 
     ## we have set up the target label and targetname by taking into account global prfix (osgdb_)
 
@@ -207,9 +208,9 @@ MACRO(SETUP_PLUGIN PLUGIN_NAME)
 # here we use the command to generate the library
 
     IF   (DYNAMIC_OSGEARTH)
-        ADD_LIBRARY(${TARGET_TARGETNAME} MODULE ${TARGET_SRC} ${TARGET_H})
+        ADD_LIBRARY(${TARGET_TARGETNAME} MODULE ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL})
     ELSE (DYNAMIC_OSGEARTH)
-        ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H})
+        ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL})
     ENDIF(DYNAMIC_OSGEARTH)
 
     #not sure if needed, but for plugins only msvc need the d suffix

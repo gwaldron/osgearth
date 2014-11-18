@@ -26,14 +26,12 @@
 #include <osgEarth/URI>
 #include <osgEarth/ShaderUtils>
 
-#include "NoiseShaders"
 #include "SplatShaders"
 
 #define LC "[Splat] "
 
 #define COVERAGE_SAMPLER "oe_splat_coverage_tex"
 #define SPLAT_SAMPLER    "oe_splat_tex"
-#define SPLAT_FUNC       "oe_splat_getTexel"
 
 // Tile LOD offset of the "Level 0" splatting scale. This is necessary
 // to get rid of precision issues when scaling the splats up high.
@@ -140,7 +138,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             // support shaders
             std::string noiseShaderSource = ShaderLoader::loadSource( Shaders::NoiseFile, Shaders::NoiseSource );
             osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
-            vp->setShader( NOISE_FUNC, noiseShader );
+            vp->setShader( "oe_splat_noiseshaders", noiseShader );
         }
     }
 }
@@ -180,8 +178,7 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
         {
             vp->removeShader( "oe_splat_vertex" );
             vp->removeShader( "oe_splat_fragment" );
-            vp->removeShader( SPLAT_FUNC );
-            vp->removeShader( NOISE_FUNC );
+            vp->removeShader( "oe_splat_noiseshaders" );
         }
     }
     

@@ -35,8 +35,7 @@ SET(LIB_PUBLIC_HEADERS
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS}
 	SplatExport
-	SplatShaders
-	NoiseShaders)
+	SplatShaders)
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
     osgEarthUtil)

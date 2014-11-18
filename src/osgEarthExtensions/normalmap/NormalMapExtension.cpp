@@ -61,14 +61,22 @@ NormalMapExtension::connect(MapNode* mapNode)
     osg::ref_ptr<osg::Image> image = _options.imageURI()->getImage( _dbOptions.get() );
     if ( !image.valid() )
     {
-        OE_WARN << LC << "Failed; unable to load normal map image\n";
+        OE_WARN << LC << "Failed; unable to load normal map image from "
+            << _options.imageURI()->full() << "\n";
         return false;
     }
 
     _effect = new NormalMapTerrainEffect( _dbOptions.get() );
     _effect->setNormalMapImage( image.get() );
 
+    if (_options.intensity().isSet())
+        _effect->getIntensityUniform()->set( _options.intensity().get() );
+    if (_options.scale().isSet())
+        _effect->getScaleUniform()->set( _options.scale().get() );
+
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
+    
+    OE_INFO << LC << "Installed!\n";
 
     return true;
 }

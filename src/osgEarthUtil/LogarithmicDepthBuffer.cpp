@@ -70,7 +70,6 @@ namespace
                 }
 
                 // the uniform conveying the far clip plane:
-                //osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_far", osg::Uniform::FLOAT);
                 osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_FC", osg::Uniform::FLOAT);
 
                 // calculate the far plane based on the camera location:
@@ -122,11 +121,24 @@ namespace
         "{\n"
         "    gl_FragDepth = log2(oe_ldb_logz)*0.5*oe_ldb_FC; \n"
         "}\n";
+
+    // This variant does not require using gl_FragDepth, but it less tolerant
+    // of low-res tessellations near the camera.
+    const char* vertOnlySource =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "uniform float oe_ldb_FC; \n"
+        "void oe_ldb_vert(inout vec4 clip) \n"
+        "{ \n"
+        "    const float C = " NEAR_RES_COEFF_STR ";\n"
+        "    clip.z = (log2(max(1e-6,C*clip.w+1.0))*oe_ldb_FC - 1.0) * clip.w;\n"
+        "} \n";
 }
 
 //------------------------------------------------------------------------
 
-LogarithmicDepthBuffer::LogarithmicDepthBuffer()
+LogarithmicDepthBuffer::LogarithmicDepthBuffer() :
+_useFragDepth(true)
 {
     _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
@@ -140,6 +152,12 @@ LogarithmicDepthBuffer::LogarithmicDepthBuffer()
 }
 
 void
+LogarithmicDepthBuffer::setUseFragDepth(bool value)
+{
+    _useFragDepth = value;
+}
+
+void
 LogarithmicDepthBuffer::install(osg::Camera* camera)
 {
     if ( camera && _supported )
@@ -148,8 +166,16 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
         osg::StateSet* stateset = camera->getOrCreateStateSet();
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
-        vp->setFunction( "oe_ldb_vert", vertSource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );
-        vp->setFunction( "oe_ldb_frag", fragSource, ShaderComp::LOCATION_FRAGMENT_LIGHTING, FLT_MAX );        
+
+        if ( _useFragDepth )
+        {
+            vp->setFunction( "oe_ldb_vert", vertSource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );        
+            vp->setFunction( "oe_ldb_frag", fragSource, ShaderComp::LOCATION_FRAGMENT_LIGHTING, FLT_MAX );        
+        }
+        else
+        {
+            vp->setFunction( "oe_ldb_vert", vertOnlySource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );  
+        }
 
         // configure the camera:
         camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
@@ -176,6 +202,7 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
             if ( vp )
             {
                 vp->removeShader( "oe_ldb_vert" );
+                vp->removeShader( "oe_ldb_frag" );
             }
 
             stateset->removeUniform( "oe_ldb_far" );

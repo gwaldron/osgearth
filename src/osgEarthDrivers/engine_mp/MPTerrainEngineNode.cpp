@@ -477,7 +477,7 @@ MPTerrainEngineNode::getKeyNodeFactory()
             this );
     }
 
-    return knf.release();
+    return knf.get();
 }
 
 osg::Node*
@@ -570,7 +570,8 @@ MPTerrainEngineNode::createTile( const TileKey& key )
             _primaryUnit,
             optimizeTriangleOrientation,
             _terrainOptions );
-    return compiler->compile(model.get(), *_update_mapf);
+
+    return compiler->compile(model.get(), *_update_mapf, 0L);
 }
 
 
@@ -745,6 +746,12 @@ MPTerrainEngineNode::updateState()
     else
     {
         osg::StateSet* terrainStateSet = _terrain->getOrCreateStateSet();
+
+        // Sort drawable front to back to minimize overdraw in fragment shaders.
+        // This can have a huge impact on performance if the renderer is
+        // fragment/fill bound. The "-1" encourages the terrain to render before
+        // any model layers or other geometry.
+        terrainStateSet->setRenderBinDetails(-1, "SORT_FRONT_TO_BACK");
         
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(

@@ -146,14 +146,21 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                             progress->stats()["http_get_time"] / progress->stats()["http_get_count"];
 
                         OE_NOTICE << "tile: " << tileDef << std::endl;
-                        for(std::map<std::string,double>::iterator i = progress->stats().begin();
+                        for(fast_map<std::string,double>::iterator i = progress->stats().begin();
                             i != progress->stats().end();
                             ++i)
                         {
                             std::stringstream buf;
-                            buf << i->first << " = " << std::setprecision(4) << i->second;
                             if ( osgEarth::endsWith(i->first, "_time") )
-                                buf << " (" << (int)((i->second/tileLoadTime)*100) << "%)";
+                            {
+                                buf 
+                                    << i->first << " = " << std::setprecision(4) << (i->second*1000.0) << "ms ("
+                                    << (int)((i->second/tileLoadTime)*100) << "%)";
+                            }
+                            else
+                            {
+                                buf << i->first << " = " << std::setprecision(4) << i->second;
+                            }
                             OE_NOTICE << "   " << buf.str() << std::endl;
                         }
 
@@ -170,8 +177,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                         static std::deque<double> tileLoadTimes[3];
                         static int    samples[3]       = { 64, 256, 1024 };
                         static double runningTotals[3] = { 0.0, 0.0, 0.0 };
-                        //static int s0 = 60, s1 = 256, s2 = 1024;
-                        //static double runningTileLoadTime = 0.0;
                         static Threading::Mutex averageMutex;
 
                         averageMutex.lock();
@@ -186,9 +191,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                             }
                         }
                         OE_NOTICE << "(samples)time : "
-                            << "(" << samples[0] << "): " << (tileLoadTimes[0].size() == samples[0] ? (runningTotals[0]/(double)samples[0]) : -1.0) << "; "
-                            << "(" << samples[1] << "): " << (tileLoadTimes[1].size() == samples[1] ? (runningTotals[1]/(double)samples[1]) : -1.0) << "; "
-                            << "(" << samples[2] << "): " << (tileLoadTimes[2].size() == samples[2] ? (runningTotals[2]/(double)samples[2]) : -1.0) << "; "
+                            << "(" << samples[0] << "): " << (tileLoadTimes[0].size() == samples[0] ? (runningTotals[0]/(double)samples[0])*1000.0 : -1.0) << "ms; "
+                            << "(" << samples[1] << "): " << (tileLoadTimes[1].size() == samples[1] ? (runningTotals[1]/(double)samples[1])*1000.0 : -1.0) << "ms; "
+                            << "(" << samples[2] << "): " << (tileLoadTimes[2].size() == samples[2] ? (runningTotals[2]/(double)samples[2])*1000.0 : -1.0) << "ms; "
                             << std::endl;
 
                         averageMutex.unlock();

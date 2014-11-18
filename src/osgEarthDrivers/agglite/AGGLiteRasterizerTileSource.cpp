@@ -26,6 +26,7 @@
 #include <osgEarthSymbology/AGG.h>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
+#include <osgEarth/ImageUtils>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -47,6 +48,54 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
+
+namespace
+{
+    struct span_coverage32
+    {
+        //--------------------------------------------------------------------
+        static void render(unsigned char* ptr, 
+                           int x,
+                           unsigned count, 
+                           const unsigned char* covers, 
+                           const agg::rgba8& c)
+        {
+            unsigned char* p = ptr + (x << 2);
+            do
+            {
+                int cover = *covers++;
+                int alpha = (cover > 127 ? 255 : 0.0);
+                *p++ = alpha;
+                *p++ = c.b;
+                *p++ = c.g;
+                *p++ = c.r;
+            }
+            while(--count);
+        }
+
+        //--------------------------------------------------------------------
+        static void hline(unsigned char* ptr, 
+                          int x,
+                          unsigned count, 
+                          const agg::rgba8& c)
+        {
+            unsigned char* p = ptr + (x << 2);
+            do { *p++ = c.a; *p++ = c.b; *p++ = c.g; *p++ = c.r; } while(--count);
+        }
+
+        //--------------------------------------------------------------------
+        static agg::rgba8 get(unsigned char* ptr, int x)
+        {
+            unsigned char* p = ptr + (x << 2);
+            agg::rgba8 c;
+            c.a = *p++; 
+            c.b = *p++; 
+            c.g = *p++;
+            c.r = *p;
+            return c;
+        }
+    };
+}
 
 /********************************************************************/
 
@@ -179,12 +228,11 @@ public:
                             {
                                 // linear to angular? approximate degrees per meter at the 
                                 // latitude of the tile's centroid.
-                                lineWidth = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
-                                double circ = featureSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI;
-                                double x, y;
-                                context.profile()->getExtent().getCentroid(x, y);
-                                double radians = (lineWidth/circ) * cos(osg::DegreesToRadians(y));
-                                lineWidth = osg::RadiansToDegrees(radians);
+                                double lineWidthM = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
+                                double mPerDegAtEquatorInv = 360.0/(featureSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI);
+                                double lon, lat;
+                                imageExtent.getCentroid(lon, lat);
+                                lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(lat));
                             }
                         }
 
@@ -214,7 +262,6 @@ public:
         agg::rendering_buffer rbuf( image->data(), image->s(), image->t(), image->s()*4 );
 
         // Create the renderer and the rasterizer
-        agg::renderer<agg::span_abgr32> ren(rbuf);
         agg::rasterizer ras;
 
         // Setup the rasterizer
@@ -246,7 +293,7 @@ public:
                     masterPoly;
                 
                 const osg::Vec4 color = poly ? static_cast<osg::Vec4>(poly->fill()->color()) : osg::Vec4(1,1,1,1);
-                rasterize(croppedGeometry.get(), color, frame, ras, ren);
+                rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
             }
         }
 
@@ -264,7 +311,7 @@ public:
                     masterLine;
                 
                 const osg::Vec4 color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
-                rasterize(croppedGeometry.get(), color, frame, ras, ren);
+                rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
             }
         }
 
@@ -281,18 +328,17 @@ public:
             std::swap( pixel[0], pixel[3] );
             std::swap( pixel[1], pixel[2] );
         }
+
         return true;
     }
 
     // rasterizes a geometry.
     void rasterize(const Geometry* geometry, const osg::Vec4& color, RenderFrame& frame, 
-                   agg::rasterizer& ras, agg::renderer<agg::span_abgr32>& ren)
+                   agg::rasterizer& ras, agg::rendering_buffer& buffer)
     {
         osg::Vec4 c = color;
         unsigned int a = (unsigned int)(127.0f+(c.a()*255.0f)/2.0f); // scale alpha up
         agg::rgba8 fgColor( (unsigned int)(c.r()*255.0f), (unsigned int)(c.g()*255.0f), (unsigned int)(c.b()*255.0f), a );
-
-        ras.filling_rule( agg::fill_even_odd );
 
         ConstGeometryIterator gi( geometry );
         while( gi.hasMore() )
@@ -312,7 +358,17 @@ public:
                     ras.line_to_d( x0, y0 );
             }
         }
-        ras.render(ren, fgColor);
+        
+        if (_options.coverage() == true )
+        {
+            agg::renderer<span_coverage32> ren(buffer);
+            ras.render(ren, fgColor);
+        }
+        else
+        {
+            agg::renderer<agg::span_abgr32> ren(buffer);
+            ras.render(ren, fgColor);
+        }
         ras.reset();
     }
 

@@ -68,6 +68,10 @@ namespace osgEarth { namespace Symbology
         optional<float>& minAlpha() { return _minAlpha; }
         const optional<float>& minAlpha() const { return _minAlpha; }
 
+        /** render bin to use for sorting */
+        optional<std::string>& renderBin() { return _renderBin; }
+        const optional<std::string>& renderBin() const { return _renderBin; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -81,6 +85,7 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>  _order;
         optional<unsigned>           _clipPlane;
         optional<float>              _minAlpha;
+        optional<std::string>        _renderBin;
         
         /** dtor */
         virtual ~RenderSymbol() { }

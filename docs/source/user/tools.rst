@@ -13,33 +13,47 @@ used to control the camera and is optimized for viewing geospatial data.
     osgearth_viewer earthfile.earth [options]
 
 
-+----------------------------+--------------------------------------------------------------------+
-| Option                     | Description                                                        |
-+============================+====================================================================+
-| ``--sky``                  | Installs a SkyNode (sun, moon, stars and atmosphere..globe only)   |
-+----------------------------+--------------------------------------------------------------------+
-| ``--ocean``                | Installs a sample ocean surface node                               |
-+----------------------------+--------------------------------------------------------------------+
-| ``--kml [file.kml]``       | Loads a KML or KMZ file                                            |
-+----------------------------+--------------------------------------------------------------------+
-| ``--coords``               | Displays map coords under mouse                                    |
-+----------------------------+--------------------------------------------------------------------+
-| ``--dms``                  | Displays map coords as degrees/mins/seconds                        |
-+----------------------------+--------------------------------------------------------------------+
-| ``--dd``                   | Displays map coords as decimal degrees                             |
-+----------------------------+--------------------------------------------------------------------+
-| ``--mgrs``                 | Displays map coords as MGRS                                        |
-+----------------------------+--------------------------------------------------------------------+
-| ``--ortho``                | Installs an orthographic camera projection                         |
-+----------------------------+--------------------------------------------------------------------+
-| ``--autoclip``             | Installs an automatic clip plane handler                           |
-+----------------------------+--------------------------------------------------------------------+
-| ``--images [path]``        | Finds images in [path] and loads them as image layers              |
-+----------------------------+--------------------------------------------------------------------+
-| ``--image-extensions [*]`` | With ``--images``, only considers the listed extensions            |
-+----------------------------+--------------------------------------------------------------------+
-| ``--out-earth [out.earth]``| With ``--images``, writes out an earth file                        |
-+----------------------------+--------------------------------------------------------------------+
++----------------------------------+--------------------------------------------------------------------+
+| Option                           | Description                                                        |
++==================================+====================================================================+
+| ``--sky``                        | Installs a SkyNode (sun, moon, stars and atmosphere..globe only)   |
++----------------------------------+--------------------------------------------------------------------+
+| ``--ocean``                      | Installs a sample ocean surface node                               |
++----------------------------------+--------------------------------------------------------------------+
+| ``--kml [file.kml]``             | Loads a KML or KMZ file                                            |
++----------------------------------+--------------------------------------------------------------------+
+| ``--coords``                     | Displays map coords under mouse                                    |
++----------------------------------+--------------------------------------------------------------------+
+| ``--dms``                        | Displays map coords as degrees/mins/seconds                        |
++----------------------------------+--------------------------------------------------------------------+
+| ``--dd``                         | Displays map coords as decimal degrees                             |
++----------------------------------+--------------------------------------------------------------------+
+| ``--mgrs``                       | Displays map coords as MGRS                                        |
++----------------------------------+--------------------------------------------------------------------+
+| ``--ortho``                      | Installs an orthographic camera projection                         |
++----------------------------------+--------------------------------------------------------------------+
+| ``--images [path]``              | Finds images in [path] and loads them as image layers              |
++----------------------------------+--------------------------------------------------------------------+
+| ``--image-extensions [*]``       | With ``--images``, only considers the listed extensions            |
++----------------------------------+--------------------------------------------------------------------+
+| ``--out-earth [out.earth]``      | With ``--images``, writes out an earth file                        |
++----------------------------------+--------------------------------------------------------------------+
+| ``--logdepth``                   | Activates the logarithmic depth buffer in high-precision mode.     |
+|                                  | High accuracy with a GPU performance penalty.                      |
++----------------------------------+--------------------------------------------------------------------+
+| ``--logdepth2``                  | Activates the logarithmic depth buffer in low-precision mode.      |
+|                                  | Faster, but less tolerant of poorly tessellated data near the      |
+|                                  | camera.                                                            |
++----------------------------------+--------------------------------------------------------------------+
+| ``--autoclip``                   | Installs an automatic clip plane handler                           |
++----------------------------------+--------------------------------------------------------------------+
+| ``--uniform [name] [min] [max]`` | Installs a uniform and displays an on-screen slider to control its |
+|                                  | value. Helpful for debugging.                                      |
++----------------------------------+--------------------------------------------------------------------+
+| ``--ico``                        | Activates OSG's IncrementalCompileOperation, which will compile    |
+|                                  | paged objects over a series of frames (reducing frame breaks).     |
+|                                  | This is actually an OpenSceneGraph option, but useful for osgEarth |
++----------------------------------+--------------------------------------------------------------------+
 
 
 osgearth_version

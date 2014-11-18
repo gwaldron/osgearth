@@ -70,6 +70,9 @@ namespace osgEarth { namespace Splat
         SplatOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
         {
             setDriver( "splat" );
+            _coverageWarp.init(0.0f);
+            _coverageBlur.init(1.0f);
+            _scaleLevelOffset.init(0);
             _drawAfterImageLayers.init(false);
             fromConfig( _conf );
         }

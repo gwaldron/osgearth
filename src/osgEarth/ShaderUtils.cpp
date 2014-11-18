@@ -21,7 +21,9 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/URI>
 #include <osg/ComputeBoundsVisitor>
+#include <osgDB/FileUtils>
 #include <list>
 
 using namespace osgEarth;
@@ -131,6 +133,26 @@ namespace
 }
 
 //------------------------------------------------------------------------
+
+#undef LC
+#define LC "[ShaderLoader] "
+
+std::string
+ShaderLoader::loadSource(const std::string&    filename,
+                         const std::string&    backupSource,
+                         const osgDB::Options* dbOptions )
+{
+    std::string path = osgDB::findDataFile(filename, dbOptions);
+    if ( path.empty() )
+        return backupSource;    
+    std::string source = URI(path).getString(dbOptions);
+    if (!source.empty())
+        OE_INFO << LC << "Loaded " << filename << " from disk\n";
+    return source.empty() ? backupSource : source;
+}
+
+#undef LC
+#define LC "[ShaderUtils] "
 
 namespace
 {

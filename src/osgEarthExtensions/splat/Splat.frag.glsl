@@ -17,7 +17,6 @@ varying float oe_splat_scaleOffsetInt;
 uniform float oe_splat_intensity;
 uniform float oe_splat_warp;
 uniform float oe_splat_blur;
-uniform float oe_splat_covlod;
 uniform sampler2D oe_splat_coverage_tex;
 uniform sampler2DArray oe_splat_tex;
 

@@ -1,3 +1,4 @@
+#version 110
 /**
  * Noise shader code adapted from "webgl-noise":
  * https://github.com/ashima/webgl-noise

@@ -7,11 +7,7 @@
 using namespace osgEarth::NormalMap;
 
 const char* Shaders::VertexShaderFile     = "NormalMap.vert.glsl";
-const char* Shaders::FragmentShaderFile   = MULTILINE(
-@NormalMap.vert.glsl@
-);
+const char* Shaders::VertexShaderSource   = MULTILINE(@NormalMap.vert.glsl@);
 
-const char* Shaders::VertexShaderSource   = "NormalMap.frag.glsl";	
-const char* Shaders::FragmentShaderSource = MULTILINE(
-@NormalMap.frag.glsl@
-);
+const char* Shaders::FragmentShaderFile   = "NormalMap.frag.glsl";
+const char* Shaders::FragmentShaderSource = MULTILINE(@NormalMap.frag.glsl@);

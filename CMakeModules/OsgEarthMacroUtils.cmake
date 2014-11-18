@@ -241,6 +241,13 @@ MACRO(SETUP_PLUGIN PLUGIN_NAME)
 		ENDIF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
 		
     ENDIF(WIN32)
+
+    # install the shader source files
+    if(OSGEARTH_INSTALL_SHADERS)
+        INSTALL(
+            FILES ${TARGET_GLSL} 
+            DESTINATION resources/shaders )
+    endif(OSGEARTH_INSTALL_SHADERS)
     
 #finally, set up the solution folder -gw
     SET_PROPERTY(TARGET ${TARGET_TARGETNAME} PROPERTY FOLDER "Plugins")    
@@ -319,6 +326,13 @@ MACRO(SETUP_EXTENSION PLUGIN_NAME)
 		ENDIF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
 		
     ENDIF(WIN32)
+    
+    # install the shader source files
+    if(OSGEARTH_INSTALL_SHADERS)
+        INSTALL(
+            FILES ${TARGET_GLSL} 
+            DESTINATION resources/shaders )
+    endif(OSGEARTH_INSTALL_SHADERS)
     
 #finally, set up the solution folder -gw
     SET_PROPERTY(TARGET ${TARGET_TARGETNAME} PROPERTY FOLDER "Extensions")    

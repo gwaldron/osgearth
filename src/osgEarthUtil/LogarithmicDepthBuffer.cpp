@@ -194,8 +194,8 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
         else
         {
             std::string vert = ShaderLoader::loadSource(
-                Shaders::LogDepthBuffer_VertFile,
-                Shaders::LogDepthBuffer_VertSource);
+                Shaders::LogDepthBuffer_VertOnly_VertFile,
+                Shaders::LogDepthBuffer_VertOnly_VertSource);
 
             osgEarth::replaceIn(vert, "$NEAR_RES_COEFF_STR", NEAR_RES_COEFF_STR );
 

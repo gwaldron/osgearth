@@ -34,9 +34,13 @@ INSTALL(
     ARCHIVE DESTINATION ${INSTALL_ARCHIVEDIR}
 )
 
-install(
-	FILES ${TARGET_GLSL}
-	DESTINATION resources/shaders )
+# deploy the shaders for this library, if requested.
+if(OSGEARTH_INSTALL_SHADERS)
+	install(
+		FILES ${TARGET_GLSL}
+		DESTINATION resources/shaders )
+endif(OSGEARTH_INSTALL_SHADERS)
+
 
 IF(NOT OSGEARTH_BUILD_FRAMEWORKS)
     INSTALL(

@@ -101,42 +101,6 @@ namespace
         // context-specific stateset collection
         osg::buffered_value<osg::ref_ptr<osg::StateSet> > _stateSets;
     };
-
-#if 0
-    const char* vertSource =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_ldb_FC; \n"
-        "varying float oe_ldb_logz; \n"
-        "void oe_ldb_vert(inout vec4 clip) \n"
-        "{ \n"
-        "    const float C = " NEAR_RES_COEFF_STR ";\n"
-        "    oe_ldb_logz = max(1e-6, clip.w*C + 1.0); \n"
-        "    clip.z = log2(oe_ldb_logz)*oe_ldb_FC - 1.0; \n"
-        "} \n";
-
-    const char* fragSource =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_ldb_FC; \n"
-        "varying float oe_ldb_logz; \n"
-        "void oe_ldb_frag(inout vec4 color) \n"
-        "{\n"
-        "    gl_FragDepth = log2(oe_ldb_logz)*0.5*oe_ldb_FC; \n"
-        "}\n";
-
-    // This variant does not require using gl_FragDepth, but it less tolerant
-    // of low-res tessellations near the camera.
-    const char* vertOnlySource =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_ldb_FC; \n"
-        "void oe_ldb_vert(inout vec4 clip) \n"
-        "{ \n"
-        "    const float C = " NEAR_RES_COEFF_STR ";\n"
-        "    clip.z = (log2(max(1e-6,C*clip.w+1.0))*oe_ldb_FC - 1.0) * clip.w;\n"
-        "} \n";
-#endif
 }
 
 //------------------------------------------------------------------------

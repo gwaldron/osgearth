@@ -1,5 +1,3 @@
-# INSTALL and SOURCE_GROUP commands for OSG/OT/Producer Modules
-
 # Required Vars:
 # ${LIB_NAME}
 # ${LIB_PUBLIC_HEADERS}
@@ -23,8 +21,11 @@ IF(NOT USE_CUSTOM_SOURCE_GROUPS)
         ${HEADERS_GROUP}
         FILES ${LIB_PUBLIC_HEADERS}
     )
+		
 ENDIF()
 
+source_group(
+	"Shaders" FILES ${TARGET_GLSL} )
 
 INSTALL(
     TARGETS ${LIB_NAME}
@@ -32,6 +33,10 @@ INSTALL(
     LIBRARY DESTINATION ${INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${INSTALL_ARCHIVEDIR}
 )
+
+install(
+	FILES ${TARGET_GLSL}
+	DESTINATION resources/shaders )
 
 IF(NOT OSGEARTH_BUILD_FRAMEWORKS)
     INSTALL(

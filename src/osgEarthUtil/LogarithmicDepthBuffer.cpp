@@ -17,10 +17,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/LogarithmicDepthBuffer>
+#include <osgEarthUtil/Shaders>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ShaderUtils>
 #include <osgUtil/CullVisitor>
 #include <osg/Uniform>
 #include <osg/buffered_value>
@@ -100,6 +102,7 @@ namespace
         osg::buffered_value<osg::ref_ptr<osg::StateSet> > _stateSets;
     };
 
+#if 0
     const char* vertSource =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
@@ -133,6 +136,7 @@ namespace
         "    const float C = " NEAR_RES_COEFF_STR ";\n"
         "    clip.z = (log2(max(1e-6,C*clip.w+1.0))*oe_ldb_FC - 1.0) * clip.w;\n"
         "} \n";
+#endif
 }
 
 //------------------------------------------------------------------------
@@ -169,12 +173,37 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
 
         if ( _useFragDepth )
         {
-            vp->setFunction( "oe_ldb_vert", vertSource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );        
-            vp->setFunction( "oe_ldb_frag", fragSource, ShaderComp::LOCATION_FRAGMENT_LIGHTING, FLT_MAX );        
+            std::string vert = ShaderLoader::loadSource(
+                Shaders::LogDepthBuffer_VertFile,
+                Shaders::LogDepthBuffer_VertSource);
+
+            osgEarth::replaceIn(vert, "$NEAR_RES_COEFF_STR", NEAR_RES_COEFF_STR );
+
+            vp->setFunction( 
+                "oe_ldb_vert",
+                vert,
+                ShaderComp::LOCATION_VERTEX_CLIP,
+                FLT_MAX );        
+
+            vp->setFunction(
+                "oe_ldb_frag",
+                ShaderLoader::loadSource(Shaders::LogDepthBuffer_FragFile, Shaders::LogDepthBuffer_FragSource),
+                ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+                FLT_MAX );        
         }
         else
         {
-            vp->setFunction( "oe_ldb_vert", vertOnlySource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );  
+            std::string vert = ShaderLoader::loadSource(
+                Shaders::LogDepthBuffer_VertFile,
+                Shaders::LogDepthBuffer_VertSource);
+
+            osgEarth::replaceIn(vert, "$NEAR_RES_COEFF_STR", NEAR_RES_COEFF_STR );
+
+            vp->setFunction(
+                "oe_ldb_vert", 
+                vert,
+                ShaderComp::LOCATION_VERTEX_CLIP,
+                FLT_MAX );  
         }
 
         // configure the camera:

@@ -3,7 +3,7 @@
 #
 
 set(TARGET_GLSL
-    Noise.glsl
+    Splat.Noise.glsl
     Splat.vert.model.glsl
     Splat.vert.view.glsl
     Splat.frag.glsl)
@@ -15,7 +15,7 @@ configure_shaders(
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
 
-SET(TARGET_SRC
+set(TARGET_SRC
 	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
@@ -24,7 +24,7 @@ SET(TARGET_SRC
 	ModelSplatter.cpp
     ${SHADERS_CPP})
 	
-SET(LIB_PUBLIC_HEADERS
+set(LIB_PUBLIC_HEADERS
 	SplatCoverageLegend
 	SplatCatalog
 	SplatExtension
@@ -40,10 +40,10 @@ SET(TARGET_H
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
     osgEarthUtil)
 	
-SETUP_EXTENSION(osgearth_splat)
+setup_extension(osgearth_splat)
 
 # to install public driver includes:
-SET(LIB_NAME splat)
+set(LIB_NAME splat)
 
-INCLUDE(ModuleInstallOsgEarthExtensionIncludes OPTIONAL)
+include(ModuleInstallOsgEarthExtensionIncludes OPTIONAL)
 

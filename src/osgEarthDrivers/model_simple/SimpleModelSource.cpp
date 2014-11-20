@@ -195,11 +195,11 @@ public:
                     osg::Vec3d center = result->getBound().center();
                     OE_DEBUG << "Radius=" << result->getBound().radius() << " center=" << center.x() << "," << center.y() << "," << center.z() << std::endl;                    
                     plod->setCenter(result->getBound().center());
-                    plod->setRadius(result->getBound().radius());                    
+                    plod->setRadius(std::max(result->getBound().radius(), maxRange));
                 }
                 lod = plod;
             }   
-            lod->setRange(0, minRange, maxRange);                
+            lod->setRange(0, minRange, maxRange);
             mt->addChild(lod);                
         }
         else

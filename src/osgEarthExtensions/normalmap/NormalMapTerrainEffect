@@ -42,6 +42,12 @@ namespace osgEarth { namespace NormalMap
         /** Sets the image containing the normal offsets. */
         void setNormalMapImage(osg::Image* image);
 
+        /** UNiform that controls intensity */
+        osg::Uniform* getIntensityUniform() const { return _intensityUniform.get(); }
+
+        /** Uniform that controls scale factor */
+        osg::Uniform* getScaleUniform() const { return _scaleUniform.get(); }
+
 
     public: // TerrainEffect interface
 

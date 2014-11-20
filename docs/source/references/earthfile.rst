@@ -104,7 +104,9 @@ These options control the rendering of the terrain surface.
                      cluster_culling       = "true"
                      mercator_fast_path    = "true"
                      blending              = "false"
-                     color                 = "#ffffffff" >
+                     color                 = "#ffffffff"
+                     normalize_edges       = "false"
+                     optimize_tiles        = "false" >
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
@@ -144,7 +146,13 @@ These options control the rendering of the terrain surface.
 |                       | underlying geometry. This lets you make the globe partially        |
 |                       | transparent. This is handy for seeing underground objects.         |
 +-----------------------+--------------------------------------------------------------------+
-| color                 | Color on the underlying (untextures) terrain.                      |
+| normalize_edges       | Calculate normal vectors along the edges of terrain tiles so that  |
+|                       | lighting appears smoother from one tile to the next.               |
++-----------------------+--------------------------------------------------------------------+
+| optimize_tiles        | Optimize each terrain tile as its built, consolidating its         |
+|                       | geometry and optimizing vertex ordering for the GPU cache. This    |
+|                       | will increase tile load time in exchange for slightly better       |
+|                       | rendering performance.                                             |
 +-----------------------+--------------------------------------------------------------------+
 
 

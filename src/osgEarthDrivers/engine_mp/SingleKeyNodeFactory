@@ -68,7 +68,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             ProgressCallback* progress );
 
     protected:
-        osg::Node* createTile(TileModel* model, bool setupChildren);
+        osg::Node* createTile(
+            TileModel*        model,
+            bool              setupChildrenIfNecessary,
+            ProgressCallback* progress);
 
         MapFrame                            _frame;
         osg::ref_ptr<TileModelFactory>      _modelFactory;

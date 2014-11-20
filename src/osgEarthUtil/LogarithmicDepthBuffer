@@ -43,6 +43,17 @@ namespace osgEarth { namespace Util
         /** Constructs a logarithmic depth buffer controller. */
         LogarithmicDepthBuffer();
 
+        /**
+         * Whether to write to gl_FragDepth. (default = true)
+         * Pro: accurate clipping near the camera regardless of weak tessellation
+         * Con: writes to gl_FragDepth defeats early-Z testing on the GPU (hurting
+         *      performance in fill-limited scenarios)
+         *
+         * Set this before calling install().
+         */
+        void setUseFragDepth(bool value);
+        bool getUseFragDepth() const { return _useFragDepth; }
+
         /** is it supported on this platform? */
         bool supported() const { return _supported; }
 
@@ -55,6 +66,7 @@ namespace osgEarth { namespace Util
     protected:
         osg::ref_ptr<osg::NodeCallback> _cullCallback;
         bool _supported;
+        bool _useFragDepth;
     };
 
 } } // namespace osgEarth::Util

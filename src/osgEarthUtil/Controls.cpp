@@ -2197,11 +2197,6 @@ ControlCanvas::EventCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     osg::ref_ptr<ControlCanvas> canvas;
     if ( _canvas.lock(canvas) )
     {
-        if ( _firstTime )
-        {
-            handleResize( ev->getActionAdapter()->asView(), canvas.get() );
-        }
-
         const osgGA::EventQueue::Events& events = ev->getEvents();
         if ( events.size() > 0 )
         {
@@ -2214,9 +2209,12 @@ ControlCanvas::EventCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
                 {
                     osgGA::GUIEventAdapter* ea = AS_ADAPTER(e->get());
 
-                    if (!_firstTime && ea->getEventType() == osgGA::GUIEventAdapter::RESIZE)
+                    // check for a resize each frame. Don't rely on the RESIZE event;
+                    // it does always convey the new viewport dimensions (they aren't
+                    // always available until the following FRAME event)
+                    if ( ea->getEventType() == ea->FRAME )
                     {
-                        handleResize( aa->asView(), canvas.get() );
+                        handleResize(aa->asView(), canvas.get());
                     }
 
                     if (canvas->handle( *ea, *aa ))

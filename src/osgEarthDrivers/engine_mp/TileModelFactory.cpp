@@ -180,9 +180,38 @@ namespace
                         if ( parentModel->getColorData(_layer->getUID(), parentColorData) )
                         {
                             TileModel::ColorData& colorData = _model->_colorData[_layer->getUID()];
-                            colorData = TileModel::ColorData(parentColorData);
-                            colorData._order = _order;
-                            colorData.setIsFallbackData( true );
+#if 0
+                            if ( _layer->isCoverage() )
+                            {
+                                osg::Image* parentImage = parentColorData._texture->getImage(0);
+
+                                if ( parentImage == 0L )
+                                {
+                                    OE_WARN << LC << "Parent image is null!!!\n";
+                                }
+                                else
+                                {
+                                    osg::Image* upsampled = ImageUtils::upSampleNN(
+                                        parentImage,
+                                        _key.getQuadrant() );
+
+                                    colorData = TileModel::ColorData(
+                                        _layer,
+                                        _order,
+                                        upsampled,
+                                        GeoLocator::createForExtent(_key.getExtent(), *_mapInfo),
+                                        false );
+                                }
+                            }
+
+                            else
+#endif
+                            {
+                                colorData = TileModel::ColorData(parentColorData);
+                                colorData._order = _order;
+                                colorData.setIsFallbackData( true );
+                            }
+                            
                             ok = true;
                         }
                     }

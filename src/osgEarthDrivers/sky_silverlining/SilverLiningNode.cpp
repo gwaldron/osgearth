@@ -59,14 +59,13 @@ _lastAltitude(DBL_MAX)
     // Geode to hold each of the SL drawables:
     _geode = new osg::Geode();
     _geode->setCullingActive( false );
-    this->addChild( _geode );
 
-    // Draws the sky:
+    // Draws the sky before everything else
     _skyDrawable = new SkyDrawable( _SL.get() );
-    _skyDrawable->getOrCreateStateSet()->setRenderBinDetails( 98, "RenderBin" );
+    _skyDrawable->getOrCreateStateSet()->setRenderBinDetails( -99, "RenderBin" );
     _geode->addDrawable( _skyDrawable );
 
-    // Clouds
+    // Clouds draw after everything else
     _cloudsDrawable = new CloudsDrawable( _SL.get() );
     _cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "RenderBin" );
     _geode->addDrawable( _cloudsDrawable.get() );
@@ -160,5 +159,11 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 			}
         }
     }
+
     osgEarth::Util::SkyNode::traverse( nv );
+
+    if ( _geode.valid() )
+    {
+        _geode->accept(nv);
+    }
 }

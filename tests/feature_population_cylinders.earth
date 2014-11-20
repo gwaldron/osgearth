@@ -39,6 +39,7 @@ Shows how to use JavaScript to create geometry parametrically.
 					stroke-width:      1px;
                     altitude-script:   makePopCircles();
 					extrusion-height:  feature.properties.height;
+					render-bin:        DepthSortedBin;
                 }     
             </style>
         </styles>

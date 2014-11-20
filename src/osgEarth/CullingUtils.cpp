@@ -332,10 +332,12 @@ DoNotComputeNearFarCullCallback::operator()(osg::Node* node, osg::NodeVisitor* n
 
 //----------------------------------------------------------------------------
 
-
 bool 
 SuperClusterCullingCallback::cull(osg::NodeVisitor* nv, osg::Drawable* , osg::State*) const
 {
+    static int c0, c1;
+    static int frame = -1;
+
     osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
     if (!cv) return false;
@@ -344,41 +346,58 @@ SuperClusterCullingCallback::cull(osg::NodeVisitor* nv, osg::Drawable* , osg::St
     if ( !(cv->getCullingMode() & osg::CullSettings::CLUSTER_CULLING) )
         return false;
 
+    bool visible = true;
+
     // quick bail is the deviation is maxed out
-    if ( _deviation <= -1.0f )
-        return false;
+    if ( _deviation > -1.0f )
+    {
+        // accept if we're within the culling radius
+        osg::Vec3d eye_cp = nv->getViewPoint() - _controlPoint;
+        float radius = (float)eye_cp.length();
+        if ( radius >= _radius )
+        {
+            // handle perspective and orthographic projections differently.
+            const osg::Matrixd& proj = *cv->getProjectionMatrix();
+            bool isOrtho = ( proj(3,3) == 1. ) && ( proj(2,3) == 0. ) && ( proj(1,3) == 0. ) && ( proj(0,3) == 0.);
 
-    // accept if we're within the culling radius
-    osg::Vec3d eye_cp = nv->getViewPoint() - _controlPoint;
-    float radius = (float)eye_cp.length();
-    if (radius < _radius)
-        return false;
+            float deviation;
+            if ( isOrtho )
+            {
+                // For an ortho camera, use the reverse look vector instead of the eye->controlpoint
+                // vector for the deviation test. Transform the local reverse-look vector (always 0,0,1)
+                // into world space and dot them. (Use 3x3 since we're xforming a vector, not a point)
+                osg::Vec3d revLookWorld = osg::Matrix::transform3x3( *cv->getModelViewMatrix(), osg::Vec3d(0,0,1) );
+                revLookWorld.normalize();
+                deviation = revLookWorld * _normal;
+                visible = deviation >= _deviation;
+            }
 
-#if 0 // underwater test.
-    if (radius-_radius < 1000000)
-        return false;
+            else // isPerspective
+            {
+                deviation = (eye_cp * _normal)/radius;
+                visible = deviation >= _deviation;
+            }
+
+            visible = deviation >= _deviation;            
+        }
+    }
+
+#if 0 // debugging
+    int fn = cv->getFrameStamp()->getFrameNumber();
+    if ( fn != frame )
+    {
+        frame = fn;
+        OE_INFO << "Frame: " << fn << "try = " << c0 << ", viz = " << c1 << "\n";
+        c0 = c1 = 0;
+    }
+    else
+    {
+        c0 ++;
+        c1 += visible ? 1 : 0;
+    }
 #endif
 
-    // handle perspective and orthographic projections differently.
-    const osg::Matrixd& proj = *cv->getProjectionMatrix();
-    bool isOrtho = ( proj(3,3) == 1. ) && ( proj(2,3) == 0. ) && ( proj(1,3) == 0. ) && ( proj(0,3) == 0.);
-
-    if ( isOrtho )
-    {
-        // For an ortho camera, use the reverse look vector instead of the eye->controlpoint
-        // vector for the deviation test. Transform the local reverse-look vector (always 0,0,1)
-        // into world space and dot them. (Use 3x3 since we're xforming a vector, not a point)
-        osg::Vec3d revLookWorld = osg::Matrix::transform3x3( *cv->getModelViewMatrix(), osg::Vec3d(0,0,1) );
-        revLookWorld.normalize();
-        float deviation = revLookWorld * _normal;
-        return deviation < _deviation;
-    }
-
-    else // isPerspective
-    {
-        float deviation = (eye_cp * _normal)/radius;
-        return deviation < _deviation;
-    }
+    return !visible;
 }
 
 

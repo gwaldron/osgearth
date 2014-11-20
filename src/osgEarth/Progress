@@ -21,7 +21,7 @@
 #define OSGEARTH_PROGRESS_H 1
 
 #include <osgEarth/Common>
-#include <map>
+#include <osgEarth/Containers>
 
 namespace osgEarth
 {
@@ -109,14 +109,14 @@ namespace osgEarth
         /**
          * Access user stats
          */
-        std::map<std::string,double>& stats() { return _stats; }
+        fast_map<std::string,double>& stats() { return _stats; }
 
     protected:
         volatile unsigned _numStages;
         std::string       _message;
         mutable  bool     _needsRetry;
         mutable  bool     _canceled;
-        mutable  std::map<std::string, double> _stats;
+        mutable  fast_map<std::string, double> _stats;
     };
 
 

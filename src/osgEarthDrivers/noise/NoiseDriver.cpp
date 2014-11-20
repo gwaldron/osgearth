@@ -146,9 +146,10 @@ namespace osgEarth { namespace Drivers { namespace Noise
                         double n = sample(world); //world.x(), world.y(), world.z());
                         //double n = 0.1 * stripes(world.x() + 2.0*turbulence(noise, world, 1.0), 1.6);
                         //double n = -.10 * turbulence(noise, world, 0.2);
+                        //n = turbulence(world, 1);
 
                         // scale and bias from[-1..1] to [0..1] for coloring.
-                        n = osg::clampBetween( (n+1.0)*0.5, 0.0, 1.0 );
+                        n = osg::clampBetween( n+0.5, 0.0, 1.0 );                        
 
                         write(osg::Vec4f(n,n,n,1), s, t);
                     }

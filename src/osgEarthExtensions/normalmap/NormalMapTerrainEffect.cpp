@@ -39,7 +39,7 @@ using namespace osgEarth::NormalMap;
 NormalMapTerrainEffect::NormalMapTerrainEffect(const osgDB::Options* dbOptions)
 {
     _scaleUniform = new osg::Uniform("oe_nmap_scale", osg::Uniform::FLOAT);
-    _scaleUniform->set( 4.0f );
+    _scaleUniform->set( 1.0f );
 
     _intensityUniform = new osg::Uniform("oe_nmap_intensity", osg::Uniform::FLOAT);
     _intensityUniform->set( 1.0f );
@@ -91,8 +91,6 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             stateset->addUniform( _scaleUniform.get() );
             stateset->addUniform( _intensityUniform.get() );
-
-            OE_INFO << LC << "Installed\n";
         }
     }
 }

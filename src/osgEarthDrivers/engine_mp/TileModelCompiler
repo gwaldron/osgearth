@@ -26,6 +26,7 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/Locators>
+#include <osgEarth/Progress>
 
 #include <osg/Node>
 #include <osg/StateSet>
@@ -86,7 +87,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /**
          * Compiles a tile model into a TileNode.
          */
-        TileNode* compile(const TileModel* model, const MapFrame& frame);
+        TileNode* compile(
+            const TileModel*  model,
+            const MapFrame&   frame,
+            ProgressCallback* progress);
 
     protected:
         const MaskLayerVector&                    _maskLayers;
@@ -96,6 +100,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         const MPTerrainEngineOptions&             _options;
         osg::ref_ptr<osg::Drawable::CullCallback> _cullByTraversalMask;
         CompilerCache                             _cache;
+        bool                                      _debug;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

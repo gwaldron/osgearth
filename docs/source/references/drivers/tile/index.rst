@@ -15,6 +15,7 @@ terrain engine. It can produce image tiles, elevation grid tiles, or both.
    mbtiles
    noise
    osg
+   quadkey
    tilecache
    tileservice
    tms

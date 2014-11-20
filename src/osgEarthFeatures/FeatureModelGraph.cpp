@@ -1237,6 +1237,12 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
         {
             _drapeable->setRenderOrder( render->order()->eval() );
         }
+
+        if ( render && render->renderBin().isSet() )
+        {
+            osg::StateSet* ss = getOrCreateStateSet();
+            ss->setRenderBinDetails(ss->getBinNumber(), render->renderBin().get());
+        }
     }
 }
 

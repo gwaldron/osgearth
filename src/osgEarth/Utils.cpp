@@ -434,7 +434,7 @@ GeometryValidator::apply(osg::Geometry& geom)
         }
         else if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX && geom.getColorArray()->getNumElements() != numVerts )
         {
-            OE_WARN << "Color: BIND_PER_VERTEX with color.size != verts.size" << std::endl;
+            OE_WARN << "Color: BIND_PER_VERTEX with colors.size != verts.size" << std::endl;
         }
     }
 
@@ -446,7 +446,7 @@ GeometryValidator::apply(osg::Geometry& geom)
         }
         else if ( geom.getNormalBinding() == osg::Geometry::BIND_PER_VERTEX && geom.getNormalArray()->getNumElements() != numVerts )
         {
-            OE_WARN << "Normal: BIND_PER_VERTEX with color.size != verts.size" << std::endl;
+            OE_WARN << "Normal: BIND_PER_VERTEX with normals.size != verts.size" << std::endl;
         }
     }
 

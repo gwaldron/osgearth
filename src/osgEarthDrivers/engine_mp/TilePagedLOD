@@ -30,7 +30,8 @@ using namespace osgEarth;
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
-     * TilePagedLOD is an extension to osg::PagedLOD that supports the tile registry.
+     * TilePagedLOD is an extension to osg::PagedLOD that supports the tile
+     * registry and does LTP bbox culling on subtiles.
      */
     class TilePagedLOD : public osg::PagedLOD
     {

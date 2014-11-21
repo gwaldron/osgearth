@@ -168,7 +168,7 @@ TilePagedLOD::addChild(osg::Node* node)
 {
     if ( node )
     {
-        // if we see an invalid tile marker, disable the paged lod.
+        // if we see an invalid tile marker, disable the paged lod slot.
         if ( dynamic_cast<InvalidTileNode*>(node) )
         {
             this->setFileName( 1, "" );
@@ -220,6 +220,9 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
 
 #endif
 
+
+// MOST of this is copied and pasted from OSG's osg::PagedLOD::traverse,
+// except where otherwise noted with an "osgEarth" comment.
 void
 TilePagedLOD::traverse(osg::NodeVisitor& nv)
 {
@@ -229,6 +232,12 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
         nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR)
     {
         setFrameNumberOfLastTraversal(nv.getFrameStamp()->getFrameNumber());
+        
+        // osgEarth: update our progress tracker to prevent tile cancelation.
+        if (_progress.valid())
+        {
+            _progress->update( nv.getFrameStamp()->getFrameNumber() );
+        }
     }
 
     double timeStamp = nv.getFrameStamp()?nv.getFrameStamp()->getReferenceTime():0.0;
@@ -238,10 +247,9 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
     switch(nv.getTraversalMode())
     {
     case(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN):
-        std::for_each(_children.begin(),_children.end(),osg::NodeAcceptOp(nv));
-        break;
-
-    case(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
+            std::for_each(_children.begin(),_children.end(),osg::NodeAcceptOp(nv));
+            break;
+        case(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
         {
             float required_range = 0;
             if (_rangeMode==DISTANCE_FROM_EYE_POINT)
@@ -268,22 +276,8 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
 
             int lastChildTraversed = -1;
             bool needToLoadChild = false;
-            bool needToFallBack = false;
-
-            for(int i=0;i<_rangeList.size();++i)
+            for(unsigned int i=0;i<_rangeList.size();++i)
             {
-                bool passBBox = true;
-
-                if (nv.getVisitorType() == nv.CULL_VISITOR &&
-                    i < _childBBoxes.size() &&
-                    _childBBoxes[i].valid())
-                {
-                    osgUtil::CullVisitor* cv = Culling::asCullVisitor( nv );
-                    osg::Polytope p = cv->getCurrentCullingSet().getFrustum();
-                    p.transformProvidingInverse( _childBBoxMatrices[i] );
-                    passBBox = p.contains( _childBBoxes[i] );
-                }
-
                 if (_rangeList[i].first<=required_range && required_range<_rangeList[i].second)
                 {
                     if (i<_children.size())
@@ -299,30 +293,10 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
                     }
                     else
                     {
-                        if ( passBBox )
-                            needToLoadChild = true;
-                        else
-                            needToFallBack = true;
+                        needToLoadChild = true;
                     }
                 }
             }
-
-            if (needToFallBack)
-            {
-                unsigned int numChildren = _children.size();
-
-                // select the last valid child.
-                if (numChildren>0 && ((int)numChildren-1)!=lastChildTraversed)
-                {
-                    if (updateTimeStamp)
-                    {
-                        _perRangeDataList[numChildren-1]._timeStamp=timeStamp;
-                        _perRangeDataList[numChildren-1]._frameNumber=frameNumber;
-                    }
-                    _children[numChildren-1]->accept(nv);
-                }
-            }
-
 
             if (needToLoadChild)
             {
@@ -344,36 +318,56 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
                     nv.getDatabaseRequestHandler() &&
                     numChildren<_perRangeDataList.size())
                 {
-                    // compute priority from where abouts in the required range the distance falls.
-                    float priority = (_rangeList[numChildren].second-required_range)/(_rangeList[numChildren].second-_rangeList[numChildren].first);
+                    // osgEarth: Perform a tile visibility check before requesting the new tile.
+                    // Intersect the tile's earth-aligned bounding box with the current culling frustum.
+                    bool tileIsVisible = true;
 
-                    // invert priority for PIXEL_SIZE_ON_SCREEN mode
-                    if(_rangeMode==PIXEL_SIZE_ON_SCREEN)
+                    if (nv.getVisitorType() == nv.CULL_VISITOR &&
+                        numChildren < _childBBoxes.size() &&
+                        _childBBoxes[numChildren].valid())
                     {
-                        priority = -priority;
+                        osgUtil::CullVisitor* cv = Culling::asCullVisitor( nv );
+                        // wish that CullStack::createOrReuseRefMatrix() was public
+                        osg::ref_ptr<osg::RefMatrix> mvm = new osg::RefMatrix(*cv->getModelViewMatrix());
+                        mvm->preMult( _childBBoxMatrices[numChildren] );
+                        cv->pushModelViewMatrix( mvm.get(), osg::Transform::RELATIVE_RF );
+                        tileIsVisible = !cv->isCulled( _childBBoxes[numChildren] );
+                        cv->popModelViewMatrix();
                     }
 
-                    // modify the priority according to the child's priority offset and scale.
-                    priority = _perRangeDataList[numChildren]._priorityOffset + priority * _perRangeDataList[numChildren]._priorityScale;
+                    if ( tileIsVisible )
+                    {
+                        // [end:osgEarth]
 
-                    if (_databasePath.empty())
-                    {
-                        nv.getDatabaseRequestHandler()->requestNodeFile(_perRangeDataList[numChildren]._filename,nv.getNodePath(),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
-                    }
-                    else
-                    {
-                        // prepend the databasePath to the child's filename.
-                        nv.getDatabaseRequestHandler()->requestNodeFile(_databasePath+_perRangeDataList[numChildren]._filename,nv.getNodePath(),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
+                        // compute priority from where abouts in the required range the distance falls.
+                        float priority = (_rangeList[numChildren].second-required_range)/(_rangeList[numChildren].second-_rangeList[numChildren].first);
+
+                        // invert priority for PIXEL_SIZE_ON_SCREEN mode
+                        if(_rangeMode==PIXEL_SIZE_ON_SCREEN)
+                        {
+                            priority = -priority;
+                        }
+
+                        // modify the priority according to the child's priority offset and scale.
+                        priority = _perRangeDataList[numChildren]._priorityOffset + priority * _perRangeDataList[numChildren]._priorityScale;
+
+                        if (_databasePath.empty())
+                        {
+                            nv.getDatabaseRequestHandler()->requestNodeFile(_perRangeDataList[numChildren]._filename,nv.getNodePath(),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
+                        }
+                        else
+                        {
+                            // prepend the databasePath to the child's filename.
+                            nv.getDatabaseRequestHandler()->requestNodeFile(_databasePath+_perRangeDataList[numChildren]._filename,nv.getNodePath(),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
+                        }
                     }
                 }
-
             }
 
-
-            break;
+           break;
         }
-    default:
-        break;
+        default:
+            break;
     }
 }
 

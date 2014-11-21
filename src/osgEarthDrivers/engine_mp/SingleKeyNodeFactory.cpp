@@ -128,24 +128,6 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
             plod->setRange( 0, minRange, FLT_MAX );
             plod->setRange( 1, 0, minRange );
             plod->setRangeMode( osg::LOD::DISTANCE_FROM_EYE_POINT );
-
-            // finally, install a tile-aligned bounding box in the pager node
-            // so we can do tight culling.
-            GeoPoint centroid;
-            extent.getCentroid(centroid);
-            osg::Matrix world2local;
-            centroid.createWorldToLocal(world2local);
-
-            ll = ll * world2local;
-            ur = ur * world2local;
-            ll.z() = tileNode->getTerrainBoundingBox().zMin();
-            ur.z() = tileNode->getTerrainBoundingBox().zMax();
-            
-            osg::BoundingBox bbox( ll, ur );
-            osg::Matrix local2world;
-            local2world.invert(world2local);
-            plod->setChildBoundingBoxAndMatrix( 1, bbox, local2world );
-
         }
         else
         {
@@ -153,8 +135,13 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
             plod->setRange( 1, _options.tilePixelSize().value(), FLT_MAX );
             plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
         }
-
-
+        
+        // Install a tile-aligned bounding box in the pager node itself so we can do
+        // visibility testing before paging in subtiles.
+        plod->setChildBoundingBoxAndMatrix(
+            1,
+            tileNode->getTerrainBoundingBox(),
+            tileNode->getMatrix() );
 
         // DBPager will set a priority based on the ratio range/maxRange.
         // This will offset that number with a full LOD #, giving LOD precedence.

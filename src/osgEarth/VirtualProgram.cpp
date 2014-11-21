@@ -1065,8 +1065,8 @@ VirtualProgram::apply( osg::State& state ) const
 
                     if ( _logPath.length() > 0 )
                     {
-                        std::ofstream outStream;
-                        outStream.open(_logPath.c_str());
+                        std::fstream outStream;
+                        outStream.open(_logPath.c_str(), std::ios::in);
                         if (outStream.fail())
                         {
                             OE_WARN << LC << "Unable to open " << _logPath << " for logging shaders." << std::endl;

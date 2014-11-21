@@ -25,6 +25,30 @@
 
 namespace osgEarth
 {
+    class OSGEARTH_EXPORT ElevationQueryCacheReadCallback : public osgUtil::IntersectionVisitor::ReadCallback
+    {
+        public:
+            ElevationQueryCacheReadCallback();
+
+            void setMaximumNumOfFilesToCache(unsigned int maxNumFilesToCache) { _maxNumFilesToCache = maxNumFilesToCache; }
+            unsigned int  getMaximumNumOfFilesToCache() const { return _maxNumFilesToCache; }
+
+            void clearDatabaseCache();
+
+            void pruneUnusedDatabaseCache();
+
+            virtual osg::Node* readNodeFile(const std::string& filename);
+
+        protected:
+
+            typedef std::map<std::string, osg::ref_ptr<osg::Node> > FileNameSceneMap;
+
+            unsigned int _maxNumFilesToCache;
+            OpenThreads::Mutex  _mutex;
+            FileNameSceneMap    _filenameSceneMap;
+    };
+
+
     /**
      * ElevationQuery (EQ) lets you query the elevation at any point on a map.
      * 
@@ -137,6 +161,17 @@ namespace osgEarth
          */
         unsigned int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile ) const;
 
+        /** Clear the database cache.*/
+        void clearDatabaseCache() { if (_eqcrc.valid()) _eqcrc->clearDatabaseCache(); }
+
+        /** Set the ReadCallback that does the reading of external PagedLOD models, and caching of loaded subgraphs.
+          * Note, if you have multiple LineOfSight or HeightAboveTerrain objects in use at one time then you should share a single
+          * DatabaseCacheReadCallback between all of them. */
+        void setElevationQueryCacheReadCallback(ElevationQueryCacheReadCallback* eqcrc);
+
+        /** Get the ReadCallback that does the reading of external PagedLOD models, and caching of loaded subgraphs.*/
+        ElevationQueryCacheReadCallback* getElevationQueryCacheReadCallback() { return _eqcrc.get(); }
+
     private:
         MapFrame     _mapf;
         unsigned     _maxCacheSize;
@@ -149,6 +184,8 @@ namespace osgEarth
         double _totalTime;
         std::vector<ModelLayer*> _patchLayers;
         osg::ref_ptr<DPLineSegmentIntersector> _patchLayersLSI;
+
+        osg::ref_ptr<ElevationQueryCacheReadCallback> _eqcrc;
 
     private:
         void postCTOR();

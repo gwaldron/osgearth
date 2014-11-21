@@ -135,8 +135,13 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
             plod->setRange( 1, _options.tilePixelSize().value(), FLT_MAX );
             plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
         }
-
-
+        
+        // Install a tile-aligned bounding box in the pager node itself so we can do
+        // visibility testing before paging in subtiles.
+        plod->setChildBoundingBoxAndMatrix(
+            1,
+            tileNode->getTerrainBoundingBox(),
+            tileNode->getMatrix() );
 
         // DBPager will set a priority based on the ratio range/maxRange.
         // This will offset that number with a full LOD #, giving LOD precedence.

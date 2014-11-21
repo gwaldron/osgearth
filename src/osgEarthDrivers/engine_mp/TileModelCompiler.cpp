@@ -2175,6 +2175,10 @@ TileModelCompiler::compile(const TileModel*  model,
     SetDataVarianceVisitor sdv( osg::Object::DYNAMIC );
     tile->accept( sdv );
 
+    osg::ComputeBoundsVisitor cbv;
+    d.surfaceGeode->accept(cbv);
+    tile->setTerrainBoundingBox( cbv.getBoundingBox() );
+
     // debugging tools.
     if (_debug)
     {

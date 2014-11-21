@@ -40,6 +40,74 @@ namespace
     }
 }
 
+ElevationQueryCacheReadCallback::ElevationQueryCacheReadCallback()
+{
+    _maxNumFilesToCache = 2000;
+}
+
+void ElevationQueryCacheReadCallback::clearDatabaseCache()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+    _filenameSceneMap.clear();
+}
+
+void ElevationQueryCacheReadCallback::pruneUnusedDatabaseCache()
+{
+}
+
+osg::Node* ElevationQueryCacheReadCallback::readNodeFile(const std::string& filename)
+{
+    // first check to see if file is already loaded.
+    {
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+
+        FileNameSceneMap::iterator itr = _filenameSceneMap.find(filename);
+        if (itr != _filenameSceneMap.end())
+        {
+            OSG_INFO<<"Getting from cache "<<filename<<std::endl;
+
+            return itr->second.get();
+        }
+    }
+
+    // now load the file.
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename);
+
+    // insert into the cache.
+    if (node.valid())
+    {
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+
+        if (_filenameSceneMap.size() < _maxNumFilesToCache)
+        {
+            OSG_INFO<<"Inserting into cache "<<filename<<std::endl;
+
+            _filenameSceneMap[filename] = node;
+        }
+        else
+        {
+            // for time being implement a crude search for a candidate to chuck out from the cache.
+            for(FileNameSceneMap::iterator itr = _filenameSceneMap.begin();
+                itr != _filenameSceneMap.end();
+                ++itr)
+            {
+                if (itr->second->referenceCount()==1)
+                {
+                    OSG_NOTICE<<"Erasing "<<itr->first<<std::endl;
+                    // found a node which is only referenced in the cache so we can discard it
+                    // and know that the actual memory will be released.
+                    _filenameSceneMap.erase(itr);
+                    break;
+                }
+            }
+            OSG_INFO<<"And the replacing with "<<filename<<std::endl;
+            _filenameSceneMap[filename] = node;
+        }
+    }
+
+    return node.release();
+}
+
 ElevationQuery::ElevationQuery(const Map* map) :
 _mapf( map, (Map::ModelParts)(Map::TERRAIN_LAYERS | Map::MODEL_LAYERS) )
 {
@@ -60,6 +128,9 @@ ElevationQuery::postCTOR()
     _queries          = 0.0;
     _totalTime        = 0.0;  
     _cache.setMaxSize( 500 );
+
+    // set read callback for IntersectionVisitor
+    setElevationQueryCacheReadCallback(new ElevationQueryCacheReadCallback);
 
     // find terrain patch layers.
     gatherPatchLayers();
@@ -277,6 +348,9 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
     {
         osgUtil::IntersectionVisitor iv;
 
+        if ( _eqcrc.valid() )
+            iv.setReadCallback(_eqcrc);
+
         for(std::vector<ModelLayer*>::iterator i = _patchLayers.begin(); i != _patchLayers.end(); ++i)
         {
             // find the scene graph for this layer:
@@ -441,4 +515,9 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
     _totalTime += osg::Timer::instance()->delta_s( begin, end );
 
     return result;
+}
+
+void ElevationQuery::setElevationQueryCacheReadCallback(ElevationQueryCacheReadCallback* eqcrc)
+{
+    _eqcrc = eqcrc;
 }

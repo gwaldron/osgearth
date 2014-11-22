@@ -30,7 +30,8 @@ using namespace osgEarth;
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
-     * TilePagedLOD is an extension to osg::PagedLOD that supports the tile registry.
+     * TilePagedLOD is an extension to osg::PagedLOD that supports the tile
+     * registry and does LTP bbox culling on subtiles.
      */
     class TilePagedLOD : public osg::PagedLOD
     {
@@ -39,6 +40,16 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             const UID&        engineUID,
             TileNodeRegistry* liveTiles,
             TileNodeRegistry* deadTiles);
+
+        /**
+         * Sets a bounding box and localization matrix that will allow
+         * the PagedLOD to perform pre-emptive tight culling before loading 
+         * its child.
+         */
+        void setChildBoundingBoxAndMatrix(
+            int                     childNum,
+            const osg::BoundingBox& bbox,
+            const osg::Matrix&      world2local);
 
         /** The tilenode in this group */
         TileNode* getTileNode();
@@ -66,6 +77,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::ref_ptr<TileNodeRegistry> _dead;
         UID                            _engineUID;
         Threading::Mutex               _updateMutex;
+        std::vector<osg::BoundingBox>  _childBBoxes;
+        std::vector<osg::Matrix>       _childBBoxMatrices;
 
         struct MyProgressCallback : public ProgressCallback
         {
@@ -75,6 +88,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             void update(unsigned frame);
         };
         osg::ref_ptr<MyProgressCallback> _progress;
+        optional<osg::BoundingBox> _bbox;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

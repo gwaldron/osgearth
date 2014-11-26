@@ -354,7 +354,6 @@ MPTerrainEngineNode::createTerrain()
     OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
     TilePagedLOD* root = new TilePagedLOD( _uid, _liveTiles, _deadTiles );
-    //osg::Group* root = new osg::Group();
     _terrain->addChild( root );
 
     osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();

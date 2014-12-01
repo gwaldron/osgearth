@@ -27,7 +27,7 @@ SET(TARGET_H
         SeamlessOptions
 )
 
-INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR})
+INCLUDE_DIRECTORIES("${GDAL_INCLUDE_DIR}")
 
 # to install public driver includes:
 SETUP_PLUGIN(osgearth_engine_seamless)

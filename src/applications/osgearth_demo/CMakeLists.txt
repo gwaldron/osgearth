@@ -9,13 +9,13 @@ IF(Qt5Widgets_FOUND)
         osgEarthQt
     )
 ELSE()
-    INCLUDE( ${QT_USE_FILE} )
+    INCLUDE("${QT_USE_FILE}")
     QT4_WRAP_CPP( MOC_SRCS ${MOC_HDRS} OPTIONS "-f" )
 	SET(TARGET_ADDED_LIBRARIES
         osgEarthQt
-        ${QT_QTCORE_LIBRARY}
-        ${QT_QTGUI_LIBRARY}
-        ${QT_QTOPENGL_LIBRARY}
+        "${QT_QTCORE_LIBRARY}"
+        "${QT_QTGUI_LIBRARY}"
+        "${QT_QTOPENGL_LIBRARY}"
     )
 ENDIF()
 

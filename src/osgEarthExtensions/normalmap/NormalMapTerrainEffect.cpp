@@ -22,12 +22,15 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/TerrainTileNode>
 
 #include "NormalMapShaders"
 
 #define LC "[NormalMap] "
 
-#define NORMALMAP_SAMPLER "oe_nmap_tex"
+#define BUMP_SAMPLER   "oe_nmap_bumpTex"
+#define NORMAL_SAMPLER "oe_nmap_normalTex"
+#define NORMAL_MATRIX  "oe_nmap_normalMatrix"
 
 // Tile LOD offset of the "Level 0" NormalMapting scale. This is necessary
 // to get rid of precision issues when scaling the NormalMaps up high.
@@ -35,6 +38,41 @@
 
 using namespace osgEarth;
 using namespace osgEarth::NormalMap;
+
+namespace
+{
+    class NormalTexInstaller : public TerrainTileNodeCallback
+    {
+    public:
+        NormalTexInstaller(NormalMapTerrainEffect* effect, int unit)
+            : _effect(effect), _unit(unit) { }
+
+    public: // TileNodeCallback
+        void operator()(const TileKey& key, osg::Node* node)
+        {
+            TerrainTileNode* tile = osgEarth::findTopMostNodeOfType<TerrainTileNode>(node);
+            if ( !tile ) return;
+            osg::Texture* tex = tile->getNormalTexture();
+            if ( tex )
+            {
+                osg::StateSet* ss = node->getOrCreateStateSet();
+                ss->setTextureAttributeAndModes(_unit, tex, 1);
+                ss->getOrCreateUniform(NORMAL_SAMPLER, osg::Uniform::SAMPLER_2D)->set(_unit);
+                
+                osg::RefMatrix* mat = tile->getNormalTextureMatrix();
+                if ( mat )
+                {
+                    ss->getOrCreateUniform(NORMAL_MATRIX, osg::Uniform::FLOAT_MAT4)->set( *mat );
+                }
+            }
+        }
+
+    private:
+        osg::observer_ptr<NormalMapTerrainEffect> _effect;
+        int _unit;
+    };
+}
+
 
 NormalMapTerrainEffect::NormalMapTerrainEffect(const osgDB::Options* dbOptions)
 {
@@ -73,7 +111,7 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
         if ( engine->getTextureCompositor()->reserveTextureImageUnit(_normalMapUnit) )
         {
             // NormalMap sampler
-            _normalMapTexUniform = stateset->getOrCreateUniform(NORMALMAP_SAMPLER, osg::Uniform::SAMPLER_2D);
+            _normalMapTexUniform = stateset->getOrCreateUniform(NORMAL_SAMPLER, osg::Uniform::SAMPLER_2D);
             _normalMapTexUniform->set( _normalMapUnit );
             stateset->setTextureAttribute( _normalMapUnit, _normalMapTex.get(), osg::StateAttribute::ON );
 

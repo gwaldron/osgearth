@@ -2,6 +2,7 @@
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
 SET(TARGET_SRC
+    HeightFieldCache.cpp
     KeyNodeFactory.cpp
     MPGeometry.cpp
     MPTerrainEngineNode.cpp
@@ -20,6 +21,7 @@ SET(TARGET_SRC
 SET(TARGET_H
     Common
     DynamicLODScaleCallback
+    HeightFieldCache
     FileLocationCallback
     KeyNodeFactory
     MPGeometry

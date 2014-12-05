@@ -65,9 +65,19 @@ _outOfDate         ( false )
 
             _elevTexMat = new osg::RefMatrix(elevMatrix);
         }
+
+        if ( model->_normalData.getLocator() )
+        {
+            osg::Matrixd normalMatrix;
+
+            model->_tileLocator->createScaleBiasMatrix(
+                model->_normalData.getLocator()->getDataExtent(),
+                normalMatrix);
+
+            _normalTexMat = new osg::RefMatrix(normalMatrix);
+        }
     }
 }
-
 
 osg::Texture*
 TileNode::getElevationTexture() const
@@ -77,13 +87,25 @@ TileNode::getElevationTexture() const
         0L;
 }
 
-
 osg::RefMatrix*
 TileNode::getElevationTextureMatrix() const
 {
     return _elevTexMat.get();
 }
 
+osg::Texture*
+TileNode::getNormalTexture() const
+{
+    return _model.valid() ?
+        _model->_normalTexture.get() :
+        0L;
+}
+
+osg::RefMatrix*
+TileNode::getNormalTextureMatrix() const
+{
+    return _normalTexMat.get();
+}
 
 void
 TileNode::setLastTraversalFrame(unsigned frame)

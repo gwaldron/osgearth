@@ -61,6 +61,16 @@ namespace osgEarth
         const optional<float>& heightFieldSampleRatio() const { return _heightFieldSampleRatio; }
 
         /**
+         * Size of each dimension of each terrain tile, in verts. Ideally this 
+         * will be a power of 2 plus 1, i.e.: a number X with that X = (2^Y)+1
+         * where Y is an integer >= 1.
+         *
+         * Default = 17. 
+         */
+        optional<int>& tileSize() { return _tileSize; }
+        const optional<int>& tileSize() const { return _tileSize; }
+
+        /**
          * The minimum tile LOD range as a factor of the tile's radius.
          * Default = 6.0.
          */
@@ -188,6 +198,7 @@ namespace osgEarth
         optional<float> _verticalScale;
         optional<float> _verticalOffset;
         optional<float> _heightFieldSampleRatio;
+        optional<int>   _tileSize;
         optional<float> _minTileRangeFactor;        
         optional<bool> _combineLayers;
         optional<unsigned> _minLOD;

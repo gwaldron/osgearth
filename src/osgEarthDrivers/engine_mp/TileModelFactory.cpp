@@ -181,6 +181,7 @@ namespace
                         {
                             TileModel::ColorData& colorData = _model->_colorData[_layer->getUID()];
 #if 0
+                            //note: this snippet is for testing fractal-upsampling of coverage data.
                             if ( _layer->isCoverage() )
                             {
                                 osg::Image* parentImage = parentColorData._texture->getImage(0);
@@ -307,6 +308,9 @@ TileModelFactory::buildElevation(const TileKey&    key,
         }
 
         model->generateElevationTexture();
+
+        //TESTING normal textures.
+        model->generateNormalTexture();
     }
 }
 

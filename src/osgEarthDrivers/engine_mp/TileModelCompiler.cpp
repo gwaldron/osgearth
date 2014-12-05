@@ -110,8 +110,6 @@ namespace
     };
 
     typedef std::vector<MaskRecord> MaskRecordVector;
-
-
     typedef std::vector<int> Indices;
 
 
@@ -193,6 +191,14 @@ namespace
         // for masking/stitching:
         MaskRecordVector         maskRecords;
         MPGeometry*              stitchGeom;
+
+        bool useUInt;
+        osg::DrawElements* newDrawElements(GLenum mode) {
+            if ( useUInt )
+                return new osg::DrawElementsUInt(mode);
+            else
+                return new osg::DrawElementsUShort(mode);
+        }
     };
 
 
@@ -294,12 +300,12 @@ namespace
      * Calculates the sample rate and allocates all the vertex, normal, and color
      * arrays for the tile.
      */
-    void setupGeometryAttributes( Data& d, double sampleRatio )
+    void setupGeometryAttributes( Data& d, int tileSize )
     {
-        d.numRows = 8;
-        d.numCols = 8;
-        d.originalNumRows = 8;
-        d.originalNumCols = 8;        
+        d.numRows = 17;
+        d.numCols = 17;
+        d.originalNumRows = 17;
+        d.originalNumCols = 17;        
 
         // read the row/column count and skirt size from the model:
         osg::HeightField* hf = d.model->_elevationData.getHeightField();
@@ -316,15 +322,14 @@ namespace
         d.i_sampleFactor = 1.0f;
         d.j_sampleFactor = 1.0f;
 
-        if ( sampleRatio != 1.0f )
-        {            
-            d.numCols = osg::maximum((unsigned int) (float(d.originalNumCols)*sqrtf(sampleRatio)), 4u);
-            d.numRows = osg::maximum((unsigned int) (float(d.originalNumRows)*sqrtf(sampleRatio)), 4u);
+        if ( tileSize > 0 )
+        {
+            d.numCols = tileSize;
+            d.numRows = tileSize;
 
             d.i_sampleFactor = double(d.originalNumCols-1)/double(d.numCols-1);
             d.j_sampleFactor = double(d.originalNumRows-1)/double(d.numRows-1);
         }
-
 
         // calculate the total number of verts:
         d.numVerticesInSkirt   = d.createSkirt ? (2 * (d.numCols*2 + d.numRows*2 - 4)) : 0;
@@ -360,6 +365,9 @@ namespace
         d.elevations = new osg::FloatArray();
         d.elevations->reserve( d.numVerticesInSurface );
         d.indices.resize( d.numVerticesInSurface, -1 );
+
+        // Uint required?
+        d.useUInt = d.numVerticesInSurface > 0xFFFF;
     }
 
 
@@ -1073,7 +1081,7 @@ namespace
         osg::Vec4Array* skirtAttribs = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_6)); //new osg::Vec4Array();
         osg::Vec4Array* skirtAttribs2 = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_7)); //new osg::Vec4Array();
 
-        osg::ref_ptr<osg::DrawElementsUShort> elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+        osg::ref_ptr<osg::DrawElements> elements = d.newDrawElements(GL_TRIANGLE_STRIP);
 
         // bottom:
         for( unsigned int c=0; c<d.numCols-1; ++c )
@@ -1082,9 +1090,11 @@ namespace
 
             if (orig_i < 0)
             {
-                if ( elements->size() > 0 )
+                if ( elements->getNumIndices() > 0 )
+                {
                     d.surface->addPrimitiveSet( elements.get() );
-                elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+                    elements = d.newDrawElements(GL_TRIANGLE_STRIP);
+                }
             }
             else
             {
@@ -1126,9 +1136,11 @@ namespace
             int orig_i = d.indices[r*d.numCols+(d.numCols-1)];
             if (orig_i < 0)
             {
-                if ( elements->size() > 0 )
+                if ( elements->getNumIndices() > 0 )
+                {
                     d.surface->addPrimitiveSet( elements.get() );
-                elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+                    elements = d.newDrawElements(GL_TRIANGLE_STRIP);
+                }
             }
             else
             {
@@ -1170,9 +1182,11 @@ namespace
             int orig_i = d.indices[(d.numRows-1)*d.numCols+c];
             if (orig_i < 0)
             {
-                if ( elements->size() > 0 )
+                if ( elements->getNumIndices() > 0 )
+                {
                     d.surface->addPrimitiveSet( elements.get() );
-                elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+                    elements = d.newDrawElements(GL_TRIANGLE_STRIP);
+                }
             }
             else
             {
@@ -1214,9 +1228,11 @@ namespace
             int orig_i = d.indices[r*d.numCols];
             if (orig_i < 0)
             {
-                if ( elements->size() > 0 )
+                if ( elements->getNumIndices() > 0 )
+                {
                     d.surface->addPrimitiveSet( elements.get() );
-                elements = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+                    elements = d.newDrawElements(GL_TRIANGLE_STRIP);
+                }
             }
             else
             {
@@ -1253,7 +1269,7 @@ namespace
         }
 
         // add the final prim set.
-        if ( elements->size() > 0 )
+        if ( elements->getNumIndices() > 0 )
         {
             d.surface->addPrimitiveSet( elements.get() );
         }
@@ -1272,7 +1288,7 @@ namespace
         bool recalcNormals   = d.model->hasElevation();
         unsigned numSurfaceNormals = d.numRows * d.numCols;
 
-        osg::DrawElements* elements = new osg::DrawElementsUShort(GL_TRIANGLES);
+        osg::DrawElements* elements = d.newDrawElements(GL_TRIANGLES); //new osg::DrawElementsUInt(GL_TRIANGLES);
         elements->reserveElements((d.numRows-1) * (d.numCols-1) * 6);
         d.surface->insertPrimitiveSet(0, elements); // because we always want this first.
 
@@ -2131,11 +2147,7 @@ TileModelCompiler::compile(const TileModel*  model,
         setupMaskRecords( d );
 
     // allocate all the vertex, normal, and color arrays.
-    double sampleRatio = *_options.heightFieldSampleRatio();
-    if ( sampleRatio <= 0.0f )
-        sampleRatio = osg::clampBetween( model->_tileKey.getLOD()/20.0, 0.0625, 1.0 );
-
-    setupGeometryAttributes( d, sampleRatio );
+    setupGeometryAttributes( d, _options.tileSize().get() );
 
     // set up the list of layers to render and their shared arrays.
     setupTextureAttributes( d, _cache );

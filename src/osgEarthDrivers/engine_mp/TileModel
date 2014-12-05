@@ -94,6 +94,52 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 _neighbors.setNeighbor(xoffset, yoffset, hf);
             }
 
+            const HeightFieldNeighborhood& getNeighborhood() const 
+            {
+                return _neighbors;
+            }
+
+            void setParent(osg::HeightField* hf)
+            {
+                _parent = hf;
+            }
+
+            osg::HeightField* getParent() const
+            {
+                return _parent.get();
+            }
+
+        private:
+            osg::ref_ptr<osg::HeightField> _hf;
+            osg::ref_ptr<GeoLocator>       _locator;
+            bool                           _fallbackData;
+            osg::ref_ptr<osg::HeightField> _parent;
+
+            HeightFieldNeighborhood _neighbors;
+        };
+
+        class NormalData
+        {
+        public:
+            NormalData() : _fallbackData(true) { }
+            NormalData(const NormalData& rhs);
+
+            virtual ~NormalData() { }
+
+            NormalData(
+                osg::HeightField* hf,
+                GeoLocator*       locator,
+                bool              fallbackData);
+
+            osg::HeightField* getHeightField() const { return _hf.get(); }
+            GeoLocator* getLocator() const { return _locator.get(); }
+            bool isFallbackData() const { return _fallbackData; }
+
+            void setNeighbor(int xoffset, int yoffset, osg::HeightField* hf )
+            {
+                _neighbors.setNeighbor(xoffset, yoffset, hf);
+            }
+
             void setParent(osg::HeightField* hf)
             {
                 _parent = hf;
@@ -230,10 +276,13 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::ref_ptr<GeoLocator>     _tileLocator;
         ColorDataByUID               _colorData;
         ElevationData                _elevationData;
+        NormalData                   _normalData;
         float                        _sampleRatio;
-        osg::ref_ptr<osg::StateSet>  _parentStateSet;
-        osg::observer_ptr<const TileModel> _parentModel;
         osg::ref_ptr<osg::Texture>   _elevationTexture;
+        osg::ref_ptr<osg::Texture>   _normalTexture;
+        
+        osg::ref_ptr<osg::StateSet>        _parentStateSet;
+        osg::observer_ptr<const TileModel> _parentModel;
 
         // convenience funciton to pull out a layer by its UID.
         bool getColorData( UID layerUID, ColorData& out ) const {
@@ -250,6 +299,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void updateTraverse(osg::NodeVisitor&) const;
 
         void generateElevationTexture();
+
+        void generateNormalTexture();
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

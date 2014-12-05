@@ -364,6 +364,24 @@ TileModel::generateElevationTexture()
 }
 
 void
+TileModel::generateNormalTexture()
+{
+    osg::Image* image = HeightFieldUtils::convertToNormalMap(
+        _elevationData.getNeighborhood(),
+        _tileKey.getProfile()->getSRS() );
+
+    _normalTexture = new osg::Texture2D( image );
+
+    _normalTexture->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
+    _normalTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    _normalTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    _normalTexture->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
+    _normalTexture->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
+    _normalTexture->setResizeNonPowerOfTwoHint( false );
+    _normalTexture->setMaxAnisotropy( 1.0f );
+}
+
+void
 TileModel::resizeGLObjectBuffers(unsigned maxSize)
 {
     for(ColorDataByUID::iterator i = _colorData.begin(); i != _colorData.end(); ++i )

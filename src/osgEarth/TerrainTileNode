@@ -41,6 +41,10 @@ namespace osgEarth
 
         virtual osg::RefMatrix* getElevationTextureMatrix() const =0;
 
+        virtual osg::Texture* getNormalTexture() const =0;
+
+        virtual osg::RefMatrix* getNormalTextureMatrix() const =0;
+
     protected:
         virtual ~TerrainTileNode() { }
     };

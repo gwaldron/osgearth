@@ -27,6 +27,7 @@ using namespace osgEarth;
 
 TerrainOptions::TerrainOptions( const ConfigOptions& options ) :
 DriverConfigOptions( options ),
+_tileSize( 17 ),
 _verticalScale( 1.0f ),
 _verticalOffset( 0.0f ),
 _heightFieldSampleRatio( 1.0f ),
@@ -62,6 +63,7 @@ TerrainOptions::getConfig() const
     else
         conf.updateIfSet( "sample_ratio", _heightFieldSampleRatio );
 
+    conf.updateIfSet( "tile_size", _tileSize );
     conf.updateIfSet( "vertical_scale", _verticalScale );
     conf.updateIfSet( "vertical_offset", _verticalOffset );
     conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );    
@@ -104,6 +106,7 @@ TerrainOptions::fromConfig( const Config& conf )
     else
         conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
 
+    conf.getIfSet( "tile_size", _tileSize );
     conf.getIfSet( "vertical_scale", _verticalScale );
     conf.getIfSet( "vertical_offset", _verticalOffset );
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );    

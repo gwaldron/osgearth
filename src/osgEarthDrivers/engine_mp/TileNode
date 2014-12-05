@@ -49,6 +49,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         osg::RefMatrix* getElevationTextureMatrix() const;
 
+        osg::Texture* getNormalTexture() const;
+
+        osg::RefMatrix* getNormalTextureMatrix() const;
+
 
     public:
         /**
@@ -121,6 +125,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         bool                               _outOfDate;
         bool                               _dirty;
         osg::ref_ptr<osg::RefMatrix>       _elevTexMat;
+        osg::ref_ptr<osg::RefMatrix>       _normalTexMat;
         osg::BoundingBox                   _terrainBBox;
     };
 

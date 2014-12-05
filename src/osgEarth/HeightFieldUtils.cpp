@@ -21,6 +21,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/Geoid>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/ImageUtils>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -614,6 +615,67 @@ HeightFieldUtils::createClusterCullingCallback(osg::HeightField*          grid,
         max_cluster_culling_radius);
 
     return ccc;
+}
+
+
+osg::Image*
+HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
+                                     const SpatialReference*        hoodSRS)
+{
+    const osg::HeightField* hf = hood._center.get();
+
+    osg::Image* image;
+    image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RGB, GL_UNSIGNED_BYTE);
+
+    double xcells = (double)(hf->getNumColumns()-1);
+    double ycells = (double)(hf->getNumRows()-1);
+    double xres = 1.0/xcells;
+    double yres = 1.0/ycells;
+
+    double tInterval = hf->getYInterval();
+    double mPerDegAtEquatorInv = 360.0/(hoodSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI);
+    if ( hoodSRS->isGeographic() )
+    {
+        tInterval *= mPerDegAtEquatorInv;
+    }
+
+    ImageUtils::PixelWriter write(image);
+    
+    for(int t=0; t<hf->getNumRows(); ++t)
+    {
+        double sInterval = hf->getXInterval();
+        if ( hoodSRS->isGeographic() )
+        {
+            double lat = osg::DegreesToRadians(hf->getOrigin().y() + hf->getYInterval()*(double)t);
+            sInterval *= mPerDegAtEquatorInv * cos(lat);
+        }
+
+        for(int s=0; s<hf->getNumColumns(); ++s)
+        {
+            float centerHeight = hf->getHeight(s, t);
+
+            osg::Vec3f west ( -sInterval, 0, 0 );
+            osg::Vec3f east (  sInterval, 0, 0 );
+            osg::Vec3f south( 0, -tInterval, 0 );
+            osg::Vec3f north( 0,  tInterval, 0 );
+
+            float z;
+            z = hood.getHeightAtColumnRow(s-1, t);
+            west.z() = z != NO_DATA_VALUE ? z : centerHeight;
+            z = hood.getHeightAtColumnRow(s+1, t);
+            east.z() = z != NO_DATA_VALUE ? z : centerHeight;
+            z = hood.getHeightAtColumnRow(s, t-1);
+            south.z() = z != NO_DATA_VALUE ? z : centerHeight;
+            z = hood.getHeightAtColumnRow(s, t+1);
+            north.z() = z != NO_DATA_VALUE ? z : centerHeight;
+
+            osg::Vec3f n = (east-west) ^ (north-south);
+
+            write( osg::Vec4f(n.x(), n.y(), n.z(), 1.0), s, t);
+        }
+    }
+
+    return image;
 }
 
 /******************************************************************************************/

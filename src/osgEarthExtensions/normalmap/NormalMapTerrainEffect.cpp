@@ -116,8 +116,11 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->setTextureAttribute( _normalMapUnit, _normalMapTex.get(), osg::StateAttribute::ON );
 
             // configure shaders
-            std::string vertShader = NormalMapVertexShader;
-            std::string fragShader = NormalMapFragmentShader;
+            std::string vertShader = ShaderLoader::loadSource(
+                Shaders::VertexShaderFile, Shaders::VertexShaderSource);
+
+            std::string fragShader = ShaderLoader::loadSource(
+                Shaders::FragmentShaderFile, Shaders::FragmentShaderSource);
 
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);

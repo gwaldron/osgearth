@@ -18,10 +18,13 @@
  */
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/URI>
 #include <osg/ComputeBoundsVisitor>
+#include <osgDB/FileUtils>
 #include <list>
 
 using namespace osgEarth;
@@ -131,6 +134,42 @@ namespace
 }
 
 //------------------------------------------------------------------------
+
+#undef LC
+#define LC "[ShaderLoader] "
+
+std::string
+ShaderLoader::loadSource(const std::string&    filename,
+                         const std::string&    backupSource,
+                         const osgDB::Options* dbOptions )
+{
+    std::string output;
+
+    std::string path = osgDB::findDataFile(filename, dbOptions);
+    if ( path.empty() )
+    {
+        output = backupSource;
+    }
+    else
+    {
+        std::string source = URI(path).getString(dbOptions);
+        if (!source.empty())
+        {
+            OE_DEBUG << LC << "Loaded " << filename << " from " << path << "\n";
+        }
+
+        output = source.empty() ? backupSource : source;
+    }
+
+    // replace common tokens:
+    osgEarth::replaceIn(output, "$GLSL_VERSION_STR", GLSL_VERSION_STR);
+    osgEarth::replaceIn(output, "$GLSL_DEFAULT_PRECISION_FLOAT", GLSL_DEFAULT_PRECISION_FLOAT);
+
+    return output;
+}
+
+#undef LC
+#define LC "[ShaderUtils] "
 
 namespace
 {

@@ -24,15 +24,14 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/URI>
+#include <osgEarth/ShaderUtils>
 
-#include "NoiseShaders"
 #include "SplatShaders"
 
 #define LC "[Splat] "
 
 #define COVERAGE_SAMPLER "oe_splat_coverage_tex"
 #define SPLAT_SAMPLER    "oe_splat_tex"
-#define SPLAT_FUNC       "oe_splat_getTexel"
 
 // Tile LOD offset of the "Level 0" splatting scale. This is necessary
 // to get rid of precision issues when scaling the splats up high.
@@ -110,12 +109,18 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->getOrCreateUniform("oe_splat_detail_range", osg::Uniform::FLOAT)->set(100000.0f);
 
             // Configure the vertex shader:
-            std::string vertexShaderModel = splatVertexShaderModel;
-            std::string vertexShaderView = splatVertexShaderView;
+            std::string vertexShaderModel = ShaderLoader::loadSource(
+                Shaders::SplatVertModelFile, Shaders::SplatVertModelSource );
+
+            std::string vertexShaderView = ShaderLoader::loadSource(
+                Shaders::SplatVertViewFile, Shaders::SplatVertViewSource );
+
             osgEarth::replaceIn( vertexShaderView, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
             // Configure the fragment shader:
-            std::string fragmentShader = splatFragmentShader;
+            std::string fragmentShader = ShaderLoader::loadSource(
+                Shaders::SplatFragFile, Shaders::SplatFragSource );
+
             std::string samplingCode = generateSamplingCode();
             osgEarth::replaceIn( fragmentShader, "$COVERAGE_BUILD_RENDER_INFO", samplingCode );
 
@@ -131,8 +136,9 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             vp->setFunction( "oe_splat_fragment",     fragmentShader,    ShaderComp::LOCATION_FRAGMENT_COLORING, _renderOrder );
 
             // support shaders
-            osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaders);
-            vp->setShader( NOISE_FUNC, noiseShader );
+            std::string noiseShaderSource = ShaderLoader::loadSource( Shaders::NoiseFile, Shaders::NoiseSource );
+            osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
+            vp->setShader( "oe_splat_noiseshaders", noiseShader );
         }
     }
 }
@@ -172,8 +178,7 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
         {
             vp->removeShader( "oe_splat_vertex" );
             vp->removeShader( "oe_splat_fragment" );
-            vp->removeShader( SPLAT_FUNC );
-            vp->removeShader( NOISE_FUNC );
+            vp->removeShader( "oe_splat_noiseshaders" );
         }
     }
     

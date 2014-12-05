@@ -1,6 +1,17 @@
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
+set(TARGET_GLSL
+    MPEngine.vert.glsl
+    MPEngine.frag.glsl)
+
+set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+
+configure_shaders(
+    MPShaders.cpp.in
+    ${SHADERS_CPP}
+    ${TARGET_GLSL} )
+
 SET(TARGET_SRC
     HeightFieldCache.cpp
     KeyNodeFactory.cpp
@@ -16,6 +27,7 @@ SET(TARGET_SRC
     TileNodeRegistry.cpp
     TileModelFactory.cpp
     TilePagedLOD.cpp
+    ${SHADERS_CPP}
 )
 
 SET(TARGET_H
@@ -39,7 +51,7 @@ SET(TARGET_H
     TilePagedLOD
 )
 
-SETUP_PLUGIN(osgearth_engine_mp)
+setup_plugin(osgearth_engine_mp)
 
 # to install public driver includes:
 SET(LIB_NAME engine_mp)

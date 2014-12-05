@@ -17,10 +17,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/LogarithmicDepthBuffer>
+#include <osgEarthUtil/Shaders>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ShaderUtils>
 #include <osgUtil/CullVisitor>
 #include <osg/Uniform>
 #include <osg/buffered_value>
@@ -99,40 +101,6 @@ namespace
         // context-specific stateset collection
         osg::buffered_value<osg::ref_ptr<osg::StateSet> > _stateSets;
     };
-
-    const char* vertSource =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_ldb_FC; \n"
-        "varying float oe_ldb_logz; \n"
-        "void oe_ldb_vert(inout vec4 clip) \n"
-        "{ \n"
-        "    const float C = " NEAR_RES_COEFF_STR ";\n"
-        "    oe_ldb_logz = max(1e-6, clip.w*C + 1.0); \n"
-        "    clip.z = log2(oe_ldb_logz)*oe_ldb_FC - 1.0; \n"
-        "} \n";
-
-    const char* fragSource =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_ldb_FC; \n"
-        "varying float oe_ldb_logz; \n"
-        "void oe_ldb_frag(inout vec4 color) \n"
-        "{\n"
-        "    gl_FragDepth = log2(oe_ldb_logz)*0.5*oe_ldb_FC; \n"
-        "}\n";
-
-    // This variant does not require using gl_FragDepth, but it less tolerant
-    // of low-res tessellations near the camera.
-    const char* vertOnlySource =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_ldb_FC; \n"
-        "void oe_ldb_vert(inout vec4 clip) \n"
-        "{ \n"
-        "    const float C = " NEAR_RES_COEFF_STR ";\n"
-        "    clip.z = (log2(max(1e-6,C*clip.w+1.0))*oe_ldb_FC - 1.0) * clip.w;\n"
-        "} \n";
 }
 
 //------------------------------------------------------------------------
@@ -169,12 +137,37 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
 
         if ( _useFragDepth )
         {
-            vp->setFunction( "oe_ldb_vert", vertSource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );        
-            vp->setFunction( "oe_ldb_frag", fragSource, ShaderComp::LOCATION_FRAGMENT_LIGHTING, FLT_MAX );        
+            std::string vert = ShaderLoader::loadSource(
+                Shaders::LogDepthBuffer_VertFile,
+                Shaders::LogDepthBuffer_VertSource);
+
+            osgEarth::replaceIn(vert, "$NEAR_RES_COEFF_STR", NEAR_RES_COEFF_STR );
+
+            vp->setFunction( 
+                "oe_ldb_vert",
+                vert,
+                ShaderComp::LOCATION_VERTEX_CLIP,
+                FLT_MAX );        
+
+            vp->setFunction(
+                "oe_ldb_frag",
+                ShaderLoader::loadSource(Shaders::LogDepthBuffer_FragFile, Shaders::LogDepthBuffer_FragSource),
+                ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+                FLT_MAX );        
         }
         else
         {
-            vp->setFunction( "oe_ldb_vert", vertOnlySource, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );  
+            std::string vert = ShaderLoader::loadSource(
+                Shaders::LogDepthBuffer_VertOnly_VertFile,
+                Shaders::LogDepthBuffer_VertOnly_VertSource);
+
+            osgEarth::replaceIn(vert, "$NEAR_RES_COEFF_STR", NEAR_RES_COEFF_STR );
+
+            vp->setFunction(
+                "oe_ldb_vert", 
+                vert,
+                ShaderComp::LOCATION_VERTEX_CLIP,
+                FLT_MAX );  
         }
 
         // configure the camera:

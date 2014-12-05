@@ -22,6 +22,7 @@
 #include "TileModelFactory"
 #include "TileModelCompiler"
 #include "TilePagedLOD"
+#include "MPShaders"
 
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
@@ -31,6 +32,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Progress>
+#include <osgEarth/ShaderUtils>
 
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -773,67 +775,53 @@ MPTerrainEngineNode::updateState()
             vp->addBindAttribLocation( "oe_terrain_attr2", osg::Drawable::ATTRIBUTE_7 );
 
             // Vertex shader:
-            std::string vs = Stringify() <<
-                "#version " GLSL_VERSION_STR "\n"
-                GLSL_DEFAULT_PRECISION_FLOAT "\n"
-                "varying vec4 oe_layer_texc;\n"
-                "varying vec4 oe_layer_tilec;\n"
-                "void oe_mp_setup_coloring(inout vec4 VertexModel) \n"
-                "{ \n"
-                "    oe_layer_texc  = gl_MultiTexCoord" << _primaryUnit << ";\n"
-                "    oe_layer_tilec = gl_MultiTexCoord" << _secondaryUnit << ";\n"
-                "}\n";
+            std::string vs = ShaderLoader::loadSource(
+                Shaders::MPVertFile,
+                Shaders::MPVertSource );
 
+            osgEarth::replaceIn( vs, "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
+            osgEarth::replaceIn( vs, "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
+            
+            vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
+
+            // Fragment shader:
+            std::string fs = ShaderLoader::loadSource(
+                Shaders::MPFragFile,
+                Shaders::MPFragSource );
+            
             bool useTerrainColor = _terrainOptions.color().isSet();
+            if ( !useTerrainColor )
+            {
+                osgEarth::replaceIn( fs,
+                    "#define MP_USE_TERRAIN_COLOR",
+                    "#undef MP_USE_TERRAIN_COLOR" );
+            }
 
             bool useBlending = _terrainOptions.enableBlending() == true;
+            if ( !useBlending )
+            {
+                osgEarth::replaceIn( fs,
+                    "#define MP_USE_BLENDING",
+                    "#undef MP_USE_BLENDING" );
+            }
 
-            // Fragment Shader for normal blending:
-            std::string fs = Stringify() <<
-                "#version " GLSL_VERSION_STR "\n"
-                GLSL_DEFAULT_PRECISION_FLOAT "\n"
-                "varying vec4 oe_layer_texc; \n"
-                "uniform sampler2D oe_layer_tex; \n"
-                "uniform int oe_layer_uid; \n"
-                "uniform int oe_layer_order; \n"
-                "uniform float oe_layer_opacity; \n"
-                << (useTerrainColor ?
-                "uniform vec4 oe_terrain_color; \n" : ""
-                ) <<
-                "void oe_mp_apply_coloring(inout vec4 color) \n"
-                "{ \n"
-                << (useTerrainColor ?
-                "    color = oe_terrain_color; \n" : ""
-                ) <<
-                "    float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;\n"
-                "    vec4 texel = mix(color, texture2D(oe_layer_tex, oe_layer_texc.st), applyImagery); \n"
-                "    texel.a = mix(texel.a, texel.a*oe_layer_opacity, applyImagery); \n"
-
-                << (useBlending ?
-                "    float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0; \n"
-                "    color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer); \n"
-                :
-                "    color = texel; \n"
-                    ) <<
-                "} \n";
-
-            // Color filter frag function:
-            std::string fs_colorfilters =
-                "#version " GLSL_VERSION_STR "\n"
-                GLSL_DEFAULT_PRECISION_FLOAT "\n"
-                "uniform int oe_layer_uid; \n"
-                "__COLOR_FILTER_HEAD__"
-                "void oe_mp_apply_filters(inout vec4 color) \n"
-                "{ \n"
-                    "__COLOR_FILTER_BODY__"
-                "} \n";
-
-            vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
             vp->setFunction( "oe_mp_apply_coloring", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
 
+            
             // assemble color filter code snippets.
             bool haveColorFilters = false;
             {
+                // Color filter frag function:
+                std::string fs_colorfilters =
+                    "#version " GLSL_VERSION_STR "\n"
+                    GLSL_DEFAULT_PRECISION_FLOAT "\n"
+                    "uniform int oe_layer_uid; \n"
+                    "$COLOR_FILTER_HEAD"
+                    "void oe_mp_apply_filters(inout vec4 color) \n"
+                    "{ \n"
+                        "$COLOR_FILTER_BODY"
+                    "} \n";
+
                 std::stringstream cf_head;
                 std::stringstream cf_body;
                 const char* I = "    ";
@@ -873,10 +861,14 @@ MPTerrainEngineNode::updateState()
                     cf_head_str = cf_head.str();
                     cf_body_str = cf_body.str();
 
-                    replaceIn( fs_colorfilters, "__COLOR_FILTER_HEAD__", cf_head_str );
-                    replaceIn( fs_colorfilters, "__COLOR_FILTER_BODY__", cf_body_str );
+                    replaceIn( fs_colorfilters, "$COLOR_FILTER_HEAD", cf_head_str );
+                    replaceIn( fs_colorfilters, "$COLOR_FILTER_BODY", cf_body_str );
 
-                    vp->setFunction( "oe_mp_apply_filters", fs_colorfilters, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
+                    vp->setFunction(
+                        "oe_mp_apply_filters",
+                        fs_colorfilters,
+                        ShaderComp::LOCATION_FRAGMENT_COLORING,
+                        0.0 );
                 }
             }
 

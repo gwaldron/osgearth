@@ -2,27 +2,39 @@
 # normal mapping plugin
 #
 
-SET(TARGET_SRC
+set(TARGET_GLSL
+    NormalMap.vert.glsl
+    NormalMap.frag.glsl)
+
+set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+
+configure_shaders(
+    NormalMapShaders.cpp.in
+    ${SHADERS_CPP}
+    ${TARGET_GLSL} )
+
+set(TARGET_SRC
 	NormalMapPlugin.cpp
 	NormalMapExtension.cpp
-	NormalMapTerrainEffect.cpp)
+	NormalMapTerrainEffect.cpp
+	${SHADERS_CPP} )
 	
-SET(LIB_PUBLIC_HEADERS
+set(LIB_PUBLIC_HEADERS
 	NormalMapExtension
 	NormalMapOptions
 	NormalMapTerrainEffect)
 	
-SET(TARGET_H
+set(TARGET_H
 	${LIB_PUBLIC_HEADERS}
-	NormalMapShaders)
+	NormalMapShaders )
 
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
+
+set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
     osgEarthUtil)
 	
-SETUP_EXTENSION(osgearth_normalmap)
+setup_extension(osgearth_normalmap)
 
 # to install public driver includes:
-SET(LIB_NAME normalmap)
+set(LIB_NAME normalmap)
 
-INCLUDE(ModuleInstallOsgEarthExtensionIncludes OPTIONAL)
-
+#include(ModuleInstallOsgEarthExtensionIncludes OPTIONAL)

@@ -61,6 +61,59 @@
 		
 		<cache_policy usage="no_cache"/>
 	</image>
+	
+
+  <model name="trees" driver="feature_geom">
+
+    <features name="forest" driver="wfs">
+      <url>http://vr-theworld.com/vr-theworld/features/wfs</url>
+      <typename>7</typename>
+    </features>
+
+    <layout>
+      <tile_size_factor>3</tile_size_factor>
+      <crop_features>true</crop_features>
+      <level max_range="8000" class="trees-1"/>
+      <level max_range="5000" class="trees-2"/>
+      <level max_range="1000" class="trees-3"/>
+    </layout>
+
+    <styles>
+      <style type="text/css">
+        trees-1 {
+        model:              "http://vr-theworld.com/vr-theworld/filemanager/download/public/Trees/AmericanElm.osgb";
+        model-placement:    random;
+        model-density:     2800;
+        model-scale:        1;
+        altitude-clamping:   terrain;
+        altitude-resolution: 0.0001;
+        model-random-seed:  1;
+        }
+        trees-2 {
+        model:              "http://vr-theworld.com/vr-theworld/filemanager/download/public/Trees/JungleBrush.osgb";
+        model-placement:    random;
+        model-density:      2800;
+        model-scale:        2;
+        altitude-clamping:   terrain;
+        altitude-resolution: 0.0001;
+        model-random-seed:  2;
+        }
+        trees-3 {
+        model:              "http://vr-theworld.com/vr-theworld/filemanager/download/public/Trees/RiverBirch.osgb";
+        model-placement:    random;
+        model-density:      2800;
+        model-scale:        1;
+        altitude-clamping:   terrain;
+        altitude-resolution: 0.0001;
+        model-random-seed:  3;
+        }
+
+      </style>
+    </styles>
+	<instancing>true</instancing>
+    <lighting>true</lighting>
+  </model>
+	
 
     <extensions>
 	

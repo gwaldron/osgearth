@@ -1,0 +1,17 @@
+# configureshaders.cmake.in
+
+set(source_dir      "@CMAKE_CURRENT_SOURCE_DIR@")
+set(bin_dir         "@CMAKE_CURRENT_BINARY_DIR@")
+set(glsl_files      "@GLSL_FILES@")
+set(template_file   "@TEMPLATE_FILE@")
+set(output_cpp_file "@OUTPUT_CPP_FILE@")
+
+foreach(file ${glsl_files})
+    file(READ ${source_dir}/${file} contents)
+	string(REGEX REPLACE "\n" "\\\\n\n" ${file} "${contents}")
+endforeach(file)
+
+configure_file(
+	${source_dir}/${template_file}
+	${output_cpp_file}
+	@ONLY )

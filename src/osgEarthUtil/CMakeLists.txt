@@ -44,6 +44,7 @@ SET(HEADERS_ROOT
     Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
+    Shaders
 	Shadowing
 	SimplexNoise
     Sky
@@ -63,6 +64,19 @@ SET(HEADERS_ROOT
     WMS
 )
 SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
+
+
+set(TARGET_GLSL
+    LogDepthBuffer.vert.glsl
+    LogDepthBuffer.frag.glsl
+    LogDepthBuffer.VertOnly.vert.glsl)
+
+set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+
+configure_shaders(
+    Shaders.cpp.in
+    ${SHADERS_CPP}
+    ${TARGET_GLSL} )
 
 
 SET(SOURCES_ROOT
@@ -112,6 +126,7 @@ SET(SOURCES_ROOT
     VerticalScale.cpp
     WFS.cpp
     WMS.cpp
+    ${SHADERS_CPP}
 )
 
 SOURCE_GROUP( Sources FILES ${SOURCES_ROOT} )

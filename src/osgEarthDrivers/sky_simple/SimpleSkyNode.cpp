@@ -407,16 +407,16 @@ SimpleSkyNode::makeSceneLighting()
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
     vp->setName( "SimpleSky Scene Lighting" );
 
-    if ( _options.atmosphericLighting() == true )
+    if (_options.atmosphericLighting() == true && !Registry::capabilities().isGLES() )
     {
         vp->setFunction(
             "atmos_vertex_main",
-            Ground_Scattering_Vertex,
+            ShaderLoader::loadSource(Shaders::Ground_ONeil_VertFile, Shaders::Ground_ONeil_VertSource),
             ShaderComp::LOCATION_VERTEX_VIEW);
 
         vp->setFunction(
-            "atmos_fragment_main", 
-            Ground_Scattering_Fragment,
+            "atmos_fragment_main",
+            ShaderLoader::loadSource(Shaders::Ground_ONeil_FragFile, Shaders::Ground_ONeil_FragSource),
             ShaderComp::LOCATION_FRAGMENT_LIGHTING);
     }
 
@@ -491,12 +491,12 @@ SimpleSkyNode::makeAtmosphere(const osg::EllipsoidModel* em)
 
         vp->setFunction(
             "atmos_vertex_main",
-            Atmosphere_Vertex,
+            ShaderLoader::loadSource(Shaders::Atmosphere_VertFile, Shaders::Atmosphere_VertSource),
             ShaderComp::LOCATION_VERTEX_VIEW);
 
         vp->setFunction(
             "atmos_fragment_main",
-            Atmosphere_Fragment,
+            ShaderLoader::loadSource(Shaders::Atmosphere_FragFile, Shaders::Atmosphere_FragSource),
             ShaderComp::LOCATION_FRAGMENT_LIGHTING);
     }
 
@@ -536,9 +536,13 @@ SimpleSkyNode::makeSun()
 
     // create shaders
     osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Sun_Vertex );
+    osg::Shader* vs = new osg::Shader(
+        osg::Shader::VERTEX,
+        ShaderLoader::loadSource(Shaders::Sun_VertFile, Shaders::Sun_VertSource) );
     program->addShader( vs );
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Sun_Fragment );
+    osg::Shader* fs = new osg::Shader(
+        osg::Shader::FRAGMENT,
+        ShaderLoader::loadSource(Shaders::Sun_FragFile, Shaders::Sun_FragSource) );
     program->addShader( fs );
     set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
@@ -593,16 +597,20 @@ SimpleSkyNode::makeMoon()
     set->setRenderBinDetails( BIN_MOON, "RenderBin" );
     set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
-
+    
 #ifdef OSG_GLES2_AVAILABLE
 
     set->addUniform(new osg::Uniform("moonTex", 0));
 
     // create shaders
     osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Moon_Vertex );
+    osg::Shader* vs = new osg::Shader(
+        osg::Shader::VERTEX,
+        ShaderLoader::loadSource(Shaders::Moon_VertFile, Shaders::Moon_VertSource) );
     program->addShader( vs );
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Moon_Fragment );
+    osg::Shader* fs = new osg::Shader(
+        osg::Shader::FRAGMENT,
+        ShaderLoader::loadSource(Shaders::Moon_FragFile, Shaders::Moon_FragSource) );
     program->addShader( fs );
     set->setAttributeAndModes( program, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
 #endif
@@ -724,15 +732,15 @@ SimpleSkyNode::buildStarGeometry(const std::vector<StarData>& stars)
     sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
 
     std::string starVertSource, starFragSource;
-    if ( Registry::capabilities().getGLSLVersion() < 1.2f )
+    if ( Registry::capabilities().isGLES() )
     {
-        starVertSource = Stars_Vertex_110;
-        starFragSource = Stars_Fragment_110;
+        starVertSource = ShaderLoader::loadSource(Shaders::Stars_GLES_VertFile, Shaders::Stars_GLES_VertSource);
+        starFragSource = ShaderLoader::loadSource(Shaders::Stars_GLES_FragFile, Shaders::Stars_GLES_FragSource);
     }
     else
     {
-        starVertSource = Stars_Vertex_120;
-        starFragSource = Stars_Fragment_120;
+        starVertSource = ShaderLoader::loadSource(Shaders::Stars_VertFile, Shaders::Stars_VertSource);
+        starFragSource = ShaderLoader::loadSource(Shaders::Stars_FragFile, Shaders::Stars_FragSource);
     }
 
     osg::Program* program = new osg::Program;

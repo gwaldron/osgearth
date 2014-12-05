@@ -26,9 +26,26 @@
 #include <osg/Light>
 #include <osg/Material>
 #include <osg/observer_ptr>
+#include <osgDB/Options>
 
 namespace osgEarth
 {
+    /**
+     * Functions to help load shader code.
+     */
+    struct OSGEARTH_EXPORT ShaderLoader
+    {
+        /**
+         * Loads shader source from the specified filename. If the
+         * file can't be found in the OSG file path, use the source
+         * provided in backupSource.
+         */
+        static std::string loadSource(
+            const std::string&    filename,
+            const std::string&    backupSource,
+            const osgDB::Options* dbOptios =0L );
+    };
+
     /**
      * ShaderPolicy encodes general behavior when deciding how to
      * employ shaders in certain situations
@@ -39,7 +56,6 @@ namespace osgEarth
         SHADERPOLICY_GENERATE,
         SHADERPOLICY_INHERIT
     };
-
 
     /**
     * Container for light uniforms

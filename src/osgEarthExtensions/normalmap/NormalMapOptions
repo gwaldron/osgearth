@@ -32,24 +32,12 @@ namespace osgEarth { namespace NormalMap
     class NormalMapOptions : public DriverConfigOptions // NO EXPORT; header only
     {
     public:
-        // Normal map texture to load.
-        optional<URI>& imageURI() { return _imageURI; }
-        const optional<URI>& imageURI() const { return _imageURI; }
-
-        // Intensity of normal map effect.
-        optional<float>& intensity() { return _intensity; }
-        const optional<float>& intensity() const { return _intensity; }
-
-        // Scale factor for the normal map texture.
-        optional<float>& scale() { return _scale; }
-        const optional<float>& scale() const { return _scale; }
+        // No properties.
 
     public:
         NormalMapOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
         {
             setDriver( "normalmap" );
-            _intensity.init( 1.0f );
-            _scale.init( 1.0f );
             fromConfig( _conf );
         }
 
@@ -58,9 +46,7 @@ namespace osgEarth { namespace NormalMap
     public:
         Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
-            conf.updateIfSet("image",     _imageURI);
-            conf.updateIfSet("intensity", _intensity);
-            conf.updateIfSet("scale",     _scale);
+            // future props.
             return conf;
         }
 
@@ -72,9 +58,7 @@ namespace osgEarth { namespace NormalMap
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("image",     _imageURI);
-            conf.getIfSet("intensity", _intensity);
-            conf.getIfSet("scale",     _scale);
+            //future props
         }
 
         optional<URI>   _imageURI;

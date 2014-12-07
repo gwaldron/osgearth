@@ -126,10 +126,13 @@
 			<legend>../data/splat/GLOBCOVER_legend.json</legend>
             <catalog>../data/splat/splat_catalog.json</catalog>
         </splat>
-
+		
 		<normalmap>
-			<image>../data/rock_hard.jpg</image>
 		</normalmap>
+
+		<bumpmap>
+			<image>../data/rock_hard.jpg</image>
+		</bumpmap>
 		
 		<viewpoints>
 			<viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>

@@ -16,49 +16,63 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "NormalMapExtension"
-#include "NormalMapTerrainEffect"
+#include "BumpMapExtension"
+#include "BumpMapTerrainEffect"
 
 #include <osgEarth/MapNode>
 
 using namespace osgEarth;
-using namespace osgEarth::NormalMap;
+using namespace osgEarth::BumpMap;
 
-#define LC "[NormalMapExtension] "
+#define LC "[BumpMapExtension] "
 
 
-NormalMapExtension::NormalMapExtension()
+BumpMapExtension::BumpMapExtension()
 {
     //nop
 }
 
-NormalMapExtension::NormalMapExtension(const NormalMapOptions& options) :
+BumpMapExtension::BumpMapExtension(const BumpMapOptions& options) :
 _options( options )
 {
     //nop
 }
 
-NormalMapExtension::~NormalMapExtension()
+BumpMapExtension::~BumpMapExtension()
 {
     //nop
 }
 
 void
-NormalMapExtension::setDBOptions(const osgDB::Options* dbOptions)
+BumpMapExtension::setDBOptions(const osgDB::Options* dbOptions)
 {
     _dbOptions = dbOptions;
 }
 
 bool
-NormalMapExtension::connect(MapNode* mapNode)
+BumpMapExtension::connect(MapNode* mapNode)
 {
     if ( !mapNode )
     {
         OE_WARN << LC << "Illegal: MapNode cannot be null." << std::endl;
         return false;
     }
+    
+    osg::ref_ptr<osg::Image> image = _options.imageURI()->getImage( _dbOptions.get() );
+    if ( !image.valid() )
+    {
+        OE_WARN << LC << "Failed; unable to load normal map image from "
+            << _options.imageURI()->full() << "\n";
+        return false;
+    }
 
-    _effect = new NormalMapTerrainEffect( _dbOptions.get() );
+    _effect = new BumpMapTerrainEffect( _dbOptions.get() );
+    _effect->setBumpMapImage( image.get() );
+
+    if (_options.intensity().isSet())
+        _effect->getIntensityUniform()->set( _options.intensity().get() );
+    if (_options.scale().isSet())
+        _effect->getScaleUniform()->set( _options.scale().get() );
 
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     
@@ -68,7 +82,7 @@ NormalMapExtension::connect(MapNode* mapNode)
 }
 
 bool
-NormalMapExtension::disconnect(MapNode* mapNode)
+BumpMapExtension::disconnect(MapNode* mapNode)
 {
     if ( mapNode )
     {

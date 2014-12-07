@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_NORMALMAP_TERRAIN_EFFECT_H
-#define OSGEARTH_NORMALMAP_TERRAIN_EFFECT_H
+#ifndef OSGEARTH_BumpMap_TERRAIN_EFFECT_H
+#define OSGEARTH_BumpMap_TERRAIN_EFFECT_H
 
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/ImageLayer>
@@ -27,17 +27,25 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace NormalMap
+namespace osgEarth { namespace BumpMap
 {
     /**
-     * Effect that applies normal mapping to the terrain.
+     * Effect that applies bump mapping to the terrain.
      */
-    class NormalMapTerrainEffect : public TerrainEffect
+    class BumpMapTerrainEffect : public TerrainEffect
     {
     public:
         /** construct a new terrain effect. */
-        NormalMapTerrainEffect(
-            const osgDB::Options* dbOptions);
+        BumpMapTerrainEffect(const osgDB::Options* dbOptions);
+
+        /** Sets the image containing the normal offsets. */
+        void setBumpMapImage(osg::Image* image);
+
+        /** UNiform that controls intensity */
+        osg::Uniform* getIntensityUniform() const { return _intensityUniform.get(); }
+
+        /** Uniform that controls scale factor */
+        osg::Uniform* getScaleUniform() const { return _scaleUniform.get(); }
 
 
     public: // TerrainEffect interface
@@ -48,14 +56,16 @@ namespace osgEarth { namespace NormalMap
 
 
     protected:
-        virtual ~NormalMapTerrainEffect() { }
+        virtual ~BumpMapTerrainEffect() { }
 
         bool _ok;
-        int  _normalMapUnit;
-        osg::ref_ptr<osg::Texture2D> _normalMapTex;
-        osg::ref_ptr<osg::Uniform>   _normalMapTexUniform;
+        int  _bumpMapUnit;
+        osg::ref_ptr<osg::Texture2D> _bumpMapTex;
+        osg::ref_ptr<osg::Uniform>   _bumpMapTexUniform;
+        osg::ref_ptr<osg::Uniform>   _scaleUniform;
+        osg::ref_ptr<osg::Uniform>   _intensityUniform;
     };
 
-} } // namespace osgEarth::NormalMap
+} } // namespace osgEarth::BumpMap
 
-#endif // OSGEARTH_NORMALMAP_TERRAIN_EFFECT_H
+#endif // OSGEARTH_BumpMap_TERRAIN_EFFECT_H

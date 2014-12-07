@@ -28,13 +28,8 @@
 
 #define LC "[NormalMap] "
 
-#define BUMP_SAMPLER   "oe_nmap_bumpTex"
 #define NORMAL_SAMPLER "oe_nmap_normalTex"
 #define NORMAL_MATRIX  "oe_nmap_normalMatrix"
-
-// Tile LOD offset of the "Level 0" NormalMapting scale. This is necessary
-// to get rid of precision issues when scaling the NormalMaps up high.
-//#define L0_OFFSET "10.0"
 
 using namespace osgEarth;
 using namespace osgEarth::NormalMap;
@@ -76,28 +71,7 @@ namespace
 
 NormalMapTerrainEffect::NormalMapTerrainEffect(const osgDB::Options* dbOptions)
 {
-    _scaleUniform     = new osg::Uniform("oe_nmap_scale", 1.0f);
-    _intensityUniform = new osg::Uniform("oe_nmap_intensity", 1.0f);
-}
-
-void
-NormalMapTerrainEffect::setNormalMapImage(osg::Image* image)
-{
-    if ( image )
-    {
-        _normalMapTex = new osg::Texture2D(image);
-        _normalMapTex->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-        _normalMapTex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
-        _normalMapTex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
-        _normalMapTex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-        _normalMapTex->setMaxAnisotropy(1.0f);
-        _normalMapTex->setUnRefImageDataAfterApply(true);
-        _normalMapTex->setResizeNonPowerOfTwoHint(false);
-    }
-    else
-    {
-        OE_WARN << LC << "Failed to load the bump map texture\n";
-    }
+    //nop
 }
 
 void
@@ -122,37 +96,6 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
         vp->setFunction( "oe_nmap_vertex",   vertShader, ShaderComp::LOCATION_VERTEX_MODEL );
         vp->setFunction( "oe_nmap_fragment", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, -1.0f);
     }
-
-#if 0
-    if ( engine && _normalMapTex.valid() )
-    {
-        osg::StateSet* stateset = engine->getOrCreateStateSet();
-
-        // install the NormalMap texture array:
-        if ( engine->getTextureCompositor()->reserveTextureImageUnit(_normalMapUnit) )
-        {
-            // NormalMap sampler
-            _normalMapTexUniform = stateset->getOrCreateUniform(NORMAL_SAMPLER, osg::Uniform::SAMPLER_2D);
-            _normalMapTexUniform->set( _normalMapUnit );
-            stateset->setTextureAttribute( _normalMapUnit, _normalMapTex.get(), osg::StateAttribute::ON );
-
-            // configure shaders
-            std::string vertShader = ShaderLoader::loadSource(
-                Shaders::VertexShaderFile, Shaders::VertexShaderSource);
-
-            std::string fragShader = ShaderLoader::loadSource(
-                Shaders::FragmentShaderFile, Shaders::FragmentShaderSource);
-
-            // shader components
-            VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            vp->setFunction( "oe_nmap_vertex",   vertShader, ShaderComp::LOCATION_VERTEX_MODEL );
-            vp->setFunction( "oe_nmap_fragment", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, -1.0f);
-
-            stateset->addUniform( _scaleUniform.get() );
-            stateset->addUniform( _intensityUniform.get() );
-        }
-    }
-#endif
 }
 
 
@@ -162,14 +105,6 @@ NormalMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
     osg::StateSet* stateset = engine->getStateSet();
     if ( stateset )
     {
-        if ( _normalMapTex.valid() )
-        {
-            stateset->removeUniform( _scaleUniform.get() );
-            stateset->removeUniform( _intensityUniform.get() );
-            stateset->removeUniform( _normalMapTexUniform.get() );
-            stateset->removeTextureAttribute( _normalMapUnit, osg::StateAttribute::TEXTURE );
-        }
-
         VirtualProgram* vp = VirtualProgram::get(stateset);
         if ( vp )
         {

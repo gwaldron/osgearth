@@ -7,6 +7,9 @@ varying vec3 oe_Normal;
 varying vec2 oe_nmap_coords;
 varying float oe_nmap_slope;
 
+uniform vec4 oe_nmap_normalMatrix;
+varying vec2 oe_nmap_normalCoords;
+
 vec2 oe_nmap_scaleCoords(in vec2 coords, in float targetLOD)
 {
     float dL = oe_tile_key.z - targetLOD;
@@ -39,4 +42,11 @@ void oe_nmap_vertex(inout vec4 VertexMODEL)
 
     // calcluate slope and augment it.
     oe_nmap_slope = clamp(2.5*(1.0-oe_Normal.z), 0.0, 1.0);
+
+    //TODO: fix this matrix
+    oe_nmap_normalCoords = oe_layer_tilec.st; //(oe_nmap_normalMatrix * oe_layer_tilec).st;
+
+    //TODO: non-hard-code this
+    oe_nmap_normalCoords *= 256.0/257.0;
+    oe_nmap_normalCoords += 0.5/257.0;
 }

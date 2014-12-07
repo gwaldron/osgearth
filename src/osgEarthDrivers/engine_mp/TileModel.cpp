@@ -97,13 +97,13 @@ TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
     osg::Vec3d south( hf_ndc.x(), hf_ndc.y()-yres, 0.0 );
     osg::Vec3d north( hf_ndc.x(), hf_ndc.y()+yres, 0.0 );
 
-    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  west.z(), interp))
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, west.x(),  west.y(),  (float&)west.z(), interp))
         west.z() = centerHeight;
-    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  east.z(), interp))
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, east.x(),  east.y(),  (float&)east.z(), interp))
         east.z() = centerHeight;
-    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), south.z(), interp))
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, south.x(), south.y(), (float&)south.z(), interp))
         south.z() = centerHeight;
-    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), north.z(), interp))
+    if (!HeightFieldUtils::getHeightAtNormalizedLocation(_neighbors, north.x(), north.y(), (float&)north.z(), interp))
         north.z() = centerHeight;
 
     osg::Vec3d westWorld, eastWorld, southWorld, northWorld;
@@ -374,7 +374,7 @@ TileModel::generateNormalTexture()
 
     _normalTexture->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
     _normalTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    _normalTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    _normalTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
     _normalTexture->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
     _normalTexture->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
     _normalTexture->setResizeNonPowerOfTwoHint( false );

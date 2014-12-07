@@ -103,6 +103,27 @@ NormalMapTerrainEffect::setNormalMapImage(osg::Image* image)
 void
 NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 {
+    if ( engine )
+    {
+        int unit;
+        engine->getTextureCompositor()->reserveTextureImageUnit(unit);
+        engine->addTileNodeCallback( new NormalTexInstaller(this, unit) );
+
+        // configure shaders
+        std::string vertShader = ShaderLoader::loadSource(
+            Shaders::VertexShaderFile, Shaders::VertexShaderSource);
+
+        std::string fragShader = ShaderLoader::loadSource(
+            Shaders::FragmentShaderFile, Shaders::FragmentShaderSource);
+
+        // shader components
+        osg::StateSet* stateset = engine->getOrCreateStateSet();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+        vp->setFunction( "oe_nmap_vertex",   vertShader, ShaderComp::LOCATION_VERTEX_MODEL );
+        vp->setFunction( "oe_nmap_fragment", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, -1.0f);
+    }
+
+#if 0
     if ( engine && _normalMapTex.valid() )
     {
         osg::StateSet* stateset = engine->getOrCreateStateSet();
@@ -131,6 +152,7 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform( _intensityUniform.get() );
         }
     }
+#endif
 }
 
 

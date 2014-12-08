@@ -63,16 +63,23 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     {
     public:
         HeightFieldCache(TileNodeRegistry* tiles, const MPTerrainEngineOptions& options) :
-          _tiles  ( tiles ),
-          _cache  ( true, 128 )
+          _tiles   ( tiles ),
+          _cache   ( true, 128 ),
+          _tileSize( 17 )
         {
-            _firstLOD = options.firstLOD().get();
+            _firstLOD = options.firstLOD().get();            
+        }
+
+        void setTileSize(int tileSize)
+        {
+            _tileSize = tileSize;
         }
 
         bool getOrCreateHeightField( 
                 const MapFrame&                 frame,
                 const TileKey&                  key,
-                bool                            cummulative,  // whether to start with the parent as a template
+                const osg::HeightField*         parent_hf,
+                //bool                            cummulative,  // whether to start with the parent as a template
                 osg::ref_ptr<osg::HeightField>& out_hf,
                 bool&                           out_isFallback,
                 ElevationSamplePolicy           samplePolicy,
@@ -88,6 +95,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         mutable LRUCache<HFKey,HFValue> _cache;
         TileNodeRegistry*               _tiles;
         int                             _firstLOD;
+        int                             _tileSize;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

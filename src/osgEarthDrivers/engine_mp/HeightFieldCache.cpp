@@ -27,7 +27,8 @@ using namespace osgEarth;
 bool
 HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
                                          const TileKey&                  key,
-                                         bool                            cummulative,
+                                         //bool                            cummulative,
+                                         const osg::HeightField*         parent_hf,
                                          osg::ref_ptr<osg::HeightField>& out_hf,
                                          bool&                           out_isFallback,
                                          ElevationSamplePolicy           samplePolicy,
@@ -63,26 +64,15 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
     }
 
     // Find the parent tile and start with its heightfield.
-    if ( cummulative )
+    if ( parent_hf )
     {
-        osg::ref_ptr<TileNode> parentNode;
         TileKey parentKey = key.createParentKey();
-        if ( _tiles->get(parentKey, parentNode) )
-        {
-            const TileModel* parentModel = parentNode->getTileModel();
-            if ( parentModel )
-            {
-                osg::HeightField* parentHF = parentModel->_elevationData.getHeightField();
-                if ( parentHF )
-                {
-                    out_hf = HeightFieldUtils::createSubSample(
-                        parentHF,
-                        parentKey.getExtent(),
-                        key.getExtent(),
-                        interp );
-                }
-            }
-        }
+        
+        out_hf = HeightFieldUtils::createSubSample(
+            parent_hf,
+            parentKey.getExtent(),
+            key.getExtent(),
+            interp );
 
         if ( !out_hf.valid() && ((int)key.getLOD())-1 > _firstLOD )
         {
@@ -99,7 +89,7 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         //TODO.
         // This sets the elevation tile size; query size for all tiles.
         out_hf = HeightFieldUtils::createReferenceHeightField(
-            key.getExtent(), 257, 257, true);
+            key.getExtent(), _tileSize, _tileSize, true );
     }
 
     bool populated = frame.populateHeightField(

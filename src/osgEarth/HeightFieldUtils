@@ -154,10 +154,10 @@ namespace osgEarth
          * Subsamples a heightfield to the specified extent.
          */
         static osg::HeightField* createSubSample(
-            osg::HeightField*      input, 
-            const GeoExtent&       inputEx,
-            const GeoExtent&       outputEx,
-            ElevationInterpolation interpolation = INTERP_BILINEAR);
+            const osg::HeightField* input, 
+            const GeoExtent&        inputEx,
+            const GeoExtent&        outputEx,
+            ElevationInterpolation  interpolation = INTERP_BILINEAR);
 
         /**
          * Resizes a heightfield, keeping the corner values the same and

@@ -106,7 +106,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->getOrCreateUniform("oe_splat_slopeFactor", osg::Uniform::FLOAT)->set(0.47f);
 
             stateset->getOrCreateUniform("oe_splat_blending_range", osg::Uniform::FLOAT)->set(250000.0f);
-            stateset->getOrCreateUniform("oe_splat_detail_range", osg::Uniform::FLOAT)->set(100000.0f);
+            stateset->getOrCreateUniform("oe_splat_detail_range", osg::Uniform::FLOAT)->set(1000000.0f);
 
             // Configure the vertex shader:
             std::string vertexShaderModel = ShaderLoader::loadSource(

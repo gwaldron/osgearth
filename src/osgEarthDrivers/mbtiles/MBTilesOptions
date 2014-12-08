@@ -54,8 +54,9 @@ namespace osgEarth { namespace Drivers
          * scan the table to determine the min/max.  This can take time when first loading the file so if you know the levels of your file 
          * up front you can set this to false and just use the min_level max_level settings of the tile source.
          */
-        optional<bool>& computeLevels() { return _computeLevels;}
-        const optional<bool>& computeLevels() const { return _computeLevels;}
+        optional<bool>& computeLevels() { return _computeLevels; }
+        const optional<bool>& computeLevels() const { return _computeLevels; }
+
     public:
         MBTilesTileSourceOptions(const TileSourceOptions& opt =TileSourceOptions()) :
             TileSourceOptions( opt ),

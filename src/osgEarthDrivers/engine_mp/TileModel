@@ -150,6 +150,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 return _parent.get();
             }
 
+            const HeightFieldNeighborhood& getNeighborhood() const 
+            {
+                return _neighbors;
+            }
+
         private:
             osg::ref_ptr<osg::HeightField> _hf;
             osg::ref_ptr<GeoLocator>       _locator;

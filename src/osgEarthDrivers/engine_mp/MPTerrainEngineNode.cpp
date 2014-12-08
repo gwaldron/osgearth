@@ -318,7 +318,9 @@ MPTerrainEngineNode::createTerrain()
 {
     // scrub the heightfield cache.
     if (_tileModelFactory)
-        _tileModelFactory->getHeightFieldCache()->clear();
+    {
+        _tileModelFactory->clearCaches();
+    }
 
     // New terrain
     _terrain = new TerrainNode( _deadTiles.get() );

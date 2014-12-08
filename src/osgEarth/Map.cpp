@@ -1043,13 +1043,19 @@ Map::calculateProfile()
             for( ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); i++ )
             {
                 ImageLayer* layer = i->get();
-                layer->setTargetProfileHint( _profile.get() );
+                if ( layer->getEnabled() == true )
+                {
+                    layer->setTargetProfileHint( _profile.get() );
+                }
             }
 
             for( ElevationLayerVector::iterator i = _elevationLayers.begin(); i != _elevationLayers.end(); i++ )
             {
                 ElevationLayer* layer = i->get();
-                layer->setTargetProfileHint( _profile.get() );
+                if ( layer->getEnabled() )
+                {
+                    layer->setTargetProfileHint( _profile.get() );
+                }
             }
         }
 

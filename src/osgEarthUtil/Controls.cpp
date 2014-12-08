@@ -25,6 +25,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgText/Text>
 #include <osgUtil/RenderBin>
+#include <osgUtil/Statistics>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>

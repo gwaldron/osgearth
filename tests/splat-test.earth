@@ -7,14 +7,14 @@
 <map>
         
 	<options>
-		<terrain normalize_edges="true" tile_size="9"/>
+		<terrain normalize_edges="false"/>
 	</options>
 	
     <elevation name="readymap_elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
 	
-	<elevation driver="gdal">
+	<elevation driver="gdal" enabled="true">
 		<url>H:/data/ned/ned19_n47x00_w121x75_wa_mounttrainier_2008/ned19_n47x00_w121x75_wa_mounttrainier_2008.tif</url>
 	</elevation>
 	
@@ -127,8 +127,7 @@
             <catalog>../data/splat/splat_catalog.json</catalog>
         </splat>
 		
-		<normalmap>
-		</normalmap>
+		<normalmap/>
 
 		<bumpmap>
 			<image>../data/rock_hard.jpg</image>
@@ -143,7 +142,7 @@
 			<viewpoint name="Mt R. Slope" heading="-70.22873221693601" height="3160.756061628461" lat="46.83660282836279" long="-121.7442624846425" pitch="-25.89746948655256" range="9233.647682022791"/>
 			<viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
 			<viewpoint name="Nepal NF" heading="-49.14546953546358" height="6334.332569343038" lat="27.9421778947837" long="86.9935949004298" pitch="-3.643325527310435" range="13302.81192964212"/>
-			<viewpoint name="Teary Eyed" heading="106.972953044784" height="6127.966196822003" lat="28.33024026320711" long="85.77936997110928" pitch="-14.35235262960488" range="38709.9713109624"/>
+			<viewpoint name="Normal Maps" heading="39.54881482176273" height="1069.60238658078" lat="46.7495310280497" long="-121.8325011990688" pitch="-17.37703695135587" range="29061.78724685504"/>
 		</viewpoints>
 		
 		

@@ -354,8 +354,10 @@ HeightFieldUtils::scaleHeightFieldToDegrees( osg::HeightField* hf )
 
 
 osg::HeightField*
-HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inputEx, 
-                                  const GeoExtent& outputEx, osgEarth::ElevationInterpolation interpolation)
+HeightFieldUtils::createSubSample(const osg::HeightField* input,
+                                  const GeoExtent& inputEx, 
+                                  const GeoExtent& outputEx,
+                                  osgEarth::ElevationInterpolation interpolation)
 {
     double div = outputEx.width()/inputEx.width();
     if ( div >= 1.0f )
@@ -363,9 +365,6 @@ HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inpu
 
     int numCols = input->getNumColumns();
     int numRows = input->getNumRows();
-
-    //float dx = input->getXInterval() * div;
-    //float dy = input->getYInterval() * div;
 
     double xInterval = inputEx.width()  / (double)(input->getNumColumns()-1);
     double yInterval = inputEx.height()  / (double)(input->getNumRows()-1);
@@ -626,7 +625,7 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
     const osg::HeightField* hf = hood._center.get();
     
     osg::Image* image = new osg::Image();
-    image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RGB, GL_UNSIGNED_BYTE);
+    image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
     double xcells = (double)(hf->getNumColumns()-1);
     double ycells = (double)(hf->getNumRows()-1);
@@ -635,10 +634,10 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
 
     // north-south interval in meters:
     double tInterval = hf->getYInterval();
-    double mPerDegAtEquatorInv = 360.0/(hoodSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI);
+    double mPerDegAtEquator = (hoodSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI)/360.0;
     if ( hoodSRS->isGeographic() )
     {
-        tInterval *= mPerDegAtEquatorInv;
+        tInterval *= mPerDegAtEquator;
     }
 
     ImageUtils::PixelWriter write(image);
@@ -650,7 +649,7 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
         if ( hoodSRS->isGeographic() )
         {
             double lat = osg::DegreesToRadians(hf->getOrigin().y() + hf->getYInterval()*(double)t);
-            sInterval *= mPerDegAtEquatorInv * cos(lat);
+            sInterval *= mPerDegAtEquator * cos(lat);
         }
 
         for(int s=0; s<(int)hf->getNumColumns(); ++s)
@@ -660,28 +659,30 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
             double nx = xres*(double)s;
             double ny = yres*(double)t;
 
-            osg::Vec3f west ( -sInterval, 0, NO_DATA_VALUE );
-            osg::Vec3f east (  sInterval, 0, NO_DATA_VALUE );
-            osg::Vec3f south( 0, -tInterval, NO_DATA_VALUE );
-            osg::Vec3f north( 0,  tInterval, NO_DATA_VALUE );
+            osg::Vec3f west ( -sInterval, 0, centerHeight );
+            osg::Vec3f east (  sInterval, 0, centerHeight );
+            osg::Vec3f south( 0, -tInterval, centerHeight );
+            osg::Vec3f north( 0,  tInterval, centerHeight );
 
-            float z;
-            HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx-xres, ny, (float&)west.z());
-            //    west.z() = z;
-            if (HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx+xres, ny, z))
-                east.z() = z;
-            if (HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx, ny-yres, z))
-                south.z() = z;
-            if (HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx, ny+yres, z))
-                north.z() = z;
+            HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx-xres, ny, west.z());
+            HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx+xres, ny, east.z());
+            HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx, ny-yres, south.z());
+            HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx, ny+yres, north.z());
 
             osg::Vec3f n = (east-west) ^ (north-south);
             n.normalize();
 
-            // encode for RGB:
-            n = (n + osg::Vec3f(1.0,1.0,1.0))*0.5;
+            // calculate and encode curvature (2nd derivative of elevation)
+            float L2inv = 1.0f/(sInterval*sInterval);
+            float D = (0.5*(west.z()+east.z()) - centerHeight) * L2inv;
+            float E = (0.5*(south.z()+north.z()) - centerHeight) * L2inv;
+            float curvature = osg::clampBetween(-2.0f*(D+E)*100.0f, -1.0f, 1.0f);
 
-            write( osg::Vec4f(n.x(), n.y(), n.z(), 1.0), s, t);
+            // encode for RGBA [0..1]
+            osg::Vec4f enc( n.x(), n.y(), n.z(), curvature );
+            enc = (enc + osg::Vec4f(1.0,1.0,1.0,1.0))*0.5;
+
+            write(enc, s, t);
         }
     }
 

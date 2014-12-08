@@ -239,15 +239,19 @@ TileModelFactory::TileModelFactory(TileNodeRegistry*             liveTiles,
 _liveTiles     ( liveTiles ),
 _terrainOptions( terrainOptions )
 {
-    _hfCache = new HeightFieldCache(liveTiles, terrainOptions);
+    _meshHFCache = new HeightFieldCache(liveTiles, terrainOptions);
+    _meshHFCache->setTileSize( terrainOptions.tileSize().get() );
+
+    _normalHFCache = new HeightFieldCache(liveTiles, terrainOptions);
+    _normalHFCache->setTileSize( 257 );
 }
 
-HeightFieldCache*
-TileModelFactory::getHeightFieldCache() const
+void
+TileModelFactory::clearCaches()
 {
-    return _hfCache;
+    _meshHFCache->clear();
+    _normalHFCache->clear();
 }
-
 
 void
 TileModelFactory::buildElevation(const TileKey&    key,
@@ -267,7 +271,20 @@ TileModelFactory::buildElevation(const TileKey&    key,
 
     bool isFallback = false;
 
-    if (_hfCache->getOrCreateHeightField(frame, key, accumulate, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
+    // look up the parent's heightfield to use as a template
+    osg::HeightField* parentHF = 0L;
+    TileKey parentKey = key.createParentKey();
+    if ( accumulate )
+    {
+        osg::ref_ptr<TileNode> parentNode;
+        if (_liveTiles->get(parentKey, parentNode))
+        {
+            parentHF = parentNode->getTileModel()->_elevationData.getHeightField();
+        }
+    }
+
+    // Make a new heightfield:
+    if (_meshHFCache->getOrCreateHeightField(frame, key, parentHF, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
     {
         model->_elevationData = TileModel::ElevationData(
             hf,
@@ -283,11 +300,29 @@ TileModelFactory::buildElevation(const TileKey&    key,
                 {
                     if ( x != 0 || y != 0 )
                     {
-                        TileKey nk = key.createNeighborKey(x, y);
-                        if ( nk.valid() )
+                        TileKey neighborKey = key.createNeighborKey(x, y);
+                        if ( neighborKey.valid() )
                         {
+                            osg::HeightField* neighborParentHF = 0L;
+                            if ( accumulate )
+                            {
+                                TileKey neighborParentKey = neighborKey.createParentKey();
+                                if (neighborParentKey == parentKey)
+                                {
+                                    neighborParentHF = parentHF;
+                                }
+                                else
+                                {
+                                    osg::ref_ptr<TileNode> neighborParentNode;
+                                    if (_liveTiles->get(neighborParentKey, neighborParentNode))
+                                    {
+                                        neighborParentHF = neighborParentNode->getTileModel()->_elevationData.getHeightField();
+                                    }
+                                }
+                            }
+
                             osg::ref_ptr<osg::HeightField> hf;
-                            if (_hfCache->getOrCreateHeightField(frame, nk, accumulate, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                            if (_meshHFCache->getOrCreateHeightField(frame, neighborKey, neighborParentHF, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
                             {
                                 model->_elevationData.setNeighbor( x, y, hf.get() );
                             }
@@ -300,7 +335,7 @@ TileModelFactory::buildElevation(const TileKey&    key,
             if ( key.getLOD() > 0 )
             {
                 osg::ref_ptr<osg::HeightField> hf;
-                if ( _hfCache->getOrCreateHeightField(frame, key.createParentKey(), accumulate, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                if ( _meshHFCache->getOrCreateHeightField(frame, parentKey, parentHF, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
                 {
                     model->_elevationData.setParent( hf.get() );
                 }
@@ -308,8 +343,98 @@ TileModelFactory::buildElevation(const TileKey&    key,
         }
 
         model->generateElevationTexture();
+    }
+}
 
-        //TESTING normal textures.
+void
+TileModelFactory::buildNormalMap(const TileKey&    key,
+                                 const MapFrame&   frame,
+                                 bool              accumulate,
+                                 TileModel*        model,
+                                 ProgressCallback* progress)
+{   
+    const MapInfo& mapInfo = frame.getMapInfo();
+
+    const osgEarth::ElevationInterpolation& interp =
+        frame.getMapOptions().elevationInterpolation().get();
+
+    // Request a heightfield from the map, falling back on lower resolution tiles
+    // if necessary (fallback=true)
+    osg::ref_ptr<osg::HeightField> hf;
+
+    bool isFallback = false;
+
+    // look up the parent's heightfield to use as a template
+    osg::HeightField* parentHF = 0L;
+    TileKey parentKey = key.createParentKey();
+    if ( accumulate )
+    {
+        osg::ref_ptr<TileNode> parentNode;
+        if (_liveTiles->get(parentKey, parentNode))
+        {
+            parentHF = parentNode->getTileModel()->_normalData.getHeightField();
+        }
+    }
+
+    // Make a new heightfield:
+    if (_normalHFCache->getOrCreateHeightField(frame, key, parentHF, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
+    {
+        model->_normalData = TileModel::NormalData(
+            hf,
+            GeoLocator::createForKey( key, mapInfo ),
+            isFallback );
+
+        // Edge normalization: requires adjacency information
+        if ( _terrainOptions.normalizeEdges() == true )
+        {
+            for( int x=-1; x<=1; x++ )
+            {
+                for( int y=-1; y<=1; y++ )
+                {
+                    if ( x != 0 || y != 0 )
+                    {
+                        TileKey neighborKey = key.createNeighborKey(x, y);
+                        if ( neighborKey.valid() )
+                        {
+                            osg::HeightField* neighborParentHF = 0L;
+                            if ( accumulate )
+                            {
+                                TileKey neighborParentKey = neighborKey.createParentKey();
+                                if (neighborParentKey == parentKey)
+                                {
+                                    neighborParentHF = parentHF;
+                                }
+                                else
+                                {
+                                    osg::ref_ptr<TileNode> neighborParentNode;
+                                    if (_liveTiles->get(neighborParentKey, neighborParentNode))
+                                    {
+                                        neighborParentHF = neighborParentNode->getTileModel()->_normalData.getHeightField();
+                                    }
+                                }
+                            }
+
+                            osg::ref_ptr<osg::HeightField> hf;
+                            if (_normalHFCache->getOrCreateHeightField(frame, neighborKey, neighborParentHF, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                            {
+                                model->_normalData.setNeighbor( x, y, hf.get() );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // parent too.
+            if ( key.getLOD() > 0 )
+            {
+                osg::ref_ptr<osg::HeightField> hf;
+                if ( _normalHFCache->getOrCreateHeightField(frame, parentKey, parentHF, hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                {
+                    model->_normalData.setParent( hf.get() );
+                }
+            }
+        }
+
         model->generateNormalTexture();
     }
 }
@@ -355,13 +480,17 @@ TileModelFactory::createTileModel(const TileKey&           key,
         progress->stats()["fetch_imagery_time"] += OE_STOP_TIMER(fetch_imagery);
 
     
-    OE_START_TIMER(fetch_elevation);
-
     // make an elevation layer.
+    OE_START_TIMER(fetch_elevation);
     buildElevation(key, frame, accumulate, model.get(), progress);
-
     if (progress)
         progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);
+
+    // make a normal map layer.
+    OE_START_TIMER(fetch_normalmap);
+    buildNormalMap(key, frame, accumulate, model.get(), progress);
+    if (progress)
+        progress->stats()["fetch_normalmap_time"] += OE_STOP_TIMER(fetch_normalmap);
 
 
     // If nothing was added, not even a fallback heightfield, something went
@@ -386,7 +515,9 @@ TileModelFactory::createTileModel(const TileKey&           key,
     // look up the parent model and cache it.
     osg::ref_ptr<TileNode> parentTile;
     if ( _liveTiles->get(key.createParentKey(), parentTile) )
+    {
         model->_parentModel = parentTile->getTileModel();
+    }
 
     out_model = model.release();
 }

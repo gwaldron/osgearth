@@ -46,7 +46,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             TileNodeRegistry*             liveTiles,
             const MPTerrainEngineOptions& terrainOptions );
 
-        HeightFieldCache* getHeightFieldCache() const;
+        void clearCaches();
 
         /** dtor */
         virtual ~TileModelFactory() { }
@@ -60,11 +60,19 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     private:        
 
-        osg::ref_ptr<TileNodeRegistry>   _liveTiles;
-        const MPTerrainEngineOptions&    _terrainOptions;
-        osg::ref_ptr< HeightFieldCache > _hfCache;
+        osg::ref_ptr<TileNodeRegistry> _liveTiles;
+        const MPTerrainEngineOptions&  _terrainOptions;
+        osg::ref_ptr<HeightFieldCache> _meshHFCache;
+        osg::ref_ptr<HeightFieldCache> _normalHFCache;
         
         void buildElevation(
+            const TileKey&    key,
+            const MapFrame&   frame,
+            bool              accumulate,
+            TileModel*        model,
+            ProgressCallback* progress);
+        
+        void buildNormalMap(
             const TileKey&    key,
             const MapFrame&   frame,
             bool              accumulate,

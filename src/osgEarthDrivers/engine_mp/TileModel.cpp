@@ -120,6 +120,30 @@ TileModel::ElevationData::getNormal(const osg::Vec3d&      ndc,
 
 //------------------------------------------------------------------
 
+
+TileModel::NormalData::NormalData(osg::HeightField* hf,
+                                  GeoLocator*       locator,
+                                  bool              fallbackData) :
+_hf          ( hf ),
+_locator     ( locator ),
+_fallbackData( fallbackData )
+{
+    _neighbors._center = hf;
+}
+
+TileModel::NormalData::NormalData(const TileModel::NormalData& rhs) :
+_hf          ( rhs._hf.get() ),
+_locator     ( rhs._locator.get() ),
+_fallbackData( rhs._fallbackData ),
+_parent      ( rhs._parent )
+{
+    _neighbors._center = rhs._neighbors._center.get();
+    for(unsigned i=0; i<8; ++i)
+        _neighbors._neighbors[i] = rhs._neighbors._neighbors[i];
+}
+
+//------------------------------------------------------------------
+
 TileModel::ColorData::ColorData(const osgEarth::ImageLayer* layer,
                                 unsigned                    order,
                                 osg::Image*                 image,
@@ -367,7 +391,7 @@ void
 TileModel::generateNormalTexture()
 {
     osg::Image* image = HeightFieldUtils::convertToNormalMap(
-        _elevationData.getNeighborhood(),
+        _normalData.getNeighborhood(),
         _tileKey.getProfile()->getSRS() );
 
     _normalTexture = new osg::Texture2D( image );

@@ -262,6 +262,9 @@ main(int argc, char** argv)
         viewerWidget = new osgEarth::QtGui::ViewerWidget( root );
     }
 
+    // Enable touch events on the viewer
+    viewerWidget->getGraphicsWindow()->setTouchEventsEnabled(true);
+
     //osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
     //viewerWidget->setGeometry(50, 50, 1024, 768);
 

@@ -18,6 +18,7 @@
 */
 
 #include <osg/Notify>
+#include <osg/Version>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/MapNode>
 #include <osgEarthAnnotation/AnnotationData>
@@ -262,8 +263,10 @@ main(int argc, char** argv)
         viewerWidget = new osgEarth::QtGui::ViewerWidget( root );
     }
 
+#if OSG_MIN_VERSION_REQUIRED(3,3,2)
     // Enable touch events on the viewer
     viewerWidget->getGraphicsWindow()->setTouchEventsEnabled(true);
+#endif
 
     //osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
     //viewerWidget->setGeometry(50, 50, 1024, 768);

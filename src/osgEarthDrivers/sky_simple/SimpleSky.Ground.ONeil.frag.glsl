@@ -14,7 +14,10 @@ vec3 oe_global_Normal;          // surface normal (from osgEarth)
 
 void atmos_fragment_main(inout vec4 color) 
 { 
-    if ( oe_mode_GL_LIGHTING == false ) return; 
+    if ( oe_mode_GL_LIGHTING == false )
+    {
+        return; 
+    }
 
     vec3 ambient = gl_LightSource[0].ambient.rgb;
 

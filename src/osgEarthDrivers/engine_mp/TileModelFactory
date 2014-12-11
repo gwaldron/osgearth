@@ -27,6 +27,10 @@
 #include <osgEarth/Progress>
 #include <osg/Group>
 
+namespace osgEarth {
+    class TerrainEngineRequirements;
+}
+
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
@@ -44,7 +48,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     public:
         TileModelFactory(
             TileNodeRegistry*             liveTiles,
-            const MPTerrainEngineOptions& terrainOptions );
+            const MPTerrainEngineOptions& terrainOptions,
+            TerrainEngineRequirements*    terrainRequirements);
 
         void clearCaches();
 
@@ -62,6 +67,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         osg::ref_ptr<TileNodeRegistry> _liveTiles;
         const MPTerrainEngineOptions&  _terrainOptions;
+        TerrainEngineRequirements*     _terrainReqs;
         osg::ref_ptr<HeightFieldCache> _meshHFCache;
         osg::ref_ptr<HeightFieldCache> _normalHFCache;
         
@@ -69,6 +75,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             const TileKey&    key,
             const MapFrame&   frame,
             bool              accumulate,
+            bool              buildTexture,
             TileModel*        model,
             ProgressCallback* progress);
         

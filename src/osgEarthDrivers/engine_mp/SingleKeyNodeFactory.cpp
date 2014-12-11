@@ -96,6 +96,7 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
 #else
     // compile the model into a node:
     TileNode* tileNode = _modelCompiler->compile(model, _frame, progress);
+    tileNode->setEngineUID( _engineUID );
 #endif
 
     // see if this tile might have children.

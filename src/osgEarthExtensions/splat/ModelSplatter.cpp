@@ -19,6 +19,7 @@
 #include "ModelSplatter"
 
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderFactory>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DrawInstanced>
@@ -149,13 +150,6 @@ ModelSplatter::establish()
             VirtualProgram* vp = VirtualProgram::getOrCreate( _model->getOrCreateStateSet() );
 
             vp->setFunction("oe_modelsplat_vert_model", vs_model, ShaderComp::LOCATION_VERTEX_MODEL);
-            vp->setFunction("oe_modelsplat_frag", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 2.0f);
-
-            //TODO: put the terrain tiles and the payload in separate render bins.
-            osg::StateSet* ss = _model->getOrCreateStateSet();
-            ss->setRenderBinDetails(0, "TraversalOrderBin");
-            ss->setNestRenderBins(false);
-            
         }
     }
 }
@@ -187,9 +181,11 @@ ModelSplatter::operator()(const TileKey& key, osg::Node* node)
             return;
         }
         
-        tile->addChild( _model.get() );
+        osg::Group* payload = tile->getOrCreatePayloadGroup();
+        payload->addChild( _model.get() );
+        //tile->addChild( _model.get() );
 
-        osg::StateSet* ss = tile->getOrCreateStateSet();
+        osg::StateSet* ss = payload->getOrCreateStateSet();
 
         // first, a rotation vector to make trees point up.
         GeoPoint p;
@@ -200,7 +196,9 @@ ModelSplatter::operator()(const TileKey& key, osg::Node* node)
         float w = key.getExtent().width() * 111320.0f * cos(fabs(osg::DegreesToRadians(p.y())));
         ss->addUniform( new osg::Uniform("oe_trees_span", osg::Vec2f(w,h)) );
         
+        // hack..
         ss->setTextureAttributeAndModes(2, tile->getElevationTexture(), 1);
-        ss->addUniform( new osg::Uniform("oe_terrain_tex_matrix", osg::Matrixf(*elevationTexMat)) );        
+        ss->addUniform(new osg::Uniform("oe_terrain_tex", 2));
+        ss->addUniform(new osg::Uniform("oe_terrain_tex_matrix", osg::Matrixf(*elevationTexMat)) );        
     }
 }

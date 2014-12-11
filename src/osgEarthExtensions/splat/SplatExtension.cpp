@@ -174,7 +174,7 @@ SplatExtension::connect(MapNode* mapNode)
         osg::ref_ptr<osg::Node> model;
         //if ( i->_modelURI.isSet() )
         //{
-            model = URI("../data/tree.osgt").getNode(_dbOptions.get());
+            model = URI("../data/red_flag.osg").getNode(_dbOptions.get());
             //model = i->_modelURI->getNode(_dbOptions.get());
             if ( model.valid() )
             {

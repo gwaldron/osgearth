@@ -34,6 +34,7 @@
 #include <osg/Geode>
 #include <osg/NodeCallback>
 #include <osg/Uniform>
+#include <osgUtil/RenderBin>
 
 using namespace osgEarth;
 
@@ -64,6 +65,12 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             const GeoExtent& extent,
             unsigned         minLevel,
             unsigned         maxLevel);
+
+        /** Access the stateset used to render the terrain. */
+        osg::StateSet* getTerrainStateSet();
+
+        /** Access the stateset used to render payload data. */
+        osg::StateSet* getPayloadStateSet();
 
     public: // internal TerrainEngineNode
 
@@ -159,6 +166,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::Uniform* _verticalScaleUniform;
 
         osg::ref_ptr< TileModelFactory > _tileModelFactory;
+
+        osg::ref_ptr<osgUtil::RenderBin> _terrainRenderBinPrototype;
+        osg::ref_ptr<osgUtil::RenderBin> _payloadRenderBinPrototype;
 
         MPTerrainEngineNode( const MPTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
     };

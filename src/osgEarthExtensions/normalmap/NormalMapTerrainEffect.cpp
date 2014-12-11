@@ -79,6 +79,8 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 {
     if ( engine )
     {
+        engine->requireNormalTextures();
+
         int unit;
         engine->getTextureCompositor()->reserveTextureImageUnit(unit);
         engine->addTileNodeCallback( new NormalTexInstaller(this, unit) );
@@ -91,10 +93,10 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             Shaders::FragmentShaderFile, Shaders::FragmentShaderSource);
 
         // shader components
-        osg::StateSet* stateset = engine->getOrCreateStateSet();
+        osg::StateSet* stateset = engine->getTerrainStateSet(); //getOrCreateStateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_nmap_vertex",   vertShader, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->setFunction( "oe_nmap_fragment", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, -1.0f);
+        vp->setFunction( "oe_nmap_fragment", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, -2.0f);
     }
 }
 

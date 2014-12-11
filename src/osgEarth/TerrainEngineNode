@@ -36,6 +36,15 @@ namespace osgEarth
 {
     class TerrainEffect;
 
+    /**
+     * Interface for querying terrain engine feature requirements.
+     */
+    class TerrainEngineRequirements
+    {
+    public:
+        virtual bool elevationTexturesRequired() const =0;
+        virtual bool normalTexturesRequired() const =0;
+    };
 
     /**
      * TerrainEngineNode is the base class and interface for map engine implementations.
@@ -44,7 +53,8 @@ namespace osgEarth
      * actual geometry representing the Earth.
      */
     class OSGEARTH_EXPORT TerrainEngineNode : public osg::CoordinateSystemNode,
-                                              public TerrainTileNodeBroker
+                                              public TerrainTileNodeBroker,
+                                              public TerrainEngineRequirements
     {
     public:
         /** Gets the map that this engine is rendering. */
@@ -81,6 +91,23 @@ namespace osgEarth
         void invalidateRegion(const GeoExtent& extent) {
             invalidateRegion(extent, 0u, INT_MAX);
         }
+
+        /** Whether the implementation should generate normal map rasters. */
+        void requireNormalTextures() { _requireNormalTextures = true; }
+        
+        /** Whether the implementation should generate elevation map rasters. */
+        void requireElevationTextures() { _requireElevationTextures = true; }
+
+        /** Access the stateset used to render the terrain. */
+        virtual osg::StateSet* getTerrainStateSet() { return getOrCreateStateSet(); }
+
+        /** Access the stateset used to render payload data. */
+        virtual osg::StateSet* getPayloadStateSet() { return getOrCreateStateSet(); }
+
+    public: // TerrainEngineRequirements
+
+        bool normalTexturesRequired() const { return _requireNormalTextures; }
+        bool elevationTexturesRequired() const { return _requireElevationTextures; }
 
     public:
         // adds a callback that will be fired while the terrain engine is building
@@ -128,6 +155,9 @@ namespace osgEarth
 
         // allow subclasses direct access for convenience.
         osg::ref_ptr<TextureCompositor> _texCompositor;
+
+        bool _requireElevationTextures;
+        bool _requireNormalTextures;
 
     public: // TerrainTileNodeBroker
 

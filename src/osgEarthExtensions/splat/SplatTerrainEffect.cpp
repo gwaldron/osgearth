@@ -76,7 +76,9 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             return;
         }
 
-        osg::StateSet* stateset = engine->getOrCreateStateSet();
+        engine->requireElevationTextures();
+
+        osg::StateSet* stateset = engine->getTerrainStateSet(); //engine->getOrCreateStateSet();
 
         // install the splat texture array:
         if ( engine->getTextureCompositor()->reserveTextureImageUnit(_splatTexUnit) )

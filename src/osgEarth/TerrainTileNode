@@ -32,7 +32,7 @@ namespace osgEarth
      * This is largely for internal use and subject to change, so
      * be careful relying on the structure of this object.
      */
-    class /*header-only*/ TerrainTileNode : public osg::MatrixTransform
+    class /*header-only*/ TerrainTileNode // : public osg::MatrixTransform
     {
     public:
         virtual const TileKey& getKey() const =0;
@@ -44,6 +44,10 @@ namespace osgEarth
         virtual osg::Texture* getNormalTexture() const =0;
 
         virtual osg::RefMatrix* getNormalTextureMatrix() const =0;
+
+        virtual osg::Group* getPayloadGroup() const =0;
+
+        virtual osg::Group* getOrCreatePayloadGroup() =0;
 
     protected:
         virtual ~TerrainTileNode() { }

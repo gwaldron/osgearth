@@ -229,21 +229,9 @@ ModelLayer::getOrCreateSceneGraph(const Map*            map,
 
         if ( node )
         {
-            if ( _runtimeOptions.visible().isSet() )
-            {
-                node->setNodeMask( *_runtimeOptions.visible() ? ~0 : 0 );
-            }
-
             if ( _runtimeOptions.lightingEnabled().isSet() )
             {
                 setLightingEnabledNoLock( *_runtimeOptions.lightingEnabled() );
-            }
-
-            if ( _modelSource->getOptions().depthTestEnabled() == false )
-            {
-                osg::StateSet* ss = node->getOrCreateStateSet();
-                ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
-                ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
 
             _modelSource->sync( _modelSourceRev );
@@ -256,6 +244,22 @@ ModelLayer::getOrCreateSceneGraph(const Map*            map,
             group->addChild(node);
             _alphaEffect->attach( group->getOrCreateStateSet() );
             node = group;
+
+            // Toggle visibility if necessary
+            if ( _runtimeOptions.visible().isSet() )
+            {
+                node->setNodeMask( *_runtimeOptions.visible() ? ~0 : 0 );
+            }
+
+            // Handle disabling depth testing
+            if ( _modelSource->getOptions().depthTestEnabled() == false )
+            {
+                osg::StateSet* ss = node->getOrCreateStateSet();
+                ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
+                ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
+            }
+
+
 
             // save it.
             _graphs[map->getUID()] = node;

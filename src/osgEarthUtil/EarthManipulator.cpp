@@ -1945,12 +1945,13 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 float angle[2];
                 angle[0] = atan2(p0[0].y - p0[1].y, p0[0].x - p0[1].x);
                 angle[1] = atan2(p1[0].y - p1[1].y, p1[0].x - p1[1].x);
-                float da = angle[0] - angle[1];
+                float da = angle[1] - angle[0];
 
-                float dragThres = 2.0f * 0.0005 / sens;         
 
-                // now see if that corresponds to any touch events:
-                
+                // Threshold in pixels for determining if a two finger drag happened.
+                float dragThres = 1.0f;
+
+                // now see if that corresponds to any touch events:                
                 if (osg::equivalent( vec0.x(), vec1.x(), dragThres) && 
                     osg::equivalent( vec0.y(), vec1.y(), dragThres))
                 {                    
@@ -2011,7 +2012,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
                 ev._eventType = EVENT_MOUSE_DRAG;
                 ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
                 ev._dx =  (p1[0].x - p0[0].x) * sens;
-                ev._dy = -(p1[0].y - p0[0].y) * sens;
+                ev._dy =  (p1[0].y - p0[0].y) * sens;
             }
         }
     }

@@ -114,6 +114,17 @@ namespace osgEarth
          */
         void setProgramName(const std::string& name) const { }
 
+        /**
+         * Whether to automatically duplicate (by cloning) subgraphs with
+         * more than one parent during the traversal process. Since a
+         * shader program is unique based on its traversed NodePath, graphs
+         * with multi-parenting can run into problems.
+         * Default is false.
+         * @untested
+         */
+        void setDuplicateSharedSubgraphs(bool value);
+        bool getDuplicateSharedSubgraphs() const { return _duplicateSharedSubgraphs; }
+
     public:
         /**
          * User callback that lets you selectly reject shader generation for
@@ -186,7 +197,11 @@ namespace osgEarth
         virtual bool apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf);
 
         virtual bool apply(osg::Texture2DArray* tex, int unit, GenBuffers& buf);
-
+        
+        // This method will check whether setDuplicateSharedNodes has been set,
+        // and if so, it will clone a node that has multiple parents such that
+        // each parent has a complete separate copy of the child.
+        virtual void duplicateSharedNode(osg::Node& child);
 
     protected:
 
@@ -195,11 +210,13 @@ namespace osgEarth
         bool _active;
 
         std::string _name;
+        bool _duplicateSharedSubgraphs;
 
         typedef std::vector<osg::ref_ptr<AcceptCallback> > AcceptCallbackVector;
         AcceptCallbackVector _acceptCallbacks;
 
         bool accept(const osg::StateAttribute* sa) const;
+
     };
 
     

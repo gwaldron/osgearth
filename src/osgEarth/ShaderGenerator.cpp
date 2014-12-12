@@ -51,6 +51,10 @@
 
 #define SHADERGEN_HINT_IGNORE "osgEarth.ShaderGenerator.ignore"
 
+// Set this to detect whether a Geode's drawables all have the same VP
+// profile, and if so, promote that VP to the Geode's state set.
+#define PROMOTE_EQUIVALENT_DRAWABLE_VP_TO_GEODE 1
+
 using namespace osgEarth;
 
 //------------------------------------------------------------------------
@@ -292,24 +296,27 @@ ShaderGenerator::ShaderGenerator()
     setNodeMaskOverride( ~0 );
     _state = new StateEx();
     _active = true;
+    _duplicateSharedSubgraphs = false;
 }
 
 // pre-3.3.0, NodeVisitor didn't have a copy constructor.
 #if OSG_VERSION_LESS_THAN(3,3,0)
 ShaderGenerator::ShaderGenerator(const ShaderGenerator& rhs, const osg::CopyOp& copy) :
-osg::NodeVisitor(),
-_active(rhs._active)
+osg::NodeVisitor         (),
+_active                  (rhs._active),
+_duplicateSharedSubgraphs(rhs._duplicateSharedSubgraphs)
 {
-    _visitorType      = rhs._visitorType;
-    _traversalMode    = rhs._traversalMode;
-    _traversalMask    = rhs._traversalMask;
-    _nodeMaskOverride = rhs._nodeMaskOverride;
+    _visitorType              = rhs._visitorType;
+    _traversalMode            = rhs._traversalMode;
+    _traversalMask            = rhs._traversalMask;
+    _nodeMaskOverride         = rhs._nodeMaskOverride;
     _state = new StateEx();
 }
 #else
 ShaderGenerator::ShaderGenerator(const ShaderGenerator& rhs, const osg::CopyOp& copy) :
-osg::NodeVisitor(rhs, copy),
-_active         (rhs._active)
+osg::NodeVisitor         (rhs, copy),
+_active                  (rhs._active),
+_duplicateSharedSubgraphs(rhs._duplicateSharedSubgraphs)
 {
     _state = new StateEx();
 }
@@ -329,6 +336,12 @@ ShaderGenerator::ignore(const osg::Object* object)
 {
     bool value;
     return object && object->getUserValue(SHADERGEN_HINT_IGNORE, value) && value;
+}
+
+void
+ShaderGenerator::setDuplicateSharedSubgraphs(bool value)
+{
+    _duplicateSharedSubgraphs = value;
 }
 
 void
@@ -387,6 +400,22 @@ ShaderGenerator::optimizeStateSharing(osg::Node* node, StateSetCache* cache)
         cache->optimize(node);
 }
 
+void
+ShaderGenerator::duplicateSharedNode(osg::Node& node)
+{
+    if ( node.getNumParents() > 1 )
+    {
+        for(int i=1; i<(int)node.getNumParents(); ++i)
+        {
+            osg::Group* parent = node.getParent(i);
+            osg::Node* replicant = osg::clone(
+                &node, 
+                osg::CopyOp::DEEP_COPY_NODES | osg::CopyOp::DEEP_COPY_DRAWABLES | osg::CopyOp::DEEP_COPY_ARRAYS);
+            parent->replaceChild(&node, replicant);
+        }
+    }
+}
+
 void 
 ShaderGenerator::apply( osg::Node& node )
 {
@@ -395,6 +424,9 @@ ShaderGenerator::apply( osg::Node& node )
 
     if ( ignore(&node) )
         return;
+
+    if ( _duplicateSharedSubgraphs )
+        duplicateSharedNode(node);
 
     osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
     if ( stateset.valid() )
@@ -424,6 +456,9 @@ ShaderGenerator::apply( osg::Geode& node )
 
     if ( ignore(&node) )
         return;
+    
+    if ( _duplicateSharedSubgraphs )
+        duplicateSharedNode(node);
 
     osg::ref_ptr<osg::StateSet> stateset = node.getStateSet();
     if ( stateset.valid() )
@@ -434,6 +469,7 @@ ShaderGenerator::apply( osg::Geode& node )
     unsigned numDrawables = node.getNumDrawables();
     bool traverseDrawables = true;
 
+#ifdef PROMOTE_EQUIVALENT_DRAWABLE_VP_TO_GEODE
     // This block checks whether all the geode's drawables are equivalent,
     // i.e., they are the same type (geometry or text) and none of them
     // have their own state sets. IF that's the case, we can create a 
@@ -473,6 +509,7 @@ ShaderGenerator::apply( osg::Geode& node )
             }
         }
     }
+#endif
 
     // Drawables have state sets, so let's traverse them.
     if ( traverseDrawables )

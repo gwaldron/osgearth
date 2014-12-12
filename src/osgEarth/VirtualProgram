@@ -27,6 +27,7 @@
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/StateAttribute>
+#include <osg/buffered_value>
 #include <string>
 #include <map>
 
@@ -205,7 +206,7 @@ namespace osgEarth
         META_StateAttribute( osgEarth, VirtualProgram, SA_TYPE);
 
         /** dtor */
-        virtual ~VirtualProgram() { }
+        virtual ~VirtualProgram();
 
         /** 
          * Compare this program against another (used for state-sorting)
@@ -292,8 +293,9 @@ namespace osgEarth
         typedef std::map< std::string, std::string > AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias > AttribAliasVector;
-        //typedef std::map< ShaderVector, osg::ref_ptr<osg::Program> > ProgramMap;
         typedef osgEarth::fast_map< ShaderVector, ProgramEntry > ProgramMap;
+        typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
+        typedef std::vector< AttributePair > AttrStack;
 
     public:
         /**
@@ -344,9 +346,27 @@ namespace osgEarth
         bool _logShaders;
         std::string _logPath;
 
+        // Mechnism for remembering whether a VP has been applied during the same frame
+        // and with the same attribute stack.
+        struct AttrStackMemory
+        {
+            void remember(const osg::State& state, const AttrStack& rhs, osg::Program* p);
+            osg::Program* recall(const osg::State& state, const AttrStack& rhs);
+
+            struct Item
+            {
+                int frameNumber;
+                AttrStack attrStack;
+                osg::ref_ptr<osg::Program> program;
+            };
+            osg::buffered_object<Item> _item;
+        };
+        mutable AttrStackMemory _vpStackMemory;
+
         bool hasLocalFunctions() const;
 
-        void accumulateFunctions(            const osg::State&                state,
+        void accumulateFunctions(            
+            const osg::State&                state,
             ShaderComp::FunctionLocationMap& result ) const;
 
         const AttribAliasMap& getAttribAliases() const { return _attribAliases; }

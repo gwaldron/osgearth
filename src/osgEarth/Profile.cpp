@@ -718,6 +718,13 @@ Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
     if (rhsProfile->isHorizEquivalentTo( this ) ) 
         return rhsLOD;
 
+    // Special check for geodetic to mercator or vise versa, they should match up in LOD.
+    if (rhsProfile->isEquivalentTo(Registry::instance()->getSphericalMercatorProfile()) && isEquivalentTo(Registry::instance()->getGlobalGeodeticProfile()) ||
+        rhsProfile->isEquivalentTo(Registry::instance()->getGlobalGeodeticProfile()) && isEquivalentTo(Registry::instance()->getSphericalMercatorProfile()))
+    {
+        return rhsLOD;
+    }
+
     double rhsWidth, rhsHeight;
     rhsProfile->getTileDimensions( rhsLOD, rhsWidth, rhsHeight );    
 

@@ -871,6 +871,17 @@ namespace
                         {
                             (*it).z() = (*mit).z();
                             zSet += 1;
+
+                            // Remove duplicate point from coordsArray to avoid duplicate point warnings
+                            osg::Vec3Array::iterator caIt;
+                            for (caIt = coordsArray->begin(); caIt != coordsArray->end(); ++caIt)
+                            {
+                                if (osg::absolute((*caIt).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*caIt).y() - (*it).y()) < MATCH_TOLERANCE)
+                                    break;
+                            }
+                            if (caIt != coordsArray->end())
+                                coordsArray->erase(caIt);
+
                             break;
                         }
                     }

@@ -148,6 +148,7 @@ int TMSExporter::exportTMS(MapNode* mapNode, const std::string& earthFilePath, c
     }
     packager.setExtension(extension);  
     packager.setOverwrite(overwrite);
+    packager.setKeepEmpties(_keepEmpties);
     packager.getTileVisitor()->setProgressCallback( _progress.get() );
     packager.getTileVisitor()->setMaxLevel(_maxLevel);
 

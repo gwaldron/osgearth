@@ -963,6 +963,10 @@ VirtualProgram::apply( osg::State& state ) const
         return;
     }
 
+    // Since the Program can change from State to State, the standard 
+    // lastAppliedAttribute stuff in State won't work. Negate it.
+    state.haveAppliedAttribute(this->SA_TYPE);
+
     // first, find and collect all the VirtualProgram attributes:
     ShaderMap         accumShaderMap;
     AttribBindingList accumAttribBindings;

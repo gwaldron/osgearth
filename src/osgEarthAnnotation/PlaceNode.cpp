@@ -112,6 +112,10 @@ PlaceNode::init()
             {
                 imageURI = URI( icon->url()->eval(), icon->url()->uriContext() );
             }
+            else if (icon->getImage())
+            {
+                _image = icon->getImage();
+            }
         }
 
         if ( !imageURI.empty() )

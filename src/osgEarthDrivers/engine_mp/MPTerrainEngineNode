@@ -167,6 +167,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         osg::ref_ptr< TileModelFactory > _tileModelFactory;
 
+        Threading::Mutex _renderBinMutex;
         osg::ref_ptr<osgUtil::RenderBin> _terrainRenderBinPrototype;
         osg::ref_ptr<osgUtil::RenderBin> _payloadRenderBinPrototype;
 

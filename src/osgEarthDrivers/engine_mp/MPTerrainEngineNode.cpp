@@ -43,11 +43,16 @@
 #include <osg/BlendFunc>
 #include <osgDB/DatabasePager>
 #include <osgUtil/RenderBin>
+#include <osgUtil/RenderLeaf>
 
 #define LC "[MPTerrainEngineNode] "
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
+
+
+// TODO: bins don't work with SSDK. No idea why. Disable until further notice.
+//#define USE_RENDER_BINS 1
 
 //------------------------------------------------------------------------
 
@@ -72,6 +77,7 @@ namespace
         }
     };
 
+
     // Render bin for terrain surface geometry
     class TerrainBin : public osgUtil::RenderBin
     {
@@ -81,7 +87,18 @@ namespace
             this->setStateSet( new osg::StateSet() );
             this->setSortMode(SORT_FRONT_TO_BACK);
         }
+
+        osg::Object* clone(const osg::CopyOp& copyop) const
+        {
+            return new TerrainBin(*this, copyop);
+        }
+
+        TerrainBin(const TerrainBin& rhs, const osg::CopyOp& copy) :
+            osgUtil::RenderBin(rhs, copy)
+        {
+        }
     };
+
 
     // Render bin for terrain payload geometry
     class PayloadBin : public osgUtil::RenderBin
@@ -90,6 +107,16 @@ namespace
         PayloadBin()
         {
             this->setStateSet( new osg::StateSet() );
+        }
+
+        osg::Object* clone(const osg::CopyOp& copyop) const
+        {
+            return new PayloadBin(*this, copyop);
+        }
+
+        PayloadBin(const PayloadBin& rhs, const osg::CopyOp& copy) :
+            osgUtil::RenderBin(rhs, copy)
+        {
         }
     };
 }
@@ -177,14 +204,20 @@ _stateUpdateRequired  ( false )
     // unique ID for this engine:
     _uid = Registry::instance()->createUID();
 
-    // generate uniquely named render bin prototypes for this engine:
-    _terrainRenderBinPrototype = new TerrainBin();
-    _terrainRenderBinPrototype->setName( Stringify() << "oe.TerrainBin." << _uid );
-    osgUtil::RenderBin::addRenderBinPrototype( _terrainRenderBinPrototype->getName(), _terrainRenderBinPrototype.get() );
+    // Register our render bins protos.
+    {
+        // Mutex because addRenderBinPrototype isn't thread-safe.
+        Threading::ScopedMutexLock lock(_renderBinMutex);
 
-    _payloadRenderBinPrototype = new PayloadBin();
-    _payloadRenderBinPrototype->setName( Stringify() << "oe.PayloadBin." << _uid );
-    osgUtil::RenderBin::addRenderBinPrototype( _payloadRenderBinPrototype->getName(), _payloadRenderBinPrototype.get() );
+        // generate uniquely named render bin prototypes for this engine:
+        _terrainRenderBinPrototype = new TerrainBin();
+        _terrainRenderBinPrototype->setName( Stringify() << "oe.TerrainBin." << _uid );
+        osgUtil::RenderBin::addRenderBinPrototype( _terrainRenderBinPrototype->getName(), _terrainRenderBinPrototype.get() );
+
+        _payloadRenderBinPrototype = new PayloadBin();
+        _payloadRenderBinPrototype->setName( Stringify() << "oe.PayloadBin." << _uid );
+        osgUtil::RenderBin::addRenderBinPrototype( _payloadRenderBinPrototype->getName(), _payloadRenderBinPrototype.get() );
+    }
 
     // install an elevation callback so we can update elevation data
     _elevationCallback = new ElevationChangedCallback( this );
@@ -193,7 +226,7 @@ _stateUpdateRequired  ( false )
 MPTerrainEngineNode::~MPTerrainEngineNode()
 {
     unregisterEngine( _uid );
-    
+
     osgUtil::RenderBin::removeRenderBinPrototype( _terrainRenderBinPrototype.get() );
     osgUtil::RenderBin::removeRenderBinPrototype( _payloadRenderBinPrototype.get() );
 
@@ -330,10 +363,6 @@ MPTerrainEngineNode::refresh(bool forceDirty)
         }
         else
         {
-            // remove the old one:
-            this->removeChild( _terrain );
-
-            // and create a new one.
             createTerrain();
         }
 
@@ -350,8 +379,13 @@ MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 osg::StateSet*
 MPTerrainEngineNode::getTerrainStateSet()
 {
+#ifdef USE_RENDER_BINS
     return _terrainRenderBinPrototype->getStateSet();
+#else
+    return _terrain ? _terrain->getOrCreateStateSet() : 0L;
+#endif
 }
+
 
 osg::StateSet*
 MPTerrainEngineNode::getPayloadStateSet()
@@ -368,35 +402,40 @@ MPTerrainEngineNode::createTerrain()
         _tileModelFactory->clearCaches();
     }
 
+    // remove existing:
+    if ( _terrain )
+    {
+        this->removeChild( _terrain );
+    }
+
     // New terrain
     _terrain = new TerrainNode( _deadTiles.get() );
 
-    // Render terrain into its own special bin in order to isolate effects from payload.
-    osg::StateSet* terrainStateSet = _terrain->getOrCreateStateSet();
-    terrainStateSet->setRenderBinDetails(0, _terrainRenderBinPrototype->getName());
-    terrainStateSet->setNestRenderBins(false);
+#ifdef USE_RENDER_BINS
+    _terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _terrainRenderBinPrototype->getName() );
+    _terrain->getOrCreateStateSet()->setNestRenderBins(false);
+#else
+    _terrain->getOrCreateStateSet()->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
+#endif
 
     this->addChild( _terrain );
-
-    // Enable blending on the terrain node; this will result in the underlying
-    // "empty" globe being transparent instead of white.
-    if (_terrainOptions.enableBlending().value())
-    {
-        terrainStateSet->setMode(GL_BLEND , osg::StateAttribute::ON);
-    }
-
+    
     // reserve GPU space.
     if ( _primaryUnit < 0 )
     {
         this->getTextureCompositor()->reserveTextureImageUnit( _primaryUnit );
     }
+
     if ( _secondaryUnit < 0 )
     {
         this->getTextureCompositor()->reserveTextureImageUnit( _secondaryUnit );
     }
 
-    // testing
-    this->getTextureCompositor()->reserveTextureImageUnit( _elevationTextureUnit );
+    if ( _elevationTextureUnit < 0 )
+    {
+        // testing
+        this->getTextureCompositor()->reserveTextureImageUnit( _elevationTextureUnit );
+    }
 
     // Factory to create the root keys:
     KeyNodeFactory* factory = getKeyNodeFactory();
@@ -800,17 +839,8 @@ MPTerrainEngineNode::updateState()
     }
     else
     {
-        //TerrainBin* bin = dynamic_cast<TerrainBin*>(
-        //    osgUtil::RenderBin::getRenderBinPrototype("oeTerrainBin") );
 
-        //osg::StateSet* terrainStateSet = _terrain->getOrCreateStateSet();
-        osg::StateSet* terrainStateSet = getTerrainStateSet(); //bin->getStateSet();
-
-        // Sort drawable front to back to minimize overdraw in fragment shaders.
-        // This can have a huge impact on performance if the renderer is
-        // fragment/fill bound. The "-1" encourages the terrain to render before
-        // any model layers or other geometry.
-        //terrainStateSet->setRenderBinDetails(-1, "SORT_FRONT_TO_BACK");
+        osg::StateSet* terrainStateSet = getTerrainStateSet();
         
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(

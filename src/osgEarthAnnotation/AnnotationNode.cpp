@@ -425,6 +425,16 @@ AnnotationNode::applyGeneralSymbology(const Style& style)
             getOrCreateStateSet()->setMode(mode, 1);
         }
 
+        if ( render->order().isSet() || render->renderBin().isSet() )
+        {
+            osg::StateSet* ss = getOrCreateStateSet();
+            int binNumber = render->order().isSet() ? (int)render->order()->eval() : ss->getBinNumber();
+            std::string binName =
+                render->renderBin().isSet() ? render->renderBin().get() :
+                ss->useRenderBinDetails() ? ss->getBinName() : "RenderBin";
+            ss->setRenderBinDetails(binNumber, binName);
+        }
+
         if ( render->minAlpha().isSet() )
         {
             DiscardAlphaFragments().install( getOrCreateStateSet(), render->minAlpha().value() );

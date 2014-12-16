@@ -48,6 +48,9 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         /** Sets the spatial reference system of the map */
         void setSRS(const SpatialReference* srs);
 
+        /** Sets the minimum ambient lighting value */
+        void setMinimumAmbient(const osg::Vec4f& value);
+
     public: // accessors
 
         bool ready() const { return _initAttempted && !_initFailed; }
@@ -99,6 +102,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
         osg::observer_ptr<osg::Camera> _camera;
         osg::Vec3d                     _cameraPos; // eye point
+        osg::Vec4f                     _minAmbient;
 
         SilverLiningOptions _options;
     };

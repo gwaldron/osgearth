@@ -111,6 +111,11 @@ SilverLiningNode::onSetDateTime()
     _SL->getAtmosphere()->GetConditions()->SetTime( utcTime );
 }
 
+void
+SilverLiningNode::onSetMinimumAmbient()
+{
+    _SL->setMinimumAmbient( getMinimumAmbient() );
+}
 
 void
 SilverLiningNode::traverse(osg::NodeVisitor& nv)

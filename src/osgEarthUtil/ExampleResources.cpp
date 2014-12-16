@@ -171,7 +171,7 @@ namespace
 
         virtual void onValueChanged( class Control* control, float value )
         {
-            _sky->getSunLight()->setAmbient(osg::Vec4(value,value,value,1));
+            _sky->setMinimumAmbient(osg::Vec4(value,value,value,1));
         }
     };
 #endif

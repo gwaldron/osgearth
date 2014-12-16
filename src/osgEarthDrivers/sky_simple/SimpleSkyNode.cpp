@@ -338,6 +338,12 @@ SimpleSkyNode::onSetDateTime()
 }
 
 void
+SimpleSkyNode::onSetMinimumAmbient()
+{
+    _light->setAmbient( getMinimumAmbient() );
+}
+
+void
 SimpleSkyNode::attach( osg::View* view, int lightNum )
 {
     if ( !view || !_light.valid() )

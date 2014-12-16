@@ -1,4 +1,4 @@
-osgearth_viewer splat-test.earth ^
+osgearth_viewer splat.earth ^
 	--ico ^
 	--sky ^
 	--uniform oe_splat_warp 0 0.01 ^

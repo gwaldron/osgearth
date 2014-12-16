@@ -22,6 +22,7 @@
 #include "SplatTerrainEffect"
 
 #include <osgEarth/MapNode>
+#include <osgEarth/CompositeTileSource>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -74,23 +75,31 @@ SplatExtension::connect(MapNode* mapNode)
         return false;
     }
 
-    if ( !_options.coverageLayerName().isSet() )
+    if ( _options.coverages().empty() )
     {
-        OE_WARN << LC << "Illegal: coverage layer name is required" << std::endl;
+        OE_WARN << LC << "Illegal: no coverages" << std::endl;
         return false;
     }
 
-    // Locate the coverage layer in the map.
-    const Map* map = mapNode->getMap();
-    const ImageLayer* coverageLayer = map->getImageLayerByName( _options.coverageLayerName().get() );
-    if ( !coverageLayer )
+    // Create a new composite image layer for the coverage set.
+    CompositeTileSourceOptions compOptions;
+    for(std::vector<ImageLayerOptions>::const_iterator i = _options.coverages().begin();
+        i != _options.coverages().end();
+        ++i )
     {
-        OE_WARN << LC << "Coverage layer \""
-            << _options.coverageLayerName().get()
-            << "\" not found in map."
-            << std::endl;
-        return false;
+        compOptions.add( *i );
     }
+
+    ImageLayerOptions layerOptions("splat_coverages", compOptions);
+    layerOptions.visible() = false;
+    layerOptions.coverage() = true;
+    layerOptions.shared() = true;
+    layerOptions.cachePolicy() = CachePolicy::NO_CACHE; // for now
+    _coverageLayer = new ImageLayer(layerOptions);
+
+    Map* map = mapNode->getMap();
+    map->addImageLayer( _coverageLayer.get() );
+
 
     // Read in the catalog.
     osg::ref_ptr<SplatCatalog> catalog = new SplatCatalog();
@@ -143,7 +152,7 @@ SplatExtension::connect(MapNode* mapNode)
     _effect = new SplatTerrainEffect( catalog, legend, _dbOptions.get() );
 
     // set the coverage layer (mandatory)
-    _effect->setCoverageLayer( coverageLayer );
+    _effect->setCoverageLayer( _coverageLayer.get() );
 
     // set the render order (optional)
     if ( _options.drawAfterImageLayers() == true )
@@ -213,6 +222,8 @@ SplatExtension::disconnect(MapNode* mapNode)
     if ( mapNode )
     {
         mapNode->getTerrainEngine()->removeEffect( _effect.get() );
+        if ( _coverageLayer.valid() )
+            mapNode->getMap()->removeImageLayer( _coverageLayer.get() );
     }
     _effect = 0L;
     return true;

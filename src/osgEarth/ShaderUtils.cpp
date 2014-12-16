@@ -140,30 +140,44 @@ namespace
 
 std::string
 ShaderLoader::loadSource(const std::string&    filename,
-                         const std::string&    backupSource,
+                         const std::string&    inlineSource,
                          const osgDB::Options* dbOptions )
 {
     std::string output;
+    bool useInlineSource = false;
 
     std::string path = osgDB::findDataFile(filename, dbOptions);
     if ( path.empty() )
     {
-        output = backupSource;
+        output = inlineSource;
+        useInlineSource = true;
     }
     else
     {
-        std::string source = URI(path).getString(dbOptions);
-        if (!source.empty())
+        std::string externalSource = URI(path).getString(dbOptions);
+        if (!externalSource.empty())
         {
-            OE_DEBUG << LC << "Loaded " << filename << " from " << path << "\n";
+            OE_DEBUG << LC << "Loaded external shader " << filename << " from " << path << "\n";
+            output = externalSource;
         }
-
-        output = source.empty() ? backupSource : source;
+        else
+        {
+            output = inlineSource;
+            useInlineSource = true;
+        }
     }
 
     // replace common tokens:
     osgEarth::replaceIn(output, "$GLSL_VERSION_STR", GLSL_VERSION_STR);
     osgEarth::replaceIn(output, "$GLSL_DEFAULT_PRECISION_FLOAT", GLSL_DEFAULT_PRECISION_FLOAT);
+    
+    // If we're using inline source, we have to post-process the string.
+    if ( useInlineSource )
+    {
+        // reinstate preprocessor macros since GCC doesn't like them in the inlines shaders.
+        // The token was inserted in the CMakeModules/ConfigureShaders.cmake.in script.
+        osgEarth::replaceIn(output, "$__HASHTAG__", "#");
+    }
 
     return output;
 }

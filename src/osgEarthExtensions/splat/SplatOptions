@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/URI>
+#include <osgEarth/ImageLayer>
 
 namespace osgEarth { namespace Splat
 {
@@ -41,10 +42,9 @@ namespace osgEarth { namespace Splat
         optional<URI>& legendURI() { return _legendURI; }
         const optional<URI>& legendURI() const { return _legendURI; }
 
-        /** Name of the coverage layer. The layer should be installed in the Map and
-            should be marked as shared. */
-        optional<std::string>& coverageLayerName() { return _coverageLayerName; }
-        const optional<std::string>& coverageLayerName() const { return _coverageLayerName; }
+        /** Coverage layers. */
+        std::vector<ImageLayerOptions>& coverages() { return _coverages; }
+        const std::vector<ImageLayerOptions>& coverages() const { return _coverages; }
 
         /** Whether to splat the terrain after drawing the map's image layers. The default
             setting is to splat first and then draw imagery. */
@@ -80,15 +80,27 @@ namespace osgEarth { namespace Splat
         virtual ~SplatOptions() { }
 
     public:
-        Config getConfig() const {
+        Config getConfig() const
+        {
             Config conf = DriverConfigOptions::getConfig();
             conf.updateIfSet("catalog",  _catalogURI);
             conf.updateIfSet("legend",   _legendURI);
-            conf.updateIfSet("coverage", _coverageLayerName );
+            //conf.updateIfSet("coverage", _coverageLayerName );
             conf.updateIfSet("draw_after_image_layers", _drawAfterImageLayers);
             conf.updateIfSet("coverage_warp", _coverageWarp );
             conf.updateIfSet("coverage_blur", _coverageBlur );
             conf.updateIfSet("scale_level_offset", _scaleLevelOffset );
+            
+            if (_coverages.size() > 0 )
+            {
+                Config covListConf("coverages");
+                for(int i=0; i<_coverages.size(); ++i)
+                {
+                    covListConf.add("image", _coverages[i].getConfig() );
+                }
+                conf.add(covListConf);
+            }
+
             return conf;
         }
 
@@ -102,20 +114,32 @@ namespace osgEarth { namespace Splat
         void fromConfig( const Config& conf ) {
             conf.getIfSet("catalog",  _catalogURI);
             conf.getIfSet("legend",   _legendURI);
-            conf.getIfSet("coverage", _coverageLayerName );
+            //conf.getIfSet("coverage", _coverageLayerName );
             conf.getIfSet("draw_after_image_layers", _drawAfterImageLayers);
             conf.getIfSet("coverage_warp", _coverageWarp );
             conf.getIfSet("coverage_blur", _coverageBlur );
             conf.getIfSet("scale_level_offset", _scaleLevelOffset );
+
+            const Config* coverages = conf.child_ptr("coverages");
+            if ( coverages )
+            {
+                for(ConfigSet::const_iterator i = coverages->children().begin(); i != coverages->children().end(); ++i)
+                {
+                    ImageLayerOptions layer( *i );
+                    if ( !layer.empty() )
+                        _coverages.push_back(layer);
+                }
+            }
         }
 
         optional<URI>         _catalogURI;
         optional<URI>         _legendURI;
-        optional<std::string> _coverageLayerName;
+        //optional<std::string> _coverageLayerName;
         optional<bool>        _drawAfterImageLayers;
         optional<float>       _coverageWarp;
         optional<float>       _coverageBlur;
         optional<int>         _scaleLevelOffset;
+        std::vector<ImageLayerOptions> _coverages;
     };
 
 } } // namespace osgEarth::Splat

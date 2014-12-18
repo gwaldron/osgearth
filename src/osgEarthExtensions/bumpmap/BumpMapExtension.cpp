@@ -20,6 +20,7 @@
 #include "BumpMapTerrainEffect"
 
 #include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 
 using namespace osgEarth;
 using namespace osgEarth::BumpMap;

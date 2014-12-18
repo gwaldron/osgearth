@@ -23,9 +23,11 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/Terrain>
 #include <osgEarth/TerrainEffect>
+#include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/TerrainTileNode>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/Progress>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -104,6 +106,42 @@ namespace osgEarth
         /** Access the stateset used to render payload data. */
         virtual osg::StateSet* getPayloadStateSet() { return getOrCreateStateSet(); }
 
+    public:
+        /**
+         * Creates a new data model for a terrain tile, calling any registered
+         * CreateTileModelCallbacks before returning the new object.
+         *
+         * @param frame Map frame from which to create the new tile model
+         * @param key   Key for which to create the new tile model
+         * @param modelStore Optional interface for accessing other previously
+         *                   created tile models (see TerrainTileModelFactory)
+         * @param progress Optional progress/stats tracking callback
+         */
+        TerrainTileModel* createTileModel(
+            const MapFrame&              frame,
+            const TileKey&               key,
+            const TerrainTileModelStore* modelStore,
+            ProgressCallback*            progress );
+
+        /**
+         * Callback for customizing the TileModel.
+         */
+        class CreateTileModelCallback : public osg::Referenced
+        {
+        public:
+            virtual void onCreateTileModel(
+                TerrainEngineNode* engine,
+                TerrainTileModel*  model) = 0;
+        };
+
+        /**
+         * Adds a TileModel creation callback, so you can add custom data
+         * to the TileModel after it's created.
+         */
+        void addCreateTileModelCallback(CreateTileModelCallback* callback);
+        void removeCreateTileModelCallback(CreateTileModelCallback* callback);
+
+
     public: // TerrainEngineRequirements
 
         bool normalTexturesRequired() const { return _requireNormalTextures; }
@@ -123,15 +161,12 @@ namespace osgEarth
         void setVerticalScale( float value );
 
         /** Gets the scale factor to apply to elevation height values.
-          * #deprecated */
+          * @deprecated */
         float getVerticalScale() const { return _verticalScale; }
 
 
     protected:
         TerrainEngineNode();
-
-        //TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
-
         virtual ~TerrainEngineNode();
 
     public: // osg::Node overrides
@@ -139,7 +174,10 @@ namespace osgEarth
         virtual void traverse( osg::NodeVisitor& );
 
     protected: // implementation events
+
+        /** @deprecated */
         virtual void onVerticalScaleChanged() { }
+        /** @deprecated */
         virtual void onElevationSamplingRatioChanged() { }
 
     protected:
@@ -169,8 +207,11 @@ namespace osgEarth
          * Utility function that will return an osg::Node representing the geometry
          * for a tile key. The node is standalone; it has no ability to load children
          * or receive updates.
+         *
+         * TODO: deprecate in favor of a separate utility for creating simple
+         * geometry out of a TerrainTileModel. -gw
          */
-        virtual osg::Node* createTile( const TileKey& key ) =0;
+        virtual osg::Node* createTile(const TileKey& key) =0;
 
     private:
         friend struct TerrainEngineNodeCallbackProxy;
@@ -218,6 +259,12 @@ namespace osgEarth
         typedef std::vector<osg::ref_ptr<TerrainTileNodeCallback> > TerrainTileNodeCallbackVector;
         TerrainTileNodeCallbackVector _tileNodeCallbacks;
         mutable Threading::Mutex _tileNodeCallbacksMutex;
+        
+        typedef std::vector<osg::ref_ptr<CreateTileModelCallback> > CreateTileModelCallbacks;
+        CreateTileModelCallbacks _createTileModelCallbacks;
+        mutable Threading::ReadWriteMutex _createTileModelCallbacksMutex;
+
+        osg::ref_ptr<TerrainTileModelFactory> _tileModelFactory;
 
     public:
 

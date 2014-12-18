@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Random>
+#include <osgEarth/GeoCommon>
 #include <osg/Notify>
 #include <osg/Texture>
 #include <osg/ImageSequence>
@@ -885,6 +886,49 @@ ImageUtils::computeTextureCompressionMode(const osg::Image*                 imag
 #endif
 
     return false;
+}
+
+bool 
+ImageUtils::replaceNoDataValues(osg::Image*       target,
+                                const Bounds&     targetBounds,
+                                const osg::Image* reference,
+                                const Bounds&     referenceBounds)
+{
+    if (target == 0L ||
+        reference == 0L ||
+        !targetBounds.intersects(referenceBounds) )
+    {
+        return false;
+    }
+
+    float
+        xscale = targetBounds.width()/referenceBounds.width(),
+        yscale = targetBounds.height()/referenceBounds.height();
+
+    float
+        xbias = targetBounds.xMin() - referenceBounds.xMin(),
+        ybias = targetBounds.yMin() - referenceBounds.yMin();
+
+    PixelReader readTarget(target);
+    PixelWriter writeTarget(target);
+    PixelReader readReference(reference);
+
+    for(int s=0; s<target->s(); ++s)
+    {
+        for(int t=0; t<target->t(); ++t)
+        {
+            osg::Vec4f pixel = readTarget(s, t);
+            if ( pixel.r() == NO_DATA_VALUE )
+            {
+                float nx = (float)s / (float)(target->s()-1);
+                float ny = (float)t / (float)(target->t()-1);
+                osg::Vec4f refValue = readReference( xscale*nx+xbias, yscale*ny+ybias );
+                writeTarget(refValue, s, t);
+            }
+        }
+    }
+
+    return true;
 }
 
 bool

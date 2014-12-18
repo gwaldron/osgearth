@@ -52,6 +52,7 @@ createMRTPass(App& app, osg::Node* sceneGraph)
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER0), app.gcolor);
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER1), app.gnormal);
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER2), app.gdepth);
+    rtt->setCullingMode(rtt->getCullingMode() & ~osg::CullSettings::SMALL_FEATURE_CULLING); 
 
     static const char* vertSource =
         "varying float mrt_depth;\n"

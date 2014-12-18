@@ -34,6 +34,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/SpatialReference>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>

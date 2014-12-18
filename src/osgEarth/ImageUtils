@@ -21,6 +21,7 @@
 #define OSGEARTH_IMAGEUTILS_H
 
 #include <osgEarth/Common>
+#include <osgEarth/Bounds>
 #include <osg/Image>
 #include <osg/Texture>
 #include <osg/GL>
@@ -286,6 +287,17 @@ namespace osgEarth
         static bool computeTextureCompressionMode(
             const osg::Image* image,
             osg::Texture::InternalFormatMode& out_mode);
+
+        /**
+         * Replaces "no data" values in the target image with the corresponding
+         * value found in the "reference" image. The images much be GL_LUMINANCE
+         * data types.
+         */
+        static bool replaceNoDataValues(
+            osg::Image*       target,
+            const Bounds&     targetBounds,
+            const osg::Image* reference,
+            const Bounds&     referenceBounds);
 
         /**
          * 

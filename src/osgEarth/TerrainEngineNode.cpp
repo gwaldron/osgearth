@@ -23,6 +23,7 @@
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapModelChange>
+#include <osgEarth/TerrainTileModelFactory>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>
@@ -145,7 +146,6 @@ _requireNormalTextures   ( false )
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 }
 
-
 TerrainEngineNode::~TerrainEngineNode()
 {
     //Remove any callbacks added to the image layers
@@ -203,6 +203,10 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
             << LC << "Mercator fast path " 
             << (options.enableMercatorFastPath()==true? "enabled" : "DISABLED") << std::endl;
     }
+    
+    // a default factory - this is the object that creates the data model for
+    // each terrain tile.
+    _tileModelFactory = new TerrainTileModelFactory(options);
 
     _initStage = INIT_PREINIT_COMPLETE;
 }
@@ -283,6 +287,53 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     // notify that a redraw is required.
     dirty();
 }
+
+TerrainTileModel*
+TerrainEngineNode::createTileModel(const MapFrame&              frame,
+                                   const TileKey&               key,
+                                   const TerrainTileModelStore* modelStore,
+                                   ProgressCallback*            progress)
+{
+    // Ask the factory to create a new tile model:
+    osg::ref_ptr<TerrainTileModel> model = _tileModelFactory->createTileModel(
+        frame, key, modelStore, progress);
+
+    if ( model.valid() )
+    {
+        // Fire all registered tile model callbacks, so user code can 
+        // add to or otherwise customize the model before it's returned
+        Threading::ScopedReadLock sharedLock(_createTileModelCallbacksMutex);
+        for(CreateTileModelCallbacks::iterator i = _createTileModelCallbacks.begin();
+            i != _createTileModelCallbacks.end();
+            ++i)
+        {
+            i->get()->onCreateTileModel(this, model.get());
+        }
+    }
+    return model.release();
+}
+
+void 
+TerrainEngineNode::addCreateTileModelCallback(CreateTileModelCallback* callback)
+{
+    Threading::ScopedWriteLock exclusiveLock(_createTileModelCallbacksMutex);
+    _createTileModelCallbacks.push_back(callback);
+}
+
+void 
+TerrainEngineNode::removeCreateTileModelCallback(CreateTileModelCallback* callback)
+{
+    Threading::ScopedWriteLock exclusiveLock(_createTileModelCallbacksMutex);
+    for(CreateTileModelCallbacks::iterator i = _createTileModelCallbacks.begin(); i != _createTileModelCallbacks.end(); ++i)
+    {
+        if ( i->get() == callback )
+        {
+            _createTileModelCallbacks.erase( i );
+            break;
+        }
+    }
+}
+
 
 namespace
 {

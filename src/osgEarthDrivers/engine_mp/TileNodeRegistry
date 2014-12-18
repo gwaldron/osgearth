@@ -23,6 +23,7 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/TerrainTileModel>
 #include <OpenThreads/Atomic>
 #include <map>
 
@@ -33,7 +34,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     /**
      * Holds a reference to each tile created by the driver.
      */
-    class TileNodeRegistry : public osg::Referenced
+    class TileNodeRegistry : public osg::Referenced,
+                             public TerrainTileModelStore
     {
     public:
         typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileNodeMap;
@@ -99,7 +101,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void move( TileNode* tile, TileNodeRegistry* destination );
 
         /** Finds a tile in the registry */
-        bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
+        bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile ) const;
 
         /** Finds a tile in the registry and then removes it. */
         bool take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
@@ -115,6 +117,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         /** Number of tiles in the registry. */
         unsigned size() const { return _tiles.size(); }
+
+    public: // TileKeyDataStore<const TerrainTileModel>
+
+        /** Finds a tile in the registry */
+        bool get(const TileKey& key, osg::ref_ptr<const TerrainTileModel>& out_tile) const;
 
     protected:
 

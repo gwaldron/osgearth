@@ -23,6 +23,7 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/CompositeTileSource>
+#include <osgEarth/TerrainEngineNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;

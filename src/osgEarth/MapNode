@@ -23,15 +23,17 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/MapNodeOptions>
-#include <osgEarth/SpatialReference>
-#include <osgEarth/TerrainEngineNode>
+//#include <osgEarth/SpatialReference>
+//#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Extension>
 
 namespace osgEarth
 {
     class OverlayDecorator;
     class Terrain;
+    class TerrainEngineNode;
     class MapNodeCullData;
+    class SpatialReference;
 
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component

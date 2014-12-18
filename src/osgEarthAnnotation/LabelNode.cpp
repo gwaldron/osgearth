@@ -136,6 +136,7 @@ LabelNode::setStyle( const Style& style )
 
     osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
     _geode->addDrawable(t);
+    _geode->setCullingActive(false);
 
     applyStyle( _style );
 

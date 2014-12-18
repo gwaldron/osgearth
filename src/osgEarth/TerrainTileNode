@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
+#include <osgEarth/TerrainTileModel>
 #include <osg/MatrixTransform>
 #include <osg/Texture>
 
@@ -32,10 +33,12 @@ namespace osgEarth
      * This is largely for internal use and subject to change, so
      * be careful relying on the structure of this object.
      */
-    class /*header-only*/ TerrainTileNode // : public osg::MatrixTransform
+    class /*header-only*/ TerrainTileNode
     {
     public:
-        virtual const TileKey& getKey() const =0;
+        const TerrainTileModel* getModel() const { return _model.get(); }
+
+        const TileKey& getKey() const { return _model->getKey(); }
 
         virtual osg::Texture* getElevationTexture() const =0;
 
@@ -51,6 +54,8 @@ namespace osgEarth
 
     protected:
         virtual ~TerrainTileNode() { }
+
+        osg::ref_ptr<TerrainTileModel> _model;
     };
 
     /**

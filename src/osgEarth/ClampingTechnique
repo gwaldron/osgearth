@@ -21,8 +21,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/OverlayDecorator>
-#include <osg/TexGenNode>
-#include <osg/Uniform>
 
 #define OSGEARTH_CLAMPING_BIN "osgEarth::ClampingBin"
 

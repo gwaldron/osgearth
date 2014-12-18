@@ -24,6 +24,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 #include <osgText/Text>
 #include <osg/ComputeBoundsVisitor>
 #include <osgUtil/IntersectionVisitor>

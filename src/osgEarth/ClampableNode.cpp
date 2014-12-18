@@ -22,7 +22,6 @@
 #include <osgEarth/DepthOffset>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/MapNode>
-#include <osgEarth/VirtualProgram>
 
 #define LC "[ClampableNode] "
 

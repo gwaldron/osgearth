@@ -130,7 +130,9 @@ SET(LIB_PUBLIC_HEADERS
     TerrainLayer
     TerrainOptions
     TerrainEngineNode
-    TerrainTileNode
+    TerrainTileModel
+    TerrainTileModelFactory
+    TileKeyDataStore
     Tessellator
     TextureCompositor
     TileKey
@@ -268,6 +270,8 @@ set(TARGET_SRC
     TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    TerrainTileModel.cpp
+    TerrainTileModelFactory.cpp
     Tessellator.cpp
     TextureCompositor.cpp
     TileKey.cpp

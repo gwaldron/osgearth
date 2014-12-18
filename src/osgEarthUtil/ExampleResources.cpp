@@ -37,6 +37,7 @@
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarth/Decluttering>
+#include <osgEarth/TerrainEngineNode>
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>

@@ -150,11 +150,11 @@ TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
 
 
 bool
-TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
+TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile ) const
 {
     Threading::ScopedReadLock shared( _tilesMutex );
 
-    TileNodeMap::iterator i = _tiles.find(key);
+    TileNodeMap::const_iterator i = _tiles.find(key);
     if ( i != _tiles.end() )
     {
         out_tile = i->second.get();
@@ -206,4 +206,20 @@ TileNodeRegistry::empty() const
 {
     // don't bother mutex-protecteding this.
     return _tiles.empty();
+}
+
+
+
+bool
+TileNodeRegistry::get(const TileKey& key, osg::ref_ptr<const TerrainTileModel>& out_model) const
+{
+    Threading::ScopedReadLock shared( _tilesMutex );
+
+    TileNodeMap::const_iterator i = _tiles.find(key);
+    if ( i != _tiles.end() )
+    {
+        out_model = i->second->getModel();
+        return true;
+    }
+    return false;
 }

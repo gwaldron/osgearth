@@ -44,8 +44,10 @@
 			</coverages>
         </splat>
 		
+		<!--
 		<normalmap>
 		</normalmap>
+		-->
 
 		<bumpmap>
 			<image>../data/rock_hard.jpg</image>

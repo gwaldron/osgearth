@@ -21,6 +21,8 @@
 #include <osg/MatrixTransform>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Terrain>
+#include <osgEarth/TerrainEngineNode>
 #include <Triton.h>
 
 #define LC "[TritonDrawable] "

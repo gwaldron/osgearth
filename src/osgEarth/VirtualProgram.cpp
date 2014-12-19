@@ -1179,7 +1179,7 @@ VirtualProgram::apply( osg::State& state ) const
 #ifdef USE_STACK_MEMORY
         // remember this program selection in case this VP is applied again
         // during the same frame.
-        if ( !programRecalled )
+        if ( !programRecalled && stack)
         {
             _vpStackMemory.remember(state, *stack, program.get());
         }

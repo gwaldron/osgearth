@@ -134,6 +134,13 @@ GLSkyNode::onSetDateTime()
 }
 
 void
+GLSkyNode::onSetMinimumAmbient()
+{
+    // GLSky doesn't adjust the ambient lighting automatically, so just set it.
+    _light->setAmbient( getMinimumAmbient() );
+}
+
+void
 GLSkyNode::attach( osg::View* view, int lightNum )
 {
     if ( !view ) return;

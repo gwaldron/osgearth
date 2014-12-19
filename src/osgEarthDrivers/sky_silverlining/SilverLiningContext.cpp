@@ -33,7 +33,8 @@ _initAttempted        ( false ),
 _initFailed           ( false ),
 _maxAmbientLightingAlt( -1.0 ),
 _atmosphere           ( 0L ),
-_clouds               ( 0L )
+_clouds               ( 0L ),
+_minAmbient           ( 0,0,0,0 )
 {
     // Create a SL atmosphere (the main SL object).
     // TODO: plug in the username + license key.
@@ -60,6 +61,12 @@ void
 SilverLiningContext::setSRS(const SpatialReference* srs)
 {
     _srs = srs;
+}
+
+void
+SilverLiningContext::setMinimumAmbient(const osg::Vec4f& value)
+{
+    _minAmbient = value;
 }
 
 void
@@ -172,7 +179,13 @@ SilverLiningContext::updateLight()
     osg::Vec3 direction(x, y, z);
     direction.normalize();
 
-    _light->setAmbient( osg::Vec4(ra, ga, ba, 1.0f) );
+    osg::Vec4 ambient(
+        osg::clampAbove(ra, _minAmbient.r()),
+        osg::clampAbove(ba, _minAmbient.g()),
+        osg::clampAbove(ga, _minAmbient.b()),
+        1.0);
+
+    _light->setAmbient( ambient );
     _light->setDiffuse( osg::Vec4(rd, gd, bd, 1.0f) );
     _light->setPosition( osg::Vec4(direction, 0.0f) ); //w=0 means "at infinity"
 }

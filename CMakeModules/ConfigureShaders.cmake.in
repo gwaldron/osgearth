@@ -6,9 +6,11 @@ set(glsl_files      "@GLSL_FILES@")
 set(template_file   "@TEMPLATE_FILE@")
 set(output_cpp_file "@OUTPUT_CPP_FILE@")
 
+# modify the contents for inlining; replace input with output (var: file)
 foreach(file ${glsl_files})
-    file(READ ${source_dir}/${file} contents)
-	string(REGEX REPLACE "\n" "\\\\n\n" ${file} "${contents}")
+    file(READ ${source_dir}/${file} contents)	
+	string(REGEX REPLACE "#" "$__HASHTAG__" tempString "${contents}")
+	string(REGEX REPLACE "\n" "\\\\n\n" ${file} "${tempString}")
 endforeach(file)
 
 configure_file(

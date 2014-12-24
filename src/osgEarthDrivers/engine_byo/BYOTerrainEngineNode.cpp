@@ -32,7 +32,7 @@ using namespace osgEarth::Drivers;
 BYOTerrainEngineNode::BYOTerrainEngineNode() :
 TerrainEngineNode( )
 {
-    //nop
+    _uid = Registry::instance()->createUID();
 }
 
 BYOTerrainEngineNode::~BYOTerrainEngineNode()

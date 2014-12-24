@@ -186,9 +186,9 @@ namespace osgEarth
          * the ellipsoid model.
          */
         static osg::NodeCallback* createClusterCullingCallback(
-            osg::HeightField*          grid, 
+            const osg::HeightField*    grid, 
             const osg::EllipsoidModel* em, 
-            float verticalScale =1.0f );
+            float                      verticalScale =1.0f );
 
         /**
          * Convert a heightfield (and its neighbors) into a normal map* image.

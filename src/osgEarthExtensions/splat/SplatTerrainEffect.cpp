@@ -117,7 +117,10 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             std::string vertexShaderView = ShaderLoader::loadSource(
                 Shaders::SplatVertViewFile, Shaders::SplatVertViewSource );
 
-            osgEarth::replaceIn( vertexShaderView, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
+            osgEarth::replaceIn(
+                vertexShaderView, 
+                "$COVERAGE_TEXMAT_UNIFORM", 
+                _coverageLayer->shareMatrixName().get() );
             
             // Configure the fragment shader:
             std::string fragmentShader = ShaderLoader::loadSource(

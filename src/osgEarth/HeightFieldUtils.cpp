@@ -530,7 +530,7 @@ HeightFieldUtils::resolveInvalidHeights(osg::HeightField* grid,
 }
 
 osg::NodeCallback*
-HeightFieldUtils::createClusterCullingCallback(osg::HeightField*          grid, 
+HeightFieldUtils::createClusterCullingCallback(const osg::HeightField*    grid, 
                                                const osg::EllipsoidModel* et, 
                                                float                      verticalScale )
 {

@@ -25,121 +25,39 @@
 
 using namespace osgEarth;
 
-//...........................................................................
-
-#undef  LC
-#define LC "[TerrainTileLayerModel] "
-
-TerrainTileLayerModel::TerrainTileLayerModel(TerrainTileModel::LayerType type) :
-_type( type )
-{
-    //NOP
-}
-TerrainTileLayerModel::TerrainTileLayerModel(const std::string&          name,
-                                             TerrainTileModel::LayerType type) :
-_name( name ),
-_type( type )
-{
-    //NOP
-}
-
-#if 0
-void
-TerrainTileLayerModel::generateTextureAndMatrix(TerrainTileModelStore* modelStore)
-{
-    osg::Image* image = getImage();
-
-    // if image exists, generate a texture for it and leave the matrix empty
-    // since it's identity.
-    if ( image )
-    {
-        switch(_type)
-        {
-        case TerrainTileModel::LAYER_IMAGE:
-            {
-                osg::Texture2D* tex = new osg::Texture2D( _image.get() );
-                tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
-                tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
-                tex->setResizeNonPowerOfTwoHint(false);
-
-                const ImageLayer* imageLayer = dynamic_cast<const ImageLayer*>(_layer.get());
-
-                osg::Texture::FilterMode magFilter = 
-                    imageLayer ? imageLayer->getImageLayerOptions().minFilter().get() : osg::Texture::LINEAR;
-                osg::Texture::FilterMode minFilter =
-                    imageLayer ? imageLayer->getImageLayerOptions().minFilter().get() : osg::Texture::LINEAR;
-
-                tex->setFilter( osg::Texture::MAG_FILTER, magFilter );
-                tex->setFilter( osg::Texture::MIN_FILTER, minFilter );
-                tex->setMaxAnisotropy( 4.0f );
-
-                // Disable mip mapping for npot tiles
-                if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))
-                {
-                    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-                }    
-
-                const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
-                if ( unRefPolicy.isSet() )
-                    tex->setUnRefImageDataAfterApply( unRefPolicy.get() );
-
-                setTexture( tex );
-            }
-            break;
-
-        case TerrainTileModel::LAYER_ELEVATION:
-            {
-                osg::Texture2D* tex = new osg::Texture2D( _image.get() );
-                tex->setInternalFormat(GL_LUMINANCE32F_ARB);
-                tex->setSourceFormat(GL_LUMINANCE);
-                tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-                tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-                tex->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
-                tex->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
-                tex->setResizeNonPowerOfTwoHint( false );
-                tex->setMaxAnisotropy( 1.0f );
-
-                setTexture( tex );
-            }
-            break;
-
-        case TerrainTileModel::LAYER_NORMAL:
-            {
-                osg::Texture2D* tex = new osg::Texture2D( image );
-                tex->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
-                tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-                tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-                tex->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
-                tex->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
-                tex->setResizeNonPowerOfTwoHint( false );
-                tex->setMaxAnisotropy( 1.0f );
-
-                setTexture( tex );
-            }
-            break;
-
-        default:
-            {
-                //NOP
-            }
-            break;
-        }
-    }
-
-    // no image? try to find the parent model, point to its texture, 
-    // and create a scale/bias matrix for it.
-    else if ( modelStore )
-    {
-        //TODO
-        OE_WARN << LC << "nyi\n";
-    }
-}
-#endif
-
-//...........................................................................
-
 #undef  LC
 #define LC "[TerrainTileModel] "
+
+namespace
+{
+    bool layerContainsNewData(const TerrainTileLayerModel* layer) 
+    {
+        return
+            layer != 0L && (
+                layer->getMatrix() == 0L ||
+                layer->getMatrix()->isIdentity() );
+    }
+
+    static osg::ref_ptr<osg::RefMatrixf> s_identityMatrix;
+}
+
+//...................................................................
+
+TerrainTileLayerModel::TerrainTileLayerModel()
+{
+    _matrix = s_identityMatrix.get();
+}
+
+//...................................................................
+
+TerrainTileElevationModel::TerrainTileElevationModel() :
+_minHeight( FLT_MAX ),
+_maxHeight(-FLT_MAX )
+{
+    //NOP
+}
+
+//...................................................................
 
 TerrainTileModel::TerrainTileModel(const TileKey&  key,
                                    const Revision& revision) :
@@ -149,37 +67,29 @@ _revision( revision )
     //NOP
 }
 
-
-TerrainTileLayerModel*
-TerrainTileModel::getLayer(TerrainTileModel::LayerType type)
+bool
+TerrainTileModel::containsNewData() const
 {
-    for(LayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
-    {
-        if ( i->get()->getType() == type )
-        {
-            return i->get();
-        }
-    }
-    return 0L;
+    for(TerrainTileImageLayerModelVector::const_iterator i = _colorLayers.begin(); i != _colorLayers.end(); ++i)
+        if ( layerContainsNewData(i->get()) )
+            return true;
+    
+    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin(); i != _sharedLayers.end(); ++i)
+        if ( layerContainsNewData(i->get()) )
+            return true;
+
+    if ( layerContainsNewData(_elevationLayer.get()) )
+        return true;
+
+    return false;
 }
 
-const TerrainTileLayerModel*
-TerrainTileModel::getLayer(TerrainTileModel::LayerType type) const
+const TerrainTileImageLayerModel*
+TerrainTileModel::findSharedLayerByName(const std::string& name) const
 {
-    for(LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
-    {
-        if ( i->get()->getType() == type )
-        {
-            return i->get();
-        }
-    }
-    return 0L;
-}
-
-TerrainTileLayerModel*
-TerrainTileModel::getLayer(const std::string& name)
-{
-    for(LayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin();
+        i != _sharedLayers.end();
+        ++i)
     {
         if ( i->get()->getName() == name )
         {
@@ -189,40 +99,12 @@ TerrainTileModel::getLayer(const std::string& name)
     return 0L;
 }
 
-const TerrainTileLayerModel*
-TerrainTileModel::getLayer(const std::string& name) const
+const TerrainTileImageLayerModel*
+TerrainTileModel::findColorLayerByUID(const UID& uid) const
 {
-    for(LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
+    for(TerrainTileImageLayerModelVector::const_iterator i = _colorLayers.begin(); i != _colorLayers.end(); ++i)
     {
-        if ( i->get()->getName() == name )
-        {
-            return i->get();
-        }
-    }
-    return 0L;
-}
-
-TerrainTileLayerModel*
-TerrainTileModel::getLayer(const UID& uid)
-{
-    for(LayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
-    {
-        osg::ref_ptr<Layer> layer;
-        if ( i->get()->lockLayer(layer) && layer->getUID() == uid )
-        {
-            return i->get();
-        }
-    }
-    return 0L;
-}
-
-const TerrainTileLayerModel*
-TerrainTileModel::getLayer(const UID& uid) const
-{
-    for(LayerVector::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
-    {
-        osg::ref_ptr<Layer> layer;
-        if ( i->get()->lockLayer(layer) && layer->getUID() == uid )
+        if ( i->get()->getImageLayer() && i->get()->getImageLayer()->getUID() == uid )
         {
             return i->get();
         }

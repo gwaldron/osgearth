@@ -21,29 +21,21 @@
 
 #include "Common"
 #include "TileModel"
+#include "RenderBindings"
 #include <osgEarth/TerrainTileNode>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
-     * Node that represents a single terrain tile that was compiled from
-     * a TileModel (and corresponds to one TileKey). The matrixtransform
-     * localizes the TileNode within the terrain.
+     * Node that represents a single tile in the terrain.
      */
-    class TileNode : public osg::MatrixTransform,
+    class TileNode : public osg::Group, 
                      public osgEarth::TerrainTileNode
     {
-    public: // osgEarth::TerrainTileNode
-        
-        const TileKey& getKey() const { return _key; }
+    public:
+        const TerrainTileModel* getModel() const { return _model.get(); }
 
-        osg::Texture* getElevationTexture() const;
-
-        osg::RefMatrix* getElevationTextureMatrix() const;
-
-        osg::Texture* getNormalTexture() const;
-
-        osg::RefMatrix* getNormalTextureMatrix() const;
+        const TileKey& getKey() const { return _model->getKey(); }
 
         osg::Group* getPayloadGroup() const;
 
@@ -52,9 +44,17 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public:
         /**
-         * Constructs a new tile node
+         * Constructs an empty tile node.
          */
-        TileNode(const TileKey& key, const TileModel* model, const osg::Matrixd& matrix);
+        TileNode();
+
+        /**
+         * Constructs a new tile node.
+         *
+         * @param model  Data model containing the data to render
+         * @param matrix Localization matrix for node geometry
+         */
+        TileNode(const TerrainTileModel* model);
 
         /**
          * Assigned the UID of the engine that created this tile.
@@ -66,11 +66,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          * Subclass may override (see InvalidTileNode)
          */
         virtual bool isValid() const { return true; }
-
-        /**
-         * Access the source data model that built this tile.
-         */
-        const TileModel* getTileModel() { return _model.get(); }
 
         /**
          * Sets the last traversal frame manually. A parent TileGroup
@@ -102,39 +97,32 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void setTerrainBoundingBox(const osg::BoundingBox& bbox) { _terrainBBox = bbox; }
         const osg::BoundingBox& getTerrainBoundingBox() const { return _terrainBBox; }
 
-
-    public: // TileNodeContainer
-
-        TileNode* getTileNode() { return this; }
-
-
+#if 0
     public: // OVERRIDES
 
         virtual void traverse( class osg::NodeVisitor& nv );
 
         virtual void resizeGLObjectBuffers(unsigned maxSize);
         virtual void releaseGLObjects(osg::State* state) const;
+#endif
 
     protected:
 
         virtual ~TileNode() { }
 
-        TileKey                            _key;
-        UID                                _engineUID;
-        osg::ref_ptr<const TileModel>      _model;
+        osg::ref_ptr<const TerrainTileModel> _model;
+        UID                                  _engineUID;
+        
         unsigned                           _lastTraversalFrame;
         Revision                           _maprevision;
         bool                               _outOfDate;
         bool                               _dirty;
-        osg::ref_ptr<osg::RefMatrix>       _elevTexMat;
-        osg::ref_ptr<osg::RefMatrix>       _normalTexMat;
         osg::BoundingBox                   _terrainBBox;
         osg::ref_ptr<osg::Group>           _payload;
     };
 
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
-
 
     /**
      * Marker class - the engine will return one of these when a TileNode
@@ -143,7 +131,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     class InvalidTileNode : public TileNode
     {
     public:
-        InvalidTileNode(const TileKey& key) : TileNode(key, 0L, osg::Matrix()) { }
+        InvalidTileNode(const TileKey& key) : TileNode() { }
         bool isValid() const { return false; }
     protected:
         virtual ~InvalidTileNode() { }

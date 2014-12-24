@@ -16,42 +16,42 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ENGINE_KEY_NODE_FACTORY
-#define OSGEARTH_ENGINE_KEY_NODE_FACTORY 1
+#ifndef OSGEARTH_DRIVERS_MP_MASK_GENERATOR
+#define OSGEARTH_DRIVERS_MP_MASK_GENERATOR 1
 
 #include "Common"
 #include <osgEarth/TileKey>
-#include <osgEarth/Progress>
-#include <osg/Node>
-
-using namespace osgEarth;
+#include <osg/Group>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
+    using namespace osgEarth;
+
     /**
-    * Factory object that can create a scene graph given a TileKey.
-    */
-    class KeyNodeFactory : public osg::Referenced
+     * Creates geometry for the part of a tile containing mask data.
+     */
+    class MaskGenerator
     {
     public:
+        MaskGenerator(const TileKey& key);
 
-        /**
-        * Creates a node for a tile key.
-        */
-        virtual osg::Node* createNode(
-            const TileKey&    key, 
-            bool              accumulate,
-            bool              setupChildren,
-            ProgressCallback* progress ) =0;
+        /** whether the masking geometry contains a unit location. */
+        bool contains(float nx, float ny) const
+        {
+            // Placeholder for now.
+            return false;
+        }
 
+        bool containedByQuadAtColRow(int col, int row, int tileSize) const
+        {
+            // Placeholder for now.
+            return false;
+        }
 
     protected:
-        KeyNodeFactory();
-
-        /** dtor */
-        virtual ~KeyNodeFactory() { }
+        const TileKey _key;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_ENGINE_KEY_NODE_FACTORY
+#endif // OSGEARTH_DRIVERS_MP_MASK_GENERATOR

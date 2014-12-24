@@ -42,11 +42,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         // Proprtype for a locked tileset operation (see run)
         struct Operation {
-            virtual void operator()( TileNodeMap& tiles ) =0;
+            virtual void operator()(TileNodeMap& tiles) =0;
         };
 
         struct ConstOperation {
-            virtual void operator()( const TileNodeMap& tiles ) const =0;
+            virtual void operator()(const TileNodeMap& tiles) const =0;
         };
 
     public:
@@ -117,6 +117,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         /** Number of tiles in the registry. */
         unsigned size() const { return _tiles.size(); }
+
+        /** Takes one arbitrary tile node from the registry. */
+        TileNode* takeAny();
 
     public: // TileKeyDataStore<const TerrainTileModel>
 

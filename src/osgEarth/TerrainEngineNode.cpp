@@ -379,14 +379,14 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 }
 
 void
-TerrainEngineNode::addTileNodeCallback(TerrainTileNodeCallback* cb)
+TerrainEngineNode::addTileNodeCallback(TerrainEngine::NodeCallback* cb)
 {
     Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
     _tileNodeCallbacks.push_back( cb );
 }
 
 void
-TerrainEngineNode::removeTileNodeCallback(TerrainTileNodeCallback* cb)
+TerrainEngineNode::removeTileNodeCallback(TerrainEngine::NodeCallback* cb)
 {
     Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
     for(TerrainTileNodeCallbackVector::iterator i = _tileNodeCallbacks.begin(); i != _tileNodeCallbacks.end(); ++i)
@@ -404,7 +404,9 @@ TerrainEngineNode::notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node
 {
     Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
     for(unsigned i=0; i<_tileNodeCallbacks.size(); ++i)
+    {
         _tileNodeCallbacks[i]->operator()(key, node);
+    }
 }
 
 

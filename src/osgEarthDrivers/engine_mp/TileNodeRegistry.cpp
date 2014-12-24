@@ -181,6 +181,15 @@ TileNodeRegistry::take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
 }
 
 
+TileNode*
+TileNodeRegistry::takeAny()
+{
+    Threading::ScopedWriteLock exclusive( _tilesMutex );
+    osg::ref_ptr<TileNode> tile = _tiles.begin()->second.get();
+    _tiles.erase( _tiles.begin() );
+    return tile.release();
+}
+
 void
 TileNodeRegistry::run( TileNodeRegistry::Operation& op )
 {

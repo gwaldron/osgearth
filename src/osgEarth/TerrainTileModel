@@ -21,7 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
-#include <osgEarth/Layer>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/Revisioning>
 #include <osgEarth/MapInfo>
 #include <osgEarth/Locators>
@@ -32,25 +32,84 @@
 
 namespace osgEarth
 {
-    class TerrainTileLayerModel;
+    /**
+     * Data model backing an individual layer of a terrain tile.
+     */
+    class OSGEARTH_EXPORT TerrainTileLayerModel : public osg::Referenced
+    {
+    public:
+        /** Name */
+        void setName(const std::string& name) { _name = name; }
+        const std::string& getName() const { return _name; }
+
+        /** Texture to use for rendering this layer */
+        void setTexture(osg::Texture* texture) { _texture = texture; }
+        osg::Texture* getTexture() const { return _texture.get(); }
+
+        /** Texture matrix to scale/bias the texture for the corresponding tile key */
+        void setMatrix(osg::RefMatrixf* matrix) { _matrix = matrix; }
+        osg::RefMatrixf* getMatrix() const { return _matrix.get(); }
+
+    public:
+        TerrainTileLayerModel();
+
+    protected:
+        virtual ~TerrainTileLayerModel() { }
+
+        std::string                   _name;
+        osg::ref_ptr<osg::Texture>    _texture;
+        osg::ref_ptr<osg::RefMatrixf> _matrix;
+    };
+    typedef std::vector< osg::ref_ptr<TerrainTileLayerModel> > TerrainTileLayerModelVector;
+
+    /**
+     * Layer based on an ImageLayer from the map.
+     */
+    class OSGEARTH_EXPORT TerrainTileImageLayerModel : public TerrainTileLayerModel
+    {
+    public:
+        /** Source layer */
+        void setImageLayer(ImageLayer* layer) { _layer = layer; }
+        const ImageLayer* getImageLayer() const { return _layer.get(); }
+
+    protected:
+        virtual ~TerrainTileImageLayerModel() { }
+        osg::ref_ptr<ImageLayer> _layer;
+    };
+    typedef std::vector< osg::ref_ptr<TerrainTileImageLayerModel> > TerrainTileImageLayerModelVector;
+
+    /**
+     * Layer based on aggregated elevation data.
+     */
+    class OSGEARTH_EXPORT TerrainTileElevationModel : public TerrainTileLayerModel
+    {
+    public:
+        /** Constructor */
+        TerrainTileElevationModel();
+
+        void setHeightField(const osg::HeightField* value) { _heightField = value; }
+        const osg::HeightField* getHeightField() const { return _heightField; }
+
+        /** Minimum height in the tile */
+        void setMinHeight(float value) { _minHeight = value; }
+        float getMinHeight() const { return _minHeight; }
+
+        /** Maximum height in the tile */
+        void setMaxHeight(float value) { _maxHeight = value; }
+        float getMaxHeight() const { return _maxHeight; }
+
+    protected:
+        virtual ~TerrainTileElevationModel() { }
+
+        osg::ref_ptr<const osg::HeightField> _heightField;
+        float _minHeight, _maxHeight;
+    };
 
     /**
      * Data model backing an individual terrain tile.
      */
     class OSGEARTH_EXPORT TerrainTileModel : public osg::Referenced
     {
-    public:
-        enum LayerType
-        {
-            LAYER_IMAGE,         // imagery or other visible raster (vec4)
-            LAYER_ELEVATION,     // edge-matched heightfield data (32-bit float)
-            LAYER_NORMAL,        // surface normal/curvature data (vec4)
-            LAYER_CUSTOM         // custom raster that an extension will deal with
-        };
-
-    public:
-        typedef std::vector<osg::ref_ptr<TerrainTileLayerModel> > LayerVector;
-
     public:
         /** Constructor */
         TerrainTileModel(
@@ -63,82 +122,67 @@ namespace osgEarth
         /** TileKey corresponding to this model */
         const TileKey& getKey() const { return _key; }
 
-        /** Layers comprising this tile model. */
-        LayerVector& layers() { return _layers; }
-        const LayerVector& layers() const { return _layers; }
+        /** Whether this model contains new texture data (versus inherited data only) */
+        bool containsNewData() const;
 
-        /** Find the first layer of a type */
-        TerrainTileLayerModel* getLayer(LayerType type);
-        const TerrainTileLayerModel* getLayer(LayerType type) const;
+        /** Color layers (rendered one at a time in order) */
+        TerrainTileImageLayerModelVector& colorLayers() { return _colorLayers; }
+        const TerrainTileImageLayerModelVector& colorLayers() const { return _colorLayers; }
 
-        /** Find the first layer with a matching name */
-        TerrainTileLayerModel* getLayer(const std::string& name);
-        const TerrainTileLayerModel* getLayer(const std::string& name) const;
+        /** Elevation Layer model (one) */
+        osg::ref_ptr<TerrainTileElevationModel>& elevationModel() { return _elevationLayer; }
+        const osg::ref_ptr<TerrainTileElevationModel>& elevationModel() const { return _elevationLayer; }
 
-        /** Find the layer with a matching layer uid */
-        TerrainTileLayerModel* getLayer(const UID& layerUID);
-        const TerrainTileLayerModel* getLayer(const UID& layerUID) const;
+        /** Shared raster layers (bound for all rendering) */
+        TerrainTileImageLayerModelVector& sharedLayers() { return _sharedLayers; }
+        const TerrainTileImageLayerModelVector& sharedLayers() const { return _sharedLayers; }
+
+        //LayerVector& colorLayers() { return _colorLayers; }
+        //const LayerVector& colorLayers() const { return _colorLayers; }
+
+        ///** Shared layers (available to all rendering passes, e.g. elevation) */
+        //LayerVector& sharedLayers() { return _sharedLayers; }
+        //const LayerVector& sharedLayers() const { return _sharedLayers; }
+
+        ///** Find the first layer of a type */
+        //TerrainTileLayerModel* getLayer(LayerType type);
+        //const TerrainTileLayerModel* getLayer(LayerType type) const;
+
+        ///** Find the first layer with a matching name */
+        //TerrainTileLayerModel* getLayer(const std::string& name);
+        //const TerrainTileLayerModel* getLayer(const std::string& name) const;
+
+        ///** Find the layer with a matching layer uid */
+        //TerrainTileLayerModel* getLayer(const UID& layerUID);
+        //const TerrainTileLayerModel* getLayer(const UID& layerUID) const;
+
+        /** Try to find a layer */
+        const TerrainTileImageLayerModel* findColorLayerByUID(const UID& uid) const;
+        const TerrainTileImageLayerModel* findSharedLayerByName(const std::string& name) const;
 
         /** Height field neighborhood surrounding the tile */
         /** TODO: does this need to be in the model itself? probably not */
         HeightFieldNeighborhood& heightFields() { return _heightFields; }
         const HeightFieldNeighborhood& heightFields() const { return _heightFields; }
 
+        /** Whether a tile created from this model requires an update traversal. */
+        void setRequiresUpdateTraverse(bool value) { _requiresUpdateTraverse = value; }
+        bool requiresUpdateTraverse() const { return _requiresUpdateTraverse; }
+
     protected:
-        TileKey                 _key;
-        Revision                _revision;
-        LayerVector             _layers;
-        HeightFieldNeighborhood _heightFields;
+        TileKey                                 _key;
+        Revision                                _revision;
+        TerrainTileImageLayerModelVector        _colorLayers;
+        TerrainTileImageLayerModelVector        _sharedLayers;
+        osg::ref_ptr<TerrainTileElevationModel> _elevationLayer;
+        HeightFieldNeighborhood                 _heightFields;
+        bool                                    _requiresUpdateTraverse;
     };
 
     /**
      * Data store that references TerrainTileModel by TileKey.
      */
     typedef TileKeyDataStore<const TerrainTileModel> TerrainTileModelStore;
-
-
-    /**
-     * Data model backing an individual layer of a terrain tile.
-     */
-    class OSGEARTH_EXPORT TerrainTileLayerModel : public osg::Referenced
-    {
-    public:
-        /** Constructor - type only */
-        TerrainTileLayerModel(
-            TerrainTileModel::LayerType type);
-
-        /** Constructor - name and type */
-        TerrainTileLayerModel(
-            const std::string&          name,
-            TerrainTileModel::LayerType type);
-
-        /** Name of this layer (might be empty) */
-        const std::string& getName() const { return _name; }
-
-        /** Type of data in this layer */
-        const TerrainTileModel::LayerType getType() const { return _type; }
-
-        /** Source layer */
-        void setLayer(Layer* layer) { _layer = layer; }
-        bool lockLayer(osg::ref_ptr<Layer>& layer) const { return _layer.lock(layer); }
-
-        /** Texture to use for rendering this layer */
-        void setTexture(osg::Texture* texture) { _texture = texture; }
-        osg::Texture* getTexture() const { return _texture.get(); }
-
-        /** Texture matrix to scale/bias the texture for the corresponding tile key */
-        void setMatrix(osg::RefMatrixf* matrix) { _matrix = matrix; }
-        osg::RefMatrixf* getMatrix() const { return _matrix.get(); }
-
-    protected:
-        virtual ~TerrainTileLayerModel() { }
-
-        std::string                   _name;
-        TerrainTileModel::LayerType   _type;
-        osg::ref_ptr<osg::Texture>    _texture;
-        osg::ref_ptr<osg::RefMatrixf> _matrix;
-        osg::observer_ptr<Layer>      _layer;
-    };
 }
 
 #endif // OSGEARTH_TERRAIN_TILE_MODEL_H

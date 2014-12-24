@@ -30,30 +30,39 @@ using namespace osgEarth;
 namespace
 {
     // Scale and bias matrices, one for each TileKey quadrant.
-    const osg::Matrixf quadrantScaleBias[4] =
+    const osg::Matrixf scaleBias[4] =
     {
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.5f,0,1.0f),
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.5f,0,1.0f),
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.0f,0,1.0f),
-        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f),
-        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f),
-        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.5f,0,1.0f)
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
     };
 
-#if 0
-    void createScaleBiasMatrix(unsigned quadrant, osg::Matrix& out)
+    void applyScaleBias(osg::RefMatrixf* m, unsigned quadrant)
     {
-        float scale = 0.5f;
-        float xbias = quadrant == 0 || quadrant == 3 ? 0.0f : 0.5f;
-        float ybias = quadrant <= 1 ? 0.0f : 0.5f;
-        out.preMultScale(osg::Vec3f(scale,scale,scale));
-        out.preMultTranslate(osg::Vec3f(xbias,ybias,0.0f));
-    }
+#if 1
+        m->preMult( scaleBias[quadrant] );
+#else
+        osg::Matrixf scaleBias;
+        scaleBias(0,0) = 0.5f;
+        scaleBias(1,1) = 0.5f;
+        if ( quadrant == 1 || quadrant == 3 )
+            scaleBias(3,0) = 0.5f;
+        if ( quadrant == 0 || quadrant == 1 )
+            scaleBias(3,1) = 0.5f;
+
+        m->preMult( scaleBias );
 #endif
+    }
+
+    static osg::ref_ptr<osg::RefMatrixf> s_identityMatrix = new osg::RefMatrixf();
 }
 
 //.........................................................................
 
 TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) :
-_options( options )
+_options( options ),
+_heightFieldCache(true, 128)
 {
     // NOP
 }
@@ -93,7 +102,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
     {
         ImageLayer* layer = i->get();
 
-        if ( layer->getEnabled() && layer->isKeyInRange(key) )
+        if ( layer->getEnabled() ) //&& layer->isKeyInRange(key) )
         {
             // This will only go true if we are requesting a ROOT TILE but we have to
             // fall back on lower resolution data to create it.
@@ -163,15 +172,15 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                 }
             }
             
-            TerrainTileLayerModel* layerModel = new TerrainTileLayerModel(
-                TerrainTileModel::LAYER_IMAGE);
+            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
+            layerModel->setImageLayer( layer );
+            layerModel->setMatrix( s_identityMatrix.get() );
 
             if ( geoImage.valid() )
             {
                 // made an image. Store as a texture with an identity matrix.
                 osg::Texture* texture = createImageTexture(geoImage.getImage(), layer);
                 layerModel->setTexture( texture );
-                layerModel->setMatrix( 0L );
             }
             else if ( modelStore )
             {
@@ -180,17 +189,21 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                 TileKey parentKey = key.createParentKey();
                 if ( modelStore->get(parentKey, parentModel) )
                 {
-                    const TerrainTileLayerModel* parentLayerModel = parentModel->getLayer(layer->getUID());
+                    const TerrainTileLayerModel* parentLayerModel = parentModel->findColorLayerByUID(layer->getUID());
                     if ( parentLayerModel )
                     {
                         layerModel->setTexture( parentLayerModel->getTexture() );
-                        osg::RefMatrixf* parentMatrix = parentLayerModel->getMatrix();
-                        unsigned quadrant = key.getQuadrant();
-                        layerModel->setMatrix( new osg::RefMatrixf(
-                            parentMatrix?
-                                (*parentMatrix) * quadrantScaleBias[quadrant] :
-                                quadrantScaleBias[quadrant] ) );
+                        layerModel->setMatrix( osg::clone(parentLayerModel->getMatrix()) );
+                        applyScaleBias( layerModel->getMatrix(), key.getQuadrant() );
                     }
+                    else
+                    {
+                        OE_WARN << LC << "Could not find parent layer for " << key.str() << std::endl;
+                    }
+                }
+                else
+                {
+                    OE_WARN << LC << "...not found!\n";
                 }
             }
 
@@ -205,7 +218,10 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
             }
 #endif
 
-            model->layers().push_back( layerModel );
+            model->colorLayers().push_back( layerModel );
+
+            if ( layerModel->getMatrix() == 0L )
+                OE_WARN << LC << "NO MATRIX!\n";
         }
     }
 
@@ -232,13 +248,28 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     // Request a heightfield from the map.
     osg::ref_ptr<osg::HeightField> mainHF;
 
-    TerrainTileLayerModel* layerModel = new TerrainTileLayerModel(
-        TerrainTileModel::LAYER_ELEVATION);
+    TerrainTileElevationModel* layerModel = new TerrainTileElevationModel();
+    layerModel->setMatrix( s_identityMatrix.get() );
 
     // Make a new heightfield. Use the cache as necessary.
     osg::Image* image = 0L;
     if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, mainHF, progress))
     {
+        layerModel->setHeightField( mainHF.get() );
+
+        // pre-calculate the min/max heights:
+        for( unsigned col = 0; col < mainHF->getNumColumns(); ++col )
+        {
+            for( unsigned row = 0; row < mainHF->getNumRows(); ++row )
+            {
+                float h = mainHF->getHeight(col, row);
+                if ( h > layerModel->getMaxHeight() )
+                    layerModel->setMaxHeight( h );
+                if ( h < layerModel->getMinHeight() )
+                    layerModel->setMinHeight( h );
+            }
+        }
+
         model->heightFields().setNeighbor(0, 0, mainHF.get());
 
         // convert the heightfield to a 1-channel 32-bit fp image:
@@ -254,8 +285,7 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                 TileKey parentKey = key.createParentKey();
                 if ( modelStore->get(parentKey, parentModel) )
                 {
-                    const TerrainTileLayerModel* parentElevLayer = parentModel->getLayer(
-                        TerrainTileModel::LAYER_ELEVATION );
+                    const TerrainTileLayerModel* parentElevLayer = parentModel->elevationModel().get();
 
                     if (parentElevLayer && parentElevLayer->getTexture())
                     {
@@ -275,7 +305,6 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         // Made an image, so store this as a texture with no matrix.
         osg::Texture* texture = createElevationTexture( image );
         layerModel->setTexture( texture );
-        layerModel->setMatrix( 0L );
     }
     else if ( modelStore )
     {
@@ -284,23 +313,31 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         TileKey parentKey = key.createParentKey();
         if ( modelStore->get(parentKey, parentModel) )
         {
-            const TerrainTileLayerModel* parentLayerModel = parentModel->getLayer(
-                TerrainTileModel::LAYER_ELEVATION );
-
+            const TerrainTileElevationModel* parentLayerModel = parentModel->elevationModel().get();
             if ( parentLayerModel )
             {
+                // use the parent texture with an adjusted matrix:
                 layerModel->setTexture( parentLayerModel->getTexture() );
-                osg::RefMatrixf* parentMatrix = parentLayerModel->getMatrix();
-                unsigned quadrant = key.getQuadrant();
-                layerModel->setMatrix( new osg::RefMatrixf(
-                    parentMatrix?
-                        (*parentMatrix) * quadrantScaleBias[quadrant] :
-                        quadrantScaleBias[quadrant] ) );
+                layerModel->setMatrix( osg::clone(parentLayerModel->getMatrix()) );
+                applyScaleBias( layerModel->getMatrix(), key.getQuadrant() );
+
+                // copy over the height info.. not quite correct..
+                layerModel->setHeightField(parentLayerModel->getHeightField());
+                layerModel->setMinHeight(parentLayerModel->getMinHeight());
+                layerModel->setMaxHeight(parentLayerModel->getMaxHeight());
             }
+            else
+            {
+                OE_WARN << LC << "addElevation: no parent elevation model for " << key.str() << "\n";
+            }
+        }
+        else
+        {
+            OE_WARN << LC << "addElevation: no parent model for " << key.str() << "\n";
         }
     }
 
-    model->layers().push_back( layerModel );
+    model->elevationModel() = layerModel;
 
     if (progress)
         progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);
@@ -318,8 +355,9 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
     const osgEarth::ElevationInterpolation& interp =
         frame.getMapOptions().elevationInterpolation().get();
 
-    TerrainTileLayerModel* layerModel = new TerrainTileLayerModel(
-        TerrainTileModel::LAYER_NORMAL);
+    TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
+    layerModel->setName( "oe_normal_map" );
+    layerModel->setMatrix( s_identityMatrix.get() );
 
     // Can only generate the normal map if the center heightfield was built:
     osg::Image* image = 0L;
@@ -352,7 +390,6 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
         // Made an image, so store this as a texture with no matrix.
         osg::Texture* texture = createNormalTexture( image );
         layerModel->setTexture( texture );
-        layerModel->setMatrix( 0L );
     }
     else if ( modelStore )
     {
@@ -361,24 +398,19 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
         TileKey parentKey = key.createParentKey();
         if ( modelStore->get(parentKey, parentModel) )
         {
-            const TerrainTileLayerModel* parentLayerModel = parentModel->getLayer(
-                TerrainTileModel::LAYER_NORMAL );
+            const TerrainTileLayerModel* parentLayerModel = parentModel->findSharedLayerByName(
+                "oe_normal_map" );
 
             if ( parentLayerModel )
             {
                 layerModel->setTexture( parentLayerModel->getTexture() );
-                osg::RefMatrixf* parentMatrix = parentLayerModel->getMatrix();
-                unsigned quadrant = key.getQuadrant();
-                layerModel->setMatrix( new osg::RefMatrixf(
-                    parentMatrix?
-                        (*parentMatrix) * quadrantScaleBias[quadrant] :
-                        quadrantScaleBias[quadrant] ) );
+                layerModel->setMatrix( osg::clone(parentLayerModel->getMatrix()) );
+                applyScaleBias( layerModel->getMatrix(), key.getQuadrant() );
             }
         }
     }
 
-    model->layers().push_back( layerModel );
-
+    model->sharedLayers().push_back( layerModel );
 
     if (progress)
         progress->stats()["fetch_normalmap_time"] += OE_STOP_TIMER(fetch_normalmap);
@@ -423,17 +455,21 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
         samplePolicy,
         progress );
 
-    // Treat Plate Carre specially by scaling the height values. (There is no need
-    // to do this with an empty heightfield)
-    const MapInfo& mapInfo = frame.getMapInfo();
-    if ( mapInfo.isPlateCarre() )
+    if ( populated )
     {
-        HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
+        // Treat Plate Carre specially by scaling the height values. (There is no need
+        // to do this with an empty heightfield)
+        const MapInfo& mapInfo = frame.getMapInfo();
+        if ( mapInfo.isPlateCarre() )
+        {
+            HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
+        }
+
+        // cache it.
+        _heightFieldCache.insert( cachekey, out_hf.get() );
     }
 
-    // cache it.
-    _heightFieldCache.insert( cachekey, out_hf.get() );
-    return true;
+    return populated;
 }
 
 osg::Texture*
@@ -447,7 +483,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
     tex->setResizeNonPowerOfTwoHint(false);
 
     osg::Texture::FilterMode magFilter = 
-        layer ? layer->getImageLayerOptions().minFilter().get() : osg::Texture::LINEAR;
+        layer ? layer->getImageLayerOptions().magFilter().get() : osg::Texture::LINEAR;
     osg::Texture::FilterMode minFilter =
         layer ? layer->getImageLayerOptions().minFilter().get() : osg::Texture::LINEAR;
 

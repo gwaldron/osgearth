@@ -34,9 +34,10 @@
 using namespace osgEarth;
 using namespace osgEarth::NormalMap;
 
+#if 0
 namespace
 {
-    class NormalTexInstaller : public TerrainTileNodeCallback
+    class NormalTexInstaller : public TerrainEngine::NodeCallback
     {
     public:
         NormalTexInstaller(NormalMapTerrainEffect* effect, int unit)
@@ -67,7 +68,7 @@ namespace
         int _unit;
     };
 }
-
+#endif
 
 NormalMapTerrainEffect::NormalMapTerrainEffect(const osgDB::Options* dbOptions)
 {
@@ -83,7 +84,7 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 
         int unit;
         engine->getTextureCompositor()->reserveTextureImageUnit(unit);
-        engine->addTileNodeCallback( new NormalTexInstaller(this, unit) );
+        //engine->addTileNodeCallback( new NormalTexInstaller(this, unit) );
 
         // configure shaders
         std::string vertShader = ShaderLoader::loadSource(

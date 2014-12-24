@@ -299,11 +299,18 @@ namespace osgEarth
         const optional<int>& shareImageUnit() const { return _shareImageUnit; }
 
         /**
+         * When isShared() == true, the engine will call this function to bind the
+         * shared layer to a texture uniform name.
+         */
+        optional<std::string>& shareSamplerName() { return _shareSamplerName; }
+        const optional<std::string>& shareSamplerName() const { return _shareSamplerName; }
+
+        /**
          * When isShared() == true, this will return the name of the uniform holding the
          * image's texture matrix. 
          */
-        optional<std::string>& shareTexMatUniformName() { return _shareTexMatUniformName; }
-        const optional<std::string>& shareTexMatUniformName() const { return _shareTexMatUniformName; }
+        optional<std::string>& shareMatrixName() { return _shareMatrixName; }
+        const optional<std::string>& shareMatrixName() const { return _shareMatrixName; }
 
 
     public: // methods
@@ -353,7 +360,8 @@ namespace osgEarth
         osg::ref_ptr<osg::Image>                 _emptyImage;
         ImageLayerCallbackList                   _callbacks;
         optional<int>                            _shareImageUnit;
-        optional<std::string>                    _shareTexMatUniformName;
+        optional<std::string>                    _shareSamplerName;
+        optional<std::string>                    _shareMatrixName;
 
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );

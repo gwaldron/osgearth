@@ -16,43 +16,41 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_SINGLE_KEY_NODE_FACTORY
-#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_SINGLE_KEY_NODE_FACTORY 1
+#ifndef OSGEARTH_DRIVERS_MP_TILE_GROUP_FACTORY
+#define OSGEARTH_DRIVERS_MP_TILE_GROUP_FACTORY 1
 
 #include "Common"
-#include "KeyNodeFactory"
-#include "TerrainNode"
-#include "TileModelCompiler"
-#include "TileModelFactory"
+#include "TileNode"
 #include "TileNodeRegistry"
-#include <osgEarth/Map>
+#include "MPTerrainEngineOptions"
+#include "RenderBindings"
+
+#include <osgEarth/TerrainTileModel>
+#include <osgEarth/MapFrame>
 #include <osgEarth/Progress>
 
 using namespace osgEarth;
 
+namespace osgEarth {
+    class TerrainEngine;
+}
+
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
-{
-    class SingleKeyNodeFactory : public KeyNodeFactory
+{    
+    class TileGroupFactory : public osg::Referenced
     {
     public:
-        SingleKeyNodeFactory(
+        TileGroupFactory(
             const Map*                          map,
-            TileModelFactory*                   modelFactory,
-            TileModelCompiler*                  modelCompiler,
+            TerrainEngine*                      engine,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
-            const MPTerrainEngineOptions&       options,
-            UID                                 engineUID,
-            TerrainTileNodeBroker*              tileNodeBroker );
+            const RenderBindings&               renderBindings,
+            const MPTerrainEngineOptions&       options);
 
-        /** dtor */
-        virtual ~SingleKeyNodeFactory() { }
-
-
-    public: // KeyNodeFactory
 
         /**
-         * Creates a TileNode or TileGroup corresponding to the TileKey.
+         * Creates a TileGroup corresponding to the TileKey.
          *
          * @param key           TileKey for which to create a new node
          * @param accumulate    Whether to accumulate data from parent tiles if necessary
@@ -61,30 +59,39 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          *                      the tile alone with no paging support.
          * @param progress      Callback for cancelation and progress reporting
          */
-        osg::Node* createNode(
+        osg::Node* createTileGroup(
             const TileKey&    key, 
             bool              accumulate,
             bool              setupChildren,
             ProgressCallback* progress );
 
     protected:
-        osg::Node* createTile(
-            TileModel*        model,
+
+        virtual ~TileGroupFactory() { }
+
+        /** Creates the graph representing a single tile within the group. */
+        TileNode* createTileNodeGraph(
+            TerrainTileModel* model,
             bool              setupChildrenIfNecessary,
             ProgressCallback* progress);
 
-        MapFrame                            _frame;
-        osg::ref_ptr<TileModelFactory>      _modelFactory;
-        osg::ref_ptr<TileModelCompiler>     _modelCompiler;
-        osg::ref_ptr<TileNodeRegistry>      _liveTiles;
-        osg::ref_ptr<TileNodeRegistry>      _deadTiles;
-        const MPTerrainEngineOptions&       _options;
-        UID                                 _engineUID;
-        TerrainTileNodeBroker*              _tileNodeBroker;
+        /** Creates the TileNode, the parent of the terrain surface and subtile pager */
+        TileNode* createTileNode(
+            TerrainTileModel* model,
+            ProgressCallback* progress);
+
+    protected:
+
+        MapFrame                              _frame;
+        osg::ref_ptr<TileNodeRegistry>        _liveTiles;
+        osg::ref_ptr<TileNodeRegistry>        _deadTiles;
+        const MPTerrainEngineOptions&         _options;
+        const RenderBindings&                 _renderBindings;
+        TerrainEngine*                        _terrainEngine;
 
         unsigned getMinimumRequiredLevel();
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine
 
-#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_SINGLE_KEY_NODE_FACTORY
+#endif // OSGEARTH_DRIVERS_MP_TILE_GROUP_FACTORY

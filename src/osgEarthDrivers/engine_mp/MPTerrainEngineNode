@@ -26,10 +26,9 @@
 #include <osgEarth/ThreadingUtils>
 
 #include "MPTerrainEngineOptions"
-#include "KeyNodeFactory"
-#include "TileModelFactory"
-#include "TileModelCompiler"
+#include "TileGroupFactory"
 #include "TileNodeRegistry"
+#include "RenderBindings"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -142,8 +141,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
         bool               _stateUpdateRequired;
-        bool               _rootTilesRegistered;
-        Threading::Mutex   _rootTilesRegisteredMutex;
 
         osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
 
@@ -151,21 +148,17 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
-        osg::ref_ptr<TileNodeRegistry> _deadTiles;        // tiles that used to be in the scene graph.
+        osg::ref_ptr<TileNodeRegistry> _deadTiles;      // tiles that used to be in the scene graph.
 
-        Threading::PerThread< osg::ref_ptr<KeyNodeFactory> > _perThreadKeyNodeFactories;
-        KeyNodeFactory* getKeyNodeFactory();
+        Threading::PerThread< osg::ref_ptr<TileGroupFactory> > _perThreadTileGroupFactories;
+        TileGroupFactory* getTileGroupFactory();
 
         osg::Timer _timer;
         unsigned   _tileCount;
         double     _tileCreationTime;
-        int        _primaryUnit;
-        int        _secondaryUnit;
-        int        _elevationTextureUnit;
+        RenderBindings _renderBindings;
 
         osg::Uniform* _verticalScaleUniform;
-
-        osg::ref_ptr< TileModelFactory > _tileModelFactory;
 
         Threading::Mutex _renderBinMutex;
         osg::ref_ptr<osgUtil::RenderBin> _terrainRenderBinPrototype;

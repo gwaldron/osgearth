@@ -40,13 +40,13 @@ namespace osgEarth
 
         const TileKey& getKey() const { return _model->getKey(); }
 
-        virtual osg::Texture* getElevationTexture() const =0;
+        //virtual osg::Texture* getElevationTexture() const =0;
 
-        virtual osg::RefMatrix* getElevationTextureMatrix() const =0;
+        //virtual osg::RefMatrix* getElevationTextureMatrix() const =0;
 
-        virtual osg::Texture* getNormalTexture() const =0;
+        //virtual osg::Texture* getNormalTexture() const =0;
 
-        virtual osg::RefMatrix* getNormalTextureMatrix() const =0;
+        //virtual osg::RefMatrix* getNormalTextureMatrix() const =0;
 
         virtual osg::Group* getPayloadGroup() const =0;
 
@@ -70,20 +70,6 @@ namespace osgEarth
          * for a given tile key. (Typically that will happen in a pager thread.)
          */
         virtual void notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node* node) =0;
-    };
-
-    /**
-     * Callback you can install on a TerrainEngineNode to get a first look at
-     * a TerrainTileNode when it's created.
-     */
-    class /*header-only*/ TerrainTileNodeCallback : public osg::Referenced
-    {
-    public:
-        // Careful: runs in a terrain engine background thread.
-        virtual void operator()(const TileKey& key, osg::Node* tileNode) =0;
-
-    protected:
-        virtual ~TerrainTileNodeCallback() { }
     };
 };
 

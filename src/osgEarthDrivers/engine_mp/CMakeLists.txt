@@ -14,8 +14,6 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 SET(TARGET_SRC
-    HeightFieldCache.cpp
-    KeyNodeFactory.cpp
     MPGeometry.cpp
     MPTerrainEngineNode.cpp
     MPTerrainEngineDriver.cpp
@@ -32,10 +30,7 @@ SET(TARGET_SRC
 
 SET(TARGET_H
     Common
-    DynamicLODScaleCallback
-    HeightFieldCache
     FileLocationCallback
-    KeyNodeFactory
     MPGeometry
     MPShaders
     MPTerrainEngineNode

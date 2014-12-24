@@ -18,8 +18,6 @@
 */
 #include "MPTerrainEngineNode"
 #include "TerrainNode"
-#include "TileModelFactory"
-#include "TileModelCompiler"
 #include "TilePagedLOD"
 #include "MPShaders"
 

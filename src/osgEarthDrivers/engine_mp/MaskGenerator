@@ -21,11 +21,28 @@
 
 #include "Common"
 #include <osgEarth/TileKey>
-#include <osg/Group>
+#include <osg/Geometry>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     using namespace osgEarth;
+
+    /**
+     * Record that stores the data for a single masking region.
+     */
+    struct MaskRecord
+    {
+        osg::ref_ptr<osg::Vec3dArray> _boundary;
+        osg::Vec3d                    _ndcMin, _ndcMax;
+        osg::Geometry*                _geom;
+        osg::ref_ptr<osg::Vec3Array>  _internal;
+
+        MaskRecord(osg::Vec3dArray* boundary, osg::Vec3d& ndcMin, osg::Vec3d& ndcMax, osg::Geometry* geom) 
+            : _boundary(boundary), _ndcMin(ndcMin), _ndcMax(ndcMax), _geom(geom), _internal(new osg::Vec3Array()) { }
+    };
+
+    typedef std::vector<MaskRecord> MaskRecordVector;
+
 
     /**
      * Creates geometry for the part of a tile containing mask data.
@@ -34,6 +51,12 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     {
     public:
         MaskGenerator(const TileKey& key);
+
+        /** whether a texcoord indicates that the corresponding vert is masked. */
+        bool isMasked(const osg::Vec3f& texCoord) const
+        {
+            return texCoord.z() == 0.0f;
+        }
 
         /** whether the masking geometry contains a unit location. */
         bool contains(float nx, float ny) const
@@ -49,7 +72,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         }
 
     protected:
-        const TileKey _key;
+        const TileKey    _key;
+        MaskRecordVector _maskRecords;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

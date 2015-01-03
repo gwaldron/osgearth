@@ -14,12 +14,14 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 SET(TARGET_SRC
+    GeometryPool.cpp
     MPGeometry.cpp
     MPTerrainEngineNode.cpp
     MPTerrainEngineDriver.cpp
     MaskGenerator.cpp
     SurfaceNodeFactory.cpp
     TerrainNode.cpp
+	TileDrawable.cpp
     TileGroup.cpp
     TileGroupFactory.cpp
     TileNode.cpp
@@ -31,6 +33,7 @@ SET(TARGET_SRC
 SET(TARGET_H
     Common
     FileLocationCallback
+    GeometryPool
     MPGeometry
     MPShaders
     MPTerrainEngineNode
@@ -40,6 +43,7 @@ SET(TARGET_H
     RenderBindings
     SurfaceNode
     TerrainNode
+	TileDrawable
     TileGroup
     TileGroupFactory
     TileNode

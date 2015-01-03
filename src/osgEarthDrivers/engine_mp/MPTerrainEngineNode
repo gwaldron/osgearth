@@ -29,6 +29,7 @@
 #include "TileGroupFactory"
 #include "TileNodeRegistry"
 #include "RenderBindings"
+#include "GeometryPool"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -157,6 +158,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         unsigned   _tileCount;
         double     _tileCreationTime;
         RenderBindings _renderBindings;
+        osg::ref_ptr<GeometryPool> _geometryPool;
 
         osg::Uniform* _verticalScaleUniform;
 

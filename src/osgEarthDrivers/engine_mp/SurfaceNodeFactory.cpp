@@ -27,14 +27,18 @@ using namespace osgEarth::Drivers::MPTerrainEngine;
 
 SurfaceNodeFactory::SurfaceNodeFactory(const TerrainTileModel*       model,
                                        const MapFrame&               frame,
+                                       const RenderBindings&         bindings,
+                                       GeometryPool*                 geometryPool,
                                        unsigned                      tileSize,
                                        const MPTerrainEngineOptions& options) :
-_model      ( model ),
-_frame      ( frame ),
-_tileSize   ( tileSize ),
-_options    ( options ),
-_requireUInt( false ),
-_maskSet    ( model->getKey() )
+_model       ( model ),
+_frame       ( frame ),
+_bindings    ( bindings ),
+_geometryPool( geometryPool ),
+_tileSize    ( tileSize ),
+_options     ( options ),
+_requireUInt ( false ),
+_maskSet     ( model->getKey() )
 {
     // Create a locator for transforming coordinates between unit [0..1]
     // and world coordinates:
@@ -69,19 +73,48 @@ _maskSet    ( model->getKey() )
 
 SurfaceNode*
 SurfaceNodeFactory::createSurfaceNode()
-{    
+{
     _geode = new osg::Geode();
 
-    addSurfaceMesh();
-    addSkirtMesh();
-    installColorLayers();
+    if ( _geometryPool.valid() )
+    {
+        osg::ref_ptr<osg::Geometry> geom;
+        _geometryPool->getPooledGeometry( _model->getKey(), _frame.getMapInfo(), geom );
+
+        TileDrawable* drawable = new TileDrawable(
+            _model->getKey(),
+            _frame,
+            _bindings,
+            geom.get() );
+        
+        for(TerrainTileImageLayerModelVector::const_iterator i = _model->colorLayers().begin();
+            i != _model->colorLayers().end();
+            ++i)
+        {
+            TileDrawable::Layer r;
+            r._tex = i->get()->getTexture();
+            r._texMatrix = i->get()->getMatrix();
+            r._imageLayer = i->get()->getImageLayer();
+            r._layerID = r._imageLayer ? r._imageLayer->getUID() : -1;
+            drawable->_layers.push_back(r);
+        }
+
+        _geode->addDrawable( drawable );
+    }
+    else
+    {
+        addSurfaceMesh();
+        addSkirtMesh();
+        installColorLayers();
+        _geode->addDrawable( _surfaceGeom.get() );
+    }
     
+    _geode->getDrawable(0)->setInitialBound( computeBoundingBox() );
+
     SurfaceNode* node = new SurfaceNode();
     node->setMatrix( _local2world );
-
-    _surfaceGeom->setInitialBound( computeBoundingBox() );
-
     node->addChild( _geode.get() );
+
     return node;
 }
 

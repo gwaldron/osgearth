@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "MPGeometry"
+#include "TileDrawable"
 
 #include <osg/Version>
 #include <osgUtil/MeshOptimizers>
@@ -30,23 +30,26 @@ using namespace osg;
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 
-#define LC "[MPGeometry] "
+#define LC "[TileDrawable] "
 
 
-MPGeometry::MPGeometry(const TileKey& key, const MapFrame& frame, int imageUnit) : 
-osg::Geometry    ( ),
-_frame           ( frame ),
-_imageUnit       ( imageUnit )
+TileDrawable::TileDrawable(const TileKey&        key, 
+                           const MapFrame&       frame,
+                           const RenderBindings& bindings,
+                           osg::Geometry*        geometry) :
+osg::Drawable( ),
+_frame       ( frame ),
+_bindings    ( bindings ),
+_geom        ( geometry )
 {
+    setUseVertexBufferObjects( true );
+    setUseDisplayList( false );
+
     _supportsGLSL = Registry::capabilities().supportsGLSL();
 
     unsigned tw, th;
     key.getProfile()->getNumTiles(key.getLOD(), tw, th);
     _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
-
-    _imageUnitParent = _imageUnit + 1; // temp
-
-    _elevUnit = _imageUnit + 2; // temp
 
     // establish uniform name IDs.
     _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
@@ -56,16 +59,13 @@ _imageUnit       ( imageUnit )
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
 
     _texMatrixUniformNameID    = osg::Uniform::getNameID( "oe_layer_texMatrix" );
-
-    // we will set these later (in TileModelCompiler)
-    this->setUseVertexBufferObjects(true);
-    this->setUseDisplayList(false);
 }
 
 
 void
-MPGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
+TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 {
+#if 0
     // check the map frame to see if it's up to date
     if ( _frame.needsSync() )
     {
@@ -89,6 +89,7 @@ MPGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
             _layers.swap( reordered );
         }
     }
+#endif
 
     unsigned layersDrawn = 0;
 
@@ -97,6 +98,9 @@ MPGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
     osg::ref_ptr<osg::GL2Extensions> ext;
     unsigned contextID;
     osg::State& state = *renderInfo.getState();
+
+    //unsigned f = state.getFrameStamp()?state.getFrameStamp()->getFrameNumber():0;
+    //OE_WARN << LC << "frame="<<f<<"\n";
 
     if (_supportsGLSL)
     {
@@ -163,7 +167,7 @@ MPGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
         if ( imageLayer->getVisible() && imageLayer->getOpacity() > 0.0f )
         {
             // bind the proper unit:
-            state.setActiveTextureUnit( 0 ); // todo: color binding unit
+            state.setActiveTextureUnit( _bindings.color().unit() );
 
             // bind the color texture:
             if ( i->_tex.valid() )
@@ -204,16 +208,16 @@ MPGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
                 }
 
                 // draw the primitive sets.
-                for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
+                for(unsigned p=0; p != _geom->getPrimitiveSetList().size(); ++p)
                 {
-                    const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
-                    if ( primitiveset )
+                    const osg::PrimitiveSet* primSet = _geom->getPrimitiveSet(p);
+                    if ( primSet )
                     {
-                        primitiveset->draw(state, true);
+                        primSet->draw(state, true);
                     }
                     else
                     {
-                        OE_WARN << LC << "Strange, MPGeometry had a 0L primset" << std::endl;
+                        OE_WARN << LC << "Strange, TileDrawable had a 0L primset" << std::endl;
                     }
                 }
 
@@ -231,17 +235,17 @@ MPGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
             ext->glUniform1i( uidLocation, (GLint)-1 );
         if ( orderLocation >= 0 )
             ext->glUniform1i( orderLocation, (GLint)0 );
-
-        for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)
+        
+        for(unsigned p=0; p != _geom->getPrimitiveSetList().size(); ++p)
         {
-            const osg::PrimitiveSet* primitiveset = _primitives[primitiveSetNum].get();
-            if ( primitiveset )
+            const osg::PrimitiveSet* primSet = _geom->getPrimitiveSet(p);
+            if ( primSet )
             {
-                primitiveset->draw(state, true);
+                primSet->draw(state, true);
             }
             else
             {
-                OE_WARN << LC << "Strange, MPGeometry had a 0L primset" << std::endl;
+                OE_WARN << LC << "INTERNAL: TileDrawable had a 0L primset" << std::endl;
             }
         }
     }
@@ -261,9 +265,10 @@ MPGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 #endif
 
 osg::BoundingBox
-MPGeometry:: COMPUTE_BOUND() const
+TileDrawable:: COMPUTE_BOUND() const
 {
-    osg::BoundingBox bbox = osg::Geometry:: COMPUTE_BOUND ();
+    //osg::BoundingBox bbox = osg::Drawable:: COMPUTE_BOUND ();
+    osg::BoundingBox bbox = _geom->computeBound();
     {
         // update the uniform.
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
@@ -272,51 +277,16 @@ MPGeometry:: COMPUTE_BOUND() const
     return bbox;
 }
 
-void
-MPGeometry::validate()
-{
-    unsigned numVerts = getVertexArray()->getNumElements();
-
-    for(unsigned i=0; i < _primitives.size(); ++i)
-    {
-        osg::DrawElements* de = static_cast<osg::DrawElements*>(_primitives[i].get());
-        if ( de->getMode() != GL_TRIANGLES )
-        {
-            OE_WARN << LC << "Invalid primitive set - not GL_TRIANGLES" << std::endl;
-            _primitives.clear();
-        }
-
-        else if ( de->getNumIndices() % 3 != 0 )
-        {
-            OE_WARN << LC << "Invalid primitive set - wrong number of indicies" << std::endl;
-            //_primitives.clear();
-            osg::DrawElementsUShort* deus = static_cast<osg::DrawElementsUShort*>(de);
-            int extra = de->getNumIndices() % 3;
-            deus->resize(de->getNumIndices() - extra);
-            OE_WARN << LC << "   ..removed " << extra << " indices" << std::endl;
-            //return;
-        }
-        else
-        {
-            for( unsigned j=0; j<de->getNumIndices(); ++j ) 
-            {
-                unsigned index = de->index(j);
-                if ( index >= numVerts )
-                {
-                    OE_WARN << LC << "Invalid primitive set - index out of bounds" << std::endl;
-                    _primitives.clear();
-                    return;
-                }
-            }
-        }
-    }
-}
-
 
 void 
-MPGeometry::releaseGLObjects(osg::State* state) const
+TileDrawable::releaseGLObjects(osg::State* state) const
 {
-    osg::Geometry::releaseGLObjects( state );
+    osg::Drawable::releaseGLObjects( state );
+
+    if ( _geom.valid() )
+    {
+        _geom->releaseGLObjects( state );
+    }
 
     for(std::vector<Layer>::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
     {
@@ -329,9 +299,14 @@ MPGeometry::releaseGLObjects(osg::State* state) const
 
 
 void
-MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
+TileDrawable::resizeGLObjectBuffers(unsigned maxSize)
 {
-    osg::Geometry::resizeGLObjectBuffers( maxSize );
+    osg::Drawable::resizeGLObjectBuffers( maxSize );
+
+    if ( _geom.valid() )
+    {
+        _geom->resizeGLObjectBuffers( maxSize );
+    }
 
     if ( _pcd.size() < maxSize )
     {
@@ -341,17 +316,15 @@ MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
 
 
 void 
-MPGeometry::compileGLObjects(osg::RenderInfo& renderInfo) const
+TileDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
 {
-    osg::Geometry::compileGLObjects( renderInfo );
-    
+    osg::Drawable::compileGLObjects( renderInfo );
+
     osg::State& state = *renderInfo.getState();
     unsigned contextID = state.getContextID();
     GLBufferObject::Extensions* extensions = GLBufferObject::getExtensions(contextID, true);
     if (!extensions)
         return;
-
-    MPGeometry* ncthis = const_cast<MPGeometry*>(this);
 
     for(std::vector<Layer>::iterator i = _layers.begin(); i != _layers.end(); ++i)
     {
@@ -359,35 +332,65 @@ MPGeometry::compileGLObjects(osg::RenderInfo& renderInfo) const
             i->_tex->apply( state );
     }
 
+    if ( _geom.valid() )
+    {
+        _geom->compileGLObjects( renderInfo );
+    }
+
     // unbind the BufferObjects
-    extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
-    extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
+    //extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
+    //extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
+}
+
+void
+TileDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
+{
+    State& state = *renderInfo.getState();
+    bool checkForGLErrors = state.getCheckForGLErrors() == osg::State::ONCE_PER_ATTRIBUTE;
+    if ( checkForGLErrors ) state.checkGLErrors("start of TileDrawable::drawImplementation()");
+
+#if OSG_MIN_VERSION_REQUIRED(3,3,1)
+    _geom->drawVertexArraysImplementation( renderInfo );
+#else
+    drawVertexArraysImplementation( renderInfo );
+#endif
+
+    drawPrimitivesImplementation( renderInfo );
+
+    if ( checkForGLErrors ) state.checkGLErrors("end of TileDrawable::drawImplementation()");
+    
+    // unbind the VBO's if any are used.
+    state.unbindVertexBufferObject();
+    state.unbindElementBufferObject();
 }
 
 
 #if OSG_MIN_VERSION_REQUIRED(3,1,8)
 void
-MPGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
+TileDrawable::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
 {
+    if ( !_geom.valid() )
+        return;
+
     State& state = *renderInfo.getState();
 
-    bool handleVertexAttributes = !_vertexAttribList.empty();
+    bool handleVertexAttributes = !_geom->getVertexAttribArrayList().empty();
 
     ArrayDispatchers& arrayDispatchers = state.getArrayDispatchers();
 
     arrayDispatchers.reset();
     arrayDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
 
-    arrayDispatchers.activateNormalArray(_normalArray.get());
-    arrayDispatchers.activateColorArray(_colorArray.get());
-    arrayDispatchers.activateSecondaryColorArray(_secondaryColorArray.get());
-    arrayDispatchers.activateFogCoordArray(_fogCoordArray.get());
+    arrayDispatchers.activateNormalArray(_geom->getNormalArray());
+    arrayDispatchers.activateColorArray(_geom->getColorArray());
+    arrayDispatchers.activateSecondaryColorArray(_geom->getSecondaryColorArray());
+    arrayDispatchers.activateFogCoordArray(_geom->getFogCoordArray());
 
     if (handleVertexAttributes)
     {
-        for(unsigned int unit=0;unit<_vertexAttribList.size();++unit)
+        for(unsigned int unit=0;unit<_geom->getVertexAttribArrayList().size();++unit)
         {
-            arrayDispatchers.activateVertexAttribArray(unit, _vertexAttribList[unit].get());
+            arrayDispatchers.activateVertexAttribArray(unit, _geom->getVertexAttribArray(unit));
         }
     }
 
@@ -397,24 +400,24 @@ MPGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
     state.lazyDisablingOfVertexAttributes();
 
     // set up arrays
-    if( _vertexArray.valid() )
-        state.setVertexPointer(_vertexArray.get());
+    if( _geom->getVertexArray() )
+        state.setVertexPointer(_geom->getVertexArray());
 
-    if (_normalArray.valid() && _normalArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setNormalPointer(_normalArray.get());
+    if (_geom->getNormalArray() && _geom->getNormalArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+        state.setNormalPointer(_geom->getNormalArray());
 
-    if (_colorArray.valid() && _colorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setColorPointer(_colorArray.get());
+    if (_geom->getColorArray() && _geom->getColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+        state.setColorPointer(_geom->getColorArray());
 
-    if (_secondaryColorArray.valid() && _secondaryColorArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setSecondaryColorPointer(_secondaryColorArray.get());
+    if (_geom->getSecondaryColorArray() && _geom->getSecondaryColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+        state.setSecondaryColorPointer(_geom->getSecondaryColorArray());
 
-    if (_fogCoordArray.valid() && _fogCoordArray->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setFogCoordPointer(_fogCoordArray.get());
+    if (_geom->getFogCoordArray() && _geom->getFogCoordArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+        state.setFogCoordPointer(_geom->getFogCoordArray());
 
-    for(unsigned int unit=0;unit<_texCoordList.size();++unit)
+    for(unsigned int unit=0;unit<_geom->getTexCoordArrayList().size();++unit)
     {
-        const Array* array = _texCoordList[unit].get();
+        const Array* array = _geom->getTexCoordArray(unit);
         if (array)
         {
             state.setTexCoordPointer(unit,array);
@@ -423,9 +426,9 @@ MPGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
 
     if ( handleVertexAttributes )
     {
-        for(unsigned int index = 0; index < _vertexAttribList.size(); ++index)
+        for(unsigned int index = 0; index < _geom->getVertexAttribArrayList().size(); ++index)
         {
-            const Array* array = _vertexAttribList[index].get();
+            const Array* array = _geom->getVertexAttribArray(index);
             if (array && array->getBinding()==osg::Array::BIND_PER_VERTEX)
             {
                 if (array->getPreserveDataType())
@@ -449,7 +452,7 @@ MPGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
 #else
 
 void
-MPGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
+TileDrawable::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
 {
     State& state = *renderInfo.getState();
     bool handleVertexAttributes = !_vertexAttribList.empty();
@@ -529,20 +532,3 @@ MPGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
 }
 
 #endif
-
-void
-MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
-{
-    State& state = *renderInfo.getState();
-    bool checkForGLErrors = state.getCheckForGLErrors() == osg::State::ONCE_PER_ATTRIBUTE;
-    if ( checkForGLErrors ) state.checkGLErrors("start of MPGeometry::drawImplementation()");
-
-    drawVertexArraysImplementation( renderInfo );
-    drawPrimitivesImplementation( renderInfo );
-
-    if ( checkForGLErrors ) state.checkGLErrors("end of MPGeometry::drawImplementation()");
-    
-    // unbind the VBO's if any are used.
-    state.unbindVertexBufferObject();
-    state.unbindElementBufferObject();
-}

@@ -57,12 +57,14 @@ namespace
 
 TileGroupFactory::TileGroupFactory(const Map*                    map,
                                    TerrainEngine*                terrainEngine,
+                                   GeometryPool*                 geometryPool,
                                    TileNodeRegistry*             liveTiles,
                                    TileNodeRegistry*             deadTiles,
                                    const RenderBindings&         renderBindings,
                                    const MPTerrainEngineOptions& options) :
 _frame         ( map ),
 _terrainEngine ( terrainEngine ),
+_geometryPool  ( geometryPool ),
 _liveTiles     ( liveTiles ),
 _deadTiles     ( deadTiles ),
 _renderBindings( renderBindings ),
@@ -186,7 +188,7 @@ TileGroupFactory::createTileNodeGraph(TerrainTileModel* model,
     const unsigned tileSize = 17;
 
     // Build the surface node.
-    SurfaceNodeFactory factory(model, _frame, tileSize, _options);
+    SurfaceNodeFactory factory(model, _frame, _renderBindings, _geometryPool, tileSize, _options);
     SurfaceNode* surfaceNode = factory.createSurfaceNode();
 
     surfaceNode->setEngineUID( _terrainEngine->getUID() );

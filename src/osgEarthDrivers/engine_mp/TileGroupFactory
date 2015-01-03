@@ -20,6 +20,7 @@
 #define OSGEARTH_DRIVERS_MP_TILE_GROUP_FACTORY 1
 
 #include "Common"
+#include "GeometryPool"
 #include "TileNode"
 #include "TileNodeRegistry"
 #include "MPTerrainEngineOptions"
@@ -43,6 +44,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         TileGroupFactory(
             const Map*                          map,
             TerrainEngine*                      engine,
+            GeometryPool*                       geometryPool,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
             const RenderBindings&               renderBindings,
@@ -88,6 +90,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         const MPTerrainEngineOptions&         _options;
         const RenderBindings&                 _renderBindings;
         TerrainEngine*                        _terrainEngine;
+        GeometryPool*                         _geometryPool;
 
         unsigned getMinimumRequiredLevel();
     };

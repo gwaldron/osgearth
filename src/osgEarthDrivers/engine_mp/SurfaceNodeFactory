@@ -23,6 +23,9 @@
 #include "SurfaceNode"
 #include "MPTerrainEngineOptions"
 #include "MaskGenerator"
+#include "GeometryPool"
+#include "TileDrawable"
+#include "RenderBindings"
 #include "MPGeometry"
 #include <osg/Geode>
 
@@ -48,6 +51,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         SurfaceNodeFactory(
             const TerrainTileModel*       model,
             const MapFrame&               frame,
+            const RenderBindings&         bindings,
+            GeometryPool*                 geometryPool,
             unsigned                      tileSize,
             const MPTerrainEngineOptions& options);
 
@@ -63,12 +68,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         /** Adds a skirt mesh to the existing geometry */
         void addSkirtMesh();
-
-        /** Adds the component of the terrain skirt mesh corresponsing to a single vertex. */
-        //void addSkirtForIndex(
-        //    unsigned index,
-        //    float    skirtHeight,
-        //    osg::ref_ptr<osg::DrawElements>& elements);
 
         /** Sets up the MP geometry with the color layers to render. */
         void installColorLayers();
@@ -112,6 +111,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         unsigned                      _tileSize;
         MaskGenerator                 _maskSet;
         osg::ref_ptr<osg::Geode>      _geode;
+        osg::ref_ptr<TileDrawable>    _tileDrawable;
         osg::ref_ptr<MPGeometry>      _surfaceGeom;
         osg::DrawElements*            _surfacePrimSet;
         osg::Vec3Array*               _verts;
@@ -121,6 +121,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         bool                          _createSkirt;
         unsigned                      _numVerts;
         osg::BoundingSphere           _tileBound;
+        const RenderBindings          _bindings;
+        osg::ref_ptr<GeometryPool>    _geometryPool;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

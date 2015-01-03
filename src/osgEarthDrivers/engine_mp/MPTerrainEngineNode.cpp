@@ -264,12 +264,20 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     {
         _deadTiles = new TileNodeRegistry("dead");
     }
+
+    // A shared geometry pool.
+    if ( ::getenv("OSGEARTH_MP_NO_POOL") == 0L )
+    {
+        const unsigned tileSize = 17;
+        _geometryPool = new GeometryPool( tileSize, _terrainOptions );
+    }
     
     // handle an already-established map profile:
+    MapInfo mapInfo( map );
     if ( _update_mapf->getProfile() )
     {
         // NOTE: this will initialize the map with the startup layers
-        onMapInfoEstablished( MapInfo(map) );
+        onMapInfoEstablished( mapInfo );
     }
 
     // install a layer callback for processing further map actions:
@@ -538,6 +546,7 @@ MPTerrainEngineNode::getTileGroupFactory()
         factory = new TileGroupFactory(
             getMap(),
             this, // engine
+            _geometryPool.get(),
             _liveTiles.get(),
             _deadTiles.get(),
             _renderBindings,

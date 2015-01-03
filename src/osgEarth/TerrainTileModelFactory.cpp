@@ -308,6 +308,9 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     }
     else if ( modelStore )
     {
+        //TODO: check whether we actually expect a parent model to exist; 
+        // i.e. we are not at the root (or first) level.
+
         // no image; use the parent texture with a scale/bias matrix.
         osg::ref_ptr<const TerrainTileModel> parentModel;
         TileKey parentKey = key.createParentKey();

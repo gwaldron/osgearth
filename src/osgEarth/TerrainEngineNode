@@ -110,7 +110,6 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT TerrainEngineNode : public osg::CoordinateSystemNode,
                                               public TerrainEngine,
-                                              //public TerrainTileNodeBroker,
                                               public TerrainEngineRequirements
     {
     public:

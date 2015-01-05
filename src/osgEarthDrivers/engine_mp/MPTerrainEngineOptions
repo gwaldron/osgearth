@@ -22,7 +22,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/TerrainOptions>
 #include <osgEarthSymbology/Color>
-#include <osg/LOD>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
@@ -37,7 +36,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     public:
         MPTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
             _skirtRatio        ( 0.05 ),
-            _quickRelease      ( false ), // TODO: might be deprecated (incompatible with tex-driven engine?)
+            _quickRelease      ( true ),
             _lodFallOff        ( 0.0 ),
             _normalizeEdges    ( false ),
             _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),

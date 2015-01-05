@@ -24,10 +24,12 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 #define LC "[GeometryPool] "
 
+// TODO: experiment with sharing a single texture coordinate array 
+// across all shared geometries.
 //#define SHARE_TEX_COORDS 1
 
 
-GeometryPool::GeometryPool(unsigned                      tileSize,
+GeometryPool::GeometryPool(unsigned                       tileSize,
                            const RexTerrainEngineOptions& options) :
 _tileSize( tileSize ),
 _options ( options )
@@ -58,7 +60,7 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
         // Not found. Create it.
         out = createGeometry( tileKey, mapInfo, 0L );
         _geometryMap[ geomKey ] = out.get();
-        OE_NOTICE << LC << "Geometry pool size = " << _geometryMap.size() << "\n";
+        OE_DEBUG << LC << "Geometry pool size = " << _geometryMap.size() << "\n";
     }
 }
 

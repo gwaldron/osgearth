@@ -219,9 +219,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                         }
                         else
                         {
-                            // Return an empty tile node, so the parent tile will never ask again
-                            // as long as it remains in memory.
-                            node = new TileNode();
+                            // the parent tile will never ask again as long as it remains in memory.
+                            node = new InvalidTileNode( key );
                         }
                     }
                     else

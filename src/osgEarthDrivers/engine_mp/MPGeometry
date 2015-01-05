@@ -46,23 +46,21 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         {
             Layer()
             {
-                _texMatrixUniformID = ~0;
-                _parentTexMatrixUniformID = ~0;
+                _texMatUniformID = ~0;
             }
 
-            osgEarth::UID                   _layerID;
-            osg::ref_ptr<const ImageLayer>  _imageLayer;
+            osgEarth::UID                  _layerID;
+            osg::ref_ptr<const ImageLayer> _imageLayer;
+            osg::ref_ptr<osg::Texture>     _tex;
+            osg::ref_ptr<osg::Vec2Array>   _texCoords;
+            osg::ref_ptr<osg::Texture>     _texParent;
+            osg::Matrixf                   _texMatParent; // yes, must be a float matrix
+            float                          _alphaThreshold;
+            bool                           _opaque;
 
-            osg::ref_ptr<osg::Texture>      _tex;
-            osg::ref_ptr<osg::RefMatrixf>   _texMatrix;
-            unsigned                        _texMatrixUniformID;
-
-            osg::ref_ptr<osg::Texture>      _parentTex;
-            osg::ref_ptr<osg::RefMatrixf>   _parentTexMatrix;
-            unsigned                        _parentTexMatrixUniformID;
-
-            float                           _alphaThreshold;
-            bool                            _opaque;
+            // for shared layers only:
+            osg::Matrixf                   _texMat;          // yes, must be a float matrix
+            unsigned                       _texMatUniformID; // uniform location ID
 
             // in support of std::find
             inline bool operator == (const osgEarth::UID& rhs) const {
@@ -80,9 +78,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         unsigned _birthTimeUniformNameID;
         unsigned _orderUniformNameID;
         unsigned _opacityUniformNameID;
+        unsigned _texMatParentUniformNameID;
         unsigned _tileKeyUniformNameID;
-        unsigned _texMatrixUniformNameID;
-        unsigned _parentTexMatrixUniformNameID;
 
         // Data stored for each graphics context:
         struct PerContextData {
@@ -95,20 +92,26 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         mutable osg::Vec4f _tileKeyValue;
 
+        osg::ref_ptr<osg::Vec2Array> _tileCoords; // [0..1] unified tile coordinates
+
         int _imageUnit;          // image unit for primary texture
         int _imageUnitParent;    // image unit for secondary (parent) texture
         int _elevUnit;           // image unit for elevation texture
 
         bool _supportsGLSL;
 
+        osg::ref_ptr<osg::Texture> _elevTex;
+
     public:
         
         // construct a new MPGeometry.
         MPGeometry(const TileKey& key, const MapFrame& frame, int primaryImageUnit);
 
-        void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
+        // sets an image unit to use for parent texture blending.
+        void setParentImageUnit(int value) { _imageUnitParent = value; }
 
-        void drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const;
+        // render all passes of the geometry.
+        void renderPrimitiveSets(osg::State& state, bool renderColor, bool usingVBOs) const;
 
         // validate the geometry is OK.
         void validate();
@@ -126,7 +129,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         // all the code that handles non-fastPath (don't need it) and
         // called into our custom renderPrimitiveSets method.
         void drawImplementation(osg::RenderInfo& renderInfo) const;
-        
+
         // recalculate the bound for the tile key uniform.
 #if OSG_VERSION_GREATER_THAN(3,3,1)
         osg::BoundingBox computeBoundingBox() const;

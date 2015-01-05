@@ -22,7 +22,7 @@
 #include "Common"
 #include "TileNode"
 #include "TileNodeRegistry"
-#include <osg/PagedLOD>
+#include <osg/Group>
 #include <osgEarth/ThreadingUtils>
 
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
@@ -38,17 +38,32 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     class TileGroup : public osg::Group
     {
     public:
-        TileGroup();
+        TileGroup(const TileKey&    key, 
+                  const UID&        engineUID,
+                  TileNodeRegistry* live,
+                  TileNodeRegistry* dead);
 
-        TileGroup(const TileKey& key);
+        const UID& getEngineUID() const { return _engineUID; }
 
-        // TileKey representing this group.
         const TileKey& getKey() const { return _key; }
+
+    public: // osg::Node
+        virtual void traverse(osg::NodeVisitor& nv);
+
+    public: // internal
+        void applyUpdate(osg::Node* node);
 
     protected:
         virtual ~TileGroup() { }
 
-        TileKey _key;
+        TileNode* getTileNode(unsigned q);
+
+        osg::ref_ptr<osg::Node>        _updateAgent;
+        mutable Threading::Mutex       _updateMutex;
+        UID                            _engineUID;
+        TileKey                        _key;
+        osg::ref_ptr<TileNodeRegistry> _live;
+        osg::ref_ptr<TileNodeRegistry> _dead;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

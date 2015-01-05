@@ -18,7 +18,6 @@
 */
 #include "TilePagedLOD"
 #include "TileNodeRegistry"
-#include "TileGroup"
 #include <osg/Version>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
@@ -169,29 +168,21 @@ TilePagedLOD::addChild(osg::Node* node)
 {
     if ( node )
     {
-        // If it's a TileGroup, find the tilenode children and add them.
-        TileGroup* tileGroup = dynamic_cast<TileGroup*>( node );
-        if ( tileGroup )
-        {
-            TileNodeVector nodes;
-            for(unsigned i=0; i<tileGroup->getNumChildren(); ++i)
-            {
-                TileNode* tileNode = dynamic_cast<TileNode*>( tileGroup->getChild(i) );
-                if ( tileNode )
-                {
-                    nodes.push_back( tileNode );
-                }
-            }
-            _live->add( nodes );
-        }
-
-        // TileNode here means an invalid node, disable paging.
-        else if ( dynamic_cast<TileNode*>(node) )
+        // if we see an invalid tile marker, disable the paged lod slot.
+        if ( dynamic_cast<InvalidTileNode*>(node) )
         {
             this->setFileName( 1, "" );
             this->setRange( 1, 0, 0 );
             this->setRange( 0, 0.0f, FLT_MAX );
             return true;
+        }
+
+        // If it's a TileNode, this is the simple first addition of the 
+        // static TileNode child (not from the pager).
+        TileNode* tilenode = dynamic_cast<TileNode*>( node );
+        if ( tilenode && _live.get() )
+        {
+            _live->add( tilenode );
         }
 
         return osg::PagedLOD::addChild( node );

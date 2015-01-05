@@ -137,25 +137,6 @@ namespace osgEarth
         TerrainTileImageLayerModelVector& sharedLayers() { return _sharedLayers; }
         const TerrainTileImageLayerModelVector& sharedLayers() const { return _sharedLayers; }
 
-        //LayerVector& colorLayers() { return _colorLayers; }
-        //const LayerVector& colorLayers() const { return _colorLayers; }
-
-        ///** Shared layers (available to all rendering passes, e.g. elevation) */
-        //LayerVector& sharedLayers() { return _sharedLayers; }
-        //const LayerVector& sharedLayers() const { return _sharedLayers; }
-
-        ///** Find the first layer of a type */
-        //TerrainTileLayerModel* getLayer(LayerType type);
-        //const TerrainTileLayerModel* getLayer(LayerType type) const;
-
-        ///** Find the first layer with a matching name */
-        //TerrainTileLayerModel* getLayer(const std::string& name);
-        //const TerrainTileLayerModel* getLayer(const std::string& name) const;
-
-        ///** Find the layer with a matching layer uid */
-        //TerrainTileLayerModel* getLayer(const UID& layerUID);
-        //const TerrainTileLayerModel* getLayer(const UID& layerUID) const;
-
         /** Try to find a layer */
         const TerrainTileImageLayerModel* findColorLayerByUID(const UID& uid) const;
         const TerrainTileImageLayerModel* findSharedLayerByName(const std::string& name) const;

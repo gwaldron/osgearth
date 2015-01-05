@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_ENGINE_OSGTERRAIN_DYNAMIC_LOD_SCALE_CALLBACK_H
+#define OSGEARTH_ENGINE_OSGTERRAIN_DYNAMIC_LOD_SCALE_CALLBACK_H 1
+
+#include <osg/NodeCallback>
+#include <osg/CullStack>
+
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
+{
+    /**
+     * Cull callback that dynamically computes an LOD scale based on
+     * distance to the camera and a "fall off" metric. As the fall off
+     * increases, farther objects' LOD scale will increase. A good
+     * range for the fall-off number is 0..5.
+     */
+    struct DynamicLODScaleCallback : public osg::NodeCallback 
+    {
+        DynamicLODScaleCallback( float fallOff ) : _fallOff(fallOff) { }
+
+        /** dtor */
+        virtual ~DynamicLODScaleCallback() { }
+
+        void operator()( osg::Node* node, osg::NodeVisitor* nv )
+        {
+            osg::CullStack* cs = dynamic_cast<osg::CullStack*>(nv);
+            if ( cs )
+            {
+                osg::LOD* lod = static_cast<osg::LOD*>( node );
+                osg::Vec3 center = lod->getCenter(); 
+
+                osg::Vec3 eye = nv->getEyePoint();
+                osg::Vec3 eyeVec = eye; eyeVec.normalize();
+                float has = osg::clampAbove( eye.length() - 6356752.3142f, 0.0f );
+                float centerToEye = nv->getDistanceToViewPoint(center, false);
+                float bsToEye = centerToEye - lod->getChild(0)->getBound().radius();
+
+                float scaleAdj = 1.0f;
+                if ( bsToEye > has )
+                {
+                    float denom = osg::maximum(0.1f, (1.0f/_fallOff)) * 10000.0f;
+                    scaleAdj = osg::clampBetween( log10f(bsToEye/denom), 1.0f, 3.0f );
+                    
+                    //OE_INFO << LC 
+                    //    << std::fixed
+                    //    << "centerToEye=" << centerToEye 
+                    //    << ", bsToEye=" << bsToEye
+                    //    << ", scaleAdj=" << scaleAdj
+                    //    << std::endl;
+                }
+
+                float lodScale = cs->getLODScale();
+                cs->setLODScale( lodScale * scaleAdj );
+                traverse( node, nv );
+                cs->setLODScale( lodScale );
+            }
+            else
+            {
+                traverse( node, nv );
+            }
+        }
+
+        float _fallOff;
+    };
+
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
+
+#endif //OSGEARTH_ENGINE_OSGTERRAIN_DYNAMIC_LOD_SCALE_CALLBACK_H

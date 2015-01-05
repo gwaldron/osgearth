@@ -98,7 +98,8 @@ LevelDBCacheImpl::~LevelDBCacheImpl()
 {
     if ( _db )
     {
-        delete _db;
+        //occaisonally causes deadlock on shutdown..?
+        //delete _db;
         _db = 0L;
     }
 }

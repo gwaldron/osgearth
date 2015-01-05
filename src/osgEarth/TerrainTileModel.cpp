@@ -61,8 +61,9 @@ _maxHeight(-FLT_MAX )
 
 TerrainTileModel::TerrainTileModel(const TileKey&  key,
                                    const Revision& revision) :
-_key     ( key ),
-_revision( revision )
+_key                   ( key ),
+_revision              ( revision ),
+_requiresUpdateTraverse( false )
 {
     //NOP
 }

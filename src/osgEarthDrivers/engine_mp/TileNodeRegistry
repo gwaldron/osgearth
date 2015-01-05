@@ -23,7 +23,6 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/TerrainTileModel>
 #include <OpenThreads/Atomic>
 #include <map>
 
@@ -34,19 +33,18 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     /**
      * Holds a reference to each tile created by the driver.
      */
-    class TileNodeRegistry : public osg::Referenced,
-                             public TerrainTileModelStore
+    class TileNodeRegistry : public osg::Referenced
     {
     public:
         typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileNodeMap;
 
         // Proprtype for a locked tileset operation (see run)
         struct Operation {
-            virtual void operator()(TileNodeMap& tiles) =0;
+            virtual void operator()( TileNodeMap& tiles ) =0;
         };
 
         struct ConstOperation {
-            virtual void operator()(const TileNodeMap& tiles) const =0;
+            virtual void operator()( const TileNodeMap& tiles ) const =0;
         };
 
     public:
@@ -101,7 +99,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void move( TileNode* tile, TileNodeRegistry* destination );
 
         /** Finds a tile in the registry */
-        bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile ) const;
+        bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
 
         /** Finds a tile in the registry and then removes it. */
         bool take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );
@@ -117,14 +115,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         /** Number of tiles in the registry. */
         unsigned size() const { return _tiles.size(); }
-
-        /** Takes one arbitrary tile node from the registry. */
-        TileNode* takeAny();
-
-    public: // TileKeyDataStore<const TerrainTileModel>
-
-        /** Finds a tile in the registry */
-        bool get(const TileKey& key, osg::ref_ptr<const TerrainTileModel>& out_tile) const;
 
     protected:
 

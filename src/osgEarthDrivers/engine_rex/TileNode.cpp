@@ -59,7 +59,7 @@ _outOfDate         ( false )
     // revisions are initially in sync:
     if ( model )
     {
-        _maprevision = model->getRevision();
+        _mapRevision = model->getRevision();
 
         if ( model->requiresUpdateTraverse() )
         {

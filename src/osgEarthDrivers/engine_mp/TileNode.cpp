@@ -35,39 +35,77 @@ using namespace OpenThreads;
 
 #define LC "[TileNode] "
 
-TileNode::TileNode() :
-_model( 0L )
-{
-    //NOP
-}
 
-TileNode::TileNode(const TerrainTileModel* model) :
+TileNode::TileNode(const TileKey& key, const TileModel* model, const osg::Matrixd& matrix) :
+_key               ( key ),
 _model             ( model ),
 _lastTraversalFrame( 0 ),
 _dirty             ( false ),
 _outOfDate         ( false )
 {
-    // model required.
-    if ( !model )
-    {
-        OE_WARN << LC << "Illegal: Created a tile node with no model\n";
-        return;
-    }
-
-    this->setName( _model->getKey().str() );
+    this->setName( key.str() );
+    this->setMatrix( matrix );
 
     // revisions are initially in sync:
     if ( model )
     {
-        _maprevision = model->getRevision();
-
+        _maprevision = model->_revision;
         if ( model->requiresUpdateTraverse() )
         {
             this->setNumChildrenRequiringUpdateTraversal(1);
         }
+        
+        if (model->_elevationTexture.valid() && model->_elevationData.getLocator())
+        {
+            osg::Matrixd elevMatrix;
+
+            model->_tileLocator->createScaleBiasMatrix(
+                model->_elevationData.getLocator()->getDataExtent(),
+                elevMatrix);
+
+            _elevTexMat = new osg::RefMatrix(elevMatrix);
+        }
+
+        if (model->_normalTexture.valid() && model->_normalData.getLocator())
+        {
+            osg::Matrixd normalMatrix;
+
+            model->_tileLocator->createScaleBiasMatrix(
+                model->_normalData.getLocator()->getDataExtent(),
+                normalMatrix);
+
+            _normalTexMat = new osg::RefMatrix(normalMatrix);
+        }
     }
 }
 
+osg::Texture*
+TileNode::getElevationTexture() const
+{
+    return _model.valid() ?
+        _model->_elevationTexture.get() :
+        0L;
+}
+
+osg::RefMatrix*
+TileNode::getElevationTextureMatrix() const
+{
+    return _elevTexMat.get();
+}
+
+osg::Texture*
+TileNode::getNormalTexture() const
+{
+    return _model.valid() ?
+        _model->_normalTexture.get() :
+        0L;
+}
+
+osg::RefMatrix*
+TileNode::getNormalTextureMatrix() const
+{
+    return _normalTexMat.get();
+}
 
 void
 TileNode::setLastTraversalFrame(unsigned frame)
@@ -96,4 +134,45 @@ TileNode::getOrCreatePayloadGroup()
         this->addChild( _payload.get() );
     }
     return _payload.get();
+}
+
+void
+TileNode::traverse( osg::NodeVisitor& nv )
+{
+    if ( _model.valid() )
+    {
+        if ( nv.getVisitorType() == nv.CULL_VISITOR )
+        {
+            // if this tile is marked dirty, bump the marker so the engine knows it
+            // needs replacing.
+            if ( _dirty || _model->_revision != _maprevision )
+            {
+                _outOfDate = true;
+            }
+        }
+        else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+        {
+            _model->updateTraverse(nv);
+        }
+    }    
+
+    osg::MatrixTransform::traverse( nv );
+}
+
+void
+TileNode::releaseGLObjects(osg::State* state) const
+{
+    osg::MatrixTransform::releaseGLObjects( state );
+
+    if ( _model.valid() )
+        _model->releaseGLObjects( state );
+}
+
+void
+TileNode::resizeGLObjectBuffers(unsigned maxSize)
+{
+    osg::MatrixTransform::resizeGLObjectBuffers( maxSize );
+
+    if ( _model.valid() )
+        const_cast<TileModel*>(_model.get())->resizeGLObjectBuffers( maxSize );
 }

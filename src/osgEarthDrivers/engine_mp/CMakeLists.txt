@@ -3,7 +3,6 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
 set(TARGET_GLSL
     MPEngine.vert.glsl
-    MPEngine.vert.pooled.glsl
     MPEngine.frag.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
@@ -14,41 +13,41 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 SET(TARGET_SRC
-    GeometryPool.cpp
+    HeightFieldCache.cpp
+    KeyNodeFactory.cpp
     MPGeometry.cpp
     MPTerrainEngineNode.cpp
     MPTerrainEngineDriver.cpp
-    MaskGenerator.cpp
-    SurfaceNodeFactory.cpp
+    SingleKeyNodeFactory.cpp
     TerrainNode.cpp
-	TileDrawable.cpp
     TileGroup.cpp
-    TileGroupFactory.cpp
+    TileModel.cpp
+    TileModelCompiler.cpp
     TileNode.cpp
     TileNodeRegistry.cpp
+    TileModelFactory.cpp
     TilePagedLOD.cpp
     ${SHADERS_CPP}
 )
 
 SET(TARGET_H
     Common
+    DynamicLODScaleCallback
+    HeightFieldCache
     FileLocationCallback
-    GeometryPool
+    KeyNodeFactory
     MPGeometry
-    MPShaders
     MPTerrainEngineNode
     MPTerrainEngineOptions
-    MaskGenerator
     QuickReleaseGLObjects
-    RenderBindings
-    SurfaceNode
+    SingleKeyNodeFactory
     TerrainNode
-	TileDrawable
     TileGroup
-    TileGroupFactory
+    TileModel
+    TileModelCompiler
     TileNode
-    SurfaceNodeFactory
     TileNodeRegistry
+    TileModelFactory
     TilePagedLOD
 )
 

@@ -78,7 +78,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
          * Tells the tile node the current map revision, which is turn
          * will determine whether the tile is dirty and needs updating.
          */
-        void setMapRevision( const Revision& value ) { _maprevision = value; }
+        void setMapRevision( const Revision& value ) { _mapRevision = value; }
 
         /**
          * Flags this Tile as dirty, regardless of whether the revisions are in sync.
@@ -97,33 +97,24 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void setTerrainBoundingBox(const osg::BoundingBox& bbox) { _terrainBBox = bbox; }
         const osg::BoundingBox& getTerrainBoundingBox() const { return _terrainBBox; }
 
-#if 0
-    public: // OVERRIDES
-
-        virtual void traverse( class osg::NodeVisitor& nv );
-
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
-        virtual void releaseGLObjects(osg::State* state) const;
-#endif
-
     protected:
 
         virtual ~TileNode() { }
 
         osg::ref_ptr<const TerrainTileModel> _model;
         UID                                  _engineUID;
-        
-        unsigned                           _lastTraversalFrame;
-        Revision                           _maprevision;
-        bool                               _outOfDate;
-        bool                               _dirty;
-        osg::BoundingBox                   _terrainBBox;
-        osg::ref_ptr<osg::Group>           _payload;
+        Revision                             _mapRevision;
+        unsigned                             _lastTraversalFrame;
+        bool                                 _outOfDate;
+        bool                                 _dirty;
+        osg::BoundingBox                     _terrainBBox;
+        osg::ref_ptr<osg::Group>             _payload;
     };
 
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
 
+#if 0
     /**
      * Marker class - the engine will return one of these when a TileNode
      * load fails permanently. It will also blacklist the TileKey.
@@ -136,6 +127,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     protected:
         virtual ~InvalidTileNode() { }
     };
+#endif
 
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

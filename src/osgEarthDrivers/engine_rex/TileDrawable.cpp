@@ -253,9 +253,9 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
-#    define CORexUTE_BOUND computeBoundingBox
+#    define COMPUTE_BOUND computeBoundingBox
 #else
-#    define CORexUTE_BOUND computeBound
+#    define COMPUTE_BOUND computeBound
 #endif
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
@@ -265,7 +265,7 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 #endif
 
 osg::BoundingBox
-TileDrawable:: CORexUTE_BOUND() const
+TileDrawable:: COMPUTE_BOUND() const
 {
     //osg::BoundingBox bbox = osg::Drawable:: CORexUTE_BOUND ();
     osg::BoundingBox bbox = _geom->computeBound();

@@ -23,12 +23,6 @@
 #include "TileNodeRegistry"
 #include <osg/Camera>
 
-//
-//
-// I think this is incompatible with the new texture drive engine.
-// -gw.
-//
-//
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     /**
@@ -58,21 +52,34 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     // future).
     struct QuickReleaseGLObjects : public NestingDrawCallback
     {
-        QuickReleaseGLObjects(TileNodeRegistry* tiles, osg::Camera::DrawCallback* nextCB) 
-            : NestingDrawCallback( nextCB ), _tilesToRelease(tiles)
+        struct ReleaseOperation : public TileNodeRegistry::Operation
         {
-            //NOP
-        }
+            osg::State* _state;
+            ReleaseOperation( osg::State* state ) : _state(state) { }
+            void operator()( TileNodeRegistry::TileNodeMap& tiles )
+            {
+                unsigned size = tiles.size();
+                for( TileNodeRegistry::TileNodeMap::iterator i = tiles.begin(); i != tiles.end(); ++i )
+                {
+                    i->second.get()->releaseGLObjects( _state );
+                }
+                tiles.clear();
+                OE_DEBUG << "Quick-released " << size << " tiles" << std::endl;
+            }
+        };
+
+        QuickReleaseGLObjects( TileNodeRegistry* tiles, osg::Camera::DrawCallback* nextCB) 
+            : NestingDrawCallback( nextCB ), _tilesToRelease(tiles) { }
 
         // from DrawCallback
         void operator()( osg::RenderInfo& renderInfo ) const
         {
             dispatch( renderInfo );
 
-            while ( !_tilesToRelease->empty() )
+            if ( !_tilesToRelease->empty() )
             {
-                osg::ref_ptr<TileNode> tile = _tilesToRelease->takeAny();
-                tile->releaseGLObjects( renderInfo.getState() );
+                ReleaseOperation op(renderInfo.getState());
+                _tilesToRelease->run( op );
             }
         }
 

@@ -238,15 +238,14 @@ TileGroupFactory::createTileNodeGraph(TerrainTileModel* model,
             plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
         }
         
-#if 0 // TODO: reinstate this!
-
         // Install a tile-aligned bounding box in the pager node itself so we can do
         // visibility testing before paging in subtiles.
+        // TODO: consider making this optional because it might be useful to pre-fetch
+        // a higher LOD than we need in order to facilitate better LOD blending.
         plod->setChildBoundingBoxAndMatrix(
             1,
-            surfaceNode->getTerrainBoundingBox(),
-            surfaceNode->getLocalToWorldMatrix() );
-#endif
+            surfaceNode->getBoundingBox(),
+            surfaceNode->getMatrix() );
 
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = plod->getOrCreateDBOptions();

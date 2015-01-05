@@ -42,6 +42,8 @@ SurfaceNodeFactory::createSurfaceNode()
 {
     _geode = new osg::Geode();
 
+    osg::BoundingBox bbox;
+
     if ( _geometryPool.valid() )
     {
         osg::ref_ptr<osg::Geometry> geom;
@@ -67,7 +69,8 @@ SurfaceNodeFactory::createSurfaceNode()
 
         _geode->addDrawable( drawable );
     
-        drawable->setInitialBound( computeBoundingBox() );
+        bbox = computeBoundingBox();
+        drawable->setInitialBound( bbox );
     }
     else
     {
@@ -77,6 +80,7 @@ SurfaceNodeFactory::createSurfaceNode()
     // Create the final node.
     SurfaceNode* node = new SurfaceNode();
     node->addChild( _geode.get() );
+    node->setBoundingBox( bbox );
     
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;

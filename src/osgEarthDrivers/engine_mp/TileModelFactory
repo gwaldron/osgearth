@@ -1,0 +1,92 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_FACTORY
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_FACTORY 1
+
+#include "Common"
+#include "TileNode"
+#include "TileNodeRegistry"
+#include "MPTerrainEngineOptions"
+#include "HeightFieldCache"
+#include <osgEarth/Progress>
+#include <osg/Group>
+
+namespace osgEarth {
+    class TerrainEngineRequirements;
+}
+
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
+{
+    using namespace osgEarth;
+
+    /**
+     * For a given TileKey, this class builds a a corresponding TileNode from
+     * the map's data model.
+     *
+     * TODO: This should probably change to TileModelFactory or something since
+     * the creation of the TileNode itself is trivial and can be done outside of
+     * this class.
+     */
+    class TileModelFactory : public osg::Referenced
+    {
+    public:
+        TileModelFactory(
+            TileNodeRegistry*             liveTiles,
+            const MPTerrainEngineOptions& terrainOptions,
+            TerrainEngineRequirements*    terrainRequirements);
+
+        void clearCaches();
+
+        /** dtor */
+        virtual ~TileModelFactory() { }
+
+        void createTileModel(
+            const TileKey&           key,           // key for which to create model
+            const MapFrame&          frame,         // map frame from which to get data
+            bool                     accumulate,    // whether to accumulate values from parent tile(s)
+            osg::ref_ptr<TileModel>& out_model,     // output or NULL upon failure
+            ProgressCallback*        progress);     // progess tracking
+
+    private:        
+
+        osg::ref_ptr<TileNodeRegistry> _liveTiles;
+        const MPTerrainEngineOptions&  _terrainOptions;
+        TerrainEngineRequirements*     _terrainReqs;
+        osg::ref_ptr<HeightFieldCache> _meshHFCache;
+        osg::ref_ptr<HeightFieldCache> _normalHFCache;
+        
+        void buildElevation(
+            const TileKey&    key,
+            const MapFrame&   frame,
+            bool              accumulate,
+            bool              buildTexture,
+            TileModel*        model,
+            ProgressCallback* progress);
+        
+        void buildNormalMap(
+            const TileKey&    key,
+            const MapFrame&   frame,
+            bool              accumulate,
+            TileModel*        model,
+            ProgressCallback* progress);
+    };
+
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_MODEL_FACTORY

@@ -94,12 +94,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         };
         mutable osg::buffered_object<PerContextData> _pcd;
 
-
         mutable osg::Vec4f _tileKeyValue;
-
-        //int _imageUnit;          // image unit for primary texture
-        //int _imageUnitParent;    // image unit for secondary (parent) texture
-        //int _elevUnit;           // image unit for elevation texture
         RenderBindings _bindings;
 
         bool _supportsGLSL;
@@ -136,6 +131,22 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // all the code that handles non-fastPath (don't need it) and
         // called into our custom renderPrimitiveSets method.
         void drawImplementation(osg::RenderInfo& renderInfo) const;
+
+    public: // osg::Drawable overrides
+
+        // These methods defer functors (like stats collection) to the underlying
+        // (possibly shared) geometry instance.
+        bool supports(osg::Drawable::AttributeFunctor& f) const { return true; }
+        void accept(osg::Drawable::AttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+
+        bool supports(osg::Drawable::ConstAttributeFunctor& f) const { return true; }
+        void accept(osg::Drawable::ConstAttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+
+        bool supports(osg::PrimitiveFunctor& f) const { return true; }
+        void accept(osg::PrimitiveFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+        
+        bool supports(osg::PrimitiveIndexFunctor& f) const { return true; }
+        void accept(osg::PrimitiveIndexFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
         
         // recalculate the bound for the tile key uniform.
 #if OSG_VERSION_GREATER_THAN(3,3,1)

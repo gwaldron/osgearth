@@ -485,6 +485,56 @@ ClusterCullingFactory::create(const osg::Vec3& controlPoint,
     return ccc;
 }
 
+osg::NodeCallback*
+ClusterCullingFactory::create(const GeoExtent& extent)
+{
+    GeoPoint centerPoint;
+    extent.getCentroid( centerPoint );
+
+    // select the farthest corner:
+    GeoPoint edgePoint;
+    if ( centerPoint.y() >= 0.0 )
+        edgePoint = GeoPoint(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+    else
+        edgePoint = GeoPoint(extent.getSRS(), extent.xMin(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
+
+    // convert both to ECEF and make unit vectors:
+    osg::Vec3d center, centerNormal, edge, edgeNormal;
+
+    centerPoint.toWorld( center );
+    edgePoint.toWorld( edge );
+
+    edgeNormal = edge;
+    edgeNormal.normalize();
+
+    centerNormal = center;
+    centerNormal.normalize();
+
+    // determine the height above the center point necessary to see the edge point:
+    double dp = centerNormal * edgeNormal;
+    double centerLen = center.length();
+    double height = (edge.length() / dp) - centerLen;
+
+    // set the control point at that height:
+    osg::Vec3d controlPoint = center + centerNormal*height;
+
+    // cluster culling only occurs beyond the maximum radius:
+    double maxRadius = (controlPoint-edge).length();
+
+    // determine the maximum visibility angle (i.e. minimum dot product
+    // of the center up vector and the vector from the control point to 
+    // the edge point)
+    osg::Vec3d cpToEdge = edge - controlPoint;
+    cpToEdge.normalize();                
+    double minDeviation = centerNormal * cpToEdge;
+    
+    // create and return the callback.
+    return create(
+        controlPoint,
+        centerNormal,
+        minDeviation,
+        maxRadius);
+}
 
 //------------------------------------------------------------------------
 

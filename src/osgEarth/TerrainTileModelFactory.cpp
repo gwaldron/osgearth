@@ -102,7 +102,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
     {
         ImageLayer* layer = i->get();
 
-        if ( layer->getEnabled() ) //&& layer->isKeyInRange(key) )
+        if ( layer->getEnabled() && layer->isKeyInRange(key) )
         {
             // This will only go true if we are requesting a ROOT TILE but we have to
             // fall back on lower resolution data to create it.
@@ -203,7 +203,8 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                 }
                 else
                 {
-                    OE_WARN << LC << "...not found!\n";
+                    // There is no parent model.
+                    OE_DEBUG << LC << "no parent model\n";
                 }
             }
 
@@ -336,7 +337,8 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
         }
         else
         {
-            OE_WARN << LC << "addElevation: no parent model for " << key.str() << "\n";
+            // No parent model exists.
+            OE_DEBUG << LC << "addElevation: no parent model for " << key.str() << "\n";
         }
     }
 

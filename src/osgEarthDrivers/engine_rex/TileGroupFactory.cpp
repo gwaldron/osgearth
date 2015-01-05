@@ -27,6 +27,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/Containers>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/TerrainEngineNode>
 
 #include <osgUtil/CullVisitor>
@@ -217,13 +218,15 @@ TileGroupFactory::createTileNodeGraph(TerrainTileModel* model,
 
         if ( _options.rangeMode().value() == osg::LOD::DISTANCE_FROM_EYE_POINT )
         {
-            //Compute the min range based on the 2D size of the tile
+            // Compute the world coordinates of the SE and NE corners of the tile:
             GeoExtent extent = model->getKey().getExtent();
             GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
             GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
             osg::Vec3d ll, ur;
             lowerLeft.toWorld( ll );
             upperRight.toWorld( ur );
+
+            //Compute the min range based on the 2D size of the tile
             double radius = (ur - ll).length() / 2.0;
             float minRange = (float)(radius * _options.minTileRangeFactor().value());
 
@@ -264,6 +267,11 @@ TileGroupFactory::createTileNodeGraph(TerrainTileModel* model,
                     heightField,
                     tileNode->getKey().getProfile()->getSRS()->getEllipsoid(),
                     *_options.verticalScale() ) );
+            }
+            else
+            {
+                // no heightfield; generate a CCC just using the extent.
+                tileNode->addCullCallback( ClusterCullingFactory::create(model->getKey().getExtent()) );
             }
         }
     }

@@ -146,6 +146,15 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     osg::Vec3Array* normals = new osg::Vec3Array();
     normals->reserve( numVerts );
     geom->setNormalArray( normals );
+    geom->setNormalBinding( geom->BIND_PER_VERTEX );
+
+#if 0
+    // colors
+    osg::Vec4Array* colors = new osg::Vec4Array();
+    colors->push_back( osg::Vec4(1,1,1,1) );
+    geom->setColorArray( colors );
+    geom->setColorBinding( geom->BIND_OVERALL );
+#endif
 
     // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
     // vert is masked: 0=yes, 1=no

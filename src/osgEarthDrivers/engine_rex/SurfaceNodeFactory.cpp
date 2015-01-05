@@ -59,12 +59,15 @@ SurfaceNodeFactory::createSurfaceNode()
             i != _model->colorLayers().end();
             ++i)
         {
-            TileDrawable::Layer r;
-            r._tex = i->get()->getTexture();
-            r._texMatrix = i->get()->getMatrix();
-            r._imageLayer = i->get()->getImageLayer();
-            r._layerID = r._imageLayer ? r._imageLayer->getUID() : -1;
-            drawable->_layers.push_back(r);
+            if ( i->get()->getTexture() )
+            {
+                TileDrawable::Layer r;
+                r._tex = i->get()->getTexture();
+                r._texMatrix = i->get()->getMatrix();
+                r._imageLayer = i->get()->getImageLayer();
+                r._layerID = r._imageLayer ? r._imageLayer->getUID() : -1;
+                drawable->_layers.push_back(r);
+            }
         }
 
         _geode->addDrawable( drawable );

@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/SparseTexture2DArray>
+#include <osg/GLExtensions>
 
 // this class is only supported in newer OSG versions.
 #if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
@@ -60,10 +61,18 @@ SparseTexture2DArray::apply( osg::State& state ) const
     //ElapsedTime elapsedTime(&(tom->getApplyTime()));
     tom->getNumberApplied()++;
 
-    const Extensions* extensions = getExtensions(contextID,true);
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+    const osg::GLExtensions* extensions = osg::GLExtensions::Get(contextID,true);
+	bool texture2DArraySupported = extensions->isTexture2DArraySupported;
+	bool texture3DSupported = extensions->isTexture3DSupported;
+#else
+	const Extensions* extensions = getExtensions(contextID,true);
+	bool texture2DArraySupported = extensions->isTexture2DArraySupported();
+	bool texture3DSupported = extensions->isTexture3DSupported();
+#endif
 
     // if not supported, then return
-    if (!extensions->isTexture2DArraySupported() || !extensions->isTexture3DSupported())
+    if (!texture2DArraySupported || !texture3DSupported)
     {
         OSG_WARN<<"Warning: Texture2DArray::apply(..) failed, 2D texture arrays are not support by OpenGL driver."<<std::endl;
         return;
@@ -191,10 +200,16 @@ SparseTexture2DArray::apply( osg::State& state ) const
             }
         }
 
-        const Texture::Extensions* texExtensions = Texture::getExtensions(contextID,true);
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+        const osg::GLExtensions* texExtensions = osg::GLExtensions::Get(contextID,true);
+		bool generateMipMapSupported = texExtensions->isGenerateMipMapSupported;
+#else
+		const Texture::Extensions* texExtensions = Texture::getExtensions(contextID,true);
+		bool generateMipMapSupported = texExtensions->isGenerateMipMapSupported();
+#endif
         // source images have no mipmamps but we could generate them...  
         if( _min_filter != LINEAR && _min_filter != NEAREST && !firstImage->isMipmap() &&  
-            _useHardwareMipMapGeneration && texExtensions->isGenerateMipMapSupported() )
+            _useHardwareMipMapGeneration && generateMipMapSupported  )
         {
             _numMipmapLevels = osg::Image::computeNumberOfMipmapLevels( _textureWidth, _textureHeight );
             generateMipmap( state );
@@ -262,8 +277,22 @@ SparseTexture2DArray::applyTexImage2DArray_subload(osg::State& state, osg::Image
     // get the contextID (user defined ID of 0 upwards) for the 
     // current OpenGL context.
     const unsigned int contextID = state.getContextID();
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+	const osg::GLExtensions* extensions = osg::GLExtensions::Get(contextID,true);    
+	unsigned int maxLayerCount = extensions->maxLayerCount;
+	unsigned int max2DSize = extensions->max2DSize;
+	bool generateMipMapSupported = extensions->isGenerateMipMapSupported;
+	bool isNonPowerOfTwoTextureSupported = extensions->isNonPowerOfTwoTextureSupported(_min_filter);
+#else
     const Extensions* extensions = getExtensions(contextID,true);    
     const Texture::Extensions* texExtensions = Texture::getExtensions(contextID,true);
+	unsigned int maxLayerCount = extensions->maxLayerCount();
+	unsigned int max2DSize = extensions->max2DSize();
+	bool generateMipMapSupported = texExtensions->isGenerateMipMapSupported();
+	bool isNonPowerOfTwoTextureSupported = texExtensions->isNonPowerOfTwoTextureSupported(_min_filter);
+#endif
+
+
     GLenum target = GL_TEXTURE_2D_ARRAY_EXT;
 
     // compute the internal texture format, this set the _internalFormat to an appropriate value.
@@ -274,7 +303,7 @@ SparseTexture2DArray::applyTexImage2DArray_subload(osg::State& state, osg::Image
     bool compressed_image = isCompressedInternalFormat((GLenum)image->getPixelFormat());
 
     // if the required layer is exceeds the maximum allowed layer sizes
-    if (indepth > extensions->maxLayerCount())
+    if (indepth > maxLayerCount)
     {
         // we give a warning and do nothing
         OSG_WARN<<"Warning: Texture2DArray::applyTexImage2DArray_subload(..) the given layer number exceeds the maximum number of supported layers."<<std::endl;
@@ -282,10 +311,10 @@ SparseTexture2DArray::applyTexImage2DArray_subload(osg::State& state, osg::Image
     }
 
     //Rescale if resize hint is set or NPOT not supported or dimensions exceed max size
-    if( _resizeNonPowerOfTwoHint || !texExtensions->isNonPowerOfTwoTextureSupported(_min_filter)
-        || inwidth > extensions->max2DSize()
-        || inheight > extensions->max2DSize())
-        image->ensureValidSizeForTexturing(extensions->max2DSize());
+    if( _resizeNonPowerOfTwoHint || !isNonPowerOfTwoTextureSupported
+        || inwidth > max2DSize
+        || inheight > max2DSize)
+        image->ensureValidSizeForTexturing(max2DSize);
 
     // image size or format has changed, this is not allowed, hence return
     if (image->s()!=inwidth || 
@@ -299,7 +328,7 @@ SparseTexture2DArray::applyTexImage2DArray_subload(osg::State& state, osg::Image
     glPixelStorei(GL_UNPACK_ALIGNMENT,image->getPacking());
 
     bool useHardwareMipmapGeneration = 
-        !image->isMipmap() && _useHardwareMipMapGeneration && texExtensions->isGenerateMipMapSupported();
+        !image->isMipmap() && _useHardwareMipMapGeneration && generateMipMapSupported;
 
     // if no special mipmapping is required, then
     if( _min_filter == LINEAR || _min_filter == NEAREST || useHardwareMipmapGeneration )

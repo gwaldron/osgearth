@@ -18,7 +18,6 @@ SET(TARGET_SRC
     RexTerrainEngineDriver.cpp
     MaskGenerator.cpp
     SurfaceNodeFactory.cpp
-    TerrainNode.cpp
 	TileDrawable.cpp
     TileGroup.cpp
     TileGroupFactory.cpp
@@ -39,7 +38,6 @@ SET(TARGET_H
     QuickReleaseGLObjects
     RenderBindings
     SurfaceNode
-    TerrainNode
 	TileDrawable
     TileGroup
     TileGroupFactory

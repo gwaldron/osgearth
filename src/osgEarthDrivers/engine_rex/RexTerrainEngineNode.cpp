@@ -17,7 +17,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "RexTerrainEngineNode"
-#include "TerrainNode"
 #include "TilePagedLOD"
 #include "Shaders"
 
@@ -32,15 +31,9 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Utils>
 
-#include <osg/TexEnv>
-#include <osg/TexEnvCombine>
-#include <osg/PagedLOD>
-#include <osg/Timer>
 #include <osg/Depth>
 #include <osg/BlendFunc>
-#include <osgDB/DatabasePager>
 #include <osgUtil/RenderBin>
-#include <osgUtil/RenderLeaf>
 
 #define LC "[RexTerrainEngineNode] "
 
@@ -256,14 +249,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // live tiles of the current map revision so they can inrementally update
     // themselves if necessary.
     _liveTiles = new TileNodeRegistry("live");
-    _liveTiles->setRevisioningEnabled( _terrainOptions.incrementalUpdate() == true );
     _liveTiles->setMapRevision( _update_mapf->getRevision() );
-
-    // set up a registry for quick release:
-    if ( _terrainOptions.quickReleaseGLObjects() == true )
-    {
-        _deadTiles = new TileNodeRegistry("dead");
-    }
 
     // A shared geometry pool.
     if ( ::getenv("OSGEARTH_REX_NO_POOL") == 0L )
@@ -331,12 +317,16 @@ RexTerrainEngineNode::computeBound() const
 
 void
 RexTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
-                                      unsigned         minLevel,
-                                      unsigned         maxLevel)
+                                       unsigned         minLevel,
+                                       unsigned         maxLevel)
 {
-    if (_terrainOptions.incrementalUpdate() == true && _liveTiles.valid())
+    OE_WARN << LC << "invalidateRegion() is not implemented\n";
+    return;
+
+    if ( _liveTiles.valid() )
     {
         GeoExtent extentLocal = extent;
+
         if ( !extent.getSRS()->isEquivalentTo(this->getMap()->getSRS()) )
         {
             extent.transform(this->getMap()->getSRS(), extentLocal);
@@ -355,17 +345,7 @@ RexTerrainEngineNode::refresh(bool forceDirty)
     }
     else
     {
-        if ( _terrainOptions.incrementalUpdate() == true )
-        {
-            // run an atomic "dirty" operation:
-            //_update_mapf->sync();
-            //_liveTiles->setMapRevision( _update_mapf->getRevision(), forceDirty );
-        }
-        else
-        {
-            createTerrain();
-        }
-
+        createTerrain();
         _refreshRequired = false;
     }
 }
@@ -396,12 +376,9 @@ RexTerrainEngineNode::getPayloadStateSet()
 void
 RexTerrainEngineNode::createTerrain()
 {
-    // scrub the heightfield cache.
-    // TODO: replace.
-    //if (_tileModelFactory)
-    //{
-    //    _tileModelFactory->clearCaches();
-    //}
+    //TODO: scrub the geometry pool?
+
+    //TODO: scrub any heightfield caches in the factory objects?
 
     // remove existing:
     if ( _terrain )
@@ -410,7 +387,7 @@ RexTerrainEngineNode::createTerrain()
     }
 
     // New terrain
-    _terrain = new TerrainNode( _deadTiles.get() );
+    _terrain = new osg::Group();
 
 #ifdef USE_RENDER_BINS
     _terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _terrainRenderBinPrototype->getName() );
@@ -839,7 +816,7 @@ RexTerrainEngineNode::updateState()
         if ( Registry::capabilities().supportsGLSL() )
         {
             VirtualProgram* vp = new VirtualProgram();
-            vp->setName( "osgEarth.engine_rex.TerrainNode" );
+            vp->setName( "osgEarth.RexTerrainEngineNode" );
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
             // Vertex shader:

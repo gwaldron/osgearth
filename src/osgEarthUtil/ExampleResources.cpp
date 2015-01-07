@@ -50,7 +50,7 @@
 #include <osgViewer/View>
 #include <osgViewer/ViewerEventHandlers>
 
-#define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
+#define KML_PUSHPIN_URL "../data/placemark32.png"
 
 #define VP_MIN_DURATION      2.0     // minimum fly time.
 #define VP_METERS_PER_SECOND 2500.0  // fly speed

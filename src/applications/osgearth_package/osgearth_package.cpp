@@ -73,7 +73,7 @@ usage( const std::string& msg = "" )
         << "            [--mt]                          ; Use multithreading to process the tiles." << std::endl
         << "            [--concurrency]                 ; The number of threads or proceses to use if --mp or --mt are provided." << std::endl
         << std::endl
-        << "         [--quiet]               : suppress progress output" << std::endl;
+        << "            [--verbose]                     ; Displays progress of the operation" << std::endl;
 
     return -1;
 }

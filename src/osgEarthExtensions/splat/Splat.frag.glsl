@@ -23,7 +23,6 @@ uniform sampler2D oe_splat_noise_tex;
 
 uniform sampler2D oe_terrain_tex;
 uniform mat4 oe_terrain_tex_matrix;
-uniform float oe_splat_snow;
 uniform float oe_splat_detail_range;
 
 #ifdef SPLAT_EDIT
@@ -50,7 +49,7 @@ float oe_noise_fractal_2d(in vec2 seed, in float freq, in float pers, in float l
 struct oe_SplatEnv {
     float range;
     float elevation;
-    float noise;
+    vec4 noise;
 };
 
 // Rendering parameters for splat texture and noise-based detail texture.
@@ -102,7 +101,7 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
     float contrast = 1.0;
 #endif
 
-    float n = env.noise;
+    float n = env.noise.x;
 
     n = clamp(((n-0.5)*contrast + 0.5) * brightness, 0.0, 1.0);
 	
@@ -211,28 +210,30 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
 }
 
 // Gets the noise value at the given coordinates.
-float oe_splat_getNoise(in vec2 tc)
+vec4 oe_splat_getNoise(in vec2 tc)
 {
     // Uncommnent to generate noise on the GPU. (Expensive.)
     //float n = oe_noise_fractal_2d(tc, oe_splat_freq, oe_splat_pers, oe_splat_lac, int(oe_splat_octaves));
-    //float n = texture2D(oe_splat_noise_tex, tc.st).r;
+    return texture2D(oe_splat_noise_tex, tc.st);
+}
 
-    vec4 n = texture2D(oe_splat_noise_tex, tc.st);
-    return n.w; //mod(n.x+n.y+n.z+n.w, 1.0);
-
-    //return n;
+float oe_splat_applyBC(float n, float b, float c) {
+    return clamp(((n-0.5)*c+0.5)*b, 0.0, 1.0);
 }
 
 // Snow splatter. This will whiten the texel based on elevation.
-void oe_splat_winter(in vec2 tc, in oe_SplatEnv env, inout vec4 texel)
+uniform float oe_splat_snowMinElevation;
+uniform float oe_splat_snowPatchiness;
+
+void oe_splat_snow(in oe_SplatEnv env, inout vec4 texel)
 {
-    float snowToggle = 1.0; //env.elevation > oe_splat_snow ? 1.0 : 0.0;
-    {
-        float noise = oe_splat_getNoise(tc);
-        float snowiness = 1.0; //clamp(max(0.0, env.elevation-oe_splat_snow)/oe_splat_snow, 0.0, 1.0);
-        vec4 snow = vec4(1,1,1,1);
-        texel.rgb = mix(texel.rgb, snow.rgb, noise*snowToggle);
-    }
+	const float noiseFarRange = 55000;	
+    const vec4 snow = vec4(1,1,1,1);
+	
+    float noise = oe_splat_applyBC(env.noise.z, 1.0, oe_splat_snowPatchiness); // 1.5);
+	noise = mix(noise, 1.0, clamp(env.range/noiseFarRange, 0.0, 1.0));
+    float elevMix = clamp(max(0.0, env.elevation-oe_splat_snowMinElevation)/oe_splat_snowMinElevation, 0.0, 1.0);
+    texel.rgb = mix(texel.rgb, snow.rgb, noise*elevMix);
 }
 
 // Scales the incoming tile splat coordinates to match the requested
@@ -266,7 +267,7 @@ void oe_splat_fragment(inout vec4 color)
 
     // Noise coords. "12" is an LOD. Should we make this a parameter?
     vec2 noiseCoords = oe_splat_getSplatCoords(12.0);
-    float noise = oe_splat_getNoise(noiseCoords);
+    vec4 noise = oe_splat_getNoise(noiseCoords);
 
     float elevation = texture2D(oe_terrain_tex, (oe_terrain_tex_matrix*oe_layer_tilec).st).r; //TODO: eliminate if unused
     oe_SplatEnv env = oe_SplatEnv(oe_splat_range, elevation, noise);
@@ -298,11 +299,11 @@ void oe_splat_fragment(inout vec4 color)
             float r = (d-ranges[i])/(ranges[i+1]-ranges[i]);
             texel = mix(texel0, texel1, r);
 
-            //oe_splat_winter(splat_tc1, env, texel);
-
             break;
         }
     }
+
+    oe_splat_snow(env, texel);
 
     color = mix(color, texel, oe_splat_intensity*texel.a);
 

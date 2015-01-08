@@ -109,7 +109,6 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Uniform>          _warpUniform;
         osg::ref_ptr<osg::Uniform>          _blurUniform;
         osg::ref_ptr<osg::Uniform>          _samplesUniform;
-        osg::ref_ptr<osg::Uniform>          _snowUniform;
         osg::ref_ptr<SplatCoverageLegend>   _legend;
         osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;
@@ -117,6 +116,8 @@ namespace osgEarth { namespace Splat
         int                                 _noiseTexUnit;
         osg::ref_ptr<osg::Texture>          _noiseTex;
         osg::ref_ptr<osg::Uniform>          _noiseTexUniform;
+        osg::ref_ptr<osg::Uniform>          _snowMinElevUniform;
+        osg::ref_ptr<osg::Uniform>          _snowPatchinessUniform;
     };
 
 } } // namespace osgEarth::Splat

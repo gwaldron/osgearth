@@ -56,11 +56,12 @@ _renderOrder( -1.0f )
         }
     }
 
-    _scaleOffsetUniform = new osg::Uniform("oe_splat_scaleOffset", 0.0f);
-    _intensityUniform   = new osg::Uniform("oe_splat_intensity",   1.0f);
-    _warpUniform        = new osg::Uniform("oe_splat_warp",        0.0f);
-    _blurUniform        = new osg::Uniform("oe_splat_blur",        1.0f);
-    _snowUniform        = new osg::Uniform("oe_splat_snow",    10000.0f);
+    _scaleOffsetUniform    = new osg::Uniform("oe_splat_scaleOffset",      0.0f);
+    _intensityUniform      = new osg::Uniform("oe_splat_intensity",        1.0f);
+    _warpUniform           = new osg::Uniform("oe_splat_warp",             0.0f);
+    _blurUniform           = new osg::Uniform("oe_splat_blur",             1.0f);
+    _snowMinElevUniform    = new osg::Uniform("oe_splat_snowMinElevation", 10000.0f);
+    _snowPatchinessUniform = new osg::Uniform("oe_splat_snowPatchiness",   2.0f);
 
     _edit = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L);
 }
@@ -107,7 +108,8 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform( _intensityUniform.get() );
             stateset->addUniform( _warpUniform.get() );
             stateset->addUniform( _blurUniform.get() );
-            stateset->addUniform( _snowUniform.get() );
+            stateset->addUniform( _snowMinElevUniform.get() );
+            stateset->addUniform( _snowPatchinessUniform.get() );
 
             stateset->getOrCreateUniform("oe_splat_freq", osg::Uniform::FLOAT)->set(32.0f);
             stateset->getOrCreateUniform("oe_splat_pers", osg::Uniform::FLOAT)->set(0.8f);
@@ -164,13 +166,15 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( _scaleOffsetUniform.get() );
             stateset->removeUniform( _warpUniform.get() );
             stateset->removeUniform( _blurUniform.get() );
-            stateset->removeUniform( _snowUniform.get() );
             stateset->removeUniform( _intensityUniform.get() );
             stateset->removeUniform( _splatTexUniform.get() );
             stateset->removeUniform( _coverageTexUniform.get() );
             stateset->removeUniform( _noiseTexUniform.get() );
             stateset->removeTextureAttribute( _splatTexUnit, osg::StateAttribute::TEXTURE );
             stateset->removeTextureAttribute( _noiseTexUnit, osg::StateAttribute::TEXTURE );
+            
+            stateset->removeUniform( _snowMinElevUniform.get() );
+            stateset->removeUniform( _snowPatchinessUniform.get() );
 
             stateset->removeUniform( "oe_splat_freq" );
             stateset->removeUniform( "oe_splat_pers" );
@@ -391,7 +395,9 @@ SplatTerrainEffect::generateNoiseTexture() const
     }
 
 
-    osgDB::writeImageFile(*image, "noise.png");
+    std::string filename("noise.png");
+    osgDB::writeImageFile(*image, filename);
+    OE_NOTICE << LC << "Wrote noise texture to " << filename << "\n";
 
     // make a texture:
     osg::Texture2D* tex = new osg::Texture2D( image );

@@ -47,7 +47,6 @@ namespace
         "uniform float billboard_width; \n"
         "uniform float billboard_height; \n"
         "uniform sampler2D billboard_tex; \n"
-        "uniform mat4 osg_ViewMatrixInverse;\n"
         "void main(void)\n"
         "{\n"
         "    vec4 v = gl_ModelViewMatrix * gl_PositionIn[0];\n"

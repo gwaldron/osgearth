@@ -127,7 +127,9 @@
             <catalog>../data/splat/splat_catalog.json</catalog>
         </splat>
 		
+		<!--
 		<normalmap/>
+		-->
 
 		<bumpmap>
 			<image>../data/rock_hard.jpg</image>

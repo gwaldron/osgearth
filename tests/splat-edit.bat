@@ -1,3 +1,4 @@
+setlocal
 set OSGEARTH_SPLAT_EDIT=1
 osgearth_viewer splat-test.earth ^
 	--ico ^
@@ -12,12 +13,14 @@ osgearth_viewer splat-test.earth ^
 	--uniform oe_splat_pers 0.25 2.0 ^
 	--uniform oe_splat_lac  1.0 6.0 ^
 	--uniform oe_splat_octaves 1 8 ^
-	--uniform oe_splat_saturate 0 1 ^
-	--uniform oe_splat_thresh 0 1 ^
-	--uniform oe_splat_slopeFactor 0 1 ^
-	--uniform oe_nmap_intensity 0 2.0 ^
-	--uniform oe_nmap_scale 1 20 ^
+	--uniform oe_splat_saturation 0 1 ^
+	--uniform oe_splat_threshold 0 1 ^
+	--uniform oe_splat_minSlope 0 1 ^
+	--uniform oe_splat_contrast 1 4 ^
+	--uniform oe_splat_brightness 1 4 ^
+	--uniform oe_bumpmap_intensity 0 2.0 ^
+	--uniform oe_bumpmap_scale 1 20 ^
 	%*
-set OSGEARTH_SPLAT_EDIT=
+endlocal
 
 	

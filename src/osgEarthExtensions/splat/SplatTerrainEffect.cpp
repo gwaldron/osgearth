@@ -25,6 +25,9 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/URI>
 #include <osgEarth/ShaderUtils>
+#include <osgEarthUtil/SimplexNoise>
+
+#include <osgDB/WriteFile>
 
 #include "SplatShaders"
 
@@ -32,10 +35,7 @@
 
 #define COVERAGE_SAMPLER "oe_splat_coverage_tex"
 #define SPLAT_SAMPLER    "oe_splat_tex"
-
-// Tile LOD offset of the "Level 0" splatting scale. This is necessary
-// to get rid of precision issues when scaling the splats up high.
-//#define L0_OFFSET "10.0"
+#define NOISE_SAMPLER    "oe_splat_noise_tex"
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -86,11 +86,21 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             // splat sampler
             _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
             _splatTexUniform->set( _splatTexUnit );
-            stateset->setTextureAttribute( _splatTexUnit, _splatDef._texture.get(), osg::StateAttribute::ON );
+            stateset->setTextureAttribute( _splatTexUnit, _splatDef._texture.get() );
 
             // coverage sampler
             _coverageTexUniform = stateset->getOrCreateUniform( COVERAGE_SAMPLER, osg::Uniform::SAMPLER_2D );
             _coverageTexUniform->set( _coverageLayer->shareImageUnit().get() );
+
+            // noise sampler
+            if (engine->getTextureCompositor()->reserveTextureImageUnit(_noiseTexUnit))
+            {
+                OE_INFO << LC << "Noise texture -> unit " << _noiseTexUnit << "\n";
+                _noiseTex = generateNoiseTexture();
+                stateset->setTextureAttribute( _noiseTexUnit, _noiseTex.get() );
+                _noiseTexUniform = stateset->getOrCreateUniform( NOISE_SAMPLER, osg::Uniform::SAMPLER_2D );
+                _noiseTexUniform->set( _noiseTexUnit );
+            }
 
             // control uniforms
             stateset->addUniform( _scaleOffsetUniform.get() );
@@ -103,9 +113,6 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->getOrCreateUniform("oe_splat_pers", osg::Uniform::FLOAT)->set(0.8f);
             stateset->getOrCreateUniform("oe_splat_lac",  osg::Uniform::FLOAT)->set(2.2f);
             stateset->getOrCreateUniform("oe_splat_octaves", osg::Uniform::FLOAT)->set(7.0f);
-            stateset->getOrCreateUniform("oe_splat_saturate", osg::Uniform::FLOAT)->set(0.98f);
-            stateset->getOrCreateUniform("oe_splat_thresh", osg::Uniform::FLOAT)->set(0.57f);
-            stateset->getOrCreateUniform("oe_splat_slopeFactor", osg::Uniform::FLOAT)->set(0.47f);
 
             stateset->getOrCreateUniform("oe_splat_blending_range", osg::Uniform::FLOAT)->set(250000.0f);
             stateset->getOrCreateUniform("oe_splat_detail_range", osg::Uniform::FLOAT)->set(1000000.0f);
@@ -161,18 +168,19 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( _intensityUniform.get() );
             stateset->removeUniform( _splatTexUniform.get() );
             stateset->removeUniform( _coverageTexUniform.get() );
+            stateset->removeUniform( _noiseTexUniform.get() );
             stateset->removeTextureAttribute( _splatTexUnit, osg::StateAttribute::TEXTURE );
+            stateset->removeTextureAttribute( _noiseTexUnit, osg::StateAttribute::TEXTURE );
 
             stateset->removeUniform( "oe_splat_freq" );
             stateset->removeUniform( "oe_splat_pers" );
             stateset->removeUniform( "oe_splat_lac" );
             stateset->removeUniform( "oe_splat_octaves" );
-            stateset->removeUniform( "oe_splat_saturate" );
-            stateset->removeUniform( "oe_splat_thresh" );
-            stateset->removeUniform( "oe_splat_slopeFactor" );
 
             stateset->removeUniform( "oe_splat_blending_range" );
             stateset->removeUniform( "oe_splat_detail_range" );
+
+            stateset->removeUniform( "oe_splat_noise_tex" );
         }
 
         VirtualProgram* vp = VirtualProgram::get(stateset);
@@ -286,7 +294,7 @@ SplatTerrainEffect::generateSamplingCode()
                         if ( rangeData._detail->_slope.isSet() )
                         {
                             if ( slopeCount == 0 )
-                                slopeBuf << IND "slope += ";
+                                slopeBuf << IND "minSlope += ";
                             else
                                 slopeBuf << " + ";
                             slopeBuf << "w"<<val << "*" << rangeData._detail->_slope.get();
@@ -316,4 +324,83 @@ SplatTerrainEffect::generateSamplingCode()
     return
         weightBuf.str() + primaryBuf.str() + detailBuf.str() + 
         saturationBuf.str() + thresholdBuf.str() + slopeBuf.str();
+}
+
+osg::Texture*
+SplatTerrainEffect::generateNoiseTexture() const
+{
+    // FUTURE PLANS:
+    // 1. Use an GL_RGBA texture to store 4 different noise maps in one texture,
+    //    likely with different fractal parameters
+    // 2. Move some of this logic into a "procedural" sublibrary
+
+    const int size = 1024;
+    osg::Image* image = new osg::Image();
+    image->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+    const float F[4] = { 1.0f, 2.0f, 4.0f, 8.0f };
+    const float P[4] = { 0.8f, 0.6f, 0.8f, 0.9f };
+    const float L[4] = { 2.2f, 2.0f, 3.0f, 4.0f };
+    
+    for(int k=0; k<4; ++k)
+    {
+        // Configure the noise function:
+        osgEarth::Util::SimplexNoise noise;
+        noise.setNormalize( true );
+        noise.setRange( 0.0, 1.0 );
+        noise.setFrequency( F[k] );
+        noise.setPersistence( P[k] );
+        noise.setLacunarity( L[k] );
+        noise.setOctaves( 24 );
+
+        float nmin = 10.0f;
+        float nmax = -10.0f;
+
+        // write repeating noise to the image:
+        ImageUtils::PixelReader read ( image );
+        ImageUtils::PixelWriter write( image );
+        for(int t=0; t<size; ++t)
+        {
+            double rt = (double)t/size;
+            for(int s=0; s<size; ++s)
+            {
+                double rs = (double)s/(double)size;
+
+                double n = noise.getTiledValue(rs, rt);
+
+                n = osg::clampBetween(n, 0.0, 1.0);
+
+                if ( n < nmin ) nmin = n;
+                if ( n > nmax ) nmax = n;
+                osg::Vec4f v = read(s, t);
+                v[k] = n;
+                write(v, s, t);
+            }
+        }
+   
+        // histogram stretch to [0..1]
+        for(int x=0; x<size*size; ++x)
+        {
+            int s = x%size, t = x/size;
+            osg::Vec4f v = read(s, t);
+            v[k] = osg::clampBetween((v[k]-nmin)/(nmax-nmin), 0.0f, 1.0f);
+            write(v, s, t);
+        }
+
+        OE_INFO << LC << "MIN = " << nmin << "; MAX = " << nmax << "\n";
+    }
+
+
+    osgDB::writeImageFile(*image, "noise.png");
+
+    // make a texture:
+    osg::Texture2D* tex = new osg::Texture2D( image );
+    tex->setWrap(tex->WRAP_S, tex->REPEAT);
+    tex->setWrap(tex->WRAP_T, tex->REPEAT);
+    tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
+    tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+    tex->setMaxAnisotropy( 1.0f );
+    tex->setUnRefImageDataAfterApply( true );
+
+    return tex;
 }

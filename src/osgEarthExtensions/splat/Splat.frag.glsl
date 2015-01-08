@@ -19,21 +19,27 @@ uniform float oe_splat_warp;
 uniform float oe_splat_blur;
 uniform sampler2D oe_splat_coverage_tex;
 uniform sampler2DArray oe_splat_tex;
+uniform sampler2D oe_splat_noise_tex;
 
 uniform sampler2D oe_terrain_tex;
-uniform mat4 oe_terrain_tex_mat;
+uniform mat4 oe_terrain_tex_matrix;
 uniform float oe_splat_snow;
 uniform float oe_splat_detail_range;
 
+#ifdef SPLAT_EDIT
 // noise controllers.
 // we will probably replace the first 4 with a texture at some point.
 uniform float oe_splat_freq;
 uniform float oe_splat_pers;
 uniform float oe_splat_lac;
 uniform float oe_splat_octaves;
-uniform float oe_splat_thresh;
-uniform float oe_splat_slopeFactor;
-uniform float oe_splat_saturate;
+
+uniform float oe_splat_threshold;
+uniform float oe_splat_saturation;
+uniform float oe_splat_minSlope;
+uniform float oe_splat_brightness;
+uniform float oe_splat_contrast;
+#endif
 
 // See NoiseShaders
 float oe_splat_noise2(in vec2);
@@ -53,7 +59,7 @@ struct oe_SplatRenderInfo {
     float detailIndex;
     float saturation;
     float threshold;
-    float slope;
+    float minSlope;
 };
         
 // permutation vectors for the warper.
@@ -80,17 +86,35 @@ vec4 oe_splat_getTexel(in float index, in vec2 tc)
 // Returns the weighting factor in the alpha channel.
 vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEnv env)
 {
-    // TODO: pow() function is slow. Consider something faster
     float hasDetail = ri.detailIndex >= 0.0 ? 1.0 : 0.0;
+
 #ifdef SPLAT_EDIT
-    float noiseADJ = pow(env.noise, 1.0-oe_splat_saturate);
-    float threshADJ = clamp( oe_splat_thresh + oe_splat_slopeFactor*(1.0-oe_splat_slope), 0.0, 1.0);
+    float saturation = oe_splat_saturation;
+    float threshold = oe_splat_threshold;
+    float minSlope = oe_splat_minSlope;
+    float brightness = oe_splat_brightness;
+    float contrast = oe_splat_contrast;
 #else
-    float noiseADJ = pow(env.noise, 1.0-ri.saturation);
-    float threshADJ = clamp( ri.threshold + ri.slope*(1.0-oe_splat_slope), 0.0, 1.0);
+    float saturation = ri.saturation;
+    float threshold = ri.threshold;
+    float minSlope = ri.minSlope;
+    float brightness = 1.0;
+    float contrast = 1.0;
 #endif
+
+    float n = env.noise;
+
+    n = clamp(((n-0.5)*contrast + 0.5) * brightness, 0.0, 1.0);
+	
+	float deltaSlope = minSlope - oe_splat_slope;	
+	if ( deltaSlope > 0.0 ) {
+        n *= 1.0-deltaSlope;
+	}    
+
+	n = n < threshold ? 0.0 : n;
+
     vec4 result = oe_splat_getTexel( max(ri.detailIndex,0), tc);
-    result.a = hasDetail * clamp((noiseADJ-threshADJ)/(1.0-threshADJ),0.0,1.0);
+    result.a = hasDetail * n;
     return result;
 }
 
@@ -101,10 +125,10 @@ oe_SplatRenderInfo oe_splat_getRenderInfo(in vec2 tc, in oe_SplatEnv env)
     float detail = -1.0;    // detail texture index
     float saturation = 0.0; // default noise function saturation factor
     float threshold = 0.0;  // default noise function threshold
-    float slope = 0.0;      // default slope integration factor
+    float minSlope = 0.0;   // default minimum slope
     float value = 255.0 * texture2D(oe_splat_coverage_tex, tc).r;
 $COVERAGE_BUILD_RENDER_INFO
-    return oe_SplatRenderInfo(primary, detail, saturation, threshold, slope);
+    return oe_SplatRenderInfo(primary, detail, saturation, threshold, minSlope);
 }
 
 // Generates a texel using nearest-neighbor coverage sampling.
@@ -186,24 +210,29 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     return texel;
 }
 
-
-// Snow splatter. This will whiten the texel based on elevation.
-void oe_splat_winter(in vec2 splat_tc, in oe_SplatEnv env, inout vec4 texel)
-{
-    float snowToggle = env.elevation > oe_splat_snow ? 1.0 : 0.0;
-    {
-        float snowiness = clamp(max(0.0, env.elevation-oe_splat_snow)/oe_splat_snow, 0.0, 0.8);
-        vec4 snow = vec4(1,1,1,1);
-        texel.rgb = mix(texel.rgb, snow.rgb, snowiness*snowToggle);
-    }
-}
-
 // Gets the noise value at the given coordinates.
-// TODO: change this to use a texture versus the noise function. Noise is EXPENSIVE
 float oe_splat_getNoise(in vec2 tc)
 {
-    float n = oe_noise_fractal_2d(tc, oe_splat_freq, oe_splat_pers, oe_splat_lac, int(oe_splat_octaves));
-    return n;
+    // Uncommnent to generate noise on the GPU. (Expensive.)
+    //float n = oe_noise_fractal_2d(tc, oe_splat_freq, oe_splat_pers, oe_splat_lac, int(oe_splat_octaves));
+    //float n = texture2D(oe_splat_noise_tex, tc.st).r;
+
+    vec4 n = texture2D(oe_splat_noise_tex, tc.st);
+    return n.w; //mod(n.x+n.y+n.z+n.w, 1.0);
+
+    //return n;
+}
+
+// Snow splatter. This will whiten the texel based on elevation.
+void oe_splat_winter(in vec2 tc, in oe_SplatEnv env, inout vec4 texel)
+{
+    float snowToggle = 1.0; //env.elevation > oe_splat_snow ? 1.0 : 0.0;
+    {
+        float noise = oe_splat_getNoise(tc);
+        float snowiness = 1.0; //clamp(max(0.0, env.elevation-oe_splat_snow)/oe_splat_snow, 0.0, 1.0);
+        vec4 snow = vec4(1,1,1,1);
+        texel.rgb = mix(texel.rgb, snow.rgb, noise*snowToggle);
+    }
 }
 
 // Scales the incoming tile splat coordinates to match the requested
@@ -234,8 +263,12 @@ vec2 oe_splat_getSplatCoords(float lod)
 void oe_splat_fragment(inout vec4 color)
 {
     // Populate the environment:
-    float noise = oe_splat_getNoise(oe_splat_covtc); //TODO: use a texture instead; VERY EXPENSIVE
-    float elevation = texture2D(oe_terrain_tex, oe_layer_tilec.st).r; //TODO: eliminate if unused
+
+    // Noise coords. "12" is an LOD. Should we make this a parameter?
+    vec2 noiseCoords = oe_splat_getSplatCoords(12.0);
+    float noise = oe_splat_getNoise(noiseCoords);
+
+    float elevation = texture2D(oe_terrain_tex, (oe_terrain_tex_matrix*oe_layer_tilec).st).r; //TODO: eliminate if unused
     oe_SplatEnv env = oe_SplatEnv(oe_splat_range, elevation, noise);
 
     // Mapping of view ranges to splat texture levels of detail.
@@ -265,7 +298,7 @@ void oe_splat_fragment(inout vec4 color)
             float r = (d-ranges[i])/(ranges[i+1]-ranges[i]);
             texel = mix(texel0, texel1, r);
 
-            oe_splat_winter(splat_tc1, env, texel);
+            //oe_splat_winter(splat_tc1, env, texel);
 
             break;
         }

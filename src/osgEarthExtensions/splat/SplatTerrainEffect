@@ -97,6 +97,7 @@ namespace osgEarth { namespace Splat
         virtual ~SplatTerrainEffect() { }
 
         std::string generateSamplingCode();
+        osg::Texture* generateNoiseTexture() const;
 
         bool                                _ok;
         SplatTextureDef                     _splatDef;
@@ -113,6 +114,9 @@ namespace osgEarth { namespace Splat
         osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;
         bool                                _edit;
+        int                                 _noiseTexUnit;
+        osg::ref_ptr<osg::Texture>          _noiseTex;
+        osg::ref_ptr<osg::Uniform>          _noiseTexUniform;
     };
 
 } } // namespace osgEarth::Splat

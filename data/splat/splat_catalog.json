@@ -99,7 +99,7 @@
 					"image"      : "rock_dark.jpg",
 					"saturation" : 0.99,
 					"threshold"  : 0.55,
-					"slope"      : 0.45
+					"slope"      : 0.12
 				}
 			}
         ],

@@ -133,12 +133,12 @@ BillboardExtension::connect(MapNode* mapNode)
 
     if ( verts && verts->size() > 0 )
     {
+        //localize all the verts
         GeoPoint centroid;
         _features->getFeatureProfile()->getExtent().getCentroid(centroid);
 
         osg::Matrixd l2w;
         centroid.createLocalToWorld(l2w);
-        //mapNode->getMapSRS()->createLocalToWorld(centroid, l2w);
 
         osg::ref_ptr<const osgEarth::SpatialReference> tangentSRS = mapNode->getMapSRS()->createTangentPlaneSRS(centroid.vec3d());
 
@@ -159,6 +159,7 @@ BillboardExtension::connect(MapNode* mapNode)
             (*verts)[i].set(vert_ltp.vec3d());
         }
 
+        //create geom and primitive sets
         osg::Geometry* geometry = new osg::Geometry();
         geometry->setVertexArray( verts );
 
@@ -185,13 +186,6 @@ BillboardExtension::connect(MapNode* mapNode)
 
         osg::ref_ptr<StateSetCache> cache = new StateSetCache();
         Registry::shaderGenerator().run(geode, cache.get());
-
-        //VirtualProgram* vp = VirtualProgram::getOrCreate( geode->getOrCreateStateSet() );
-        //vp->setFunction("oe_modelsplat_vert_model", vs_model, ShaderComp::LOCATION_VERTEX_MODEL);
-        //vp->setFunction("make_it_yellow", billboardFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, 2.0f);
-
-        //osg::Shader* main = new osg::Shader(osg::Shader::GEOMETRY, billboardGeomShader);
-        //vp->setShader("billboard_make_quad", main);
 
         //set the texture related uniforms
         osg::StateSet* geode_ss = geode->getOrCreateStateSet();
@@ -222,6 +216,8 @@ BillboardExtension::connect(MapNode* mapNode)
         geode_ss->getOrCreateUniform("billboard_height", osg::Uniform::FLOAT)->set( bbHeight );
         geode_ss->setMode(GL_BLEND, osg::StateAttribute::ON);
 
+        //for now just using an osg::Program
+        //TODO: need to add GeometryShader support to the shader comp setup
         osg::Program* pgm = new osg::Program;
         pgm->setName("billboard_program");
         pgm->addShader( new osg::Shader( osg::Shader::VERTEX, billboardVertShader ) );

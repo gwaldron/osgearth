@@ -123,8 +123,8 @@
 	
 	    <splat>
             <coverage>GLOBCOVER</coverage>
-			<legend>../data/splat/GLOBCOVER_legend.json</legend>
-            <catalog>../data/splat/splat_catalog.json</catalog>
+			<legend>../data/splat/GLOBCOVER_legend.xml</legend>
+            <catalog>../data/splat/splat_catalog.xml</catalog>
         </splat>
 		
 		<!--

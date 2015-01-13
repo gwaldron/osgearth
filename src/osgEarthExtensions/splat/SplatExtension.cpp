@@ -22,6 +22,7 @@
 #include "SplatTerrainEffect"
 
 #include <osgEarth/MapNode>
+#include <osgEarth/XmlUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -95,47 +96,51 @@ SplatExtension::connect(MapNode* mapNode)
     // Read in the catalog.
     osg::ref_ptr<SplatCatalog> catalog = new SplatCatalog();
     {
-        ReadResult result = _options.catalogURI()->readString( _dbOptions.get() );
-        if ( result.succeeded() )
+        osg::ref_ptr<XmlDocument> doc = XmlDocument::load(
+            _options.catalogURI().get(),
+            _dbOptions.get() );
+
+        if ( doc.valid() )
         {
-            Config conf;
-            conf.setReferrer(_options.catalogURI()->full());
+            catalog->fromConfig( doc->getConfig().child("catalog") );
+        }
 
-            std::string json = result.getString();
-            conf.fromJSON( json );
-            catalog->fromConfig( conf );
-
-            OE_INFO << LC << "Catalog: " << catalog->getClasses().size() << " classes\n";
+        if ( catalog->empty() )
+        {
+            OE_WARN << LC
+                << "Failed to read required catalog from \""
+                << _options.catalogURI()->full() << "\"\n";
+            return false;
         }
         else
         {
-            OE_WARN << LC
-                << "Failed to read catalog from \""
-                << _options.catalogURI()->full() << "\"\n";
-            return false;
+            OE_INFO << LC << "Catalog: found " << catalog->getClasses().size() << " classes\n";
         }
     }
 
     // Read in the legend.
     osg::ref_ptr<SplatCoverageLegend> legend = new SplatCoverageLegend();
     {
-        ReadResult result = _options.legendURI()->readString( _dbOptions.get() );
-        if ( result.succeeded() )
+        osg::ref_ptr<XmlDocument> doc = XmlDocument::load(
+            _options.legendURI().get(),
+            _dbOptions.get() );
+
+        if ( doc.valid() )
         {
-            Config conf;
-            conf.setReferrer(_options.legendURI()->full());
+            legend->fromConfig( doc->getConfig().child("legend") );
+        }
 
-            conf.fromJSON( result.getString() );
-            legend->fromConfig( conf );
-
-            OE_INFO << LC << "Legend: " << legend->getPredicates().size() << " mappings \n";
+        if ( legend->empty() )
+        {
+            OE_WARN << LC
+                << "Failed to read required legend from \""
+                << _options.legendURI()->full() << "\"\n";
+            return false;
         }
         else
         {
-            OE_WARN << LC
-                << "Failed to read legend from \""
-                << _options.legendURI()->full() << "\"\n";
-            return false;
+            OE_INFO << LC << "Legend: found " << legend->getPredicates().size() << " mappings \n";
+            OE_INFO << LC << legend->getConfig().toJSON(true) << "\n";
         }
     }
 

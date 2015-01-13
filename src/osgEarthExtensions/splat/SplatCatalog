@@ -91,7 +91,6 @@ namespace osgEarth { namespace Splat
     };
     
     typedef osgEarth::fast_map<std::string, SplatClass> SplatClassMap;
-    //typedef std::vector<SplatClass> SplatClassVector;
     
     // Associates a selector expression that, if it evaluates to true, will
     // select the specified splat texture
@@ -126,6 +125,11 @@ namespace osgEarth { namespace Splat
          * The splatting classifications set.
          */
         const SplatClassMap& getClasses() const { return _classes; }
+
+        /**
+         * Whether the catalog is empty
+         */
+        bool empty() const { return _classes.empty(); }
 
         /**
          * Create a texture array from the images in the catalog, along

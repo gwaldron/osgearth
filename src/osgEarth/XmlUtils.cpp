@@ -127,6 +127,47 @@ XmlElement::getSubElement( const std::string& name ) const
     return NULL;
 }
 
+const XmlElement*
+XmlElement::findElement(const std::string& name) const
+{
+    const XmlElement* result = 0L;
+
+    if ( this->getName() == name )
+    {
+        result = this;
+    }
+    else
+    {
+        // first check the subelements (breadth first search)
+        for(XmlNodeList::const_iterator i = getChildren().begin();
+            i != getChildren().end() && result == 0L;
+            i++ )
+        {
+            if ( i->get()->isElement() )
+            {
+                XmlElement* e = (XmlElement*)i->get();
+                if (osgEarth::ciEquals(name, e->getName()))
+                {
+                    result = e;
+                }
+            }
+        }
+
+        // not found? traverse the subelements.
+        if ( result == 0L )
+        {
+            for(XmlNodeList::const_iterator i = getChildren().begin();
+                i != getChildren().end() && result == 0L;
+                i++ )
+            {
+                XmlElement* e = (XmlElement*)i->get();
+                result = e->findElement( name );
+            }
+        }
+    }
+
+    return result;
+}
 
 std::string
 XmlElement::getText() const

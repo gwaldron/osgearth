@@ -100,15 +100,23 @@ SplatClass::SplatClass()
 
 SplatClass::SplatClass(const Config& conf)
 {
-    _name = conf.key();
+    _name = conf.value("name");
 
-    // read the data definitions in order:
-    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+    if ( conf.hasChild("range") )
     {
-        if ( !i->empty() )
+        // read the data definitions in order:
+        for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
         {
-            _ranges.push_back(SplatRangeData(*i));
+            if ( !i->empty() )
+            {
+                _ranges.push_back(SplatRangeData(*i));
+            }
         }
+    }
+    else
+    {
+        // just one.
+        _ranges.push_back( SplatRangeData(conf) );
     }
 }
 
@@ -118,7 +126,7 @@ SplatClass::getConfig() const
     Config conf( _name );
     for(SplatRangeDataVector::const_iterator i = _ranges.begin(); i != _ranges.end(); ++i)
     {
-        conf.add( i->getConfig() );
+        conf.add( "range", i->getConfig() );
     }
     return conf;
 }
@@ -142,9 +150,10 @@ SplatCatalog::fromConfig(const Config& conf)
     {
         for(ConfigSet::const_iterator i = classesConf.children().begin(); i != classesConf.children().end(); ++i)
         {
-            if ( !i->key().empty() )
+            SplatClass sclass(*i);
+            if ( !sclass._name.empty() )
             {
-                _classes[i->key()] = SplatClass(*i);
+                _classes[sclass._name] = sclass;
             }
         }
     }
@@ -162,7 +171,7 @@ SplatCatalog::getConfig() const
     {
         for(SplatClassMap::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
         {
-            classes.add( i->second.getConfig() );
+            classes.add( "class", i->second.getConfig() );
         }
     }    
     conf.add( classes );

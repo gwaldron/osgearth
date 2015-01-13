@@ -50,9 +50,13 @@
 		         class="grassland2"
 				 name="Mosaic grassland (50-70%) / forest or shrubland (20-50)"/>
 				 
+		<mapping value="130"
+		         class="savanna"
+				 name="Mosaic grassland (50-70%) / forest or shrubland (20-50)"/>
+				 
 		<mapping value="140"
 		         class="savanna"
-				 name="Closed to open (>15%) herbaceous vegetation (grassland, savannas or lichens/mosses)"/>
+				 name="Closed to open (>15%) (broadleaved or needleleaved, evergreen or deciduous) shrubland (<5m)"/>
 				 
 		<mapping value="150"
 		         class="savanna"

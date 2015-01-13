@@ -65,6 +65,7 @@ static osg::ref_ptr< osg::Node > s_editor;
 static osg::ref_ptr< FeatureNode > s_featureNode;
 static osgViewer::Viewer* s_viewer;
 static osg::ref_ptr< osg::Group > s_root;
+static osg::ref_ptr< osg::Group > s_editorsRoot;
 static osg::ref_ptr< MapNode > s_mapNode;
 
 Grid* createToolBar()
@@ -91,7 +92,7 @@ struct AddVertsModeHandler : public ControlEventHandler
         //remove the editor if it's valid
         if (s_editor.valid())
         {
-            s_root->removeChild( s_editor.get() );
+            s_editorsRoot->removeChild( s_editor.get() );
             s_editor = NULL;
 
             // Unset the stipple on the line
@@ -131,7 +132,7 @@ struct EditModeHandler : public ControlEventHandler
             style.getOrCreate<LineSymbol>()->stroke()->stipple() = 0x00FF;            
             s_featureNode->setStyle( style );            
             s_editor = new FeatureEditor( s_featureNode );
-            s_root->addChild( s_editor.get() );            
+            s_editorsRoot->addChild( s_editor.get() );            
         }
     }    
 };
@@ -211,11 +212,14 @@ int main(int argc, char** argv)
     Feature* feature = new Feature(line, s_mapNode->getMapSRS(), Style(), s_fid++);
     s_featureNode = new FeatureNode( s_mapNode, feature );    
     s_featureNode->setStyle( style );
-  
+    
+    s_editorsRoot = new osg::Group;
+
     s_root = new osg::Group;
     s_root->addChild( s_mapNode.get() );
+    s_root->addChild( s_featureNode.get() );
+    s_root->addChild( s_editorsRoot.get() );
 
-    s_root->addChild( s_featureNode );
 
     //Setup the controls
     ControlCanvas* canvas = ControlCanvas::getOrCreate( &viewer );

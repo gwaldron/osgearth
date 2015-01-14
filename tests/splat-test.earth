@@ -19,7 +19,7 @@
 	</elevation>
 	
     <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true" enabled="true">
-        <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
+        <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
         <cache_policy usage="none"/>
     </image>
 	
@@ -124,6 +124,7 @@
 	    <splat>
             <coverage>GLOBCOVER</coverage>
 			<legend>../data/splat/GLOBCOVER_legend.xml</legend>
+			<biomes>../data/splat/splat_biomes.xml</biomes>
             <catalog>../data/splat/splat_catalog.xml</catalog>
         </splat>
 		

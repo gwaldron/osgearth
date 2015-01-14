@@ -6,7 +6,8 @@ set(TARGET_GLSL
     Splat.Noise.glsl
     Splat.vert.model.glsl
     Splat.vert.view.glsl
-    Splat.frag.glsl)
+    Splat.frag.glsl
+    Splat.getRenderInfo.frag.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -16,6 +17,8 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 set(TARGET_SRC
+    Biome.cpp
+	BiomeSelector.cpp
 	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
@@ -25,6 +28,8 @@ set(TARGET_SRC
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
+    Biome
+	BiomeSelector
 	SplatCoverageLegend
 	SplatCatalog
 	SplatExtension

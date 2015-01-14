@@ -1,0 +1,14 @@
+<biomes version="1">
+	
+	<biome name="Australia">
+		<catalog>splat_catalog_au.xml</catalog>
+		<regions>
+			<region xmin="112" xmax="154" ymin="-43.5" ymax="-11.16" zmax="1e6"/>
+		</regions>
+	</biome>
+	
+	<biome name="Default">
+		<catalog>splat_catalog.xml</catalog>
+	</biome>
+	
+</biomes>

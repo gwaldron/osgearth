@@ -35,6 +35,10 @@ namespace osgEarth { namespace Splat
         /** URI of the splat texture catalog description file */
         optional<URI>& catalogURI() { return _catalogURI; }
         const optional<URI>& catalogURI() const { return _catalogURI; }
+
+        /** URI of a biomes definition file (optional) */
+        optional<URI>& biomesURI() { return _biomesURI; }
+        const optional<URI>& biomesURI() const { return _biomesURI; }
         
         /** URI of the legend that describes the values in the coverage layer and maps them
             to the catalog. */
@@ -83,6 +87,7 @@ namespace osgEarth { namespace Splat
         Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
             conf.updateIfSet("catalog",  _catalogURI);
+            conf.updateIfSet("biomes",   _biomesURI);
             conf.updateIfSet("legend",   _legendURI);
             conf.updateIfSet("coverage", _coverageLayerName );
             conf.updateIfSet("draw_after_image_layers", _drawAfterImageLayers);
@@ -101,6 +106,7 @@ namespace osgEarth { namespace Splat
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet("catalog",  _catalogURI);
+            conf.getIfSet("biomes",   _biomesURI);
             conf.getIfSet("legend",   _legendURI);
             conf.getIfSet("coverage", _coverageLayerName );
             conf.getIfSet("draw_after_image_layers", _drawAfterImageLayers);
@@ -110,6 +116,7 @@ namespace osgEarth { namespace Splat
         }
 
         optional<URI>         _catalogURI;
+        optional<URI>         _biomesURI;
         optional<URI>         _legendURI;
         optional<std::string> _coverageLayerName;
         optional<bool>        _drawAfterImageLayers;

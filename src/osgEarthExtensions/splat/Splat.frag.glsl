@@ -60,16 +60,14 @@ struct oe_SplatRenderInfo {
     float threshold;
     float minSlope;
 };
-        
-// permutation vectors for the warper.
-// highly unlikely that we will use more than 2 or 3 of these in practice.
-#define OE_SPLAT_MAX_SAMPLES 15
-const vec2 oe_splat_warpVecs[OE_SPLAT_MAX_SAMPLES] = vec2[]( vec2( -0.942016, -0.399062 ), vec2( 0.845586, -0.768907 ), vec2( 0.344959, 0.293878 ), vec2( -0.915886, 0.457714 ), vec2( -0.815442, -0.879125 ), vec2( -0.382775, 0.276768 ), vec2( 0.974844, 0.756484 ), vec2( 0.443233, -0.975116 ), vec2( 0.53743, -0.473734 ), vec2( -0.264969, -0.41893 ), vec2( 0.791975, 0.190909 ), vec2( -0.241888, 0.997065 ), vec2( -0.8141, 0.914376 ), vec2( 0.199841, 0.786414 ), vec2( 0.143832, -0.141008 ));
 
+// External function, generated from "Splat.getRenderIngo.frag.glsl"
+oe_SplatRenderInfo oe_splat_getRenderInfo(in vec2 tc, in oe_SplatEnv env);
+        
 // Warps the coverage sampling coordinates to mitigate blockiness.
-vec2 oe_splat_warpCoverageCoords(int sample, in vec2 splat_tc)
+vec2 oe_splat_warpCoverageCoords(in vec2 splat_tc)
 {
-    vec2 v = oe_splat_warpVecs[sample];
+    vec2 v = vec2(-0.942016, -0.399062);
     vec2 seed = oe_splat_covtc + v;
     float n1 = oe_splat_noise2(seed*100.0);
     vec2 tc = oe_splat_covtc + n1*v*oe_splat_warp;
@@ -117,23 +115,10 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
     return result;
 }
 
-// Samples the coverage data and returns main and detail indices.
-oe_SplatRenderInfo oe_splat_getRenderInfo(in vec2 tc, in oe_SplatEnv env)
-{
-    float primary = -1.0;   // primary texture index
-    float detail = -1.0;    // detail texture index
-    float saturation = 0.0; // default noise function saturation factor
-    float threshold = 0.0;  // default noise function threshold
-    float minSlope = 0.0;   // default minimum slope
-    float value = 255.0 * texture2D(oe_splat_coverage_tex, tc).r;
-$COVERAGE_BUILD_RENDER_INFO
-    return oe_SplatRenderInfo(primary, detail, saturation, threshold, minSlope);
-}
-
 // Generates a texel using nearest-neighbor coverage sampling.
 vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 {
-    vec2 warped_tc = oe_splat_warpCoverageCoords(0, splat_tc);
+    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc);
     oe_SplatRenderInfo ri = oe_splat_getRenderInfo(warped_tc, env);
     return oe_splat_getTexel(ri.primaryIndex, splat_tc);
 }
@@ -144,7 +129,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     vec4 texel = vec4(0,0,0,1);
 
     //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
-    vec2 warped_tc = oe_splat_warpCoverageCoords(0, splat_tc);
+    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc);
 
     float a = oe_splat_blur;
     float pixelWidth = a/256.0; // 256 = hard-coded cov tex size //TODO 

@@ -1,5 +1,4 @@
-<catalog name="Default" version="1">
-	<description>Default texture splatting catalog</description>
+<catalog name="Australia" version="1">
 	<classes>
 		<class name="cropland1">
 			<image>cropland2.jpg</image>
@@ -44,11 +43,7 @@
 			<image>swamp.jpg</image>
 		</class>
 		<class name="desert">
-			<image>barren.jpg</image>
-			<detail>
-				<image>rock_dark.jpg</image>
-				<saturation>0.98</saturation>
-			</detail>
+			<image>asphalt.jpg</image>
 		</class>
 		<class name="water">
 			<image>water.jpg</image>
@@ -58,12 +53,6 @@
 		</class>
 		<class name="tundra">
 			<image>tundra.jpg</image>
-			<detail>
-				<image>rock_dark.jpg</image>
-				<saturation>0.99</saturation>
-				<threshold>0.55</threshold>
-				<minslope>0.12</minslope>
-			</detail>
 		</class>
 		<class name="urban">
 			<image>urban3.jpg</image>

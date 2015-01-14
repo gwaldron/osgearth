@@ -21,13 +21,10 @@
 
 #include "SplatExport"
 #include <osg/Referenced>
-
+#include <osg/Texture2DArray>
 #include <osgEarth/Containers>
 #include <osgEarth/URI>
 
-namespace osg {
-    class Texture2DArray;
-}
 namespace osgDB {
     class Options;
 }
@@ -107,7 +104,10 @@ namespace osgEarth { namespace Splat
     {
         osg::ref_ptr<osg::Texture2DArray> _texture;
         SplatLUT                          _splatLUT;
+        std::string                       _samplingFunction;
     };
+    
+    typedef std::vector<SplatTextureDef> SplatTextureDefVector;
 
     /**
      * Catalog of texture-splatting classes. Usually these correspond
@@ -135,9 +135,15 @@ namespace osgEarth { namespace Splat
          * Create a texture array from the images in the catalog, along
          * with a definition of how to map classifications to texture
          * array indices.
-         */
+         */        
         bool createSplatTextureDef(const osgDB::Options* options,
-                                   SplatTextureDef&      out_def );
+                                   SplatTextureDef&      out);
+
+    public: // properties
+
+        /** Name of this catalog */
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
 
 
     public: // serialization
@@ -147,6 +153,12 @@ namespace osgEarth { namespace Splat
 
         // serialize this object to a Config.
         Config getConfig() const;
+        
+
+    public: // static utility
+
+        /** Reads a splat catalog from a URI. */
+        static SplatCatalog* read(const URI& uri, const osgDB::Options* options);
 
 
     protected:
@@ -157,6 +169,7 @@ namespace osgEarth { namespace Splat
         optional<std::string> _name;
         optional<std::string> _description;
         SplatClassMap         _classes;
+        SplatTextureDef       _textureDef;
     };
 
 } } // namespace osgEarth::Splat

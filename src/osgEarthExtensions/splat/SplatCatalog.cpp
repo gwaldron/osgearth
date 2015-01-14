@@ -19,6 +19,7 @@
 #include "SplatCatalog"
 #include <osgEarth/Config>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/XmlUtils>
 #include <osg/Texture2DArray>
 
 using namespace osgEarth;
@@ -221,7 +222,7 @@ namespace
 
 bool
 SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
-                                    SplatTextureDef&      out      )
+                                    SplatTextureDef&      out)
 {
     // Reset all texture indices to default
     for(SplatClassMap::iterator i = _classes.begin(); i != _classes.end(); ++i)
@@ -349,4 +350,35 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
     }
 
     return out._texture.valid();
+}
+
+SplatCatalog*
+SplatCatalog::read(const URI&            uri,
+                   const osgDB::Options* options)
+{
+    osg::ref_ptr<SplatCatalog> catalog;
+
+    osg::ref_ptr<XmlDocument> doc = XmlDocument::load( uri, options );
+    if ( doc.valid() )
+    {
+        catalog = new SplatCatalog();
+        catalog->fromConfig( doc->getConfig().child("catalog") );
+        if ( catalog->empty() )
+        {
+            OE_WARN << LC << "Catalog is empty! (" << uri.full() << ")\n";
+            catalog = 0L;
+        }
+        else
+        {
+            OE_INFO << LC << "Catalog \"" << catalog->name().get() << "\""
+                << " contains " << catalog->getClasses().size()
+                << " classes.\n";
+        }
+    }
+    else
+    {
+        OE_WARN << LC << "Failed to read catalog from " << uri.full() << "\n";
+    }
+
+    return catalog.release();
 }

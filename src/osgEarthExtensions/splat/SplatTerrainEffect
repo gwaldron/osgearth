@@ -21,6 +21,8 @@
 
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
+#include "Biome"
+#include "BiomeSelector"
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/ImageLayer>
 #include <osg/Image>
@@ -39,9 +41,15 @@ namespace osgEarth { namespace Splat
     public:
         /** construct a new terrain effect. */
         SplatTerrainEffect(
-            SplatCatalog*         catalog,
+            const BiomeVector&    biomes,
             SplatCoverageLegend*  legend,
             const osgDB::Options* dbOptions);
+
+        /** construct a new terrain effect. */
+        //SplatTerrainEffect(
+        //    SplatCatalog*         catalog,
+        //    SplatCoverageLegend*  legend,
+        //    const osgDB::Options* dbOptions);
 
         /**
          * Sets the image layer that supplies the coverage values. This value
@@ -96,11 +104,15 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~SplatTerrainEffect() { }
 
-        std::string generateSamplingCode();
-        osg::Texture* generateNoiseTexture() const;
+        void createUniforms();
+        void installCoverageSamplingFunction(SplatTextureDef& textureDef);
+        osg::Texture* createNoiseTexture() const;
+
+        // these 2 vectors are index-aligned:
+        BiomeVector                         _biomes;
+        SplatTextureDefVector               _textureDefs;
 
         bool                                _ok;
-        SplatTextureDef                     _splatDef;
         int                                 _splatTexUnit;
         osg::ref_ptr<osg::Uniform>          _splatTexUniform;
         osg::ref_ptr<osg::Uniform>          _coverageTexUniform;
@@ -118,6 +130,9 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Uniform>          _noiseTexUniform;
         osg::ref_ptr<osg::Uniform>          _snowMinElevUniform;
         osg::ref_ptr<osg::Uniform>          _snowPatchinessUniform;
+
+        osg::ref_ptr<BiomeSelector>         _biomeSelector;
+
     };
 
 } } // namespace osgEarth::Splat

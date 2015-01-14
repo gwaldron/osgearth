@@ -27,7 +27,7 @@ namespace osgEarth_kml
 
     struct KML_MultiGeometry : public KML_Geometry
     {
-        virtual void parseCoords( const Config& conf, KMLContext& cx );
+        virtual void parseCoords( xml_node<>* node, KMLContext& cx );
     };
 
 } // namespace osgEarth_kml

@@ -21,7 +21,7 @@
 using namespace osgEarth_kml;
 
 void
-KML_MultiGeometry::parseCoords( const Config& conf, KMLContext& cx )
+KML_MultiGeometry::parseCoords( xml_node<>* node, KMLContext& cx )
 {
     _geom = new MultiGeometry();
     //KML_Geometry::parseCoords( conf, cx );

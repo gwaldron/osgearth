@@ -42,8 +42,10 @@ KMLReader::read( std::istream& in, const osgDB::Options* dbOptions )
     // pull the URI context out of the DB options:
     URIContext context(dbOptions);
 
+	/*
     // read the KML from an XML stream:
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in, context );
+
     if ( !xml.valid() )
         return 0L;
 
@@ -54,15 +56,36 @@ KMLReader::read( std::istream& in, const osgDB::Options* dbOptions )
     node->setName( context.referrer() );
 
     return node;
+	*/
+
+	// Load the XML
+    osg::Timer_t start = osg::Timer::instance()->tick();
+	std::stringstream buffer;
+    buffer << in.rdbuf();
+    std::string xmlStr;
+    xmlStr = buffer.str();
+	xml_document<> doc;
+	doc.parse<0>(&xmlStr[0]);
+    osg::Timer_t end = osg::Timer::instance()->tick();
+	OSG_NOTICE << "Loaded KML in " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+
+    start = osg::Timer::instance()->tick();
+	osg::Node* node = read(doc, dbOptions);
+    end = osg::Timer::instance()->tick();
+	OSG_NOTICE << "Parsed KML in " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+	node->setName( context.referrer() );
+
+	return node;
 }
 
 osg::Node*
-KMLReader::read( const Config& conf, const osgDB::Options* dbOptions )
+KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
 {
     osg::Group* root = new osg::Group();
     root->ref();
 
-    root->setName( conf.referrer() );
+	// TODO:  JBFix
+    //root->setName( conf.referrer() );
 
     KMLContext cx;
     cx._mapNode   = _mapNode;
@@ -94,14 +117,15 @@ KMLReader::read( const Config& conf, const osgDB::Options* dbOptions )
         Decluttering::setEnabled( cx._options->iconAndLabelGroup()->getOrCreateStateSet(), true );
     }
 
-    const Config* top = conf.hasChild("kml" ) ? conf.child_ptr("kml") : &conf;
+    //const Config* top = conf.hasChild("kml" ) ? conf.child_ptr("kml") : &conf;
+	xml_node<> *top = doc.first_node("kml", 0, false);
 
-    if ( top && !top->empty() )
+    if ( top)
     {
         KML_Root kmlRoot;
-        kmlRoot.scan ( *top, cx );    // first pass
-        kmlRoot.scan2( *top, cx );   // second pass
-        kmlRoot.build( *top, cx );   // third pass.
+        kmlRoot.scan ( top, cx );    // first pass
+        kmlRoot.scan2( top, cx );   // second pass
+        kmlRoot.build( top, cx );   // third pass.
     }
 
     URIResultCache* cacheUsed = URIResultCache::from(cx._dbOptions.get());

@@ -35,6 +35,8 @@ namespace osgEarth
      */
     struct OSGEARTH_EXPORT ShaderLoader
     {
+        typedef std::map<std::string,std::string> SourceMap;
+
         /**
          * Loads shader source from the specified filename. If the
          * file can't be found in the OSG file path, use the source
@@ -43,7 +45,12 @@ namespace osgEarth
         static std::string loadSource(
             const std::string&    filename,
             const std::string&    backupSource,
-            const osgDB::Options* dbOptios =0L );
+            const osgDB::Options* dbOptions =0L );
+
+        static std::string loadSource(
+            const std::string&    filename,
+            const SourceMap&      sources,
+            const osgDB::Options* dbOptions =0L );
     };
 
     /**

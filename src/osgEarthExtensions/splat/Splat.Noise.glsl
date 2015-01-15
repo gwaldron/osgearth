@@ -142,7 +142,7 @@ float oe_noise_fractal4D(in vec2 seed, in float frequency, in float persistence,
 
 	for(int i=0; i<octaves; ++i)
 	{
-		n += snoise(seed4D*f) * amp;
+		n += oe_noise_snoise(seed4D*f) * amp;
 		maxAmp += amp;
 		amp *= persistence;
 		f *= lacunarity;

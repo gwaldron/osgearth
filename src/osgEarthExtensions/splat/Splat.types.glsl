@@ -11,7 +11,8 @@ struct oe_SplatEnv {
 struct oe_SplatRenderInfo {
     float primaryIndex;
     float detailIndex;
-    float saturation;
+    float brightness;
+    float contrast;
     float threshold;
     float minSlope;
 };

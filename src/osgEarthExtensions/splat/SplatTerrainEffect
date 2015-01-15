@@ -47,12 +47,6 @@ namespace osgEarth { namespace Splat
             SplatCoverageLegend*  legend,
             const osgDB::Options* dbOptions);
 
-        /** construct a new terrain effect. */
-        //SplatTerrainEffect(
-        //    SplatCatalog*         catalog,
-        //    SplatCoverageLegend*  legend,
-        //    const osgDB::Options* dbOptions);
-
         /**
          * Sets the image layer that supplies the coverage values. This value
          * is mandatory, and you must call it prior to installing the effect.
@@ -106,7 +100,6 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~SplatTerrainEffect() { }
 
-        void createUniforms();
         void installCoverageSamplingFunction(SplatTextureDef& textureDef);
         osg::Texture* createNoiseTexture() const;
 
@@ -126,16 +119,20 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<SplatCoverageLegend>   _legend;
         osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;
-        bool                                _edit;
         int                                 _noiseTexUnit;
         osg::ref_ptr<osg::Texture>          _noiseTex;
         osg::ref_ptr<osg::Uniform>          _noiseTexUniform;
+        osg::ref_ptr<osg::Uniform>          _noiseScaleUniform;
+        osg::ref_ptr<osg::Uniform>          _useBilinearUniform;
         osg::ref_ptr<osg::Uniform>          _snowMinElevUniform;
         osg::ref_ptr<osg::Uniform>          _snowPatchinessUniform;
 
         osg::ref_ptr<BiomeSelector>         _biomeSelector;
 
         Shaders _shaders;
+
+        bool                                _editMode;
+        bool                                _gpuNoise;
 
     };
 

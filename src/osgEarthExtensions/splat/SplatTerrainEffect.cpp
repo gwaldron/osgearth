@@ -33,9 +33,9 @@
 
 #define LC "[Splat] "
 
-#define COVERAGE_SAMPLER "oe_splat_coverage_tex"
-#define SPLAT_SAMPLER    "oe_splat_tex"
-#define NOISE_SAMPLER    "oe_splat_noise_tex"
+#define COVERAGE_SAMPLER "oe_splat_coverageTex"
+#define SPLAT_SAMPLER    "oe_splatTex"
+#define NOISE_SAMPLER    "oe_splat_noiseTex"
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -46,13 +46,16 @@ SplatTerrainEffect::SplatTerrainEffect(const BiomeVector&    biomes,
 _biomes     ( biomes ),
 _legend     ( legend ),
 _renderOrder( -1.0f ),
-_ok         ( false )
+_ok         ( false ),
+_editMode   ( false ),
+_gpuNoise   ( false )
 {
     if ( biomes.size() == 0 )
     {
         OE_WARN << LC << "Internal: no biomes.\n";
     }
 
+    // Create a texture def for each biome.
     for(unsigned b = 0; b < biomes.size(); ++b)
     {
         const Biome& biome = biomes[b];
@@ -84,49 +87,22 @@ _ok         ( false )
         _textureDefs.push_back( def );
 
         if ( !_ok )
+        {
             _ok = def._texture.valid();
-    }
-
-    createUniforms();
-}
-
-#if 0
-SplatTerrainEffect::SplatTerrainEffect(SplatCatalog*         catalog,
-                                       SplatCoverageLegend*  legend,
-                                       const osgDB::Options* dbOptions) :
-_legend     ( legend ),
-_ok         ( false ),
-_renderOrder( -1.0f )
-{
-    if ( catalog )
-    {
-        SplatTextureDef def;
-        _ok = catalog->createSplatTextureDef(dbOptions, def);
-        if ( _ok )
-        {
-            _textureDefs.push_back( def );
-        }
-        else
-        {
-            OE_WARN << LC << "Failed to create texture array from splat catalog\n";
         }
     }
 
-    createUniforms();
-}
-#endif
-
-void
-SplatTerrainEffect::createUniforms()
-{
     _scaleOffsetUniform    = new osg::Uniform("oe_splat_scaleOffset",      0.0f);
     _intensityUniform      = new osg::Uniform("oe_splat_intensity",        1.0f);
     _warpUniform           = new osg::Uniform("oe_splat_warp",             0.0f);
     _blurUniform           = new osg::Uniform("oe_splat_blur",             1.0f);
     _snowMinElevUniform    = new osg::Uniform("oe_splat_snowMinElevation", 10000.0f);
     _snowPatchinessUniform = new osg::Uniform("oe_splat_snowPatchiness",   2.0f);
+    _noiseScaleUniform     = new osg::Uniform("oe_splat_noiseScale",       12.0f);
+    _useBilinearUniform    = new osg::Uniform("oe_splat_useBilinear",       1.0f);
 
-    _edit = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L);
+    _editMode = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L);
+    _gpuNoise = (::getenv("OSGEARTH_SPLAT_GPU_NOISE") != 0L);
 }
 
 void
@@ -156,16 +132,6 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             _coverageTexUniform = stateset->getOrCreateUniform( COVERAGE_SAMPLER, osg::Uniform::SAMPLER_2D );
             _coverageTexUniform->set( _coverageLayer->shareImageUnit().get() );
 
-            // noise sampler
-            if (engine->getTextureCompositor()->reserveTextureImageUnit(_noiseTexUnit))
-            {
-                OE_INFO << LC << "Noise texture -> unit " << _noiseTexUnit << "\n";
-                _noiseTex = createNoiseTexture();
-                stateset->setTextureAttribute( _noiseTexUnit, _noiseTex.get() );
-                _noiseTexUniform = stateset->getOrCreateUniform( NOISE_SAMPLER, osg::Uniform::SAMPLER_2D );
-                _noiseTexUniform->set( _noiseTexUnit );
-            }
-
             // control uniforms
             stateset->addUniform( _scaleOffsetUniform.get() );
             stateset->addUniform( _intensityUniform.get() );
@@ -173,14 +139,10 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform( _blurUniform.get() );
             stateset->addUniform( _snowMinElevUniform.get() );
             stateset->addUniform( _snowPatchinessUniform.get() );
+            stateset->addUniform( _noiseScaleUniform.get() );
+            stateset->addUniform( _useBilinearUniform.get() );
 
-            stateset->getOrCreateUniform("oe_splat_freq", osg::Uniform::FLOAT)->set(32.0f);
-            stateset->getOrCreateUniform("oe_splat_pers", osg::Uniform::FLOAT)->set(0.8f);
-            stateset->getOrCreateUniform("oe_splat_lac",  osg::Uniform::FLOAT)->set(2.2f);
-            stateset->getOrCreateUniform("oe_splat_octaves", osg::Uniform::FLOAT)->set(7.0f);
-
-            stateset->getOrCreateUniform("oe_splat_blending_range", osg::Uniform::FLOAT)->set(250000.0f);
-            stateset->getOrCreateUniform("oe_splat_detail_range", osg::Uniform::FLOAT)->set(1000000.0f);
+            stateset->addUniform(new osg::Uniform("oe_splat_detailRange",  1000000.0f));
 
             // Configure the vertex shader:
             std::string vertexShaderModel = ShaderLoader::loadSource(
@@ -198,15 +160,33 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 _shaders.Frag,
                 _shaders.Context );
 
-            if ( _edit ) 
+            if ( _editMode ) 
             {
-                osgEarth::replaceIn( fragmentShader, "$SPLAT_EDIT", "#define SPLAT_EDIT 1\n" );
-                osgEarth::replaceIn( fragmentShader, "$SPLAT_GPU_NOISE", "#define SPLAT_GPU_NOISE 1\n" );
+                osgEarth::replaceIn( fragmentShader, "#undef SPLAT_EDIT", "#define SPLAT_EDIT" );
             }
-            else
+
+            // GPU noise is expensive, so only use it to tweak noise function values that you
+            // can later bake into the noise texture generator.
+            if ( _gpuNoise )
+            {                
+                osgEarth::replaceIn( fragmentShader, "#undef SPLAT_GPU_NOISE", "#define SPLAT_GPU_NOISE" );
+
+                // Use --uniform on the command line to tweak these values:
+                stateset->addUniform(new osg::Uniform("oe_splat_freq",   32.0f));
+                stateset->addUniform(new osg::Uniform("oe_splat_pers",    0.8f));
+                stateset->addUniform(new osg::Uniform("oe_splat_lac",     2.2f));
+                stateset->addUniform(new osg::Uniform("oe_splat_octaves", 8.0f));
+            }
+            else // use a noise texture (the default)
             {
-                osgEarth::replaceIn( fragmentShader, "$SPLAT_EDIT", "" );
-                osgEarth::replaceIn( fragmentShader, "$SPLAT_GPU_NOISE", "" );
+                if (engine->getTextureCompositor()->reserveTextureImageUnit(_noiseTexUnit))
+                {
+                    OE_INFO << LC << "Noise texture -> unit " << _noiseTexUnit << "\n";
+                    _noiseTex = createNoiseTexture();
+                    stateset->setTextureAttribute( _noiseTexUnit, _noiseTex.get() );
+                    _noiseTexUniform = stateset->getOrCreateUniform( NOISE_SAMPLER, osg::Uniform::SAMPLER_2D );
+                    _noiseTexUniform->set( _noiseTexUnit );
+                }
             }
 
             // shader components
@@ -220,6 +200,8 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
             vp->setShader( "oe_splat_noiseshaders", noiseShader );
 
+            // install the cull callback that will select the appropriate
+            // state based on the position of the camera.
             _biomeSelector = new BiomeSelector(
                 _biomes,
                 _textureDefs,
@@ -272,14 +254,16 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
         weightBuf,
         primaryBuf,
         detailBuf,
-        saturationBuf,
+        brightnessBuf,
+        contrastBuf,
         thresholdBuf,
         slopeBuf;
 
     unsigned
         primaryCount    = 0,
         detailCount     = 0,
-        saturationCount = 0,
+        brightnessCount = 0,
+        contrastCount   = 0,
         thresholdCount  = 0,
         slopeCount      = 0;
 
@@ -335,14 +319,24 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
                         detailBuf << "w"<<val << "*" << (rangeData._detail->_textureIndex + 1) << ".0";
                         detailCount++;
 
-                        if ( rangeData._detail->_saturation.isSet() )
+                        if ( rangeData._detail->_brightness.isSet() )
                         {
-                            if ( saturationCount == 0 )
-                                saturationBuf << IND "saturation += ";
+                            if ( brightnessCount == 0 )
+                                brightnessBuf << IND "brightness += ";
                             else
-                                saturationBuf << " + ";
-                            saturationBuf << "w"<<val << "*" << rangeData._detail->_saturation.get();
-                            saturationCount++;
+                                brightnessBuf << " + ";
+                            brightnessBuf << "w"<<val << "*" << rangeData._detail->_brightness.get();
+                            brightnessCount++;
+                        }
+
+                        if ( rangeData._detail->_contrast.isSet() )
+                        {
+                            if ( contrastCount == 0 )
+                                contrastBuf << IND "contrast += ";
+                            else
+                                contrastBuf << " + ";
+                            contrastBuf << "w"<<val << "*" << rangeData._detail->_contrast.get();
+                            contrastCount++;
                         }
 
                         if ( rangeData._detail->_threshold.isSet() )
@@ -358,7 +352,7 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
                         if ( rangeData._detail->_slope.isSet() )
                         {
                             if ( slopeCount == 0 )
-                                slopeBuf << IND "minSlope += ";
+                                slopeBuf << IND "slope += ";
                             else
                                 slopeBuf << " + ";
                             slopeBuf << "w"<<val << "*" << rangeData._detail->_slope.get();
@@ -376,8 +370,11 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
     if ( detailCount > 0 )
         detailBuf << ";\n";
 
-    if ( saturationCount > 0 )
-        saturationBuf << ";\n";
+    if ( brightnessCount > 0 )
+        brightnessBuf << ";\n";
+
+    if ( contrastCount > 0 )
+        contrastBuf << ";\n";
 
     if ( thresholdCount > 0 )
         thresholdBuf << ";\n";
@@ -390,10 +387,12 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
         _shaders.Context);
 
     std::string codeToInject = Stringify()
+        << IND
         << weightBuf.str()
         << primaryBuf.str()
         << detailBuf.str()
-        << saturationBuf.str()
+        << brightnessBuf.str()
+        << contrastBuf.str()
         << thresholdBuf.str()
         << slopeBuf.str();
 
@@ -401,17 +400,12 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
 
     textureDef._samplingFunction = code;
 
-    OE_INFO << LC << "Sampling function = \n" << code << "\n\n";
+    OE_DEBUG << LC << "Sampling function = \n" << code << "\n\n";
 }
 
 osg::Texture*
 SplatTerrainEffect::createNoiseTexture() const
 {
-    // FUTURE PLANS:
-    // 1. Use an GL_RGBA texture to store 4 different noise maps in one texture,
-    //    likely with different fractal parameters
-    // 2. Move some of this logic into a "procedural" sublibrary
-
     const int size = 1024;
     const int slices = 1;
 

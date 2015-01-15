@@ -37,10 +37,11 @@ namespace osgEarth { namespace Splat
      */
     struct SplatDetailData
     {
-        optional<URI>         _imageURI;
-        optional<float>       _saturation;
-        optional<float>       _threshold;
-        optional<float>       _slope;
+        optional<URI>   _imageURI;
+        optional<float> _brightness;
+        optional<float> _contrast;
+        optional<float> _threshold;
+        optional<float> _slope;
 
         // catalog will populate this value
         int _textureIndex;

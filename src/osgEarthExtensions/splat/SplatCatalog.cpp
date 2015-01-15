@@ -42,7 +42,8 @@ SplatDetailData::SplatDetailData(const Config& conf) :
 _textureIndex( -1 )
 {
     conf.getIfSet("image",      _imageURI);
-    conf.getIfSet("saturation", _saturation);
+    conf.getIfSet("brightness", _brightness);
+    conf.getIfSet("contrast",   _contrast);
     conf.getIfSet("threshold",  _threshold);
     conf.getIfSet("slope",      _slope);
 }
@@ -52,7 +53,8 @@ SplatDetailData::getConfig() const
 {
     Config conf;
     conf.addIfSet("image",      _imageURI);
-    conf.addIfSet("saturation", _saturation);
+    conf.addIfSet("brightness", _brightness);
+    conf.addIfSet("contrast",   _contrast);
     conf.addIfSet("threshold",  _threshold);
     conf.addIfSet("slope",      _slope);
     return conf;
@@ -347,6 +349,9 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
             out._texture->setImage( i, imagesInOrder[i].get() );
         }
 
+        OE_INFO << LC << "Catalog \"" << this->name().get()
+            << "\" texture size = "<< imagesInOrder.size()
+            << std::endl;
     }
 
     return out._texture.valid();

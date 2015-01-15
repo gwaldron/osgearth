@@ -82,10 +82,9 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 
     n = clamp(((n-0.5)*contrast + 0.5) * brightness, 0.0, 1.0);
 	
-	float deltaSlope = minSlope - oe_splat_slope;	
-	if ( deltaSlope > 0.0 ) {
-        n *= 1.0-deltaSlope; // TODO: not great. fix.
-	}    
+
+    float s = clamp(1.0-((oe_splat_slope-minSlope)/(minSlope)), 0.0, 1.0);
+    n = n > s ? n : 0.0;
 
 	n = n < threshold ? 0.0 : n;
 

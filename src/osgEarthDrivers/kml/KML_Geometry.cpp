@@ -99,7 +99,7 @@ KML_Geometry::parseCoords( xml_node<>* node, KMLContext& cx )
 {
     xml_node<>* coords = node->first_node("coordinates", 0, false);
     StringVector tuples;
-    StringTokenizer( coords->value(), tuples, " ", "", false, true );
+    StringTokenizer( coords->value(), tuples, " \n", "", false, true );
     for( StringVector::const_iterator s=tuples.begin(); s != tuples.end(); ++s )
     {
         StringVector parts;

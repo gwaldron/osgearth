@@ -184,22 +184,30 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             // Configure the vertex shader:
             std::string vertexShaderModel = ShaderLoader::loadSource(
-                Shaders::SplatVertModelFile, Shaders::SplatVertModelSource );
+                _shaders.VertModel, 
+                _shaders.Context);
 
             std::string vertexShaderView = ShaderLoader::loadSource(
-                Shaders::SplatVertViewFile, Shaders::SplatVertViewSource );
+                _shaders.VertView, 
+                _shaders.Context);
 
             osgEarth::replaceIn( vertexShaderView, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
             // Configure the fragment shader:
             std::string fragmentShader = ShaderLoader::loadSource(
-                Shaders::SplatFragFile,
-                Shaders::SplatFragSource );
+                _shaders.Frag,
+                _shaders.Context );
 
-            if ( _edit )
+            if ( _edit ) 
+            {
                 osgEarth::replaceIn( fragmentShader, "$SPLAT_EDIT", "#define SPLAT_EDIT 1\n" );
+                osgEarth::replaceIn( fragmentShader, "$SPLAT_GPU_NOISE", "#define SPLAT_GPU_NOISE 1\n" );
+            }
             else
+            {
                 osgEarth::replaceIn( fragmentShader, "$SPLAT_EDIT", "" );
+                osgEarth::replaceIn( fragmentShader, "$SPLAT_GPU_NOISE", "" );
+            }
 
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
@@ -208,7 +216,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             vp->setFunction( "oe_splat_fragment",     fragmentShader,    ShaderComp::LOCATION_FRAGMENT_COLORING, _renderOrder );
 
             // support shaders
-            std::string noiseShaderSource = ShaderLoader::loadSource( Shaders::NoiseFile, Shaders::NoiseSource );
+            std::string noiseShaderSource = ShaderLoader::loadSource( _shaders.Noise, _shaders.Context );
             osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
             vp->setShader( "oe_splat_noiseshaders", noiseShader );
 
@@ -378,8 +386,8 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
         slopeBuf << ";\n";
 
     std::string code = ShaderLoader::loadSource(
-        Shaders::SplatGetRenderInfoFile, 
-        Shaders::SplatGetRenderInfoSource);
+        _shaders.GetRenderInfo, 
+        _shaders.Context);
 
     std::string codeToInject = Stringify()
         << weightBuf.str()
@@ -407,14 +415,16 @@ SplatTerrainEffect::createNoiseTexture() const
     const int size = 1024;
     const int slices = 1;
 
-    GLenum type = slices==1?GL_LUMINANCE : slices==3?GL_RGB : GL_RGBA;
+    GLenum type = slices > 2 ? GL_RGBA : GL_LUMINANCE;
     
     osg::Image* image = new osg::Image();
     image->allocateImage(size, size, 1, type, GL_UNSIGNED_BYTE);
 
-    const float F[4] = { 1.0f, 2.0f, 4.0f, 8.0f };
-    const float P[4] = { 0.8f, 0.6f, 0.8f, 0.9f };
-    const float L[4] = { 2.2f, 2.0f, 3.0f, 4.0f };
+    // 0 = rocky mountains..
+    // 1 = warping...
+    const float F[4] = { 4.0f, 16.0f, 4.0f, 8.0f };
+    const float P[4] = { 0.8f,  0.6f, 0.8f, 0.9f };
+    const float L[4] = { 2.2f,  1.7f, 3.0f, 4.0f };
     
     for(int k=0; k<slices; ++k)
     {
@@ -425,7 +435,7 @@ SplatTerrainEffect::createNoiseTexture() const
         noise.setFrequency( F[k] );
         noise.setPersistence( P[k] );
         noise.setLacunarity( L[k] );
-        noise.setOctaves( 24 );
+        noise.setOctaves( 8 );
 
         float nmin = 10.0f;
         float nmax = -10.0f;

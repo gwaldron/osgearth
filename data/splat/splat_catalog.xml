@@ -60,9 +60,6 @@
 			<image>tundra.jpg</image>
 			<detail>
 				<image>rock_dark.jpg</image>
-				<saturation>0.99</saturation>
-				<threshold>0.55</threshold>
-				<minslope>0.12</minslope>
 			</detail>
 		</class>
 		<class name="urban">

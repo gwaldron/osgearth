@@ -1,7 +1,16 @@
 #version 130
 #extension GL_EXT_texture_array : enable
 
-$SPLAT_EDIT     // replaced at runtime
+$include "Splat.types.glsl"
+
+// ref: Splat.Noise.glsl
+float oe_splat_noise2(in vec2);
+
+// ref: Splat.getRenderIngo.frag.glsl
+oe_SplatRenderInfo oe_splat_getRenderInfo(in vec2 tc, in oe_SplatEnv env);
+
+$SPLAT_EDIT      // replaced at load time
+$SPLAT_GPU_NOISE // replaced at load time
 
 // from the terrain engine:
 varying vec4 oe_layer_tilec;
@@ -19,58 +28,27 @@ uniform float oe_splat_warp;
 uniform float oe_splat_blur;
 uniform sampler2D oe_splat_coverage_tex;
 uniform sampler2DArray oe_splat_tex;
-uniform sampler2D oe_splat_noise_tex;
 
 uniform sampler2D oe_terrain_tex;
 uniform mat4 oe_terrain_tex_matrix;
 uniform float oe_splat_detail_range;
 
 #ifdef SPLAT_EDIT
-// noise controllers.
-// we will probably replace the first 4 with a texture at some point.
-uniform float oe_splat_freq;
-uniform float oe_splat_pers;
-uniform float oe_splat_lac;
-uniform float oe_splat_octaves;
-
 uniform float oe_splat_threshold;
 uniform float oe_splat_saturation;
 uniform float oe_splat_minSlope;
+#endif
 uniform float oe_splat_brightness;
 uniform float oe_splat_contrast;
-#endif
+uniform float oe_splat_noiseScale;
 
-// See NoiseShaders
-float oe_splat_noise2(in vec2);
-float oe_noise_fractal_2d(in vec2 seed, in float freq, in float pers, in float lac, in int octaves);
-
-// Environment structure passed around locally.
-// (reminder: struct defs cannot include newlines for GLES)
-struct oe_SplatEnv {
-    float range;
-    float elevation;
-    vec4 noise;
-};
-
-// Rendering parameters for splat texture and noise-based detail texture.
-struct oe_SplatRenderInfo {
-    float primaryIndex;
-    float detailIndex;
-    float saturation;
-    float threshold;
-    float minSlope;
-};
-
-// External function, generated from "Splat.getRenderIngo.frag.glsl"
-oe_SplatRenderInfo oe_splat_getRenderInfo(in vec2 tc, in oe_SplatEnv env);
-        
 // Warps the coverage sampling coordinates to mitigate blockiness.
-vec2 oe_splat_warpCoverageCoords(in vec2 splat_tc)
+vec2 oe_splat_warpCoverageCoords(in vec2 splat_tc, in oe_SplatEnv env)
 {
     vec2 v = vec2(-0.942016, -0.399062);
-    vec2 seed = oe_splat_covtc + v;
-    float n1 = oe_splat_noise2(seed*100.0);
-    vec2 tc = oe_splat_covtc + n1*v*oe_splat_warp;
+    vec2 seed = oe_splat_covtc; // + v;
+    float n1 = 2.0*env.noise.y-1.0; //oe_splat_noise2(seed*100.0);
+    vec2 tc = oe_splat_covtc + n1*oe_splat_warp; //v*oe_splat_warp;
     return clamp(tc, 0.0, 1.0);
 }
 
@@ -95,8 +73,10 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
     float saturation = ri.saturation;
     float threshold = ri.threshold;
     float minSlope = ri.minSlope;
-    float brightness = 1.0;
-    float contrast = 1.0;
+    //float brightness = 1.0;
+    //float contrast = 1.0;
+    float brightness = oe_splat_brightness;
+    float contrast = oe_splat_contrast;
 #endif
 
     float n = env.noise.x;
@@ -118,7 +98,7 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 // Generates a texel using nearest-neighbor coverage sampling.
 vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 {
-    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc);
+    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc, env);
     oe_SplatRenderInfo ri = oe_splat_getRenderInfo(warped_tc, env);
     return oe_splat_getTexel(ri.primaryIndex, splat_tc);
 }
@@ -129,7 +109,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     vec4 texel = vec4(0,0,0,1);
 
     //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
-    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc);
+    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc, env);
 
     float a = oe_splat_blur;
     float pixelWidth = a/256.0; // 256 = hard-coded cov tex size //TODO 
@@ -194,13 +174,30 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     return texel;
 }
 
-// Gets the noise value at the given coordinates.
+#ifdef SPLAT_GPU_NOISE
+
+uniform float oe_splat_freq;
+uniform float oe_splat_pers;
+uniform float oe_splat_lac;
+uniform float oe_splat_octaves;
+float oe_noise_fractal_2d(in vec2 seed, in float frequency, in float persistence, in float lacunarity, in int octaves);
+float oe_noise_fractal4D(in vec2 seed, in float frequency, in float persistence, in float lacunarity, in int octaves);
+
 vec4 oe_splat_getNoise(in vec2 tc)
 {
-    // Uncommnent to generate noise on the GPU. (Expensive.)
-    //float n = oe_noise_fractal_2d(tc, oe_splat_freq, oe_splat_pers, oe_splat_lac, int(oe_splat_octaves));
+    return vec4(oe_noise_fractal4D(tc, oe_splat_freq, oe_splat_pers, oe_splat_lac, int(oe_splat_octaves)));
+}
+
+#else // !SPLAT_GPU_NOISE
+
+uniform sampler2D oe_splat_noise_tex;
+vec4 oe_splat_getNoise(in vec2 tc)
+{
     return texture2D(oe_splat_noise_tex, tc.st);
 }
+
+#endif // SPLAT_GPU_NOISE
+
 
 float oe_splat_applyBC(float n, float b, float c) {
     return clamp(((n-0.5)*c+0.5)*b, 0.0, 1.0);
@@ -251,7 +248,8 @@ void oe_splat_fragment(inout vec4 color)
     // Populate the environment:
 
     // Noise coords. "12" is an LOD. Should we make this a parameter?
-    vec2 noiseCoords = oe_splat_getSplatCoords(12.0);
+    float noiseLOD = floor(oe_splat_noiseScale);
+    vec2 noiseCoords = oe_splat_getSplatCoords(noiseLOD); //12
     vec4 noise = oe_splat_getNoise(noiseCoords);
 
     float elevation = texture2D(oe_terrain_tex, (oe_terrain_tex_matrix*oe_layer_tilec).st).r; //TODO: eliminate if unused
@@ -263,7 +261,7 @@ void oe_splat_fragment(inout vec4 color)
     const float lods  [RANGE_COUNT] = float[](  18.0,  17.0,   16.0,   14.0,    12.0,     10.0,      8.0,       6.0,       4.0 );
 
     // Choose the best range based on distance to camera.
-    float d = clamp(oe_splat_range, ranges[0], ranges[RANGE_COUNT-1]);
+    float d = clamp(oe_splat_range, ranges[0], ranges[RANGE_COUNT-1]);    
 
     vec4 texel;
 
@@ -272,7 +270,7 @@ void oe_splat_fragment(inout vec4 color)
     for(int i=0; i<RANGE_COUNT-1; ++i)
     {
         if ( d >= ranges[i] && d <= ranges[i+1] )
-        {
+        {            
             float lod0 = lods[i] + oe_splat_scaleOffsetInt;
             vec2 splat_tc0 = oe_splat_getSplatCoords(lod0);
             vec4 texel0 = oe_splat_bilinear(splat_tc0, env);

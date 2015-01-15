@@ -19,20 +19,26 @@
 #ifndef OSGEARTH_SPLAT_SHADERS
 #define OSGEARTH_SPLAT_SHADERS 1
 
+#include <map>
+#include <string>
+
 namespace osgEarth { namespace Splat
 {
-    typedef const char* ConstCharPtr;
-
     struct Shaders
 	{
-		static ConstCharPtr
-            NoiseFile,              NoiseSource,
-            SplatVertModelFile,     SplatVertModelSource,
-            SplatVertViewFile,      SplatVertViewSource,
-            SplatFragFile,          SplatFragSource,
-            SplatGetRenderInfoFile, SplatGetRenderInfoSource;
+        Shaders();
+
+        std::string
+            Types,
+            Noise,
+            VertModel,
+            VertView,
+            Frag,
+            GetRenderInfo;
+
+        std::map<std::string, std::string> Context;
 	};
 	
-} } // namespace osgEarth/NormalMap
+} } // namespace osgEarth::Splat
 
 #endif // OSGEARTH_SPLAT_SHADERS

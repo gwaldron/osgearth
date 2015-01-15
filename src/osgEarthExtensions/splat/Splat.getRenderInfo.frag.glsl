@@ -1,21 +1,8 @@
 #version 110
+
+$include "Splat.types.glsl"
+
 uniform sampler2D oe_splat_coverage_tex;
-
-// Environment structure passed around locally.
-struct oe_SplatEnv {
-    float range;
-    float elevation;
-    vec4 noise;
-};
-
-// Rendering parameters for splat texture and noise-based detail texture.
-struct oe_SplatRenderInfo {
-    float primaryIndex;
-    float detailIndex;
-    float saturation;
-    float threshold;
-    float minSlope;
-};
 
 // Samples the coverage data and returns main and detail indices.
 oe_SplatRenderInfo oe_splat_getRenderInfo(in vec2 tc, in oe_SplatEnv env)

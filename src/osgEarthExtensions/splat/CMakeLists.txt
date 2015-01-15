@@ -3,6 +3,7 @@
 #
 
 set(TARGET_GLSL
+    Splat.types.glsl
     Splat.Noise.glsl
     Splat.vert.model.glsl
     Splat.vert.view.glsl
@@ -15,6 +16,9 @@ configure_shaders(
     SplatShaders.cpp.in
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
+
+set(TARGET_IN    
+    SplatShaders.cpp.in)
 
 set(TARGET_SRC
     Biome.cpp

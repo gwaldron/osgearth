@@ -110,7 +110,7 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                 AnnotationNode* modelNode   = 0L;
 
                 // one coordinate? It's a place marker or a label.
-                if ( model || icon || text || geom->getTotalPointCount() == 1 )
+                if ( (model || icon || text) && geom->getTotalPointCount() == 1 )
                 {
                     // load up the default icon if there we don't have one.
                     if ( !model && !icon )

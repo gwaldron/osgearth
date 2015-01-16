@@ -7,7 +7,7 @@
 <map>
         
 	<options>
-		<terrain normalize_edges="true" min_lod="20"/>
+		<terrain normalize_edges="true" min_lod="18"/>
 	</options>
 	
     <elevation name="readymap_elevation" driver="tms" enabled="true">
@@ -22,8 +22,6 @@
         <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
         <cache_policy usage="none"/>
     </image>
-	
-	<image driver="debug"/>
 
     <extensions>
 	

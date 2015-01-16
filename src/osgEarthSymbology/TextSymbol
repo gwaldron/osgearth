@@ -71,8 +71,9 @@ namespace osgEarth { namespace Symbology
             LAYOUT_VERTICAL
         };
 
-        META_Symbol(TextSymbol);
+        META_Object(osgEarthSymbology, TextSymbol);
 
+        TextSymbol(const TextSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
         TextSymbol( const Config& conf =Config() );
 
         /** dtor */

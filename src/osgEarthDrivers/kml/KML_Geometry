@@ -30,10 +30,10 @@ namespace osgEarth_kml
     struct KML_Geometry : public KML_Object
     {
         KML_Geometry() : _extrude(false), _tessellate(false) { }
-        virtual void parseCoords( const Config& conf, KMLContext& cx );
-        virtual void parseStyle( const Config& conf, KMLContext& cs, Style& style );
-        virtual void build( const Config& confParent, KMLContext& cx, Style& style );
-        void buildChild( const Config& conf, KMLContext& cx, Style& style );
+        virtual void parseCoords( xml_node<>* node, KMLContext& cx );
+        virtual void parseStyle( xml_node<>* node, KMLContext& cs, Style& style );
+        virtual void build( xml_node<>* node, KMLContext& cx, Style& style );
+        void buildChild( xml_node<>* node, KMLContext& cx, Style& style );
         osg::ref_ptr<Geometry> _geom;
         bool _extrude, _tessellate;
     private:    

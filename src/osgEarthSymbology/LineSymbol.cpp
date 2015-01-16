@@ -33,6 +33,14 @@ _creaseAngle ( 0.0f )
     mergeConfig(conf);
 }
 
+LineSymbol::LineSymbol(const LineSymbol& rhs,const osg::CopyOp& copyop):
+Symbol(rhs, copyop),
+_stroke(rhs._stroke),
+_tessellation(rhs._tessellation),
+_creaseAngle(rhs._creaseAngle)
+{
+}
+
 Config 
 LineSymbol::getConfig() const
 {

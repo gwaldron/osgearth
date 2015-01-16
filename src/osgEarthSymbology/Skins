@@ -148,8 +148,9 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT SkinSymbol : public Taggable<Symbol>
     {
     public:
-        META_Symbol(SkinSymbol);
+        META_Object(osgEarthSymbology, SkinSymbol);
 
+        SkinSymbol(const SkinSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
         SkinSymbol( const Config& conf =Config() );
 
         /** dtor */
@@ -158,8 +159,8 @@ namespace osgEarth { namespace Symbology
     public: // query parameters
 
         /** Name of the resource library to use with this symbol. */
-        optional<std::string>& libraryName() { return _libraryName; }
-        const optional<std::string>& libraryName() const { return _libraryName; }
+        optional<std::string>& library() { return _library; }
+        const optional<std::string>& library() const { return _library; }
 
         /** Object height in meters (must fall in the skin's min/max object height range to be accepted) */
         optional<float>& objectHeight() { return _objHeight; }
@@ -191,7 +192,7 @@ namespace osgEarth { namespace Symbology
         static void parseSLD(const Config& c, class Style& style);
 
     protected:
-        optional<std::string> _libraryName;
+        optional<std::string> _library;
         optional<float>       _objHeight;
         optional<float>       _minObjHeight;
         optional<float>       _maxObjHeight;

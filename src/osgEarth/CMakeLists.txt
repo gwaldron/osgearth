@@ -110,6 +110,7 @@ SET(LIB_PUBLIC_HEADERS
     Pickers
     PrimitiveIntersector
     Profile
+    Profiler
     Progress
     Random
     Registry
@@ -250,6 +251,7 @@ set(TARGET_SRC
     Pickers.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
+    Profiler.cpp
     Progress.cpp
     Random.cpp
     Registry.cpp

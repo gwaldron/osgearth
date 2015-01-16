@@ -24,6 +24,19 @@ using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(render, RenderSymbol);
 
+RenderSymbol::RenderSymbol(const RenderSymbol& rhs,const osg::CopyOp& copyop):
+Symbol(rhs, copyop),
+_depthTest(rhs._depthTest),
+_lighting(rhs._lighting),
+_depthOffset(rhs._depthOffset),
+_backfaceCulling(rhs._backfaceCulling),
+_order(rhs._order),
+_clipPlane(rhs._clipPlane),
+_minAlpha(rhs._minAlpha),
+_renderBin(rhs._renderBin)
+{
+}
+
 RenderSymbol::RenderSymbol(const Config& conf) :
 Symbol          ( conf ),
 _depthTest      ( true ),

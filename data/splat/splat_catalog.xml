@@ -47,7 +47,7 @@
 			<image>barren.jpg</image>
 			<detail>
 				<image>rock_dark.jpg</image>
-				<threshold>0.8</contrast>
+				<threshold>0.8</threshold>
 				<contrast>1.5</contrast>
 				<scale>9.0</scale>
 			</detail>

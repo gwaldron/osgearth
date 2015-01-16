@@ -79,6 +79,13 @@ namespace osgEarth
         XmlElement* getSubElement( const std::string& name ) const;
         
         XmlNodeList getSubElements( const std::string& name ) const;
+
+        /**
+         * Finds the first element matching the name. This will match the
+         * current element (this), or the first matching element in this
+         * nodes subhierarchy.
+         */
+        const XmlElement* findElement(const std::string& name) const;
         
         std::string getText() const;
         

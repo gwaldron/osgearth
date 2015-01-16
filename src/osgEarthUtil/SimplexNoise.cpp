@@ -123,6 +123,7 @@ const double   SimplexNoise::DefaultLacunarity   =  2.0;
 const double   SimplexNoise::DefaultRangeLow     = -1.0;
 const double   SimplexNoise::DefaultRangeHigh    =  1.0;
 const unsigned SimplexNoise::DefaultOctaves      =  10;
+const bool     SimplexNoise::DefaultNormalize    =  true;
 
 
 SimplexNoise::SimplexNoise() :
@@ -131,12 +132,76 @@ _freq      ( DefaultFrequency ),
 _pers      ( DefaultPersistence ),
 _lacunarity( DefaultLacunarity ),
 _low       ( DefaultRangeLow ),
-_high      ( DefaultRangeHigh )
+_high      ( DefaultRangeHigh ),
+_normalize ( DefaultNormalize )
 {
     for(unsigned int i=0; i<512; i++)
     {
         permMod12[i] = (unsigned char)(perm[i] % 12);
     }
+}
+
+double SimplexNoise::getTiledValue(double x, double y) const
+{
+    const double TwoPI = 2.0 * osg::PI;
+    double freq = _freq;
+    double o = std::max(1u, _octaves);
+    double amp = 1.0;
+    double maxamp = 0.0;
+    double n = 0.0;
+    
+    double nx = cos(x*TwoPI)/TwoPI;
+    double ny = cos(y*TwoPI)/TwoPI;
+    double nz = sin(x*TwoPI)/TwoPI;
+    double nw = sin(y*TwoPI)/TwoPI;
+
+    for(unsigned i=0; i<o; ++i)
+    {
+        n += Noise(nx*freq, ny*freq, nz*freq, nw*freq) * amp;
+        maxamp += amp;
+        amp *= _pers;
+        freq *= _lacunarity;
+    }
+
+    if ( _normalize )
+    {
+        n /= maxamp;
+        n = n * (_high-_low)/2.0 + (_high+_low)/2.0;
+    }
+    return n;
+}
+
+double SimplexNoise::getTiledValueWithTurbulence(double x, double y, double F) const
+{
+    const double TwoPI = 2.0 * osg::PI;
+    double freq = _freq;
+    double o = std::max(1u, _octaves);
+    double amp = 1.0;
+    double maxamp = 0.0;
+    double n = 0.0;
+    
+    double nx = cos(x*TwoPI)/TwoPI;
+    double ny = cos(y*TwoPI)/TwoPI;
+    double nz = sin(x*TwoPI)/TwoPI;
+    double nw = sin(y*TwoPI)/TwoPI;
+
+    for(unsigned i=0; i<o; ++i)
+    {
+        float t = -0.5f, FF = F;
+        for(; FF<127.0f; FF*=2.0)
+            t += fabs(getValue(nx*freq/F, ny*freq/F, nz*freq/F, nw*freq/F));
+        n += t * amp;
+        maxamp += amp;
+        amp *= _pers;
+        freq *= _lacunarity;
+    }
+
+    if ( _normalize )
+    {
+        n /= maxamp;
+        n = n * (_high-_low)/2.0 + (_high+_low)/2.0;
+    }
+    return n;
 }
 
 double SimplexNoise::getValue(double xin, double yin) const
@@ -154,8 +219,10 @@ double SimplexNoise::getValue(double xin, double yin) const
         amp *= _pers;
         freq *= _lacunarity;
     }
-    n /= maxamp;
-    n = n * (_high-_low)/2.0 + (_high+_low)/2.0;
+    if ( _normalize )
+    {
+        n /= maxamp;
+    }
     return n;
 }
 
@@ -174,8 +241,12 @@ double SimplexNoise::getValue(double xin, double yin, double zin) const
         amp *= _pers;
         freq *= _lacunarity;
     }
-    n /= maxamp;
-    n = n * (_high-_low)/2.0 + (_high+_low)/2.0;
+    
+    if ( _normalize )
+    {
+        n /= maxamp;
+        n = n * (_high-_low)/2.0 + (_high+_low)/2.0;
+    }
     return n;
 }
 
@@ -194,8 +265,12 @@ double SimplexNoise::getValue(double xin, double yin, double zin, double win) co
         amp *= _pers;
         freq *= _lacunarity;
     }
-    n /= maxamp;
-    n = n * (_high-_low)/2.0 + (_high+_low)/2.0;
+    
+    if ( _normalize )
+    {
+        n /= maxamp;
+        n = n * (_high-_low)/2.0 + (_high+_low)/2.0;
+    }
     return n;
 }
 

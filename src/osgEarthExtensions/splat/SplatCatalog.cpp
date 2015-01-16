@@ -19,6 +19,7 @@
 #include "SplatCatalog"
 #include <osgEarth/Config>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/XmlUtils>
 #include <osg/Texture2DArray>
 
 using namespace osgEarth;
@@ -41,7 +42,8 @@ SplatDetailData::SplatDetailData(const Config& conf) :
 _textureIndex( -1 )
 {
     conf.getIfSet("image",      _imageURI);
-    conf.getIfSet("saturation", _saturation);
+    conf.getIfSet("brightness", _brightness);
+    conf.getIfSet("contrast",   _contrast);
     conf.getIfSet("threshold",  _threshold);
     conf.getIfSet("slope",      _slope);
 }
@@ -51,7 +53,8 @@ SplatDetailData::getConfig() const
 {
     Config conf;
     conf.addIfSet("image",      _imageURI);
-    conf.addIfSet("saturation", _saturation);
+    conf.addIfSet("brightness", _brightness);
+    conf.addIfSet("contrast",   _contrast);
     conf.addIfSet("threshold",  _threshold);
     conf.addIfSet("slope",      _slope);
     return conf;
@@ -100,15 +103,23 @@ SplatClass::SplatClass()
 
 SplatClass::SplatClass(const Config& conf)
 {
-    _name = conf.key();
+    _name = conf.value("name");
 
-    // read the data definitions in order:
-    for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+    if ( conf.hasChild("range") )
     {
-        if ( !i->empty() )
+        // read the data definitions in order:
+        for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
         {
-            _ranges.push_back(SplatRangeData(*i));
+            if ( !i->empty() )
+            {
+                _ranges.push_back(SplatRangeData(*i));
+            }
         }
+    }
+    else
+    {
+        // just one.
+        _ranges.push_back( SplatRangeData(conf) );
     }
 }
 
@@ -118,7 +129,7 @@ SplatClass::getConfig() const
     Config conf( _name );
     for(SplatRangeDataVector::const_iterator i = _ranges.begin(); i != _ranges.end(); ++i)
     {
-        conf.add( i->getConfig() );
+        conf.add( "range", i->getConfig() );
     }
     return conf;
 }
@@ -142,9 +153,10 @@ SplatCatalog::fromConfig(const Config& conf)
     {
         for(ConfigSet::const_iterator i = classesConf.children().begin(); i != classesConf.children().end(); ++i)
         {
-            if ( !i->key().empty() )
+            SplatClass sclass(*i);
+            if ( !sclass._name.empty() )
             {
-                _classes[i->key()] = SplatClass(*i);
+                _classes[sclass._name] = sclass;
             }
         }
     }
@@ -162,7 +174,7 @@ SplatCatalog::getConfig() const
     {
         for(SplatClassMap::const_iterator i = _classes.begin(); i != _classes.end(); ++i)
         {
-            classes.add( i->second.getConfig() );
+            classes.add( "class", i->second.getConfig() );
         }
     }    
     conf.add( classes );
@@ -212,7 +224,7 @@ namespace
 
 bool
 SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
-                                    SplatTextureDef&      out      )
+                                    SplatTextureDef&      out)
 {
     // Reset all texture indices to default
     for(SplatClassMap::iterator i = _classes.begin(); i != _classes.end(); ++i)
@@ -337,7 +349,41 @@ SplatCatalog::createSplatTextureDef(const osgDB::Options* dbOptions,
             out._texture->setImage( i, imagesInOrder[i].get() );
         }
 
+        OE_INFO << LC << "Catalog \"" << this->name().get()
+            << "\" texture size = "<< imagesInOrder.size()
+            << std::endl;
     }
 
     return out._texture.valid();
+}
+
+SplatCatalog*
+SplatCatalog::read(const URI&            uri,
+                   const osgDB::Options* options)
+{
+    osg::ref_ptr<SplatCatalog> catalog;
+
+    osg::ref_ptr<XmlDocument> doc = XmlDocument::load( uri, options );
+    if ( doc.valid() )
+    {
+        catalog = new SplatCatalog();
+        catalog->fromConfig( doc->getConfig().child("catalog") );
+        if ( catalog->empty() )
+        {
+            OE_WARN << LC << "Catalog is empty! (" << uri.full() << ")\n";
+            catalog = 0L;
+        }
+        else
+        {
+            OE_INFO << LC << "Catalog \"" << catalog->name().get() << "\""
+                << " contains " << catalog->getClasses().size()
+                << " classes.\n";
+        }
+    }
+    else
+    {
+        OE_WARN << LC << "Failed to read catalog from " << uri.full() << "\n";
+    }
+
+    return catalog.release();
 }

@@ -431,14 +431,14 @@ MPTerrainEngineNode::createTerrain()
     if ( _secondaryUnit < 0 )
     {
         this->getTextureCompositor()->reserveTextureImageUnit( _secondaryUnit );
-        OE_INFO << LC << "Secondary color unit = " << _primaryUnit << "\n";
+        OE_INFO << LC << "Secondary color unit = " << _secondaryUnit << "\n";
     }
 
     if ( _elevationTextureUnit < 0 )
     {
         // testing
         this->getTextureCompositor()->reserveTextureImageUnit( _elevationTextureUnit );
-        OE_INFO << LC << "Elevation unit = " << _primaryUnit << "\n";
+        OE_INFO << LC << "Elevation unit = " << _elevationTextureUnit << "\n";
     }
 
     // Factory to create the root keys:

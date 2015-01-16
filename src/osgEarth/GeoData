@@ -28,6 +28,7 @@
 #include <osg/Referenced>
 #include <osg/Image>
 #include <osg/Shape>
+#include <osg/Polytope>
 
 namespace osgEarth
 {
@@ -485,7 +486,6 @@ namespace osgEarth
          */
         double area() const;
 
-
         /**
          * Normalize the longitude values in this GeoExtent
          */
@@ -495,6 +495,12 @@ namespace osgEarth
          * Given a longitude value, normalize it so that it exists within the GeoExtents longitude frame.
          */
         double normalizeLongitude( double longitude ) const;
+
+        /**
+         * Generate a polytope in world coordinates that bounds the extent.
+         * Return false if the extent it invalid.
+         */
+        bool createPolytope(osg::Polytope& out) const;
 
     public:
         static GeoExtent INVALID;

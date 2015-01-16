@@ -18,6 +18,7 @@
  */
 #include "KMLReader"
 #include "KML_Root"
+#include "KML_Geometry"
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/XmlUtils>
@@ -28,6 +29,7 @@
 
 using namespace osgEarth_kml;
 using namespace osgEarth;
+
 
 KMLReader::KMLReader( MapNode* mapNode, const KMLOptions* options ) :
 _mapNode( mapNode ),
@@ -123,9 +125,21 @@ KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
     if ( top)
     {
         KML_Root kmlRoot;
+
+        osg::Timer_t start = osg::Timer::instance()->tick();
         kmlRoot.scan ( top, cx );    // first pass
+        osg::Timer_t end = osg::Timer::instance()->tick();
+        OE_INFO << "Scan1 took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+
+        start = osg::Timer::instance()->tick();
         kmlRoot.scan2( top, cx );   // second pass
+        end = osg::Timer::instance()->tick();
+        OE_INFO << "Scan2 took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+
+        start = osg::Timer::instance()->tick();
         kmlRoot.build( top, cx );   // third pass.
+        end = osg::Timer::instance()->tick();
+        OE_INFO << "build took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
     }
 
     URIResultCache* cacheUsed = URIResultCache::from(cx._dbOptions.get());

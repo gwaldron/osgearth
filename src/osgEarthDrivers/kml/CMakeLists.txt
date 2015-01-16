@@ -62,7 +62,6 @@ SET(TARGET_H
 SET(TARGET_SRC
     ReaderWriterKML.cpp
     KMLReader.cpp
-    
     KML_Document.cpp
     KML_Feature.cpp
     KML_Folder.cpp

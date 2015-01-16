@@ -38,11 +38,11 @@ KML_IconStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 				iconHref = getValue(node, "icon");
 		}
 
-		// TODO:  JBFix referer.
         if ( !iconHref.empty() )
-            //icon->url() = StringExpression( iconHref, URIContext(conf.referrer()) );
-			icon->url() = StringExpression( iconHref );
-
+        {
+            icon->url() = StringExpression( iconHref, URIContext(cx._referrer) );
+        }
+			
         // see: https://developers.google.com/kml/documentation/kmlreference#headingdiagram
 		std::string heading = getValue(node, "heading");
         if ( !heading.empty() )

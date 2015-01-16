@@ -58,10 +58,8 @@ KML_GroundOverlay::build( xml_node<>* node, KMLContext& cx )
         double west  = as<double>(getValue(llb, "west"), 0.0);;
         Angular rotation( -as<double>(getValue(llb, "rotation"), 0.0), Units::DEGREES );
 
-		//TODO:  JBFix referrer
-        //osg::ref_ptr<osg::Image> image = URI(href, conf.referrer()).readImage().getImage();
-		osg::ref_ptr<osg::Image> image = URI(href).readImage().getImage();
-        if ( !image.valid() )
+		osg::ref_ptr<osg::Image> image = URI(href, cx._referrer).readImage().getImage();
+		if ( !image.valid() )
         {
             OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
             return;
@@ -79,10 +77,8 @@ KML_GroundOverlay::build( xml_node<>* node, KMLContext& cx )
         g.buildChild( llq, cx, style );
         if ( g._geom.valid() && g._geom->size() >= 4 )
         {
-			//TODO:  JBFix referer
-            //osg::ref_ptr<osg::Image> image = URI(href, conf.referrer()).readImage().getImage();
-		    osg::ref_ptr<osg::Image> image = URI(href).readImage().getImage();
-            if ( !image.valid() )
+            osg::ref_ptr<osg::Image> image = URI(href, cx._referrer).readImage().getImage();
+		    if ( !image.valid() )
             {
                 OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
                 return;

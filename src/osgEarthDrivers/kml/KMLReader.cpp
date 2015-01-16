@@ -44,22 +44,6 @@ KMLReader::read( std::istream& in, const osgDB::Options* dbOptions )
     // pull the URI context out of the DB options:
     URIContext context(dbOptions);
 
-	/*
-    // read the KML from an XML stream:
-    osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in, context );
-
-    if ( !xml.valid() )
-        return 0L;
-
-    // convert to a config:
-    Config config = xml->getConfig();
-
-    osg::Node* node = read( config, dbOptions );
-    node->setName( context.referrer() );
-
-    return node;
-	*/
-
 	// Load the XML
     osg::Timer_t start = osg::Timer::instance()->tick();
 	std::stringstream buffer;
@@ -69,12 +53,12 @@ KMLReader::read( std::istream& in, const osgDB::Options* dbOptions )
 	xml_document<> doc;
 	doc.parse<0>(&xmlStr[0]);
     osg::Timer_t end = osg::Timer::instance()->tick();
-	OSG_NOTICE << "Loaded KML in " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+	OE_INFO << "Loaded KML in " << osg::Timer::instance()->delta_s(start, end) << std::endl;
 
     start = osg::Timer::instance()->tick();
 	osg::Node* node = read(doc, dbOptions);
     end = osg::Timer::instance()->tick();
-	OSG_NOTICE << "Parsed KML in " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+	OE_INFO << "Parsed KML in " << osg::Timer::instance()->delta_s(start, end) << std::endl;
 	node->setName( context.referrer() );
 
 	return node;
@@ -86,15 +70,20 @@ KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
     osg::Group* root = new osg::Group();
     root->ref();
 
-	// TODO:  JBFix
-    //root->setName( conf.referrer() );
+    URIContext context(dbOptions);
+
+	root->setName( context.referrer() );
+
+    OE_NOTICE << "Referrer is " << root->getName() << std::endl;
 
     KMLContext cx;
     cx._mapNode   = _mapNode;
     cx._sheet     = new StyleSheet();
     cx._options   = _options;
     cx._srs       = SpatialReference::create( "wgs84", "egm96" );
+    cx._referrer = context.referrer();
     cx._groupStack.push( root );
+
 
     // clone the dbOptions, and install a resource cache if there isn't one already:
     URIResultCache defaultUriCache;

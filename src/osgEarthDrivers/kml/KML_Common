@@ -81,6 +81,7 @@ namespace osgEarth_kml
         std::stack<osg::ref_ptr<osg::Group> > _groupStack;      // resulting scene graph
         osg::ref_ptr<const SpatialReference>  _srs;             // map's spatial reference
         osg::ref_ptr<const osgDB::Options>    _dbOptions;       // I/O options (caching, etc)
+        std::string                           _referrer;        // The referrer for loading things from relative paths.
     };
 
     struct KMLUtils

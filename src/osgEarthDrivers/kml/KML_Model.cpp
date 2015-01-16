@@ -49,8 +49,7 @@ KML_Model::parseStyle(xml_node<>* node, KMLContext& cx, Style& style)
     {
         if ( !model ) model = style.getOrCreate<ModelSymbol>();
         model->url()->setLiteral( url );
-		// TODO:  JBFix referrer
-        //model->url()->setURIContext( URIContext(conf.referrer()) );
+        model->url()->setURIContext( URIContext(cx._referrer) );
 
     }
 

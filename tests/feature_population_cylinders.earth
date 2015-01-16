@@ -18,17 +18,17 @@ Shows how to use JavaScript to create geometry parametrically.
         <styles>
             <script>
               <![CDATA[
-			    var min_rank = 12;
+                var min_rank = 12;
                 function makePopCircles() {
-					if (feature.properties.rank_max >= min_rank) {
-						var radius = (feature.properties.rank_max-min_rank+1) * 75000;
-						feature.geometry = feature.geometry.buffer(radius);
-						feature.properties.height = radius*1.5;
-					}
-					else {
-						feature.geometry = null;
-					}
-					feature.save();
+                    if (feature.properties.rank_max >= min_rank) {
+                        var radius = (feature.properties.rank_max-min_rank+1) * 75000;
+                        feature.geometry = feature.geometry.buffer(radius);
+                        feature.properties.height = radius*1.5;
+                    }
+                    else {
+                        feature.geometry = null;
+                    }
+                    feature.save();
                 }
               ]]>
             </script>
@@ -36,44 +36,44 @@ Shows how to use JavaScript to create geometry parametrically.
                 default {
                     fill:              #ff80007f;
                     stroke:            #ffcf7f;
-					stroke-width:      1px;
+                    stroke-width:      1px;
                     altitude-script:   makePopCircles();
-					extrusion-height:  feature.properties.height;
-					render-bin:        DepthSortedBin;
+                    extrusion-height:  feature.properties.height;
+                    render-bin:        DepthSortedBin;
                 }     
             </style>
         </styles>
         
     </model>
     
-	
+    
     <model name="cities" driver="feature_geom">
 
         <features name="cities" driver="ogr">
             <url>../data/ne_cities.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-		
-		<layout>
-			<level name="far" style="large"  max_range="1e10"/>
-		</layout>
+        
+        <layout>
+            <level name="far" style="large"  max_range="1e10"/>
+        </layout>
 
         <styles>
-			<selector name="large" class="label-large">
-				<query>
-					<expr> <![CDATA[ rank_max >= 12 ]]> </expr>
-				</query>
-			</selector>
-			
+            <selector name="large" class="label-large">
+                <query>
+                    <expr> <![CDATA[ rank_max >= 12 ]]> </expr>
+                </query>
+            </selector>
+            
             <style type="text/css">              
                 label-large {
-					text-declutter: true;
-					text-content:   [name];
-					text-size:      16.0;
-					text-align:     center_center;
-					text-halo:      #1f1f1f;
-					text-priority:  [rank_max];
-				}
+                    text-declutter: true;
+                    text-content:   [name];
+                    text-size:      16.0;
+                    text-align:     center_center;
+                    text-halo:      #1f1f1f;
+                    text-priority:  [rank_max];
+                }
             </style>
         </styles>
         

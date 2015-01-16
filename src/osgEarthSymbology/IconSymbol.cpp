@@ -29,6 +29,17 @@ using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(icon, IconSymbol);
 
+IconSymbol::IconSymbol(const IconSymbol& rhs,const osg::CopyOp& copyop):
+InstanceSymbol(rhs, copyop),
+_alignment(rhs._alignment),
+_heading(rhs._heading),
+_declutter(rhs._declutter),
+_image(rhs._image),
+_occlusionCull(rhs._occlusionCull),
+_occlusionCullAltitude(rhs._occlusionCullAltitude)
+{
+}
+
 IconSymbol::IconSymbol( const Config& conf ) :
 InstanceSymbol        ( conf ),
 _alignment            ( ALIGN_CENTER_BOTTOM ),
@@ -143,7 +154,7 @@ IconSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<IconSymbol>()->url()->setURIContext( c.referrer() );
     }
     else if ( match(c.key(),"icon-library") ) {
-        style.getOrCreate<IconSymbol>()->libraryName() = StringExpression(c.value());
+        style.getOrCreate<IconSymbol>()->library() = StringExpression(c.value());
     }
     else if ( match(c.key(), "icon-placement") ) {
         if      ( match(c.value(), "vertex") )   

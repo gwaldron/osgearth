@@ -24,6 +24,12 @@ using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(polygon, PolygonSymbol);
 
+PolygonSymbol::PolygonSymbol(const PolygonSymbol& rhs,const osg::CopyOp& copyop):
+Symbol(rhs, copyop),
+_fill(rhs._fill)
+{
+}
+
 PolygonSymbol::PolygonSymbol( const Config& conf ) :
 Symbol( conf ),
 _fill ( Fill() )

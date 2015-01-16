@@ -30,8 +30,9 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT PointSymbol : public Symbol
     {
     public:
-        META_Symbol(PointSymbol);
+        META_Object(osgEarthSymbology, PointSymbol);
 
+        PointSymbol(const PointSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
         PointSymbol( const Config& conf =Config() );
 
         /** dtor */

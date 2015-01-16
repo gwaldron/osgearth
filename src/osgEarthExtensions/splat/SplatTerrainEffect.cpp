@@ -145,20 +145,13 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform(new osg::Uniform("oe_splat_detailRange",  1000000.0f));
 
             // Configure the vertex shader:
-            std::string vertexShaderModel = ShaderLoader::loadSource(
-                _shaders.VertModel, 
-                _shaders.Context);
-
-            std::string vertexShaderView = ShaderLoader::loadSource(
-                _shaders.VertView, 
-                _shaders.Context);
+            std::string vertexShaderModel = ShaderLoader::loadSource(_shaders.VertModel, _shaders);
+            std::string vertexShaderView = ShaderLoader::loadSource(_shaders.VertView, _shaders);
 
             osgEarth::replaceIn( vertexShaderView, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
             // Configure the fragment shader:
-            std::string fragmentShader = ShaderLoader::loadSource(
-                _shaders.Frag,
-                _shaders.Context );
+            std::string fragmentShader = ShaderLoader::loadSource(_shaders.Frag, _shaders);
 
             if ( _editMode ) 
             {
@@ -196,7 +189,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             vp->setFunction( "oe_splat_fragment",     fragmentShader,    ShaderComp::LOCATION_FRAGMENT_COLORING, _renderOrder );
 
             // support shaders
-            std::string noiseShaderSource = ShaderLoader::loadSource( _shaders.Noise, _shaders.Context );
+            std::string noiseShaderSource = ShaderLoader::loadSource(_shaders.Noise, _shaders);
             osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
             vp->setShader( "oe_splat_noiseshaders", noiseShader );
 
@@ -383,8 +376,8 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
         slopeBuf << ";\n";
 
     std::string code = ShaderLoader::loadSource(
-        _shaders.GetRenderInfo, 
-        _shaders.Context);
+        _shaders.GetRenderInfo,
+        _shaders);
 
     std::string codeToInject = Stringify()
         << IND

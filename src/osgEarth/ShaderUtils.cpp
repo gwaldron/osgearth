@@ -142,15 +142,15 @@ typedef std::map<std::string,std::string> StringMap;
 
 std::string
 ShaderLoader::loadSource(const std::string&    filename,
-                         const StringMap&      sources,
+                         const ShaderPackage&  sources,
                          const osgDB::Options* dbOptions)
 {
     std::string output;
     bool useInlineSource = false;
     
     std::string inlineSource;
-    StringMap::const_iterator source = sources.find(filename);
-    if ( source != sources.end() )
+    StringMap::const_iterator source = sources.context().find(filename);
+    if ( source != sources.context().end() )
         inlineSource = source->second;
 
     std::string path = osgDB::findDataFile(filename, dbOptions);

@@ -19,12 +19,11 @@
 #ifndef OSGEARTH_SPLAT_SHADERS
 #define OSGEARTH_SPLAT_SHADERS 1
 
-#include <map>
-#include <string>
+#include <osgEarth/ShaderUtils>
 
 namespace osgEarth { namespace Splat
 {
-    struct Shaders
+    struct Shaders : public osgEarth::ShaderPackage
 	{
         Shaders();
 
@@ -35,8 +34,6 @@ namespace osgEarth { namespace Splat
             VertView,
             Frag,
             GetRenderInfo;
-
-        std::map<std::string, std::string> Context;
 	};
 	
 } } // namespace osgEarth::Splat

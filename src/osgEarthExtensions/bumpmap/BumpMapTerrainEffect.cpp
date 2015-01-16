@@ -76,11 +76,9 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->setTextureAttribute( _bumpMapUnit, _bumpMapTex.get(), osg::StateAttribute::ON );
 
             // configure shaders
-            std::string vertShader = ShaderLoader::loadSource(
-                Shaders::VertexShaderFile, Shaders::VertexShaderSource);
-
-            std::string fragShader = ShaderLoader::loadSource(
-                Shaders::FragmentShaderFile, Shaders::FragmentShaderSource);
+            Shaders shaders;
+            std::string vertShader = ShaderLoader::loadSource(shaders.Vertex, shaders);
+            std::string fragShader = ShaderLoader::loadSource(shaders.Fragment, shaders);
 
             // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);

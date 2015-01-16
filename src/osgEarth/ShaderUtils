@@ -27,9 +27,23 @@
 #include <osg/Material>
 #include <osg/observer_ptr>
 #include <osgDB/Options>
+#include <map>
 
 namespace osgEarth
 {
+    /**
+     * Base class for local shader file/source pairs.
+     */
+    class /*header-only*/ ShaderPackage
+    {
+    public:
+        typedef std::map<std::string,std::string> ContextMap;
+        const ContextMap& context() const { return _sources; }
+
+    protected:        
+        ContextMap _sources;
+    };
+
     /**
      * Functions to help load shader code.
      */
@@ -49,7 +63,7 @@ namespace osgEarth
 
         static std::string loadSource(
             const std::string&    filename,
-            const SourceMap&      sources,
+            const ShaderPackage&  package,
             const osgDB::Options* dbOptions =0L );
     };
 

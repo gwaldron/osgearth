@@ -74,8 +74,6 @@ KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
 
 	root->setName( context.referrer() );
 
-    OE_NOTICE << "Referrer is " << root->getName() << std::endl;
-
     KMLContext cx;
     cx._mapNode   = _mapNode;
     cx._sheet     = new StyleSheet();

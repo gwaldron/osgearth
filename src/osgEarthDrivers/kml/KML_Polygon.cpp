@@ -57,7 +57,7 @@ KML_Polygon::parseCoords( xml_node<>* node, KMLContext& cx )
 
 		for (xml_node<>* n = node->first_node("innerboundaryis", 0, false); n; n = n->next_sibling("innerboundaryis", 0, false))
 		{
-			xml_node<>* innerRing = outer->first_node("linearring", 0, false);
+			xml_node<>* innerRing = n->first_node("linearring", 0, false);
 			if ( innerRing )
 			{
 				KML_LinearRing inner;

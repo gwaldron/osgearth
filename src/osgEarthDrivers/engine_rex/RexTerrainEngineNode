@@ -34,6 +34,7 @@
 #include <osg/Geode>
 #include <osg/NodeCallback>
 #include <osg/Uniform>
+#include <osg/Timer>
 #include <osgUtil/RenderBin>
 
 using namespace osgEarth;
@@ -134,16 +135,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     private:
         RexTerrainEngineOptions _terrainOptions;
 
-        class TerrainNode* _terrain;
+        osg::Group*        _terrain;
         UID                _uid;
-        Revision           _mapModelRev;  // tracks revision changes int the map model
-        Revision           _terrainRev;   // the revisinon of the rendered terrain (slightly different)
-        Revision           _shaderLibRev;
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
         bool               _stateUpdateRequired;
 
-        osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
+        osg::ref_ptr<ElevationChangedCallback> _elevationCallback;
 
         MapFrame* _update_mapf; // map frame for the main/update traversal thread
 

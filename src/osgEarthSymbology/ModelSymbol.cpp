@@ -31,7 +31,7 @@ _heading(rhs._heading),
 _pitch(rhs._pitch),
 _roll(rhs._roll),
 _autoScale(rhs._autoScale),
-_node(_node)
+_node(rhs._node)
 {
 }
 

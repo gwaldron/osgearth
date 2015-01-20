@@ -49,8 +49,9 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
-        META_Symbol(ExtrusionSymbol);
+        META_Object(osgEarthSymbology, ExtrusionSymbol);
 
+        ExtrusionSymbol(const ExtrusionSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
         ExtrusionSymbol( const Config& conf =Config() );
 
         /** dtor */

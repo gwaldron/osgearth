@@ -35,29 +35,33 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
 
 void 
-KML_Placemark::build( const Config& conf, KMLContext& cx )
+KML_Placemark::build( xml_node<>* node, KMLContext& cx )
 {
 	Style masterStyle;
 
-	if (conf.hasValue("styleurl"))
+	std::string styleUrl = getValue(node, "styleurl");
+
+	if (!styleUrl.empty())
 	{	// process a "stylesheet" style
-		const Style* ref_style = cx._sheet->getStyle( conf.value("styleurl"), false );
+		const Style* ref_style = cx._sheet->getStyle( styleUrl, false );
 		if (ref_style)
 		{
 			masterStyle = masterStyle.combineWith(*ref_style);
 		}
 	}
-	if ( conf.hasChild("style") )
+
+	xml_node<>* style = node->first_node("style", 0, false);
+	if ( style )
 	{	// process an "inline" style
 		KML_Style kmlStyle;
-		kmlStyle.scan(conf.child("style"), cx);
+		kmlStyle.scan(style, cx);
 		masterStyle = masterStyle.combineWith(cx._activeStyle);
 	}
 
     // parse the geometry. the placemark must have geometry to be valid. The 
     // geometry parse may optionally specify an altitude mode as well.
     KML_Geometry geometry;
-    geometry.build(conf, cx, masterStyle);
+    geometry.build(node, cx, masterStyle);
 
     Geometry* allGeom = geometry._geom.get();
     if ( allGeom )
@@ -95,7 +99,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                     text = cx._options->defaultTextSymbol().get();
 
                 // the annotation name:
-                std::string name = conf.hasValue("name") ? conf.value("name") : "";
+                std::string name = getValue(node, "name");
                 if ( text && !name.empty() )
                 {
                     text->content()->setLiteral( name );
@@ -106,7 +110,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                 AnnotationNode* modelNode   = 0L;
 
                 // one coordinate? It's a place marker or a label.
-                if ( model || icon || text || geom->getTotalPointCount() == 1 )
+                if ( (model || icon || text) && geom->getTotalPointCount() == 1 )
                 {
                     // load up the default icon if there we don't have one.
                     if ( !model && !icon )
@@ -195,11 +199,11 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                     }
 
                     if ( iconNode )
-                        KML_Feature::build( conf, cx, iconNode );
+                        KML_Feature::build( node, cx, iconNode );
                     if ( modelNode )
-                        KML_Feature::build( conf, cx, modelNode );
+                        KML_Feature::build( node, cx, modelNode );
                     if ( featureNode )
-                        KML_Feature::build( conf, cx, featureNode );
+                        KML_Feature::build( node, cx, featureNode );
                 }
 
                 else
@@ -218,17 +222,17 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                                 Decluttering::setEnabled( iconNode->getOrCreateStateSet(), true );
                             }
                         }
-                        KML_Feature::build( conf, cx, iconNode );
+                        KML_Feature::build( node, cx, iconNode );
                     }
                     if ( modelNode )
                     {
                         cx._groupStack.top()->addChild( modelNode );
-                        KML_Feature::build( conf, cx, modelNode );
+                        KML_Feature::build( node, cx, modelNode );
                     }
                     if ( featureNode )
                     {
                         cx._groupStack.top()->addChild( featureNode );
-                        KML_Feature::build( conf, cx, featureNode );
+                        KML_Feature::build( node, cx, featureNode );
                     }
                 }
             }

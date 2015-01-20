@@ -31,8 +31,9 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT LineSymbol : public Symbol
     {
     public:
-        META_Symbol(LineSymbol);
+        META_Object(osgEarthSymbology, LineSymbol);
 
+        LineSymbol(const LineSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
         LineSymbol(const Config& conf =Config());
 
         /** dtor */

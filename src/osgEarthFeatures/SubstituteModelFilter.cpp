@@ -576,13 +576,13 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
 
-    if ( symbol->libraryName().isSet() )
+    if ( symbol->library().isSet() )
     {
-        _resourceLib = sheet->getResourceLibrary( symbol->libraryName()->expr() );
+        _resourceLib = sheet->getResourceLibrary( symbol->library()->expr() );
 
         if ( !_resourceLib.valid() )
         {
-            OE_WARN << LC << "Unable to load resource library '" << symbol->libraryName()->expr() << "'"
+            OE_WARN << LC << "Unable to load resource library '" << symbol->library()->expr() << "'"
                 << "; may not find instance models." << std::endl;
         }
     }

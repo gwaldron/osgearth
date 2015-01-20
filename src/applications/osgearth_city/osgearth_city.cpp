@@ -155,7 +155,7 @@ void addBuildings(Map* map)
     Style wallStyle;
     wallStyle.setName( "building-wall" );
     SkinSymbol* wallSkin = wallStyle.getOrCreate<SkinSymbol>();
-    wallSkin->libraryName() = "us_resources";
+    wallSkin->library() = "us_resources";
     wallSkin->addTag( "building" );
     wallSkin->randomSeed() = 1;
 
@@ -163,7 +163,7 @@ void addBuildings(Map* map)
     Style roofStyle;
     roofStyle.setName( "building-roof" );
     SkinSymbol* roofSkin = roofStyle.getOrCreate<SkinSymbol>();
-    roofSkin->libraryName() = "us_resources";
+    roofSkin->library() = "us_resources";
     roofSkin->addTag( "rooftop" );
     roofSkin->randomSeed() = 1;
     roofSkin->isTiled() = true;

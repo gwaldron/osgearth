@@ -110,6 +110,7 @@ SET(LIB_PUBLIC_HEADERS
     Pickers
     PrimitiveIntersector
     Profile
+    Profiler
     Progress
     Random
     Registry
@@ -119,7 +120,6 @@ SET(LIB_PUBLIC_HEADERS
     ShaderGenerator
     ShaderUtils
 	SharedSARepo
-    SparseTexture2DArray
     SpatialReference
     StateSetCache
 	StateSetLOD
@@ -253,6 +253,7 @@ set(TARGET_SRC
     Pickers.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
+    Profiler.cpp
     Progress.cpp
     Random.cpp
     Registry.cpp
@@ -260,7 +261,6 @@ set(TARGET_SRC
     ShaderFactory.cpp
     ShaderGenerator.cpp
     ShaderUtils.cpp
-    SparseTexture2DArray.cpp
     SpatialReference.cpp
     StateSetCache.cpp
 	StateSetLOD.cpp

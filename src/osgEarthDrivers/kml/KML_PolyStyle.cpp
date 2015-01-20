@@ -21,37 +21,39 @@
 using namespace osgEarth_kml;
 
 void
-KML_PolyStyle::scan( const Config& conf, Style& style, KMLContext& cx )
+KML_PolyStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 {
-	if (!conf.empty())
+	if (node)
 	{
 		Color color(Color::White);
-		bool colorSpecified = conf.hasValue("color");
-		if (colorSpecified)
+		std::string colorVal = getValue(node, "color");
+		if (!colorVal.empty())
 		{
-			color = Color(Stringify() << "#" << conf.value("color"), Color::ABGR);
+			color = Color(Stringify() << "#" << colorVal, Color::ABGR);
 		}
 
 		bool fill = true;	// By default it is true
-		if (conf.hasValue("fill"))
+		std::string fillVal = getValue(node, "fill");
+		if (!fillVal.empty())
 		{
-			fill = (as<int>(conf.value("fill"), 1) == 1);
+			fill = (as<int>(fillVal, 1) == 1);
 			if (!fill)
 			{
 				color.a() = 0;
 			}
 		}
 
-		if (colorSpecified || !style.has<PolygonSymbol>())
+		if (!colorVal.empty() || !style.has<PolygonSymbol>())
 		{
 			PolygonSymbol* poly = style.getOrCreate<PolygonSymbol>();
 			poly->fill()->color() = color;
 		}
 
 		bool outline = true;	// By default it is true
-		if (conf.hasValue("outline"))
+		std::string outlineVal = getValue(node, "outline");
+		if (!outlineVal.empty())
 		{
-			outline = (as<int>(conf.value("outline"), 0) == 1);
+			outline = (as<int>(outlineVal, 0) == 1);
 		}
 		if (!outline)
 		{

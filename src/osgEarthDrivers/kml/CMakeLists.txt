@@ -40,9 +40,11 @@ SET(TARGET_H
     KML_LineStyle
     KML_Model
     KML_MultiGeometry
+    KML_NetworkLink
     KML_NetworkLinkControl
     KML_Object
     KML_Overlay
+    KML_Placemark
     KML_PhotoOverlay
     KML_Point
     KML_Polygon
@@ -54,12 +56,12 @@ SET(TARGET_H
     KML_StyleMap
     KML_StyleSelector
     KMZArchive
+    rapidxml_ext.hpp
 )
 
 SET(TARGET_SRC
     ReaderWriterKML.cpp
     KMLReader.cpp
-    
     KML_Document.cpp
     KML_Feature.cpp
     KML_Folder.cpp

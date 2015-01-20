@@ -27,6 +27,9 @@
 #include <osg/Program>
 #include <osg/State>
 #include <osg/Notify>
+#include <osg/Version>
+#include <osg/GL2Extensions>
+#include <osg/GLExtensions>
 #include <fstream>
 #include <sstream>
 #include <OpenThreads/Thread>
@@ -1012,7 +1015,12 @@ VirtualProgram::apply( osg::State& state ) const
         // as the default fallback, we use the "_inheritSet" flag to differeniate. This
         // prevents any shader leakage from a VP-enabled node.
         const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,true);
-        if( ! extensions->isGlslSupported() ) return;
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+		if( ! extensions->isGlslSupported ) return;
+#else
+		if( ! extensions->isGlslSupported() ) return;
+#endif
+        
 
         extensions->glUseProgram( 0 );
         state.setLastAppliedProgramObject(0);
@@ -1179,7 +1187,7 @@ VirtualProgram::apply( osg::State& state ) const
 #ifdef USE_STACK_MEMORY
         // remember this program selection in case this VP is applied again
         // during the same frame.
-        if ( !programRecalled )
+        if ( !programRecalled && stack)
         {
             _vpStackMemory.remember(state, *stack, program.get());
         }

@@ -28,31 +28,31 @@
 using namespace osgEarth_kml;
 
 void
-KML_Document::scan( const Config& conf, KMLContext& cx )
+KML_Document::scan( xml_node<>* node, KMLContext& cx )
 {
-    KML_Container::scan(conf, cx);
-    for_many    ( Schema, scan, conf, cx );
-    for_features( scan, conf, cx );
+    KML_Container::scan(node, cx);
+    for_many    ( Schema, scan, node, cx );
+    for_features( scan, node, cx );
 }
 
 void
-KML_Document::scan2( const Config& conf, KMLContext& cx )
+KML_Document::scan2( xml_node<>* node, KMLContext& cx )
 {
-    KML_Container::scan2(conf, cx);
-    for_many    ( Schema, scan2, conf, cx );
-    for_features( scan2, conf, cx );
+    KML_Container::scan2(node, cx);
+    for_many    ( Schema, scan2, node, cx );
+    for_features( scan2, node, cx );
 }
 
 void
-KML_Document::build( const Config& conf, KMLContext& cx )
+KML_Document::build( xml_node<>* node, KMLContext& cx )
 {
     // creates an empty group and pushes it on the stack.
     osg::Group* group = new osg::Group();
     cx._groupStack.top()->addChild( group );
     cx._groupStack.push( group );
 
-    KML_Container::build(conf, cx, group);
-    for_features(build, conf, cx);
+    KML_Container::build(node, cx, group);
+    for_features(build, node, cx);
 
     cx._groupStack.pop();
 }

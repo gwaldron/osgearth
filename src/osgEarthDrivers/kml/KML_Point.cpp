@@ -21,8 +21,8 @@
 using namespace osgEarth_kml;
 
 void
-KML_Point::parseCoords( const Config& conf, KMLContext& cx )
+KML_Point::parseCoords( xml_node<>* node, KMLContext& cx )
 {
     _geom = new PointSet();
-    KML_Geometry::parseCoords( conf, cx );
+    KML_Geometry::parseCoords( node, cx );
 }

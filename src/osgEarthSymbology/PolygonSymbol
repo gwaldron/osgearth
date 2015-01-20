@@ -31,8 +31,9 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT PolygonSymbol : public Symbol
     {
     public:
-        META_Symbol(PolygonSymbol);
+        META_Object(osgEarthSymbology, PolygonSymbol);
 
+        PolygonSymbol(const PolygonSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
         PolygonSymbol( const Config& conf =Config() );
 
         /** dtor */

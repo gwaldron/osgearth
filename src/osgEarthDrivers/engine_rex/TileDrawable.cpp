@@ -93,19 +93,26 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 
     unsigned layersDrawn = 0;
 
-    // access the GL extensions interface for the current GC:
-    const osg::Program::PerContextProgram* pcp = 0L;
-    osg::ref_ptr<osg::GL2Extensions> ext;
-    unsigned contextID;
     osg::State& state = *renderInfo.getState();
 
-    //unsigned f = state.getFrameStamp()?state.getFrameStamp()->getFrameNumber():0;
-    //OE_WARN << LC << "frame="<<f<<"\n";
+    // access the GL extensions interface for the current GC:
+    const osg::Program::PerContextProgram* pcp = 0L;
+
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+	osg::ref_ptr<osg::GLExtensions> ext;
+#else
+    osg::ref_ptr<osg::GL2Extensions> ext;
+#endif
+    unsigned contextID;
 
     if (_supportsGLSL)
     {
         contextID = state.getContextID();
-        ext = osg::GL2Extensions::Get( contextID, true );
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+		ext = osg::GLExtensions::Get(contextID, true);
+#else   
+		ext = osg::GL2Extensions::Get( contextID, true );
+#endif
         pcp = state.getLastAppliedProgramObject();
     }
 
@@ -268,7 +275,7 @@ osg::BoundingBox
 TileDrawable:: COMPUTE_BOUND() const
 {
     //osg::BoundingBox bbox = osg::Drawable:: CORexUTE_BOUND ();
-    osg::BoundingBox bbox = _geom->computeBound();
+    osg::BoundingBox bbox = _geom->COMPUTE_BOUND();
     {
         // update the uniform.
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
@@ -322,7 +329,11 @@ TileDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
 
     osg::State& state = *renderInfo.getState();
     unsigned contextID = state.getContextID();
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+    osg::GLExtensions* extensions = osg::GLExtensions::Get(contextID, true);
+#else
     GLBufferObject::Extensions* extensions = GLBufferObject::getExtensions(contextID, true);
+#endif
     if (!extensions)
         return;
 

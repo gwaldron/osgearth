@@ -64,6 +64,17 @@ _outOfDate         ( false )
                 elevMatrix);
 
             _elevTexMat = new osg::RefMatrix(elevMatrix);
+            
+            // just stick this here for now.
+            osg::StateSet* stateSet = getOrCreateStateSet();
+
+            stateSet->setTextureAttribute(
+                2,
+                _model->_elevationTexture.get() );
+
+            stateSet->addUniform( new osg::Uniform(
+                "oe_terrain_tex_matrix",
+                osg::Matrixf(elevMatrix)) );
         }
 
         if (model->_normalTexture.valid() && model->_normalData.getLocator())

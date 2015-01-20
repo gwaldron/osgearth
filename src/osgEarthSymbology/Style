@@ -83,6 +83,8 @@ namespace osgEarth { namespace Symbology
         /** Remove a symbol from the collection */
         bool removeSymbol (Symbol* symbol);
 
+        void copySymbols(const Style& style);
+
         /** Remove a symbol by type */
         template<typename T>
         bool remove()

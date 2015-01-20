@@ -21,13 +21,13 @@
 using namespace osgEarth_kml;
 
 void
-KML_NetworkLinkControl::scan( const Config& conf, KMLContext& cx )
+KML_NetworkLinkControl::scan( xml_node<>* node, KMLContext& cx )
 {
-    KML_Object::scan( conf, cx );
+    KML_Object::scan( node, cx );
 }
 
 void
-KML_NetworkLinkControl::build( const Config& conf, KMLContext& cx )
+KML_NetworkLinkControl::build( xml_node<>* node, KMLContext& cx )
 {
-    KML_Object::build( conf, cx, 0L );
+    KML_Object::build( node, cx, 0L );
 }

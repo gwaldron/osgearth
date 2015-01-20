@@ -69,7 +69,7 @@ SplatCoverageLegend::getConfig() const
         pred.addIfSet( "name",  p->_description );
         pred.addIfSet( "value", p->_exactValue );
         pred.addIfSet( "class", p->_mappedClassName );
-        preds.add(pred);
+        preds.add( "mapping", pred );
     }
     conf.add( "mappings", preds );
 

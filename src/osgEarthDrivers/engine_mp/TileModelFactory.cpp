@@ -284,6 +284,10 @@ TileModelFactory::buildElevation(const TileKey&    key,
         if (_liveTiles->get(parentKey, parentNode))
         {
             parentHF = parentNode->getTileModel()->_elevationData.getHeightField();
+            if ( !parentHF.valid() )
+            {
+                OE_DEBUG << LC << "No parent HF for key " << key.str() << std::endl;
+            }
         }
     }
 
@@ -325,10 +329,15 @@ TileModelFactory::buildElevation(const TileKey&    key,
                                 }
                             }
 
-                            osg::ref_ptr<osg::HeightField> hf;
-                            if (_meshHFCache->getOrCreateHeightField(frame, neighborKey, neighborParentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                            // only pull the tile if we have a valid parent HF for it -- otherwise
+                            // you might get a flat tile when upsampling data.
+                            if ( neighborParentHF.valid() )
                             {
-                                model->_elevationData.setNeighbor( x, y, hf.get() );
+                                osg::ref_ptr<osg::HeightField> hf;
+                                if (_meshHFCache->getOrCreateHeightField(frame, neighborKey, neighborParentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                                {
+                                    model->_elevationData.setNeighbor( x, y, hf.get() );
+                                }
                             }
                         }
                     }
@@ -420,11 +429,16 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
                                     }
                                 }
                             }
-
-                            osg::ref_ptr<osg::HeightField> hf;
-                            if (_normalHFCache->getOrCreateHeightField(frame, neighborKey, neighborParentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                            
+                            // only pull the tile if we have a valid parent HF for it -- otherwise
+                            // you might get a flat tile when upsampling data.
+                            if ( neighborParentHF.valid() )
                             {
-                                model->_normalData.setNeighbor( x, y, hf.get() );
+                                osg::ref_ptr<osg::HeightField> hf;
+                                if (_normalHFCache->getOrCreateHeightField(frame, neighborKey, neighborParentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                                {
+                                    model->_normalData.setNeighbor( x, y, hf.get() );
+                                }
                             }
                         }
                     }

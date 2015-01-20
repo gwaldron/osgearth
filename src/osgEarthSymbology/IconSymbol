@@ -50,7 +50,9 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
-        META_Symbol(IconSymbol);
+        META_Object(osgEarthSymbology, IconSymbol);
+
+        IconSymbol(const IconSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
 
         IconSymbol( const Config& conf =Config() );
 

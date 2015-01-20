@@ -46,20 +46,21 @@ namespace osgEarth
         static void dump();
     };
 
-    struct OSGEARTH_EXPORT ScopedProfiler
+    class /*OSGEARTH_EXPORT*/ ScopedProfiler
     {
-        ScopedProfiler(const std::string& name):
-    _name(name)
-    {
-        Profiler::start(_name);
-    }
+    public:
+        ScopedProfiler(const std::string& name) :
+            _name(name)
+        {
+            Profiler::start(_name);
+        }
 
-    ScopedProfiler::~ScopedProfiler()
-    {
-        Profiler::end(_name);
-    }
+        ~ScopedProfiler()
+        {
+            Profiler::end(_name);
+        }
 
-    std::string _name;
+        std::string _name;
     };
 }
 

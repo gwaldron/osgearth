@@ -161,27 +161,52 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     {
         alt->clamping() = alt->CLAMP_RELATIVE_TO_TERRAIN;
 
-        if ( _extrude )
-        {
-            alt->technique() = alt->TECHNIQUE_MAP;
-        }
-        else
-        {
-            alt->technique() = alt->TECHNIQUE_SCENE;
 
-            if ( isPoly )
+        bool zeroElev = true;
+        bool sameElev = true;
+
+        if ( isPoly )
+        {
+            bool first = true;
+            double e = 0.0;
+            ConstGeometryIterator gi( _geom.get(), false );
+            while(gi.hasMore() )
             {
-                bool zeroElev = true;
-                ConstGeometryIterator gi( _geom.get(), false );
-                while( zeroElev == true && gi.hasMore() )
+                const Geometry* g = gi.next();
+                for( Geometry::const_iterator ji = g->begin(); ji != g->end(); ++ji )
                 {
-                    const Geometry* g = gi.next();
-                    for( Geometry::const_iterator ji = g->begin(); ji != g->end() && zeroElev == true; ++ji )
+                    if ( !osg::equivalent(ji->z(), 0.0) )
+                        zeroElev = false;
+
+                    if (first)
                     {
-                        if ( !osg::equivalent(ji->z(), 0.0) )
-                            zeroElev = false;
+                        first = false;
+                        e = ji->z();
+                    }
+                    else
+                    {
+                        if (!osg::equivalent(e, ji->z()))
+                        {
+                            sameElev = false;
+                        }
                     }
                 }
+            }
+
+            // If all of the verts have the same elevation then assume that it should be clamped at the centroid and not per vertex.
+            if (sameElev)
+            {
+                alt->binding() = AltitudeSymbol::BINDING_CENTROID;
+            }
+
+            if ( _extrude )
+            {
+                alt->technique() = alt->TECHNIQUE_MAP;
+            }
+            else
+            {
+                alt->technique() = alt->TECHNIQUE_SCENE;
+
                 if ( zeroElev )
                 {
                     alt->clamping()  = alt->CLAMP_TO_TERRAIN;

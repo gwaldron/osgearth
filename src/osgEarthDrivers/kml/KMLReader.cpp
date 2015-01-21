@@ -78,7 +78,9 @@ KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
     cx._mapNode   = _mapNode;
     cx._sheet     = new StyleSheet();
     cx._options   = _options;
-    cx._srs       = SpatialReference::create( "wgs84", "egm96" );
+    //cx._srs      = SpatialReference::create( "wgs84", "egm96" );
+    // Use the geographic srs of the map so that clamping will occur against the correct vertical datum.
+    cx._srs = _mapNode->getMapSRS()->getGeographicSRS();
     cx._referrer = context.referrer();
     cx._groupStack.push( root );
 

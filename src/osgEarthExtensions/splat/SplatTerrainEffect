@@ -112,10 +112,8 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Uniform>          _splatTexUniform;
         osg::ref_ptr<osg::Uniform>          _coverageTexUniform;
         osg::ref_ptr<osg::Uniform>          _scaleOffsetUniform;
-        osg::ref_ptr<osg::Uniform>          _intensityUniform;
         osg::ref_ptr<osg::Uniform>          _warpUniform;
         osg::ref_ptr<osg::Uniform>          _blurUniform;
-        osg::ref_ptr<osg::Uniform>          _samplesUniform;
         osg::ref_ptr<SplatCoverageLegend>   _legend;
         osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;
@@ -124,8 +122,6 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Uniform>          _noiseTexUniform;
         osg::ref_ptr<osg::Uniform>          _noiseScaleUniform;
         osg::ref_ptr<osg::Uniform>          _useBilinearUniform;
-        osg::ref_ptr<osg::Uniform>          _snowMinElevUniform;
-        osg::ref_ptr<osg::Uniform>          _snowPatchinessUniform;
 
         osg::ref_ptr<BiomeSelector>         _biomeSelector;
 

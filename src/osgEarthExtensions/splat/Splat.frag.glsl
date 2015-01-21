@@ -3,9 +3,6 @@
 
 $include "Splat.types.glsl"
 
-// ref: Splat.Noise.glsl
-float oe_splat_noise2(in vec2);
-
 // ref: Splat.getRenderInfo.frag.glsl
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);
 
@@ -27,7 +24,6 @@ varying float oe_splat_range;
 varying float oe_splat_scaleOffsetInt;
 
 // from SplatTerrainEffect:
-uniform float oe_splat_intensity;
 uniform float oe_splat_warp;
 uniform float oe_splat_blur;
 uniform sampler2D oe_splat_coverageTex;
@@ -78,18 +74,21 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
     float minSlope = ri.minSlope;
 #endif
 
+    // start with the noise value
     float n = env.noise.x;
 
+    // apply brightness and contrast, then reclamp
     n = clamp(((n-0.5)*contrast + 0.5) * brightness, 0.0, 1.0);
 	
-
+    // apply slope limiter, then reclamp and threshold:
     float s = clamp(1.0-((oe_splat_slope-minSlope)/(minSlope)), 0.0, 1.0);
     n = n > s ? n : 0.0;
 
+    // apply final threshold:
 	n = n < threshold ? 0.0 : n;
 
+    // sample the texel and return it.
     vec4 result = oe_splat_getTexel( max(ri.detailIndex,0), tc);
-
     return vec4(result.rgb, hasDetail*n);
 }
 
@@ -209,25 +208,6 @@ vec4 oe_splat_getNoise(in vec2 tc)
 #endif // SPLAT_GPU_NOISE
 
 
-// Snow splatter. This will whiten the texel based on elevation.
-float oe_splat_applyBC(float n, float b, float c) {
-    return clamp(((n-0.5)*c+0.5)*b, 0.0, 1.0);
-}
-
-uniform float oe_splat_snowMinElevation;
-uniform float oe_splat_snowPatchiness;
-
-void oe_splat_snow(in oe_SplatEnv env, inout vec4 texel)
-{
-	const float noiseFarRange = 55000;	
-    const vec4 snow = vec4(1,1,1,1);
-	
-    float noise = oe_splat_applyBC(env.noise.z, 1.2, oe_splat_snowPatchiness);
-	noise = mix(noise, 1.0, clamp(env.range/noiseFarRange, 0.0, 1.0));
-    float elevMix = clamp(max(0.0, env.elevation-oe_splat_snowMinElevation)/oe_splat_snowMinElevation, 0.0, 1.0);
-    texel.rgb = mix(texel.rgb, snow.rgb, noise*elevMix);
-}
-
 // Scales the incoming tile splat coordinates to match the requested
 // LOD level. We offset the level from the current tile key's LOD (.z)
 // because otherwise you run into single-precision jitter at high LODs.
@@ -300,9 +280,7 @@ void oe_splat_fragment(inout vec4 color)
         }
     }
 
-    oe_splat_snow(env, texel);
-
-    color = mix(color, texel, oe_splat_intensity*texel.a);
+    color = mix(color, texel, texel.a);
 
     // uncomment to visualize slope.
     //color.rgba = vec4(oe_splat_slope,0,0,1);

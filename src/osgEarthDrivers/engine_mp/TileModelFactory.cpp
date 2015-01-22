@@ -284,10 +284,6 @@ TileModelFactory::buildElevation(const TileKey&    key,
         if (_liveTiles->get(parentKey, parentNode))
         {
             parentHF = parentNode->getTileModel()->_elevationData.getHeightField();
-            if ( !parentHF.valid() )
-            {
-                OE_DEBUG << LC << "No parent HF for key " << key.str() << std::endl;
-            }
         }
     }
 
@@ -345,13 +341,9 @@ TileModelFactory::buildElevation(const TileKey&    key,
             }
 
             // parent too.
-            if ( key.getLOD() > 0 )
+            if ( parentHF.valid() )
             {
-                osg::ref_ptr<osg::HeightField> hf;
-                if ( _meshHFCache->getOrCreateHeightField(frame, parentKey, parentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
-                {
-                    model->_elevationData.setParent( hf.get() );
-                }
+                model->_elevationData.setParent( parentHF.get() );
             }
         }
 
@@ -446,13 +438,9 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
             }
 
             // parent too.
-            if ( key.getLOD() > 0 )
+            if ( parentHF.valid() )
             {
-                osg::ref_ptr<osg::HeightField> hf;
-                if ( _normalHFCache->getOrCreateHeightField(frame, parentKey, parentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
-                {
-                    model->_normalData.setParent( hf.get() );
-                }
+                model->_normalData.setParent( parentHF.get() );
             }
         }
 

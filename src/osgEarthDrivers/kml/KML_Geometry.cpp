@@ -134,6 +134,47 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
     alt->clamping() = alt->CLAMP_TO_TERRAIN;
 
+
+    // Compute some info about the geometry
+
+    // Are all of the elevations zero?
+    bool zeroElev = true;
+    // Are all of the the elevations the same?
+    bool sameElev = true;
+
+    double maxElevation = -DBL_MAX;
+
+    if ( isPoly )
+    {
+        bool first = true;
+        double e = 0.0;
+        ConstGeometryIterator gi( _geom.get(), false );
+        while(gi.hasMore() )
+        {
+            const Geometry* g = gi.next();
+            for( Geometry::const_iterator ji = g->begin(); ji != g->end(); ++ji )
+            {
+                if ( !osg::equivalent(ji->z(), 0.0) )
+                    zeroElev = false;
+
+                if (first)
+                {
+                    first = false;
+                    e = ji->z();
+                }
+                else
+                {
+                    if (!osg::equivalent(e, ji->z()))
+                    {
+                        sameElev = false;
+                    }
+                }
+
+                if (ji->z() > maxElevation) maxElevation = ji->z();
+            }
+        }
+    }
+
     // clamp to ground mode:
     if ( am == "clampToGround" )
     {
@@ -161,38 +202,8 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     {
         alt->clamping() = alt->CLAMP_RELATIVE_TO_TERRAIN;
 
-
-        bool zeroElev = true;
-        bool sameElev = true;
-
-        if ( isPoly )
+        if (isPoly)
         {
-            bool first = true;
-            double e = 0.0;
-            ConstGeometryIterator gi( _geom.get(), false );
-            while(gi.hasMore() )
-            {
-                const Geometry* g = gi.next();
-                for( Geometry::const_iterator ji = g->begin(); ji != g->end(); ++ji )
-                {
-                    if ( !osg::equivalent(ji->z(), 0.0) )
-                        zeroElev = false;
-
-                    if (first)
-                    {
-                        first = false;
-                        e = ji->z();
-                    }
-                    else
-                    {
-                        if (!osg::equivalent(e, ji->z()))
-                        {
-                            sameElev = false;
-                        }
-                    }
-                }
-            }
-
             // If all of the verts have the same elevation then assume that it should be clamped at the centroid and not per vertex.
             if (sameElev)
             {
@@ -219,21 +230,19 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     // "absolute" means to treat the Z values as-is
     else if ( am == "absolute" )
     {
-        if ( _extrude )
-        {
-            alt->clamping() = alt->CLAMP_ABSOLUTE;
-            alt->technique() = alt->TECHNIQUE_MAP;
-        }
-        else
-        {
-            alt->clamping() = AltitudeSymbol::CLAMP_NONE;
-        }
+        alt->clamping() = AltitudeSymbol::CLAMP_NONE;
     }
 
     if ( _extrude )
     {
         ExtrusionSymbol* es = style.getOrCreate<ExtrusionSymbol>();
         es->flatten() = false;
+        if (*alt->clamping() == AltitudeSymbol::CLAMP_NONE)
+        {
+            // Set the height to the max elevation + the approx depth of the mariana trench so that it will extend low enough to be always go to the surface of the earth.
+            // This lets us avoid clamping absolute absolute extruded polygons completely.
+            es->height() = -(maxElevation + 11100.0);
+        }
     }
     else
     {

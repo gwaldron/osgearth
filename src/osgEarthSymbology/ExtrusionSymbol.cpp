@@ -24,6 +24,18 @@ using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(extrusion, ExtrusionSymbol);
 
+ExtrusionSymbol::ExtrusionSymbol(const ExtrusionSymbol& rhs,const osg::CopyOp& copyop):
+Symbol(rhs, copyop)
+{
+    _height = rhs._height;
+    _flatten = rhs._flatten;
+    _heightExpr = rhs._heightExpr;
+    _heightRef = rhs._heightRef;
+    _wallStyleName = rhs._wallStyleName;
+    _roofStyleName = rhs._roofStyleName;
+    _wallGradientPercentage = rhs._wallGradientPercentage;
+}
+
 ExtrusionSymbol::ExtrusionSymbol( const Config& conf ) :
 Symbol    ( conf ),
 _height   ( 10.0 ),

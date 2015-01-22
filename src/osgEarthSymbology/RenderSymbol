@@ -35,10 +35,11 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT RenderSymbol : public Symbol
     {
     public:
-        META_Symbol(RenderSymbol);
+        META_Object(osgEarthSymbology, RenderSymbol);
 
         /** construct a render symbol */
         RenderSymbol(const Config& conf =Config());
+        RenderSymbol(const RenderSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
 
         /** whether to perform depth buffer testing */
         optional<bool>& depthTest() { return _depthTest; }

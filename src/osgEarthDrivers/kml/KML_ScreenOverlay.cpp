@@ -21,13 +21,13 @@
 using namespace osgEarth_kml;
 
 void
-KML_ScreenOverlay::scan( const Config& conf, KMLContext& cx )
+KML_ScreenOverlay::scan( xml_node<>* node, KMLContext& cx )
 {
-    KML_Overlay::scan( conf, cx );
+    KML_Overlay::scan( node, cx );
 }
 
 void
-KML_ScreenOverlay::build( const Config& conf, KMLContext& cx )
+KML_ScreenOverlay::build( xml_node<>* node, KMLContext& cx )
 {
     //todo
     //KML_Overlay::build( conf, cx, 0L );

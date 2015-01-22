@@ -168,6 +168,8 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 | ``--concurrency``                  | The number of threads or proceses to use if --mp or --mt           |
 |                                    | are provided                                                       | 
 +------------------------------------+--------------------------------------------------------------------+
+| ``--verbose``                      | Displays progress of the operation                                 |
++------------------------------------+--------------------------------------------------------------------+
 
 osgearth_conv
 ----------------

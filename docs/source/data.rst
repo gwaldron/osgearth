@@ -142,4 +142,4 @@ Tips for Preparing your own Data
         --overwrite                         Force overwriting of existing files
         --keep-empties                      Writes fully transparent image tiles (normally discarded)
         --db-options                        An optional OSG options string
-        --quiet                             Suppress progress reporting
+        --verbose                           Displays progress of the operation

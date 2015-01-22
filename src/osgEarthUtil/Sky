@@ -167,6 +167,10 @@ namespace osgEarth { namespace Util
         /** Access the osg::Light representing the sun */
         virtual osg::Light* getSunLight() = 0;
 
+        /** Sets a minimum ambient lighting value. */
+        virtual void setMinimumAmbient(const osg::Vec4f& ambient);
+        const osg::Vec4& getMinimumAmbient() const { return _minimumAmbient; }
+
     public:
         
         /** Attaches this sky node to a view (placing a sky light). Optional */
@@ -186,6 +190,7 @@ namespace osgEarth { namespace Util
         virtual void onSetMoonVisible() { }
         virtual void onSetStarsVisible() { }
         virtual void onSetSunVisible() { }
+        virtual void onSetMinimumAmbient() { }
 
     private:
 
@@ -194,6 +199,7 @@ namespace osgEarth { namespace Util
         bool                    _sunVisible;
         bool                    _moonVisible;
         bool                    _starsVisible;
+        osg::Vec4f              _minimumAmbient;
         optional<GeoPoint>      _refpoint;
 
         osg::StateAttribute::OverrideValue _lightingValue;

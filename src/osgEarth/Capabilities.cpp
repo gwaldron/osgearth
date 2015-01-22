@@ -171,7 +171,11 @@ _supportsRGTC           ( false )
         }
         else
         {
-            _supportsGLSL = GL2->isGlslSupported();
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+            _supportsGLSL = GL2->isGlslSupported;
+#else
+			_supportsGLSL = GL2->isGlslSupported();
+#endif
         }
 
         OE_INFO << LC << "Detected hardware capabilities:" << std::endl;
@@ -230,7 +234,11 @@ _supportsRGTC           ( false )
 
         if ( _supportsGLSL )
         {
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+			_GLSLversion = GL2->glslLanguageVersion;
+#else
             _GLSLversion = GL2->getLanguageVersion();
+#endif
             OE_INFO << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 

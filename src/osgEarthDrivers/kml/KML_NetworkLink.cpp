@@ -29,32 +29,34 @@
 using namespace osgEarth_kml;
 
 void
-KML_NetworkLink::build( const Config& conf, KMLContext& cx )
+KML_NetworkLink::build( xml_node<>* node, KMLContext& cx )
 {
-    std::string name = conf.value("name");
+	if (!node) return;
+
+    std::string name = getValue(node, "name");
 
     // parse the link:
-    std::string href = KMLUtils::parseLink(conf);
+    std::string href = KMLUtils::parseLink(node);
 
     // "open" determines whether to load it immediately
-    bool open = conf.value<bool>("open", false);
+    bool open = as<bool>(getValue(node, "open"), false);
 
     // if it's region-bound, parse it as a paged LOD:
-    const Config& regionConf = conf.child("region");
-    if ( !regionConf.empty() )
+    xml_node<>* region = node->first_node("region", 0, false);
+    if ( region )
     {
-        const Config& llaBoxConf = regionConf.child("latlonaltbox");
-        if ( llaBoxConf.empty() )
+        xml_node<>* llaBox = region->first_node("latlonaltbox", 0, false);
+        if ( !llaBox )
             return;
 
         const SpatialReference* geoSRS = cx._mapNode->getMapSRS()->getGeographicSRS();
 
         GeoExtent llaExtent(
             geoSRS,
-            llaBoxConf.value<double>("west",  0.0),
-            llaBoxConf.value<double>("south", 0.0),
-            llaBoxConf.value<double>("east",  0.0),
-            llaBoxConf.value<double>("north", 0.0) );
+            as<double>(getValue(llaBox, "west"), 0.0),
+			as<double>(getValue(llaBox, "south"), 0.0),
+			as<double>(getValue(llaBox, "east"), 0.0),
+			as<double>(getValue(llaBox, "north"), 0.0));
 
         // find the ECEF LOD center point:
         double x, y;
@@ -70,14 +72,14 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
 
         // parse the LOD ranges:
         float minRange = 0, maxRange = 1e6;
-        const Config& lodConf = regionConf.child("lod");
-        if ( !lodConf.empty() ) 
+        xml_node<>* lod = region->first_node("lod", 0, false);
+        if ( lod ) 
         {
             // swapped
-            minRange = lodConf.value<float>( "minlodpixels", 0.0f );
+            minRange = as<float>(getValue(lod, "minlodpixels"), 0.0f);
             if ( minRange < 0.0f )
                 minRange = 0.0f;
-            maxRange = lodConf.value<float>( "maxlodpixels", FLT_MAX );
+			maxRange = as<float>(getValue(lod, "maxlodpixels"), FLT_MAX);
             if ( maxRange < 0.0f )
                 maxRange = FLT_MAX;
         }

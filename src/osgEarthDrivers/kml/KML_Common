@@ -21,7 +21,6 @@
 #define OSGEARTH_DRIVER_KML_COMMON 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Config>
 #include <osgEarth/URI>
 #include <osgEarth/MapNode>
 #include <osgEarth/SpatialReference>
@@ -30,34 +29,42 @@
 #include <osgEarthSymbology/ResourceCache>
 #include "KMLOptions"
 
+#include "rapidxml.hpp"
+#include "rapidxml_utils.hpp"
+#include "rapidxml_ext.hpp"
+
+using namespace rapidxml;
+
 #define LC "[KML] "
 
-#define for_one( NAME, FUNC, CONF, CX ) \
+#define for_one( NAME, FUNC, NODE, CX ) \
 { \
-    Config c = conf.child( toLower( #NAME ) ); \
-    if ( !c.empty() ) { \
-        KML_##NAME instance; \
-        instance. FUNC (c, CX); \
-    } \
+		xml_node<> *n = NODE->first_node(#NAME, 0, false); \
+		if (n) {\
+	        KML_##NAME instance; \
+            instance. FUNC (n, CX); \
+		}\
 }
 
-#define for_many( NAME, FUNC, CONF, CX ) \
+
+#define for_many( NAME, FUNC, NODE, CX ) \
 { \
-   ConfigSet c = conf.children( toLower( #NAME ) ); \
-   for( ConfigSet::const_iterator i = c.begin(); i != c.end(); ++i ) { \
-        KML_##NAME instance; \
-        instance. FUNC (*i, CX); \
-   } \
+   if (NODE) { \
+       for (xml_node<>* n = NODE->first_node(#NAME, 0, false); n; n = n->next_sibling(#NAME, 0, false)) { \
+	       KML_##NAME instance; \
+		   instance. FUNC (n, CX); \
+	   } \
+   }\
 }
 
-#define for_features( FUNC, CONF, CX ) \
-    for_many( Document,      FUNC, CONF, CX ); \
-    for_many( Folder,        FUNC, CONF, CX ); \
-    for_many( PhotoOverlay,  FUNC, CONF, CX ); \
-    for_many( ScreenOverlay, FUNC, CONF, CX ); \
-    for_many( GroundOverlay, FUNC, CONF, CX ); \
-    for_many( NetworkLink,   FUNC, CONF, CX ); \
-    for_many( Placemark,     FUNC, CONF, CX );
+#define for_features( FUNC, NODE, CX ) \
+    for_many( Document,      FUNC, NODE, CX ); \
+    for_many( Folder,        FUNC, NODE, CX ); \
+    for_many( PhotoOverlay,  FUNC, NODE, CX ); \
+    for_many( ScreenOverlay, FUNC, NODE, CX ); \
+    for_many( GroundOverlay, FUNC, NODE, CX ); \
+    for_many( NetworkLink,   FUNC, NODE, CX ); \
+    for_many( Placemark,     FUNC, NODE, CX );
 
 namespace osgEarth_kml
 {
@@ -74,31 +81,42 @@ namespace osgEarth_kml
         std::stack<osg::ref_ptr<osg::Group> > _groupStack;      // resulting scene graph
         osg::ref_ptr<const SpatialReference>  _srs;             // map's spatial reference
         osg::ref_ptr<const osgDB::Options>    _dbOptions;       // I/O options (caching, etc)
+        std::string                           _referrer;        // The referrer for loading things from relative paths.
     };
 
     struct KMLUtils
     {
         // parse KML's many variants on a URL link.
-        static std::string parseLink( const Config& conf )
-        {
-            Config link = conf.child("link");
-            if ( !link.empty() )
-            {
-                if ( link.hasValue("href") )
-                    return link.value("href");
-                else if ( link.hasValue("url") )
-                    return link.value("url");
-                else
-                    return link.value();
-            }
-            else
-            {
-                link = conf.child("url");
-                if ( link.hasValue("href") )
-                    return link.value("href");
-                else
-                    return link.value();
-            }
+        static std::string parseLink( xml_node<>* node )
+		{
+			if (node)
+			{
+				xml_node<>* link = node->first_node("link", 0, false);
+				if ( link )
+				{
+					std::string url = getValue(link, "href");
+					if (url.empty())
+					{
+						url = getValue(link, "href");
+					}
+					if (url.empty())
+					{
+						url = link->value();
+					}
+					return url;
+				}
+				else
+				{
+					link = node->first_node("url", 0, false);
+					std::string url = getValue(link, "href");
+					if (url.empty())
+					{
+						url = link->value();
+					}
+					return url;
+				}
+			}
+			return "";
         }
     };
 

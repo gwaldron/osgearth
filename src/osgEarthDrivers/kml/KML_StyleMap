@@ -28,7 +28,7 @@ namespace osgEarth_kml
 
     struct KML_StyleMap : public KML_StyleSelector
     {
-        virtual void scan2( const Config& conf, KMLContext& cx );
+        virtual void scan2( xml_node<>* node, KMLContext& cx );
     };
 
 } // namespace osgEarth_kml

@@ -8,6 +8,9 @@ set(TARGET_GLSL
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
+set(TARGET_IN
+    BumpMapShaders.cpp.in)
+
 configure_shaders(
     BumpMapShaders.cpp.in
     ${SHADERS_CPP}

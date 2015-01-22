@@ -88,7 +88,11 @@ ENDMACRO(DETECT_OSG_VERSION)
 MACRO(LINK_WITH_VARIABLES TRGTNAME)
     FOREACH(varname ${ARGN})
         IF(${varname}_DEBUG)
-            TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}}" debug "${${varname}_DEBUG}")
+            IF(${varname})
+                TARGET_LINK_LIBRARIES(${TRGTNAME} optimized "${${varname}}" debug "${${varname}_DEBUG}")
+            ELSE(${varname})
+                TARGET_LINK_LIBRARIES(${TRGTNAME} debug "${${varname}_DEBUG}")
+            ENDIF(${varname})
         ELSE(${varname}_DEBUG)
             TARGET_LINK_LIBRARIES(${TRGTNAME} "${${varname}}" )
         ENDIF(${varname}_DEBUG)
@@ -264,8 +268,9 @@ MACRO(SETUP_EXTENSION PLUGIN_NAME)
 
     #MESSAGE("in -->SETUP_EXTENSION<-- ${TARGET_NAME}-->${TARGET_SRC} <--> ${TARGET_H}<--")
     
-    SOURCE_GROUP( "Header Files" FILES ${TARGET_H} )
-    SOURCE_GROUP( "Shader Files" FILES ${TARGET_GLSL} )
+    SOURCE_GROUP( "Header Files"   FILES ${TARGET_H} )
+    SOURCE_GROUP( "Shader Files"   FILES ${TARGET_GLSL} )
+    SOURCe_GROUP( "Template Files" FILES ${TARGET_IN} )
 
     ## we have set up the target label and targetname by taking into account global prefix (osgdb_)
 
@@ -279,9 +284,9 @@ MACRO(SETUP_EXTENSION PLUGIN_NAME)
 # here we use the command to generate the library
 
     IF   (DYNAMIC_OSGEARTH)
-        ADD_LIBRARY(${TARGET_TARGETNAME} MODULE ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL})
+        ADD_LIBRARY(${TARGET_TARGETNAME} MODULE ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL} ${TARGET_IN})
     ELSE (DYNAMIC_OSGEARTH)
-        ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL})
+        ADD_LIBRARY(${TARGET_TARGETNAME} STATIC ${TARGET_SRC} ${TARGET_H} ${TARGET_GLSL} ${TARGET_IN})
     ENDIF(DYNAMIC_OSGEARTH)
 
     #not sure if needed, but for plugins only msvc need the d suffix

@@ -22,27 +22,36 @@
 using namespace osgEarth_kml;
 
 void
-KML_IconStyle::scan( const Config& conf, Style& style, KMLContext& cx )
+KML_IconStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 {
-    if ( !conf.empty() )
+    if ( node )
     {
         IconSymbol* icon = style.getOrCreate<IconSymbol>();
 
         // Icon/Href or just Icon are both valid
-        std::string iconHref = conf.child("icon").value("href");
-        if ( iconHref.empty() )
-            iconHref = conf.value("icon");
+		std::string iconHref;
+		xml_node<>* iconNode = node->first_node("icon", 0, false);
+		if (iconNode)
+		{
+			iconHref = getValue(iconNode, "href");
+			if ( iconHref.empty() )
+				iconHref = getValue(node, "icon");
+		}
 
         if ( !iconHref.empty() )
-            icon->url() = StringExpression( iconHref, URIContext(conf.referrer()) );
-
+        {
+            icon->url() = StringExpression( iconHref, URIContext(cx._referrer) );
+        }
+			
         // see: https://developers.google.com/kml/documentation/kmlreference#headingdiagram
-        if ( conf.hasValue("heading") )
-            icon->heading() = NumericExpression( conf.value("heading") );
+		std::string heading = getValue(node, "heading");
+        if ( !heading.empty() )
+            icon->heading() = NumericExpression( heading );
 
         float finalScale = *cx._options->iconBaseScale();
 
-        if ( conf.hasValue("scale") )
-            icon->scale() = NumericExpression( conf.value("scale") );
+		std::string scale = getValue(node, "scale");
+        if ( !scale.empty() )
+            icon->scale() = NumericExpression( scale );
     }
 }

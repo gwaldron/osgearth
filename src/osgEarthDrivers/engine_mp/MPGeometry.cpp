@@ -25,6 +25,7 @@
 #include <osgEarth/Capabilities>
 
 #include <osgUtil/IncrementalCompileOperation>
+#include <osg/Version>
 
 using namespace osg;
 using namespace osgEarth::Drivers::MPTerrainEngine;
@@ -95,13 +96,22 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 
     // access the GL extensions interface for the current GC:
     const osg::Program::PerContextProgram* pcp = 0L;
+
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+	osg::ref_ptr<osg::GLExtensions> ext;
+#else
     osg::ref_ptr<osg::GL2Extensions> ext;
+#endif
     unsigned contextID;
 
     if (_supportsGLSL)
     {
         contextID = state.getContextID();
-        ext = osg::GL2Extensions::Get( contextID, true );
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+		ext = osg::GLExtensions::Get(contextID, true);
+#else
+		ext = osg::GL2Extensions::Get( contextID, true );
+#endif
         pcp = state.getLastAppliedProgramObject();
     }
 
@@ -162,13 +172,13 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 #endif
 
     // activate the elevation texture if there is one. Same for all layers.
-    if ( _elevTex.valid() )
-    {
-        state.setActiveTextureUnit( _imageUnit+2 );
-        state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() ); // necessary?? since we do it above
-        _elevTex->apply( state );
-        // todo: probably need an elev texture matrix as well. -gw
-    }
+    //if ( _elevTex.valid() )
+    //{
+    //    state.setActiveTextureUnit( 2 );
+    //    state.setTexCoordPointer( 1, _tileCoords.get() ); // necessary?? since we do it above
+    //    _elevTex->apply( state );
+    //    // todo: probably need an elev texture matrix as well. -gw
+    //}
 
     if ( _layers.size() > 0 )
     {
@@ -486,7 +496,12 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
     
     State& state = *renderInfo.getState();
     unsigned contextID = state.getContextID();
+
+#if OSG_MIN_VERSION_REQUIRED(3,3,3)
+    osg::GLExtensions* extensions = osg::GLExtensions::Get(contextID, true);
+#else
     GLBufferObject::Extensions* extensions = GLBufferObject::getExtensions(contextID, true);
+#endif
     if (!extensions)
         return;
 

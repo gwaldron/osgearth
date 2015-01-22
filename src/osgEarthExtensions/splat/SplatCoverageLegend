@@ -79,6 +79,11 @@ namespace osgEarth { namespace Splat
          */
         const Predicates& getPredicates() const { return _predicates; }
 
+        /**
+         * Whether this legend is empty.
+         */
+        bool empty() const { return _predicates.empty(); }
+
     public: // serialization
 
         // populate this object from a Config

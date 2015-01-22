@@ -9,7 +9,7 @@ varying vec3 oe_Normal;
 varying vec2 oe_bumpmap_coords;
 varying float oe_bumpmap_slope;
 
-vec2 oe_nmap_scaleCoords(in vec2 coords, in float targetLOD)
+vec2 oe_bumpmap_scaleCoords(in vec2 coords, in float targetLOD)
 {
     float dL = oe_tile_key.z - targetLOD;
     float factor = exp2(dL);
@@ -37,7 +37,7 @@ void oe_bumpmap_vertex(inout vec4 VertexMODEL)
 
     // scale sampling coordinates to a target LOD.
     const float targetLOD = 13.0;
-    oe_bumpmap_coords = oe_nmap_scaleCoords(oe_layer_tilec.st, targetLOD) * iscale;
+    oe_bumpmap_coords = oe_bumpmap_scaleCoords(oe_layer_tilec.st, targetLOD) * iscale;
 
     // calcluate slope and augment it.
     oe_bumpmap_slope = clamp(2.5*(1.0-oe_Normal.z), 0.0, 1.0);

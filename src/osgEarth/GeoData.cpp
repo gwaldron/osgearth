@@ -1220,6 +1220,44 @@ GeoExtent::toString() const
     return bufStr;
 }
 
+bool
+GeoExtent::createPolytope(osg::Polytope& tope) const
+{
+    if ( ! this->isValid() )
+        return false;
+
+    if ( getSRS()->isProjected() )
+    {
+        // add planes for the four sides of the extent, Normals point inwards.
+        double halfWidth  = 0.5*width();
+        double halfHeight = 0.5*height();
+        tope.add( osg::Plane(osg::Vec3d( 1, 0,0), osg::Vec3d(-halfWidth,0,0)) );
+        tope.add( osg::Plane(osg::Vec3d(-1, 0,0), osg::Vec3d( halfWidth,0,0)) );
+        tope.add( osg::Plane(osg::Vec3d( 0, 1,0), osg::Vec3d(0, -halfHeight,0)) );
+        tope.add( osg::Plane(osg::Vec3d( 0,-1,0), osg::Vec3d(0,  halfHeight,0)) );
+    }
+
+    else
+    {
+        // for each extent, create a plane passing through the planet's centroid.
+
+        // convert 4 corners to world space (ECEF)
+        osg::Vec3d center(0.0, 0.0, 0.0);
+        osg::Vec3d sw, se, nw, ne;
+        GeoPoint(getSRS(), _west, _south, 0.0, ALTMODE_ABSOLUTE).toWorld( sw );
+        GeoPoint(getSRS(), _east, _south, 0.0, ALTMODE_ABSOLUTE).toWorld( se );
+        GeoPoint(getSRS(), _east, _north, 0.0, ALTMODE_ABSOLUTE).toWorld( ne );
+        GeoPoint(getSRS(), _west, _north, 0.0, ALTMODE_ABSOLUTE).toWorld( nw );
+
+        // bounding planes in ECEF space:
+        tope.add( osg::Plane(center, nw, sw) ); // west
+        tope.add( osg::Plane(center, sw, se) ); // south
+        tope.add( osg::Plane(center, se, ne) ); // east
+        tope.add( osg::Plane(center, ne, nw) ); // north
+    }
+
+    return true;
+}
 
 /***************************************************************************/
 

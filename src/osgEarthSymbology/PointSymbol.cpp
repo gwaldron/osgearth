@@ -24,6 +24,13 @@ using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(point, PointSymbol);
 
+PointSymbol::PointSymbol(const PointSymbol& rhs,const osg::CopyOp& copyop):
+Symbol(rhs, copyop),
+_fill(rhs._fill),
+_size(rhs._size)
+{
+}
+
 PointSymbol::PointSymbol( const Config& conf ) :
 Symbol( conf ),
 _fill ( Fill() ), 

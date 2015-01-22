@@ -76,6 +76,13 @@ _script( StringExpression("{}") )
     mergeConfig(conf);
 }
 
+Symbol::Symbol(const Symbol& rhs,const osg::CopyOp& copyop):
+osg::Object(rhs, copyop)
+{
+    _uriContext = rhs._uriContext;
+    _script = rhs._script;
+}
+
 void
 Symbol::mergeConfig(const Config& conf)
 {

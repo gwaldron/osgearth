@@ -46,7 +46,9 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
         void attach(osg::View* view, int lightNum);
 
+        // callbacks from base class.
         void onSetDateTime();
+        void onSetMinimumAmbient();
 
     public: // osg::Node
 

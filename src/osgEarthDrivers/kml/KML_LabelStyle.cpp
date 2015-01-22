@@ -21,6 +21,6 @@
 using namespace osgEarth_kml;
 
 void 
-KML_LabelStyle::scan( const Config& conf, Style& style, KMLContext& cx )
+KML_LabelStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 {
 }

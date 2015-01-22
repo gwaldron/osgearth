@@ -21,7 +21,7 @@
 using namespace osgEarth_kml;
 
 void
-KML_Object::build( const Config& conf, KMLContext& cx, osg::Node* working )
+KML_Object::build( xml_node<>* node, KMLContext& cx, osg::Node* working )
 {
     //todo - read ID
 }

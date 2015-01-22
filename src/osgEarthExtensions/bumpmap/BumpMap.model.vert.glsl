@@ -8,6 +8,7 @@ varying vec3 oe_Normal;
 
 varying vec2 oe_bumpmap_coords;
 varying float oe_bumpmap_slope;
+varying float oe_bumpmap_range;
 
 vec2 oe_bumpmap_scaleCoords(in vec2 coords, in float targetLOD)
 {
@@ -30,7 +31,7 @@ vec2 oe_bumpmap_scaleCoords(in vec2 coords, in float targetLOD)
     return result;
 }
 
-void oe_bumpmap_vertex(inout vec4 VertexMODEL)
+void oe_bumpmap_vertexModel(inout vec4 VertexMODEL)
 {            
     // quantize the scale factor
     float iscale = float(int(oe_bumpmap_scale));

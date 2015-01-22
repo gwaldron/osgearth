@@ -41,6 +41,12 @@ namespace osgEarth { namespace BumpMap
         /** Sets the image containing the normal offsets. */
         void setBumpMapImage(osg::Image* image);
 
+        /** Sets the number of progressive octaves. */
+        void setOctaves(int value) { _octaves = value; }
+
+        /** Sets the range of the first octave. */
+        void setMaxRange(float value) { _maxRange = value; }
+
         /** UNiform that controls intensity */
         osg::Uniform* getIntensityUniform() const { return _intensityUniform.get(); }
 
@@ -58,8 +64,10 @@ namespace osgEarth { namespace BumpMap
     protected:
         virtual ~BumpMapTerrainEffect() { }
 
-        bool _ok;
-        int  _bumpMapUnit;
+        bool  _ok;
+        int   _bumpMapUnit;
+        int   _octaves;
+        float _maxRange;
         osg::ref_ptr<osg::Texture2D> _bumpMapTex;
         osg::ref_ptr<osg::Uniform>   _bumpMapTexUniform;
         osg::ref_ptr<osg::Uniform>   _scaleUniform;

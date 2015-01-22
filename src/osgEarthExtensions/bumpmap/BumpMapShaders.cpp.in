@@ -7,9 +7,15 @@ using namespace osgEarth::BumpMap;
 
 Shaders::Shaders()
 {
-    Vertex = "BumpMap.vert.glsl";
-    _sources[Vertex] = MULTILINE(@BumpMap.vert.glsl@);
+    VertexModel = "BumpMap.model.vert.glsl";
+    _sources[VertexModel] = MULTILINE(@BumpMap.model.vert.glsl@);
 
-    Fragment = "BumpMap.frag.glsl";
-    _sources[Fragment] = MULTILINE(@BumpMap.frag.glsl@);
+    VertexView = "BumpMap.view.vert.glsl";
+    _sources[VertexView] = MULTILINE(@BumpMap.view.vert.glsl@);
+
+    FragmentSimple = "BumpMap.simple.frag.glsl";
+    _sources[FragmentSimple] = MULTILINE(@BumpMap.simple.frag.glsl@);
+
+    FragmentProgressive = "BumpMap.progressive.frag.glsl";
+    _sources[FragmentProgressive] = MULTILINE(@BumpMap.progressive.frag.glsl@);
 };

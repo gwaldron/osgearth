@@ -3,8 +3,10 @@
 #
 
 set(TARGET_GLSL
-    BumpMap.vert.glsl
-    BumpMap.frag.glsl)
+    BumpMap.model.vert.glsl
+	BumpMap.view.vert.glsl
+    BumpMap.simple.frag.glsl
+    BumpMap.progressive.frag.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

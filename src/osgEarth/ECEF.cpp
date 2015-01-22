@@ -142,10 +142,12 @@ ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
                 normal = (inNormal + outNormal) * 0.5;
             }
 
+            normal.normalize();
             out_normals->push_back( normal );
         }
 
         // final one.
+        outNormal.normalize();
         out_normals->push_back( outNormal );
     }
 }

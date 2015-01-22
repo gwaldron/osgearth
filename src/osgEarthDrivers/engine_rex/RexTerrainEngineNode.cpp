@@ -428,6 +428,16 @@ RexTerrainEngineNode::createTerrain()
             _renderBindings.elevation().unit() );
     }
 
+    // reserve a GPU unit for the secondary (parent blending) elevation texture:
+    if ( _renderBindings.parentElevation().unit() < 0 )
+    {
+        _renderBindings.parentElevation().samplerName() = "oe_tile_parentElevationTex";
+        _renderBindings.parentElevation().matrixName()  = "oe_tile_parentElevationTexMatrix";
+
+        this->getTextureCompositor()->reserveTextureImageUnit(
+            _renderBindings.parentElevation().unit() );
+    }
+
     // Factory to create the root keys:
     TileGroupFactory* factory = getTileGroupFactory();
 
@@ -826,6 +836,14 @@ RexTerrainEngineNode::updateState()
 
             osgEarth::replaceIn( vs, "$REX_PRIMARY_UNIT",   Stringify() << _renderBindings.color().unit() );
             osgEarth::replaceIn( vs, "$REX_SECONDARY_UNIT", Stringify() << _renderBindings.parentColor().unit() );
+
+            bool lodBlending = _terrainOptions.enableLODBlending() == true;
+            if ( !lodBlending )
+            {
+                osgEarth::replaceIn( vs,
+                    "#define REX_LOD_BLENDING",
+                    "#undef REX_LOD_BLENDING" );
+            }
             
             vp->setFunction( "oe_rexEngine_vert", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0f );
 
@@ -848,6 +866,13 @@ RexTerrainEngineNode::updateState()
                 osgEarth::replaceIn( fs,
                     "#define REX_USE_BLENDING",
                     "#undef REX_USE_BLENDING" );
+            }
+
+            if ( !lodBlending )
+            {
+                osgEarth::replaceIn( fs,
+                    "#define REX_LOD_BLENDING",
+                    "#undef REX_LOD_BLENDING" );
             }
 
             vp->setFunction( "oe_rexEngine_frag", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
@@ -922,6 +947,11 @@ RexTerrainEngineNode::updateState()
                 _renderBindings.elevation().samplerName().c_str(),
                 _renderBindings.elevation().unit() ));
 
+            // uniform for the parent elevation texture sampler.
+            terrainStateSet->addUniform( new osg::Uniform(
+                _renderBindings.parentElevation().samplerName().c_str(),
+                _renderBindings.parentElevation().unit() ));
+
             // binding for the terrain texture
             terrainStateSet->addUniform( new osg::Uniform(
                 _renderBindings.color().samplerName().c_str(),
@@ -933,10 +963,10 @@ RexTerrainEngineNode::updateState()
                 _renderBindings.parentColor().unit() ));
 
             //// binding for the default secondary texture matrix
-            //osg::Matrixf parent_mat;
-            //parent_mat(0,0) = 0.0f;
-            //terrainStateSet->getOrCreateUniform(
-            //    "oe_layer_parentTexMatrix", osg::Uniform::FLOAT_MAT4 )->set( parent_mat );
+            osg::Matrixf parent_mat;
+            parent_mat(0,0) = 0.0f;
+            terrainStateSet->getOrCreateUniform(
+                "oe_layer_parentTexMatrix", osg::Uniform::FLOAT_MAT4 )->set( parent_mat );
 
             // uniform that controls per-layer opacity
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_opacity", 1.0f) );

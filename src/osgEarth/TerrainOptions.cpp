@@ -42,6 +42,7 @@ _lodTransitionTimeSeconds( 0.5f ),
 _enableMipmapping( true ),
 _clusterCulling( true ),
 _enableBlending( true ),
+_enableLODBlending( false ),
 _mercatorFastPath( true ),
 _minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
 _magFilter( osg::Texture::LINEAR),
@@ -76,6 +77,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "mipmapping", _enableMipmapping );
     conf.updateIfSet( "cluster_culling", _clusterCulling );
     conf.updateIfSet( "blending", _enableBlending );
+    conf.updateIfSet( "lod_blending", _enableLODBlending );
     conf.updateIfSet( "mercator_fast_path", _mercatorFastPath );
     conf.updateIfSet( "primary_traversal_mask", _primaryTraversalMask );
     conf.updateIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
@@ -119,6 +121,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "mipmapping", _enableMipmapping );
     conf.getIfSet( "cluster_culling", _clusterCulling );
     conf.getIfSet( "blending", _enableBlending );
+    conf.getIfSet( "lod_blending", _enableLODBlending );
     conf.getIfSet( "mercator_fast_path", _mercatorFastPath );
     conf.getIfSet( "primary_traversal_mask", _primaryTraversalMask );
     conf.getIfSet( "secondary_traversal_mask", _secondaryTraversalMask );

@@ -152,6 +152,12 @@ namespace osgEarth
          */
         optional<bool>& enableBlending() { return _enableBlending; }
         const optional<bool>& enableBlending() const { return _enableBlending; }
+        
+        /**
+         * Whether to enable LOD blending. Default is false.
+         */
+        optional<bool>& enableLODBlending() { return _enableLODBlending; }
+        const optional<bool>& enableLODBlending() const { return _enableLODBlending; }
 
         /**
          * Whether to enable the "fast path" for spherical Mercator image layers
@@ -210,6 +216,7 @@ namespace osgEarth
         optional<bool>  _enableMipmapping;
         optional<bool> _clusterCulling;
         optional<bool> _enableBlending;
+        optional<bool> _enableLODBlending;
         optional<bool> _mercatorFastPath;
         optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::FilterMode> _minFilter;

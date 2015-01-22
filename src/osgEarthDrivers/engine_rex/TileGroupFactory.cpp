@@ -51,6 +51,32 @@ namespace
                 traverse(node, nv);
         }
     };
+
+        // Scale and bias matrices, one for each TileKey quadrant.
+    const osg::Matrixf scaleBias[4] =
+    {
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.5f,0,1.0f),
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.5f,0,1.0f),
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.0f,0,1.0f),
+        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
+    };
+
+    void applyScaleBias(osg::Matrixf* m, unsigned quadrant)
+    {
+#if 1
+        m->preMult( scaleBias[quadrant] );
+#else
+        osg::Matrixf scaleBias;
+        scaleBias(0,0) = 0.5f;
+        scaleBias(1,1) = 0.5f;
+        if ( quadrant == 1 || quadrant == 3 )
+            scaleBias(3,0) = 0.5f;
+        if ( quadrant == 0 || quadrant == 1 )
+            scaleBias(3,1) = 0.5f;
+
+        m->preMult( scaleBias );
+#endif
+    }
 }
 
 //..............................................................
@@ -173,6 +199,70 @@ TileGroupFactory::createTileNode(TerrainTileModel* model,
                 stateSet->addUniform( new osg::Uniform(
                     imageLayer->shareMatrixName()->c_str(),
                     *(layerModel->getMatrix())) );
+            }
+        }
+    }
+
+    //get parent tile data for lod blending
+    osg::ref_ptr<const TerrainTileModel> parentModel;
+    TileKey parentKey = model->getKey().createParentKey();
+
+    if ( _liveTiles->get(parentKey, parentModel) )
+    {
+        for(TerrainTileImageLayerModelVector::const_iterator i = parentModel->colorLayers().begin();
+            i != parentModel->colorLayers().end();
+            ++i)
+        {
+            const TerrainTileLayerModel* layer = i->get();
+
+            if ( layer->getTexture() )
+            {
+                osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+
+                stateSet->setTextureAttribute(
+                    _renderBindings.parentColor().unit(),
+                    layer->getTexture() );
+
+                // (note: sampler uniform is set at the top level by the engine)
+            }
+
+            if ( layer->getMatrix() )
+            {
+                osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+
+                osg::Matrixf parentTexMatrix;
+                if ( layer->getMatrix() )
+                    parentTexMatrix = *(osg::clone(layer->getMatrix()));
+
+                applyScaleBias( &parentTexMatrix, model->getKey().getQuadrant() );
+
+                stateSet->addUniform( new osg::Uniform(
+                    _renderBindings.parentColor().matrixName().c_str(),
+                    parentTexMatrix) );
+            }
+        }
+
+        if ( parentModel->elevationModel() )
+        {
+            const TerrainTileElevationModel* parentEM = parentModel->elevationModel();
+
+            if (parentEM->getTexture())
+            {
+                osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+
+                stateSet->setTextureAttribute(
+                    _renderBindings.parentElevation().unit(),
+                    parentEM->getTexture() );
+
+                osg::Matrixf parentElevMatrix;
+                if ( parentEM->getMatrix() )
+                    parentElevMatrix = *(osg::clone(parentEM->getMatrix()));
+
+                applyScaleBias( &parentElevMatrix, model->getKey().getQuadrant() );
+
+                stateSet->addUniform( new osg::Uniform(
+                    _renderBindings.parentElevation().matrixName().c_str(),
+                    parentElevMatrix ));
             }
         }
     }

@@ -38,7 +38,7 @@ void oe_bumpmap_fragment(inout vec4 color)
         if ( range <= limit )
             break;
         lastRange = range;
-        range = maxRange/exp(lod);
+        range = oe_bumpmap_maxRange/exp(lod);
     }
 
     // finally, transform into view space and normalize the vector.

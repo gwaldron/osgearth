@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "SplatTerrainEffect"
+#include "SplatOptions"
 
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -92,14 +93,13 @@ _gpuNoise   ( false )
         }
     }
 
-    _scaleOffsetUniform    = new osg::Uniform("oe_splat_scaleOffset",      0.0f);
-    _intensityUniform      = new osg::Uniform("oe_splat_intensity",        1.0f);
-    _warpUniform           = new osg::Uniform("oe_splat_warp",             0.0f);
-    _blurUniform           = new osg::Uniform("oe_splat_blur",             1.0f);
-    _snowMinElevUniform    = new osg::Uniform("oe_splat_snowMinElevation", 10000.0f);
-    _snowPatchinessUniform = new osg::Uniform("oe_splat_snowPatchiness",   2.0f);
+    SplatOptions def;
+
+    _scaleOffsetUniform    = new osg::Uniform("oe_splat_scaleOffsetInt",   *def.scaleLevelOffset());
+    _warpUniform           = new osg::Uniform("oe_splat_warp",             *def.coverageWarp());
+    _blurUniform           = new osg::Uniform("oe_splat_blur",             *def.coverageBlur());
+    _useBilinearUniform    = new osg::Uniform("oe_splat_useBilinear",      (def.bilinearSampling()==true?1.0f:0.0f));
     _noiseScaleUniform     = new osg::Uniform("oe_splat_noiseScale",       12.0f);
-    _useBilinearUniform    = new osg::Uniform("oe_splat_useBilinear",       1.0f);
 
     _editMode = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L);
     _gpuNoise = (::getenv("OSGEARTH_SPLAT_GPU_NOISE") != 0L);
@@ -134,11 +134,8 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             // control uniforms
             stateset->addUniform( _scaleOffsetUniform.get() );
-            stateset->addUniform( _intensityUniform.get() );
             stateset->addUniform( _warpUniform.get() );
             stateset->addUniform( _blurUniform.get() );
-            stateset->addUniform( _snowMinElevUniform.get() );
-            stateset->addUniform( _snowPatchinessUniform.get() );
             stateset->addUniform( _noiseScaleUniform.get() );
             stateset->addUniform( _useBilinearUniform.get() );
 
@@ -188,10 +185,13 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             vp->setFunction( "oe_splat_vertex_view",  vertexShaderView,  ShaderComp::LOCATION_VERTEX_VIEW );
             vp->setFunction( "oe_splat_fragment",     fragmentShader,    ShaderComp::LOCATION_FRAGMENT_COLORING, _renderOrder );
 
-            // support shaders
-            std::string noiseShaderSource = ShaderLoader::loadSource(_shaders.Noise, _shaders);
-            osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
-            vp->setShader( "oe_splat_noiseshaders", noiseShader );
+            if ( _gpuNoise )
+            {
+                // support shaders
+                std::string noiseShaderSource = ShaderLoader::loadSource(_shaders.Noise, _shaders);
+                osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
+                vp->setShader( "oe_splat_noiseshaders", noiseShader );
+            }
 
             // install the cull callback that will select the appropriate
             // state based on the position of the camera.

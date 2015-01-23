@@ -199,6 +199,7 @@ MACRO(SETUP_PLUGIN PLUGIN_NAME)
     
     SOURCE_GROUP( "Header Files" FILES ${TARGET_H} )
     SOURCE_GROUP( "Shader Files" FILES ${TARGET_GLSL} )
+    SOURCe_GROUP( "Template Files" FILES ${TARGET_IN} )
 
     ## we have set up the target label and targetname by taking into account global prfix (osgdb_)
 

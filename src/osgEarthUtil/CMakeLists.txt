@@ -66,14 +66,14 @@ SET(HEADERS_ROOT
 SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
 
-set(TARGET_GLSL
-    LogDepthBuffer.vert.glsl
-    LogDepthBuffer.frag.glsl
-    LogDepthBuffer.VertOnly.vert.glsl)
+# Generate inline shaders.
+set(SHADERS_CPP
+    "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
-set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+#set(TARGET_GLSL
+#    ...)
 
-configure_shaders(
+configure_shaders(            
     Shaders.cpp.in
     ${SHADERS_CPP}
     ${TARGET_GLSL} )

@@ -24,8 +24,8 @@ IF(NOT USE_CUSTOM_SOURCE_GROUPS)
 		
 ENDIF()
 
-source_group(
-	"Shaders" FILES ${TARGET_GLSL} )
+source_group("Shaders"        FILES ${TARGET_GLSL} )
+source_group("Template Files" FILES ${TARGET_IN} )
 
 INSTALL(
     TARGETS ${LIB_NAME}

@@ -2,6 +2,14 @@
 
 #include <osgEarth/Shaders>
 
-#define MULTILINE(...) #__VA_ARGS__
-
-using namespace osgEarth;
+namespace osgEarth
+{
+    Shaders::Shaders()
+    {
+        // GPU Clamping
+        GPUClampingVertex = "GPUClamping.vert.glsl";
+        _sources[GPUClampingVertex] = OE_MULTILINE(@GPUClamping.vert.glsl@);
+        GPUClampingFragment = "GPUClamping.frag.glsl";
+        _sources[GPUClampingFragment] = OE_MULTILINE(@GPUClamping.frag.glsl@);
+    }
+};

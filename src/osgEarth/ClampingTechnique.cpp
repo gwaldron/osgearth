@@ -23,6 +23,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
+#include <osgEarth/Shaders>
 
 #include <osg/Depth>
 #include <osg/PolygonMode>
@@ -76,7 +77,7 @@ namespace
 ClampingTechnique::TechniqueProvider ClampingTechnique::Provider = s_providerImpl;
 
 //--------------------------------------------------------------------------
-
+#if 0
 
 // SUPPORT_Z is a placeholder - we need to come up with another method for
 // clamping verts relative to Z without needing the current Model Matrix
@@ -160,6 +161,7 @@ namespace
         "}\n";
 
 }
+#endif
 
 //---------------------------------------------------------------------------
 
@@ -424,9 +426,19 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = VirtualProgram::getOrCreate(local->_groupStateSet.get());
-    vp->setName( "ClampingTechnique" );
-    vp->setFunction( "oe_clamp_vertex",   clampingVertexShader,   ShaderComp::LOCATION_VERTEX_VIEW );
-    vp->setFunction( "oe_clamp_fragment", clampingFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
+    vp->setName( "GPUClamping" );
+
+    osgEarth::Shaders pkg;
+
+    vp->setFunction(
+        "oe_clamp_vertex",
+        ShaderLoader::loadSource(pkg.GPUClampingVertex, pkg),
+        ShaderComp::LOCATION_VERTEX_VIEW);
+
+    vp->setFunction(
+        "oe_clamp_fragment",
+        ShaderLoader::loadSource(pkg.GPUClampingFragment, pkg),
+        ShaderComp::LOCATION_FRAGMENT_COLORING);
 }
 
 

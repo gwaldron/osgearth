@@ -25,7 +25,6 @@
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/Tessellator>
 #include <osgEarth/Utils>

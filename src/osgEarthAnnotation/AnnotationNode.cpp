@@ -67,6 +67,8 @@ _activeDs   ( 0L )
 
     // always blend.
     this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
+    // always draw after the terrain.
+    this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
 }
 
 AnnotationNode::AnnotationNode(MapNode* mapNode, const Config& conf) :
@@ -98,7 +100,9 @@ _activeDs   ( 0L )
         // blend by default.
         this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
     }
-
+    
+    // always draw after the terrain.
+    this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
 }
 
 AnnotationNode::~AnnotationNode()

@@ -82,7 +82,7 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
         engine->requireNormalTextures();
 
         int unit;
-        engine->getTextureCompositor()->reserveTextureImageUnit(unit);
+        engine->getResources()->reserveTextureImageUnit(unit);
         engine->addTileNodeCallback( new NormalTexInstaller(this, unit) );
 
         // configure shaders
@@ -117,7 +117,7 @@ NormalMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
     
     if ( _normalMapUnit >= 0 )
     {
-        engine->getTextureCompositor()->releaseTextureImageUnit( _normalMapUnit );
+        engine->getResources()->releaseTextureImageUnit( _normalMapUnit );
         _normalMapUnit = -1;
     }
 }

@@ -119,7 +119,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
         engine->requireElevationTextures();
 
         // install the splat texture array:
-        if ( engine->getTextureCompositor()->reserveTextureImageUnit(_splatTexUnit) )
+        if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit) )
         {
             osg::StateSet* stateset = new osg::StateSet();
 
@@ -169,7 +169,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             }
             else // use a noise texture (the default)
             {
-                if (engine->getTextureCompositor()->reserveTextureImageUnit(_noiseTexUnit))
+                if (engine->getResources()->reserveTextureImageUnit(_noiseTexUnit))
                 {
                     OE_INFO << LC << "Noise texture -> unit " << _noiseTexUnit << "\n";
                     _noiseTex = createNoiseTexture();
@@ -214,13 +214,13 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
     {
         if ( _noiseTexUnit >= 0 )
         {
-            engine->getTextureCompositor()->releaseTextureImageUnit( _noiseTexUnit );
+            engine->getResources()->releaseTextureImageUnit( _noiseTexUnit );
             _noiseTexUnit = -1;
         }
     
         if ( _splatTexUnit >= 0 )
         {
-            engine->getTextureCompositor()->releaseTextureImageUnit( _splatTexUnit );
+            engine->getResources()->releaseTextureImageUnit( _splatTexUnit );
             _splatTexUnit = -1;
         }
 

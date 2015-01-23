@@ -424,20 +424,20 @@ MPTerrainEngineNode::createTerrain()
     // reserve GPU space.
     if ( _primaryUnit < 0 )
     {
-        this->getTextureCompositor()->reserveTextureImageUnit( _primaryUnit );
+        this->getResources()->reserveTextureImageUnit( _primaryUnit );
         OE_INFO << LC << "Primary color unit = " << _primaryUnit << "\n";
     }
 
     if ( _secondaryUnit < 0 )
     {
-        this->getTextureCompositor()->reserveTextureImageUnit( _secondaryUnit );
+        this->getResources()->reserveTextureImageUnit( _secondaryUnit );
         OE_INFO << LC << "Secondary color unit = " << _secondaryUnit << "\n";
     }
 
     if ( _elevationTextureUnit < 0 )
     {
         // testing
-        this->getTextureCompositor()->reserveTextureImageUnit( _elevationTextureUnit );
+        this->getResources()->reserveTextureImageUnit( _elevationTextureUnit );
         OE_INFO << LC << "Elevation unit = " << _elevationTextureUnit << "\n";
     }
 
@@ -750,7 +750,7 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             if ( !unit.isSet() )
             {
                 int temp;
-                if ( getTextureCompositor()->reserveTextureImageUnit(temp) )
+                if ( getResources()->reserveTextureImageUnit(temp) )
                 {
                     unit = temp;
                     OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << layerAdded->getName() << std::endl;
@@ -783,7 +783,7 @@ MPTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
         {
             if ( layerRemoved->shareImageUnit().isSet() )
             {
-                getTextureCompositor()->releaseTextureImageUnit( *layerRemoved->shareImageUnit() );
+                getResources()->releaseTextureImageUnit( *layerRemoved->shareImageUnit() );
                 layerRemoved->shareImageUnit().unset();
             }
         }

@@ -144,7 +144,7 @@ ContourMap::onInstall(TerrainEngineNode* engine)
 {
     if ( engine )
     {
-        if ( !engine->getTextureCompositor()->reserveTextureImageUnit(_unit) )
+        if ( !engine->getResources()->reserveTextureImageUnit(_unit) )
         {
             OE_WARN << LC << "Failed to reserve a texture image unit; disabled." << std::endl;
             return;
@@ -202,7 +202,7 @@ ContourMap::onUninstall(TerrainEngineNode* engine)
 
         if ( _unit >= 0 )
         {
-            engine->getTextureCompositor()->releaseTextureImageUnit( _unit );
+            engine->getResources()->releaseTextureImageUnit( _unit );
             _unit = -1;
         }
     }

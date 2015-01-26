@@ -234,11 +234,13 @@ namespace
 FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      const FeatureModelSourceOptions& options,
                                      FeatureNodeFactory*              factory,
+                                     ModelSource*                     modelSource,
                                      RefNodeOperationVector*          preMergeOperations,
                                      RefNodeOperationVector*          postMergeOperations) :
 _session            ( session ),
 _options            ( options ),
 _factory            ( factory ),
+_modelSource        ( modelSource ),
 _preMergeOperations ( preMergeOperations ),
 _postMergeOperations( postMergeOperations ),
 _dirty              ( false ),
@@ -1265,7 +1267,10 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.EVENT_VISITOR )
     {
-        if ( !_pendingUpdate && (_dirty || _session->getFeatureSource()->outOfSyncWith(_revision)) )
+        if (!_pendingUpdate && 
+             (_dirty ||
+              _session->getFeatureSource()->outOfSyncWith(_featureSourceRev) ||
+              _modelSource->outOfSyncWith(_modelSourceRev)))
         {
             _pendingUpdate = true;
             ADJUST_UPDATE_TRAV_COUNT( this, 1 );
@@ -1438,7 +1443,9 @@ FeatureModelGraph::redraw()
 
     addChild( node );
 
-    _session->getFeatureSource()->sync( _revision );
+    _session->getFeatureSource()->sync( _featureSourceRev );
+    _modelSource->sync( _modelSourceRev );
+
     _dirty = false;
 }
 

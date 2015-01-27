@@ -40,7 +40,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _normalizeEdges    ( false ),
             _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize     ( 256 ),
-            _color             ( Color::White )
+            _color             ( Color::White ),
+            _enableLODBlending ( false ),
+            _lodBlendDelay     ( 0.0f ),
+            _lodBlendDuration  ( 0.25f )
         {
             setDriver( "rex" );
             fromConfig( _conf );
@@ -70,6 +73,20 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
 
+        /**
+         * Whether to enable LOD blending. Default is false.
+         */
+        optional<bool>& enableLODBlending() { return _enableLODBlending; }
+        const optional<bool>& enableLODBlending() const { return _enableLODBlending; }
+
+        /** The time delay for LOD blending */
+        optional<float>& lodBlendDelay() { return _lodBlendDelay; }
+        const optional<float>& lodBlendDelay() const { return _lodBlendDelay; }
+
+        /** The length of time over which LOD blending occurs */
+        optional<float>& lodBlendDuration() { return _lodBlendDuration; }
+        const optional<float>& lodBlendDuration() const { return _lodBlendDuration; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
@@ -79,6 +96,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.updateIfSet( "color", _color );
+            conf.updateIfSet( "lod_blending", _enableLODBlending );
+            conf.updateIfSet( "lod_blending_delay", _lodBlendDelay );
+            conf.updateIfSet( "lod_blending_duration", _lodBlendDuration );
 
             return conf;
         }
@@ -96,6 +116,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.getIfSet( "color", _color );
+            conf.getIfSet( "lod_blending", _enableLODBlending );
+            conf.getIfSet( "lod_blending_delay", _lodBlendDelay );
+            conf.getIfSet( "lod_blending_duration", _lodBlendDuration );
         }
 
         optional<float>               _skirtRatio;
@@ -103,6 +126,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<osg::LOD::RangeMode> _rangeMode;
         optional<float>               _tilePixelSize;
         optional<Color>               _color;
+        optional<bool>                _enableLODBlending;
+        optional<float>               _lodBlendDelay;
+        optional<float>               _lodBlendDuration;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

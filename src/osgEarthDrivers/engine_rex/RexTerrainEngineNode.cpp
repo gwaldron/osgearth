@@ -289,6 +289,14 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
         "oe_min_tile_range_factor",
         osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
 
+    this->getOrCreateStateSet()->getOrCreateUniform(
+        "oe_lodblend_delay",
+        osg::Uniform::FLOAT)->set( *_terrainOptions.lodBlendDelay() );
+
+    this->getOrCreateStateSet()->getOrCreateUniform(
+        "oe_lodblend_duration",
+        osg::Uniform::FLOAT)->set( *_terrainOptions.lodBlendDuration() );
+
     // set up the initial shaders
     updateState();
 

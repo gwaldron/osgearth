@@ -20,9 +20,8 @@ uniform vec4 oe_tile_key;
 uniform float oe_min_tile_range_factor;
 uniform float oe_tile_birthtime;
 uniform float osg_FrameTime;
-//uniform float oe_lodblend_delay;
-//uniform float oe_lodblend_duration;
-//uniform float oe_lodblend_vscale;
+uniform float oe_lodblend_delay;
+uniform float oe_lodblend_duration;
 
 void oe_rexEngine_vert(inout vec4 vertexModel)
 {
@@ -50,9 +49,8 @@ void oe_rexEngine_vert(inout vec4 vertexModel)
     float d          = length(VertexVIEW.xyz/VertexVIEW.w);
     float r_dist     = clamp((d-near)/(far-near), 0.0, 1.0);
     
-    //float r_time     = 1.0 - clamp(osg_FrameTime-(oe_tile_birthtime+oe_lodblend_delay), 0.0, oe_lodblend_duration)/oe_lodblend_duration;
-    //float r          = max(r_dist, r_time);
-    float r = r_dist;
+    float r_time     = 1.0 - clamp(osg_FrameTime-(oe_tile_birthtime+oe_lodblend_delay), 0.0, oe_lodblend_duration)/oe_lodblend_duration;
+    float r          = max(r_dist, r_time);
     
     vec3 lodOffset = oe_Normal * r * (pElev-elev);
     vertexModel += vec4(lodOffset*vertexModel.w, 0.0);

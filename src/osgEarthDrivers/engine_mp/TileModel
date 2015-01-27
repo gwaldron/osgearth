@@ -275,6 +275,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** Whether there is a heightfield */
         bool hasElevation() const { return _elevationData.getHeightField() != 0L; }
 
+        /** Whether there's a normal map */
+        bool hasNormalMap() const { return _normalData.getHeightField() != 0L; }
+
         MapInfo                      _mapInfo;
         Revision                     _revision;
         TileKey                      _tileKey;

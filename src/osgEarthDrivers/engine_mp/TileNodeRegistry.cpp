@@ -103,24 +103,51 @@ TileNodeRegistry::add( TileNode* tile )
         _tiles[ tile->getKey() ] = tile;
         if ( _revisioningEnabled )
             tile->setMapRevision( _maprev );
+
         OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
-    }
-}
 
-
-void
-TileNodeRegistry::add( const TileNodeVector& tiles )
-{
-    if ( tiles.size() > 0 )
-    {
-        Threading::ScopedWriteLock exclusive( _tilesMutex );
-        for( TileNodeVector::const_iterator i = tiles.begin(); i != tiles.end(); ++i )
+        // check for waiters.
+        Notifications::iterator i = _notifications.find(tile->getKey());
+        if ( i != _notifications.end() )
         {
-            _tiles[ i->get()->getKey() ] = i->get();
+            TileKeyVector& waiters = i->second;
+            for(unsigned j=0; j<waiters.size(); )
+            {
+                TileKey& waiter = waiters[j];
+                TileNodeMap::iterator k = _tiles.find(waiter);
+                if ( k != _tiles.end() )
+                {
+                    k->second->notifyOfArrival( tile );
+                    waiter = waiters.back();
+                    waiters.resize( waiters.size()-1 );
+                }
+                else
+                {
+                    ++j;
+                }
+            }
+            if ( waiters.size() == 0 )
+            {
+                _notifications.erase( i );
+            }
         }
-        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
     }
 }
+
+
+//void
+//TileNodeRegistry::add( const TileNodeVector& tiles )
+//{
+//    if ( tiles.size() > 0 )
+//    {
+//        Threading::ScopedWriteLock exclusive( _tilesMutex );
+//        for( TileNodeVector::const_iterator i = tiles.begin(); i != tiles.end(); ++i )
+//        {
+//            _tiles[ i->get()->getKey() ] = i->get();
+//        }
+//        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
+//    }
+//}
 
 
 void
@@ -206,4 +233,23 @@ TileNodeRegistry::empty() const
 {
     // don't bother mutex-protecteding this.
     return _tiles.empty();
+}
+
+void
+TileNodeRegistry::listenFor(const TileKey& tileToWaitFor, TileNode* waiter)
+{
+    Threading::ScopedWriteLock lock( _tilesMutex );
+    TileNodeMap::iterator i = _tiles.find( tileToWaitFor );
+    if ( i != _tiles.end() )
+    {
+        OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str()
+            << ", but it was already in the repo.\n";
+
+        waiter->notifyOfArrival( i->second.get() );
+    }
+    else
+    {
+        OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
+        _notifications[tileToWaitFor].push_back( waiter->getKey() );
+    }
 }

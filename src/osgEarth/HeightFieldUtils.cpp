@@ -633,24 +633,20 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
     double yres = 1.0/ycells;
 
     // north-south interval in meters:
-    double tInterval = hf->getYInterval();
     double mPerDegAtEquator = (hoodSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI)/360.0;
-    if ( hoodSRS->isGeographic() )
-    {
-        tInterval *= mPerDegAtEquator;
-    }
+    double tIntervalMeters = 
+        hoodSRS->isGeographic() ? hf->getYInterval() * mPerDegAtEquator :
+        hf->getYInterval();
 
     ImageUtils::PixelWriter write(image);
     
     for(int t=0; t<(int)hf->getNumRows(); ++t)
     {
         // east-west interval in meters (changes for each row):
-        double sInterval = hf->getXInterval();
-        if ( hoodSRS->isGeographic() )
-        {
-            double lat = osg::DegreesToRadians(hf->getOrigin().y() + hf->getYInterval()*(double)t);
-            sInterval *= mPerDegAtEquator * cos(lat);
-        }
+        double lat = hf->getOrigin().y() + hf->getYInterval()*(double)t;
+        double sIntervalMeters =
+            hoodSRS->isGeographic() ? hf->getXInterval() * mPerDegAtEquator * cos(osg::DegreesToRadians(lat)) :
+            hf->getXInterval();
 
         for(int s=0; s<(int)hf->getNumColumns(); ++s)
         {
@@ -659,10 +655,10 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
             double nx = xres*(double)s;
             double ny = yres*(double)t;
 
-            osg::Vec3f west ( -sInterval, 0, centerHeight );
-            osg::Vec3f east (  sInterval, 0, centerHeight );
-            osg::Vec3f south( 0, -tInterval, centerHeight );
-            osg::Vec3f north( 0,  tInterval, centerHeight );
+            osg::Vec3f west ( -sIntervalMeters, 0, centerHeight );
+            osg::Vec3f east (  sIntervalMeters, 0, centerHeight );
+            osg::Vec3f south( 0, -tIntervalMeters, centerHeight );
+            osg::Vec3f north( 0,  tIntervalMeters, centerHeight );
 
             HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx-xres, ny, west.z());
             HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx+xres, ny, east.z());
@@ -673,7 +669,7 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
             n.normalize();
 
             // calculate and encode curvature (2nd derivative of elevation)
-            float L2inv = 1.0f/(sInterval*sInterval);
+            float L2inv = 1.0f/(sIntervalMeters*sIntervalMeters);
             float D = (0.5*(west.z()+east.z()) - centerHeight) * L2inv;
             float E = (0.5*(south.z()+north.z()) - centerHeight) * L2inv;
             float curvature = osg::clampBetween(-2.0f*(D+E)*100.0f, -1.0f, 1.0f);

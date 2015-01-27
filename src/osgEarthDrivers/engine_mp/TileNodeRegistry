@@ -38,13 +38,17 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     public:
         typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileNodeMap;
 
-        // Proprtype for a locked tileset operation (see run)
+        // Prototype for a locked tileset operation (see run)
         struct Operation {
-            virtual void operator()( TileNodeMap& tiles ) =0;
+            virtual void operator()(TileNodeMap& tiles) =0;
+        };
+        struct ConstOperation {
+            virtual void operator()(const TileNodeMap& tiles) const =0;
         };
 
-        struct ConstOperation {
-            virtual void operator()( const TileNodeMap& tiles ) const =0;
+        // Operation that runs when another node enters the registry.
+        struct DeferredOperation {
+            virtual void operator()(TileNode* requestingNode, TileNode* expectedNode) const =0;
         };
 
     public:
@@ -90,7 +94,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void add( TileNode* tile );
 
         /** Adds several tiles to the registry */
-        void add( const TileNodeVector& tiles );
+        //void add( const TileNodeVector& tiles );
 
         /** Removes a tile */
         void remove( TileNode* tile );
@@ -116,6 +120,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** Number of tiles in the registry. */
         unsigned size() const { return _tiles.size(); }
 
+        /** Tells the registry to listen for the TileNode for the specific key
+            to arrive, and upon its arrival, notifies the waiter. After notifying
+            the waiter, it removes the listen request. */
+        void listenFor(const TileKey& keyToWaitFor, TileNode* waiter);
+
     protected:
 
         bool                              _revisioningEnabled;
@@ -124,6 +133,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         TileNodeMap                       _tiles;
         OpenThreads::Atomic               _frameNumber;
         mutable Threading::ReadWriteMutex _tilesMutex;
+
+        typedef std::vector<TileKey> TileKeyVector;
+        typedef std::map<TileKey, TileKeyVector> Notifications;
+        Notifications _notifications;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

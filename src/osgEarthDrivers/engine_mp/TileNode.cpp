@@ -217,7 +217,7 @@ TileNode::notifyOfArrival(TileNode* that)
 
     osg::RefMatrixf* thisTexMat = this->getNormalTextureMatrix();
     osg::RefMatrixf* thatTexMat = that->getNormalTextureMatrix();
-    if ( !thisTexMat || !thatTexMat || (*thisTexMat != *thatTexMat) ) {
+    if ( !thisTexMat || !thatTexMat || !thisTexMat->isIdentity() || !thatTexMat->isIdentity() ) {
         OE_TEST << LC << "bailed on " << getKey().str() << " - null texmat\n";
         return;
     }
@@ -241,23 +241,20 @@ TileNode::notifyOfArrival(TileNode* that)
         return;
     }
 
-    ImageUtils::PixelReader readThis(thisImage);
+    // Just copy the neighbor's edge normals over to our texture.
+    // Averaging them would be more accurate, but then we'd have to
+    // re-generate each texture multiple times instead of just once.
+    // Besides, there's almost no visual difference anyway.
+    ImageUtils::PixelReader readThat(thatImage);
     ImageUtils::PixelWriter writeThis(thisImage);
 
-    ImageUtils::PixelReader readThat(thatImage);
-    ImageUtils::PixelWriter writeThat(thatImage);
-
     bool thisDirty = false;
-    bool thatDirty = false;
 
     if ( that->getKey() == getKey().createNeighborKey(1,0) )
     {
-        // "that" is to the east:
+        // neighbor is to the east:
         for(int t=0; t<height; ++t)
         {
-            osg::Vec4f average = (readThis(width-1, t) + readThat(0, t))*0.5;
-            //writeThis(average, width-1, t);
-            //writeThat(average, 0, t);
             writeThis(readThat(0,t), width-1, t);
         }
         thisDirty = true;
@@ -268,23 +265,20 @@ TileNode::notifyOfArrival(TileNode* that)
         // neighbor is to the south:
         for(int s=0; s<width; ++s)
         {
-            osg::Vec4f average = (readThis(s, 0) + readThat(s, height-1))*0.5;
-            //writeThis(average, s, 0);
-            //writeThat(average, s, height-1);
             writeThis(readThat(s, height-1), s, 0);
         }
         thisDirty = true;
-        //thatDirty = true;
     }
 
     else
     {
-        OE_WARN << LC << "That's weird.\n";
+        OE_INFO << LC << "Unhandled notify\n";
     }
 
     if ( thisDirty )
+    {
+        // so heavy handed. Wish we could just write the row
+        // or column that changed.
         thisImage->dirty();
-
-    if ( thatDirty)
-        thatImage->dirty();
+    }
 }

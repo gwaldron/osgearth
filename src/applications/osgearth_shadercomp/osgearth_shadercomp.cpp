@@ -18,7 +18,7 @@
 */
 
 /**
- * This sample demonstrates a simple use of osgEarth's shader composition framework.
+ * This is a set of unit tests for osgEarth's shader composition framework.
  *
  * By default, osgEarth uses GL shaders to render the terrain. Shader composition is a
  * mechanism by which you can inject custom shader code into osgEarth's shader program

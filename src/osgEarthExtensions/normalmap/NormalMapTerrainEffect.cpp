@@ -29,7 +29,7 @@
 #define LC "[NormalMap] "
 
 #define NORMAL_SAMPLER "oe_nmap_normalTex"
-#define NORMAL_MATRIX  "oe_nmap_normalMatrix"
+#define NORMAL_MATRIX  "oe_nmap_normalTexMatrix"
 
 using namespace osgEarth;
 using namespace osgEarth::NormalMap;
@@ -59,7 +59,6 @@ namespace
                 osg::Matrixf m = mat? *mat : osg::Matrixf::identity();
 
                 ss->addUniform(new osg::Uniform(NORMAL_MATRIX, m) );
-                //ss->getOrCreateUniform(NORMAL_MATRIX, osg::Uniform::FLOAT_MAT4)->set(m);
             }
             else
             {

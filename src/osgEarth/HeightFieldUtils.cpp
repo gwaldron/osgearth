@@ -89,51 +89,6 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         //Determine which triangle the point falls in.
         osg::Vec3d v0, v1, v2;
 
-#if 0
-        bool orientation = fabs(llHeight-urHeight) < fabs(ulHeight-lrHeight);
-        if ( orientation )
-        {
-            double dx = c - (double)colMin;
-            double dy = r - (double)rowMin;
-
-            // divide along ll->ur
-            if (dx > dy)
-            {
-                //The point lies in the right triangle
-                v0.set(colMin, rowMin, llHeight);
-                v1.set(colMax, rowMin, lrHeight);
-                v2.set(colMax, rowMax, urHeight);
-            }
-            else
-            {
-                //The point lies in the left triangle
-                v0.set(colMin, rowMin, llHeight);
-                v1.set(colMax, rowMax, urHeight);
-                v2.set(colMin, rowMax, ulHeight);
-            }
-        }
-        else
-        {
-            double dx = c - (double)colMin;
-            double dy = (double)rowMax - r;
-
-            // divide along ul->lr
-            if (dx > dy)
-            {
-                //The point lies in the right triangle
-                v0.set(colMax, rowMin, lrHeight);
-                v1.set(colMax, rowMax, urHeight);
-                v2.set(colMin, rowMax, ulHeight);
-            }
-            else
-            {
-                //The point lies in the left triangle
-                v0.set(colMin, rowMin, llHeight);
-                v1.set(colMax, rowMin, lrHeight);
-                v2.set(colMin, rowMax, ulHeight);
-            }
-        }
-#else
         double dx = c - (double)colMin;
         double dy = r - (double)rowMin;
 
@@ -151,7 +106,6 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
             v1.set(colMax, rowMax, urHeight);
             v2.set(colMin, rowMax, ulHeight);
         }
-#endif
 
         //Compute the normal
         osg::Vec3d n = (v1 - v0) ^ (v2 - v0);
@@ -660,10 +614,17 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
             osg::Vec3f south( 0, -tIntervalMeters, centerHeight );
             osg::Vec3f north( 0,  tIntervalMeters, centerHeight );
 
-            HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx-xres, ny, west.z());
-            HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx+xres, ny, east.z());
-            HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx, ny-yres, south.z());
-            HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx, ny+yres, north.z());
+            if ( !HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx-xres, ny, west.z()) )
+                west.x() = 0.0;
+
+            if ( !HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx+xres, ny, east.z()) )
+                east.x() = 0.0;
+
+            if ( !HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx, ny-yres, south.z()) )
+                south.y() = 0.0;
+
+            if ( !HeightFieldUtils::getHeightAtNormalizedLocation(hood, nx, ny+yres, north.z()) )
+                north.y() = 0.0;
 
             osg::Vec3f n = (east-west) ^ (north-south);
             n.normalize();

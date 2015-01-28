@@ -317,6 +317,8 @@ namespace osgEarth { namespace Symbology
 
         virtual void close();
 
+        virtual void removeDuplicates();
+
     public:
         RingCollection& getHoles() { return _holes; }
         const RingCollection& getHoles() const { return _holes; }

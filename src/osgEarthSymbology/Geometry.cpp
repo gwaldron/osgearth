@@ -683,6 +683,14 @@ Polygon::close()
         (*i)->close();
 }
 
+void
+Polygon::removeDuplicates()
+{
+    Ring::removeDuplicates();
+    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
+        (*i)->removeDuplicates();
+}
+
 //----------------------------------------------------------------------------
 
 MultiGeometry::MultiGeometry( const MultiGeometry& rhs ) :

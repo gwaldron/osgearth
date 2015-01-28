@@ -140,6 +140,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
         {
             Geometry* part = parts.next();
 
+            part->removeDuplicates();
+
             // skip geometry that is invalid for a polygon
             if ( part->size() < 3 )
                 continue;

@@ -1,5 +1,7 @@
 #version 110
 
+$include "BumpMap.frag.common.glsl"
+
 uniform sampler2D oe_bumpmap_tex;
 uniform float oe_bumpmap_intensity;
 uniform int oe_bumpmap_octaves;
@@ -10,7 +12,6 @@ vec3 oe_global_Normal;
 
 // from BumpMap.model.vert.glsl
 in vec2 oe_bumpmap_coords;
-in float oe_bumpmap_slope;
 
 // from BumpMap.view.vert.glsl
 in float oe_bumpmap_range;
@@ -44,6 +45,8 @@ void oe_bumpmap_fragment(inout vec4 color)
     // finally, transform into view space and normalize the vector.
     bump = normalize(gl_NormalMatrix*bump);
 
+    float slope = oe_bumpmap_getSlope();
+
 	// permute the normal with the bump.
-	oe_global_Normal = normalize(oe_global_Normal + bump*oe_bumpmap_intensity*oe_bumpmap_slope);
+	oe_global_Normal = normalize(oe_global_Normal + bump*oe_bumpmap_intensity*slope);
 }

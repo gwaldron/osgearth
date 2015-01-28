@@ -48,22 +48,27 @@ namespace
             TerrainTileNode* tile = osgEarth::findTopMostNodeOfType<TerrainTileNode>(node);
             if ( !tile )
                 return;
-
+            
+            osg::StateSet* ss = node->getOrCreateStateSet();
             osg::Texture* tex = tile->getNormalTexture();
             if ( tex )
             {
-                osg::StateSet* ss = node->getOrCreateStateSet();
                 ss->setTextureAttribute(_unit, tex);
-                
-                osg::RefMatrixf* mat = tile->getNormalTextureMatrix();
-                osg::Matrixf m = mat? *mat : osg::Matrixf::identity();
+            }
 
-                ss->addUniform(new osg::Uniform(NORMAL_MATRIX, m) );
+            osg::RefMatrixf* mat = tile->getNormalTextureMatrix();
+            osg::Matrixf fmat;
+            if ( mat )
+            {
+                fmat = osg::Matrixf(*mat);
             }
             else
             {
-                OE_WARN << LC << "trouble.\n";
+                // special marker indicating that there's no valid normal texture.
+                fmat(0,0) = 0.0f;
             }
+
+            ss->addUniform(new osg::Uniform(NORMAL_MATRIX, fmat) );
         }
 
     private:

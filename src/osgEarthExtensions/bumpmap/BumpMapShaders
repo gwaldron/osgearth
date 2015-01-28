@@ -31,7 +31,8 @@ namespace osgEarth { namespace BumpMap
             VertexModel,
             VertexView,
             FragmentSimple,
-            FragmentProgressive;
+            FragmentProgressive,
+            FragmentCommon;
 	};
 	
 } } // namespace osgEarth/BumpMap

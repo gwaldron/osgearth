@@ -8,7 +8,8 @@ set(TARGET_GLSL
     Splat.vert.model.glsl
     Splat.vert.view.glsl
     Splat.frag.glsl
-    Splat.getRenderInfo.frag.glsl)
+    Splat.frag.common.glsl
+    Splat.frag.getRenderInfo.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

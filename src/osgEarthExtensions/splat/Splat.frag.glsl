@@ -2,6 +2,7 @@
 #extension GL_EXT_texture_array : enable
 
 $include "Splat.types.glsl"
+$include "Splat.frag.common.glsl"
 
 // ref: Splat.getRenderInfo.frag.glsl
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);
@@ -18,7 +19,6 @@ varying vec4 oe_layer_tilec;
 uniform vec4 oe_tile_key;
 
 // from the vertex shader:
-varying float oe_splat_slope;
 varying vec2 oe_splat_covtc;
 varying float oe_splat_range;
 varying float oe_splat_scaleOffsetInt;
@@ -81,7 +81,7 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
     n = clamp(((n-0.5)*contrast + 0.5) * brightness, 0.0, 1.0);
 	
     // apply slope limiter, then reclamp and threshold:
-    float s = clamp(1.0-((oe_splat_slope-minSlope)/(minSlope)), 0.0, 1.0);
+    float s = clamp(1.0-((env.slope-minSlope)/(minSlope)), 0.0, 1.0);
     n = n > s ? n : 0.0;
 
     // apply final threshold:
@@ -241,8 +241,9 @@ void oe_splat_fragment(inout vec4 color)
 
     oe_SplatEnv env;
     env.range = oe_splat_range;
-    env.elevation = texture2D(oe_terrain_tex, (oe_terrain_tex_matrix*oe_layer_tilec).st).r;
+    env.slope = oe_splat_getSlope();
     env.noise = oe_splat_getNoise(noiseCoords);
+    env.elevation = texture2D(oe_terrain_tex, (oe_terrain_tex_matrix*oe_layer_tilec).st).r;
 
     // Mapping of view ranges to splat texture levels of detail.
 #define RANGE_COUNT 9
@@ -283,5 +284,5 @@ void oe_splat_fragment(inout vec4 color)
     color = mix(color, texel, texel.a);
 
     // uncomment to visualize slope.
-    //color.rgba = vec4(oe_splat_slope,0,0,1);
+    //color.rgba = vec4(env.slope,0,0,1);
 }

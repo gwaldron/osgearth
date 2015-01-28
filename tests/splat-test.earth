@@ -24,6 +24,13 @@
     </image>
 
     <extensions>
+		
+		<normalmap/>	
+
+		<bumpmap>
+			<image>../data/rock_hard.jpg</image>
+			<octaves>32</octaves>
+		</bumpmap>
 	
 	    <splat>
             <coverage>GLOBCOVER</coverage>
@@ -31,13 +38,6 @@
 			<biomes>../data/splat/splat_biomes.xml</biomes>
             <catalog>../data/splat/splat_catalog.xml</catalog>
         </splat>
-		
-		<normalmap/>		
-
-		<bumpmap>
-			<image>../data/rock_hard.jpg</image>
-			<octaves>32</octaves>
-		</bumpmap>
 		
 		<viewpoints>
 			<viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>

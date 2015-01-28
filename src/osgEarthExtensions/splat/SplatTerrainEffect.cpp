@@ -155,6 +155,12 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 osgEarth::replaceIn( fragmentShader, "#undef SPLAT_EDIT", "#define SPLAT_EDIT" );
             }
 
+            // are normal maps available?
+            if ( engine->normalTexturesRequired() )
+            {
+                osgEarth::replaceIn( fragmentShader, "#undef OE_USE_NORMAL_MAP", "#define OE_USE_NORMAL_MAP" );
+            }
+
             // GPU noise is expensive, so only use it to tweak noise function values that you
             // can later bake into the noise texture generator.
             if ( _gpuNoise )
@@ -376,7 +382,7 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
         slopeBuf << ";\n";
 
     std::string code = ShaderLoader::loadSource(
-        _shaders.GetRenderInfo,
+        _shaders.FragGetRenderInfo,
         _shaders);
 
     std::string codeToInject = Stringify()

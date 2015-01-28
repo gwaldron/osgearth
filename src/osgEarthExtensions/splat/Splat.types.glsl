@@ -4,6 +4,7 @@
 struct oe_SplatEnv {
     float range;
     float elevation;
+    float slope;
     vec4 noise;
 };
 

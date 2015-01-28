@@ -73,6 +73,14 @@ namespace osgEarth { namespace Features
             ModelSource*                     modelSource,
             RefNodeOperationVector*          preMergeOperations,
             RefNodeOperationVector*          postMergeOperations);
+        
+        /* @deprecated */
+        FeatureModelGraph(
+            Session*                         session,
+            const FeatureModelSourceOptions& options,
+            FeatureNodeFactory*              factory,
+            RefNodeOperationVector*          preMergeOperations,
+            RefNodeOperationVector*          postMergeOperations);
 
         /**
          * Loads and returns a subnode. Used internally for paging.
@@ -132,6 +140,8 @@ namespace osgEarth { namespace Features
 
 
     private:
+
+        void ctor();
         
         osg::Group* createStyleGroup(
             const Style&        style, 

@@ -251,6 +251,34 @@ _clampable          ( 0L ),
 _drapeable          ( 0L ),
 _overlayChange      ( OVERLAY_NO_CHANGE )
 {
+    ctor();
+}
+
+FeatureModelGraph::FeatureModelGraph(Session*                         session,
+                                     const FeatureModelSourceOptions& options,
+                                     FeatureNodeFactory*              factory,
+                                     RefNodeOperationVector*          preMergeOperations,
+                                     RefNodeOperationVector*          postMergeOperations) :
+_session            ( session ),
+_options            ( options ),
+_factory            ( factory ),
+_modelSource        ( 0L ),
+_preMergeOperations ( preMergeOperations ),
+_postMergeOperations( postMergeOperations ),
+_dirty              ( false ),
+_pendingUpdate      ( false ),
+_overlayInstalled   ( 0L ),
+_overlayPlaceholder ( 0L ),
+_clampable          ( 0L ),
+_drapeable          ( 0L ),
+_overlayChange      ( OVERLAY_NO_CHANGE )
+{
+    ctor();
+}
+
+void
+FeatureModelGraph::ctor()
+{
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
     // an FLC that queues feature data on the high-latency thread.
@@ -267,10 +295,10 @@ _overlayChange      ( OVERLAY_NO_CHANGE )
         _postMergeOperations = new RefNodeOperationVector();
 
     // install the stylesheet in the session if it doesn't already have one.
-    if ( !session->styles() )
-        session->setStyles( _options.styles().get() );
+    if ( !_session->styles() )
+        _session->setStyles( _options.styles().get() );
 
-    if ( !session->getFeatureSource() )
+    if ( !_session->getFeatureSource() )
     {
         OE_WARN << LC << "ILLEGAL: Session must have a feature source" << std::endl;
         return;
@@ -282,14 +310,14 @@ _overlayChange      ( OVERLAY_NO_CHANGE )
     // StateSet will be used across the entire Session. That also means that StateSets
     // in the ResourceCache can potentially also be in the live graph; so you should
     // take care in dealing with them in a multi-threaded environment.
-    if ( !session->getResourceCache() && _options.sessionWideResourceCache() == true )
+    if ( !_session->getResourceCache() && _options.sessionWideResourceCache() == true )
     {
-        session->setResourceCache( new ResourceCache(session->getDBOptions()) );
+        _session->setResourceCache( new ResourceCache(_session->getDBOptions()) );
     }
     
     // Calculate the usable extent (in both feature and map coordinates) and bounds.
-    const Profile* mapProfile = session->getMapInfo().getProfile();
-    const FeatureProfile* featureProfile = session->getFeatureSource()->getFeatureProfile();
+    const Profile* mapProfile = _session->getMapInfo().getProfile();
+    const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
 
     // Bail out if the feature profile is bad
     if ( !featureProfile || !featureProfile->getExtent().isValid() )
@@ -313,7 +341,7 @@ _overlayChange      ( OVERLAY_NO_CHANGE )
     // user manually specified schema levels, don't use the tiles.
     _useTiledSource = featureProfile->getTiled();
 
-    if ( options.layout().isSet() && options.layout()->getNumLevels() > 0 )
+    if ( _options.layout().isSet() && _options.layout()->getNumLevels() > 0 )
     {
         // the user provided a custom levels setup, so don't use the tiled source (which
         // provides its own levels setup)
@@ -322,17 +350,17 @@ _overlayChange      ( OVERLAY_NO_CHANGE )
         // for each custom level, calculate the best LOD match and store it in the level
         // layout data. We will use this information later when constructing the SG in
         // the pager.
-        for( unsigned i = 0; i < options.layout()->getNumLevels(); ++i )
+        for( unsigned i = 0; i < _options.layout()->getNumLevels(); ++i )
         {
-            const FeatureLevel* level = options.layout()->getLevel( i );
-            unsigned lod = options.layout()->chooseLOD( *level, _fullWorldBound.radius() );
+            const FeatureLevel* level = _options.layout()->getLevel( i );
+            unsigned lod = _options.layout()->chooseLOD( *level, _fullWorldBound.radius() );
             _lodmap.resize( lod+1, 0L );
             _lodmap[lod] = level;
 
-            OE_INFO << LC << session->getFeatureSource()->getName() 
+            OE_INFO << LC << _session->getFeatureSource()->getName() 
                 << ": F.Level max=" << level->maxRange() << ", min=" << level->minRange()
                 << ", LOD=" << lod
-                << ", Tile size=" << (level->maxRange() / options.layout()->tileSizeFactor().get())
+                << ", Tile size=" << (level->maxRange() / _options.layout()->tileSizeFactor().get())
                 << std::endl;
         }
     }
@@ -1103,6 +1131,8 @@ FeatureModelGraph::createStyleGroup(const Style&         style,
 {
     osg::Group* styleGroup = 0L;
 
+    OE_DEBUG << LC << "Created style group \"" << style.getName() << "\"\n";
+
     FilterContext context(contextPrototype);
 
     // first Crop the feature set to the working extent:
@@ -1270,7 +1300,7 @@ FeatureModelGraph::traverse(osg::NodeVisitor& nv)
         if (!_pendingUpdate && 
              (_dirty ||
               _session->getFeatureSource()->outOfSyncWith(_featureSourceRev) ||
-              _modelSource->outOfSyncWith(_modelSourceRev)))
+              (_modelSource.valid() && _modelSource->outOfSyncWith(_modelSourceRev))))
         {
             _pendingUpdate = true;
             ADJUST_UPDATE_TRAV_COUNT( this, 1 );
@@ -1444,7 +1474,8 @@ FeatureModelGraph::redraw()
     addChild( node );
 
     _session->getFeatureSource()->sync( _featureSourceRev );
-    _modelSource->sync( _modelSourceRev );
+    if ( _modelSource.valid() )
+        _modelSource->sync( _modelSourceRev );
 
     _dirty = false;
 }

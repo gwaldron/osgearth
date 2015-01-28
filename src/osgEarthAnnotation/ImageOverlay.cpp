@@ -265,7 +265,9 @@ ImageOverlay::init()
         if (_image.valid())
         {
             //Create the texture
-            _texture = new osg::Texture2D(_image.get());        
+            _texture = new osg::Texture2D(_image.get());     
+            _texture->setWrap(_texture->WRAP_S, _texture->CLAMP_TO_EDGE);
+            _texture->setWrap(_texture->WRAP_T, _texture->CLAMP_TO_EDGE);
             _texture->setResizeNonPowerOfTwoHint(false);
             updateFilters();
             _geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, _texture, osg::StateAttribute::ON);    

@@ -1296,7 +1296,10 @@ namespace
     {    
         bool swapOrientation = !(d.model->_tileLocator->orientationOpenGL());
 
-        bool recalcNormals   = d.model->hasElevation();
+        bool recalcNormals   =
+            d.model->hasElevation() && 
+            !d.model->hasNormalMap();
+
         unsigned numSurfaceNormals = d.numRows * d.numCols;
 
         osg::DrawElements* elements = d.newDrawElements(GL_TRIANGLES); //new osg::DrawElementsUInt(GL_TRIANGLES);
@@ -2115,7 +2118,7 @@ _textureImageUnit      ( texImageUnit )
 
 
 TileNode*
-TileModelCompiler::compile(const TileModel*  model,
+TileModelCompiler::compile(TileModel*        model,
                            const MapFrame&   frame,
                            ProgressCallback* progress)
 {

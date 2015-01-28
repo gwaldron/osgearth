@@ -39,11 +39,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         osg::Texture* getElevationTexture() const;
 
-        osg::RefMatrix* getElevationTextureMatrix() const;
+        osg::RefMatrixf* getElevationTextureMatrix() const;
 
         osg::Texture* getNormalTexture() const;
 
-        osg::RefMatrix* getNormalTextureMatrix() const;
+        osg::RefMatrixf* getNormalTextureMatrix() const;
 
         osg::Group* getPayloadGroup() const;
 
@@ -54,7 +54,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /**
          * Constructs a new tile node
          */
-        TileNode(const TileKey& key, const TileModel* model, const osg::Matrixd& matrix);
+        TileNode(const TileKey& key, TileModel* model, const osg::Matrixd& matrix);
 
         /**
          * Assigned the UID of the engine that created this tile.
@@ -102,6 +102,12 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void setTerrainBoundingBox(const osg::BoundingBox& bbox) { _terrainBBox = bbox; }
         const osg::BoundingBox& getTerrainBoundingBox() const { return _terrainBBox; }
 
+    public:
+
+        // called by the TileNodeRegistry when a tilenode that this tile was waiting
+        // on has arrived.
+        void notifyOfArrival(TileNode* waitee);
+
 
     public: // TileNodeContainer
 
@@ -121,13 +127,13 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         TileKey                            _key;
         UID                                _engineUID;
-        osg::ref_ptr<const TileModel>      _model;
+        osg::ref_ptr<TileModel>            _model;
         unsigned                           _lastTraversalFrame;
         Revision                           _maprevision;
         bool                               _outOfDate;
         bool                               _dirty;
-        osg::ref_ptr<osg::RefMatrix>       _elevTexMat;
-        osg::ref_ptr<osg::RefMatrix>       _normalTexMat;
+        osg::ref_ptr<osg::RefMatrixf>      _elevTexMat;
+        osg::ref_ptr<osg::RefMatrixf>      _normalTexMat;
         osg::BoundingBox                   _terrainBBox;
         osg::ref_ptr<osg::Group>           _payload;
     };

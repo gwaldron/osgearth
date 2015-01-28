@@ -174,7 +174,7 @@ ModelSplatter::operator()(const TileKey& key, osg::Node* node)
             return;
         }
 
-        osg::RefMatrix* elevationTexMat = tile->getElevationTextureMatrix();
+        osg::RefMatrixf* elevationTexMat = tile->getElevationTextureMatrix();
         if ( !elevationTexMat )
         {
             //OE_WARN << LC << "No elevation texture matrix for key " << key.str() << "\n";
@@ -199,6 +199,6 @@ ModelSplatter::operator()(const TileKey& key, osg::Node* node)
         // hack..
         ss->setTextureAttributeAndModes(2, tile->getElevationTexture(), 1);
         ss->addUniform(new osg::Uniform("oe_terrain_tex", 2));
-        ss->addUniform(new osg::Uniform("oe_terrain_tex_matrix", osg::Matrixf(*elevationTexMat)) );        
+        ss->addUniform(new osg::Uniform("oe_terrain_tex_matrix", *elevationTexMat) );
     }
 }

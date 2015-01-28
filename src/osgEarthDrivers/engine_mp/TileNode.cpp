@@ -81,13 +81,23 @@ _outOfDate         ( false )
 
         if (model->_normalTexture.valid() && model->_normalData.getLocator())
         {
-            osg::Matrixd normalMatrix;
+            osg::Matrixf normalMatrix;
 
             model->_normalData.getLocator()->createScaleBiasMatrix(
                 getKey().getExtent(),
                 normalMatrix );
 
-            _normalTexMat = new osg::RefMatrixf( osg::Matrixf(normalMatrix) );
+            // apply a small scale/bias that will center the sampling coords
+            // on the texels. This will prevent "seams" from forming between
+            // tiles then using a non-identity texture matrix.
+            float size = (float)_model->_normalTexture->getImage(0)->s();
+            osg::Matrixf samplingScaleBias =
+                osg::Matrixf::translate(0.5f/(size-1.0f), 0.5f/(size-1.0f), 0.0) *
+                osg::Matrixf::scale((size-1.0f)/size, (size-1.0f)/size, 1.0f);
+
+            normalMatrix.postMult( samplingScaleBias );
+
+            _normalTexMat = new osg::RefMatrixf(normalMatrix);
         }
     }
 }
@@ -264,6 +274,7 @@ TileNode::notifyOfArrival(TileNode* that)
             writeThis(readThat(s, height-1), s, 0);
         }
         thisDirty = true;
+        //thatDirty = true;
     }
 
     else

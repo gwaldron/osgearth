@@ -6,9 +6,11 @@ uniform mat4 oe_nmap_normalTexMatrix;
 varying vec4 oe_nmap_normalCoords;
 varying mat3 oe_nmap_TBN;
 
+
 void oe_nmap_vertex(inout vec4 VertexMODEL)
 {
-    oe_nmap_normalCoords = oe_nmap_normalTexMatrix * oe_layer_tilec; 
+    // calculate the sampling coordinates for the normal texture
+    oe_nmap_normalCoords = oe_nmap_normalTexMatrix * oe_layer_tilec;
 
     // form the matrix that will transform a normal vector from
     // tangent space to model space in the fragment shader.

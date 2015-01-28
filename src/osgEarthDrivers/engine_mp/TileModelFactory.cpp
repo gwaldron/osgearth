@@ -374,8 +374,9 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
                 isFallback );
         }
 
-        // Edge normalization: requires adjacency information
-        if ( true ) //_terrainOptions.normalizeEdges() == true )
+        // Edge normalization: requires adjacency information.
+        // NOTE: this isn't needed if you use TileNodeRegistry::listenFor's.
+        if ( _terrainOptions.normalizeEdges() == true )
         {
             for( int x=-1; x<=1; x++ )
             {

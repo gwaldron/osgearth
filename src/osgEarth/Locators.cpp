@@ -174,6 +174,23 @@ GeoLocator::createScaleBiasMatrix(const GeoExtent& window, osg::Matrixd& out) co
     return true;
 }
 
+bool
+GeoLocator::createScaleBiasMatrix(const GeoExtent& window, osg::Matrixf& out) const
+{
+    float scalex = window.width() / _dataExtent.width();
+    float scaley = window.height() / _dataExtent.height();
+    float biasx  = (window.xMin()-_dataExtent.xMin()) / _dataExtent.width();
+    float biasy  = (window.yMin()-_dataExtent.yMin()) / _dataExtent.height();
+
+    out(0,0) = scalex;
+    out(1,1) = scaley;
+    out(3,0) = biasx;
+    out(3,1) = biasy;
+
+    return true;
+}
+
+
 /****************************************************************************/
 
 

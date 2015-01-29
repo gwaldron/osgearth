@@ -39,6 +39,7 @@ namespace osgEarth { namespace Util
         static const double DefaultRangeLow;
         static const double DefaultRangeHigh;
         static const unsigned DefaultOctaves;
+        static const bool   DefaultNormalize;
 
         /**
          * Frequency is how often the noise pattern resets to zero across
@@ -87,6 +88,13 @@ namespace osgEarth { namespace Util
         double getRangeHigh() const { return _high; }
 
         /**
+         * Whether to normalize output values within the limits set by
+         * setRange().
+         */
+        void setNormalize(bool value) { _normalize = value; }
+        bool getNormalize() const { return _normalize; }
+        
+        /**
          * Number of iterations over which to generate noise. The frequency starts
          * where you set it, and over each successive iteration, it is scaled by
          * the persistence. This lets you control the rate at which the "noisiness"
@@ -110,6 +118,13 @@ namespace osgEarth { namespace Util
          * Generates 4D simplex Noise
          */
         double getValue(double x, double y, double z, double w) const;
+
+        /**
+         * Generates tilable 2D noise for x[0..1), y[0..1).
+         */
+        double getTiledValue(double x, double y) const;
+        
+        double getTiledValueWithTurbulence(double x, double y, double F) const;
 
     private:
         // Inner class to speed up gradient computations
@@ -152,6 +167,7 @@ namespace osgEarth { namespace Util
         double _lacunarity;
         double _low, _high;
         unsigned _octaves;
+        bool _normalize;
     };
 
 } } // namespace osgEarth::Util

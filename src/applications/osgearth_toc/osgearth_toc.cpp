@@ -19,6 +19,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapFrame>
 #include <osgEarth/MapNode>
+#include <osgEarth/MapModelChange>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
@@ -40,6 +41,7 @@ static Grid* s_imageBox;
 static Grid* s_elevationBox;
 static Grid* s_modelBox;
 static bool s_updateRequired = true;
+static MapModelChange::ActionType s_changeAction;
 
 //------------------------------------------------------------------------
 
@@ -47,6 +49,7 @@ struct MyMapListener : public MapCallback
 {
     void onMapModelChanged( const MapModelChange& change ) {
         s_updateRequired = true;
+        s_changeAction = change.getAction();
     }
 };
 
@@ -60,6 +63,30 @@ struct UpdateOperation : public osg::Operation
         {
             updateControlPanel();
             s_updateRequired = false;
+
+            if (s_changeAction == MapModelChange::ADD_ELEVATION_LAYER ||
+                s_changeAction == MapModelChange::REMOVE_ELEVATION_LAYER)
+            {
+                OE_NOTICE << "Dirtying model layers.\n";
+                dirtyModelLayers();
+            }
+        }
+    }
+
+    void dirtyModelLayers()
+    {
+        for(unsigned i=0; i<s_activeMap->getNumModelLayers(); ++i)
+        {
+            ModelSource* ms = s_activeMap->getModelLayerAt(i)->getModelSource();
+            if ( ms )
+            {
+                ms->dirty();
+            }
+            else
+            {
+                OE_NOTICE << s_activeMap->getModelLayerAt(i)->getName()
+                    << " has no model source.\n";
+            }
         }
     }
 };

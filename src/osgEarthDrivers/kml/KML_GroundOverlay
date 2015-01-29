@@ -28,8 +28,8 @@ namespace osgEarth_kml
 
     struct KML_GroundOverlay : public KML_Overlay
     {
-        virtual void scan( const Config& conf, KMLContext& cx );
-        virtual void build( const Config& conf, KMLContext& cx );
+        virtual void scan( xml_node<>* node, KMLContext& cx );
+        virtual void build( xml_node<>* node, KMLContext& cx );
     };
 
 } // namespace osgEarth_kml

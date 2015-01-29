@@ -24,76 +24,76 @@ using namespace osgEarth_kml;
 using namespace osgEarth::Symbology;
 
 void
-KML_Model::parseCoords( const Config& conf, KMLContext& cx )
+KML_Model::parseCoords( xml_node<>* node, KMLContext& cx )
 {
     PointSet* point = new PointSet();
 
-    Config location = conf.child("location");
-    if (!location.empty())
+    xml_node<>* location = node->first_node("location", 0, false);
+    if (location)
     {
-        double latitude  = location.value("latitude",  0.0);
-        double longitude = location.value("longitude", 0.0);
-        double altitude  = location.value("altitude", 0.0); 
+        double latitude  = as<double>(getValue(location, "latitude"), 0.0);
+        double longitude = as<double>(getValue(location, "longitude"), 0.0);
+        double altitude  = as<double>(getValue(location, "altitude"), 0.0);
         point->push_back( osg::Vec3d(longitude, latitude, altitude));
     }    
     _geom = point;
 }
 
 void
-KML_Model::parseStyle(const Config& conf, KMLContext& cx, Style& style)
+KML_Model::parseStyle(xml_node<>* node, KMLContext& cx, Style& style)
 {    
     ModelSymbol* model = 0L;
     
-    std::string url = KMLUtils::parseLink(conf);
+    std::string url = KMLUtils::parseLink(node);
     if ( !url.empty() )
     {
         if ( !model ) model = style.getOrCreate<ModelSymbol>();
         model->url()->setLiteral( url );
-        model->url()->setURIContext( URIContext(conf.referrer()) );
+        model->url()->setURIContext( URIContext(cx._referrer) );
+
     }
 
-    Config scale = conf.child("scale");
-    if (!scale.empty())
+    xml_node<>* scale = node->first_node("scale", 0, false);
+    if (scale)
     {
         if ( !model ) model = style.getOrCreate<ModelSymbol>();
         //TODO:  Support XYZ scale instead of single value
-        model->scale() = scale.value("x", 1.0);
+        model->scale() = as<double>(getValue(scale, "x"), 1.0);
     }
 
-    Config orientation = conf.child("orientation");
-    if (!orientation.empty())
+    xml_node<>* orientation = node->first_node("orientation", 0, false);
+    if (orientation)
     {
         if ( !model ) model = style.getOrCreate<ModelSymbol>();
         
-        double h = orientation.value("heading", 0);
+        double h = as<double>(getValue(orientation, "heading"), 0.0);
         if ( !osg::equivalent(h, 0.0) )
             model->heading() = NumericExpression( h );
 
-        double p = orientation.value("tilt", 0);
+        double p = as<double>(getValue(orientation, "tilt"), 0.0);
         if ( !osg::equivalent(p, 0.0) )
             model->pitch() = NumericExpression( p );
 
-        double r = orientation.value("roll", 0);
+        double r = as<double>(getValue(orientation, "roll"), 0.0);
         if ( !osg::equivalent(r, 0.0) )
             model->roll() = NumericExpression( r );
     }
 
     // Read and store file path aliases from a KML ResourceMap.
-    Config resource_map = conf.child("resourcemap");
-    if ( !resource_map.empty() )
+    xml_node<>* resource_map = node->first_node("resourcemap", 0, false);
+    if ( resource_map )
     {
-        const ConfigSet aliases = resource_map.children("alias");
-        for( ConfigSet::const_iterator i = aliases.begin(); i != aliases.end(); ++i )
-        {
-            std::string source = i->value("sourcehref");
-            std::string target = i->value("targethref");
+		for (xml_node<>* n = resource_map->first_node("alias", 0, false); n; n = n->next_sibling("alias", 0, false))
+		{
+			std::string source = getValue(n, "sourcehref");
+            std::string target = getValue(n, "targethref");
             if ( !source.empty() || !target.empty() )
             {
                 if ( !model ) model = style.getOrCreate<ModelSymbol>();
                 model->uriAliasMap()->insert( source, target );
             }
-        }
+		}
     }
 
-    KML_Geometry::parseStyle(conf, cx, style);
+    KML_Geometry::parseStyle(node, cx, style);
 }

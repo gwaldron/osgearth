@@ -18,6 +18,7 @@
  */
 #include "KMLReader"
 #include "KML_Root"
+#include "KML_Geometry"
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/XmlUtils>
@@ -28,6 +29,7 @@
 
 using namespace osgEarth_kml;
 using namespace osgEarth;
+
 
 KMLReader::KMLReader( MapNode* mapNode, const KMLOptions* options ) :
 _mapNode( mapNode ),
@@ -42,34 +44,46 @@ KMLReader::read( std::istream& in, const osgDB::Options* dbOptions )
     // pull the URI context out of the DB options:
     URIContext context(dbOptions);
 
-    // read the KML from an XML stream:
-    osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in, context );
-    if ( !xml.valid() )
-        return 0L;
+	// Load the XML
+    osg::Timer_t start = osg::Timer::instance()->tick();
+	std::stringstream buffer;
+    buffer << in.rdbuf();
+    std::string xmlStr;
+    xmlStr = buffer.str();
+	xml_document<> doc;
+	doc.parse<0>(&xmlStr[0]);
+    osg::Timer_t end = osg::Timer::instance()->tick();
+	OE_INFO << "Loaded KML in " << osg::Timer::instance()->delta_s(start, end) << std::endl;
 
-    // convert to a config:
-    Config config = xml->getConfig();
+    start = osg::Timer::instance()->tick();
+	osg::Node* node = read(doc, dbOptions);
+    end = osg::Timer::instance()->tick();
+	OE_INFO << "Parsed KML in " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+	node->setName( context.referrer() );
 
-    osg::Node* node = read( config, dbOptions );
-    node->setName( context.referrer() );
-
-    return node;
+	return node;
 }
 
 osg::Node*
-KMLReader::read( const Config& conf, const osgDB::Options* dbOptions )
+KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
 {
     osg::Group* root = new osg::Group();
     root->ref();
 
-    root->setName( conf.referrer() );
+    URIContext context(dbOptions);
+
+	root->setName( context.referrer() );
 
     KMLContext cx;
     cx._mapNode   = _mapNode;
     cx._sheet     = new StyleSheet();
     cx._options   = _options;
-    cx._srs       = SpatialReference::create( "wgs84", "egm96" );
+    //cx._srs      = SpatialReference::create( "wgs84", "egm96" );
+    // Use the geographic srs of the map so that clamping will occur against the correct vertical datum.
+    cx._srs = _mapNode->getMapSRS()->getGeographicSRS();
+    cx._referrer = context.referrer();
     cx._groupStack.push( root );
+
 
     // clone the dbOptions, and install a resource cache if there isn't one already:
     URIResultCache defaultUriCache;
@@ -94,19 +108,35 @@ KMLReader::read( const Config& conf, const osgDB::Options* dbOptions )
         Decluttering::setEnabled( cx._options->iconAndLabelGroup()->getOrCreateStateSet(), true );
     }
 
-    const Config* top = conf.hasChild("kml" ) ? conf.child_ptr("kml") : &conf;
+    //const Config* top = conf.hasChild("kml" ) ? conf.child_ptr("kml") : &conf;
+	xml_node<> *top = doc.first_node("kml", 0, false);
 
-    if ( top && !top->empty() )
+    if ( top)
     {
         KML_Root kmlRoot;
-        kmlRoot.scan ( *top, cx );    // first pass
-        kmlRoot.scan2( *top, cx );   // second pass
-        kmlRoot.build( *top, cx );   // third pass.
+
+        osg::Timer_t start = osg::Timer::instance()->tick();
+        kmlRoot.scan ( top, cx );    // first pass
+        osg::Timer_t end = osg::Timer::instance()->tick();
+        OE_INFO << "Scan1 took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+
+        start = osg::Timer::instance()->tick();
+        kmlRoot.scan2( top, cx );   // second pass
+        end = osg::Timer::instance()->tick();
+        OE_INFO << "Scan2 took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+
+        start = osg::Timer::instance()->tick();
+        kmlRoot.build( top, cx );   // third pass.
+        end = osg::Timer::instance()->tick();
+        OE_INFO << "build took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
     }
 
     URIResultCache* cacheUsed = URIResultCache::from(cx._dbOptions.get());
     CacheStats stats = cacheUsed->getStats();
     OE_INFO << LC << "URI Cache: " << stats._queries << " reads, " << (stats._hitRatio*100.0) << "% hits" << std::endl;
+
+    // Make sure the KML gets rendered after the terrain.
+    root->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
 
     return root;
 }

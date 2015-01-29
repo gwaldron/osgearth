@@ -50,7 +50,7 @@
 #include <osgViewer/View>
 #include <osgViewer/ViewerEventHandlers>
 
-#define KML_PUSHPIN_URL "http://demo.pelicanmapping.com/icons/pushpin_yellow.png"
+#define KML_PUSHPIN_URL "../data/placemark32.png"
 
 #define VP_MIN_DURATION      2.0     // minimum fly time.
 #define VP_METERS_PER_SECOND 2500.0  // fly speed
@@ -466,6 +466,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool showActivity  = args.read("--activity");
     bool useLogDepth   = args.read("--logdepth");
     bool useLogDepth2  = args.read("--logdepth2");
+    bool kmlUI         = args.read("--kmlui");
 
     if (args.read("--verbose"))
         osgEarth::setNotifyLevel(osg::INFO);
@@ -605,13 +606,20 @@ MapNodeHelper::parse(MapNode*             mapNode,
         osg::Node* kml = KML::load( URI(kmlFile), mapNode, kml_options );
         if ( kml )
         {
-            Control* c = AnnotationGraphControlFactory().create(kml, view);
-            if ( c )
+            if (kmlUI)
             {
-                c->setVertAlign( Control::ALIGN_TOP );
-                canvas->addControl( c );
+                Control* c = AnnotationGraphControlFactory().create(kml, view);
+                if ( c )
+                {
+                    c->setVertAlign( Control::ALIGN_TOP );
+                    canvas->addControl( c );
+                }
             }
             root->addChild( kml );
+        }
+        else
+        {
+            OE_NOTICE << "Failed to load " << kmlFile << std::endl;
         }
     }
 

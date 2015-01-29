@@ -60,6 +60,9 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
+
+        InstanceSymbol(const InstanceSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+
         /** dtor */
         virtual ~InstanceSymbol() { }
 
@@ -68,8 +71,8 @@ namespace osgEarth { namespace Symbology
         const optional<StringExpression>& url() const { return _url; }
 
         /** Name of the resource library to use with this symbol (optional) */
-        optional<StringExpression>& libraryName() { return _libraryName; }
-        const optional<StringExpression>& libraryName() const { return _libraryName; }   
+        optional<StringExpression>& library() { return _library; }
+        const optional<StringExpression>& library() const { return _library; }   
 
         /** How to map feature geometry to instance placement. (default is PLACEMENT_CENTROID) */
         optional<Placement>& placement() { return _placement; }
@@ -115,7 +118,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<StringExpression>   _url;
-        optional<StringExpression>   _libraryName;
+        optional<StringExpression>   _library;
         optional<NumericExpression>  _scale;
         optional<Placement>          _placement;
         optional<float>              _density;

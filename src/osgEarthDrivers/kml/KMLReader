@@ -26,6 +26,11 @@
 #include <iostream>
 #include "KMLOptions"
 
+#include "rapidxml.hpp"
+#include "rapidxml_utils.hpp"
+
+using namespace rapidxml;
+
 namespace osgEarth_kml
 {
     using namespace osgEarth;
@@ -43,8 +48,8 @@ namespace osgEarth_kml
         /** Reads KML from a stream and returns a node */
         osg::Node* read( std::istream& in, const osgDB::Options* dbOptions ) ;
 
-        /** Reads KML from a Config object */
-        osg::Node* read( const Config& conf, const osgDB::Options* dbOptions );
+        /** Reads KML from an xml_document object */
+        osg::Node* read( xml_document<>& doc, const osgDB::Options* dbOptions );
 
     private:
         MapNode*          _mapNode;

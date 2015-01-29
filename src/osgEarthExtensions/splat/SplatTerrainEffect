@@ -21,6 +21,10 @@
 
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
+#include "Biome"
+#include "BiomeSelector"
+#include "SplatShaders"
+
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/ImageLayer>
 #include <osg/Image>
@@ -39,7 +43,7 @@ namespace osgEarth { namespace Splat
     public:
         /** construct a new terrain effect. */
         SplatTerrainEffect(
-            SplatCatalog*         catalog,
+            const BiomeVector&    biomes,
             SplatCoverageLegend*  legend,
             const osgDB::Options* dbOptions);
 
@@ -96,23 +100,36 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~SplatTerrainEffect() { }
 
-        std::string generateSamplingCode();
+        void installCoverageSamplingFunction(SplatTextureDef& textureDef);
+        osg::Texture* createNoiseTexture() const;
+
+        // these 2 vectors are index-aligned:
+        BiomeVector                         _biomes;
+        SplatTextureDefVector               _textureDefs;
 
         bool                                _ok;
-        SplatTextureDef                     _splatDef;
         int                                 _splatTexUnit;
         osg::ref_ptr<osg::Uniform>          _splatTexUniform;
         osg::ref_ptr<osg::Uniform>          _coverageTexUniform;
         osg::ref_ptr<osg::Uniform>          _scaleOffsetUniform;
-        osg::ref_ptr<osg::Uniform>          _intensityUniform;
         osg::ref_ptr<osg::Uniform>          _warpUniform;
         osg::ref_ptr<osg::Uniform>          _blurUniform;
-        osg::ref_ptr<osg::Uniform>          _samplesUniform;
-        osg::ref_ptr<osg::Uniform>          _snowUniform;
         osg::ref_ptr<SplatCoverageLegend>   _legend;
         osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;
-        bool                                _edit;
+        int                                 _noiseTexUnit;
+        osg::ref_ptr<osg::Texture>          _noiseTex;
+        osg::ref_ptr<osg::Uniform>          _noiseTexUniform;
+        osg::ref_ptr<osg::Uniform>          _noiseScaleUniform;
+        osg::ref_ptr<osg::Uniform>          _useBilinearUniform;
+
+        osg::ref_ptr<BiomeSelector>         _biomeSelector;
+
+        Shaders _shaders;
+
+        bool                                _editMode;
+        bool                                _gpuNoise;
+
     };
 
 } } // namespace osgEarth::Splat

@@ -84,8 +84,9 @@ namespace osgEarth { namespace Symbology
         };
 
     public:
-        META_Symbol(AltitudeSymbol);
+        META_Object(osgEarthSymbology, AltitudeSymbol);
 
+        AltitudeSymbol(const AltitudeSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
         AltitudeSymbol( const Config& conf =Config() );
 
         /** How to clamp instances to the terrain (default is CLAMP_NONE) */

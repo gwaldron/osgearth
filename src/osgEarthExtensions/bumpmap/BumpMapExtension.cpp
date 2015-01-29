@@ -71,12 +71,16 @@ BumpMapExtension::connect(MapNode* mapNode)
 
     if (_options.intensity().isSet())
         _effect->getIntensityUniform()->set( _options.intensity().get() );
+
     if (_options.scale().isSet())
         _effect->getScaleUniform()->set( _options.scale().get() );
 
+    if ( _options.octaves().isSet() )
+        _effect->setOctaves( _options.octaves().get() );
+
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     
-    OE_INFO << LC << "Installed!\n";
+    OE_INFO << LC << "Installed.\n";
 
     return true;
 }

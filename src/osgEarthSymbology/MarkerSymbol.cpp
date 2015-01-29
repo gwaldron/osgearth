@@ -33,6 +33,22 @@ using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(marker, MarkerSymbol);
 
+MarkerSymbol::MarkerSymbol(const MarkerSymbol& rhs,const osg::CopyOp& copyop):
+Symbol(rhs, copyop),
+_url(rhs._url),
+_library(rhs._library),
+_scale(rhs._scale),
+_placement(rhs._placement),
+_orientation(rhs._orientation),
+_density(rhs._density),
+_randomSeed(rhs._randomSeed),
+_isModelHint(rhs._isModelHint),
+_alignment(rhs._alignment),
+_node(rhs._node),
+_image(rhs._image)
+{
+}
+
 MarkerSymbol::MarkerSymbol( const Config& conf ) :
 Symbol     ( conf ),
 _placement ( PLACEMENT_CENTROID ),
@@ -49,7 +65,7 @@ MarkerSymbol::getConfig() const
     Config conf = Symbol::getConfig();
     conf.key() = "marker";
     conf.addObjIfSet( "url", _url );
-    conf.addObjIfSet( "library", _libraryName );
+    conf.addObjIfSet( "library", _library );
     conf.addObjIfSet( "scale", _scale );
     conf.addIfSet( "orientation", _orientation);
     conf.addIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
@@ -78,7 +94,7 @@ void
 MarkerSymbol::mergeConfig( const Config& conf )
 {
     conf.getObjIfSet( "url", _url );
-    conf.getObjIfSet( "library", _libraryName );
+    conf.getObjIfSet( "library", _library );
     conf.getObjIfSet( "scale", _scale );    
     conf.getIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
     conf.getIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
@@ -213,8 +229,8 @@ MarkerSymbol::convertToInstanceSymbol() const
 
     if ( this->url().isSet() )
         result->url() = this->url().get();
-    if ( this->libraryName().isSet() )
-        result->libraryName() = this->libraryName().get();
+    if ( this->library().isSet() )
+        result->library() = this->library().get();
     if ( this->placement().isSet() )
         result->placement() = (InstanceSymbol::Placement)this->placement().get();
     if ( this->density().isSet() )
@@ -236,7 +252,7 @@ MarkerSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<MarkerSymbol>()->url()->setURIContext( c.referrer() );
     }
     else if ( match(c.key(),"marker-library") ) {
-        style.getOrCreate<MarkerSymbol>()->libraryName() = StringExpression(c.value());
+        style.getOrCreate<MarkerSymbol>()->library() = StringExpression(c.value());
     }
     else if ( match(c.key(), "marker-placement") ) {
         if      ( match(c.value(), "vertex") )   

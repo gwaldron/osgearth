@@ -18,16 +18,25 @@
  */
 #include "SplatExtension"
 #include "SplatCatalog"
+#include "Biome"
 #include "SplatCoverageLegend"
 #include "SplatTerrainEffect"
 
 #include <osgEarth/MapNode>
+#include <osgEarth/XmlUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
 #define LC "[SplatExtension] "
 
+//.........................................................................
+
+namespace
+{
+}
+
+//.........................................................................
 
 SplatExtension::SplatExtension()
 {
@@ -62,21 +71,21 @@ SplatExtension::connect(MapNode* mapNode)
 
     OE_INFO << LC << "Connecting to MapNode.\n";
 
-    if ( !_options.catalogURI().isSet() )
+    if ( !_options.catalogURI().isSet() && !_options.biomesURI().isSet() )
     {
-        OE_WARN << LC << "Illegal: catalog URI is required" << std::endl;
+        OE_WARN << LC << "Illegal: either a catalog URI or a biomes URI is required.\n";
         return false;
     }
 
     if ( !_options.legendURI().isSet() )
     {
-        OE_WARN << LC << "Illegal: legend URI is required" << std::endl;
+        OE_WARN << LC << "Illegal: a legend URI is required.\n";
         return false;
     }
 
     if ( !_options.coverageLayerName().isSet() )
     {
-        OE_WARN << LC << "Illegal: coverage layer name is required" << std::endl;
+        OE_WARN << LC << "Illegal: a coverage layer name is required.\n";
         return false;
     }
 
@@ -87,80 +96,113 @@ SplatExtension::connect(MapNode* mapNode)
     {
         OE_WARN << LC << "Coverage layer \""
             << _options.coverageLayerName().get()
-            << "\" not found in map."
-            << std::endl;
+            << "\" not found in map.\n";
         return false;
-    }
-
-    // Read in the catalog.
-    osg::ref_ptr<SplatCatalog> catalog = new SplatCatalog();
-    {
-        ReadResult result = _options.catalogURI()->readString( _dbOptions.get() );
-        if ( result.succeeded() )
-        {
-            Config conf;
-            conf.setReferrer(_options.catalogURI()->full());
-
-            std::string json = result.getString();
-            conf.fromJSON( json );
-            catalog->fromConfig( conf );
-
-            OE_INFO << LC << "Catalog: " << catalog->getClasses().size() << " classes\n";
-        }
-        else
-        {
-            OE_WARN << LC
-                << "Failed to read catalog from \""
-                << _options.catalogURI()->full() << "\"\n";
-            return false;
-        }
     }
 
     // Read in the legend.
     osg::ref_ptr<SplatCoverageLegend> legend = new SplatCoverageLegend();
     {
-        ReadResult result = _options.legendURI()->readString( _dbOptions.get() );
-        if ( result.succeeded() )
+        osg::ref_ptr<XmlDocument> doc = XmlDocument::load(
+            _options.legendURI().get(),
+            _dbOptions.get() );
+
+        if ( doc.valid() )
         {
-            Config conf;
-            conf.setReferrer(_options.legendURI()->full());
-
-            conf.fromJSON( result.getString() );
-            legend->fromConfig( conf );
-
-            OE_INFO << LC << "Legend: " << legend->getPredicates().size() << " mappings \n";
+            legend->fromConfig( doc->getConfig().child("legend") );
         }
-        else
+
+        if ( legend->empty() )
         {
             OE_WARN << LC
-                << "Failed to read legend from \""
+                << "Failed to read required legend from \""
                 << _options.legendURI()->full() << "\"\n";
             return false;
         }
+        else
+        {
+            OE_INFO << LC << "Legend: found " << legend->getPredicates().size() << " mappings \n";
+        }
     }
 
-    // Terrain effect that implements splatting.
-    _effect = new SplatTerrainEffect( catalog, legend, _dbOptions.get() );
+    BiomeVector biomes;
 
-    // set the coverage layer (mandatory)
-    _effect->setCoverageLayer( coverageLayer );
+    // If there is a biome file, read it; it will point to one or more catalog files.
+    if ( _options.biomesURI().isSet() )
+    {
+        osg::ref_ptr<XmlDocument> doc = XmlDocument::load(
+            _options.biomesURI().get(),
+            _dbOptions.get() );
 
-    // set the render order (optional)
-    if ( _options.drawAfterImageLayers() == true )
-        _effect->setRenderOrder( 1.0f );
+        if ( doc.valid() )
+        {
+            Config conf = doc->getConfig().child("biomes");
+            if ( !conf.empty() )
+            {
+                for(ConfigSet::const_iterator i = conf.children().begin();
+                    i != conf.children().end();
+                    ++i)
+                {
+                    Biome biome( *i );
+                    if ( biome.catalogURI().isSet() )
+                    {
+                        SplatCatalog* catalog = SplatCatalog::read( biome.catalogURI().get(), _dbOptions.get() );
+                        if ( catalog )
+                        {
+                            biome.setCatalog( catalog );
+                            biomes.push_back( biome );
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-    // set the various rendering options.
-    if ( _options.coverageWarp().isSet() )
-        _effect->getCoverageWarpUniform()->set( _options.coverageWarp().get() );
+    // Otherwise, no biome file, so read a single catalog directly:
+    if ( biomes.empty() )
+    {
+        // Read in the catalog.
+        SplatCatalog* catalog = SplatCatalog::read(
+            _options.catalogURI().get(),
+            _dbOptions.get() );
+
+        if ( catalog )
+        {
+            biomes.push_back( Biome() );
+            biomes.back().setCatalog( catalog );
+        }
+    }
+
+    if ( !biomes.empty() )
+    {
+        // Terrain effect that implements splatting.
+        _effect = new SplatTerrainEffect( biomes, legend, _dbOptions.get() );
+
+        // set the coverage layer (mandatory)
+        _effect->setCoverageLayer( coverageLayer );
+
+        // set the render order (optional)
+        if ( _options.drawAfterImageLayers() == true )
+            _effect->setRenderOrder( 1.0f );
+
+        // set the various rendering options.
+        if ( _options.coverageWarp().isSet() )
+            _effect->getCoverageWarpUniform()->set( _options.coverageWarp().get() );
     
-    if ( _options.coverageBlur().isSet() )
-        _effect->getCoverageBlurUniform()->set( _options.coverageBlur().get() );
+        if ( _options.coverageBlur().isSet() )
+            _effect->getCoverageBlurUniform()->set( _options.coverageBlur().get() );
 
-    if ( _options.scaleLevelOffset().isSet() )
-        _effect->getScaleLevelOffsetUniform()->set( (float)_options.scaleLevelOffset().get() );
+        if ( _options.scaleLevelOffset().isSet() )
+            _effect->getScaleLevelOffsetUniform()->set( (float)_options.scaleLevelOffset().get() );
 
-    // add it to the terrain.
-    mapNode->getTerrainEngine()->addEffect( _effect.get() );
+        // add it to the terrain.
+        mapNode->getTerrainEngine()->addEffect( _effect.get() );
+    }
+
+    else
+    {
+        OE_WARN << LC << "Extension not installed become there are no valid biomes.\n";
+    }
 
     if ( ::getenv("OSGEARTH_SPLAT_MODELS") )
     {
@@ -210,7 +252,7 @@ SplatExtension::connect(MapNode* mapNode)
 bool
 SplatExtension::disconnect(MapNode* mapNode)
 {
-    if ( mapNode )
+    if ( mapNode && _effect.valid() )
     {
         mapNode->getTerrainEngine()->removeEffect( _effect.get() );
     }

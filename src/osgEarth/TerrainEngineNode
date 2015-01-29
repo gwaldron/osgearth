@@ -67,8 +67,8 @@ namespace osgEarth
         /** Gets the property set in use by this map engine. */
         virtual const TerrainOptions& getTerrainOptions() const =0;
 
-        /** Accesses the compositor that controls the rendering of image layers */
-        TextureCompositor* getTextureCompositor() const;
+        /** Accesses the object that keeps track of GPU resources in use */
+        TextureCompositor* getResources() const;
 
         /** Adds a terrain effect */
         void addEffect( TerrainEffect* effect );
@@ -126,6 +126,10 @@ namespace osgEarth
           * #deprecated */
         float getVerticalScale() const { return _verticalScale; }
 
+    public: // deprecated
+        
+        /** @derepcated Use getResources() instead. */
+        TextureCompositor* getTextureCompositor() const { return getResources(); }
 
     protected:
         TerrainEngineNode();

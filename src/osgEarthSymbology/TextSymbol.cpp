@@ -24,6 +24,27 @@ using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(text, TextSymbol);
 
+TextSymbol::TextSymbol(const TextSymbol& rhs,const osg::CopyOp& copyop):
+Symbol(rhs, copyop),
+_fill(rhs._fill),
+_halo(rhs._halo),
+_haloOffset(rhs._haloOffset),
+_font(rhs._font),
+_size(rhs._size),
+_content(rhs._content),
+_priority(rhs._priority),
+_removeDuplicateLabels(rhs._removeDuplicateLabels),
+_pixelOffset(rhs._pixelOffset),
+_provider(rhs._provider),
+_encoding(rhs._encoding),
+_alignment(rhs._alignment),
+_layout(rhs._layout),
+_declutter(rhs._declutter),
+_occlusionCull(rhs._occlusionCull),
+_occlusionCullAltitude(rhs._occlusionCullAltitude)
+{
+}
+
 TextSymbol::TextSymbol( const Config& conf ) :
 Symbol                ( conf ),
 _fill                 ( Fill( 1, 1, 1, 1 ) ),

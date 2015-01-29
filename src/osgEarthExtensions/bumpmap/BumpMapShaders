@@ -17,14 +17,24 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#ifndef OSGEARTH_BUMPMAP_SHADERS
+#define OSGEARTH_BUMPMAP_SHADERS 1
+
+#include <osgEarth/ShaderUtils>
+
 namespace osgEarth { namespace BumpMap
 {
-    struct Shaders
+    struct Shaders : public osgEarth::ShaderPackage
 	{
-		static const char* VertexShaderFile;
-		static const char* FragmentShaderFile;
-		static const char* VertexShaderSource;
-		static const char* FragmentShaderSource;
+        Shaders();
+        std::string
+            VertexModel,
+            VertexView,
+            FragmentSimple,
+            FragmentProgressive,
+            FragmentCommon;
 	};
 	
 } } // namespace osgEarth/BumpMap
+
+#endif // OSGEARTH_BUMPMAP_SHADERS

@@ -39,11 +39,11 @@ namespace osgEarth
 
         virtual osg::Texture* getElevationTexture() const =0;
 
-        virtual osg::RefMatrix* getElevationTextureMatrix() const =0;
+        virtual osg::RefMatrixf* getElevationTextureMatrix() const =0;
 
         virtual osg::Texture* getNormalTexture() const =0;
 
-        virtual osg::RefMatrix* getNormalTextureMatrix() const =0;
+        virtual osg::RefMatrixf* getNormalTextureMatrix() const =0;
 
         virtual osg::Group* getPayloadGroup() const =0;
 

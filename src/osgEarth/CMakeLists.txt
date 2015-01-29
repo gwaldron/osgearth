@@ -19,12 +19,15 @@ ENDIF(WIN32)
 
 SET(LIB_NAME osgEarth)
 
-#set(TARGET_GLSL ...)
-#    LogDepthBuffer.vert.glsl
-#    LogDepthBuffer.frag.glsl
-#    LogDepthBuffer.VertOnly.vert.glsl)
+set(TARGET_GLSL
+    GPUClamping.vert.glsl
+    GPUClamping.frag.glsl
+    Instancing.vert.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+
+set(TARGET_IN
+    Shaders.cpp.in)
 
 configure_shaders(
     Shaders.cpp.in
@@ -110,6 +113,7 @@ SET(LIB_PUBLIC_HEADERS
     Pickers
     PrimitiveIntersector
     Profile
+    Profiler
     Progress
     Random
     Registry
@@ -250,6 +254,7 @@ set(TARGET_SRC
     Pickers.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
+    Profiler.cpp
     Progress.cpp
     Random.cpp
     Registry.cpp
@@ -292,7 +297,8 @@ ADD_LIBRARY(
     ${TINYXML_SRC}
     ${VERSION_GIT_SOURCE}
 	${TARGET_SRC}
-    ${TARGET_GLSL} )
+    ${TARGET_GLSL}
+    ${TARGET_IN} )
 
 INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR} ${CURL_INCLUDE_DIR} ${OSG_INCLUDE_DIR} )
 

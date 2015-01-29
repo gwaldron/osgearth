@@ -18,13 +18,22 @@
 */
 #ifndef OSGEARTH_SHADERS
 #define OSGEARTH_SHADERS 1
-#include <osgEarth/Export>
+
+#include <osgEarth/ShaderUtils>
 
 namespace osgEarth
 {
-    struct OSGEARTH_EXPORT Shaders
+    class OSGEARTH_EXPORT Shaders : public ShaderPackage
 	{
+    public:
+        Shaders();
+
+        std::string GPUClampingVertex, GPUClampingFragment;
+
+        std::string InstancingVertex;
+
 	};	
+
 } // namespace osgEarth
 
 #endif // OSGEARTH_SHADERS

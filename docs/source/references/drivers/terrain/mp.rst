@@ -10,7 +10,7 @@ Example usage::
             <terrain driver                   = "mp"
                      skirt_ratio              = "0.05"
                      color                    = "#ffffffff"
-                     normalize_edges          = "true"
+                     normalize_edges          = "false"
                      incremental_update       = "false"
                      quick_release_gl_objects = "true"
                      min_tile_range_factor    = "6.0"

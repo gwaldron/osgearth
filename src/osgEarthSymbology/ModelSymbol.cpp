@@ -25,6 +25,16 @@ using namespace osgEarth::Symbology;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(model, ModelSymbol);
 
+ModelSymbol::ModelSymbol(const ModelSymbol& rhs,const osg::CopyOp& copyop):
+InstanceSymbol(rhs, copyop),
+_heading(rhs._heading),
+_pitch(rhs._pitch),
+_roll(rhs._roll),
+_autoScale(rhs._autoScale),
+_node(rhs._node)
+{
+}
+
 ModelSymbol::ModelSymbol( const Config& conf ) :
 InstanceSymbol( conf ),
 _heading  ( NumericExpression(0.0) ),
@@ -78,7 +88,7 @@ ModelSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<ModelSymbol>()->url()->setURIContext( c.referrer() );
     }    
     else if ( match(c.key(),"model-library") ) {
-        style.getOrCreate<ModelSymbol>()->libraryName() = StringExpression(c.value());
+        style.getOrCreate<ModelSymbol>()->library() = StringExpression(c.value());
     }
     else if ( match(c.key(), "model-placement") ) {
         if      ( match(c.value(), "vertex") )   

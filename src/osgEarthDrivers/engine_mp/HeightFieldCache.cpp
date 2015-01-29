@@ -27,7 +27,6 @@ using namespace osgEarth;
 bool
 HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
                                          const TileKey&                  key,
-                                         //bool                            cummulative,
                                          const osg::HeightField*         parent_hf,
                                          osg::ref_ptr<osg::HeightField>& out_hf,
                                          bool&                           out_isFallback,

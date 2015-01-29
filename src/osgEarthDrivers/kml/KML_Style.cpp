@@ -25,21 +25,21 @@
 using namespace osgEarth_kml;
 
 void
-KML_Style::scan( const Config& conf, KMLContext& cx )
+KML_Style::scan( xml_node<>* node, KMLContext& cx )
 {
-    Style style( conf.value("id") );
+    Style style( getValue(node, "id") );
 
     KML_IconStyle icon;
-    icon.scan( conf.child("iconstyle"), style, cx );
+    icon.scan( node->first_node("iconstyle", 0, false), style, cx );
 
     KML_LabelStyle label;
-    label.scan( conf.child("labelstyle"), style, cx );
+    label.scan( node->first_node("labelstyle", 0, false), style, cx );
 
     KML_LineStyle line;
-    line.scan( conf.child("linestyle"), style, cx );
+    line.scan( node->first_node("linestyle", 0, false), style, cx );
 
     KML_PolyStyle poly;
-    poly.scan( conf.child("polystyle"), style, cx );
+    poly.scan( node->first_node("polystyle", 0, false), style, cx );
 
     cx._sheet->addStyle( style );
 

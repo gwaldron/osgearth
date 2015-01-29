@@ -27,8 +27,8 @@ namespace osgEarth_kml
 
     struct KML_LineString : public KML_Geometry
     {
-        virtual void parseStyle( const Config& conf, KMLContext& cs, Style& style );
-        virtual void parseCoords( const Config& conf, KMLContext& cx );
+        virtual void parseStyle( xml_node<>* node, KMLContext& cs, Style& style );
+        virtual void parseCoords( xml_node<>* node, KMLContext& cx );
     };
 
 } // namespace osgEarth_kml

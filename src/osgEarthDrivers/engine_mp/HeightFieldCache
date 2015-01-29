@@ -79,7 +79,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 const MapFrame&                 frame,
                 const TileKey&                  key,
                 const osg::HeightField*         parent_hf,
-                //bool                            cummulative,  // whether to start with the parent as a template
                 osg::ref_ptr<osg::HeightField>& out_hf,
                 bool&                           out_isFallback,
                 ElevationSamplePolicy           samplePolicy,

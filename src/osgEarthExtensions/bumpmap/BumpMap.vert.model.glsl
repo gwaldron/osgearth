@@ -7,9 +7,19 @@ varying vec4 oe_layer_tilec;
 varying vec3 oe_Normal;
 
 varying vec2 oe_bumpmap_coords;
-varying float oe_bumpmap_slope;
+varying float oe_bumpmap_range;
 
-vec2 oe_nmap_scaleCoords(in vec2 coords, in float targetLOD)
+// the follow def may be replaced by BumpMapTerrainEffect.cpp:
+#undef OE_USE_NORMAL_MAP
+
+#ifdef OE_USE_NORMAL_MAP
+uniform mat4 oe_nmap_normalTexMatrix;
+varying vec4 oe_bumpmap_normalCoords;
+#else
+varying float oe_bumpmap_slope;
+#endif
+
+vec2 oe_bumpmap_scaleCoords(in vec2 coords, in float targetLOD)
 {
     float dL = oe_tile_key.z - targetLOD;
     float factor = exp2(dL);
@@ -30,15 +40,19 @@ vec2 oe_nmap_scaleCoords(in vec2 coords, in float targetLOD)
     return result;
 }
 
-void oe_bumpmap_vertex(inout vec4 VertexMODEL)
+void oe_bumpmap_vertexModel(inout vec4 VertexMODEL)
 {            
     // quantize the scale factor
     float iscale = float(int(oe_bumpmap_scale));
 
     // scale sampling coordinates to a target LOD.
     const float targetLOD = 13.0;
-    oe_bumpmap_coords = oe_nmap_scaleCoords(oe_layer_tilec.st, targetLOD) * iscale;
+    oe_bumpmap_coords = oe_bumpmap_scaleCoords(oe_layer_tilec.st, targetLOD) * iscale;
 
+#ifdef OE_USE_NORMAL_MAP
+    oe_bumpmap_normalCoords = oe_nmap_normalTexMatrix * ot_layer_tilec;
+#else
     // calcluate slope and augment it.
     oe_bumpmap_slope = clamp(2.5*(1.0-oe_Normal.z), 0.0, 1.0);
+#endif
 }

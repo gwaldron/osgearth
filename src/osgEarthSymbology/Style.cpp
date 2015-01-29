@@ -48,19 +48,19 @@ _uri     ( rhs._uri )
     else
     {
         _symbols.clear();
-        mergeConfig( rhs.getConfig(false) );
+        copySymbols(rhs);
     }
 }
 
 Style&
 Style::operator = ( const Style& rhs )
 {
-    _name.clear();
-    _origType.clear();
-    _origData.clear();
-    _uri.unset();
+    _name = rhs._name;
+    _origType = rhs._origType;
+    _origData = rhs._origData;
+    _uri = rhs._uri;
     _symbols.clear();
-    mergeConfig( rhs.getConfig(false) );
+    copySymbols(rhs);
     return *this;
 }
 
@@ -101,12 +101,8 @@ Style
 Style::combineWith( const Style& rhs ) const
 {
     // start by deep-cloning this style.
-    Config conf = getConfig( false );
-    Style newStyle( conf );
-
-    // next, merge in the symbology from the other style.
-    newStyle.mergeConfig( rhs.getConfig(false) );
-
+    Style newStyle(*this);
+    newStyle.copySymbols(rhs);
     if ( !this->empty() && !rhs.empty() )
         newStyle.setName( _name + std::string(":") + rhs.getName() );
     else if ( !this->empty() && rhs.empty() )
@@ -115,8 +111,15 @@ Style::combineWith( const Style& rhs ) const
         newStyle.setName( rhs.getName() );
     else
         newStyle.setName( _name );
-
     return newStyle;
+}
+
+void Style::copySymbols(const Style& style)
+{
+    for (SymbolList::const_iterator itr = style._symbols.begin(); itr != style._symbols.end(); ++itr)
+    {
+        addSymbol(static_cast<Symbol*>(itr->get()->clone(osg::CopyOp::SHALLOW_COPY)));
+    }
 }
 
 void

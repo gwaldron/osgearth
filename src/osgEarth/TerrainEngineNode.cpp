@@ -95,7 +95,7 @@ TerrainEngineNode::removeEffect(TerrainEffect* effect)
 
 
 TextureCompositor*
-TerrainEngineNode::getTextureCompositor() const
+TerrainEngineNode::getResources() const
 {
     return _texCompositor.get();
 }

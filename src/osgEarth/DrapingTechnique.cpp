@@ -331,7 +331,7 @@ DrapingTechnique::reestablish(TerrainEngineNode* engine)
         else if ( !_textureUnit.isSet() )
         {
             int texUnit;
-            if ( engine->getTextureCompositor()->reserveTextureImageUnit( texUnit ) )
+            if ( engine->getResources()->reserveTextureImageUnit( texUnit ) )
             {
                 _textureUnit = texUnit;
                 OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
@@ -642,7 +642,7 @@ DrapingTechnique::onUninstall( TerrainEngineNode* engine )
 {
     if ( !_explicitTextureUnit.isSet() && _textureUnit.isSet() )
     {
-        engine->getTextureCompositor()->releaseTextureImageUnit( *_textureUnit );
+        engine->getResources()->releaseTextureImageUnit( *_textureUnit );
         _textureUnit.unset();
     }
 }

@@ -398,11 +398,15 @@ TileModel::generateNormalTexture()
 
     _normalTexture->setInternalFormatMode(osg::Texture::USE_IMAGE_DATA_FORMAT);
     _normalTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    //_normalTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     _normalTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-    _normalTexture->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
-    _normalTexture->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
+    _normalTexture->setWrap  ( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    _normalTexture->setWrap  ( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
     _normalTexture->setResizeNonPowerOfTwoHint( false );
     _normalTexture->setMaxAnisotropy( 1.0f );
+
+    // So the engine can automatically normalize across tiles.
+    _normalTexture->setUnRefImageDataAfterApply( false );
 }
 
 void

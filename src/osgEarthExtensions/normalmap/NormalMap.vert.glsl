@@ -1,17 +1,22 @@
 #version 110
 
-uniform vec4 oe_tile_key;
 varying vec4 oe_layer_tilec;
 
-uniform vec4 oe_nmap_normalMatrix;
-varying vec2 oe_nmap_normalCoords;
+uniform mat4 oe_nmap_normalTexMatrix;
+varying vec4 oe_nmap_normalCoords;
+varying mat3 oe_nmap_TBN;
+
 
 void oe_nmap_vertex(inout vec4 VertexMODEL)
 {
-    //TODO: fix this matrix
-    oe_nmap_normalCoords = oe_layer_tilec.st; //(oe_nmap_normalMatrix * oe_layer_tilec).st;
+    // calculate the sampling coordinates for the normal texture
+    oe_nmap_normalCoords = oe_nmap_normalTexMatrix * oe_layer_tilec;
 
-    //TODO: non-hard-code this
-    oe_nmap_normalCoords *= 256.0/257.0;
-    oe_nmap_normalCoords += 0.5/257.0;
+    // form the matrix that will transform a normal vector from
+    // tangent space to model space in the fragment shader.
+    // We expect the vertex normal to be a simple UP vector.
+    vec3 B = vec3(0,1,0);
+    vec3 N = gl_Normal;
+    vec3 T = normalize(cross(B,N));
+    oe_nmap_TBN = gl_NormalMatrix * mat3(T, B, N);
 }

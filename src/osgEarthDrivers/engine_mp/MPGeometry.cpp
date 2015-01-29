@@ -172,13 +172,13 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
 #endif
 
     // activate the elevation texture if there is one. Same for all layers.
-    if ( _elevTex.valid() )
-    {
-        state.setActiveTextureUnit( _imageUnit+2 );
-        state.setTexCoordPointer( _imageUnit+1, _tileCoords.get() ); // necessary?? since we do it above
-        _elevTex->apply( state );
-        // todo: probably need an elev texture matrix as well. -gw
-    }
+    //if ( _elevTex.valid() )
+    //{
+    //    state.setActiveTextureUnit( 2 );
+    //    state.setTexCoordPointer( 1, _tileCoords.get() ); // necessary?? since we do it above
+    //    _elevTex->apply( state );
+    //    // todo: probably need an elev texture matrix as well. -gw
+    //}
 
     if ( _layers.size() > 0 )
     {

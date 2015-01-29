@@ -155,7 +155,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 return _neighbors;
             }
 
-        private:
+        public:
             osg::ref_ptr<osg::HeightField> _hf;
             osg::ref_ptr<GeoLocator>       _locator;
             bool                           _fallbackData;
@@ -274,6 +274,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         /** Whether there is a heightfield */
         bool hasElevation() const { return _elevationData.getHeightField() != 0L; }
+
+        /** Whether there's a normal map */
+        bool hasNormalMap() const { return _normalData.getHeightField() != 0L; }
 
         MapInfo                      _mapInfo;
         Revision                     _revision;

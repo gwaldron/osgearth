@@ -23,9 +23,9 @@
 using namespace osgEarth_kml;
 
 void
-KML_Polygon::parseStyle(const Config& conf, KMLContext& cx, Style& style)
+KML_Polygon::parseStyle(xml_node<>* node, KMLContext& cx, Style& style)
 {
-    KML_Geometry::parseStyle(conf, cx, style);
+    KML_Geometry::parseStyle(node, cx, style);
 
     // need at minimum a poly symbol.
     if ( !style.has<PolygonSymbol>() )
@@ -35,18 +35,18 @@ KML_Polygon::parseStyle(const Config& conf, KMLContext& cx, Style& style)
 }
 
 void
-KML_Polygon::parseCoords( const Config& conf, KMLContext& cx )
+KML_Polygon::parseCoords( xml_node<>* node, KMLContext& cx )
 {
     Polygon* poly = new Polygon();
 
-    Config outerConf = conf.child("outerboundaryis");
-    if ( !outerConf.empty() )
+    xml_node<>* outer = node->first_node("outerboundaryis", 0, false);
+    if ( outer )
     {
-        Config outerRingConf = outerConf.child("linearring");
-        if ( !outerRingConf.empty() )
+        xml_node<>* outerRing = outer->first_node("linearring", 0, false);
+        if ( outerRing )
         {
             KML_LinearRing outer;
-            outer.parseCoords( outerRingConf, cx );
+            outer.parseCoords( outerRing, cx );
             if ( outer._geom.valid() )
             {
                 dynamic_cast<Ring*>(outer._geom.get())->rewind( Ring::ORIENTATION_CCW );
@@ -55,22 +55,21 @@ KML_Polygon::parseCoords( const Config& conf, KMLContext& cx )
             }
         }
 
-        ConfigSet innerConfs = conf.children("innerboundaryis");
-        for( ConfigSet::const_iterator i = innerConfs.begin(); i != innerConfs.end(); ++i )
-        {
-            Config innerRingConf = i->child("linearring");
-            if ( !innerRingConf.empty() )
-            {
-                KML_LinearRing inner;
-                inner.parseCoords( innerRingConf, cx );
-                if ( inner._geom.valid() )
-                {
-                    Geometry* innerGeom = inner._geom.get();
-                    dynamic_cast<Ring*>(innerGeom)->rewind( Ring::ORIENTATION_CW );
-                    poly->getHoles().push_back( dynamic_cast<Ring*>(innerGeom) );
-                }
-            }
-        }
+		for (xml_node<>* n = node->first_node("innerboundaryis", 0, false); n; n = n->next_sibling("innerboundaryis", 0, false))
+		{
+			xml_node<>* innerRing = n->first_node("linearring", 0, false);
+			if ( innerRing )
+			{
+				KML_LinearRing inner;
+				inner.parseCoords( innerRing, cx );
+				if ( inner._geom.valid() )
+				{
+					Geometry* innerGeom = inner._geom.get();
+					dynamic_cast<Ring*>(innerGeom)->rewind( Ring::ORIENTATION_CW );
+					poly->getHoles().push_back( dynamic_cast<Ring*>(innerGeom) );
+				}
+			}
+		}
     }
 
     _geom = poly;

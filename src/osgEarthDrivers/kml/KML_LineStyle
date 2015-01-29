@@ -27,7 +27,7 @@ namespace osgEarth_kml
 
     struct KML_LineStyle : public KML_Object
     {
-        virtual void scan( const Config& conf, Style& style, KMLContext& cx );
+        virtual void scan( xml_node<>* node, Style& style, KMLContext& cx );
     };
 
 } //namespace osgEarth_kml

@@ -1048,9 +1048,9 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     if ( sheet != 0L )
     {
-        if ( _wallSkinSymbol.valid() && _wallSkinSymbol->libraryName().isSet() )
+        if ( _wallSkinSymbol.valid() && _wallSkinSymbol->library().isSet() )
         {
-            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName() );
+            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->library() );
 
             if ( !_wallResLib.valid() )
             {
@@ -1060,12 +1060,12 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
             }
         }
 
-        if ( _roofSkinSymbol.valid() && _roofSkinSymbol->libraryName().isSet() )
+        if ( _roofSkinSymbol.valid() && _roofSkinSymbol->library().isSet() )
         {
-            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->libraryName() );
+            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->library() );
             if ( !_roofResLib.valid() )
             {
-                OE_WARN << LC << "Unable to load resource library '" << *_roofSkinSymbol->libraryName() << "'"
+                OE_WARN << LC << "Unable to load resource library '" << *_roofSkinSymbol->library() << "'"
                     << "; roof geometry will not be textured." << std::endl;
                 _roofSkinSymbol = 0L;
             }

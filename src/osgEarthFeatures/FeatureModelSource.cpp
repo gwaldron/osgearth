@@ -202,6 +202,7 @@ FeatureModelSource::createNodeImplementation(const Map*            map,
        session,
        _options,
        factory,
+       this,
        _preMergeOps.get(),
        _postMergeOps.get() );
 

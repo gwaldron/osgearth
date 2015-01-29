@@ -190,6 +190,18 @@ SkinResource::createImage( const osgDB::Options* dbOptions ) const
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(skin, SkinSymbol);
 
+SkinSymbol::SkinSymbol(const SkinSymbol& rhs,const osg::CopyOp& copyop):
+Taggable<Symbol>(rhs, copyop),
+_library(rhs._library),
+_objHeight(rhs._objHeight),
+_minObjHeight(rhs._minObjHeight),
+_maxObjHeight(rhs._maxObjHeight),
+_isTiled(rhs._isTiled),
+_randomSeed(rhs._randomSeed),
+_name(rhs._name)
+{
+}
+
 SkinSymbol::SkinSymbol( const Config& conf ) :
 _objHeight    ( 0.0f ),
 _minObjHeight ( 0.0f ),
@@ -204,7 +216,7 @@ _randomSeed   ( 0 )
 void 
 SkinSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "library",             _libraryName );
+    conf.getIfSet( "library",             _library );
     conf.getIfSet( "object_height",       _objHeight );
     conf.getIfSet( "min_object_height",   _minObjHeight );
     conf.getIfSet( "max_object_height",   _maxObjHeight );
@@ -221,7 +233,7 @@ SkinSymbol::getConfig() const
     Config conf = Symbol::getConfig();
     conf.key() = "skin";
 
-    conf.addIfSet( "library",             _libraryName );
+    conf.addIfSet( "library",             _library );
     conf.addIfSet( "object_height",       _objHeight );
     conf.addIfSet( "min_object_height",   _minObjHeight );
     conf.addIfSet( "max_object_height",   _maxObjHeight );
@@ -242,7 +254,7 @@ SkinSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "skin-library") ) {
         if ( !c.value().empty() ) 
-            style.getOrCreate<SkinSymbol>()->libraryName() = c.value();
+            style.getOrCreate<SkinSymbol>()->library() = c.value();
     }
     else if ( match(c.key(), "skin-tags") ) {
         style.getOrCreate<SkinSymbol>()->addTags( c.value() );

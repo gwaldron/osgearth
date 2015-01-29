@@ -18,11 +18,13 @@
 */
 #ifndef OSGEARTH_SHADERS
 #define OSGEARTH_SHADERS 1
+
 #include <osgEarthUtil/Export>
+#include <osgEarth/ShaderUtils>
 
 namespace osgEarth { namespace Util
 {
-    struct OSGEARTHUTIL_EXPORT Shaders
+    struct OSGEARTHUTIL_EXPORT Shaders : public osgEarth::ShaderPackage
 	{
 		static const char* LogDepthBuffer_VertFile;
 		static const char* LogDepthBuffer_VertSource;

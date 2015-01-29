@@ -28,6 +28,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarthFeatures/TransformFilter>
+#include <osgEarthFeatures/ScatterFilter>
 
 using namespace osgEarth;
 using namespace osgEarth::Billboard;
@@ -107,6 +108,19 @@ BillboardExtension::connect(MapNode* mapNode)
             Feature* f = cursor->nextFeature();
             if ( f && f->getGeometry() )
             {
+                if ( f->getGeometry()->getComponentType() == Geometry::TYPE_POLYGON )
+                {
+                    FilterContext cx;
+                    cx.setProfile( new FeatureProfile(_features->getFeatureProfile()->getExtent()) );
+
+                    ScatterFilter scatter;
+                    scatter.setDensity( _options.density().get() );
+                    scatter.setRandom( true );
+                    FeatureList featureList;
+                    featureList.push_back(f);
+                    scatter.push( featureList, cx );
+                }
+
                 // Init a filter to tranform feature in desired SRS 
                 if (!mapNode->getMapSRS()->isEquivalentTo(_features->getFeatureProfile()->getSRS()))
                 {
@@ -119,8 +133,12 @@ BillboardExtension::connect(MapNode* mapNode)
                     cx = xform.push(featureList, cx);
                 }
 
-                osg::ref_ptr<osg::Vec3dArray> fVerts = f->getGeometry()->toVec3dArray();
-                verts->insert(verts->end(), fVerts->begin(), fVerts->end());
+                GeometryIterator iter(f->getGeometry());
+                while(iter.hasMore()) {
+                    const Geometry* geom = iter.next();
+                    osg::ref_ptr<osg::Vec3dArray> fVerts = geom->toVec3dArray();
+                    verts->insert(verts->end(), fVerts->begin(), fVerts->end());
+                }
             }
         }
     }
@@ -133,18 +151,18 @@ BillboardExtension::connect(MapNode* mapNode)
 
     if ( verts && verts->size() > 0 )
     {
+        OE_NOTICE << LC << "Read " << verts->size() << " points.\n";
+
         //localize all the verts
         GeoPoint centroid;
         _features->getFeatureProfile()->getExtent().getCentroid(centroid);
+        centroid = centroid.transform(mapNode->getMapSRS());
 
-        osg::Matrixd l2w;
+        OE_NOTICE << "Centroid = " << centroid.x() << ", " << centroid.y() << "\n";
+
+        osg::Matrixd l2w, w2l;
         centroid.createLocalToWorld(l2w);
-
-        osg::ref_ptr<const osgEarth::SpatialReference> tangentSRS = mapNode->getMapSRS()->createTangentPlaneSRS(centroid.vec3d());
-
-        osg::Matrixd ltp_l2w;
-        tangentSRS->createLocalToWorld(osg::Vec3d(0.0, 0.0, 0.0), ltp_l2w);
-        l2w.preMult(ltp_l2w);
+        w2l.invert(l2w);
 
         osg::MatrixTransform* mt = new osg::MatrixTransform;
         mt->setMatrix(l2w);
@@ -152,16 +170,26 @@ BillboardExtension::connect(MapNode* mapNode)
         osgEarth::ElevationQuery eq(mapNode->getMap());
         eq.getElevations(verts->asVector(), mapNode->getMapSRS());
 
+        osg::Vec3Array* normals = new osg::Vec3Array(verts->size());
+
         for (int i=0; i < verts->size(); i++)
         {
-            GeoPoint vert(mapNode->getMapSRS(), (*verts)[i].x(), (*verts)[i].y(), (*verts)[i].z(), osgEarth::ALTMODE_ABSOLUTE);
-            GeoPoint vert_ltp = vert.transform(tangentSRS);
-            (*verts)[i].set(vert_ltp.vec3d());
+            GeoPoint vert(mapNode->getMapSRS(), (*verts)[i], osgEarth::ALTMODE_ABSOLUTE);
+
+            osg::Vec3d world;
+            vert.toWorld(world);
+            (*verts)[i] = world * w2l;
+
+            osg::Vec3 normal = world;
+            normal.normalize();
+            (*normals)[i] = osg::Matrix::transform3x3(normal, w2l);
         }
 
         //create geom and primitive sets
         osg::Geometry* geometry = new osg::Geometry();
         geometry->setVertexArray( verts );
+        geometry->setNormalArray( normals );
+        geometry->setNormalBinding( geometry->BIND_PER_VERTEX );
 
         osg::Vec4Array* colors = new osg::Vec4Array;
         colors->push_back(osg::Vec4(1.0f,1.0f,1.0f,1.0f));
@@ -174,8 +202,8 @@ BillboardExtension::connect(MapNode* mapNode)
         //create image and texture to render to
         osg::Texture2D* tex = new osg::Texture2D(_options.imageURI()->getImage(_dbOptions));
         tex->setResizeNonPowerOfTwoHint(false);
-        tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-        tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
+        tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+        tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
         tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
         tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
 
@@ -184,8 +212,8 @@ BillboardExtension::connect(MapNode* mapNode)
         osg::Geode* geode = new osg::Geode;
         geode->addDrawable(geometry);
 
-        osg::ref_ptr<StateSetCache> cache = new StateSetCache();
-        Registry::shaderGenerator().run(geode, cache.get());
+        //osg::ref_ptr<StateSetCache> cache = new StateSetCache();
+        //Registry::shaderGenerator().run(geode, cache.get());
 
         //set the texture related uniforms
         osg::StateSet* geode_ss = geode->getOrCreateStateSet();

@@ -30,8 +30,10 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         //"#extension GL_EXT_geometry_shader4 : enable\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
+        "varying out vec3 normal;\n"
         "void main(void)\n"
         "{\n"
+        "    normal = gl_Normal;\n"
         "    gl_Position = gl_Vertex;\n"
         "}\n";
 
@@ -44,13 +46,14 @@ namespace
         "#extension GL_EXT_geometry_shader4 : enable\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "varying out vec2 tex_coord;\n"
+        "varying in vec3 normal[];\n"
         "uniform float billboard_width; \n"
         "uniform float billboard_height; \n"
         "uniform sampler2D billboard_tex; \n"
         "void main(void)\n"
         "{\n"
         "    vec4 v = gl_ModelViewMatrix * gl_PositionIn[0];\n"
-        "    vec4 v2 = gl_ModelViewMatrix * (gl_PositionIn[0] + vec4(0.,0.,billboard_height, 0.));\n"
+        "    vec4 v2 = gl_ModelViewMatrix * (gl_PositionIn[0] + vec4(normal[0]*billboard_height, 0.0));\n"
         "    \n"
         // TODO: this width calculation isn't great but works for now
         "    vec4 center_v = gl_ModelViewMatrix * vec4(0.,0.,0.,1.);\n"
@@ -81,6 +84,7 @@ namespace
         "varying vec2 tex_coord;\n"
         "void main(void) {\n"
         "    gl_FragColor = texture2D(billboard_tex, tex_coord);\n"
+        "    if ( gl_FragColor.a < 0.2 ) discard; \n"
         "}\n";
 }
 

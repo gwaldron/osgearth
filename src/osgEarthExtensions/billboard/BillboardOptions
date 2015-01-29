@@ -49,6 +49,9 @@ namespace osgEarth { namespace Billboard
         optional<float>& height() { return _height; }
         const optional<float>& height() const { return _height; }
 
+        optional<float>& density() { return _density; }
+        const optional<float>& density() const { return _density; }
+
         /** Feature source from which to read the feature data */
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
@@ -59,6 +62,7 @@ namespace osgEarth { namespace Billboard
         {
             setDriver( "billboard" );
             _scale.init(1.0f);
+            _density.init(100.0f);
             fromConfig( _conf );
         }
 
@@ -71,6 +75,7 @@ namespace osgEarth { namespace Billboard
             conf.updateIfSet("scale",  _scale);
             conf.updateIfSet("width",  _width);
             conf.updateIfSet("height",  _height);
+            conf.updateIfSet("density", _density);
             conf.updateObjIfSet( "features", _featureOptions );
             return conf;
         }
@@ -87,6 +92,7 @@ namespace osgEarth { namespace Billboard
             conf.getIfSet("scale",  _scale);
             conf.getIfSet("width",  _width);
             conf.getIfSet("height",  _height);
+            conf.getIfSet("density", _density);
 
             if ( conf.hasChild("features") )
                 _featureOptions->merge( conf.child("features") );
@@ -96,6 +102,7 @@ namespace osgEarth { namespace Billboard
         optional<float>                 _scale;
         optional<float>                 _width;
         optional<float>                 _height;
+        optional<float>                 _density;
         optional<FeatureSourceOptions>  _featureOptions;
     };
 

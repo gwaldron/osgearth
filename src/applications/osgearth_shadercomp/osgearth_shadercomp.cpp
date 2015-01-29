@@ -293,6 +293,87 @@ namespace TEST_5
     }
 }
 
+//-------------------------------------------------------------------------
+
+// Tests the VirtualProgram's ShaderComp::AcceptCallback with multiple cameras
+// in order to vertify that the State Stack Memory is being properly disabled
+// when Accept Callbacks are in play.
+namespace TEST_6
+{
+    const char* fragShader =
+        "#version 110\n"
+        "void make_it_red(inout vec4 color) {\n"
+        "    color.r = 1.0;\n"
+        "}\n";
+    const char* fragShader2 =
+        "#version 110\n"
+        "void make_it_blue(inout vec4 color) {\n"
+        "    color.b = 1.0;\n"
+        "}\n";
+
+    // This acceptor will only include the fragment shader snippet above
+    // when the camera's viewport.x == 0. Normally the Program will only
+    // be applied once in succession. 
+    struct Acceptor : public ShaderComp::AcceptCallback
+    {
+        Acceptor() : _fn(0) { }
+
+        // Return true to activate the shader function.
+        bool operator()(const osg::State& state)
+        {
+            //if ( state.getFrameStamp() )
+            //{
+            //    unsigned fn = state.getFrameStamp()->getFrameNumber();
+            //    if ( fn != _fn )
+            //    {
+            //        OE_NOTICE << "Accept; FRAME NUMBER = " << _fn << "--------------------\n";
+            //        _fn = fn;
+            //    }
+            //}
+            const osg::Viewport* vp = state.getCurrentViewport();
+            return vp && vp->x() == 0.0;
+        }
+
+        unsigned _fn;
+    };
+
+    osg::Group* run(osg::Node* node)
+    {
+        osg::Group* group1 = new osg::Group();
+        VirtualProgram* vp1 = VirtualProgram::getOrCreate(group1->getOrCreateStateSet());
+        vp1->setFunction("make_it_red", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, new Acceptor());
+        group1->addChild( node );
+
+        osg::Camera* cam1 = new osg::Camera();
+        cam1->setViewport(0, 0, 200, 200);
+        cam1->addChild( group1 );
+
+        osg::Camera* cam2 = new osg::Camera();
+        cam2->setViewport(201, 0, 200, 200);
+        cam2->addChild( group1 );        
+
+        osg::Group* group2 = new osg::Group();
+        VirtualProgram* vp2 =  VirtualProgram::getOrCreate(group2->getOrCreateStateSet());
+        vp2->setFunction("make_it_blue", fragShader2, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+        group2->addChild( node );
+
+        osg::Camera* cam3 = new osg::Camera();
+        cam3->setViewport(0, 201, 200, 200);
+        cam3->addChild( group2 );
+
+        osg::Camera* cam4 = new osg::Camera();
+        cam4->setViewport(201, 201, 200, 200);
+        cam4->addChild( group2 );
+        
+        osg::Group* g = new osg::Group();
+        g->addChild( cam1 );
+        g->addChild( cam2 );
+        g->addChild( cam3 );
+        g->addChild( cam4 );
+
+        return g;
+    }
+}
 
 //-------------------------------------------------------------------------
 
@@ -306,7 +387,8 @@ int main(int argc, char** argv)
     bool test3 = arguments.read("--test3");
     bool test4 = arguments.read("--test4");
     bool test5 = arguments.read("--test5");
-    bool ok    = test1 || test2 || test3 || test4 || test5; 
+    bool test6 = arguments.read("--test6");
+    bool ok    = test1 || test2 || test3 || test4 || test5 || test6;
 
     if ( !ok )
     {
@@ -324,7 +406,7 @@ int main(int argc, char** argv)
     LabelControl* label = new LabelControl();
     canvas->addControl(label);
 
-    if ( !test5 )
+    if ( test1 || test2 || test3 || test4 || test6 )
     {
         osg::Node* earthNode = osgDB::readNodeFile( "gdal_tiff.earth" );
         if (!earthNode)
@@ -352,10 +434,15 @@ int main(int argc, char** argv)
             root->addChild( TEST_4::run(earthNode) );
             label->setText("Memory management test; monitor memory for stability");
         }
+        else if ( test6 )
+        {
+            root->addChild( TEST_6::run(earthNode) );
+            label->setText("State Memory Stack test; top row, both=blue. bottom left=red, bottom right=normal.");
+        }
         
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
     }
-    else // if ( test5 )
+    else if ( test5 )
     {
         root->addChild( TEST_5::run() );
         label->setText( "Leakage test: red tri on the left, blue on the right." );

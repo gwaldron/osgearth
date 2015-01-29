@@ -36,6 +36,7 @@
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
 #include <osg/PointSprite>
+#include <osg/PolygonMode>
 #include <osg/BlendFunc>
 #include <osg/FrontFace>
 #include <osg/CullFace>
@@ -476,6 +477,14 @@ SimpleSkyNode::makeAtmosphere(const osg::EllipsoidModel* em)
 {
     // create some skeleton geometry to shade:
     osg::Geometry* drawable = s_makeEllipsoidGeometry( em, _outerRadius, false );
+
+    // disable wireframe/point rendering on the atmosphere, since it is distracting.
+    if ( _options.allowWireframe() == false )
+    {
+        drawable->getOrCreateStateSet()->setAttributeAndModes(
+            new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::FILL),
+            osg::StateAttribute::PROTECTED);
+    }
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( drawable );

@@ -101,7 +101,8 @@ BillboardExtension::connect(MapNode* mapNode)
     if ( _features->getFeatureProfile() )
     {
         verts = new osg::Vec3dArray();
-
+        
+        OE_NOTICE << "Reading features...\n";
         osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
         while ( cursor.valid() && cursor->hasMore() )
         {
@@ -167,9 +168,12 @@ BillboardExtension::connect(MapNode* mapNode)
         osg::MatrixTransform* mt = new osg::MatrixTransform;
         mt->setMatrix(l2w);
 
+        OE_NOTICE << "Clamping elevations...\n";
         osgEarth::ElevationQuery eq(mapNode->getMap());
-        eq.getElevations(verts->asVector(), mapNode->getMapSRS());
+        eq.getElevations(verts->asVector(), mapNode->getMapSRS(), true, 0.005);
 
+        
+        OE_NOTICE << "Building geometry...\n";
         osg::Vec3Array* normals = new osg::Vec3Array(verts->size());
 
         for (int i=0; i < verts->size(); i++)

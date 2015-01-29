@@ -11,5 +11,9 @@ namespace osgEarth
         _sources[GPUClampingVertex] = OE_MULTILINE(@GPUClamping.vert.glsl@);
         GPUClampingFragment = "GPUClamping.frag.glsl";
         _sources[GPUClampingFragment] = OE_MULTILINE(@GPUClamping.frag.glsl@);
+
+        // DrawInstanced
+        InstancingVertex = "Instancing.vert.glsl";
+        _sources[InstancingVertex] = OE_MULTILINE(@Instancing.vert.glsl@);
     }
 };

@@ -21,7 +21,8 @@ SET(LIB_NAME osgEarth)
 
 set(TARGET_GLSL
     GPUClamping.vert.glsl
-    GPUClamping.frag.glsl)
+    GPUClamping.frag.glsl
+    Instancing.vert.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

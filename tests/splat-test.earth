@@ -7,7 +7,7 @@
 <map>
         
 	<options>
-		<terrain min_lod="18" tile_size="9"/>
+		<terrain/>
 	</options>
 	
     <elevation name="readymap_elevation" driver="tms" enabled="true">

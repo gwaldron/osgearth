@@ -28,8 +28,9 @@ namespace osgEarth
     public:
         Shaders();
 
-        std::string
-            GPUClampingVertex, GPUClampingFragment;
+        std::string GPUClampingVertex, GPUClampingFragment;
+
+        std::string InstancingVertex;
 
 	};	
 

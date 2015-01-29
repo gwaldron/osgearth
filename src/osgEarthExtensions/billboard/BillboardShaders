@@ -84,8 +84,7 @@ namespace
         "varying vec2 tex_coord;\n"
         "void main(void) {\n"
         "    gl_FragColor = texture2D(billboard_tex, tex_coord);\n"
-        "    gl_FragColor.rgb *= 1.5;\n"
-        "    if ( gl_FragColor.a < 0.2 ) discard; \n"
+        "    if ( gl_FragColor.a < 0.3 ) discard; \n"
         "}\n";
 }
 

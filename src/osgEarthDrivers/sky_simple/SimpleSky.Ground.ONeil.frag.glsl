@@ -52,7 +52,7 @@ void atmos_fragment_main(inout vec4 color)
 
     // calculate the base scene color. Skip ambience since we'll be
     // factoring that in later.
-    vec4 sceneColor = mix(color*overExposure, color*NdotL, 1.0); //normFactor*shadeFactor); 
+    vec4 sceneColor = mix(color*overExposure, color*NdotL, normFactor*shadeFactor); 
 
     if (NdotL > 0.0 ) { 
         vec3 V = normalize(atmos_vert); 

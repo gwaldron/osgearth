@@ -33,10 +33,10 @@ http://readymap.org
                 <url>../data/parks.shp</url>
             </features>
 
-            <image>../data/tree.gif</image>
-            <height>10</height>
+            <image>../data/textures/oak.png</image>
+            <height>20.0</height>
+			<width>15.0</width>
 			<density>15000</density>
-            <!-- <width>10</width> -->
 
         </billboard>
 

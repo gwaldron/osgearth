@@ -1,6 +1,6 @@
 #version 110
 
-$include "BumpMap.frag.common.glsl"
+#pragma include "BumpMap.frag.common.glsl"
 
 vec3 oe_global_Normal;
 

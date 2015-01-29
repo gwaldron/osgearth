@@ -1,8 +1,8 @@
 #version 130
 #extension GL_EXT_texture_array : enable
 
-$include "Splat.types.glsl"
-$include "Splat.frag.common.glsl"
+#pragma include "Splat.types.glsl"
+#pragma include "Splat.frag.common.glsl"
 
 // ref: Splat.getRenderInfo.frag.glsl
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);

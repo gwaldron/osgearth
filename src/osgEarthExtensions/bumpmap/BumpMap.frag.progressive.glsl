@@ -1,6 +1,6 @@
 #version 110
 
-$include "BumpMap.frag.common.glsl"
+#pragma include "BumpMap.frag.common.glsl"
 
 uniform sampler2D oe_bumpmap_tex;
 uniform float oe_bumpmap_intensity;

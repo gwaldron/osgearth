@@ -186,10 +186,10 @@ ShaderLoader::loadSource(const std::string&    filename,
         osgEarth::replaceIn(output, "$__HASHTAG__", "#");
     }
 
-    // Process any $include statements
+    // Process any "#pragma include" statements
     while(true)
     {
-        std::string::size_type includePos = output.find("$include");
+        std::string::size_type includePos = output.find("#pragma include");
         if ( includePos == std::string::npos )
             break;
 

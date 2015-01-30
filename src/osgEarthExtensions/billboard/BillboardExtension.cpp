@@ -27,6 +27,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Random>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ScatterFilter>
 
@@ -176,6 +177,9 @@ BillboardExtension::connect(MapNode* mapNode)
         OE_NOTICE << "Building geometry...\n";
         osg::Vec3Array* normals = new osg::Vec3Array(verts->size());
 
+        osg::Vec4Array* colors = new osg::Vec4Array(verts->size());
+        Random rng;
+
         for (int i=0; i < verts->size(); i++)
         {
             GeoPoint vert(mapNode->getMapSRS(), (*verts)[i], osgEarth::ALTMODE_ABSOLUTE);
@@ -187,21 +191,20 @@ BillboardExtension::connect(MapNode* mapNode)
             osg::Vec3 normal = world;
             normal.normalize();
             (*normals)[i] = osg::Matrix::transform3x3(normal, w2l);
+
+            double n = rng.next();
+            (*colors)[i].set( n, n, n, 1 );
         }
 
         //create geom and primitive sets
         osg::Geometry* geometry = new osg::Geometry();
         geometry->setVertexArray( verts );
         geometry->setNormalArray( normals );
-        geometry->setNormalBinding( geometry->BIND_PER_VERTEX );
-
-        osg::Vec4Array* colors = new osg::Vec4Array;
-        colors->push_back(osg::Vec4(1.0f,1.0f,1.0f,1.0f));
+        geometry->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
         geometry->setColorArray(colors);
-        geometry->setColorBinding(osg::Geometry::BIND_OVERALL);
+        geometry->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
         geometry->addPrimitiveSet( new osg::DrawArrays( GL_POINTS, 0, verts->size() ) );
-        geometry->getOrCreateStateSet()->setAttribute( new osg::Point( 1.0f ), osg::StateAttribute::ON ); 
 
         //create image and texture to render to
         osg::Texture2D* tex = new osg::Texture2D(_options.imageURI()->getImage(_dbOptions));

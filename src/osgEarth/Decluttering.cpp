@@ -17,7 +17,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/Decluttering>
-//#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
@@ -641,10 +640,14 @@ Decluttering::setEnabled( osg::StateSet* stateSet, bool enable, int binNum )
                 udc->addUserObject( prevStateSet );
             }
 
-            stateSet->setRenderBinDetails( binNum, OSGEARTH_DECLUTTER_BIN );
+            // the OVERRIDE prevents subsequent statesets from disabling the decluttering bin,
+            // I guess. This wasn't needed in OSG 3.1.4 but now it is.
+            stateSet->setRenderBinDetails(
+                binNum,
+                OSGEARTH_DECLUTTER_BIN,
+                osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
 
-            // disable renderbin nesting b/c it is incompatible with decluttering;
-            // i.e. we only want one decluttering bin per render stage
+            // Force a single shared decluttering bin per render stage
             stateSet->setNestRenderBins( false );
         }
         else

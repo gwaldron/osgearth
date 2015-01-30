@@ -44,6 +44,7 @@ namespace osgEarth
     public:
         virtual bool elevationTexturesRequired() const =0;
         virtual bool normalTexturesRequired() const =0;
+        virtual bool parentTexturesRequired() const =0;
     };
 
     /**
@@ -98,6 +99,9 @@ namespace osgEarth
         /** Whether the implementation should generate elevation map rasters. */
         void requireElevationTextures() { _requireElevationTextures = true; }
 
+        /** Whether the implementation should generate parent color textures. */
+        void requireParentTextures() { _requireParentTextures = true; }
+
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getTerrainStateSet() { return getOrCreateStateSet(); }
 
@@ -108,6 +112,7 @@ namespace osgEarth
 
         bool normalTexturesRequired() const { return _requireNormalTextures; }
         bool elevationTexturesRequired() const { return _requireElevationTextures; }
+        bool parentTexturesRequired() const { return _requireParentTextures; }
 
     public:
         // adds a callback that will be fired while the terrain engine is building
@@ -162,6 +167,7 @@ namespace osgEarth
 
         bool _requireElevationTextures;
         bool _requireNormalTextures;
+        bool _requireParentTextures;
 
     public: // TerrainTileNodeBroker
 

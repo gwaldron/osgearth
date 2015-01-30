@@ -138,6 +138,7 @@ namespace
             ownsTileCoords   = false;
             stitchTileCoords = 0L;
             stitchGeom       = 0L;
+            installParentData = false;
         }
 
         osg::Matrixd local2world, world2local;
@@ -149,6 +150,7 @@ namespace
 
         const TileModel*              model;                   // the tile's data model
         osg::ref_ptr<const TileModel> parentModel;             // parent model reference
+        bool                          installParentData;       // whether to install parent colors/normals for blending
 
         const MaskLayerVector&   maskLayers;                    // map-global masking layer set
         const ModelLayerVector&  modelLayers;                   // model layers with masks set
@@ -480,20 +482,23 @@ namespace
                 }
 
                 // install the parent color data layer if necessary.
-                if ( d.parentModel.valid() )
-                {                    
-                    if (!d.parentModel->getColorData( r._layer.getUID(), r._layerParent ))
-                    {
-                        // If we can't get the color data from the parent that means it doesn't exist, perhaps b/c of a min level setting
-                        // So we create a false layer parent with a transparent image so it will fade into the real data.
-                        r._layerParent = r._layer;
-                        r._layerParent._texture = new osg::Texture2D(ImageUtils::createEmptyImage());
-                        r._layerParent._hasAlpha = true;
-                    }
-                }
-                else
+                if ( d.installParentData )
                 {
-                    r._layerParent = r._layer;
+                    if ( d.parentModel.valid() )
+                    {                    
+                        if (!d.parentModel->getColorData( r._layer.getUID(), r._layerParent ))
+                        {
+                            // If we can't get the color data from the parent that means it doesn't exist, perhaps b/c of a min level setting
+                            // So we create a false layer parent with a transparent image so it will fade into the real data.
+                            r._layerParent = r._layer;
+                            r._layerParent._texture = new osg::Texture2D(ImageUtils::createEmptyImage());
+                            r._layerParent._hasAlpha = true;
+                        }
+                    }
+                    else
+                    {
+                        r._layerParent = r._layer;
+                    }
                 }
 
                 d.renderLayers.push_back( r );
@@ -2134,6 +2139,7 @@ TileModelCompiler::compile(TileModel*        model,
 
     TileNode* tile = new TileNode( model->_tileKey, model, d.local2world );
 
+    d.installParentData = model->useParentData();
     d.parentModel = model->getParentTileModel();
     d.heightScale = *_options.verticalScale();
     d.heightOffset = *_options.verticalOffset();

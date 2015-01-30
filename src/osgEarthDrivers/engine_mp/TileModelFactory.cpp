@@ -449,6 +449,8 @@ TileModelFactory::createTileModel(const TileKey&           key,
 
     osg::ref_ptr<TileModel> model = new TileModel( frame.getRevision(), frame.getMapInfo() );
 
+    model->_useParentData = _terrainReqs->parentTexturesRequired();
+
     model->_tileKey = key;
     model->_tileLocator = GeoLocator::createForKey(key, frame.getMapInfo());
 

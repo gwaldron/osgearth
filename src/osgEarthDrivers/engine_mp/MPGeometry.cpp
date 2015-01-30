@@ -179,6 +179,13 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     //    _elevTex->apply( state );
     //    // todo: probably need an elev texture matrix as well. -gw
     //}
+    
+
+    // track the active image unit.
+    int activeImageUnit = -1;
+
+    // remember whether we applied a parent texture.
+    bool usedTexParent = false;
 
     if ( _layers.size() > 0 )
     {
@@ -226,9 +233,6 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             }
         }
 
-        // track the active image unit.
-        int activeImageUnit = -1;
-
         if (renderColor)
         {
             // find the first opaque layer, top-down, and start there:
@@ -273,6 +277,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                         state.setActiveTextureUnit( _imageUnitParent );
                         activeImageUnit = _imageUnitParent;
                         layer._texParent->apply( state );
+                        usedTexParent = true;
                     }
 
                     // bind the texture coordinates for this layer.
@@ -358,6 +363,16 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         if ( renderColor )
         {
             glBindTexture( GL_TEXTURE_2D, 0 );
+
+            // if a parent texture was applied, need to disable both.
+            if ( usedTexParent )
+            {
+                state.setActiveTextureUnit(
+                    activeImageUnit != _imageUnitParent ? _imageUnitParent :
+                    _imageUnit );
+
+                glBindTexture( GL_TEXTURE_2D, 0);
+            }
         }
     }
 }

@@ -262,7 +262,7 @@ CompositeTileSource::createImage(const TileKey&    key,
             {
                 if (imageInfo.image.valid())
                 {
-                    ImageUtils::mix( result, imageInfo.image, imageInfo.opacity );
+                    ImageUtils::mix( result, imageInfo.image.get(), imageInfo.opacity );
                 }
             }            
         }        

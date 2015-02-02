@@ -947,6 +947,7 @@ namespace osgEarth { namespace Util
         double                  _pending_viewpoint_duration_s;
 
         bool                    _setting_viewpoint;
+        bool                    _set_viewpoint_started_while_tethered;
         Viewpoint               _start_viewpoint;
         double                  _delta_heading, _delta_pitch, _delta_range, _arc_height;
         osg::Vec3d              _delta_focal_point;

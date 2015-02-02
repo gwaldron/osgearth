@@ -837,6 +837,9 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
             vp.getSRS()->transform( vp.getFocalPoint(), _cached_srs.get(), vpFocalPoint );
         }
 
+        // if we are currently tethered, make a note of it.
+        _set_viewpoint_started_while_tethered = _tether_node.valid();
+
         _start_viewpoint = getViewpoint();
         
         _delta_heading = vp.getHeading() - _start_viewpoint.getHeading(); //TODO: adjust for crossing -180
@@ -1443,7 +1446,12 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             if ( _frame_count < 2 )
                 _time_s_set_viewpoint = _time_s_now;
 
-            updateSetViewpoint();
+            // if we're tethered, we need to update the viewpoint in the post-update
+            // phase to pre
+            if ( !_tether_node.valid() || !_set_viewpoint_started_while_tethered )
+            {
+                updateSetViewpoint();
+            }
 
             aa.requestContinuousUpdate( _setting_viewpoint );
         }
@@ -1769,7 +1777,17 @@ EarthManipulator::updateTether()
         {
             vp.getSRS()->transform( vp.getFocalPoint(), _cached_srs.get(), vpFocalPoint );
         }
-        _delta_focal_point = vpFocalPoint - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
+
+        if ( _set_viewpoint_started_while_tethered )
+        {
+            _start_viewpoint.setFocalPoint( vpFocalPoint );
+            _delta_focal_point.set(0,0,0);
+            updateSetViewpoint();
+        }
+        else
+        {
+            _delta_focal_point = vpFocalPoint - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
+        }
     }
 }
 

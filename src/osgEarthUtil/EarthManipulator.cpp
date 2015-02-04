@@ -204,7 +204,7 @@ _min_vp_duration_s              ( 3.0 ),
 _max_vp_duration_s              ( 8.0 ),
 _camProjType                    ( PROJ_PERSPECTIVE ),
 _camFrustOffsets                ( 0, 0 ),
-_disableCollisionAvoidance      ( true ),
+_disableCollisionAvoidance      ( false ),
 _throwingEnabled                ( false ),
 _throwDecayRate                 ( 0.05 )
 {

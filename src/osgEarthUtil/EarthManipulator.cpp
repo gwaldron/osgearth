@@ -1048,8 +1048,9 @@ EarthManipulator::updateSetViewpoint()
 
     if ( t >= 1.0 )
     {
-        t = tp = 1.0;
+        t = tp = 1.0;        
         _setting_viewpoint = false;
+        _tether_completed = true;
     }
     else if ( _arc_height > 0.0 )
     {
@@ -1129,6 +1130,8 @@ EarthManipulator::getViewpoint() const
 void
 EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
 {
+    _tether_completed = true;
+
     if (_tether_node != node)
     {
         _offset_x = 0.0;
@@ -1160,6 +1163,7 @@ EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
 
     if (_tether_node.valid() && duration_s > 0.0)
     {                
+        _tether_completed = false;
         Viewpoint destVP = getTetherNodeViewpoint();
         setViewpoint( destVP, duration_s );
     }
@@ -1504,7 +1508,15 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             if ( _frame_count < 2 )
                 _time_s_set_viewpoint = _time_s_now;
 
-            updateSetViewpoint();
+            // if we're not tethered, OR if we are tethered and the tethering process
+            // is complete, we can update the camera now. Otherwise we have to update
+            // it in the post-update phase to maintain frame synchronization between
+            // the camera and the tether target.
+            if ((!_tether_node.valid()) ||
+                (_tether_node.valid() && !_tether_completed))
+            {
+                updateSetViewpoint();
+            }
 
             aa.requestContinuousUpdate( _setting_viewpoint );
         }
@@ -1830,7 +1842,17 @@ EarthManipulator::updateTether()
         {
             vp.getSRS()->transform( vp.getFocalPoint(), _cached_srs.get(), vpFocalPoint );
         }
-        _delta_focal_point = vpFocalPoint - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
+
+        if ( _tether_completed )
+        {
+            _start_viewpoint.setFocalPoint( vpFocalPoint );
+            _delta_focal_point.set(0,0,0);
+            updateSetViewpoint();
+        }
+        else
+        {
+            _delta_focal_point = vpFocalPoint - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
+        }
     }
 }
 

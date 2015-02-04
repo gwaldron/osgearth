@@ -361,7 +361,7 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
     // Make a new heightfield:
     if (_normalHFCache->getOrCreateHeightField(frame, key, parentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
     {
-        if ( isFallback )
+        if ( isFallback && parentModel.valid() )
         {
             model->_normalData = parentModel->_normalData;
             model->_normalData._fallbackData = true;
@@ -427,7 +427,7 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
             }
         }
 
-        if ( isFallback && parentModel )
+        if ( isFallback && parentModel.valid() )
         {
             model->_normalTexture = parentModel->_normalTexture.get();
         }

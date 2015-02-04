@@ -62,6 +62,24 @@ namespace
 
 
 //------------------------------------------------------------------------
+namespace
+{
+    // Callback that notifies the manipulator whenever the terrain changes
+    // around its center point.
+    struct ManipTerrainCallback : public TerrainCallback
+    {
+        ManipTerrainCallback(EarthManipulator* manip) : _manip(manip) { }
+        void onTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context)
+        {
+            osg::ref_ptr<EarthManipulator> safe;
+            if ( _manip.lock(safe) )
+            {
+                safe->handleTileAdded(key, tile, context);
+            }            
+        }
+        osg::observer_ptr<EarthManipulator> _manip;
+    };
+}
 
 
 
@@ -186,7 +204,7 @@ _min_vp_duration_s              ( 3.0 ),
 _max_vp_duration_s              ( 8.0 ),
 _camProjType                    ( PROJ_PERSPECTIVE ),
 _camFrustOffsets                ( 0, 0 ),
-_disableCollisionAvoidance      ( false ),
+_disableCollisionAvoidance      ( true ),
 _throwingEnabled                ( false ),
 _throwDecayRate                 ( 0.05 )
 {
@@ -484,8 +502,8 @@ EarthManipulator::configureDefaultSettings()
     _settings->bindScroll( ACTION_ZOOM_OUT, osgGA::GUIEventAdapter::SCROLL_UP );
 
     // pan around with arrow keys:
-    _settings->bindKey( ACTION_ROTATE_LEFT,  osgGA::GUIEventAdapter::KEY_Left );
-    _settings->bindKey( ACTION_ROTATE_RIGHT, osgGA::GUIEventAdapter::KEY_Right );
+    _settings->bindKey( ACTION_PAN_LEFT,  osgGA::GUIEventAdapter::KEY_Left );
+    _settings->bindKey( ACTION_PAN_RIGHT, osgGA::GUIEventAdapter::KEY_Right );
     _settings->bindKey( ACTION_PAN_UP,    osgGA::GUIEventAdapter::KEY_Up );
     _settings->bindKey( ACTION_PAN_DOWN,  osgGA::GUIEventAdapter::KEY_Down );
 
@@ -592,6 +610,17 @@ EarthManipulator::established()
 
         _mapNode = osgEarth::MapNode::findMapNode( safeNode.get() );    
 
+        if (_mapNode.valid())
+        {
+            if ( _terrainCallback.valid() )
+            {
+                _mapNode->getTerrain()->removeTerrainCallback( _terrainCallback.get() );
+            }
+
+            _terrainCallback = new ManipTerrainCallback( this );
+            _mapNode->getTerrain()->addTerrainCallback( _terrainCallback );  
+        }
+
         if ( _csn.valid() )
         {
             _node = _csn.get();
@@ -648,21 +677,18 @@ EarthManipulator::established()
 void 
 EarthManipulator::handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context)
 {
-#if 0
     // Only do collision avoidance if it's enabled, we're not tethering and we're not in the middle of setting a viewpoint.            
     if (!getSettings()->getDisableCollisionAvoidance() &&
         !getTetherNode() &&
         !isSettingViewpoint() )
-    {                
+    {
         const GeoPoint& pt = centerMap();
         if ( key.getExtent().contains(pt.x(), pt.y()) )
         {
             recalculateCenterFromLookVector();
+            collisionDetect();
         }
     }
-#endif
-
-    collisionDetect();
 }
 
 bool
@@ -983,6 +1009,11 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 
 void EarthManipulator::collisionDetect()
 {
+    if (getSettings()->getDisableCollisionAvoidance())
+    {
+        return;
+    }
+
     // The camera has changed, so make sure we aren't under the ground.
 
     osg::Vec3d eye = getMatrix().getTrans();
@@ -995,17 +1026,15 @@ void EarthManipulator::collisionDetect()
     osg::Vec3d ip, normal;
     if (intersect(eye + eyeUp * r, eye - eyeUp * r, ip, normal))
     {
-        double eps = 5.0;
-        ip += eyeUp * eps;
-        double bump = 5.0;
+        double eps = _settings->getMinDistance();
         // Now determine if the point is above the ground or not
         osg::Vec3d v0 = eyeUp;
         v0.normalize();
-        osg::Vec3d v1 = eye - ip;
+        osg::Vec3d v1 = eye - (ip + eyeUp * eps);
         v1.normalize();
         if (v0 * v1 <= 0 )
         {
-            setByLookAtRaw(ip + normal * bump, _center, eyeUp);
+            setByLookAtRaw(ip + normal * eps, _center, eyeUp);
         }
     }
 

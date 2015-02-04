@@ -25,6 +25,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/Revisioning>
 #include <osgEarth/Terrain>
+#include <osgEarth/MapNode>
 #include <osg/Timer>
 #include <osgGA/CameraManipulator>
 #include <map>
@@ -738,7 +739,7 @@ namespace osgEarth { namespace Util
 
         virtual ~EarthManipulator();
         
-        bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const;
+        bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection, osg::Vec3d& normal) const;
 
         bool intersectLookVector(osg::Vec3d& eye, osg::Vec3d& out_target, osg::Vec3d& up) const;
 
@@ -889,6 +890,7 @@ namespace osgEarth { namespace Util
 
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
+        osg::observer_ptr<MapNode> _mapNode;
 #ifdef USE_OBSERVER_NODE_PATH
         osg::ObserverNodePath _csnObserverPath;
 #endif
@@ -995,6 +997,8 @@ namespace osgEarth { namespace Util
 
         // Traversal mask used in established and dtor methods to find MapNode and CoordinateSystemNode
         osg::Node::NodeMask  _findNodeTraversalMask;
+
+        void collisionDetect();
     };
 
 } } // namespace osgEarth::Util

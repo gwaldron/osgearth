@@ -71,9 +71,10 @@ struct OverlayCallback : public ImageOverlay::ImageOverlayCallback
 
 
 
-ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay, bool singleVert):
-_overlay  (overlay),
-_singleVert( singleVert )
+ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay, bool singleVert) :
+AnnotationEditor(),
+_overlay        ( overlay ),
+_singleVert     ( singleVert )
 {   
     _overlayCallback = new OverlayCallback(this);
     _overlay->addCallback( _overlayCallback.get() );

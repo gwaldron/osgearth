@@ -21,6 +21,7 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthAnnotation/ImageOverlay>
+#include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarth/Draggers>
 #include <osgEarth/MapNode>
 #include <osg/MatrixTransform>
@@ -28,7 +29,7 @@
 
 namespace osgEarth { namespace Annotation
 {
-    class OSGEARTHANNO_EXPORT ImageOverlayEditor : public osg::Group
+    class OSGEARTHANNO_EXPORT ImageOverlayEditor : public AnnotationEditor
     {
     public:
         typedef std::map< ImageOverlay::ControlPoint, osg::ref_ptr< Dragger > >  ControlPointDraggerMap;

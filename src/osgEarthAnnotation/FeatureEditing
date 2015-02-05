@@ -20,15 +20,15 @@
 #ifndef OSGEARTHANNO_FEATURE_EDITING_H
 #define OSGEARTHANNO_FEATURE_EDITING_H 1
 
-#include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarth/MapNode>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 
 #include <osgEarthAnnotation/FeatureNode>
 
-namespace osgEarth { namespace Annotation {    
-
+namespace osgEarth { namespace Annotation
+{    
     /**
      * AddPointHandler is a GUIEventHandler that allows you to append points to a Feature's Geometry
      */
@@ -74,7 +74,7 @@ namespace osgEarth { namespace Annotation {
     /**
      * Node you can add to your scene graph to edit the verts of a Feature's Geometry
      */
-    class OSGEARTHANNO_EXPORT FeatureEditor : public osg::Group
+    class OSGEARTHANNO_EXPORT FeatureEditor : public AnnotationEditor
     {
     public:
          /**

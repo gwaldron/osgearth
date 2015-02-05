@@ -406,11 +406,11 @@ void Geometry::removeDuplicates()
     if (size() > 1)
     {
         osg::Vec3d v = front();
-        for (Geometry::iterator itr = begin(); itr != end();)
+        for (Geometry::iterator itr = begin(); itr != end(); )
         {
             if (itr != begin() && v == *itr)
             {
-                erase(itr);
+                itr = erase(itr);
             }
             else
             {

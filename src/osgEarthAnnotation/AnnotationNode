@@ -117,6 +117,11 @@ namespace osgEarth { namespace Annotation
          */
         bool hasDecoration( const std::string& name ) const;
 
+        /**
+         * Text associated with this annotation; might be the name, might be actual text
+         */
+        virtual const std::string& getText() const { return this->getName(); }
+
     public: // MapNodeObserver
 
         virtual void setMapNode( MapNode* mapNode );

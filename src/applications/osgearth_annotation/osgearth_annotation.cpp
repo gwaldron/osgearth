@@ -20,6 +20,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Decluttering>
 #include <osgEarth/ECEF>
+#include <osgEarth/Registry>
 
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AnnotationEvents>
@@ -39,6 +40,7 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/HighlightDecoration>
 #include <osgEarthAnnotation/ScaleDecoration>
+#include <osgEarthUtil/ActivityMonitorTool>
 
 #include <osgEarthSymbology/GeometryFactory>
 
@@ -75,27 +77,25 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
     void onHoverEnter( AnnotationNode* anno, const EventArgs& args )
     {
         anno->setDecoration( "hover" );
-        OE_NOTICE << "Hover enter" << std::endl;
+        Registry::instance()->startActivity( "Hovering " + anno->getText() );
+        Registry::instance()->endActivity( _lastClick );
     }
 
     void onHoverLeave( AnnotationNode* anno, const EventArgs& args )
     {
         anno->clearDecoration();
-        OE_NOTICE << "Hover leave" << std::endl;
+        Registry::instance()->endActivity( "Hovering " + anno->getText() );
+        Registry::instance()->endActivity( _lastClick );
     }
 
-    virtual void onClick( AnnotationNode* node, const EventArgs& details )
-    {        
-        PlaceNode* place = dynamic_cast<PlaceNode*>(node);
-        if (place == NULL)
-        {
-            OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
-        }
-        else
-        {
-            OE_NOTICE << "Thanks for clicking the PlaceNode: " << place->getText() << std::endl;
-        }
+    virtual void onClick( AnnotationNode* anno, const EventArgs& details )
+    {
+        Registry::instance()->endActivity( _lastClick );
+        _lastClick = "Clicked " + anno->getText();
+        Registry::instance()->startActivity( _lastClick );
     }
+
+    std::string _lastClick;
 };
 
 //------------------------------------------------------------------
@@ -157,6 +157,12 @@ main(int argc, char** argv)
     labelControl->setFontSize( 24.0f );
     box->addControl( labelControl  );
 
+    // Activity monitor:
+    VBox* activityBox = ControlCanvas::getOrCreate(&viewer)->addControl( new VBox() );
+    activityBox->setHorizAlign(activityBox->ALIGN_RIGHT);
+    activityBox->setVertAlign(activityBox->ALIGN_BOTTOM);
+    activityBox->setBackColor(0,0,0,0.75);
+    viewer.addEventHandler(new ActivityMonitorTool(activityBox));
 
     // Make a group for 2D items, and activate the decluttering engine. Decluttering
     // will migitate overlap between elements that occupy the same screen real estate.

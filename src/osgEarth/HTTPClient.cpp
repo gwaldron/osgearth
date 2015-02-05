@@ -551,7 +551,7 @@ HTTPClient::readOptions(const osgDB::Options* options, std::string& proxy_host, 
     }
 }
 
-void
+bool
 HTTPClient::decodeMultipartStream(const std::string&   boundary,
                                   HTTPResponse::Part*  input,
                                   HTTPResponse::Parts& output) const
@@ -566,12 +566,12 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
     line = tempbuf;
     if ( line != bstr )
     {
-        OE_WARN << LC 
+        OE_INFO << LC 
             << "decodeMultipartStream: protocol violation; "
             << "expecting boundary; instead got: \"" 
             << line
             << "\"" << std::endl;
-        return;
+        return false;
     }
 
     for( bool done=false; !done; )
@@ -636,6 +636,8 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
             output.push_back( next_part.get() );
         }
     }
+
+    return true;
 }
 
 HTTPResponse
@@ -937,7 +939,11 @@ HTTPClient::doGet(const HTTPRequest&    request,
             OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
 
             //TODO: parse out the "wcs" -- this is WCS-specific
-            decodeMultipartStream( "wcs", part.get(), response._parts );
+            if ( !decodeMultipartStream( "wcs", part.get(), response._parts ) )
+            {
+                // error decoding an invalid multipart stream.
+                // should we do anything, or just leave the response empty?
+            }
         }
         else
         {            
@@ -1119,7 +1125,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
             osgDB::ReaderWriter::ReadResult rr = reader->readImage(response.getPartStream(0), options);
             if ( rr.validImage() )
             {
-                result = ReadResult(rr.takeImage(), response.getHeadersAsConfig() );
+                result = ReadResult(rr.takeImage());
             }
             else 
             {
@@ -1141,11 +1147,11 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
     else
     {
         result = ReadResult(
-            response.isCancelled() ? ReadResult::RESULT_CANCELED :
-            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.isCancelled()                           ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND    ? ReadResult::RESULT_NOT_FOUND :
             response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
             response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
-            ReadResult::RESULT_UNKNOWN_ERROR );
+                                                               ReadResult::RESULT_UNKNOWN_ERROR );
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
@@ -1157,6 +1163,9 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
             }
         }        
     }
+
+    // encode headers
+    result.setMetadata( response.getHeadersAsConfig() );
 
     // set the source name
     if ( result.getImage() )
@@ -1189,7 +1198,7 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
             osgDB::ReaderWriter::ReadResult rr = reader->readNode(response.getPartStream(0), options);
             if ( rr.validNode() )
             {
-                result = ReadResult(rr.takeNode(), response.getHeadersAsConfig());
+                result = ReadResult(rr.takeNode());
             }
             else 
             {
@@ -1208,11 +1217,11 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
     else
     {
         result = ReadResult(
-            response.isCancelled() ? ReadResult::RESULT_CANCELED :
-            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.isCancelled()                           ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND    ? ReadResult::RESULT_NOT_FOUND :
             response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
             response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
-            ReadResult::RESULT_UNKNOWN_ERROR );
+                                                               ReadResult::RESULT_UNKNOWN_ERROR );
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
@@ -1224,6 +1233,9 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
             }
         }
     }
+
+    // encode headers
+    result.setMetadata( response.getHeadersAsConfig() );
 
     return result;
 }
@@ -1252,7 +1264,7 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
             osgDB::ReaderWriter::ReadResult rr = reader->readObject(response.getPartStream(0), options);
             if ( rr.validObject() )
             {
-                result = ReadResult(rr.takeObject(), response.getHeadersAsConfig());
+                result = ReadResult(rr.takeObject());
             }
             else 
             {
@@ -1288,6 +1300,8 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
         }
     }
 
+    result.setMetadata( response.getHeadersAsConfig() );
+
     return result;
 }
 
@@ -1304,7 +1318,7 @@ HTTPClient::doReadString(const HTTPRequest&    request,
     HTTPResponse response = this->doGet( request, options, callback );
     if ( response.isOK() )
     {
-        result = ReadResult( new StringObject(response.getPartAsString(0)), response.getHeadersAsConfig());
+        result = ReadResult( new StringObject(response.getPartAsString(0)) );
     }
 
     else if ( response.getCode() >= 400 && response.getCode() < 500 && response.getCode() != 404 )
@@ -1313,18 +1327,17 @@ HTTPClient::doReadString(const HTTPRequest&    request,
         // so the user can parse it as needed. We only do this for readString.
         result = ReadResult( 
             ReadResult::RESULT_SERVER_ERROR,
-            new StringObject(response.getPartAsString(0)), 
-            response.getHeadersAsConfig() );
+            new StringObject(response.getPartAsString(0)) );
     }
 
     else
     {
         result = ReadResult(
-            response.isCancelled() ? ReadResult::RESULT_CANCELED :
-            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.isCancelled() ?                           ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND    ? ReadResult::RESULT_NOT_FOUND :
             response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
             response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
-            ReadResult::RESULT_UNKNOWN_ERROR );
+                                                               ReadResult::RESULT_UNKNOWN_ERROR );
 
         //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
         if (HTTPClient::isRecoverable( result.code() ) )
@@ -1336,6 +1349,9 @@ HTTPClient::doReadString(const HTTPRequest&    request,
             }
         }
     }
+
+    // encode headers
+    result.setMetadata( response.getHeadersAsConfig() );
 
     // last-modified (file time)
     result.setLastModifiedTime( getCurlFileTime(_curl_handle) );

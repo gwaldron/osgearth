@@ -87,17 +87,21 @@ namespace osgEarth
         ReadResult( Code code =RESULT_NOT_FOUND )
             : _code(code), _fromCache(false), _lmt(0) { }
 
-        /** Construct a successful result */
+        /** Construct a result with code and data */
+        ReadResult( Code code, osg::Object* result )
+            : _code(code), _result(result), _fromCache(false), _lmt(0) { }
+
+        /** Construct a result with data, possible with an error code */
+        ReadResult( Code code, osg::Object* result, const Config& meta )
+            : _code(code), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
+
+        /** Construct a successful result (implicit OK code) */
         ReadResult( osg::Object* result )
             : _code(RESULT_OK), _result(result), _fromCache(false), _lmt(0) { }
 
         /** Construct a successful result with metadata */
         ReadResult( osg::Object* result, const Config& meta )
             : _code(RESULT_OK), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
-
-        /** Construct a result with data, possible with an error code */
-        ReadResult( Code code, osg::Object* result, const Config& meta )
-            : _code(code), _result(result), _meta(meta), _fromCache(false), _lmt(0) { }
 
         /** Copy construct */
         ReadResult( const ReadResult& rhs )
@@ -166,7 +170,7 @@ namespace osgEarth
                 code == RESULT_NO_READER       ? "No suitable ReaderWriter found" :
                 code == RESULT_READER_ERROR    ? "ReaderWriter error" :
                 code == RESULT_NOT_IMPLEMENTED ? "Not implemented" :
-                "Unknown error";
+                                                 "Unknown error";
         }
 
         std::string getResultCodeString() const
@@ -180,6 +184,8 @@ namespace osgEarth
         void setLastModifiedTime(TimeStamp t) { _lmt = t; }
 
         void setDuration(double s) { _duration_s = s; }
+
+        void setMetadata(const Config& meta) { _meta = meta; }
 
     protected:
         Code                      _code;

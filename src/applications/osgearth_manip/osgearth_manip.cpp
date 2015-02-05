@@ -68,7 +68,8 @@ namespace
             "c :",                 "toggle perspective/ortho",
             "t :",                 "toggle tethering",
             "a :",                 "toggle viewpoint arcing",
-            "z :",                 "toggle throwing"
+            "z :",                 "toggle throwing",
+            "k :",                 "toggle collision"
         };
 
         Grid* g = new Grid();
@@ -253,6 +254,38 @@ namespace
         osg::ref_ptr<EarthManipulator> _manip;
     };
 
+    /**
+     * Toggles the collision feature.
+     */
+    struct ToggleCollisionHandler : public osgGA::GUIEventHandler
+    {
+        ToggleCollisionHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip)
+        {
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                bool collision = _manip->getSettings()->getDisableCollisionAvoidance();
+                _manip->getSettings()->setDisableCollisionAvoidance( !collision );
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle collision avoidance"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
+
 
     /**
      * A simple simulator that moves an object around the Earth. We use this to
@@ -381,6 +414,9 @@ int main(int argc, char** argv)
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 
+   // Set the minimum distance to something larger than the default
+    manip->getSettings()->setMinMaxDistance(5.0, manip->getSettings()->getMaxDistance());
+
 
     viewer.setSceneData( root );
 
@@ -396,6 +432,10 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
     viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
     viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
+    viewer.addEventHandler(new ToggleCollisionHandler('k', manip));
+
+    viewer.getCamera()->setNearFarRatio(0.00002);
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     while(!viewer.done())
     {

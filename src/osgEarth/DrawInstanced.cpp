@@ -261,14 +261,11 @@ DrawInstanced::install(osg::StateSet* stateset)
     if ( !stateset )
         return;
 
-    osgEarth::Shaders pkg;
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-
-    vp->setFunction(
-        "oe_di_setInstancePosition",
-        ShaderLoader::loadSource(pkg.InstancingVertex, pkg),
-        ShaderComp::LOCATION_VERTEX_MODEL );
+    
+    osgEarth::Shaders pkg;
+    pkg.loadFunction( vp, pkg.InstancingVertex );
 
     stateset->getOrCreateUniform("oe_di_postex", osg::Uniform::SAMPLER_2D)->set(POSTEX_TEXTURE_UNIT);
 }
@@ -284,7 +281,8 @@ DrawInstanced::remove(osg::StateSet* stateset)
     if ( !vp )
         return;
 
-    vp->removeShader( "oe_di_setInstancePosition" );
+    Shaders pkg;
+    pkg.unloadFunction( vp, pkg.InstancingVertex );
 
     stateset->removeUniform("oe_di_postex");
     stateset->removeUniform("oe_di_postex_size");

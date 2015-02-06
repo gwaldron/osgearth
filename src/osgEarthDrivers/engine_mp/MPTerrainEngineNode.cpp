@@ -32,7 +32,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Progress>
-#include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
 
 #include <osg/TexEnv>
@@ -867,7 +867,7 @@ MPTerrainEngineNode::updateState()
             vp->addBindAttribLocation( "oe_terrain_attr2", osg::Drawable::ATTRIBUTE_7 );
 
             // Vertex shader:
-            std::string vs = ShaderLoader::loadSource(
+            std::string vs = ShaderLoader::load(
                 Shaders::MPVertFile,
                 Shaders::MPVertSource );
 
@@ -877,7 +877,7 @@ MPTerrainEngineNode::updateState()
             vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
 
             // Fragment shader:
-            std::string fs = ShaderLoader::loadSource(
+            std::string fs = ShaderLoader::load(
                 Shaders::MPFragFile,
                 Shaders::MPFragSource );
             

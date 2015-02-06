@@ -87,16 +87,16 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             vp->setFunction(
                 "oe_bumpmap_vertexModel",   
-                ShaderLoader::loadSource(shaders.VertexModel, shaders),
+                ShaderLoader::load(shaders.VertexModel, shaders),
                 ShaderComp::LOCATION_VERTEX_MODEL );
 
             vp->setFunction(
                 "oe_bumpmap_vertexView",
-                ShaderLoader::loadSource(shaders.VertexView, shaders),
+                ShaderLoader::load(shaders.VertexView, shaders),
                 ShaderComp::LOCATION_VERTEX_VIEW );
 
             std::string fragShader = _octaves <= 1 ? shaders.FragmentSimple : shaders.FragmentProgressive;
-            std::string fragSource = ShaderLoader::loadSource(fragShader, shaders);
+            std::string fragSource = ShaderLoader::load(fragShader, shaders);
 
             if ( engine->normalTexturesRequired() )
             {

@@ -11,9 +11,15 @@ namespace osgEarth
         _sources[GPUClampingVertex] = OE_MULTILINE(@GPUClamping.vert.glsl@);
         GPUClampingFragment = "GPUClamping.frag.glsl";
         _sources[GPUClampingFragment] = OE_MULTILINE(@GPUClamping.frag.glsl@);
+        GPUClampingVertexLib = "GPUClamping.vert.lib.glsl";
+        _sources[GPUClampingVertexLib] = OE_MULTILINE(@GPUClamping.vert.lib.glsl@);
 
         // DrawInstanced
         InstancingVertex = "Instancing.vert.glsl";
         _sources[InstancingVertex] = OE_MULTILINE(@Instancing.vert.glsl@);
+
+        // Depth Offset
+        DepthOffsetVertex = "DepthOffset.vert.glsl";
+       _sources[DepthOffsetVertex] = OE_MULTILINE(@DepthOffset.vert.glsl@);
     }
 };

@@ -303,7 +303,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // uniform for the horizon distance (== max clamping distance)
     local->_horizonDistanceUniform = local->_groupStateSet->getOrCreateUniform(
-        "oe_clamp_horizonDistance",
+        "oe_clamp_horizonDistance2",
         osg::Uniform::FLOAT );
 
     // sampler for depth map texture:
@@ -342,16 +342,8 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     vp->setName( "GPUClamping" );
 
     osgEarth::Shaders pkg;
-
-    vp->setFunction(
-        "oe_clamp_vertex",
-        ShaderLoader::loadSource(pkg.GPUClampingVertex, pkg),
-        ShaderComp::LOCATION_VERTEX_VIEW);
-
-    vp->setFunction(
-        "oe_clamp_fragment",
-        ShaderLoader::loadSource(pkg.GPUClampingFragment, pkg),
-        ShaderComp::LOCATION_FRAGMENT_COLORING);
+    pkg.loadFunction(vp, pkg.GPUClampingVertex);
+    pkg.loadFunction(vp, pkg.GPUClampingFragment);
 }
 
 
@@ -437,7 +429,8 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             depthViewToDepthClip;
         local._camViewToDepthClipUniform->set( cameraViewToDepthClip );
 
-        local._horizonDistanceUniform->set( float(*params._horizonDistance) );
+        float hd = (float)(*params._horizonDistance);
+        local._horizonDistanceUniform->set( hd*hd );
 
         //OE_NOTICE << "HD = " << std::setprecision(8) << float(*params._horizonDistance) << std::endl;
 

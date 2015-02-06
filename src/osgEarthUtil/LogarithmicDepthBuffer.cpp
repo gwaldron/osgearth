@@ -132,42 +132,20 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
     {
         // install the shader component:
         osg::StateSet* stateset = camera->getOrCreateStateSet();
+
+        stateset->addUniform( new osg::Uniform("oe_ldb_C", (float)NEAR_RES_COEFF) );
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
+        Shaders pkg;
 
         if ( _useFragDepth )
         {
-            std::string vert = ShaderLoader::loadSource(
-                Shaders::LogDepthBuffer_VertFile,
-                Shaders::LogDepthBuffer_VertSource);
-
-            osgEarth::replaceIn(vert, "$NEAR_RES_COEFF_STR", NEAR_RES_COEFF_STR );
-
-            vp->setFunction( 
-                "oe_ldb_vert",
-                vert,
-                ShaderComp::LOCATION_VERTEX_CLIP,
-                FLT_MAX );        
-
-            vp->setFunction(
-                "oe_ldb_frag",
-                ShaderLoader::loadSource(Shaders::LogDepthBuffer_FragFile, Shaders::LogDepthBuffer_FragSource),
-                ShaderComp::LOCATION_FRAGMENT_LIGHTING,
-                FLT_MAX );        
+            pkg.loadFunction( vp, pkg.LogDepthBuffer_VertFile );
+            pkg.loadFunction( vp, pkg.LogDepthBuffer_FragFile );
         }
         else
         {
-            std::string vert = ShaderLoader::loadSource(
-                Shaders::LogDepthBuffer_VertOnly_VertFile,
-                Shaders::LogDepthBuffer_VertOnly_VertSource);
-
-            osgEarth::replaceIn(vert, "$NEAR_RES_COEFF_STR", NEAR_RES_COEFF_STR );
-
-            vp->setFunction(
-                "oe_ldb_vert", 
-                vert,
-                ShaderComp::LOCATION_VERTEX_CLIP,
-                FLT_MAX );  
+            pkg.loadFunction( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
         }
 
         // configure the camera:
@@ -194,11 +172,14 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
             VirtualProgram* vp = VirtualProgram::get( camera->getStateSet() );
             if ( vp )
             {
-                vp->removeShader( "oe_ldb_vert" );
-                vp->removeShader( "oe_ldb_frag" );
+                Shaders pkg;
+                pkg.unloadFunction( vp, pkg.LogDepthBuffer_FragFile );
+                pkg.unloadFunction( vp, pkg.LogDepthBuffer_VertFile );
+                pkg.unloadFunction( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
             }
 
-            stateset->removeUniform( "oe_ldb_far" );
+            stateset->removeUniform( "oe_ldb_FC" );
+            stateset->removeUniform( "oe_ldb_C" );
         }
     }
 }

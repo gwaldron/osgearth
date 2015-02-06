@@ -20,19 +20,15 @@
 #ifndef OSGEARTH_BUMPMAP_SHADERS
 #define OSGEARTH_BUMPMAP_SHADERS 1
 
-#include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderLoader>
 
 namespace osgEarth { namespace BumpMap
 {
     struct Shaders : public osgEarth::ShaderPackage
 	{
         Shaders();
-        std::string
-            VertexModel,
-            VertexView,
-            FragmentSimple,
-            FragmentProgressive,
-            FragmentCommon;
+        std::string VertexModel, VertexView;
+        std::string FragmentSimple, FragmentProgressive, FragmentCommon;
 	};
 	
 } } // namespace osgEarth/BumpMap

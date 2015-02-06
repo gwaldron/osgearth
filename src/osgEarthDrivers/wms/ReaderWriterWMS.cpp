@@ -268,7 +268,7 @@ public:
 
         if ( getProfile() )
         {
-            OE_NOTICE << "[osgEarth::WMS] Profile=" << getProfile()->toString() << std::endl;
+            OE_INFO << "[osgEarth::WMS] Profile=" << getProfile()->toString() << std::endl;
 
             // set up the cache options properly for a TileSource.
             _dbOptions = Registry::instance()->cloneOrCreateOptions( dbOptions );            

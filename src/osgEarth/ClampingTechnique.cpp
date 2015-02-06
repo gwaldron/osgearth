@@ -337,6 +337,9 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
 #endif
 
+    // default value for altitude offset; can be overriden by geometry.
+    local->_groupStateSet->addUniform( new osg::Uniform("oe_clamp_altitudeOffset", 0.0f) );
+
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = VirtualProgram::getOrCreate(local->_groupStateSet.get());
     vp->setName( "GPUClamping" );
@@ -389,16 +392,6 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         params._rttCamera->setProjectionMatrix( params._rttProjMatrix );
 
         LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
-
-#if 0
-        osg::Vec3d eye, lookat, up;
-        params._rttViewMatrix.getLookAt(eye, lookat, up);
-        OE_WARN << "rtt eye=" << eye.x() << ", " << eye.y() << ", " << eye.z() << std::endl;
-
-        double left, right, bottom, top, n, f;
-        params._rttProjMatrix.getOrtho(left, right, bottom, top, n, f);
-        OE_WARN << "rtt prj=" << left << ", " << right << ", " << bottom << ", " << top << ", " << n << ", " << f << std::endl << std::endl;
-#endif
 
         // create the depth texture (render the terrain to tex)
         params._rttCamera->accept( *cv );

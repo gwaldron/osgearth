@@ -6,6 +6,12 @@ using namespace osgEarth::Util;
 
 Shaders::Shaders()
 {
+    ContourMap_Vertex = "ContourMap.vert.glsl";
+    _sources[ContourMap_Vertex] = OE_MULTILINE(@ContourMap.vert.glsl@);
+
+    ContourMap_Fragment = "ContourMap.frag.glsl";
+    _sources[ContourMap_Fragment] = OE_MULTILINE(@ContourMap.frag.glsl@);
+
     Fog_Vertex = "Fog.vert.glsl";
     _sources[Fog_Vertex] == OE_MULTILINE(@Fog.vert.glsl@);
 

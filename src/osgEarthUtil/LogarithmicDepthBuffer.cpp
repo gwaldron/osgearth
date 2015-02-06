@@ -130,6 +130,8 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
 {
     if ( camera && _supported )
     {
+        OE_NOTICE <<" Installing LDB......\n";
+
         // install the shader component:
         osg::StateSet* stateset = camera->getOrCreateStateSet();
 

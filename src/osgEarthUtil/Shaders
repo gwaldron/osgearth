@@ -29,6 +29,9 @@ namespace osgEarth { namespace Util
         Shaders();
 
 		std::string
+            ContourMap_Vertex,
+            ContourMap_Fragment,
+
             Fog_Vertex,
             Fog_Fragment,
 

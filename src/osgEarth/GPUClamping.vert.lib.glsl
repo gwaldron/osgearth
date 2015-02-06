@@ -28,3 +28,9 @@ void oe_getClampedViewVertex(in  vec4  vertView,
     // convert back into view space.
     out_clampedVertView = oe_clamp_depthClip2cameraView * clampedVertDepthClip;
 }
+
+// Returns a vector indiciating the "down" direction.
+void oe_getClampingUpVector(out vec3 up)
+{
+    up = normalize(mat3(oe_clamp_depthClip2cameraView) * vec3(0,0,-1));
+}

@@ -6,6 +6,13 @@ using namespace osgEarth::Util;
 
 Shaders::Shaders()
 {
+    Fog_Vertex = "Fog.vert.glsl";
+    _sources[Fog_Vertex] == OE_MULTILINE(@Fog.vert.glsl@);
+
+    Fog_Fragment = "Fog.frag.glsl";
+    _sources[Fog_Fragment] = OE_MULTILINE(@Fog.frag.glsl@);
+
+
     LogDepthBuffer_VertFile = "LogDepthBuffer.vert.glsl";
     _sources[LogDepthBuffer_VertFile] = OE_MULTILINE(@LogDepthBuffer.vert.glsl@);
 

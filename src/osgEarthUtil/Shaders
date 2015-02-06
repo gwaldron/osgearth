@@ -29,6 +29,9 @@ namespace osgEarth { namespace Util
         Shaders();
 
 		std::string
+            Fog_Vertex,
+            Fog_Fragment,
+
             LogDepthBuffer_VertFile,
             LogDepthBuffer_FragFile,
             LogDepthBuffer_VertOnly_VertFile;

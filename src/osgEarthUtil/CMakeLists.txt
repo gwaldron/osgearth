@@ -71,6 +71,8 @@ set(SHADERS_CPP
     "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
 set(TARGET_GLSL
+    Fog.vert.glsl
+    Fog.frag.glsl
     LogDepthBuffer.vert.glsl
     LogDepthBuffer.VertOnly.vert.glsl    
     LogDepthBuffer.frag.glsl )

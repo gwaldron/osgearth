@@ -1,5 +1,9 @@
 #version 110
 
+#pragma vp_entryPoint "oe_bumpmap_fragment"
+#pragma vp_location   "fragment_lighting"
+#pragma vp_order      "-1.0"
+
 #pragma include "BumpMap.frag.common.glsl"
 
 uniform sampler2D oe_bumpmap_tex;

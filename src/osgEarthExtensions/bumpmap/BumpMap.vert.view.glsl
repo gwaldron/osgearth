@@ -1,5 +1,8 @@
 #version 110
 
+#pragma vp_entryPoint "oe_bumpmap_vertexView"
+#pragma vp_location   "vertex_view"
+
 varying float oe_bumpmap_range;
 
 void oe_bumpmap_vertexView(inout vec4 vertexView)

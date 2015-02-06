@@ -1,5 +1,8 @@
 #version 110
 
+#pragma vp_entryPoint "oe_bumpmap_vertexModel"
+#pragma vp_location   "vertex_model"
+
 uniform vec4 oe_tile_key;
 uniform float oe_bumpmap_scale;
 

@@ -1,8 +1,8 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma oe_entryPoint "oe_ldb_vert"
-#pragma oe_location   "vertex_clip"
+#pragma vp_entryPoint "oe_ldb_vert"
+#pragma vp_location   "vertex_clip"
 #pragma oe_order      "FLT_MAX"
 
 uniform float oe_ldb_C;

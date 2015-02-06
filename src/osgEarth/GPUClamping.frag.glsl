@@ -1,6 +1,6 @@
 #version 110
-#pragma oe_entryPoint "oe_clamp_fragment"
-#pragma oe_location   "fragment_coloring"
+#pragma vp_entryPoint "oe_clamp_fragment"
+#pragma vp_location   "fragment_coloring"
 
 varying float oe_clamp_alpha;
 

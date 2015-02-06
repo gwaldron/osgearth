@@ -1,6 +1,9 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
+#pragma vp_entryPoint "atmos_vertex_main"
+#pragma vp_location   "vertex_view"
+
 uniform bool oe_mode_GL_LIGHTING; 
 
 uniform mat4 osg_ViewMatrixInverse;   // world camera position in [3].xyz 

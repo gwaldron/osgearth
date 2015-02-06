@@ -20,6 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Shaders>
 
 #include <osg/BlendFunc>
 #include <osg/TexGen>
@@ -468,34 +469,10 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     local->_texGenUniform = params._terrainStateSet->getOrCreateUniform(
         "oe_overlay_texmatrix", osg::Uniform::FLOAT_MAT4 );
 
-    // vertex shader - subgraph
-    std::string vs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform mat4 oe_overlay_texmatrix; \n"
-        "varying vec4 oe_overlay_texcoord; \n"
-
-        "void oe_overlay_vertex(inout vec4 VertexVIEW) \n"
-        "{ \n"
-        "    oe_overlay_texcoord = oe_overlay_texmatrix * VertexVIEW; \n"
-        "} \n";
-
-    terrain_vp->setFunction( "oe_overlay_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
-
-    // fragment shader - subgraph
-    std::string fs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform sampler2D oe_overlay_tex; \n"
-        "varying vec4      oe_overlay_texcoord; \n"
-
-        "void oe_overlay_fragment( inout vec4 color ) \n"
-        "{ \n"
-        "    vec4 texel = texture2DProj(oe_overlay_tex, oe_overlay_texcoord); \n"
-        "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
-        "} \n";
-
-    terrain_vp->setFunction( "oe_overlay_fragment", fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
+    // shaders
+    Shaders pkg;
+    pkg.loadFunction( terrain_vp, pkg.DrapingVertex );
+    pkg.loadFunction( terrain_vp, pkg.DrapingFragment );
 }
 
 

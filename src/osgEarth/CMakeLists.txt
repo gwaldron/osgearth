@@ -20,7 +20,10 @@ ENDIF(WIN32)
 SET(LIB_NAME osgEarth)
 
 set(TARGET_GLSL
+    AlphaEffect.frag.glsl
     DepthOffset.vert.glsl
+    Draping.vert.glsl
+    Draping.frag.glsl
     GPUClamping.vert.glsl
     GPUClamping.vert.lib.glsl
     GPUClamping.frag.glsl

@@ -1,7 +1,7 @@
 #version 110
 
-#pragma oe_entryPoint "oe_clamp_vertex"
-#pragma oe_location   "vertex_view"
+#pragma vp_entryPoint "oe_clamp_vertex"
+#pragma vp_location   "vertex_view"
 
 #pragma include "GPUClamping.vert.lib.glsl"
 

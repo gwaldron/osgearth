@@ -1,6 +1,9 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
+#pragma vp_entryPoint "atmos_fragment_main"
+#pragma vp_location   "fragment_coloring"
+
 uniform vec3 atmos_v3LightDir; 
 
 uniform float atmos_g; 				

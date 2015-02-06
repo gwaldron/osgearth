@@ -1,6 +1,9 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
+#pragma vp_entryPoint "atmos_fragment_main"
+#pragma vp_location   "fragment_lighting"
+
 uniform bool oe_mode_GL_LIGHTING; 
 uniform float atmos_exposure;   // scene exposure (ground level)
 varying vec3 atmos_lightDir;    // light direction (view coords)

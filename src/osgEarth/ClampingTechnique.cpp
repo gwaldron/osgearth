@@ -277,6 +277,12 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     rttStateSet->setAttributeAndModes(
         new osg::PolygonMode( osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::FILL ),
         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+    // install a VP on the stateset that cancels out any higher-up VP code.
+    // This will prevent things like VPs on the main camera (e.g., log depth buffer)
+    // from interfering with the depth camera
+    VirtualProgram* rttVP = VirtualProgram::getOrCreate(rttStateSet);
+    rttVP->setInheritShaders(false);
     
     // attach the terrain to the camera.
     // todo: should probably protect this with a mutex.....

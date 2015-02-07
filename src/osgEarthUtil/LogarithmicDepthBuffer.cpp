@@ -35,6 +35,9 @@
 #define NEAR_RES_COEFF_STR "0.0005"
 #define LOG2(X) (::log((double)(X))/::log(2.0))
 
+#define C_UNIFORM  "oe_logDepth_C"
+#define FC_UNIFORM "oe_logDepth_FC"
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -72,7 +75,7 @@ namespace
                 }
 
                 // the uniform conveying the far clip plane:
-                osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_FC", osg::Uniform::FLOAT);
+                osg::Uniform* u = stateset->getOrCreateUniform(FC_UNIFORM, osg::Uniform::FLOAT);
 
                 // calculate the far plane based on the camera location:
                 osg::Vec3d E, A, U;
@@ -130,12 +133,10 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
 {
     if ( camera && _supported )
     {
-        OE_NOTICE <<" Installing LDB......\n";
-
         // install the shader component:
         osg::StateSet* stateset = camera->getOrCreateStateSet();
 
-        stateset->addUniform( new osg::Uniform("oe_ldb_C", (float)NEAR_RES_COEFF) );
+        stateset->addUniform( new osg::Uniform(C_UNIFORM, (float)NEAR_RES_COEFF) );
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
         Shaders pkg;
@@ -180,8 +181,8 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
                 pkg.unloadFunction( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
             }
 
-            stateset->removeUniform( "oe_ldb_FC" );
-            stateset->removeUniform( "oe_ldb_C" );
+            stateset->removeUniform( FC_UNIFORM );
+            stateset->removeUniform( C_UNIFORM );
         }
     }
 }

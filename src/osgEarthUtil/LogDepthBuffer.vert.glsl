@@ -1,16 +1,16 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint "oe_ldb_vert"
+#pragma vp_entryPoint "oe_logDepth_vert"
 #pragma vp_location   "vertex_clip"
 #pragma vp_order      "FLT_MAX"
 
-uniform float oe_ldb_C;
-uniform float oe_ldb_FC;
-varying float oe_ldb_logz;
+uniform float oe_logDepth_C;
+uniform float oe_logDepth_FC;
+varying float oe_logDepth_logz;
 
-void oe_ldb_vert(inout vec4 clip)
+void oe_logDepth_vert(inout vec4 clip)
 {
-    oe_ldb_logz = max(1e-6, clip.w*oe_ldb_C + 1.0);
-    clip.z = log2(oe_ldb_logz)*oe_ldb_FC - 1.0;
+    oe_logDepth_logz = max(1e-6, clip.w*oe_logDepth_C + 1.0);
+    clip.z = log2(oe_logDepth_logz)*oe_logDepth_FC - 1.0;
 }

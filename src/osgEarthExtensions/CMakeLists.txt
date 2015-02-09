@@ -26,4 +26,5 @@ add_subdirectory(normalmap)
 add_subdirectory(splat)
 add_subdirectory(viewpoints)
 add_subdirectory(billboard)
+add_subdirectory(terrainshader)
 

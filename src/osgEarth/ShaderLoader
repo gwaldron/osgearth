@@ -52,6 +52,8 @@ namespace osgEarth
     public:
         typedef std::map<std::string, std::string> SourceMap;
         const SourceMap& context() const { return _sources; }
+        void add(const std::string& filename, const std::string& inlineSource) {
+            _sources[filename] = inlineSource; }
 
     protected:        
         SourceMap _sources;

@@ -91,7 +91,7 @@ namespace
         osg::ref_ptr<osg::Uniform>   _depthClipToDepthViewUniform;
         osg::ref_ptr<osg::Uniform>   _depthViewToCamViewUniform;
 
-        osg::ref_ptr<osg::Uniform>   _horizonDistanceUniform;
+        osg::ref_ptr<osg::Uniform>   _horizonDistance2Uniform;
 
         unsigned _renderLeafCount;
 
@@ -308,7 +308,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     local->_groupStateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 
     // uniform for the horizon distance (== max clamping distance)
-    local->_horizonDistanceUniform = local->_groupStateSet->getOrCreateUniform(
+    local->_horizonDistance2Uniform = local->_groupStateSet->getOrCreateUniform(
         "oe_clamp_horizonDistance2",
         osg::Uniform::FLOAT );
 
@@ -429,7 +429,7 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         local._camViewToDepthClipUniform->set( cameraViewToDepthClip );
 
         float hd = (float)(*params._horizonDistance);
-        local._horizonDistanceUniform->set( hd*hd );
+        local._horizonDistance2Uniform->set( hd*hd );
 
         //OE_NOTICE << "HD = " << std::setprecision(8) << float(*params._horizonDistance) << std::endl;
 

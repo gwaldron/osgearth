@@ -32,28 +32,23 @@ namespace
     class GLSLEffect : public TerrainEffect
     {
     public:
-        GLSLEffect(const std::string& vs, const std::string& fs)
-            : _vs(vs), _fs(fs)
+        GLSLEffect(const std::vector<std::string>& code) : _code(code)
         {
-            if ( !_vs.empty() )
-                _package.add( "$vs", _vs );
-            if ( !_fs.empty() )
-                _package.add( "$fs", _fs );     
+            for(unsigned i=0; i<code.size(); ++i)
+            {
+                _package.add( "$code."+i, code[i] );
+            }
         }
 
         void onInstall(TerrainEngineNode* engine)
-        {       
-
-            if ( !_vs.empty() )
+        {
+            for(unsigned i=0; i<_code.size(); ++i)
             {
-                VirtualProgram* vp = VirtualProgram::getOrCreate(engine->getOrCreateStateSet());
-                ShaderLoader::loadFunction(vp, "$vs", _package);
-            }
-
-            if ( !_fs.empty() )
-            {
-                VirtualProgram* vp = VirtualProgram::getOrCreate(engine->getOrCreateStateSet());
-                ShaderLoader::loadFunction(vp, "$fs", _package);
+                if ( !_code[i].empty() )
+                {
+                    VirtualProgram* vp = VirtualProgram::getOrCreate(engine->getOrCreateStateSet());
+                    ShaderLoader::loadFunction(vp, "$code."+i, _package);
+                }
             }
         }
 
@@ -64,17 +59,19 @@ namespace
                 VirtualProgram* vp = VirtualProgram::get(engine->getStateSet());
                 if ( vp )
                 {
-                    if ( !_vs.empty() )
-                        ShaderLoader::unloadFunction( vp, "$vs", _package );
-
-                    if ( !_fs.empty() )
-                        ShaderLoader::unloadFunction( vp, "$fs", _package );
+                    for(unsigned i=0; i<_code.size(); ++i)
+                    {
+                        if ( !_code[i].empty() )
+                        {
+                            ShaderLoader::unloadFunction(vp, "$code."+i, _package);
+                        }
+                    }
                 }
             }
         }
 
-        std::string _vs, _fs;
-        ShaderPackage _package;
+        std::vector<std::string> _code;
+        ShaderPackage            _package;
     };
 }
 
@@ -109,7 +106,7 @@ TerrainShaderExtension::connect(MapNode* mapNode)
         OE_WARN << LC << "Illegal: MapNode cannot be null." << std::endl;
         return false;
     }
-    _effect = new GLSLEffect( _options.vertex().get(), _options.fragment().get() );
+    _effect = new GLSLEffect( _options.code() );
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     
     OE_INFO << LC << "Installed.\n";

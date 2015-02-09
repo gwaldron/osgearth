@@ -19,8 +19,8 @@
 #ifndef OSGEARTH_EXT_TERRAIN_SHADER_OPTIONS
 #define OSGEARTH_EXT_TERRAIN_SHADER_OPTIONS 1
 
-#include <osgEarth/Common>
-#include <osgEarth/URI>
+#include <osgEarth/Config>
+#include <vector>
 
 namespace osgEarth { namespace TerrainShader
 {
@@ -32,11 +32,8 @@ namespace osgEarth { namespace TerrainShader
     class TerrainShaderOptions : public DriverConfigOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& vertex() { return _vertex; }
-        const optional<std::string>& vertex() const { return _vertex; }
-
-        optional<std::string>& fragment() { return _fragment; }
-        const optional<std::string>& fragment() const { return _fragment; }
+        std::vector<std::string>& code() { return _code; }
+        const std::vector<std::string>& code() const { return _code; }
 
     public:
         TerrainShaderOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
@@ -50,8 +47,9 @@ namespace osgEarth { namespace TerrainShader
     public:
         Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
-            conf.updateIfSet("vertex", _vertex);
-            conf.updateIfSet("fragment", _fragment);
+            for(unsigned i=0; i<_code.size(); ++i) {
+                conf.add("code", _code[i]);
+            }
             return conf;
         }
 
@@ -63,12 +61,13 @@ namespace osgEarth { namespace TerrainShader
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("vertex", _vertex);
-            conf.getIfSet("fragment", _fragment);
+            ConfigSet s = conf.children("code");
+            for(ConfigSet::const_iterator i = s.begin(); i != s.end(); ++i) {
+                _code.push_back( i->value() );
+            }
         }
 
-        optional<std::string> _vertex;
-        optional<std::string> _fragment;
+        std::vector<std::string> _code;
     };
 
 } } // namespace osgEarth::TerrainShader

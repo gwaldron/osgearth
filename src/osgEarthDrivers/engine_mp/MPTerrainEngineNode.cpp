@@ -867,19 +867,24 @@ MPTerrainEngineNode::updateState()
             vp->addBindAttribLocation( "oe_terrain_attr2", osg::Drawable::ATTRIBUTE_7 );
 
             // Vertex shader:
-            std::string vs = ShaderLoader::load(
-                Shaders::MPVertFile,
-                Shaders::MPVertSource );
+            std::string vs_model = ShaderLoader::load(
+                Shaders::MPVertModel,
+                Shaders::MPVertModelSource );
 
-            osgEarth::replaceIn( vs, "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
-            osgEarth::replaceIn( vs, "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
+            osgEarth::replaceIn( vs_model, "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
+            osgEarth::replaceIn( vs_model, "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
             
-            //vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
-            vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_VIEW, 0.0 );
+            vp->setFunction( "oe_mp_vertModel", vs_model, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
+
+            std::string vs_view = ShaderLoader::load(
+                Shaders::MPVertView,
+                Shaders::MPVertViewSource);
+
+            vp->setFunction( "oe_mp_vertView", vs_view, ShaderComp::LOCATION_VERTEX_VIEW, 0.0 );
 
             // Fragment shader:
             std::string fs = ShaderLoader::load(
-                Shaders::MPFragFile,
+                Shaders::MPFrag,
                 Shaders::MPFragSource );
             
             bool useTerrainColor = _terrainOptions.color().isSet();

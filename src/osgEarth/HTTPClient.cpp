@@ -741,7 +741,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     {       
         proxy_host = proxySettings.get().hostName();
         proxy_port = toString<int>(proxySettings.get().port());
-        OE_DEBUG << "Read proxy settings from options " << proxy_host << " " << proxy_port << std::endl;
+        OE_DEBUG << LC << "Read proxy settings from options " << proxy_host << " " << proxy_port << std::endl;
     }
 
     //Try to get the proxy settings from the environment variable
@@ -774,7 +774,9 @@ HTTPClient::doGet(const HTTPRequest&    request,
         proxy_addr = bufStr;
     
         if ( s_HTTP_DEBUG )
+        {
             OE_NOTICE << LC << "Using proxy: " << proxy_addr << std::endl;
+        }
 
         //curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
@@ -783,14 +785,16 @@ HTTPClient::doGet(const HTTPRequest&    request,
         if (!proxy_auth.empty())
         {
             if ( s_HTTP_DEBUG )
+            {
                 OE_NOTICE << LC << "Using proxy authentication " << proxy_auth << std::endl;
+            }
 
             curl_easy_setopt( _curl_handle, CURLOPT_PROXYUSERPWD, proxy_auth.c_str());
         }
     }
     else
     {
-        OE_DEBUG << "Removing proxy settings" << std::endl;
+        OE_DEBUG << LC << "Removing proxy settings" << std::endl;
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, 0 );
     }
 
@@ -801,7 +805,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     {
         std::string oldURL = url;
         url = rewriter->rewrite( oldURL );
-        OE_INFO << "Rewrote URL " << oldURL << " to " << url << std::endl;
+        OE_INFO << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
     }
 
     const osgDB::AuthenticationDetails* details = authenticationMap ?
@@ -1090,11 +1094,16 @@ namespace
             }
         }
 
-        if ( !reader )
+        if ( !reader && s_HTTP_DEBUG )
         {
             OE_WARN << LC << "Cannot find an OSG plugin to read response data (ext="
                 << ext << "; mime-type=" << response.getMimeType()
                 << ")" << std::endl;
+
+            if ( endsWith(response.getMimeType(), "xml", false) )
+            {
+                OE_WARN << LC << "Content:\n" << response.getPartAsString(0) << "\n";
+            }
         }
 
         return reader;
@@ -1129,12 +1138,15 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
             }
             else 
             {
-                if ( !rr.message().empty() )
+                if ( s_HTTP_DEBUG )
                 {
-                    OE_WARN << LC << "HTTP error: " << rr.message() << std::endl;
+                    OE_WARN << LC << reader->className() 
+                        << " failed to read image from " << request.getURL() 
+                        << "; message = " << rr.message()
+                        <<  std::endl;
                 }
-                OE_WARN << LC << reader->className() << " failed to read image from " << request.getURL() << std::endl;
                 result = ReadResult(ReadResult::RESULT_READER_ERROR);
+                result.setErrorDetail( rr.message() );
             }
         }
         
@@ -1158,7 +1170,10 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
         {            
             if (callback)
             {
-                OE_DEBUG << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                if ( s_HTTP_DEBUG )
+                {
+                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                }
                 callback->setNeedsRetry( true );
             }
         }        
@@ -1202,12 +1217,15 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
             }
             else 
             {
-                if ( !rr.message().empty() )
+                if ( s_HTTP_DEBUG )
                 {
-                    OE_WARN << LC << "HTTP error: " << rr.message() << std::endl;
+                    OE_WARN << LC << reader->className() 
+                        << " failed to read node from " << request.getURL() 
+                        << "; message = " << rr.message()
+                        <<  std::endl;
                 }
-                OE_WARN << LC << reader->className() << " failed to read node from " << request.getURL() << std::endl;
                 result = ReadResult(ReadResult::RESULT_READER_ERROR);
+                result.setErrorDetail( rr.message() );
             }
         }
         
@@ -1228,7 +1246,10 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
         {
             if (callback)
             {
-                OE_DEBUG << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                if ( s_HTTP_DEBUG )
+                {
+                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                }
                 callback->setNeedsRetry( true );
             }
         }
@@ -1268,12 +1289,15 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
             }
             else 
             {
-                if ( !rr.message().empty() )
+                if ( s_HTTP_DEBUG )
                 {
-                    OE_WARN << LC << "HTTP error: " << rr.message() << std::endl;
+                    OE_WARN << LC << reader->className() 
+                        << " failed to read object from " << request.getURL() 
+                        << "; message = " << rr.message()
+                        <<  std::endl;
                 }
-                OE_WARN << LC << reader->className() << " failed to read object from " << request.getURL() << std::endl;
                 result = ReadResult(ReadResult::RESULT_READER_ERROR);
+                result.setErrorDetail( rr.message() );
             }
         }
         
@@ -1294,7 +1318,10 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
         {
             if (callback)
             {
-                OE_DEBUG << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                if ( s_HTTP_DEBUG )
+                {
+                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                }
                 callback->setNeedsRetry( true );
             }
         }
@@ -1344,7 +1371,10 @@ HTTPClient::doReadString(const HTTPRequest&    request,
         {            
             if (callback)
             {
-                OE_DEBUG << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                if ( s_HTTP_DEBUG )
+                {
+                    OE_NOTICE << LC << "Error in HTTPClient for " << request.getURL() << " but it's recoverable" << std::endl;
+                }
                 callback->setNeedsRetry( true );
             }
         }

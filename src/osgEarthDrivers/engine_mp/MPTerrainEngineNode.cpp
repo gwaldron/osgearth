@@ -874,7 +874,8 @@ MPTerrainEngineNode::updateState()
             osgEarth::replaceIn( vs, "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
             osgEarth::replaceIn( vs, "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
             
-            vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
+            //vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
+            vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_VIEW, 0.0 );
 
             // Fragment shader:
             std::string fs = ShaderLoader::load(
@@ -997,6 +998,10 @@ MPTerrainEngineNode::updateState()
             // need to know which is the first layer in order to blend properly
             terrainStateSet->getOrCreateUniform(
                 "oe_layer_order", osg::Uniform::INT )->set( 0 );
+
+            // default min/max range uniforms.
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", FLT_MAX) );
 
             // base terrain color.
             if ( useTerrainColor )

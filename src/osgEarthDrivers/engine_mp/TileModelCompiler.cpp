@@ -1876,7 +1876,9 @@ namespace
             layer._opaque =
                 (r->_layer.getMapLayer()->getColorFilters().size() == 0 ) &&
                 (layer._tex.valid() && !r->_layer.hasAlpha()) &&
-                (!layer._texParent.valid() || !r->_layerParent.hasAlpha());
+                (!layer._texParent.valid() || !r->_layerParent.hasAlpha()) &&
+                (layer._imageLayer.valid() && layer._imageLayer->getMinVisibleRange() == 0.0f) &&
+                (layer._imageLayer.valid() && layer._imageLayer->getMaxVisibleRange() == FLT_MAX);
 
             // texture matrix: scale/bias matrix of the texture. Currently we don't use
             // this for rendering because the scale/bias is already baked into the 

@@ -397,6 +397,18 @@ MPGeometry:: COMPUTE_BOUND() const
         // update the uniform.
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
         _tileKeyValue.w() = bbox.radius();
+        
+        // make sure everyone's got a vbo.
+        MPGeometry* ncthis = const_cast<MPGeometry*>(this);
+
+        for(std::vector<Layer>::iterator i = _layers.begin(); i != _layers.end(); ++i)
+        {
+            if ( i->_texCoords.valid() && i->_texCoords->getVertexBufferObject() == 0L )
+                i->_texCoords->setVertexBufferObject( ncthis->getVertexArray()->getVertexBufferObject() );
+        }
+
+        if ( _tileCoords.valid() && _tileCoords->getVertexBufferObject() == 0L )
+            _tileCoords->setVertexBufferObject( ncthis->getVertexArray()->getVertexBufferObject() );
     }
     return bbox;
 }
@@ -609,6 +621,8 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
 
     // set up arrays
 #if OSG_MIN_VERSION_REQUIRED( 3, 1, 8 )
+    if( _vertexArray.valid() )
+
     if( _vertexArray.valid() )
         state.setVertexPointer(_vertexArray.get());
 

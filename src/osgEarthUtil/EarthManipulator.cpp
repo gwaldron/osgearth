@@ -204,8 +204,8 @@ _min_vp_duration_s              ( 3.0 ),
 _max_vp_duration_s              ( 8.0 ),
 _camProjType                    ( PROJ_PERSPECTIVE ),
 _camFrustOffsets                ( 0, 0 ),
-_disableCollisionAvoidance      ( false ),
 _throwingEnabled                ( false ),
+_terrainAvoidanceEnabled        ( true ),
 _throwDecayRate                 ( 0.05 )
 {
     //NOP
@@ -235,7 +235,7 @@ _max_vp_duration_s( rhs._max_vp_duration_s ),
 _camProjType( rhs._camProjType ),
 _camFrustOffsets( rhs._camFrustOffsets ),
 _breakTetherActions( rhs._breakTetherActions ),
-_disableCollisionAvoidance( rhs._disableCollisionAvoidance),
+_terrainAvoidanceEnabled( rhs._terrainAvoidanceEnabled ),
 _throwingEnabled( rhs._throwingEnabled ),
 _throwDecayRate( rhs._throwDecayRate )
 {
@@ -677,8 +677,9 @@ EarthManipulator::established()
 void 
 EarthManipulator::handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context)
 {
-    // Only do collision avoidance if it's enabled, we're not tethering and we're not in the middle of setting a viewpoint.            
-    if (!getSettings()->getDisableCollisionAvoidance() &&
+    // Only do collision avoidance if it's enabled, we're not tethering and
+    // we're not in the middle of setting a viewpoint.            
+    if (getSettings()->getTerrainAvoidanceEnabled() &&
         !getTetherNode() &&
         !isSettingViewpoint() )
     {
@@ -1009,7 +1010,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 
 void EarthManipulator::collisionDetect()
 {
-    if (getSettings()->getDisableCollisionAvoidance())
+    if ( getSettings()->getTerrainAvoidanceEnabled() == false )
     {
         return;
     }

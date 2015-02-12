@@ -503,9 +503,9 @@ namespace osgEarth { namespace Util
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
             const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }            
 
-            /** Whether or not to disable collision avoidance when new data pages in */
-            bool getDisableCollisionAvoidance() const { return _disableCollisionAvoidance; }
-            void setDisableCollisionAvoidance( bool disableCollisionAvoidance ) { _disableCollisionAvoidance = disableCollisionAvoidance; }
+            /** Whether or not to keep the camera from going through the terrain surface */
+            bool getTerrainAvoidanceEnabled() const { return _terrainAvoidanceEnabled; }
+            void setTerrainAvoidanceEnabled( bool value ) { _terrainAvoidanceEnabled = value; }
 
             void setThrowingEnabled(bool throwingEnabled) { _throwingEnabled = throwingEnabled; }
             bool getThrowingEnabled () const { return _throwingEnabled; }
@@ -554,7 +554,7 @@ namespace osgEarth { namespace Util
             CameraProjection _camProjType;
             osg::Vec2s _camFrustOffsets;	
 
-            bool _disableCollisionAvoidance;
+            bool _terrainAvoidanceEnabled;
 
             bool _throwingEnabled;
             double _throwDecayRate;

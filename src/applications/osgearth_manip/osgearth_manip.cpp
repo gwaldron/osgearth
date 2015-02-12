@@ -73,15 +73,18 @@ namespace
         };
 
         Grid* g = new Grid();
-        for( unsigned i=0; i<sizeof(text)/sizeof(text[0]); ++i )
+        unsigned i, c, r;
+        for( i=0; i<sizeof(text)/sizeof(text[0]); ++i )
         {
-            unsigned c = i % 2;
-            unsigned r = i / 2;
+            c = i % 2;
+            r = i / 2;
             g->setControl( c, r, new LabelControl(text[i]) );
         }
 
         VBox* v = new VBox();
         v->addControl( g );
+
+        
 
         return v;
     }
@@ -268,8 +271,8 @@ namespace
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
-                bool collision = _manip->getSettings()->getDisableCollisionAvoidance();
-                _manip->getSettings()->setDisableCollisionAvoidance( !collision );
+                bool value = _manip->getSettings()->getTerrainAvoidanceEnabled();
+                _manip->getSettings()->setTerrainAvoidanceEnabled( !value );
                 aa.requestRedraw();
                 return true;
             }
@@ -279,7 +282,7 @@ namespace
         void getUsage(osg::ApplicationUsage& usage) const
         {
             using namespace std;
-            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle collision avoidance"));
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle terrain avoidance"));
         }
 
         char _key;
@@ -415,7 +418,7 @@ int main(int argc, char** argv)
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 
    // Set the minimum distance to something larger than the default
-    manip->getSettings()->setMinMaxDistance(5.0, manip->getSettings()->getMaxDistance());
+    manip->getSettings()->setMinMaxDistance(10.0, manip->getSettings()->getMaxDistance());
 
 
     viewer.setSceneData( root );

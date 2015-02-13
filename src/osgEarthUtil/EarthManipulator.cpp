@@ -1168,6 +1168,12 @@ EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
         Viewpoint destVP = getTetherNodeViewpoint();
         setViewpoint( destVP, duration_s );
     }
+
+    // invoke the callback if set
+    if ( _tetherCallback.valid() )
+    {
+        (*_tetherCallback.get())( _tether_node.get() );
+    }
 }
 
 

@@ -50,6 +50,22 @@ using namespace osgEarth::Annotation;
 namespace
 {
     /**
+     * Tether callback test.
+     */
+    struct TetherCB : public EarthManipulator::TetherCallback
+    {
+        void operator()(osg::Node* node)
+        {
+            if ( node ) {
+                OE_WARN << "Tether on\n";
+            }
+            else {
+                OE_WARN << "Tether off\n";
+            }
+        }
+    };
+
+    /**
      * Builds our help menu UI.
      */
     Control* createHelp( osgViewer::View* view )
@@ -429,6 +445,8 @@ int main(int argc, char** argv)
         osgGA::GUIEventAdapter::MODKEY_SHIFT );
 
     manip->getSettings()->setArcViewpointTransitions( true );    
+
+    manip->setTetherCallback( new TetherCB() );
     
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));

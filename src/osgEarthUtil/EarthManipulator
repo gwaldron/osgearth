@@ -612,6 +612,18 @@ namespace osgEarth { namespace Util
         void setTetherNode( osg::Node* node, double duration_s =0.0  );
 
         /**
+         * Sets a callback to be invoked upon a tether or tether break
+         */
+        class TetherCallback : public osg::Referenced {
+        public:
+            virtual void operator()(osg::Node* tetherNode) { }
+        protected:
+            virtual ~TetherCallback() { }
+        };
+        void setTetherCallback(TetherCallback* cb) { _tetherCallback = cb; }
+        TetherCallback* getTetherCallback() { return _tetherCallback.get(); }
+
+        /**
          * Gets the node to which the camera is tethered, or NULL if tethering is
          * disabled.
          */
@@ -689,7 +701,7 @@ namespace osgEarth { namespace Util
          */
         void  setFindNodeTraversalMask( const osg::Node::NodeMask & nodeMask ) { _findNodeTraversalMask = nodeMask; }
 
-    public: // osgGA::MatrixManipulator
+    public: // osgGA::CameraManipulator
 
         virtual const char* className() const { return "EarthManipulator"; }
         
@@ -999,6 +1011,8 @@ namespace osgEarth { namespace Util
 
         // Traversal mask used in established and dtor methods to find MapNode and CoordinateSystemNode
         osg::Node::NodeMask  _findNodeTraversalMask;
+
+        osg::ref_ptr<TetherCallback> _tetherCallback;
 
         void collisionDetect();
     };

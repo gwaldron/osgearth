@@ -467,6 +467,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useLogDepth   = args.read("--logdepth");
     bool useLogDepth2  = args.read("--logdepth2");
     bool kmlUI         = args.read("--kmlui");
+    bool inspect       = args.read("--inspect");
 
     if (args.read("--verbose"))
         osgEarth::setNotifyLevel(osg::INFO);
@@ -775,6 +776,11 @@ MapNodeHelper::parse(MapNode*             mapNode,
             uniformBox->addControl( box );
             OE_INFO << LC << "Installed uniform controller for " << name << std::endl;
         }
+    }
+
+    if ( inspect )
+    {
+        mapNode->addExtension( Extension::create("mapinspector", ConfigOptions()) );
     }
     
 

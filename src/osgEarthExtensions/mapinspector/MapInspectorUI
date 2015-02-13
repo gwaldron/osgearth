@@ -38,7 +38,6 @@ namespace osgEarth { namespace MapInspector
         void reinit(MapNode* mapNode);
 
     private:
-        //osg::observer_ptr<MapNode>  _mapNode;
         osg::ref_ptr<osg::Group>    _annos;
 
         void addTerrainLayer(class TerrainLayer* layer, MapNode* mapNode);

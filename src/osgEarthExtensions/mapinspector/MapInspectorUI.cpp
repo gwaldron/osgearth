@@ -47,6 +47,8 @@ MapInspectorUI::reinit(MapNode* mapNode)
 
     _annos->removeChildren(0, _annos->getNumChildren());
 
+    this->clearControls();
+
     if ( mapNode )
     {
         // install annotation group as neccesary
@@ -102,8 +104,6 @@ MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
     };
     Color color = colors[(int)layer->getUID()%6];
 
-    OE_INFO << LC << "Adding " << layer->getName() << "\n";
-
     osg::ref_ptr<MultiGeometry> collection = new MultiGeometry();
 
     const DataExtentList& exlist = layer->getTileSource()->getDataExtents();
@@ -133,23 +133,26 @@ MapInspectorUI::addTerrainLayer(TerrainLayer* layer,
     }
 
     // label:
+    std::string text = 
+        !layer->getName().empty()? layer->getName() :
+        Stringify() << "Layer " << layer->getUID();
+
     {
         Style style;
         TextSymbol* ts = style.getOrCreate<TextSymbol>();
         ts->halo()->color().set(0,0,0,1);
         ts->declutter() = true;
         ts->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
-
-        std::string text = 
-            !layer->getName().empty()? layer->getName() :
-            Stringify() << "Layer " << layer->getUID();
-
+        
         osg::Vec2d center = collection->getBounds().center2d();
         GeoPoint position(layer->getProfile()->getSRS(), center.x(), center.y(), 0.0, ALTMODE_ABSOLUTE);
 
         LabelNode* label = new LabelNode(mapNode, position, text, style);
         _annos->addChild( label );
     }
+
+    unsigned r = this->getNumRows();
+    setControl(0, r, new ui::LabelControl(text, color));
 }
 
 void

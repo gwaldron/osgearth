@@ -78,7 +78,6 @@ MapInspectorExtension::disconnect(MapNode* mapNode)
     if ( mapNode )
         mapNode->getMap()->removeMapCallback(this);
 
-    _mapNode = 0L;
     static_cast<MapInspectorUI*>(_ui.get())->reinit(0L);
     return true;
 }

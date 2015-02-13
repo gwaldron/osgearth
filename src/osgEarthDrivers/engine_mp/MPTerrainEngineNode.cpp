@@ -886,14 +886,10 @@ MPTerrainEngineNode::updateState()
             std::string fs = ShaderLoader::load(
                 Shaders::MPFrag,
                 Shaders::MPFragSource );
-            
-            bool useTerrainColor = _terrainOptions.color().isSet();
-            if ( !useTerrainColor )
-            {
-                osgEarth::replaceIn( fs,
-                    "#define MP_USE_TERRAIN_COLOR",
-                    "#undef MP_USE_TERRAIN_COLOR" );
-            }
+
+            // terrain background color; negative means use the vertex color.
+            terrainStateSet->getOrCreateUniform("oe_terrain_color", osg::Uniform::FLOAT_VEC4)
+                ->set( _terrainOptions.color().isSet()? _terrainOptions.color().get() : osg::Vec4f(-1,-1,-1,-1));
 
             bool useBlending = _terrainOptions.enableBlending() == true;
             if ( !useBlending )
@@ -1007,13 +1003,6 @@ MPTerrainEngineNode::updateState()
             // default min/max range uniforms.
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", FLT_MAX) );
-
-            // base terrain color.
-            if ( useTerrainColor )
-            {
-                terrainStateSet->getOrCreateUniform(
-                    "oe_terrain_color", osg::Uniform::FLOAT_VEC4 )->set( *_terrainOptions.color() );
-            }
         }
 
         _stateUpdateRequired = false;

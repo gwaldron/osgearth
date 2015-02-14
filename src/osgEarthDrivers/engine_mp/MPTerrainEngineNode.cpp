@@ -888,8 +888,8 @@ MPTerrainEngineNode::updateState()
                 Shaders::MPFragSource );
 
             // terrain background color; negative means use the vertex color.
-            terrainStateSet->getOrCreateUniform("oe_terrain_color", osg::Uniform::FLOAT_VEC4)
-                ->set( _terrainOptions.color().isSet()? _terrainOptions.color().get() : osg::Vec4f(-1,-1,-1,-1));
+            Color terrainColor = _terrainOptions.color().getOrUse( Color(-1,-1,-1,-1) );
+            terrainStateSet->addUniform(new osg::Uniform("oe_terrain_color", terrainColor));
 
             bool useBlending = _terrainOptions.enableBlending() == true;
             if ( !useBlending )

@@ -5,7 +5,6 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   "fragment_coloring"
 #pragma vp_order      "0"
 
-#define MP_USE_TERRAIN_COLOR
 #define MP_USE_BLENDING
 
 uniform vec4 oe_terrain_color;

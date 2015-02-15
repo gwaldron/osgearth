@@ -230,7 +230,7 @@ VirtualProgram Metadata
 
 As we have seen, when you add a shader function to the pipeline using ``VirtualProgram``
 you need to tell osgEarth the name of the GLSL function to call, and the location in
-the pipeline at which to call it, like so:
+the pipeline at which to call it, like so::
 
     VirtualProgram* vp;
     ....
@@ -240,7 +240,7 @@ That works. But if the funtion name or the inject location changes, you need to 
 to keep the GLSL code in sync with the ``setFunction()`` parameters.
 
 It would be easier to specify this all in once place. A ``ShaderPackage`` lets you do just that.
-Here is an example:
+Here is an example::
 
     #version 110
     
@@ -254,7 +254,7 @@ Here is an example:
     }
     
 Now instead of calling ``VirtualProgram::setFunction()`` directory, you can create a
-``ShaderPackage``, add your code, and call load to create the function on the ``VirtualProgram``:
+``ShaderPackage``, add your code, and call load to create the function on the ``VirtualProgram``::
 
     ShaderPackage package;
     package.add( shaderFileName, shaderSource );
@@ -263,7 +263,7 @@ Now instead of calling ``VirtualProgram::setFunction()`` directory, you can crea
 It takes a "file name" because the shader can be in an external file.
 But that is not a requirement. Read on for more details.
 
-The ``vp_location`` values follow the code-based values, and are as follows:
+The ``vp_location`` values follow the code-based values, and are as follows::
 
 	``vertex_model``
 	``vertex_view``
@@ -287,7 +287,7 @@ Includes
 
 The ``ShaderPackage`` support the concept if *include files*. Your GLSL code
 can *include* any other shaders in the same package by referencing their file names.
-Use a custom ``#pragma`` to include another file:
+Use a custom ``#pragma`` to include another file::
 
     #pragma include "myCode.vertex.glsl"
 

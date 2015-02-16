@@ -25,7 +25,7 @@ Below you can see the main() functions that osgEarth creates.
 The ``LOCATION_*`` designators allow you to inject functions at
 various points in the shader's execution pipeline.
 
-Here is the pseudo-code for osgEarth's built-in shaders mains:
+Here is the pseudo-code for osgEarth's built-in shaders mains::
 
     // VERTEX SHADER:
 
@@ -265,12 +265,12 @@ But that is not a requirement. Read on for more details.
 
 The ``vp_location`` values follow the code-based values, and are as follows::
 
-	``vertex_model``
-	``vertex_view``
-	``vertex_clip``
-	``fragment_coloring``
-	``fragment_lighting``
-	``fragment_output``
+	vertex_model
+	vertex_view
+	vertex_clip
+	fragment_coloring
+	fragment_lighti``
+	fragment_output
 
 
 External GLSL Files
@@ -282,8 +282,8 @@ When you call the ``add`` method as show above, this tells the package to
 (b) if the file doesn't exist, use the code in the source string.
 
 
-Includes
-~~~~~~~~
+Include Files
+~~~~~~~~~~~~~
 
 The ``ShaderPackage`` support the concept if *include files*. Your GLSL code
 can *include* any other shaders in the same package by referencing their file names.

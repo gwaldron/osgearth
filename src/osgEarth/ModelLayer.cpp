@@ -38,7 +38,8 @@ namespace
     {
         NodeModelSource( osg::Node* node ) : _node(node) { }
 
-        osg::Node* createNodeImplementation(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress) {
+//        osg::Node* createNodeImplementation(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress) {
+        osg::Node* createNodeImplementation(const Map* map, ProgressCallback* progress) {
             return _node.get();
         }
 
@@ -73,6 +74,7 @@ ModelLayerOptions::setDefaults()
     _opacity.init     ( 1.0f );
     _maskMinLevel.init( 0 );
     _terrainPatch.init( false );
+    _cachePolicy.init ( CachePolicy() );
 }
 
 Config
@@ -86,7 +88,9 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "lighting",       _lighting );
     conf.updateIfSet( "opacity",        _opacity );
     conf.updateIfSet( "mask_min_level", _maskMinLevel );
-    conf.updateIfSet( "patch",          _terrainPatch );    
+    conf.updateIfSet( "patch",          _terrainPatch );  
+
+    conf.updateObjIfSet( "cache_policy", _cachePolicy );  
 
     // Merge the ModelSource options
     if ( driver().isSet() )
@@ -109,6 +113,8 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "opacity",        _opacity );
     conf.getIfSet( "mask_min_level", _maskMinLevel );
     conf.getIfSet( "patch",          _terrainPatch );
+
+    conf.getObjIfSet( "cache_policy", _cachePolicy );  
 
     if ( conf.hasValue("driver") )
         driver() = ModelSourceOptions(conf);
@@ -172,12 +178,16 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
     if ( !_modelSource.valid() && _initOptions.driver().isSet() )
     {
         OE_INFO << LC << "Initializing model layer \"" << getName() << "\", driver=\"" << _initOptions.driver()->getDriver() << "\"" << std::endl;
+        
+        // set up the db options and caching policy first
+        _dbOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
+        initializeCachePolicy( _dbOptions.get() );
 
         // the model source:
         _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
         if ( _modelSource.valid() )
         {
-            _modelSource->initialize( dbOptions );
+            _modelSource->initialize( _dbOptions.get() );
 
             // the mask, if there is one:
             if ( !_maskSource.valid() && _initOptions.maskOptions().isSet() )
@@ -187,7 +197,7 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
                 _maskSource = MaskSourceFactory::create( *_initOptions.maskOptions() );
                 if ( _maskSource.valid() )
                 {
-                    _maskSource->initialize( dbOptions );
+                    _maskSource->initialize( _dbOptions.get() );
                 }
                 else
                 {
@@ -196,6 +206,37 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
             }
         }
     }
+}
+
+void
+ModelLayer::initializeCachePolicy(const osgDB::Options* options)
+{
+    // Start with the cache policy passed in by the Map.
+    optional<CachePolicy> cp;
+    CachePolicy::fromOptions(options, cp);
+
+    // if this layer specifies cache policy info, that will override 
+    // whatever the map passed in:
+    if ( _initOptions.cachePolicy().isSet() )
+        cp->mergeAndOverride( _initOptions.cachePolicy() );
+
+    // finally resolve with global overrides:
+    Registry::instance()->resolveCachePolicy( cp );
+
+    setCachePolicy( cp.get() );
+}
+
+void
+ModelLayer::setCachePolicy( const CachePolicy& cp )
+{
+    _runtimeOptions.cachePolicy() = cp;
+    _runtimeOptions.cachePolicy()->apply( _dbOptions.get() );
+}
+
+const CachePolicy&
+ModelLayer::getCachePolicy() const
+{
+    return _runtimeOptions.cachePolicy().value();
 }
 
 osg::Node*
@@ -207,9 +248,8 @@ ModelLayer::getSceneGraph(const UID& mapUID) const
 }
 
 osg::Node*
-ModelLayer::getOrCreateSceneGraph(const Map*            map,
-                                  const osgDB::Options* dbOptions,
-                                  ProgressCallback*     progress )
+ModelLayer::getOrCreateSceneGraph(const Map*        map,
+                                  ProgressCallback* progress )
 {
     // exclusive lock for cache lookup/update.
     Threading::ScopedMutexLock lock( _mutex );
@@ -225,7 +265,7 @@ ModelLayer::getOrCreateSceneGraph(const Map*            map,
 
     if ( _modelSource.valid() )
     {
-        node = _modelSource->createNode( map, dbOptions, progress );
+        node = _modelSource->createNode( map, progress );
 
         if ( node )
         {
@@ -236,8 +276,6 @@ ModelLayer::getOrCreateSceneGraph(const Map*            map,
 
             _modelSource->sync( _modelSourceRev );
 
-            // save an observer reference to the node so we can change the visibility/lighting/etc.
-            //_nodeSet.insert( node );
 
             // add a parent group for shaders/effects to attach to without overwriting any model programs directly
             osg::Group* group = new osg::Group();
@@ -258,8 +296,6 @@ ModelLayer::getOrCreateSceneGraph(const Map*            map,
                 ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
                 ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
-
-
 
             // save it.
             _graphs[map->getUID()] = node;

@@ -78,7 +78,9 @@ namespace
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
             , m_scale(scale)
             , m_offset(offset)
-        {}
+        {
+            setNodeMaskOverride( ~0 );
+        }
 
         virtual void apply(osg::PagedLOD& node)
         {
@@ -97,6 +99,37 @@ namespace
         float m_scale;
         float m_offset;
     };
+
+    /**
+     * Visitor that sets the DBOptions on deferred-loading nodes.
+     */
+    class SetDBOptionsVisitor : public osg::NodeVisitor
+    {
+    private:
+        osg::ref_ptr<osgDB::Options> _dbOptions;
+
+    public:
+        SetDBOptionsVisitor(const osgDB::Options* dbOptions)
+        {
+            setTraversalMode( TRAVERSE_ALL_CHILDREN );
+            setNodeMaskOverride( ~0 );
+            _dbOptions = Registry::cloneOrCreateOptions( dbOptions );                
+        }
+
+    public: // osg::NodeVisitor
+
+        void apply(osg::PagedLOD& node)
+        {
+            node.setDatabaseOptions( _dbOptions.get() );
+            traverse(node);
+        }
+
+        void apply(osg::ProxyNode& node)
+        {
+            node.setDatabaseOptions( _dbOptions.get() );
+            traverse(node);
+        }
+    };
 }
 
 //--------------------------------------------------------------------------
@@ -110,13 +143,21 @@ public:
     //override
     void initialize( const osgDB::Options* dbOptions )
     {
+        _dbOptions = dbOptions;
         ModelSource::initialize( dbOptions );
     }
 
     // override
-    osg::Node* createNodeImplementation(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress )
+    osg::Node* createNodeImplementation(const Map* map, ProgressCallback* progress)
     {
         osg::ref_ptr<osg::Node> result;
+
+        // Set up the DB Options for possible paged or proxy loading.
+        osg::ref_ptr<osgDB::Options> localDBOptions = 
+            Registry::instance()->cloneOrCreateOptions( _dbOptions.get() );
+
+        localDBOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
+
         
         // Only support paging if they've enabled it and provided a min/max range
         bool usePagedLOD = *_options.paged() &&
@@ -131,13 +172,7 @@ public:
             // Only load the model if it's not paged or we don't have a location set.
             if (!usePagedLOD || !_options.location().isSet())
             {
-                // required if the model includes local refs, like PagedLOD or ProxyNode:
-                osg::ref_ptr<osgDB::Options> localOptions = 
-                    Registry::instance()->cloneOrCreateOptions( dbOptions );
-
-                localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
-
-                result = _options.url()->getNode( localOptions.get(), progress );                
+                result = _options.url()->getNode( localDBOptions.get(), progress );                
             }
         }
 
@@ -245,6 +280,14 @@ public:
                     new osg::Program(),
                     osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
             }
+
+            // apply the DB options if there are any, so that deferred nodes like PagedLOD et al
+            // will inherit the loading options.
+            if ( _dbOptions.valid() )
+            {
+                SetDBOptionsVisitor setDBO( localDBOptions.get() );
+                result->accept( setDBO );
+            }
         }
 
 
@@ -253,7 +296,8 @@ public:
 
 protected:
 
-    const SimpleModelOptions _options;
+    const SimpleModelOptions           _options;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 

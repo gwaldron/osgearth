@@ -199,9 +199,8 @@ namespace osgEarth { namespace Features
         virtual void initialize( const osgDB::Options* dbOptions =0L );
 
         virtual osg::Node* createNodeImplementation(
-            const Map*            map,
-            const osgDB::Options* dbOptions,
-            ProgressCallback*     progress );
+            const Map*        map,
+            ProgressCallback* progress );
     
 
     public:
@@ -212,12 +211,6 @@ namespace osgEarth { namespace Features
          */
         virtual FeatureNodeFactory* createFeatureNodeFactory() =0;
 
-
-        /**
-         * Creates an implementation-specific data object to be passed to buildNodeForStyle
-         * @deprecated
-         */
-        //virtual osg::Referenced* createBuildData() { return NULL; }
 
     public: // properties:
 

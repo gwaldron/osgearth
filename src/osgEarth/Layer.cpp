@@ -25,4 +25,3 @@ Layer::Layer()
 {
     _uid = Registry::instance()->createUID();
 }
-

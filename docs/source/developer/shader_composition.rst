@@ -5,21 +5,33 @@ osgEarth uses GLSL shaders in several of its rendering modes. By default
 osgEarth will detect the capabilities of your graphics hardware and
 automatically select an appropriate mode to use.
 
-Since osgEarth relies on shaders, and since you as the developer may wish
-to use your own shader code as well, osgEarth provides a *shader composition*
-framework. This allows you a great deal of flexibility when incorporating
-your own shaders into osgEarth.
+Since osgEarth relies on shaders, you as a developer may wish to customize
+the rendering or add your own effects and features in GLSL. Anyone who has
+wokred with shaders has run into the same challenges:
 
-There are several ways to integrate your own shader code into osgEarth.
-We discuss these below. But first it is important to understand the basics of
-osgEarth's shader composition framework.
+* Shader programs as monolithic. Adding new shader code requires you to
+  copy, modify, and replace the existing code so you don't lose its
+  functionality.
+* Keeping your changes in sync with changes to the original code's 
+  shaders is a maintenance nightmare.
+* Maintaining multiple versions of shader main()s is cumbersome and
+  difficult.
+* Maintaining the dreaded "uber shader" becomes unmanagable as the 
+  GLSL code base grows in complexity and you add more features.
+  
+*Shader Composition* solves these problems by *modularizing* the shader
+pipeline. You can add and remove *functions* at any point in the program
+without and copying, pasting, or hacking other people's GLSL code.
+
+Next we will discuss the structure of osgEarth's shader composition framework.
+
 
 Framework Basics
 ----------------
 
 The Shader Composition framework provides the main() functions automatically.
-You do not need to write them. Instead, you write functions and tell the 
-framework when and where to run them.
+You do not need to write them. Instead, you write modular functions and tell the 
+framework when and where to execute them.
 
 Below you can see the main() functions that osgEarth creates.
 The ``LOCATION_*`` designators allow you to inject functions at
@@ -72,11 +84,12 @@ Here is the pseudo-code for osgEarth's built-in shaders mains::
         gl_FragColor = color;
     }
     
-There is a bit more to it than that, but that is the basic idea.
-Next we will talk about how you inject your own functions into the 
-shader pipeline.
+As you can see, we have made the design decision to designate function
+injection points that make sense for *most* applications. That is not to say
+that they are perfect for everything, rather that we believe this approach
+makes the Framework easy to use and not too "low-level".
 
-At this time, the Shader Composition Framework only supports VERTEX and FRAGMENT
+*Important*: The Shader Composition Framework at this time only supports VERTEX and FRAGMENT
 shaders. It does not support GEOMETRY or TESSELLATION shaders yet. We are planning
 to add this in the future.
 
@@ -95,32 +108,32 @@ At run time, a ``VirtualProgram`` will look at the current state and assemble a 
 have injected via ``VirtualProgram``.
 
  
-Adding User Functions
-~~~~~~~~~~~~~~~~~~~~~
+Adding Functions
+~~~~~~~~~~~~~~~~
 
-From the core framework mains shown eariler, osgEarth calls into user functions.
+From the genreated mains we saw eariler, osgEarth calls into user functions.
 These don't exist in the default shaders that osgEarth generates;
 rather, they represent code that you as the developer can "inject"
 into various locations in the shader pipeline.
 
-For example, let's use User Functions to create a simple "haze" effect.
-(NOTE: see this example in its entirety in osgearth_shadercomp.cpp)::
+For example, let's use user functions to create a simple "haze" effect::
 
-    static char haze_vertex[] =
-        "varying vec3 v_pos; \n"
-        "void setup_haze(inout vec4 vertexVIEW) \n"
-        "{ \n"
-        "    v_pos = vec3(vertexVIEW); \n"
-        "} \n";
-
-    static char haze_fragment[] =
-        "varying vec3 v_pos; \n"
-        "void apply_haze(inout vec4 color) \n"
-        "{ \n"
-        "    float dist = clamp( length(v_pos)/10000000.0, 0, 0.75 ); \n"
-        "    color = mix(color, vec4(0.5, 0.5, 0.5, 1.0), dist); \n"
-        "} \n";
-
+    // haze_vertex:
+    varying vec3 v_pos;
+    void setup_have(inout vec4 vertexView)
+    {
+        v_pos = vertexView.xyz;
+    }
+    
+    // haze_fragment:
+    varying vec3 v_pos;
+    void apply_haze(inout vec4 color)
+    {
+        float dist = clamp( length(v_pos)/10000000.0, 0, 0.75 );
+        color = mix(color, vec4(0.5, 0.5, 0.5, 1.0), dist);
+    }
+    
+    // C++:
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateSet );
 
     vp->setFunction( "setup_haze", haze_vertex,   ShaderComp::LOCATION_VERTEX_VIEW);
@@ -172,49 +185,6 @@ The FRAGMENT locations are as follows.
             main() will set it for you. But you can set an OUTPUT shader to 
             replace this behavior with your own. A typical reason to do this would
             be to implement MRT rendering (see the osgearth_mrt example).
-         
-         
-Terrain Variables
-~~~~~~~~~~~~~~~~~
-
-The ``VirtualProgram`` framework is not osgEarth-specific, but there are some built-in
-variables that the osgEarth terrain engine uses and that are available to the developer.
-
-    *Important: Shader variables starting with the prefix ``oe_`` or ``osgearth_``
-    are reserved for osgEarth internal use.*
-
-Uniforms:
-
-  :oe_tile_key:          (vec4) elements 0-2 hold the x, y, and LOD tile key values;
-                         element 3 holds the tile's bounding sphere radius (in meters)
-  :oe_layer_tex:         (sampler2D) texture applied to the current layer of the current tile
-  :oe_layer_texc:        (vec4) texture coordinates for current tile
-  :oe_layer_tilec:       (vec4) unit coordinates for the current tile (0..1 in x and y)
-  :oe_layer_uid:         (int) Unique ID of the active layer
-  :oe_layer_order:       (int) Render order of the active layer
-  :oe_layer_opacity:     (float) Opacity [0..1] of the active layer
-
-Vertex attributes:
-
-  :oe_terrain_attr:      (vec4) elements 0-2 hold the unit height vector for a terrain
-                         vertex, and element 3 holds the raw terrain elevation value
-  :oe_terrain_attr2:     (vec4) element 0 holds the *parent* tile's elevation value;
-                         elements 1-3 are currently unused.
-
-
-Shared Image Layers
-~~~~~~~~~~~~~~~~~~~
-
-Sometimes you want to access more than one layer at a time.
-For example, you might have a masking layer that indicates land vs. water.
-You may not actually want to *draw* this layer, but you want to use it to modulate
-another visible layer.
-
-You can do this using *shared image layers*. In the ``Map``, mark an image layer as
-*shared* (using ``ImageLayerOptions::shared()``) and the renderer will make it available
-to all the other layers in a secondary sampler.
-
-    Please refer to ``osgearth_sharedlayer.cpp`` for a usage example!
 
 
 Shader Packages
@@ -265,12 +235,12 @@ But that is not a requirement. Read on for more details.
 
 The ``vp_location`` values follow the code-based values, and are as follows::
 
-	vertex_model
-	vertex_view
-	vertex_clip
-	fragment_coloring
-	fragment_lighti``
-	fragment_output
+    vertex_model
+    vertex_view
+    vertex_clip
+    fragment_coloring
+    fragment_lighting
+    fragment_output
 
 
 External GLSL Files
@@ -280,6 +250,21 @@ The ``ShaderPackage`` lets you load GLSL code from either a file or a string.
 When you call the ``add`` method as show above, this tells the package to 
 (a) first look for a file by that name and load from that file; and 
 (b) if the file doesn't exist, use the code in the source string.
+
+So let's look at this example::
+
+    ShaderPackage package;
+    package.add( "myshader.frag.glsl", backupSourceCode );
+    ...
+    package.load( virtualProgram, "myshader.frag.glsl" );
+
+The package will try to load the shader from the GLSL file. It will search for it in the ``OSG_FILE_PATH``.
+If it cannot find the file, it will load the shader from the backup source code associated with
+that shader in the package.
+
+osgEarth uses this technique internally to "inline" its stock shader code.
+That gives you the option of deploying GLSL files with your application OR 
+keeping them inline -- the application will still work either way.
 
 
 Include Files
@@ -291,9 +276,61 @@ Use a custom ``#pragma`` to include another file::
 
     #pragma include "myCode.vertex.glsl"
 
-The *include* will load the other file (or source code) directly inline. So the 
-file you are including must be structured as if you had placed it right in the 
-including file. (That means it cannot have its own ``#version`` string, for example.)
+Just as in C++, the *include* will load the other file (or source code) directly
+inline. So the file you are including must be structured as if you had placed it right
+in the including file. (That means it cannot have its own ``#version`` string, for example.)
 
-Again: the *includer* and the *includee* must be in the same ``ShaderPackage``.
+Again: the *includer* and the *includee* must be registered with the same ``ShaderPackage``.
+
+----
+
+Concepts Specific to osgEarth
+-----------------------------
+
+Even though the VirtualProgram framework is included in the osgEarth SDK,
+it really has nothing to do with map rendering. In this section we will go over some
+of the things that osgEarth does with shader composition.
+
+         
+Terrain Variables
+~~~~~~~~~~~~~~~~~
+
+There are some built-in shader ``uniforms`` and ``variables`` that the osgEarth terrain
+engine uses and that are available to the developer.
+
+    *Important: Shader variables starting with the prefix ``oe_`` or ``osgearth_``
+    are reserved for osgEarth internal use.*
+
+Uniforms:
+
+  :oe_tile_key:          (vec4) elements 0-2 hold the x, y, and LOD tile key values;
+                         element 3 holds the tile's bounding sphere radius (in meters)
+  :oe_layer_tex:         (sampler2D) texture applied to the current layer of the current tile
+  :oe_layer_texc:        (vec4) texture coordinates for current tile
+  :oe_layer_tilec:       (vec4) unit coordinates for the current tile (0..1 in x and y)
+  :oe_layer_uid:         (int) Unique ID of the active layer
+  :oe_layer_order:       (int) Render order of the active layer
+  :oe_layer_opacity:     (float) Opacity [0..1] of the active layer
+
+Vertex attributes:
+
+  :oe_terrain_attr:      (vec4) elements 0-2 hold the unit height vector for a terrain
+                         vertex, and element 3 holds the raw terrain elevation value
+  :oe_terrain_attr2:     (vec4) element 0 holds the *parent* tile's elevation value;
+                         elements 1-3 are currently unused.
+
+
+Shared Image Layers
+~~~~~~~~~~~~~~~~~~~
+
+Sometimes you want to access more than one image layer at a time.
+For example, you might have a masking layer that indicates land vs. water.
+You may not actually want to *draw* this layer, but you want to use it to modulate
+another visible layer.
+
+You can do this using *shared image layers*. In the ``Map``, mark an image layer as
+*shared* (using ``ImageLayerOptions::shared()``) and the renderer will make it available
+to all the other layers in a secondary sampler.
+
+    Please refer to ``osgearth_sharedlayer.cpp`` for a usage example!
 

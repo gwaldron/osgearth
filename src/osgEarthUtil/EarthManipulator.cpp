@@ -1021,7 +1021,7 @@ void EarthManipulator::collisionDetect()
     createLocalCoordFrame( eye, eyeCoordFrame );
     osg::Vec3d eyeUp = getUpVector(eyeCoordFrame);
 
-    // Try to intersect the terrain with a vector going 
+    // Try to intersect the terrain with a vector going straight up and down.
     double r = std::min( _cached_srs->getEllipsoid()->getRadiusEquator(), _cached_srs->getEllipsoid()->getRadiusPolar() );
     osg::Vec3d ip, normal;
     if (intersect(eye + eyeUp * r, eye - eyeUp * r, ip, normal))
@@ -1032,9 +1032,12 @@ void EarthManipulator::collisionDetect()
         v0.normalize();
         osg::Vec3d v1 = eye - (ip + eyeUp * eps);
         v1.normalize();
+
+        //osg::Vec3d adjVector = normal;
+        osg::Vec3d adjVector = eyeUp;
         if (v0 * v1 <= 0 )
         {
-            setByLookAtRaw(ip + normal * eps, _center, eyeUp);
+            setByLookAtRaw(ip + adjVector * eps, _center, eyeUp);
         }
     }
 

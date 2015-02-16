@@ -1157,7 +1157,7 @@ VirtualProgram::apply( osg::State& state ) const
                     if ( _logShaders && program.valid() )
                     {
                         std::stringstream buf;
-                        for (int i=0; i < program->getNumShaders(); i++)
+                        for (unsigned i=0; i < program->getNumShaders(); i++)
                         {
                             buf << program->getShader(i)->getShaderSource() << std::endl << std::endl;
                         }

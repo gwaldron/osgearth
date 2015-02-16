@@ -35,6 +35,9 @@
 #define NEAR_RES_COEFF_STR "0.0005"
 #define LOG2(X) (::log((double)(X))/::log(2.0))
 
+#define C_UNIFORM  "oe_logDepth_C"
+#define FC_UNIFORM "oe_logDepth_FC"
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -72,7 +75,7 @@ namespace
                 }
 
                 // the uniform conveying the far clip plane:
-                osg::Uniform* u = stateset->getOrCreateUniform("oe_ldb_FC", osg::Uniform::FLOAT);
+                osg::Uniform* u = stateset->getOrCreateUniform(FC_UNIFORM, osg::Uniform::FLOAT);
 
                 // calculate the far plane based on the camera location:
                 osg::Vec3d E, A, U;
@@ -132,42 +135,20 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
     {
         // install the shader component:
         osg::StateSet* stateset = camera->getOrCreateStateSet();
+
+        stateset->addUniform( new osg::Uniform(C_UNIFORM, (float)NEAR_RES_COEFF) );
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
+        Shaders pkg;
 
         if ( _useFragDepth )
         {
-            std::string vert = ShaderLoader::loadSource(
-                Shaders::LogDepthBuffer_VertFile,
-                Shaders::LogDepthBuffer_VertSource);
-
-            osgEarth::replaceIn(vert, "$NEAR_RES_COEFF_STR", NEAR_RES_COEFF_STR );
-
-            vp->setFunction( 
-                "oe_ldb_vert",
-                vert,
-                ShaderComp::LOCATION_VERTEX_CLIP,
-                FLT_MAX );        
-
-            vp->setFunction(
-                "oe_ldb_frag",
-                ShaderLoader::loadSource(Shaders::LogDepthBuffer_FragFile, Shaders::LogDepthBuffer_FragSource),
-                ShaderComp::LOCATION_FRAGMENT_LIGHTING,
-                FLT_MAX );        
+            pkg.loadFunction( vp, pkg.LogDepthBuffer_VertFile );
+            pkg.loadFunction( vp, pkg.LogDepthBuffer_FragFile );
         }
         else
         {
-            std::string vert = ShaderLoader::loadSource(
-                Shaders::LogDepthBuffer_VertOnly_VertFile,
-                Shaders::LogDepthBuffer_VertOnly_VertSource);
-
-            osgEarth::replaceIn(vert, "$NEAR_RES_COEFF_STR", NEAR_RES_COEFF_STR );
-
-            vp->setFunction(
-                "oe_ldb_vert", 
-                vert,
-                ShaderComp::LOCATION_VERTEX_CLIP,
-                FLT_MAX );  
+            pkg.loadFunction( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
         }
 
         // configure the camera:
@@ -194,11 +175,14 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
             VirtualProgram* vp = VirtualProgram::get( camera->getStateSet() );
             if ( vp )
             {
-                vp->removeShader( "oe_ldb_vert" );
-                vp->removeShader( "oe_ldb_frag" );
+                Shaders pkg;
+                pkg.unloadFunction( vp, pkg.LogDepthBuffer_FragFile );
+                pkg.unloadFunction( vp, pkg.LogDepthBuffer_VertFile );
+                pkg.unloadFunction( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
             }
 
-            stateset->removeUniform( "oe_ldb_far" );
+            stateset->removeUniform( FC_UNIFORM );
+            stateset->removeUniform( C_UNIFORM );
         }
     }
 }

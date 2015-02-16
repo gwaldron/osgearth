@@ -25,7 +25,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/URI>
-#include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderLoader>
 #include <osgEarthUtil/SimplexNoise>
 
 #include <osgDB/WriteFile>
@@ -142,13 +142,13 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->addUniform(new osg::Uniform("oe_splat_detailRange",  1000000.0f));
 
             // Configure the vertex shader:
-            std::string vertexShaderModel = ShaderLoader::loadSource(_shaders.VertModel, _shaders);
-            std::string vertexShaderView = ShaderLoader::loadSource(_shaders.VertView, _shaders);
+            std::string vertexShaderModel = ShaderLoader::load(_shaders.VertModel, _shaders);
+            std::string vertexShaderView = ShaderLoader::load(_shaders.VertView, _shaders);
 
             osgEarth::replaceIn( vertexShaderView, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
             // Configure the fragment shader:
-            std::string fragmentShader = ShaderLoader::loadSource(_shaders.Frag, _shaders);
+            std::string fragmentShader = ShaderLoader::load(_shaders.Frag, _shaders);
 
             if ( _editMode ) 
             {
@@ -194,7 +194,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             if ( _gpuNoise )
             {
                 // support shaders
-                std::string noiseShaderSource = ShaderLoader::loadSource(_shaders.Noise, _shaders);
+                std::string noiseShaderSource = ShaderLoader::load(_shaders.Noise, _shaders);
                 osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
                 vp->setShader( "oe_splat_noiseshaders", noiseShader );
             }
@@ -381,7 +381,7 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
     if ( slopeCount > 0 )
         slopeBuf << ";\n";
 
-    std::string code = ShaderLoader::loadSource(
+    std::string code = ShaderLoader::load(
         _shaders.FragGetRenderInfo,
         _shaders);
 

@@ -73,6 +73,21 @@ CompilerCache::TexCoordArrayCache::get(const osg::Vec4d& mat,
     return this->back().second;
 }
 
+namespace
+{
+    struct AllocateBufferObjectsVisitor : public osg::NodeVisitor
+    {
+        void apply(osg::Geode& geode)
+        {
+            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+            {
+                osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+                if ( geom )
+                    geom->setUseVertexBufferObjects( true );
+            }
+        }
+    };
+}
 
 //------------------------------------------------------------------------
 
@@ -102,7 +117,7 @@ namespace
     {
         osg::ref_ptr<osg::Vec3dArray> _boundary;
         osg::Vec3d                    _ndcMin, _ndcMax;
-        MPGeometry*                   _geom;
+        osg::ref_ptr<MPGeometry>      _geom;
         osg::ref_ptr<osg::Vec3Array>  _internal;
 
         MaskRecord(osg::Vec3dArray* boundary, osg::Vec3d& ndcMin, osg::Vec3d& ndcMax, MPGeometry* geom) 
@@ -137,7 +152,7 @@ namespace
             renderTileCoords = 0L;
             ownsTileCoords   = false;
             stitchTileCoords = 0L;
-            stitchGeom       = 0L;
+            //stitchGeom       = 0L;
             installParentData = false;
         }
 
@@ -192,14 +207,17 @@ namespace
         
         // for masking/stitching:
         MaskRecordVector         maskRecords;
-        MPGeometry*              stitchGeom;
+        //MPGeometry*              stitchGeom;
 
         bool useUInt;
         osg::DrawElements* newDrawElements(GLenum mode) {
+            osg::DrawElements* de = 0L;
             if ( useUInt )
-                return new osg::DrawElementsUInt(mode);
+                de = new osg::DrawElementsUInt(mode);
             else
-                return new osg::DrawElementsUShort(mode);
+                de = new osg::DrawElementsUShort(mode);
+            de->setName("TMC");
+            return de;
         }
     };
 
@@ -243,10 +261,9 @@ namespace
 
             if (x_match && y_match)
             {
-                d.stitchGeom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
-                //d.stitchGeom->setUseVertexBufferObjects(d.useVBOs);
-                d.surfaceGeode->addDrawable(d.stitchGeom);
-                d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, d.stitchGeom) );
+                MPGeometry* stitchGeom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
+                stitchGeom->setName("stitchGeom");
+                d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, stitchGeom) );
             }
         }
     }
@@ -1073,7 +1090,18 @@ namespace
 
 
             // Get triangles from triangulator and add as primative set to the geometry
-            stitch_geom->addPrimitiveSet(trig->getTriangles());
+            osg::DrawElementsUInt* tris = trig->getTriangles();
+            if ( tris && tris->getNumIndices() >= 3 )
+            {
+                stitch_geom->addPrimitiveSet(tris);
+            }
+
+            // Finally, add it to the geode.
+            if (stitch_geom->getVertexArray() &&
+                stitch_geom->getVertexArray()->getNumElements() > 0 )
+            {
+                d.surfaceGeode->addDrawable(stitch_geom);
+            }
         }
     }
 
@@ -1307,9 +1335,8 @@ namespace
 
         unsigned numSurfaceNormals = d.numRows * d.numCols;
 
-        osg::DrawElements* elements = d.newDrawElements(GL_TRIANGLES); //new osg::DrawElementsUInt(GL_TRIANGLES);
+        osg::DrawElements* elements = d.newDrawElements(GL_TRIANGLES);
         elements->reserveElements((d.numRows-1) * (d.numCols-1) * 6);
-        d.surface->insertPrimitiveSet(0, elements); // because we always want this first.
 
         if ( recalcNormals )
         {
@@ -1808,6 +1835,12 @@ namespace
                 nitr->normalize();
             }       
         }
+
+        // in the case of full-masking, this will be empty
+        if ( elements->getNumIndices() > 0 )
+        {
+            d.surface->insertPrimitiveSet(0, elements); // because we always want this first.
+        }
     }
 
 
@@ -1823,8 +1856,7 @@ namespace
         
         if ( d.renderTileCoords.valid() )
             d.surface->_tileCoords = d.renderTileCoords;
-            
-        // TODO: evaluate this suspicious code. -gw
+
         if ( d.stitchTileCoords.valid() )
             d.surface->_tileCoords = d.stitchTileCoords.get();
 
@@ -1844,7 +1876,9 @@ namespace
             layer._opaque =
                 (r->_layer.getMapLayer()->getColorFilters().size() == 0 ) &&
                 (layer._tex.valid() && !r->_layer.hasAlpha()) &&
-                (!layer._texParent.valid() || !r->_layerParent.hasAlpha());
+                (!layer._texParent.valid() || !r->_layerParent.hasAlpha()) &&
+                (layer._imageLayer.valid() && layer._imageLayer->getMinVisibleRange() == 0.0f) &&
+                (layer._imageLayer.valid() && layer._imageLayer->getMaxVisibleRange() == FLT_MAX);
 
             // texture matrix: scale/bias matrix of the texture. Currently we don't use
             // this for rendering because the scale/bias is already baked into the 
@@ -1896,19 +1930,6 @@ namespace
     }
 
 
-    void allocateVBOs( Data& d )
-    {
-        d.surface->setUseVertexBufferObjects(false);
-        d.surface->setUseVertexBufferObjects(true);
-
-        if ( d.stitchGeom )
-        {
-            d.stitchGeom->setUseVertexBufferObjects(false);
-            d.stitchGeom->setUseVertexBufferObjects(true);
-        }
-    }
-
-
     // Optimize the data. Convert all modes to GL_TRIANGLES and run the
     // critical vertex cache optimizations.
     void optimize( Data& d, bool runMeshOptimizers, ProgressCallback* progress )
@@ -1922,115 +1943,74 @@ namespace
         // arrays elsewhere, it mistakingly thinks there are shared (sine they
         // have refcount>1). So we need to UNREF them, optimize, and then RE-REF
         // them afterwards. :/ -gw
+        
+		if (runMeshOptimizers && d.maskRecords.size() < 1)
+		{
 
 #if OSG_MIN_VERSION_REQUIRED(3, 1, 8) // after osg::Geometry API changes
 
-        osg::Geometry::ArrayList* surface_tdl = &d.surface->getTexCoordArrayList();
-        osg::Geometry::ArrayList* stitch_tdl  = d.stitchGeom ? &d.stitchGeom->getTexCoordArrayList() : 0L;
-        int u=0;
-        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
-        {
-            if ( r->_texCoords.valid() && r->_ownsTexCoords )
+            osg::Geometry::ArrayList* surface_tdl = &d.surface->getTexCoordArrayList();
+            int u=0;
+            for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
             {
-                r->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-                surface_tdl->push_back( r->_texCoords.get() );
-                r->_texCoords->unref_nodelete();
+                if ( r->_texCoords.valid() && r->_ownsTexCoords )
+                {
+                    r->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
+                    surface_tdl->push_back( r->_texCoords.get() );
+                    r->_texCoords->unref_nodelete();
+                }
             }
-            if ( stitch_tdl && r->_stitchTexCoords.valid() )
+            if ( d.renderTileCoords.valid() && d.ownsTileCoords )
             {
-                r->_stitchTexCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-                stitch_tdl->push_back( r->_stitchTexCoords.get() );
-                r->_stitchTexCoords->unref_nodelete();
+                d.renderTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
+                surface_tdl->push_back( d.renderTileCoords.get() );
+                d.renderTileCoords->unref_nodelete();
             }
-        }
-        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
-        {
-            d.renderTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-            surface_tdl->push_back( d.renderTileCoords.get() );
-            d.renderTileCoords->unref_nodelete();
-        }
-        if ( stitch_tdl && d.stitchTileCoords.valid() && d.ownsTileCoords )
-        {
-            d.stitchTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-            stitch_tdl->push_back( d.stitchTileCoords.get() );
-            d.stitchTileCoords->unref_nodelete();
-        }
 
 #else // OSG version < 3.1.8 (before osg::Geometry API changes)
 
-        osg::Geometry::ArrayDataList* surface_tdl = &d.surface->getTexCoordArrayList();
-        osg::Geometry::ArrayDataList* stitch_tdl = d.stitchGeom ? &d.stitchGeom->getTexCoordArrayList() : 0L;
-        int u=0;
-        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
-        {
-            if ( r->_ownsTexCoords && r->_texCoords.valid() )
+            osg::Geometry::ArrayDataList* surface_tdl = &d.surface->getTexCoordArrayList();
+            int u=0;
+            for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
             {
-                surface_tdl->push_back( osg::Geometry::ArrayData(r->_texCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
-                r->_texCoords->unref_nodelete();
+                if ( r->_ownsTexCoords && r->_texCoords.valid() )
+                {
+                    surface_tdl->push_back( osg::Geometry::ArrayData(r->_texCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+                    r->_texCoords->unref_nodelete();
+                }
             }
-            if ( stitch_tdl && r->_stitchTexCoords.valid() )
+            if ( d.renderTileCoords.valid() && d.ownsTileCoords )
             {
-                stitch_tdl->push_back( osg::Geometry::ArrayData(r->_stitchTexCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
-                r->_stitchTexCoords->unref_nodelete();
+                surface_tdl->push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+                d.renderTileCoords->unref_nodelete();
             }
-        }
-        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
-        {
-            surface_tdl->push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
-            d.renderTileCoords->unref_nodelete();
-        }
-        if ( stitch_tdl && d.stitchTileCoords.valid() && d.ownsTileCoords )
-        {
-            stitch_tdl->push_back( osg::Geometry::ArrayData(d.stitchTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
-            d.stitchTileCoords->unref_nodelete();
-        }
 
 #endif
 
-		if (runMeshOptimizers && d.maskRecords.size() < 1)
-		{
             OE_START_TIMER(index_mesh_time);
 			osgUtil::Optimizer o;
 			o.optimize( d.surfaceGeode, osgUtil::Optimizer::INDEX_MESH );
 
-            // removed these since the gain was nominal and time to optimize 2.5ms
-				//osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-				//osgUtil::Optimizer::INDEX_MESH |
-				//osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-
             if (progress)
                 progress->stats()["index_mesh_time"] += OE_STOP_TIMER(index_mesh_time);
-		}
+		
 
-        // do this while all the objects are in the geometry.
-        allocateVBOs( d );
-
-        // re-ref all the things we un-ref'd earlier.
-        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
-        {
-            if ( r->_texCoords.valid() && r->_ownsTexCoords )
+            // re-ref all the things we un-ref'd earlier.
+            for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
             {
-                r->_texCoords->ref();
+                if ( r->_texCoords.valid() && r->_ownsTexCoords )
+                {
+                    r->_texCoords->ref();
+                }
             }
-            if ( stitch_tdl && r->_stitchTexCoords.valid() )
+            if ( d.renderTileCoords.valid() && d.ownsTileCoords )
             {
-                r->_stitchTexCoords->ref();
+                d.renderTileCoords->ref();
             }
-        }
-        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
-        {
-            d.renderTileCoords->ref();
-        }
-        if ( stitch_tdl && d.stitchTileCoords.valid() && d.ownsTileCoords )
-        {
-            d.stitchTileCoords->ref();
-        }
 
-        // clear the data out of the actual geometry now that we're done optimizing.
-        surface_tdl->clear();
-
-        if (stitch_tdl)
-            stitch_tdl->clear();
+            // clear the data out of the actual geometry now that we're done optimizing.
+            surface_tdl->clear();
+        }
     }
 
 
@@ -2046,45 +2026,53 @@ namespace
         }
     };
 
-
     osg::Geode* makeBBox(const Data& d)
     {        
+        osg::Geode* geode = new osg::Geode();
+        std::string sizeStr = "(empty)";
+        float zpos = 0.0f;
+
         osg::ComputeBoundsVisitor cbv;
         d.surfaceGeode->accept( cbv );
         const osg::BoundingBox& bbox = cbv.getBoundingBox();
-
-        osg::Geometry* geom = new osg::Geometry();
+        if ( bbox.valid() )
+        {
+            osg::Geometry* geom = new osg::Geometry();
+            geom->setName("bbox");
         
-        osg::Vec3Array* v = new osg::Vec3Array();
-        for(int i=0; i<8; ++i)
-            v->push_back(bbox.corner(i));
-        geom->setVertexArray(v);
+            osg::Vec3Array* v = new osg::Vec3Array();
+            for(int i=0; i<8; ++i)
+                v->push_back(bbox.corner(i));
+            geom->setVertexArray(v);
 
-        osg::DrawElementsUByte* de = new osg::DrawElementsUByte(GL_LINES);
-        de->push_back(0); de->push_back(1);
-        de->push_back(1); de->push_back(3);
-        de->push_back(3); de->push_back(2);
-        de->push_back(2); de->push_back(0);
-        de->push_back(4); de->push_back(5);
-        de->push_back(5); de->push_back(7);
-        de->push_back(7); de->push_back(6);
-        de->push_back(6); de->push_back(4);
-        de->push_back(0); de->push_back(4);
-        de->push_back(1); de->push_back(5);
-        de->push_back(3); de->push_back(7);
-        de->push_back(2); de->push_back(6);
-        geom->addPrimitiveSet(de);
+            osg::DrawElementsUByte* de = new osg::DrawElementsUByte(GL_LINES);
+            de->push_back(0); de->push_back(1);
+            de->push_back(1); de->push_back(3);
+            de->push_back(3); de->push_back(2);
+            de->push_back(2); de->push_back(0);
+            de->push_back(4); de->push_back(5);
+            de->push_back(5); de->push_back(7);
+            de->push_back(7); de->push_back(6);
+            de->push_back(6); de->push_back(4);
+            de->push_back(0); de->push_back(4);
+            de->push_back(1); de->push_back(5);
+            de->push_back(3); de->push_back(7);
+            de->push_back(2); de->push_back(6);
+            geom->addPrimitiveSet(de);
 
-        osg::Vec4Array* c= new osg::Vec4Array();
-        c->push_back(osg::Vec4(0,1,1,1));
-        geom->setColorArray(c);
-        geom->setColorBinding(geom->BIND_OVERALL);
+            osg::Vec4Array* c= new osg::Vec4Array();
+            c->push_back(osg::Vec4(0,1,1,1));
+            geom->setColorArray(c);
+            geom->setColorBinding(geom->BIND_OVERALL);
 
-        osg::Geode* geode = new osg::Geode();
-        geode->addDrawable(geom);
+            geode->addDrawable(geom);
+
+            sizeStr = Stringify() << bbox.xMax()-bbox.xMin();
+            zpos = bbox.zMax();
+        }
 
         osgText::Text* t = new osgText::Text();
-        t->setText( Stringify() << d.model->_tileKey.str() << "\n" << bbox.xMax()-bbox.xMin() );
+        t->setText( Stringify() << d.model->_tileKey.str() << "\n" << sizeStr );
         t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
         t->setCharacterSizeMode(t->SCREEN_COORDS);
         t->setCharacterSize(36.0f);
@@ -2092,7 +2080,7 @@ namespace
         t->setColor(osg::Vec4(1,1,1,1));
         t->setBackdropColor(osg::Vec4(0,0,0,1));
         t->setBackdropType(t->OUTLINE);
-        t->setPosition(osg::Vec3(0,0,bbox.zMax()));
+        t->setPosition(osg::Vec3(0,0,zpos));
         geode->addDrawable(t);
 
         geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
@@ -2146,8 +2134,8 @@ TileModelCompiler::compile(TileModel*        model,
 
     // A Geode/Geometry for the surface:
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );
+    d.surface->setName( "surface" );
     d.surfaceGeode = new osg::Geode();
-    d.surfaceGeode->addDrawable( d.surface );
     d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );
 
     tile->addChild( d.surfaceGeode );
@@ -2183,8 +2171,15 @@ TileModelCompiler::compile(TileModel*        model,
     if ( d.createSkirt )
         createSkirtGeometry( d, *_options.heightFieldSkirtRatio() );
 
-    // tesselate the surface verts into triangles.
-    tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
+    // at this point, make sure we actually built any surface geometry.
+    if (d.surface->getVertexArray() &&
+        d.surface->getVertexArray()->getNumElements() > 0 )
+    {
+        d.surfaceGeode->addDrawable( d.surface );
+
+        // tesselate the surface verts into triangles.
+        tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
+    }
 
     // performance optimizations.
     optimize( d, _options.optimizeTiles() == true, progress );
@@ -2198,6 +2193,10 @@ TileModelCompiler::compile(TileModel*        model,
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
         tile->accept(*builder);
     }
+
+    // allocate shared buffer objects.
+    AllocateBufferObjectsVisitor boAllocator;
+    tile->accept( boAllocator );
 
     // Temporary solution to the OverlayDecorator techniques' inappropriate setting of
     // uniform values during the CULL traversal, which causes corruption of the RTT 
@@ -2214,11 +2213,9 @@ TileModelCompiler::compile(TileModel*        model,
     // debugging tools.
     if (_debug)
     {
-#if 0 // crashes when there's a mask
         //test: run the geometry validator to make sure geometry it legal
         osgEarth::GeometryValidator validator;
         tile->accept(validator);
-#endif
 
         //test: show the tile bounding boxes
         tile->addChild( makeBBox(d) );

@@ -39,7 +39,6 @@ SET(HEADERS_ROOT
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
-    NormalMap
     ObjectLocator
     Ocean
     PolyhedralLineOfSight
@@ -71,6 +70,10 @@ set(SHADERS_CPP
     "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
 set(TARGET_GLSL
+    ContourMap.vert.glsl
+    ContourMap.frag.glsl
+    Fog.vert.glsl
+    Fog.frag.glsl
     LogDepthBuffer.vert.glsl
     LogDepthBuffer.VertOnly.vert.glsl    
     LogDepthBuffer.frag.glsl )
@@ -110,7 +113,6 @@ SET(SOURCES_ROOT
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
-    NormalMap.cpp
     ObjectLocator.cpp
     Ocean.cpp
     PolyhedralLineOfSight.cpp

@@ -91,7 +91,7 @@ namespace
         osg::ref_ptr<osg::Uniform>   _depthClipToDepthViewUniform;
         osg::ref_ptr<osg::Uniform>   _depthViewToCamViewUniform;
 
-        osg::ref_ptr<osg::Uniform>   _horizonDistanceUniform;
+        osg::ref_ptr<osg::Uniform>   _horizonDistance2Uniform;
 
         unsigned _renderLeafCount;
 
@@ -277,6 +277,12 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     rttStateSet->setAttributeAndModes(
         new osg::PolygonMode( osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::FILL ),
         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+    // install a VP on the stateset that cancels out any higher-up VP code.
+    // This will prevent things like VPs on the main camera (e.g., log depth buffer)
+    // from interfering with the depth camera
+    VirtualProgram* rttVP = VirtualProgram::getOrCreate(rttStateSet);
+    rttVP->setInheritShaders(false);
     
     // attach the terrain to the camera.
     // todo: should probably protect this with a mutex.....
@@ -302,8 +308,8 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     local->_groupStateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 
     // uniform for the horizon distance (== max clamping distance)
-    local->_horizonDistanceUniform = local->_groupStateSet->getOrCreateUniform(
-        "oe_clamp_horizonDistance",
+    local->_horizonDistance2Uniform = local->_groupStateSet->getOrCreateUniform(
+        "oe_clamp_horizonDistance2",
         osg::Uniform::FLOAT );
 
     // sampler for depth map texture:
@@ -337,21 +343,16 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
 #endif
 
+    // default value for altitude offset; can be overriden by geometry.
+    local->_groupStateSet->addUniform( new osg::Uniform("oe_clamp_altitudeOffset", 0.0f) );
+
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = VirtualProgram::getOrCreate(local->_groupStateSet.get());
     vp->setName( "GPUClamping" );
 
     osgEarth::Shaders pkg;
-
-    vp->setFunction(
-        "oe_clamp_vertex",
-        ShaderLoader::loadSource(pkg.GPUClampingVertex, pkg),
-        ShaderComp::LOCATION_VERTEX_VIEW);
-
-    vp->setFunction(
-        "oe_clamp_fragment",
-        ShaderLoader::loadSource(pkg.GPUClampingFragment, pkg),
-        ShaderComp::LOCATION_FRAGMENT_COLORING);
+    pkg.loadFunction(vp, pkg.GPUClampingVertex);
+    pkg.loadFunction(vp, pkg.GPUClampingFragment);
 }
 
 
@@ -398,16 +399,6 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 
         LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
 
-#if 0
-        osg::Vec3d eye, lookat, up;
-        params._rttViewMatrix.getLookAt(eye, lookat, up);
-        OE_WARN << "rtt eye=" << eye.x() << ", " << eye.y() << ", " << eye.z() << std::endl;
-
-        double left, right, bottom, top, n, f;
-        params._rttProjMatrix.getOrtho(left, right, bottom, top, n, f);
-        OE_WARN << "rtt prj=" << left << ", " << right << ", " << bottom << ", " << top << ", " << n << ", " << f << std::endl << std::endl;
-#endif
-
         // create the depth texture (render the terrain to tex)
         params._rttCamera->accept( *cv );
 
@@ -437,7 +428,8 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             depthViewToDepthClip;
         local._camViewToDepthClipUniform->set( cameraViewToDepthClip );
 
-        local._horizonDistanceUniform->set( float(*params._horizonDistance) );
+        float hd = (float)(*params._horizonDistance);
+        local._horizonDistance2Uniform->set( hd*hd );
 
         //OE_NOTICE << "HD = " << std::setprecision(8) << float(*params._horizonDistance) << std::endl;
 

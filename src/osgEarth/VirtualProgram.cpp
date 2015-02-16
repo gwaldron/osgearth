@@ -1203,7 +1203,10 @@ VirtualProgram::apply( osg::State& state ) const
 #ifdef USE_STACK_MEMORY
         // remember this program selection in case this VP is applied again
         // during the same frame.
-        if ( !programRecalled && !acceptCallbacksPresent && stack != 0L )
+        if (programRecalled == false        &&   // recalled a program? not necessary
+            getDataVariance() != DYNAMIC    &&   // DYNAMIC variance? might change during ST cull; no memory
+            acceptCallbacksPresent == false &&   // accept callbacks? cannot use memory
+            stack != 0L )
         {
             _vpStackMemory.remember(state, *stack, program.get());
         }

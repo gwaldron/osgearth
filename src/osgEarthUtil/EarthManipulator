@@ -503,9 +503,9 @@ namespace osgEarth { namespace Util
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
             const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }            
 
-            /** Whether or not to disable collision avoidance when new data pages in */
-            bool getDisableCollisionAvoidance() const { return _disableCollisionAvoidance; }
-            void setDisableCollisionAvoidance( bool disableCollisionAvoidance ) { _disableCollisionAvoidance = disableCollisionAvoidance; }
+            /** Whether or not to keep the camera from going through the terrain surface */
+            bool getTerrainAvoidanceEnabled() const { return _terrainAvoidanceEnabled; }
+            void setTerrainAvoidanceEnabled( bool value ) { _terrainAvoidanceEnabled = value; }
 
             void setThrowingEnabled(bool throwingEnabled) { _throwingEnabled = throwingEnabled; }
             bool getThrowingEnabled () const { return _throwingEnabled; }
@@ -554,7 +554,7 @@ namespace osgEarth { namespace Util
             CameraProjection _camProjType;
             osg::Vec2s _camFrustOffsets;	
 
-            bool _disableCollisionAvoidance;
+            bool _terrainAvoidanceEnabled;
 
             bool _throwingEnabled;
             double _throwDecayRate;
@@ -610,6 +610,18 @@ namespace osgEarth { namespace Util
          *      The duration that the camera should transition when tethering to the node.
          */
         void setTetherNode( osg::Node* node, double duration_s =0.0  );
+
+        /**
+         * Sets a callback to be invoked upon a tether or tether break
+         */
+        class TetherCallback : public osg::Referenced {
+        public:
+            virtual void operator()(osg::Node* tetherNode) { }
+        protected:
+            virtual ~TetherCallback() { }
+        };
+        void setTetherCallback(TetherCallback* cb) { _tetherCallback = cb; }
+        TetherCallback* getTetherCallback() { return _tetherCallback.get(); }
 
         /**
          * Gets the node to which the camera is tethered, or NULL if tethering is
@@ -689,7 +701,7 @@ namespace osgEarth { namespace Util
          */
         void  setFindNodeTraversalMask( const osg::Node::NodeMask & nodeMask ) { _findNodeTraversalMask = nodeMask; }
 
-    public: // osgGA::MatrixManipulator
+    public: // osgGA::CameraManipulator
 
         virtual const char* className() const { return "EarthManipulator"; }
         
@@ -999,6 +1011,8 @@ namespace osgEarth { namespace Util
 
         // Traversal mask used in established and dtor methods to find MapNode and CoordinateSystemNode
         osg::Node::NodeMask  _findNodeTraversalMask;
+
+        osg::ref_ptr<TetherCallback> _tetherCallback;
 
         void collisionDetect();
     };

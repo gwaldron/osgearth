@@ -32,7 +32,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Progress>
-#include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
 
 #include <osg/TexEnv>
@@ -867,27 +867,29 @@ MPTerrainEngineNode::updateState()
             vp->addBindAttribLocation( "oe_terrain_attr2", osg::Drawable::ATTRIBUTE_7 );
 
             // Vertex shader:
-            std::string vs = ShaderLoader::loadSource(
-                Shaders::MPVertFile,
-                Shaders::MPVertSource );
+            std::string vs_model = ShaderLoader::load(
+                Shaders::MPVertModel,
+                Shaders::MPVertModelSource );
 
-            osgEarth::replaceIn( vs, "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
-            osgEarth::replaceIn( vs, "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
+            osgEarth::replaceIn( vs_model, "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
+            osgEarth::replaceIn( vs_model, "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
             
-            vp->setFunction( "oe_mp_setup_coloring", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
+            vp->setFunction( "oe_mp_vertModel", vs_model, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
+
+            std::string vs_view = ShaderLoader::load(
+                Shaders::MPVertView,
+                Shaders::MPVertViewSource);
+
+            vp->setFunction( "oe_mp_vertView", vs_view, ShaderComp::LOCATION_VERTEX_VIEW, 0.0 );
 
             // Fragment shader:
-            std::string fs = ShaderLoader::loadSource(
-                Shaders::MPFragFile,
+            std::string fs = ShaderLoader::load(
+                Shaders::MPFrag,
                 Shaders::MPFragSource );
-            
-            bool useTerrainColor = _terrainOptions.color().isSet();
-            if ( !useTerrainColor )
-            {
-                osgEarth::replaceIn( fs,
-                    "#define MP_USE_TERRAIN_COLOR",
-                    "#undef MP_USE_TERRAIN_COLOR" );
-            }
+
+            // terrain background color; negative means use the vertex color.
+            Color terrainColor = _terrainOptions.color().getOrUse( Color(-1,-1,-1,-1) );
+            terrainStateSet->addUniform(new osg::Uniform("oe_terrain_color", terrainColor));
 
             bool useBlending = _terrainOptions.enableBlending() == true;
             if ( !useBlending )
@@ -998,12 +1000,9 @@ MPTerrainEngineNode::updateState()
             terrainStateSet->getOrCreateUniform(
                 "oe_layer_order", osg::Uniform::INT )->set( 0 );
 
-            // base terrain color.
-            if ( useTerrainColor )
-            {
-                terrainStateSet->getOrCreateUniform(
-                    "oe_terrain_color", osg::Uniform::FLOAT_VEC4 )->set( *_terrainOptions.color() );
-            }
+            // default min/max range uniforms.
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", FLT_MAX) );
         }
 
         _stateUpdateRequired = false;

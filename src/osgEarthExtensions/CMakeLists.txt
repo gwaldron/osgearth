@@ -21,9 +21,11 @@ SET(TARGET_COMMON_LIBRARIES
 # Folder name for plugins
 SET(OSGEARTH_EXTENSIONS_FOLDER Extensions)
 
+add_subdirectory(billboard)
 add_subdirectory(bumpmap)
+add_subdirectory(mapinspector)
 add_subdirectory(normalmap)
 add_subdirectory(splat)
+add_subdirectory(terrainshader)
 add_subdirectory(viewpoints)
-add_subdirectory(billboard)
 

@@ -53,7 +53,7 @@ namespace osgEarth
         /**
          * Sets DB options that this extension should use when doing IO operations.
          */
-        virtual void setDBOptions(const osgDB::Options* options) =0;
+        virtual void setDBOptions(const osgDB::Options* options) { }
 
 
     protected:

@@ -84,19 +84,21 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
             Shaders shaders;
+            shaders.loadFunction( vp, shaders.VertexModel );
+            shaders.loadFunction( vp, shaders.VertexView );
 
-            vp->setFunction(
-                "oe_bumpmap_vertexModel",   
-                ShaderLoader::loadSource(shaders.VertexModel, shaders),
-                ShaderComp::LOCATION_VERTEX_MODEL );
+            //vp->setFunction(
+            //    "oe_bumpmap_vertexModel",   
+            //    ShaderLoader::load(shaders.VertexModel, shaders),
+            //    ShaderComp::LOCATION_VERTEX_MODEL );
 
-            vp->setFunction(
-                "oe_bumpmap_vertexView",
-                ShaderLoader::loadSource(shaders.VertexView, shaders),
-                ShaderComp::LOCATION_VERTEX_VIEW );
+            //vp->setFunction(
+            //    "oe_bumpmap_vertexView",
+            //    ShaderLoader::load(shaders.VertexView, shaders),
+            //    ShaderComp::LOCATION_VERTEX_VIEW );
 
             std::string fragShader = _octaves <= 1 ? shaders.FragmentSimple : shaders.FragmentProgressive;
-            std::string fragSource = ShaderLoader::loadSource(fragShader, shaders);
+            std::string fragSource = ShaderLoader::load(fragShader, shaders);
 
             if ( engine->normalTexturesRequired() )
             {
@@ -140,9 +142,11 @@ BumpMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::get(stateset);
         if ( vp )
         {
-            vp->removeShader( "oe_bumpmap_vertexModel" );
-            vp->removeShader( "oe_bumpmap_vertexView" );
-            vp->removeShader( "oe_bumpmap_fragment" );
+            Shaders pkg;
+            pkg.unloadFunction( vp, pkg.VertexModel );
+            pkg.unloadFunction( vp, pkg.VertexView );
+            pkg.unloadFunction( vp, pkg.FragmentSimple );
+            pkg.unloadFunction( vp, pkg.FragmentProgressive );
         }
     }
     

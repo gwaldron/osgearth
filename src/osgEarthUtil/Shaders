@@ -20,18 +20,24 @@
 #define OSGEARTH_SHADERS 1
 
 #include <osgEarthUtil/Export>
-#include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderLoader>
 
 namespace osgEarth { namespace Util
 {
     struct OSGEARTHUTIL_EXPORT Shaders : public osgEarth::ShaderPackage
 	{
-		static const char* LogDepthBuffer_VertFile;
-		static const char* LogDepthBuffer_VertSource;
-		static const char* LogDepthBuffer_FragFile;
-		static const char* LogDepthBuffer_FragSource;
-		static const char* LogDepthBuffer_VertOnly_VertFile;
-		static const char* LogDepthBuffer_VertOnly_VertSource;
+        Shaders();
+
+		std::string
+            ContourMap_Vertex,
+            ContourMap_Fragment,
+
+            Fog_Vertex,
+            Fog_Fragment,
+
+            LogDepthBuffer_VertFile,
+            LogDepthBuffer_FragFile,
+            LogDepthBuffer_VertOnly_VertFile;
 	};	
 } } // namespace osgEarth::Util
 

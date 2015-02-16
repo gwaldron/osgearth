@@ -24,6 +24,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Shaders>
 
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -88,97 +89,6 @@ namespace
         LineFunctor<SegmentAnalyzer> _segmentAnalyzer;
         int                          _maxSegmentsToAnalyze;
     };
-
-
-    //...............................
-    // Shader code:
-
-#ifdef VERTEX_ONLY_METHOD
-
-    const char* s_vertex =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "uniform float oe_doff_min_bias; \n"
-        "uniform float oe_doff_max_bias; \n"
-        "uniform float oe_doff_min_range; \n"
-        "uniform float oe_doff_max_range; \n"
-
-        "void oe_doff_vertex(inout vec4 VertexVIEW) \n"
-        "{ \n"
-        //   calculate range to target:
-        "    vec3 vert3 = VertexVIEW.xyz/VertexVIEW.w; \n"
-        "    float range = length(vert3); \n"
-
-        //   calculate the depth offset bias for this range:
-        "    float ratio = (clamp(range, oe_doff_min_range, oe_doff_max_range)-oe_doff_min_range)/(oe_doff_max_range-oe_doff_min_range);\n"
-        "    float bias = oe_doff_min_bias + ratio * (oe_doff_max_bias-oe_doff_min_bias);\n"
-
-        //   clamp the bias to 1/2 of the range of the vertex. We don't want to 
-        //   pull the vertex TOO close to the camera and certainly not behind it.
-        "    bias = min(bias, range*0.5); \n"
-
-        //   pull the vertex towards the camera.
-        "    vec3 pullVec = normalize(vert3); \n"
-        "    vec3 simVert3 = vert3 - pullVec*bias; \n"
-        "    VertexVIEW = vec4( simVert3 * VertexVIEW.w, VertexVIEW.w ); \n"
-        "} \n";
-
-#else
-
-    const char* s_vertex =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        
-        "uniform float oe_doff_min_bias; \n"
-        "uniform float oe_doff_max_bias; \n"
-        "uniform float oe_doff_min_range; \n"
-        "uniform float oe_doff_max_range; \n"
-
-        // values to pass to fragment shader:
-        "varying vec4 oe_doff_vert; \n"
-        "varying float oe_doff_vertRange; \n"
-
-        "void oe_doff_vertex(inout vec4 VertexVIEW) \n"
-        "{ \n"
-        //   calculate range to target:
-        "    vec3 vert3 = VertexVIEW.xyz/VertexVIEW.w; \n"
-        "    float range = length(vert3); \n"
-
-        //   calculate the depth offset bias for this range:
-        "    float ratio = (clamp(range, oe_doff_min_range, oe_doff_max_range)-oe_doff_min_range)/(oe_doff_max_range-oe_doff_min_range);\n"
-        "    float bias = oe_doff_min_bias + ratio * (oe_doff_max_bias-oe_doff_min_bias);\n"
-
-        //   calculate the "simulated" vertex, pulled toward the camera:
-        "    vec3 pullVec = normalize(vert3); \n"
-        "    vec3 simVert3 = vert3 - pullVec*bias; \n"
-        "    vec4 simVert = vec4( simVert3 * VertexVIEW.w, VertexVIEW.w ); \n"
-        "    oe_doff_vert = gl_ProjectionMatrix * simVert; \n"
-        "    oe_doff_vertRange = range - bias; \n"
-        "} \n";
-
-    const char* s_fragment =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        // values to pass to fragment shader:
-        "varying vec4 oe_doff_vert; \n"
-        "varying float oe_doff_vertRange; \n"
-
-        "void oe_doff_fragment(inout vec4 color) \n"
-        "{ \n"
-        //   calculate the new depth value for the zbuffer.
-        "    float sim_depth = 0.5 * (1.0+(oe_doff_vert.z/oe_doff_vert.w));\n"
-
-        //   if the offset pushed the Z behind the eye, the projection mapping will
-        //   result in a z>1. We need to bring these values back down to the 
-        //   near clip plan (z=0). We need to check simRange too before doing this
-        //   so we don't draw fragments that are legitimently beyond the far clip plane.
-        "    if ( sim_depth > 1.0 && oe_doff_vertRange < 0.0 ) { sim_depth = 0.0; } \n"
-        "    gl_FragDepth = max(0.0, sim_depth); \n"
-        "} \n";
-
-#endif // !VERTEX_ONLY_METHOD
 }
 
 //------------------------------------------------------------------------
@@ -236,10 +146,10 @@ DepthOffsetAdapter::init()
     _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
     {
-        _minBiasUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_doff_min_bias");
-        _maxBiasUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_doff_max_bias");
-        _minRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_doff_min_range");
-        _maxRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_doff_max_range");
+        _minBiasUniform  = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_minBias");
+        _maxBiasUniform  = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_maxBias");
+        _minRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_minRange");
+        _maxRangeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_depthOffset_maxRange");
         updateUniforms();
     }
 }
@@ -260,6 +170,9 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         (graph && graphChanging ) || 
         (graph && (_options.enabled() == true));
 
+    // shader package:
+    Shaders shaders;
+
     if ( uninstall )
     {
         OE_TEST << LC << "Removing depth offset shaders" << std::endl;
@@ -270,16 +183,8 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         s->removeUniform( _maxBiasUniform.get() );
         s->removeUniform( _minRangeUniform.get() );
         s->removeUniform( _maxRangeUniform.get() );
-
-        VirtualProgram* vp = VirtualProgram::get( s );
-        if ( vp )
-        {
-            vp->removeShader( "oe_doff_vertex" );
-
-#ifndef VERTEX_ONLY_METHOD
-            vp->removeShader( "oe_doff_fragment" );
-#endif
-        }
+        
+        shaders.unloadFunction( VirtualProgram::get(s), shaders.DepthOffsetVertex );
     }
 
     if ( install )
@@ -292,14 +197,8 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         s->addUniform( _maxBiasUniform.get() );
         s->addUniform( _minRangeUniform.get() );
         s->addUniform( _maxRangeUniform.get() );
-
-        VirtualProgram* vp = VirtualProgram::getOrCreate( s );
-
-        vp->setFunction( "oe_doff_vertex", s_vertex, ShaderComp::LOCATION_VERTEX_VIEW );
-
-#ifndef VERTEX_ONLY_METHOD
-        vp->setFunction( "oe_doff_fragment", s_fragment, ShaderComp::LOCATION_FRAGMENT_COLORING );
-#endif
+        
+        shaders.loadFunction(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);        
     }
 
     if ( graphChanging )

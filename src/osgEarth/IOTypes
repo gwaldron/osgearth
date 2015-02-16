@@ -111,16 +111,16 @@ namespace osgEarth
         virtual ~ReadResult() { }
 
         /** Whether the read operation succeeded */
-        bool succeeded() const
-        {
-            return _code == RESULT_OK && _result.valid();
-        }
+        bool succeeded() const { return _code == RESULT_OK && _result.valid(); }
 
         /** Whether the read operation failed */
         bool failed() const { return _code != RESULT_OK; }
 
         /** Whether the result contains an object */
         bool empty() const { return !_result.valid(); }
+
+        /** Detail message, sometimes set upon error */
+        const std::string& errorDetail() const { return _detail; }
 
         /** The result code */
         const Code& code() const { return _code; }
@@ -187,6 +187,8 @@ namespace osgEarth
 
         void setMetadata(const Config& meta) { _meta = meta; }
 
+        void setErrorDetail(const std::string& value) { _detail = value; }
+
     protected:
         Code                      _code;
         osg::ref_ptr<osg::Object> _result;
@@ -196,6 +198,7 @@ namespace osgEarth
         bool                      _fromCache;
         TimeStamp                 _lmt;
         double                    _duration_s;
+        std::string               _detail;
     };
 
 //--------------------------------------------------------------------

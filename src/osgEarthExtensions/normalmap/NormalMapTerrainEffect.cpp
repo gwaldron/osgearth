@@ -23,6 +23,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TerrainTileNode>
+#include <osgEarth/ShaderLoader>
 
 #include "NormalMapShaders"
 
@@ -96,10 +97,10 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
         engine->addTileNodeCallback( new NormalTexInstaller(this, _normalMapUnit) );
 
         // configure shaders
-        std::string vertShader = ShaderLoader::loadSource(
+        std::string vertShader = ShaderLoader::load(
             Shaders::VertexShaderFile, Shaders::VertexShaderSource);
 
-        std::string fragShader = ShaderLoader::loadSource(
+        std::string fragShader = ShaderLoader::load(
             Shaders::FragmentShaderFile, Shaders::FragmentShaderSource);
 
         // shader components

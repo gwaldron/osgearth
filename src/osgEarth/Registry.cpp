@@ -476,7 +476,7 @@ Registry::createUID()
 }
 
 osgDB::Options*
-Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
+Registry::cloneOrCreateOptions(const osgDB::Options* input)
 {
     osgDB::Options* newOptions = 
         input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : 

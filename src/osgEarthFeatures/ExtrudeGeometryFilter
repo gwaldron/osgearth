@@ -137,6 +137,7 @@ namespace osgEarth { namespace Features
         {
             Elevations elevations;
             bool       isPolygon;
+            osg::Vec3d baseCentroid;
 
             unsigned getNumPoints() const {
                 unsigned c = 0;
@@ -214,6 +215,10 @@ namespace osgEarth { namespace Features
                                   osg::Geometry*    outline,
                                   const osg::Vec4&  outlineColor,
                                   float             minCreaseAngleDeg);
+        
+        bool addExtrusionAttrs(const Structure& structure,
+                               osg::Geometry*   geom,
+                               bool             isRoof);
 
 #if 0
         bool extrudeGeometry(

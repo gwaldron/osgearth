@@ -27,12 +27,14 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Utils>
+#include <osgEarth/Tessellator>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
 #include <osgUtil/SmoothingVisitor>
+#include <osgUtil/Simplifier>
 #include <osg/LineWidth>
 #include <osg/PolygonOffset>
 
@@ -235,6 +237,10 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
                 maxLoc = m_point;
         }
     }
+
+    osg::Vec2d c = input->getBounds().center2d();
+    osg::Vec3d centroid(c.x(), c.y(), 0.0);
+    transformAndLocalize(centroid, srs, structure.baseCentroid, mapSRS, _world2local, makeECEF );
 
     // apply the height offsets
     height    -= heightOffset;
@@ -527,6 +533,11 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
         walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
     }
 
+    osg::Vec4Array* attrs = new osg::Vec4Array( numWallVerts );
+    walls->setVertexAttribArray    ( osg::Drawable::ATTRIBUTE_6, attrs );
+    walls->setVertexAttribBinding  ( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
+    walls->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
+
     unsigned vertptr = 0;
     bool     tex_repeats_y = wallSkin && wallSkin->isTiled() == true;
 
@@ -551,34 +562,23 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             (*verts)[vertptr+3] = f->right.base;
             (*verts)[vertptr+4] = f->right.roof;
             (*verts)[vertptr+5] = f->left.roof;
+            
+            (*attrs)[vertptr+0].set( structure.baseCentroid.x(), structure.baseCentroid.y(), structure.baseCentroid.z(), 1.0 );
+            (*attrs)[vertptr+1].set( structure.baseCentroid.x(), structure.baseCentroid.y(), structure.baseCentroid.z(), 0.0 );
+            (*attrs)[vertptr+2].set( structure.baseCentroid.x(), structure.baseCentroid.y(), structure.baseCentroid.z(), 0.0 );
+            (*attrs)[vertptr+3].set( structure.baseCentroid.x(), structure.baseCentroid.y(), structure.baseCentroid.z(), 0.0 );
+            (*attrs)[vertptr+4].set( structure.baseCentroid.x(), structure.baseCentroid.y(), structure.baseCentroid.z(), 1.0 );
+            (*attrs)[vertptr+5].set( structure.baseCentroid.x(), structure.baseCentroid.y(), structure.baseCentroid.z(), 1.0 );
 
             // Assign wall polygon colors.
             if (useColor)
             {
-#if 0
-                // experimental: apply some ambient occlusion to tight inside corners                
-                float bL = f->left.cosAngle > 0.0 ? 1.0 : (1.0+f->left.cosAngle);
-                float bR = f->right.cosAngle > 0.0 ? 1.0 : (1.0+f->right.cosAngle);
-
-                osg::Vec4f leftColor      = Color(wallColor).brightness(bL);
-                osg::Vec4f leftBaseColor  = Color(wallBaseColor).brightness(bL);
-                osg::Vec4f rightColor     = Color(wallColor).brightness(bR);
-                osg::Vec4f rightBaseColor = Color(wallBaseColor).brightness(bR);
-
-                (*colors)[vertptr+0] = leftColor;
-                (*colors)[vertptr+1] = leftBaseColor;
-                (*colors)[vertptr+2] = rightBaseColor;
-                (*colors)[vertptr+3] = rightBaseColor;
-                (*colors)[vertptr+4] = rightColor;
-                (*colors)[vertptr+5] = leftColor;
-#else
                 (*colors)[vertptr+0] = wallColor;
                 (*colors)[vertptr+1] = wallBaseColor;
                 (*colors)[vertptr+2] = wallBaseColor;
                 (*colors)[vertptr+3] = wallBaseColor;
                 (*colors)[vertptr+4] = wallColor;
                 (*colors)[vertptr+5] = wallColor;
-#endif
             }
 
             // Calculate texture coordinates:
@@ -629,8 +629,21 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
     osgUtil::SmoothingVisitor::smooth(
         *walls,
         osg::DegreesToRadians(_wallAngleThresh_deg) );
+    
+
+    // add a vertex attribute containing a reference point and roof identifier.  
+    //addExtrusionAttrs( structure, walls, false );
 
     return madeGeom;
+}
+
+bool
+ExtrudeGeometryFilter::addExtrusionAttrs(const Structure& structure,
+                                         osg::Geometry*   geom,
+                                         bool             isRoof)
+{
+
+    return true;
 }
 
 
@@ -678,7 +691,6 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
         }
         roof->addPrimitiveSet( new osg::DrawArrays(GL_LINE_LOOP, elevptr, vertptr-elevptr) );
     }
-    
 
     osg::Vec3Array* normal = new osg::Vec3Array(verts->size());
     roof->setNormalArray( normal );
@@ -686,10 +698,34 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
     normal->assign( verts->size(), osg::Vec3(0,0,1) );
 
     // Tessellate the roof lines into polygons.
-    osgUtil::Tessellator tess;
-    tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
-    tess.retessellatePolygons( *roof );
+    osgEarth::Tessellator oeTess;
+    if (!oeTess.tessellateGeometry(*roof))
+    {
+        //fallback to osg tessellator
+        OE_DEBUG << LC << "Falling back on OSG tessellator (" << roof->getName() << ")" << std::endl;
+
+        osgUtil::Tessellator tess;
+        tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+        tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
+        tess.retessellatePolygons( *roof );
+    }
+
+    // add a vertex attribute containing a reference point and roof identifier.  
+    unsigned count = roof->getVertexArray()->getNumElements();
+    osg::Vec4Array* attr = new osg::Vec4Array();
+    attr->reserve( count );
+    for(unsigned i=0; i<count; ++i)
+    {
+        osg::Vec4f value;
+        value.x() = structure.baseCentroid.x();
+        value.y() = structure.baseCentroid.y();
+        value.z() = structure.baseCentroid.z();
+        value.a() = 1.0; // yes. roofy.
+        attr->push_back( value );
+    }
+    roof->setVertexAttribArray    ( osg::Drawable::ATTRIBUTE_6, attr );
+    roof->setVertexAttribBinding  ( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
+    roof->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
 
     return true;
 }
@@ -1096,7 +1132,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
                 //i->second->accept( vco );
             }
             else
-            {                
+            {
                 //TODO: try this -- issues: it won't work on lines, and will it screw up
                 // feature indexing?
                 osgUtil::Optimizer o;
@@ -1112,12 +1148,15 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     // parent geometry with a delocalizer (if necessary)
     osg::Group* group = createDelocalizeGroup();
     
-    // combines geometries where the statesets are the same.
+    // add all the geodes
     for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
     {
         group->addChild( i->second.get() );
     }
     _geodes.clear();
+
+    // set a uniform indiciating that clamping attributes are available.
+    group->getOrCreateStateSet()->addUniform( new osg::Uniform("oe_clamp_hasAttrs", true) );
 
     // if we drew outlines, apply a poly offset too.
     if ( _outlineSymbol.valid() )

@@ -350,6 +350,11 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     VirtualProgram* vp = VirtualProgram::getOrCreate(local->_groupStateSet.get());
     vp->setName( "GPUClamping" );
 
+    // Bind clamping attribute location, and a default uniform indicating whether
+    // they are available (default is false).
+    vp->addBindAttribLocation( "oe_clamp_attrs",  osg::Drawable::ATTRIBUTE_6 );    
+    local->_groupStateSet->addUniform( new osg::Uniform("oe_clamp_hasAttrs", false) );
+
     osgEarth::Shaders pkg;
     pkg.loadFunction(vp, pkg.GPUClampingVertex);
     pkg.loadFunction(vp, pkg.GPUClampingFragment);

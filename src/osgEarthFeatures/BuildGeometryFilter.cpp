@@ -187,7 +187,6 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
                 // subdivide the mesh if necessary to conform to an ECEF globe:
                 if ( makeECEF )
                 {
-
                     //convert back to world coords
                     for( osg::Vec3Array::iterator i = allPoints->begin(); i != allPoints->end(); ++i )
                     {
@@ -212,8 +211,9 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
                 // assign the primary color array. PER_VERTEX required in order to support
                 // vertex optimization later
+                unsigned count = osgGeom->getVertexArray()->getNumElements();
                 osg::Vec4Array* colors = new osg::Vec4Array;
-                colors->assign( osgGeom->getVertexArray()->getNumElements(), primaryColor );
+                colors->assign( count, primaryColor );
                 osgGeom->setColorArray( colors );
                 osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 

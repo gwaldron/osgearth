@@ -659,8 +659,6 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     // set up arrays
 #if OSG_MIN_VERSION_REQUIRED( 3, 1, 8 )
     if( _vertexArray.valid() )
-
-    if( _vertexArray.valid() )
         state.setVertexPointer(_vertexArray.get());
 
     if (_normalArray.valid() && _normalArray->getBinding()==osg::Array::BIND_PER_VERTEX)

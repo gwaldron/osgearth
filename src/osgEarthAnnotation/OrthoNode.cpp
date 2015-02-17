@@ -193,8 +193,11 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
 
         AnnotationNode::traverse( nv );
 
-        if ( this->getCullingActive() == false )
-            this->setCullingActive( true );
+        if ( _autoxform->getCullingActive() == false )
+        {
+            _autoxform->setCullingActive( true );
+            this->dirtyBound();
+        }
     }
     
     // For an intersection visitor, ALWAYS traverse the autoxform instead of the 
@@ -220,7 +223,15 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
 osg::BoundingSphere
 OrthoNode::computeBound() const
 {
-    return osg::BoundingSphere(_matxform->getMatrix().getTrans(), 1000.0);
+    return PositionedAnnotationNode::computeBound();
+    //return _matxform->computeBound();
+ /*   osg::BoundingSphere bs = AnnotationNode::computeBound();
+    OE_NOTICE << bs.center().x() << ", " << bs.center().y() << ", " << bs.center().z()
+        << ", " << bs.radius()
+        << "\n";
+    return bs;
+ */   //return AnnotationNode::computeBound();
+    //return osg::BoundingSphere(_matxform->getMatrix().getTrans(), 1000.0);
 }
 
 void
@@ -287,16 +298,6 @@ OrthoNode::applyStyle(const Style& style)
     if ( text && text->declutter().isSet() )
     {
         Decluttering::setEnabled( this->getOrCreateStateSet(), (text->declutter() == true) );
-        //if ( text->declutter() == true )
-        //{
-        //    this->getOrCreateStateSet()->setRenderBinDetails(
-        //        0,
-        //        OSGEARTH_DECLUTTER_BIN );
-        //}
-        //else
-        //{
-        //    this->getOrCreateStateSet()->setRenderBinToInherit();
-        //}
     }
 
 
@@ -315,16 +316,6 @@ OrthoNode::applyStyle(const Style& style)
     if ( icon && icon->declutter().isSet() )
     {
         Decluttering::setEnabled( this->getOrCreateStateSet(), (icon->declutter() == true) );
-        //if ( icon->declutter() == true )
-        //{
-        //    this->getOrCreateStateSet()->setRenderBinDetails(
-        //        0,
-        //        OSGEARTH_DECLUTTER_BIN );
-        //}
-        //else
-        //{
-        //    this->getOrCreateStateSet()->setRenderBinToInherit();
-        //}
     }
 
     // check for occlusion culling

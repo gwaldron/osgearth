@@ -410,7 +410,7 @@ AnnotationNode::applyGeneralSymbology(const Style& style)
                 (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
-        if ( render->depthOffset().isSet() ) // && !_depthAdj )
+        if ( render->depthOffset().isSet() )
         {
             _doAdapter.setDepthOffsetOptions( *render->depthOffset() );
             setDepthAdjustment( true );

@@ -684,11 +684,16 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         ImageUtils::featherAlphaRegions( result.get() );
     }    
     
-    // If image creation failed (but was not intentionally canceled),
+    // If image creation failed (but was not intentionally canceled and 
+    // didn't time out or end for any other recoverable reason), then
     // blacklist this tile for future requests.
-    if ( result == 0L && (!progress || !progress->isCanceled()) )
+    if (result == 0L)
     {
-        source->getBlacklist()->add( key );
+        if ( progress == 0L ||
+             ( !progress->isCanceled() && !progress->needsRetry() ) )
+        {
+            source->getBlacklist()->add( key );
+        }
     }
 
     return GeoImage(result.get(), key.getExtent());

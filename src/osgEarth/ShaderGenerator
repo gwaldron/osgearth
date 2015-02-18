@@ -41,6 +41,13 @@ namespace osg
     class TextureRectangle;
     class Texture2DArray;
     class Texture2DMultisample;
+    class TextureCubeMap;
+    class PointSprite;
+}
+
+namespace osgSim
+{
+    class LightPointNode;
 }
 
 namespace osgEarth
@@ -49,7 +56,7 @@ namespace osgEarth
      * Traverses a scene graph and generates VirtualProgram attributes to
      * render the geometry using GLSL shaders.
      *
-     * You can use this class directly, but they osgEarth Registry hold
+     * You can use this class directly, but they osgEarth Registry holds
      * a system-wide implementation that the user can replace. So the best
      * way to use this class is:
      *
@@ -159,6 +166,11 @@ namespace osgEarth
         virtual void apply( osg::ProxyNode& );
         virtual void apply( osg::ClipNode& );
 
+    public: // types not in osg::NodeVisitor
+
+        virtual void applyNonCoreNodeIfNecessary( osg::Node& );
+        
+        virtual void apply( osgSim::LightPointNode& );
 
     protected: // high-level entry points:
 
@@ -171,16 +183,21 @@ namespace osgEarth
         virtual bool processText(const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
 
 
+
     protected: // overridable texture handlers:
 
-        struct GenBuffers
+        struct OSGEARTH_EXPORT GenBuffers
         {
-            std::stringstream vertHead, vertBody;
-            std::stringstream fragHead, fragBody;
-            osg::StateSet*    stateSet;
+            std::stringstream _vertHead, _vertBody;
+            std::stringstream _fragHead, _fragBody;
+            osg::StateSet*    _stateSet;
+            unsigned          _version;
+
+            bool requireVersion(unsigned glslVersion, unsigned glesVersion=100u);
+            GenBuffers();
         };
 
-        virtual bool apply(osg::Texture* tex, osg::TexGen* texgen, osg::TexEnv* texenv, osg::TexMat* texmat, int unit, GenBuffers& buf);
+        virtual bool apply(osg::Texture* tex, osg::TexGen* texgen, osg::TexEnv* texenv, osg::TexMat* texmat, osg::PointSprite* sprite, int unit, GenBuffers& buf);
 
         virtual bool apply(osg::TexEnv* texenv, int unit, GenBuffers& buf);
 
@@ -197,6 +214,14 @@ namespace osgEarth
         virtual bool apply(osg::TextureRectangle* tex, int unit, GenBuffers& buf);
 
         virtual bool apply(osg::Texture2DArray* tex, int unit, GenBuffers& buf);
+
+        virtual bool apply(osg::TextureCubeMap* tex, int unit, GenBuffers& buf);
+
+        virtual bool apply(osg::PointSprite* sprite, int unit, GenBuffers& buf);
+        
+        virtual bool apply(osg::StateSet::AttributeList& attrs, GenBuffers& buf);
+
+        virtual bool apply(osg::StateAttribute* attr, GenBuffers& buf);
         
         // This method will check whether setDuplicateSharedNodes has been set,
         // and if so, it will clone a node that has multiple parents such that
@@ -216,7 +241,6 @@ namespace osgEarth
         AcceptCallbackVector _acceptCallbacks;
 
         bool accept(const osg::StateAttribute* sa) const;
-
     };
 
     

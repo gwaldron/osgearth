@@ -80,6 +80,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         unsigned _opacityUniformNameID;
         unsigned _texMatParentUniformNameID;
         unsigned _tileKeyUniformNameID;
+        unsigned _minRangeUniformNameID;
+        unsigned _maxRangeUniformNameID;
 
         // Data stored for each graphics context:
         struct PerContextData {

@@ -50,6 +50,22 @@ using namespace osgEarth::Annotation;
 namespace
 {
     /**
+     * Tether callback test.
+     */
+    struct TetherCB : public EarthManipulator::TetherCallback
+    {
+        void operator()(osg::Node* node)
+        {
+            if ( node ) {
+                OE_WARN << "Tether on\n";
+            }
+            else {
+                OE_WARN << "Tether off\n";
+            }
+        }
+    };
+
+    /**
      * Builds our help menu UI.
      */
     Control* createHelp( osgViewer::View* view )
@@ -68,19 +84,23 @@ namespace
             "c :",                 "toggle perspective/ortho",
             "t :",                 "toggle tethering",
             "a :",                 "toggle viewpoint arcing",
-            "z :",                 "toggle throwing"
+            "z :",                 "toggle throwing",
+            "k :",                 "toggle collision"
         };
 
         Grid* g = new Grid();
-        for( unsigned i=0; i<sizeof(text)/sizeof(text[0]); ++i )
+        unsigned i, c, r;
+        for( i=0; i<sizeof(text)/sizeof(text[0]); ++i )
         {
-            unsigned c = i % 2;
-            unsigned r = i / 2;
+            c = i % 2;
+            r = i / 2;
             g->setControl( c, r, new LabelControl(text[i]) );
         }
 
         VBox* v = new VBox();
         v->addControl( g );
+
+        
 
         return v;
     }
@@ -253,6 +273,38 @@ namespace
         osg::ref_ptr<EarthManipulator> _manip;
     };
 
+    /**
+     * Toggles the collision feature.
+     */
+    struct ToggleCollisionHandler : public osgGA::GUIEventHandler
+    {
+        ToggleCollisionHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip)
+        {
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                bool value = _manip->getSettings()->getTerrainAvoidanceEnabled();
+                _manip->getSettings()->setTerrainAvoidanceEnabled( !value );
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle terrain avoidance"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
+
 
     /**
      * A simple simulator that moves an object around the Earth. We use this to
@@ -381,6 +433,9 @@ int main(int argc, char** argv)
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 
+   // Set the minimum distance to something larger than the default
+    manip->getSettings()->setMinMaxDistance(10.0, manip->getSettings()->getMaxDistance());
+
 
     viewer.setSceneData( root );
 
@@ -390,12 +445,18 @@ int main(int argc, char** argv)
         osgGA::GUIEventAdapter::MODKEY_SHIFT );
 
     manip->getSettings()->setArcViewpointTransitions( true );    
+
+    manip->setTetherCallback( new TetherCB() );
     
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
     viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
     viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
     viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
+    viewer.addEventHandler(new ToggleCollisionHandler('k', manip));
+
+    viewer.getCamera()->setNearFarRatio(0.00002);
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     while(!viewer.done())
     {

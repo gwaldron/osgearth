@@ -22,19 +22,9 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Shaders>
 
 using namespace osgEarth;
-
-namespace
-{
-    const char fragment[] =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "uniform float oe_alphaeffect_alpha;\n"
-        "void oe_alphaeffect_fragment(inout vec4 color) {\n"
-        "    color = color * oe_alphaeffect_alpha;\n"
-        "}\n";
-}
 
 AlphaEffect::AlphaEffect()
 {
@@ -53,7 +43,7 @@ AlphaEffect::init()
     _active = Registry::capabilities().supportsGLSL(110u);
     if ( _active )
     {
-        _alphaUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_alphaeffect_alpha");
+        _alphaUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_alphaEffect_alpha");
         _alphaUniform->set( 1.0f );
     }
 }
@@ -87,7 +77,8 @@ AlphaEffect::attach(osg::StateSet* stateset)
         _statesets.push_back(stateset);
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setName( "osgEarth.AlphaEffect" );
-        vp->setFunction( "oe_alphaeffect_fragment", fragment, ShaderComp::LOCATION_FRAGMENT_COLORING, 2 );
+        Shaders pkg;
+        pkg.loadFunction( vp, pkg.AlphaEffectFragment );
         stateset->addUniform( _alphaUniform.get() );
     }
 }
@@ -120,7 +111,8 @@ AlphaEffect::detach(osg::StateSet* stateset)
         VirtualProgram* vp = VirtualProgram::get( stateset );
         if ( vp )
         {
-            vp->removeShader( "oe_alphaeffect_fragment" );
+            Shaders pkg;
+            pkg.unloadFunction( vp, pkg.AlphaEffectFragment );
         }
     }
 }

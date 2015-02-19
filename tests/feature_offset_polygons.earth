@@ -1,0 +1,112 @@
+<!--
+osgEarth Sample
+This one demonstrates use of the "terrainshader" extension to use 
+GLSL to affect a polygon offset effect.
+-->
+
+<map name="Feature Overlay Demo" type="geocentric" version="2">
+    
+    <options>
+        <lighting>false</lighting>
+        <overlay_blending>false</overlay_blending>
+        <terrain min_lod="8"/>
+    </options>
+    
+    <extensions>
+        <terrainshader>
+            <description>
+                A GLSL snippet that pushes the terrain back to prevent high-altitude z fighting.
+            </description>          
+            <code>
+                <![CDATA[
+                    #version 110
+                    #pragma vp_entryPoint "dp_vert"        // name of entry point function
+                    #pragma vp_location   "vertex_view"    // where to insert this shader in the pipeline
+                    
+                    varying out float tt;
+                    
+                    void dp_vert(inout vec4 v)
+                    {
+                        const float R    = 6371000.0;      // Approximate radius of the earth
+                        const float dmin = 100000.0;       // Minimum vertex distance at which to apply effect
+                        const float dmax = R;              // Vertex distance at which to apply maximum effect
+                        const float maxOffset = 250000.0;  // Maximum offset (applied at dmax)
+                        
+                        float d = length(v.xyz);
+                        float t = clamp( (d-dmin)/(dmax-dmin), 0.0, 1.0 );
+                        float offset = t*maxOffset;
+                        vec3 n = normalize(v.xyz);
+                        v.xyz = v.xyz + n*offset;
+                        
+                        tt = t;
+                    }
+                ]]>
+            </code>         
+        </terrainshader>
+    </extensions>
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="countries" driver="feature_geom">
+                          
+        <features name="states" driver="ogr">
+            <url>../data/world.shp</url>
+            <buffer distance="-0.05"/>
+            <resample max_length="5.0"/>
+        </features>
+        
+        <styles>        
+            <style type="text/css">
+                p1 {
+                   fill:               #ffff8066;
+                }       
+                p2 {
+                   fill:               #80ffff66;
+                }   
+                p3 {
+                   fill:               #ff80ff66;
+                }       
+                p4 {
+                   fill:               #ff808066;
+                }     
+                p5 {
+                   fill:               #80ff8066;
+                }                                      
+            </style>
+        
+            <selector class="p1">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY <= 14045470 ]]></expr>
+                </query>
+            </selector>
+        
+            <selector class="p2">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 14045470 and POP_CNTRY <= 43410900 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector class="p3">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector class="p4">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 97228750 and POP_CNTRY <= 258833000 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector class="p5">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 258833000 ]]></expr>
+                </query>
+            </selector>
+            
+        </styles>
+        
+    </model>
+</map>

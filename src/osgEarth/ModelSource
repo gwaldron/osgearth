@@ -90,18 +90,16 @@ namespace osgEarth
         virtual ~ModelSource();
 
         osg::Node* createNode(
-            const Map*            map,
-            const osgDB::Options* dbOptions,
-            ProgressCallback*     progress );
+            const Map*        map,
+            ProgressCallback* progress );
 
         /**
          * Subclass implements this method to create a scene graph within the
          * context of the provided Map.
          */
         virtual osg::Node* createNodeImplementation(
-            const Map*            map,
-            const osgDB::Options* dbOptions,
-            ProgressCallback*     progress ) =0;
+            const Map*        map,
+            ProgressCallback* progress ) =0;
 
         /**
          * Add a post processing operation that will run (possibly in a pager

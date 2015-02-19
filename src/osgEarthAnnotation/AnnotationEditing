@@ -28,12 +28,20 @@
 #include <osgEarth/Draggers>
 #include <osgEarth/MapNode>
 
-namespace osgEarth { namespace Annotation {
+namespace osgEarth { namespace Annotation
+{
+    class OSGEARTHANNO_EXPORT AnnotationEditor : public osg::Group
+    {
+    protected:
+        AnnotationEditor();
+
+        virtual ~AnnotationEditor() { }
+    };
 
      /**
      * An editor node that allows you to move the position of LocalizedNode annotations    
      */
-    class OSGEARTHANNO_EXPORT LocalizedNodeEditor : public osg::Group
+    class OSGEARTHANNO_EXPORT LocalizedNodeEditor : public AnnotationEditor
     {
     public:
         /**

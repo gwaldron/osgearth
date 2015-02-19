@@ -250,10 +250,15 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
             }
         }
         
-        // Blacklist the tile if it is the same projection as the source and we can't get it and it wasn't cancelled
-        if ( !result && (!progress || !progress->isCanceled()))
+        // Blacklist the tile if it is the same projection as the source and
+        // we can't get it and it wasn't cancelled
+        if (result == 0L)
         {
-            source->getBlacklist()->add( key );
+            if ( progress == 0L ||
+                 ( !progress->isCanceled() && !progress->needsRetry() ) )
+            {
+                source->getBlacklist()->add( key );
+            }
         }
     }
 

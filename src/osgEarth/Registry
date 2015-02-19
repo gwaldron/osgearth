@@ -197,7 +197,7 @@ namespace osgEarth
          * Clones an options structure (fixing the archive caching), or creates
          * a new one.
          */
-        osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L ) const;
+        static osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L );
 
         /**
          * Registers a Units definition.

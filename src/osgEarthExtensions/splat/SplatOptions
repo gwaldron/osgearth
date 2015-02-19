@@ -71,15 +71,28 @@ namespace osgEarth { namespace Splat
         optional<int>& scaleLevelOffset() { return _scaleLevelOffset; }
         const optional<int>& scaleLevelOffset() const { return _scaleLevelOffset; }
 
+        /** Whether to use bilinear sampling to smooth the coverage data.
+            Default is true; set to false for higher performance. */
+        optional<bool>& bilinearSampling() { return _bilinearSampling; }
+        const optional<bool>& bilinearSampling() const { return _bilinearSampling; }
+
+        /** Maximum distance from the camera at which to render detail splats. */
+        optional<float>& detailMaxRange() { return _detailMaxRange; }
+        const optional<float>& detailMaxRange() const { return _detailMaxRange; }
 
     public:
         SplatOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
         {
             setDriver( "splat" );
-            _coverageWarp.init(0.0f);
+
+            // Set default values:
+            _coverageWarp.init(0.01f);
             _coverageBlur.init(1.0f);
             _scaleLevelOffset.init(0);
             _drawAfterImageLayers.init(false);
+            _bilinearSampling.init(true);
+            _detailMaxRange.init(1000000.0f);
+
             fromConfig( _conf );
         }
 
@@ -96,6 +109,8 @@ namespace osgEarth { namespace Splat
             conf.updateIfSet("coverage_warp", _coverageWarp );
             conf.updateIfSet("coverage_blur", _coverageBlur );
             conf.updateIfSet("scale_level_offset", _scaleLevelOffset );
+            conf.updateIfSet("bilinear_sampling", _bilinearSampling);
+            conf.updateIfSet("detail_max_range", _detailMaxRange);
             return conf;
         }
 
@@ -115,6 +130,8 @@ namespace osgEarth { namespace Splat
             conf.getIfSet("coverage_warp", _coverageWarp );
             conf.getIfSet("coverage_blur", _coverageBlur );
             conf.getIfSet("scale_level_offset", _scaleLevelOffset );
+            conf.getIfSet("bilinear_sampling", _bilinearSampling);
+            conf.getIfSet("detail_max_range", _detailMaxRange);
         }
 
         optional<URI>         _catalogURI;
@@ -125,6 +142,8 @@ namespace osgEarth { namespace Splat
         optional<float>       _coverageWarp;
         optional<float>       _coverageBlur;
         optional<int>         _scaleLevelOffset;
+        optional<bool>        _bilinearSampling;
+        optional<float>       _detailMaxRange;
     };
 
 } } // namespace osgEarth::Splat

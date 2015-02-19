@@ -895,7 +895,7 @@ VirtualProgram::setFunction(const std::string&           functionName,
         ShaderComp::Function function;
         function._name   = functionName;
         function._accept = accept;
-        ofm.insert( OrderedFunction(ordering, function) ); //std::make_pair(ordering, function) );
+        ofm.insert( OrderedFunction(ordering, function) );
 
         // create and add the new shader function.
         osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_CLIP ?
@@ -1037,7 +1037,7 @@ VirtualProgram::apply( osg::State& state ) const
     // the same an identical attribute stack.
     state.haveAppliedAttribute(this->SA_TYPE);
 
-#ifdef USE_STACK_MEMORY    
+#ifdef USE_STACK_MEMORY
     bool programRecalled = false;
     const AttrStack* stack = StateEx::getProgramStack(state);
     if ( stack )
@@ -1045,7 +1045,12 @@ VirtualProgram::apply( osg::State& state ) const
         program = _vpStackMemory.recall(state, *stack);
         programRecalled = program.valid();
     }
-#endif
+#endif // USE_STACK_MEMORY
+    
+    // We need to tracks whether there are any accept callbacks, because if so
+    // we cannot store the program in stack memory -- the accept callback can
+    // exclude shaders based on any condition.
+    bool acceptCallbacksPresent = false;
 
     if ( !program.valid() )
     {
@@ -1054,18 +1059,30 @@ VirtualProgram::apply( osg::State& state ) const
         AttribBindingList accumAttribBindings;
         AttribAliasMap    accumAttribAliases;
     
-        // Build the active shader map up to this point:
+        // If we are inheriting, build the active shader map up to this point
+        // (but not including this VP).
         if ( _inherit )
         {
-            accumulateShaders(state, _mask, accumShaderMap, accumAttribBindings, accumAttribAliases);
+            accumulateShaders(
+                state,
+                _mask,
+                accumShaderMap,
+                accumAttribBindings,
+                accumAttribAliases,
+                acceptCallbacksPresent);
         }
-
-        // next add the local shader components to the map, respecting the override values:
+        
+        // Next, add the shaders from this VP.
         {
             Threading::ScopedReadLock readonly(_dataModelMutex);
 
             for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
             {
+                if ( i->second._accept.valid() )
+                {
+                    acceptCallbacksPresent = true;
+                }
+
                 if ( i->second.accept(state) )
                 {
                     addToAccumulatedMap( accumShaderMap, i->first, i->second );
@@ -1081,7 +1098,6 @@ VirtualProgram::apply( osg::State& state ) const
     #endif
         }
 
-
         // next, assemble a list of the shaders in the map so we can use it as our
         // program cache key.
         // (Note: at present, the "cache key" does not include any information on the vertex
@@ -1093,7 +1109,7 @@ VirtualProgram::apply( osg::State& state ) const
         for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
         {
             ShaderEntry& entry = i->second;
-            if ( i->second.accept(state) )
+            //if ( i->second.accept(state) ) // no need; already did this earlier
             {
                 vec.push_back( entry._shader.get() );
             }
@@ -1141,7 +1157,7 @@ VirtualProgram::apply( osg::State& state ) const
                     if ( _logShaders && program.valid() )
                     {
                         std::stringstream buf;
-                        for (int i=0; i < program->getNumShaders(); i++)
+                        for (unsigned i=0; i < program->getNumShaders(); i++)
                         {
                             buf << program->getShader(i)->getShaderSource() << std::endl << std::endl;
                         }
@@ -1187,11 +1203,14 @@ VirtualProgram::apply( osg::State& state ) const
 #ifdef USE_STACK_MEMORY
         // remember this program selection in case this VP is applied again
         // during the same frame.
-        if ( !programRecalled && stack)
+        if (programRecalled == false        &&   // recalled a program? not necessary
+            getDataVariance() != DYNAMIC    &&   // DYNAMIC variance? might change during ST cull; no memory
+            acceptCallbacksPresent == false &&   // accept callbacks? cannot use memory
+            stack != 0L )
         {
             _vpStackMemory.remember(state, *stack, program.get());
         }
-#endif
+#endif // USE_STACK_MEMORY
 
         osg::Program::PerContextProgram* pcp = program->getPCP( contextID );
         bool useProgram = state.getLastAppliedProgramObject() != pcp;
@@ -1428,7 +1447,8 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
                                   unsigned           mask,
                                   ShaderMap&         accumShaderMap,
                                   AttribBindingList& accumAttribBindings,
-                                  AttribAliasMap&    accumAttribAliases)
+                                  AttribAliasMap&    accumAttribAliases,
+                                  bool&              acceptCallbacksPresent)
 {
     const AttrStack* av = StateEx::getProgramStack(state);
     if ( av && av->size() > 0 )
@@ -1453,6 +1473,11 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
 
                 for( ShaderMap::const_iterator i = vpShaderMap.begin(); i != vpShaderMap.end(); ++i )
                 {
+                    if ( i->second._accept.valid() )
+                    {
+                        acceptCallbacksPresent = true;
+                    }
+
                     if ( i->second.accept(state) )
                     {
                         addToAccumulatedMap( accumShaderMap, i->first, i->second );
@@ -1479,9 +1504,10 @@ VirtualProgram::getShaders(const osg::State&                        state,
     ShaderMap         shaders;
     AttribBindingList bindings;
     AttribAliasMap    aliases;
+    bool              acceptCallbacksPresent;
 
     // build the collection:
-    accumulateShaders(state, ~0, shaders, bindings, aliases);
+    accumulateShaders(state, ~0, shaders, bindings, aliases, acceptCallbacksPresent);
 
     // pre-allocate space:
     output.reserve( shaders.size() );

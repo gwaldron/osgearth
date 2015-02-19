@@ -279,6 +279,9 @@ LODBlending::onInstall(TerrainEngineNode* engine)
 {
     if ( engine )
     {
+        // need the parent textures for blending.
+        engine->requireParentTextures();
+
         osg::StateSet* stateset = engine->getOrCreateStateSet();
 
         stateset->addUniform( _delayUniform.get() );

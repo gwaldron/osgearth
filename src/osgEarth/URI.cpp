@@ -516,13 +516,13 @@ namespace
                                 ReadResult remoteResult = reader.fromHTTP( uri.full(), remoteOptions.get(), progress, result.lastModifiedTime() );
                                 if (remoteResult.code() == ReadResult::RESULT_NOT_MODIFIED)
                                 {                                    
-                                    OE_DEBUG << uri.full() << " not modified, using cached result" << std::endl;
+                                    OE_DEBUG << LC << uri.full() << " not modified, using cached result" << std::endl;
                                     // Touch the cached item to update it's last modified timestamp so it doesn't expire again immediately.
                                     bin->touch( uri.cacheKey() );
                                 }
                                 else
                                 {
-                                    OE_DEBUG << "Got remote result for " << uri.full() << std::endl;
+                                    OE_DEBUG << LC << "Got remote result for " << uri.full() << std::endl;
                                     result = remoteResult;                                    
                                 }
                             }
@@ -530,7 +530,7 @@ namespace
                             // write the result to the cache if possible:
                             if ( result.succeeded() && !result.isFromCache() && bin && cp->isCacheWriteable() )
                             {
-                                OE_DEBUG << "Writing " << uri.cacheKey() << " to cache" << std::endl;
+                                OE_DEBUG << LC << "Writing " << uri.cacheKey() << " to cache" << std::endl;
                                 bin->write( uri.cacheKey(), result.getObject(), result.metadata() );
                             }
                         }

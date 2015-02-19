@@ -89,7 +89,7 @@ CacheFactory::create( const CacheOptions& options )
     }
     else // try to load from a plugin
     {
-        osg::ref_ptr<osgDB::Options> rwopt = Registry::instance()->cloneOrCreateOptions();
+        osg::ref_ptr<osgDB::Options> rwopt = Registry::cloneOrCreateOptions();
         rwopt->setPluginData( CACHE_OPTIONS_TAG, (void*)&options );
 
         std::string driverExt = std::string(".osgearth_cache_") + options.getDriver();

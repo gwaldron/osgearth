@@ -86,6 +86,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const TileKey& tileKey, 
             const MapInfo& mapInfo,
             GeometryKey&   out) const;
+
+        bool _debug;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

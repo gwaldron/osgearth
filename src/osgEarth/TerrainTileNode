@@ -40,14 +40,6 @@ namespace osgEarth
 
         const TileKey& getKey() const { return _model->getKey(); }
 
-        //virtual osg::Texture* getElevationTexture() const =0;
-
-        //virtual osg::RefMatrix* getElevationTextureMatrix() const =0;
-
-        //virtual osg::Texture* getNormalTexture() const =0;
-
-        //virtual osg::RefMatrix* getNormalTextureMatrix() const =0;
-
         virtual osg::Group* getPayloadGroup() const =0;
 
         virtual osg::Group* getOrCreatePayloadGroup() =0;

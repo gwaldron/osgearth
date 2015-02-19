@@ -25,6 +25,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/Revisioning>
 #include <osgEarth/Terrain>
+#include <osgEarth/MapNode>
 #include <osg/Timer>
 #include <osgGA/CameraManipulator>
 #include <map>
@@ -502,9 +503,9 @@ namespace osgEarth { namespace Util
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
             const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }            
 
-            /** Whether or not to disable collision avoidance when new data pages in */
-            bool getDisableCollisionAvoidance() const { return _disableCollisionAvoidance; }
-            void setDisableCollisionAvoidance( bool disableCollisionAvoidance ) { _disableCollisionAvoidance = disableCollisionAvoidance; }
+            /** Whether or not to keep the camera from going through the terrain surface */
+            bool getTerrainAvoidanceEnabled() const { return _terrainAvoidanceEnabled; }
+            void setTerrainAvoidanceEnabled( bool value ) { _terrainAvoidanceEnabled = value; }
 
             void setThrowingEnabled(bool throwingEnabled) { _throwingEnabled = throwingEnabled; }
             bool getThrowingEnabled () const { return _throwingEnabled; }
@@ -553,7 +554,7 @@ namespace osgEarth { namespace Util
             CameraProjection _camProjType;
             osg::Vec2s _camFrustOffsets;	
 
-            bool _disableCollisionAvoidance;
+            bool _terrainAvoidanceEnabled;
 
             bool _throwingEnabled;
             double _throwDecayRate;
@@ -609,6 +610,18 @@ namespace osgEarth { namespace Util
          *      The duration that the camera should transition when tethering to the node.
          */
         void setTetherNode( osg::Node* node, double duration_s =0.0  );
+
+        /**
+         * Sets a callback to be invoked upon a tether or tether break
+         */
+        class TetherCallback : public osg::Referenced {
+        public:
+            virtual void operator()(osg::Node* tetherNode) { }
+        protected:
+            virtual ~TetherCallback() { }
+        };
+        void setTetherCallback(TetherCallback* cb) { _tetherCallback = cb; }
+        TetherCallback* getTetherCallback() { return _tetherCallback.get(); }
 
         /**
          * Gets the node to which the camera is tethered, or NULL if tethering is
@@ -688,7 +701,7 @@ namespace osgEarth { namespace Util
          */
         void  setFindNodeTraversalMask( const osg::Node::NodeMask & nodeMask ) { _findNodeTraversalMask = nodeMask; }
 
-    public: // osgGA::MatrixManipulator
+    public: // osgGA::CameraManipulator
 
         virtual const char* className() const { return "EarthManipulator"; }
         
@@ -738,7 +751,7 @@ namespace osgEarth { namespace Util
 
         virtual ~EarthManipulator();
         
-        bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const;
+        bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection, osg::Vec3d& normal) const;
 
         bool intersectLookVector(osg::Vec3d& eye, osg::Vec3d& out_target, osg::Vec3d& up) const;
 
@@ -889,6 +902,7 @@ namespace osgEarth { namespace Util
 
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
+        osg::observer_ptr<MapNode> _mapNode;
 #ifdef USE_OBSERVER_NODE_PATH
         osg::ObserverNodePath _csnObserverPath;
 #endif
@@ -898,7 +912,8 @@ namespace osgEarth { namespace Util
         bool _is_geocentric;
         bool _srs_lookup_failed;
 
-        osg::observer_ptr<osg::Node> _tether_node;        
+        osg::observer_ptr<osg::Node> _tether_node;     
+        bool                         _tether_completed;
 
         double                  _time_s_last_frame;
         double                  _time_s_now;        
@@ -947,6 +962,7 @@ namespace osgEarth { namespace Util
         double                  _pending_viewpoint_duration_s;
 
         bool                    _setting_viewpoint;
+        //bool                    _set_viewpoint_started_while_tethered;
         Viewpoint               _start_viewpoint;
         double                  _delta_heading, _delta_pitch, _delta_range, _arc_height;
         osg::Vec3d              _delta_focal_point;
@@ -995,6 +1011,10 @@ namespace osgEarth { namespace Util
 
         // Traversal mask used in established and dtor methods to find MapNode and CoordinateSystemNode
         osg::Node::NodeMask  _findNodeTraversalMask;
+
+        osg::ref_ptr<TetherCallback> _tetherCallback;
+
+        void collisionDetect();
     };
 
 } } // namespace osgEarth::Util

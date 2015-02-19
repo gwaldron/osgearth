@@ -2,8 +2,12 @@
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
 set(TARGET_GLSL
-    MPEngine.vert.glsl
+    MPEngine.vert.model.glsl
+    MPEngine.vert.view.glsl
     MPEngine.frag.glsl)
+
+set(TARGET_IN
+    MPShaders.cpp.in)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -37,6 +41,7 @@ SET(TARGET_H
     FileLocationCallback
     KeyNodeFactory
     MPGeometry
+    MPShaders
     MPTerrainEngineNode
     MPTerrainEngineOptions
     QuickReleaseGLObjects

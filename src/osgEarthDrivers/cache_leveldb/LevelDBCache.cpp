@@ -98,7 +98,9 @@ LevelDBCacheImpl::~LevelDBCacheImpl()
 {
     if ( _db )
     {
-        //occaisonally causes deadlock on shutdown..?
+        // problem. This destructor causes a lockup sometimes. Perhaps try
+        // upgrading to a newer version of LDB. In the meantime, that's why it
+        // is commented out
         //delete _db;
         _db = 0L;
     }

@@ -16,6 +16,9 @@ set(TARGET_GLSL
     SimpleSky.Sun.frag.glsl
     SimpleSky.Sun.vert.glsl )
 
+set(TARGET_IN
+    SimpleSkyShaders.cpp.in)
+
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
 configure_shaders(

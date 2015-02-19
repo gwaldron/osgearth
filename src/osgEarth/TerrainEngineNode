@@ -46,6 +46,7 @@ namespace osgEarth
     public:
         virtual bool elevationTexturesRequired() const =0;
         virtual bool normalTexturesRequired() const =0;
+        virtual bool parentTexturesRequired() const =0;
     };
 
     /**
@@ -123,8 +124,8 @@ namespace osgEarth
         /** Gets the property set in use by this map engine. */
         virtual const TerrainOptions& getTerrainOptions() const =0;
 
-        /** Accesses the compositor that controls the rendering of image layers */
-        TextureCompositor* getTextureCompositor() const;
+        /** Accesses the object that keeps track of GPU resources in use */
+        TextureCompositor* getResources() const;
 
         /** Adds a terrain effect */
         void addEffect( TerrainEffect* effect );
@@ -153,6 +154,9 @@ namespace osgEarth
         
         /** Whether the implementation should generate elevation map rasters. */
         void requireElevationTextures() { _requireElevationTextures = true; }
+
+        /** Whether the implementation should generate parent color textures. */
+        void requireParentTextures() { _requireParentTextures = true; }
 
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getTerrainStateSet() { return getOrCreateStateSet(); }
@@ -197,6 +201,7 @@ namespace osgEarth
 
         bool normalTexturesRequired() const { return _requireNormalTextures; }
         bool elevationTexturesRequired() const { return _requireElevationTextures; }
+        bool parentTexturesRequired() const { return _requireParentTextures; }
 
     public:
         // adds a callback that will be fired while the terrain engine is building
@@ -215,6 +220,10 @@ namespace osgEarth
           * @deprecated */
         float getVerticalScale() const { return _verticalScale; }
 
+    public: // deprecated
+        
+        /** @derepcated Use getResources() instead. */
+        TextureCompositor* getTextureCompositor() const { return getResources(); }
 
     protected:
         TerrainEngineNode();
@@ -247,6 +256,7 @@ namespace osgEarth
 
         bool _requireElevationTextures;
         bool _requireNormalTextures;
+        bool _requireParentTextures;
 
     public: // utility
 

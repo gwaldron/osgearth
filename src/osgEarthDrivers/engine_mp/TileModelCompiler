@@ -88,7 +88,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
          * Compiles a tile model into a TileNode.
          */
         TileNode* compile(
-            const TileModel*  model,
+            TileModel*        model,
             const MapFrame&   frame,
             ProgressCallback* progress);
 

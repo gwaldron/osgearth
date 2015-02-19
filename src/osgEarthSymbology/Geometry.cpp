@@ -401,6 +401,26 @@ Geometry::rewind( Orientation orientation )
     }
 }
 
+void Geometry::removeDuplicates()
+{
+    if (size() > 1)
+    {
+        osg::Vec3d v = front();
+        for (Geometry::iterator itr = begin(); itr != end(); )
+        {
+            if (itr != begin() && v == *itr)
+            {
+                itr = erase(itr);
+            }
+            else
+            {
+                v = *itr;
+                itr++;
+            }
+        }
+    }
+}
+
 Geometry::Orientation 
 Geometry::getOrientation() const
 {
@@ -661,6 +681,14 @@ Polygon::close()
     Ring::close();
     for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
         (*i)->close();
+}
+
+void
+Polygon::removeDuplicates()
+{
+    Ring::removeDuplicates();
+    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
+        (*i)->removeDuplicates();
 }
 
 //----------------------------------------------------------------------------

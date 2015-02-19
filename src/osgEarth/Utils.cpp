@@ -392,6 +392,9 @@ SetDataVarianceVisitor::apply(osg::Geode& geode)
 
 //-----------------------------------------------------------------------------
 
+#undef  LC
+#define LC "[GeometryValidator] "
+
 namespace
 {
     template<typename DE>
@@ -424,7 +427,41 @@ GeometryValidator::GeometryValidator()
 void
 GeometryValidator::apply(osg::Geometry& geom)
 {
+    if ( geom.getVertexArray() == 0L )
+    {
+        OE_WARN << LC << "NULL vertex array!!\n";
+        return;
+    }
+
     unsigned numVerts = geom.getVertexArray()->getNumElements();
+    if ( numVerts == 0 )
+    {
+        OE_WARN << LC << "No verts!! name=" << geom.getName() << "\n";
+        return;
+    }
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,1,9)
+
+    osg::Geometry::ArrayList arrays;
+    geom.getArrayList(arrays);
+    for(unsigned i=0; i<arrays.size(); ++i)
+    {
+        osg::Array* a = arrays[i].get();
+        if ( a == NULL )
+        {
+            OE_WARN << LC << "Found a NULL array\n";
+        }
+        else if ( a->getBinding() == a->BIND_OVERALL && a->getNumElements() != 1 )
+        {
+            OE_WARN << LC << "Found an array with BIND_OVERALL and size <> 1\n";
+        }
+        else if ( a->getBinding() == a->BIND_PER_VERTEX && a->getNumElements() != numVerts )
+        {
+            OE_WARN << LC << "Found BIND_PER_VERTEX with wrong number of elements\n";
+        }
+    }
+
+#else // pre-3.1.9 ... phase out.
 
     if ( geom.getColorArray() )
     {
@@ -450,18 +487,37 @@ GeometryValidator::apply(osg::Geometry& geom)
         }
     }
 
+#endif
+
     const osg::Geometry::PrimitiveSetList& plist = geom.getPrimitiveSetList();
 
     for( osg::Geometry::PrimitiveSetList::const_iterator p = plist.begin(); p != plist.end(); ++p )
     {
         osg::PrimitiveSet* pset = p->get();
 
+        osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(pset);
+        if ( da )
+        {
+            if ( da->getFirst() >= numVerts )
+            {
+                OE_WARN << LC << "DrawArrays: first > numVerts\n";
+            }
+            if ( da->getFirst()+da->getCount() > numVerts )
+            {
+                OE_WARN << LC << "DrawArrays: first/count out of bounds\n";
+            }
+            if ( da->getCount() < 1 )
+            {
+                OE_WARN << LC << "DrawArrays: count is zero\n";
+            }
+        }
+
         osg::DrawElementsUByte* de_byte = dynamic_cast<osg::DrawElementsUByte*>(pset);
         if ( de_byte )
         {
             if ( numVerts > 0xFF )
             {
-                OE_WARN << "DrawElementsUByte used when numVerts > 255 (" << numVerts << ")" << std::endl;
+                OE_WARN << LC << "DrawElementsUByte used when numVerts > 255 (" << numVerts << ")" << std::endl;
             }
             validateDE(de_byte, 0xFF, numVerts );
         }
@@ -471,7 +527,7 @@ GeometryValidator::apply(osg::Geometry& geom)
         {
             if ( numVerts > 0xFFFF )
             {
-                OE_WARN << "DrawElementsUShort used when numVerts > 65535 (" << numVerts << ")" << std::endl;
+                OE_WARN << LC << "DrawElementsUShort used when numVerts > 65535 (" << numVerts << ")" << std::endl;
             }
             validateDE(de_short, 0xFFFF, numVerts );
         }
@@ -480,6 +536,23 @@ GeometryValidator::apply(osg::Geometry& geom)
         if ( de_int )
         {
             validateDE(de_int, 0xFFFFFFFF, numVerts );
+        }
+
+        if ( pset->getNumIndices() == 0 )
+        {
+            OE_WARN << LC << "Primset: num elements = 0; class=" << pset->className() << ", name=" << pset->getName() << "\n";
+        }
+        else if ( pset->getType() >= GL_TRIANGLES && pset->getNumIndices() < 3 )
+        {
+            OE_WARN << LC << "Primset: not enough indicies for surface prim type\n";
+        }
+        else if ( pset->getType() >= GL_LINE_STRIP && pset->getNumIndices() < 2 )
+        {
+            OE_WARN << LC << "Primset: not enough indicies for linear prim type\n";
+        }
+        else if ( pset->getType() == GL_LINES && pset->getNumIndices() % 2 != 0 )
+        {
+            OE_WARN << LC << "Primset: non-even index count for GL_LINES\n";
         }
     }
 }
@@ -492,5 +565,12 @@ GeometryValidator::apply(osg::Geode& geode)
         osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
         if ( geom )
             apply( *geom );
+
+        if ( geom->getVertexArray() == 0L )
+        {
+            OE_WARN << "removing " << geom->getName() << " b/c of null vertex array\n";
+            geode.removeDrawable( geom );
+            --i;
+        }
     }
 }

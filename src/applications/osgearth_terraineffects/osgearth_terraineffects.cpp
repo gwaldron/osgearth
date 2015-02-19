@@ -32,7 +32,6 @@
 
 #include <osgEarthUtil/ContourMap>
 #include <osgEarthUtil/LODBlending>
-#include <osgEarthUtil/NormalMap>
 #include <osgEarthUtil/VerticalScale>
 
 #include <osgEarthSymbology/Color>
@@ -61,14 +60,12 @@ struct App
 
     osg::ref_ptr<ContourMap>     contourMap;
     osg::ref_ptr<LODBlending>    lodBlending;
-    osg::ref_ptr<NormalMap>      normalMap;
     osg::ref_ptr<VerticalScale>  verticalScale;
 
     App()
     {
         contourMap = new ContourMap();
         lodBlending = new LODBlending();
-        normalMap = new NormalMap();
         verticalScale = new VerticalScale();
     }
 };
@@ -131,15 +128,6 @@ struct LODBlendingController {
     }
 };
 
-struct NormalMapController {
-    TOGGLE   ( normalMap );
-    NormalMapController(App& app, ui::Grid* grid) {
-        int r = grid->getNumRows();
-        grid->setControl(0, r, new ui::LabelControl("NormalMap"));
-        grid->setControl(1, r, new ui::CheckBoxControl(false, new Toggle(app)));
-    }
-};
-
 struct VerticalScaleController {
     TOGGLE   ( verticalScale );
     SET_FLOAT( verticalScale, setScale );
@@ -166,7 +154,6 @@ ui::Control* createUI( App& app )
 
     ContourMapController    (app, grid);
     LODBlendingController   (app, grid);
-    NormalMapController     (app, grid);
     VerticalScaleController (app, grid);
 
     return grid;

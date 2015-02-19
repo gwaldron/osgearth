@@ -32,42 +32,6 @@
 namespace osgEarth
 {
     /**
-     * Base class for local shader file/source pairs.
-     */
-    class /*header-only*/ ShaderPackage
-    {
-    public:
-        typedef std::map<std::string,std::string> ContextMap;
-        const ContextMap& context() const { return _sources; }
-
-    protected:        
-        ContextMap _sources;
-    };
-
-    /**
-     * Functions to help load shader code.
-     */
-    struct OSGEARTH_EXPORT ShaderLoader
-    {
-        typedef std::map<std::string,std::string> SourceMap;
-
-        /**
-         * Loads shader source from the specified filename. If the
-         * file can't be found in the OSG file path, use the source
-         * provided in backupSource.
-         */
-        static std::string loadSource(
-            const std::string&    filename,
-            const std::string&    backupSource,
-            const osgDB::Options* dbOptions =0L );
-
-        static std::string loadSource(
-            const std::string&    filename,
-            const ShaderPackage&  package,
-            const osgDB::Options* dbOptions =0L );
-    };
-
-    /**
      * ShaderPolicy encodes general behavior when deciding how to
      * employ shaders in certain situations
      */

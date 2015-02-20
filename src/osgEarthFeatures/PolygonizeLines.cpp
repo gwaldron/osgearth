@@ -41,13 +41,12 @@ namespace
 
 
     typedef std::pair<osg::Vec3,osg::Vec3> Segment;
-
+    
     // Given two rays (point + direction vector), find the intersection
     // of those rays in 2D space and put the result in [out]. Return true
     // if they intersect, false if they do not.
     bool interesctRays(const osg::Vec3& p0, const osg::Vec3& pd, // point, dir
                        const osg::Vec3& q0, const osg::Vec3& qd, // point, dir
-                       const osg::Vec3& cp,                      // control point
                        const osg::Vec3& normal,                  // normal at control point
                        osg::Vec3&       out)
     {
@@ -57,9 +56,9 @@ namespace
         toWorld.makeRotate( osg::Vec3(0,0,1), normal );
 
         // convert the inputs:
-        osg::Vec3 p0r = toLocal*p0; //(p0-cp);
+        osg::Vec3 p0r = p0; //toLocal*p0; //(p0-cp);
         osg::Vec3 pdr = toLocal*pd;
-        osg::Vec3 q0r = toLocal*q0; //(q0-cp);
+        osg::Vec3 q0r = q0; //toLocal*q0; //(q0-cp);
         osg::Vec3 qdr = toLocal*qd;
 
         // this epsilon will cause us to skip invalid or colinear rays.
@@ -201,15 +200,19 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     unsigned  prevBufVertPtr;
     unsigned  eboPtr = 0;
     osg::Vec3 prevDir;
-    osg::Quat rot, unrot;
+    
+    osg::Vec3 up(0,0,1);
 
     // iterate over both "sides" of the center line:
-    int lastside = twosided ? 1 : 0;
+    int firstside = 0;
+    int lastside  = twosided ? 1 : 0;
+    
+    const float RIGHT_SIDE = 1.0f;
+    const float LEFT_SIDE = -1.0f;
 
-    for( int ss=0; ss<=lastside; ++ss )
+    for( int ss=firstside; ss<=lastside; ++ss )
     {
-        //float side = s == 0 ? -1.0f : 1.0f;
-        float side = ss == 0 ? 1.0f : -1.0f;
+        float side = ss == 0 ? RIGHT_SIDE : LEFT_SIDE;
 
         // iterate over each line segment.
         for( i=0; i<lineSize-1; ++i )
@@ -225,14 +228,13 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
             // the buffering vector is orthogonal to the direction vector and the normal;
             // flip it depending on the current side.
-            //osg::Vec3 bufVecUnit = (s==0) ? normal ^ dir : dir ^ normal;
-            osg::Vec3 bufVecUnit = (side < 0.0f) ? normal ^ dir : dir ^ normal;
+            osg::Vec3 bufVecUnit = (dir ^ up) * side;
             bufVecUnit.normalize();
 
             // scale the buffering vector to half the stroke width.
             osg::Vec3 bufVec = bufVecUnit * halfWidth;
 
-            // calculate the starting buffered vector.
+            // calculate the starting buffered vertex
             osg::Vec3 bufVert = (*verts)[i] + bufVec;
 
             if ( i == 0 )
@@ -264,7 +266,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                     {
                         osg::Vec3 v;
                         float a = step * (float)j;
-                        rotate( circlevec, -(side)*a, (*normals)[i], v );
+                        //rotate( circlevec, -(side)*a, (*normals)[i], v );
+                        rotate( circlevec, -(side)*a, up, v );
 
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-2, verts->size()-1, side );
@@ -293,8 +296,9 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
             else
             {
                 // does the new segment turn create a reflex angle (>180deg)?
-                float z = (prevDir ^ dir).z();
-                bool isOutside = side < 0.0f ? z <= 0.0 : z >= 0.0;
+                osg::Vec3f cp = prevDir ^ dir;
+                float z = cp.z();
+                bool isOutside = side == LEFT_SIDE ? z <= 0.0 : z >= 0.0;
                 bool isInside = !isOutside;
 
                 // if this is an inside angle (or we're using mitered corners)
@@ -302,25 +306,41 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                 // vectors enimating from the previous and next buffered points.
                 if ( isInside || _stroke.lineJoin() == Stroke::LINEJOIN_MITRE )
                 {
-                    // unit vector from the previous buffered vert to the current one
-                    osg::Vec3 vec1 = (*verts)[i] - (*verts)[i-1];
-                    vec1.normalize();
+                    bool addedVertex = false;
+                    {
+                        osg::Vec3 nextBufVert = seg.second + bufVec;
 
-                    // unit vector from the current buffered vert to the next one.
-                    osg::Vec3 nextBufVert = seg.second + bufVec;
-                    osg::Vec3 vec2        = (*verts)[i] - (*verts)[i+1];
-                    vec2.normalize();
+                        OE_DEBUG 
+                            << "\n"
+                            << "point " << i << " : \n"
+                            << "seg f: " << seg.first.x() << ", " << seg.first.y() << "\n"
+                            << "seg s: " << seg.second.x() << ", " << seg.second.y() << "\n"
+                            << "pnt 1: " << prevBufVert.x() << ", " << prevBufVert.y() << "\n"
+                            << "ray 1: " << prevDir.x() << ", " << prevDir.y() << "\n"
+                            << "pnt 2: " << nextBufVert.x() << ", " << nextBufVert.y() << "\n"
+                            << "ray 2: " << -dir.x() << ", " << -dir.y() << "\n"
+                            << "bufvec: " << bufVec.x() << ", " << bufVec.y() << "\n"
+                            << "\n";
 
-                    // find the 2D intersection of these two vectors. Check for the 
-                    // special case of colinearity.
-                    osg::Vec3 isect;
-                    if ( interesctRays(prevBufVert, vec1, nextBufVert, vec2, (*verts)[i], (*normals)[i], isect) )
-                        verts->push_back(isect);
-                    else
+                        // find the 2D intersection of these two vectors. Check for the 
+                        // special case of colinearity.
+                        osg::Vec3 isect;
+
+                        if ( interesctRays(prevBufVert, prevDir, nextBufVert, -dir, up, isect) )//(*normals)[i], isect) )
+                        {
+                            verts->push_back(isect);
+                            addedVertex = true;
+                        }
+                    }
+                    
+                    if ( !addedVertex )
+                    {
                         verts->push_back(bufVert);
+                    }
 
                     // now that we have the current buffered point, build triangles
                     // for *previous* segment.
+                    //if ( addedVertex )
                     addTris( ebo, i, prevBufVertPtr, verts->size()-1, side );
                     tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                     normals->push_back( (*normals)[i] );
@@ -348,7 +368,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
                     {
                         osg::Vec3 v;
                         float a = step * (float)j;
-                        rotate( circlevec, side*a, (*normals)[i], v );
+                        rotate( circlevec, side*a, up, v );
+                        //rotate( circlevec, side*a, (*normals)[i], v );
 
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-1, verts->size()-2, side );
@@ -388,7 +409,8 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
             {
                 osg::Vec3 v;
                 float a = step * (float)j;
-                rotate( circlevec, (side)*a, (*normals)[i], v );
+                //rotate( circlevec, (side)*a, (*normals)[i], v );
+                rotate( circlevec, (side)*a, up, v );
                 verts->push_back( (*verts)[i] + v );
                 addTri( ebo, i, verts->size()-1, verts->size()-2, side );
                 tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
@@ -500,21 +522,19 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
 
         "void oe_polyline_scalelines(inout vec4 vertex_model4) \n"
         "{ \n"
-        "   vec4  center_model = vec4(oe_polyline_center, 1.0); \n"
-        "   vec4  vertex_model = vertex_model4/vertex_model4.w; \n"
-        "   vec3  vector_model = vertex_model.xyz - center_model.xyz; \n"
+        "   const float epsilon = 0.0001; \n"
+
+        "   vec4 center = vec4(oe_polyline_center, 1.0); \n"
+        "   vec3 vector = vertex_model4.xyz - center.xyz; \n"
         
-        "   float r = length(vector_model); \n"
+        "   float r = length(vector); \n"
 
-        "   if ( r > 0.0 && oe_polyline_min_pixels > 0.0 ) \n"
-        "   { \n"
-        "       float pixelSize = abs(r/dot(center_model, oe_PixelSizeVector)); \n"
-        "       float min_scale = max( oe_polyline_min_pixels/pixelSize, 1.0 ); \n"
-        "       float scale = max( oe_polyline_scale, min_scale ); \n"
+        "   float activate  = step(epsilon, r*oe_polyline_min_pixels);\n"
+        "   float pixelSize = max(epsilon, 2.0*abs(r/dot(center, oe_PixelSizeVector))); \n"
+        "   float min_scale = max(oe_polyline_min_pixels/pixelSize, 1.0); \n"
+        "   float scale     = mix(1.0, max(oe_polyline_scale, min_scale), activate); \n"
 
-        "       vertex_model.xyz += vector_model*scale; \n"
-        "       vertex_model4 = vec4(vertex_model.xyz, 1.0); \n"
-        "    } \n"
+        "   vertex_model4.xyz = center.xyz + vector*scale; \n"
         "} \n";
 
     vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL );

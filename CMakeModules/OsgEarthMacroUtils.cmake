@@ -6,7 +6,11 @@ MACRO(DETECT_OSG_VERSION)
     OPTION(APPEND_OPENSCENEGRAPH_VERSION "Append the OSG version number to the osgPlugins directory" ON)
 	
     # detect if osgversion can be found
-    FIND_PROGRAM(OSG_VERSION_EXE NAMES osgversion)
+    FIND_PROGRAM(OSG_VERSION_EXE NAMES'
+        osgversion
+        ${OSG_DIR}/bin/osgversion
+        ${OSG_DIR}/bin/osgversiond)
+        
     IF(OSG_VERSION_EXE AND NOT OPENSCENEGRAPH_MAJOR_VERSION AND NOT OPENSCENEGRAPH_MINOR_VERSION AND NOT OPENSCENEGRAPH_PATCH_VERSION)
         #MESSAGE("OSGVERSION IS AT ${OSG_VERSION_EXE}")
         # get parameters out of the osgversion

@@ -2471,7 +2471,8 @@ EarthManipulator::zoom( double dx, double dy )
     collisionDetect();
 }
 
-
+#if 0 // removing this as it is hopefully no longer needed;
+      // will delete it later if all goes well. (gw 2/21/15)
 namespace
 {
     // osg::View::getCameraContainingPosition has a bug in it. If the camera's current event
@@ -2506,6 +2507,7 @@ namespace
         return view->getCameraContainingPosition(x, y, out_local_x, out_local_y);
     }
 }
+#endif
 
 
 bool
@@ -2523,7 +2525,7 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
         return false;
 
     float local_x, local_y = 0.0;
-    const osg::Camera* camera = getCameraContainingPosition(view, x, y, local_x, local_y);
+    const osg::Camera* camera =  view->getCameraContainingPosition(x, y, local_x, local_y);
     if ( !camera )
         return false;
 

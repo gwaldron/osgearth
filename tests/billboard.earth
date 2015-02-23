@@ -1,17 +1,7 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
-
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
+osgEarth Sample - Geometry Shader Billboard Experimentation
 -->
-<map name="readymap.org" type="geocentric">
+<map name="geometry shader test" type="geocentric">
     
     <options>
         <terrain first_lod="1"/>
@@ -33,17 +23,16 @@ http://readymap.org
                 <url>../data/parks.shp</url>
             </features>
 
-            <image>../data/textures/oak.png</image>
+            <image>../data/textures/pine.png</image>
             <height>20.0</height>
-			<width>15.0</width>
-			<density>15000</density>
+            <width>15.0</width>
+            <density>15000</density>
 
         </billboard>
 
         <viewpoints>
-		<viewpoint name="Points" lat="25.311" long="-80.807" pitch="-21" range="177351"/>
-		<viewpoint name="DC" heading="-23.41597142139858" height="25.89056142792106" lat="38.88766329853004" long="-76.99080836437689" pitch="-24.9647839409773" range="18580.10989103711"/>
-	</viewpoints>
+            <viewpoint name="DC" heading="-23.41597142139858" height="25.89056142792106" lat="38.88766329853004" long="-76.99080836437689" pitch="-24.9647839409773" range="18580.10989103711"/>
+        </viewpoints>
 
     </extensions>
 

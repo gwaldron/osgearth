@@ -216,15 +216,14 @@ namespace
     bool
     FileSystemCacheBin::binValidForReading(bool silent)
     {
-        if ( !_binPathExists )
+        if ( _ok && !_binPathExists )
         {
             if ( osgDB::fileExists(_binPath) )
             {
                 // ready to go
                 _binPathExists = true;
-                _ok = true;
             }
-            else if ( _ok )
+            else
             {
                 // one-time error.
                 if ( !silent )
@@ -241,7 +240,7 @@ namespace
     bool
     FileSystemCacheBin::binValidForWriting(bool silent)
     {
-        if ( !_binPathExists )
+        if ( _ok && !_binPathExists )
         {
             osgEarth::makeDirectoryForFile( _metaPath );
 
@@ -249,7 +248,6 @@ namespace
             {
                 // ready to go
                 _binPathExists = true;
-                _ok = true;
             }
             else
             {
@@ -268,16 +266,23 @@ namespace
     FileSystemCacheBin::FileSystemCacheBin(const std::string&   binID,
                                            const std::string&   rootPath) :
     CacheBin            ( binID ),
-    _binPathExists      ( false )
+    _binPathExists      ( false ),
+    _ok                 ( true )
     {
         _binPath = osgDB::concatPaths( rootPath, binID );
         _metaPath = osgDB::concatPaths( _binPath, "osgearth_cacheinfo.json" );
 
         _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
+        if ( _rw == 0L )
+        {
+            _ok = false;
+            OE_WARN << LC << "Failed to create a readerwriter for osgb\n";
+        }
+
 #ifdef OSGEARTH_HAVE_ZLIB
         _rwOptions = Registry::instance()->cloneOrCreateOptions();
         _rwOptions->setOptionString( "Compressor=zlib" );
-#endif        
+#endif
     }
 
     ReadResult
@@ -453,7 +458,7 @@ namespace
         }
         else
         {
-            OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin " << getID()
+            OE_INFO << LC << "FAILED to write \"" << key << "\" to cache bin " << getID()
                 << "; msg = \"" << r.message() << "\"" << std::endl;
         }
 

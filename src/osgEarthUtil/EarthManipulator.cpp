@@ -1010,7 +1010,8 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 
 void EarthManipulator::collisionDetect()
 {
-    if ( getSettings()->getTerrainAvoidanceEnabled() == false )
+    if (!getSettings()->getTerrainAvoidanceEnabled() ||
+        !_cached_srs.valid() )
     {
         return;
     }

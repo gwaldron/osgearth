@@ -1766,7 +1766,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 resetMouse( aa );
                 addMouseEvent( ea );
                 action = _settings->getAction( ea.getEventType(), ea.getScrollingMotion(), ea.getModKeyMask() );
-                if ( handleScrollAction( action, 0.2 ) )
+                if ( handleScrollAction( action, action.getDoubleOption(OPTION_DURATION, 0.2) ) )
                     aa.requestRedraw();
                 handled = true;
                 break;

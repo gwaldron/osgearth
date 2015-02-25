@@ -888,6 +888,9 @@ HTTPClient::doGet(const HTTPRequest&    request,
         curl_easy_setopt( _curl_handle, CURLOPT_ERRORBUFFER, (void*)errorBuf );
         curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)&sp);
         curl_easy_setopt( _curl_handle, CURLOPT_HEADERDATA, (void*)&sp);
+
+        //Disable peer certificate verification to allow us to access in https servers where the peer certificate cannot be verified.
+        curl_easy_setopt( _curl_handle, CURLOPT_SSL_VERIFYPEER, (void*)0 );
         
         osg::ref_ptr< CurlConfigHandler > curlConfigHandler = getCurlConfigHandler();
         if (curlConfigHandler.valid()) {
@@ -897,9 +900,6 @@ HTTPClient::doGet(const HTTPRequest&    request,
         res = curl_easy_perform(_curl_handle);
         curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)0 );
         curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
-
-        //Disable peer certificate verification to allow us to access in https servers where the peer certificate cannot be verified.
-        curl_easy_setopt( _curl_handle, CURLOPT_SSL_VERIFYPEER, (void*)0 );
 
         if (!proxy_addr.empty())
         {

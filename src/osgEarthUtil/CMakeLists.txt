@@ -19,7 +19,6 @@ SET(HEADERS_ROOT
     ContourMap
     ClampCallback
     DataScanner
-    DateTime
     EarthManipulator
 	Ephemeris
     ExampleResources

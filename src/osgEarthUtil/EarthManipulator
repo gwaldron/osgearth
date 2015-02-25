@@ -322,7 +322,7 @@ namespace osgEarth { namespace Util
              *
              * @param options
              *      Action options. Valid options are:
-             *      OPTION_SCALE_Y
+             *      OPTION_SCALE_Y, OPTION_DURATION
              */
             void bindScroll(
                 ActionType action, int scrolling_motion,

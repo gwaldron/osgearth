@@ -63,6 +63,8 @@ bool
 Horizon::occludes(const osg::Vec3d& targetECEF,
                   double            radius) const
 {
+    // ref: https://cesiumjs.org/2013/04/25/Horizon-culling/
+
     osg::Vec3d tc = targetECEF;
 
     if ( radius > 0.0 )
@@ -75,9 +77,6 @@ Horizon::occludes(const osg::Vec3d& targetECEF,
     }
     
     tc = osg::componentMultiply(tc, _scale);
-
-    //OE_WARN << "eye=" << eye.x() << ", " << eye.y() << ", " << eye.z() << "\n";
-    //OE_WARN << "tgt=" << target.x() << ", " << target.y() << ", " << target.z() << "\n";
 
     osg::Vec3d vt = tc - _cv;
     double vtMag2 = vt.length2();

@@ -132,8 +132,10 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         }
         else
         {
-            plod->setRange( 0, 0.0f, _options.tilePixelSize().value() );
-            plod->setRange( 1, _options.tilePixelSize().value(), FLT_MAX );
+            // the *2 is because we page in 4-tile sets, not individual tiles.
+            float size = 2.0f * _options.tilePixelSize().value();
+            plod->setRange( 0, 0.0f, size );
+            plod->setRange( 1, size, FLT_MAX );
             plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
         }
         

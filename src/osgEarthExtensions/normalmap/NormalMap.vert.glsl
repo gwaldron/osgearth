@@ -1,11 +1,12 @@
 #version 110
+#pragma vp_entryPoint "oe_nmap_vertex"
+#pragma vp_location   "vertex_model"
 
 varying vec4 oe_layer_tilec;
 
 uniform mat4 oe_nmap_normalTexMatrix;
 varying vec4 oe_nmap_normalCoords;
 varying mat3 oe_nmap_TBN;
-
 
 void oe_nmap_vertex(inout vec4 VertexMODEL)
 {

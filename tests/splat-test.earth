@@ -30,6 +30,7 @@
         <bumpmap>
             <image>../data/rock_hard.jpg</image>
             <octaves>32</octaves>
+            <intensity>1.5</intensity>
         </bumpmap>
     
         <splat>

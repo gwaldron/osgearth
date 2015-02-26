@@ -1,5 +1,9 @@
 #version 110
+#pragma vp_entryPoint "oe_nmap_fragment"
+#pragma vp_location   "fragment_coloring"
+#pragma vp_order      "2.0"
 
+// stage global:
 vec3 oe_global_Normal;
 
 uniform vec4 oe_tile_key;

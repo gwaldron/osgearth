@@ -23,6 +23,7 @@ SET(OSGEARTH_EXTENSIONS_FOLDER Extensions)
 
 add_subdirectory(billboard)
 add_subdirectory(bumpmap)
+add_subdirectory(graticule)
 add_subdirectory(mapinspector)
 add_subdirectory(normalmap)
 add_subdirectory(splat)

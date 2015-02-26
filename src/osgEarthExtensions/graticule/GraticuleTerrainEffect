@@ -19,6 +19,8 @@
 #ifndef OSGEARTH_GRATICULE_TERRAIN_EFFECT_H
 #define OSGEARTH_GRATICULE_TERRAIN_EFFECT_H
 
+#include "GraticuleOptions"
+
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/ImageLayer>
 #include <osg/Image>
@@ -37,7 +39,8 @@ namespace osgEarth { namespace Graticule
     public:
         /** construct a new terrain effect. */
         GraticuleTerrainEffect(
-            const osgDB::Options* dbOptions);
+            const GraticuleOptions& options,
+            const osgDB::Options*   dbOptions);
 
 
     public: // TerrainEffect interface
@@ -48,6 +51,7 @@ namespace osgEarth { namespace Graticule
 
 
     protected:
+        const GraticuleOptions _options;
         virtual ~GraticuleTerrainEffect() { }
     };
 

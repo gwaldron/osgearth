@@ -4,7 +4,7 @@
 
 uniform float oe_graticule_lineWidth;
 uniform float oe_graticule_resolution;
-uniform float oe_graticule_alpha;
+uniform vec4  oe_graticule_color;
 
 varying vec2 oe_graticule_coord;
 
@@ -19,6 +19,6 @@ void oe_graticule_fragment(inout vec4 color)
         
     if ( any(lessThan(distanceToLine, dF)) )
     {
-        color.rgb = mix(color.rgb, vec3(1,1,0), oe_graticule_alpha);
+        color.rgb = mix(color.rgb, oe_graticule_color.rgb, oe_graticule_color.a);
     }
 }

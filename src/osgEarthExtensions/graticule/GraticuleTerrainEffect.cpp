@@ -30,7 +30,9 @@ using namespace osgEarth;
 using namespace osgEarth::Graticule;
 
 
-GraticuleTerrainEffect::GraticuleTerrainEffect(const osgDB::Options* dbOptions)
+GraticuleTerrainEffect::GraticuleTerrainEffect(const GraticuleOptions& options,
+                                               const osgDB::Options*   dbOptions) :
+_options( options )
 {
     //nop
 }
@@ -49,9 +51,14 @@ GraticuleTerrainEffect::onInstall(TerrainEngineNode* engine)
         package.loadFunction( vp, package.Vertex );
         package.loadFunction( vp, package.Fragment );
 
-        stateset->addUniform( new osg::Uniform("oe_graticule_resolution", 1.0f/36.0f) ); // 10 degrees
-        stateset->addUniform( new osg::Uniform("oe_graticule_alpha",      0.4f) );
-        stateset->addUniform( new osg::Uniform("oe_graticule_lineWidth",  1.5f) );
+        stateset->addUniform( new osg::Uniform(
+            GraticuleOptions::resolutionUniformName(), _options.resolution().get()) );
+
+        stateset->addUniform( new osg::Uniform(
+            GraticuleOptions::colorUniformName(), _options.color().get()) );
+
+        stateset->addUniform( new osg::Uniform(
+            GraticuleOptions::lineWidthUniformName(), _options.lineWidth().get()) );
     }
 }
 
@@ -69,9 +76,9 @@ GraticuleTerrainEffect::onUninstall(TerrainEngineNode* engine)
             package.unloadFunction( vp, package.Vertex );
             package.unloadFunction( vp, package.Fragment );
 
-            stateset->removeUniform("oe_graticule_resolution");
-            stateset->removeUniform("oe_graticule_alpha");
-            stateset->removeUniform("oe_graticule_lineWidth");
+            stateset->removeUniform( GraticuleOptions::resolutionUniformName() );
+            stateset->removeUniform( GraticuleOptions::colorUniformName() );
+            stateset->removeUniform( GraticuleOptions::lineWidthUniformName() );
         }
     }
 }

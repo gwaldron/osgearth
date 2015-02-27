@@ -485,11 +485,14 @@ TileSource::hasDataInExtent( const GeoExtent& extent ) const
 bool
 TileSource::hasData(const osgEarth::TileKey& key) const
 {
-    //sematics: might have data.
+    //sematics: "might have data"
 
-    //If no data extents are provided, just return true
-    if (_dataExtents.size() == 0) 
+    // If no data extents are provided, and there's no data level override,
+    // return true because there might be data but there's no way to tell.
+    if (_dataExtents.size() == 0 && !_options.maxDataLevel().isSet())
+    {
         return true;
+    }
 
     unsigned int lod = key.getLevelOfDetail();
 
@@ -499,10 +502,17 @@ TileSource::hasData(const osgEarth::TileKey& key) const
         lod = getProfile()->getEquivalentLOD( key.getProfile(), key.getLevelOfDetail() );        
     }
 
-    // Check the explicit max data override:
+    // If there's an explicit LOD override and we've exceeded it, no data.
     if (_options.maxDataLevel().isSet() && lod > _options.maxDataLevel().value())
+    {
         return false;
+    }
 
+    // If there are no extents to check, there might be data.
+    if (_dataExtents.size() == 0)
+    {
+        return true;
+    }
 
     bool intersectsData = false;
     const osgEarth::GeoExtent& keyExtent = key.getExtent();

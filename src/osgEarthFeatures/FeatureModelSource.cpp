@@ -259,11 +259,13 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                 (render->backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
+#ifndef OSG_GLES2_AVAILABLE
         if ( render->clipPlane().isSet() )
         {
             GLenum mode = GL_CLIP_PLANE0 + (render->clipPlane().value());
             group->getOrCreateStateSet()->setMode(mode, 1);
         }
+#endif
 
         if ( render->minAlpha().isSet() )
         {

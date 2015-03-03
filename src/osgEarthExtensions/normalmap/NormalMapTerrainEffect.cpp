@@ -119,8 +119,9 @@ NormalMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::get(stateset);
         if ( vp )
         {
-            vp->removeShader( "oe_nmap_vertex" );
-            vp->removeShader( "oe_nmap_fragment" );
+            Shaders package;
+            package.unloadFunction( vp, package.Vertex );
+            package.unloadFunction( vp, package.Fragment );
         }
         stateset->removeUniform( NORMAL_SAMPLER );
     }

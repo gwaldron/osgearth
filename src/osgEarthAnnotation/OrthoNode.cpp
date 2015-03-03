@@ -72,15 +72,9 @@ OrthoNode::init()
 
     _matxform = new osg::MatrixTransform();
     _switch->addChild( _matxform );
-
-#ifdef TRY_OQ
-    oq->_xform = _matxform;
-#endif
-
     _switch->setSingleChildOn( 0 );
 
     _attachPoint = new osg::Group();
-
     _autoxform->addChild( _attachPoint );
     _matxform->addChild( _attachPoint );
 
@@ -90,7 +84,15 @@ OrthoNode::init()
     _horizonCuller = new HorizonCullCallback();
     setHorizonCulling( _horizonCullingRequested );
 
-    _attachPoint->addCullCallback( _horizonCuller.get() );        
+    _attachPoint->addCullCallback( _horizonCuller.get() );
+}
+
+osg::BoundingSphere
+OrthoNode::computeBound() const
+{
+    osg::BoundingSphere bs = PositionedAnnotationNode::computeBound();
+    //OE_NOTICE << "BOUND RADIUS = " << bs.radius() << "\n";
+    return bs;
 }
 
 void
@@ -123,7 +125,7 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
         }
 
         // turn off small feature culling
-        cv->setSmallFeatureCullingPixelSize(0.0f);
+        cv->setSmallFeatureCullingPixelSize(-1.0f);
 
         AnnotationNode::traverse( nv );
 
@@ -152,14 +154,6 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
     {
         AnnotationNode::traverse( nv );
     }
-}
-
-osg::BoundingSphere
-OrthoNode::computeBound() const
-{
-    osg::BoundingSphere bs = PositionedAnnotationNode::computeBound();
-    //bs.radius() = 1.0;
-    return bs;
 }
 
 void

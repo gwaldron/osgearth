@@ -36,7 +36,6 @@
         <splat>
             <coverage>GLOBCOVER</coverage>
             <legend>../data/splat/GLOBCOVER_legend.xml</legend>
-            <biomes>../data/splat/splat_biomes.xml</biomes>
             <catalog>../data/splat/splat_catalog.xml</catalog>
         </splat>
         

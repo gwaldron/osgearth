@@ -1,4 +1,6 @@
 #version 120
+#pragma vp_entryPoint "oe_splat_vertex_view"
+#pragma vp_location   "vertex_view"
 
 // from the terrain engine
 varying vec4 oe_layer_tilec;

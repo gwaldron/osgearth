@@ -1,4 +1,6 @@
 #version 120
+#pragma vp_entryPoint "oe_splat_vertex_model"
+#pragma vp_location   "vertex_model"
 
 varying vec3 oe_Normal;
 varying float oe_splat_slope;

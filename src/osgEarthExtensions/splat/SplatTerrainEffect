@@ -125,8 +125,6 @@ namespace osgEarth { namespace Splat
 
         osg::ref_ptr<BiomeSelector>         _biomeSelector;
 
-        Shaders _shaders;
-
         bool                                _editMode;
         bool                                _gpuNoise;
 

@@ -164,6 +164,14 @@ ShaderLoader::load(const std::string&    filename,
         osgEarth::replaceIn( output, defineStatement, newStatement );
     }
 
+    // Finally, do any replacements.
+    for(ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();
+        i != package._replaces.end();
+        ++i)
+    {
+        osgEarth::replaceIn( output, i->first, i->second );
+    }
+
     return output;
 }
 
@@ -317,6 +325,13 @@ ShaderPackage::define(const std::string& name,
                       bool               defOrUndef)
 {
     _defines[name] = defOrUndef;
+}
+
+void
+ShaderPackage::replace(const std::string& pattern,
+                       const std::string& value)
+{
+    _replaces[pattern] = value;
 }
 
 bool

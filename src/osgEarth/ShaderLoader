@@ -49,14 +49,26 @@ namespace osgEarth
             const std::string&    filename,
             const osgDB::Options* dbOptions =0L ) const;
 
+        /**
+         * Defs or undefs a GLSL #define proprocessor macro.
+         * Don't include the "#" in the defineName.
+         */
+        void define(
+            const std::string& defineName,
+            bool               defOrUndef);
+
     public:
         typedef std::map<std::string, std::string> SourceMap;
         const SourceMap& context() const { return _sources; }
         void add(const std::string& filename, const std::string& inlineSource) {
             _sources[filename] = inlineSource; }
 
+        typedef std::map<std::string, bool> DefineMap;
+
     protected:        
         SourceMap _sources;
+        DefineMap _defines;
+        friend class ShaderLoader;
     };
 
     /**

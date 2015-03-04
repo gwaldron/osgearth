@@ -1,7 +1,4 @@
-// This is an include file.
-
-// the follow def may be replaced by BumpMapTerrainEffect.cpp:
-#undef OE_USE_NORMAL_MAP
+#pragma vp_define "OE_USE_NORMAL_MAP"
 
 #ifdef OE_USE_NORMAL_MAP
 
@@ -16,7 +13,7 @@ float oe_bumpmap_getSlope()
     return clamp((1.0-normalTangent.z)/0.8, 0.0, 1.0);
 }
 
-#else
+#else // OE_USE_NORMAL_MAP
 
 // non- normal map version:
 in float oe_bumpmap_slope;
@@ -25,4 +22,5 @@ float oe_bumpmap_getSlope()
 {
     return oe_bumpmap_slope;
 }
-#endif
+
+#endif // OE_USE_NORMAL_MAP

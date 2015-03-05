@@ -374,6 +374,11 @@ namespace osgEarth
         virtual bool hasDataInExtent( const GeoExtent& extent ) const;
 
         /**
+         * Whether the tile source has data at the given location
+         */
+        virtual bool hasDataAt( const GeoPoint& location) const;
+
+        /**
          * Whether this TileSource produces tiles whose data can change after
          * it's been created.
          */

@@ -629,9 +629,17 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     std::vector<bool>    heightFailed (contenders.size(), false);
     std::vector<bool>    offsetFailed(offsets.size(), false);
 
+    // The maximum number of heightfields to keep in this local cache
+    unsigned int maxHeightFields = 50;
+
     const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
 
     bool realData = false;
+
+    unsigned numHeightFieldsInCache = 10;
+
+    unsigned int total = numColumns * numRows;
+    unsigned int completed = 0;
 
     for (unsigned c = 0; c < numColumns; ++c)
     {
@@ -640,6 +648,8 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
         {
             double y = ymin + (dy * (double)r);
 
+            GeoPoint sampleLocation(keySRS, x, y);
+
             // Collect elevations from each layer as necessary.
             bool resolved = false;
 
@@ -647,6 +657,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
             {
                 if ( heightFailed[i] )
                     continue;
+
+                // Only create a heightfield for a layer if it has data at the given location
+                if (contenders[i]->getTileSource() &&
+                    !contenders[i]->getTileSource()->hasDataAt(sampleLocation))
+                {
+                    continue;
+                }
 
                 GeoHeightField& layerHF = heightFields[i];
                 if ( !layerHF.valid() )
@@ -660,6 +677,10 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                         heightFailed[i] = true;
                         continue;
                     }
+                    else
+                    {
+                        numHeightFieldsInCache++;
+                    }
                 }
 
                 // If we actually got a layer then we have real data
@@ -671,6 +692,18 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 {
                     resolved = true;                    
                     hf->setHeight(c, r, elevation);
+                }
+
+
+                // Clear the heightfield cache if we have too many heightfields in the cache.
+                if (numHeightFieldsInCache >= maxHeightFields)
+                {
+                    //OE_NOTICE << "Clearing cache" << std::endl;
+                    for (unsigned int k = 0; k < heightFields.size(); k++)
+                    {
+                        heightFields[k] = GeoHeightField::INVALID;
+                    }
+                    numHeightFieldsInCache = 0;
                 }
             }
 
@@ -703,6 +736,9 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     hf->getHeight(c, r) += elevation;
                 }
             }
+
+            completed++;
+            //OE_NOTICE << "Completed " << completed << " of " << total << std::endl;
         }
     }   
 

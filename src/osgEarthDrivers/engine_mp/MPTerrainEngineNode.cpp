@@ -943,7 +943,7 @@ MPTerrainEngineNode::updateState()
                         "oe_mp_apply_filters",
                         fs_colorfilters,
                         ShaderComp::LOCATION_FRAGMENT_COLORING,
-                        0.0 );
+                        0.5f );
                 }
             }
 

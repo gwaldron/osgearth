@@ -676,7 +676,7 @@ ShaderGenerator::apply(osg::ClipNode& node)
     osg::StateSet* stateSet = cloneOrCreateStateSet(&node);
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
     if ( vp->referenceCount() == 1 ) vp->setName( _name );
-    vp->setFunction( "oe_sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW );
+    vp->setFunction( "oe_sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW, 0.95f );
 
     apply( static_cast<osg::Group&>(node) );
 }
@@ -766,8 +766,8 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
         INDENT "color.a *= texel.a; \n"
         "}\n";
 
-    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW );
-    vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING );
+    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
+    vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
 
     return replacement.valid();
@@ -886,7 +886,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
                 << vertBodySource
                 << "}\n";
 
-            vp->setFunction(VERTEX_FUNCTION, vertSource, ShaderComp::LOCATION_VERTEX_VIEW);
+            vp->setFunction(VERTEX_FUNCTION, vertSource, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f);
         }
 
 
@@ -905,7 +905,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
                 << fragBodySource
                 << "}\n";
 
-            vp->setFunction(FRAGMENT_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            vp->setFunction(FRAGMENT_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f);
         }
     }
 

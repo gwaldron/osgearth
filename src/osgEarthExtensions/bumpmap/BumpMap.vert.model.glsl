@@ -2,6 +2,7 @@
 
 #pragma vp_entryPoint "oe_bumpmap_vertexModel"
 #pragma vp_location   "vertex_model"
+#pragma vp_order      "0.5"
 #pragma vp_define     "OE_USE_NORMAL_MAP"
 
 uniform vec4 oe_tile_key;

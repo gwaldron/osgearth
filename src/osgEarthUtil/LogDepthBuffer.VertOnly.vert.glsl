@@ -3,7 +3,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint "oe_logDepth_vert"
 #pragma vp_location   "vertex_clip"
-#pragma vp_order      "FLT_MAX"
+#pragma vp_order      "0.99"
 
 uniform float oe_logDepth_C;
 uniform float oe_logDepth_FC;

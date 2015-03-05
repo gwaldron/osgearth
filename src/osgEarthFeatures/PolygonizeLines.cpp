@@ -537,7 +537,7 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
         "   vertex_model4.xyz = center.xyz + vector*scale; \n"
         "} \n";
 
-    vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL );
+    vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f );
     vp->addBindAttribLocation( "oe_polyline_center", osg::Drawable::ATTRIBUTE_6 );
 
     // add the default scaling uniform.

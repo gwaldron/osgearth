@@ -310,6 +310,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         // activate horizon culling if we are in geocentric space
         if ( context.getSession() && context.getSession()->getMapInfo().isGeocentric() )
         {
+            //TODO: re-evaluate this; use Horizon?
             HorizonCullingProgram::install( attachPoint->getOrCreateStateSet() );
         }
     }

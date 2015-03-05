@@ -3,7 +3,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint "oe_mp_apply_coloring"
 #pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0"
+#pragma vp_order      "0.5"
 #pragma vp_define     "MP_USE_BLENDING"
 
 uniform vec4 oe_terrain_color;

@@ -2,6 +2,7 @@
 
 #pragma vp_entryPoint "oe_clamp_vertex"
 #pragma vp_location   "vertex_view"
+#pragma vp_order      "0.5"
 
 #pragma include "GPUClamping.vert.lib.glsl"
 

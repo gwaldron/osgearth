@@ -3,6 +3,7 @@
 
 #pragma vp_entryPoint "oe_splat_fragment"
 #pragma vp_location   "fragment_coloring"
+#pragma vp_order      "0.4"
 
 // define to activate 'edit' mode in which uniforms control
 // the splatting parameters.

@@ -631,12 +631,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
     // The maximum number of heightfields to keep in this local cache
     unsigned int maxHeightFields = 50;
+    unsigned numHeightFieldsInCache = 0;
 
     const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
 
     bool realData = false;
 
-    unsigned numHeightFieldsInCache = 10;
+
 
     unsigned int total = numColumns * numRows;
     unsigned int completed = 0;

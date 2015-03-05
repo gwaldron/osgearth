@@ -195,10 +195,19 @@ TerrainLayer::init()
 
     // Create an L2 mem cache that sits atop the main cache, if necessary.
     // For now: use the same L2 cache size at the driver.
-    int memCacheSize = _initOptions.driver()->L2CacheSize().get();
-    if ( memCacheSize > 0 )
+    int l2CacheSize = _initOptions.driver()->L2CacheSize().get();
+    
+    // See if it was overridden with an env var.
+    char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
+    if ( l2env )
     {
-        _memCache = new MemCache(memCacheSize);
+        l2CacheSize = as<int>( std::string(l2env), 0 );
+    }
+
+    // Initialize the l2 cache if it's size is > 0
+    if ( l2CacheSize > 0 )
+    {
+        _memCache = new MemCache( l2CacheSize );
     }
 }
 

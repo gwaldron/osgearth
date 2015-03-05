@@ -19,18 +19,12 @@
 */
 #include <osgEarth/ShaderLoader>
 
-namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
+namespace osgEarth { namespace Graticule
 {
-    class Shaders : public osgEarth::ShaderPackage
+    struct Shaders : public osgEarth::ShaderPackage
 	{
-    public:
         Shaders();
-        
-    public:
-        std::string
-            VertexModel,
-            VertexView,
-            Fragment;
+        std::string Vertex, Fragment;
 	};
 	
-} } } // namespace osgEarth::Drivers::MPTerrainEngine
+} } // namespace osgEarth/Graticule

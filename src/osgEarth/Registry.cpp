@@ -550,21 +550,37 @@ void
 Registry::startActivity(const std::string& activity)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
-    _activities.insert(activity);
+    _activities.insert(Activity(activity,std::string()));
+}
+
+void
+Registry::startActivity(const std::string& activity,
+                        const std::string& value)
+{
+    Threading::ScopedMutexLock lock(_activityMutex);
+    _activities.insert(Activity(activity,value));
 }
 
 void
 Registry::endActivity(const std::string& activity)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
-    _activities.erase(activity);
+    _activities.erase(Activity(activity,std::string()));
 }
 
 void
 Registry::getActivities(std::set<std::string>& output)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
-    output = _activities;
+    for(std::set<Activity,ActivityLess>::const_iterator i = _activities.begin();
+        i != _activities.end();
+        ++i)
+    {
+        if ( ! i->second.empty() )
+            output.insert( i->first + ": " + i->second );
+        else
+            output.insert( i->first );
+    }
 }
 
 std::string 

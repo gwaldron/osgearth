@@ -18,6 +18,7 @@
  */
 #include <osgEarth/Horizon>
 #include <osg/Transform>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 
@@ -32,11 +33,11 @@ Horizon::Horizon(const osg::EllipsoidModel& e)
 }
 
 Horizon::Horizon(const Horizon& rhs) :
-_scale ( rhs._scale ),
-_eye   ( rhs._eye ),
-_eyeLen( rhs._eyeLen ),
-_cv    ( rhs._cv ),
-_vhMag2( rhs._vhMag2 )
+_scale        ( rhs._scale ),
+_scaleInv     ( rhs._scaleInv ),
+_cv           ( rhs._cv ),
+_vhMag2       ( rhs._vhMag2 ),
+_scaleToMinHAE( rhs._scaleToMinHAE )
 {
     //nop
 }
@@ -44,19 +45,67 @@ _vhMag2( rhs._vhMag2 )
 void
 Horizon::setEllipsoid(const osg::EllipsoidModel& e)
 {
+    _scaleInv.set( 
+        e.getRadiusEquator(),
+        e.getRadiusEquator(),
+        e.getRadiusPolar() );
+
     _scale.set(
         1.0 / e.getRadiusEquator(),
         1.0 / e.getRadiusEquator(),
         1.0 / e.getRadiusPolar() );
+
+    // Minimum allowable HAE for calculating horizon distance.
+    const double minHAE = 100.0;
+
+    //double maxRadius = std::max(e.getRadiusEquator(), e.getRadiusPolar());
+    //double minHAEScaled = 1.0 + minHAE/maxRadius;
+    //_minHAEScaled2 = minHAEScaled * minHAEScaled;
+
+    _scaleToMinHAE = (_scale*minHAE) + osg::Vec3d(1,1,1);
 }
 
 void
 Horizon::setEye(const osg::Vec3d& eyeECEF)
 {
-    _eye    = eyeECEF;
-    _eyeLen = eyeECEF.length();
-    _cv     = osg::componentMultiply(eyeECEF, _scale);
-    _vhMag2 = (_cv*_cv)-1.0;
+    _cv = osg::componentMultiply(eyeECEF, _scale);
+
+    double cvMag2 = _cv*_cv;
+
+    osg::Vec3d minCV = _cv;
+    minCV.normalize();
+    minCV = osg::componentMultiply(minCV, _scaleToMinHAE);
+    double min_cvMag2 = minCV*minCV;
+
+#if 0 // debugging
+    osg::Vec3d msl = _cv;
+    msl.normalize();
+    msl = osg::componentMultiply(msl, _scale+osg::Vec3d(1,1,1));
+    msl = osg::componentMultiply(msl, _scaleInv);
+    double alt = eyeECEF.length() - msl.length();
+#endif
+
+    if ( cvMag2 >= min_cvMag2 )
+    {
+        _vhMag2 = cvMag2-1.0;
+    }
+    else
+    {
+        _cv = minCV;
+        _vhMag2 = (_cv*_cv)-1.0;
+    }
+    
+#if 0 // debugging
+    osg::Vec3d vh = _cv;
+    vh.normalize();
+    vh = osg::componentMultiply(vh, (_scale*sqrt(_vhMag2))+osg::Vec3d(1,1,1));
+    vh = _scaleInv * sqrt(_vhMag2);
+
+    static int count=0;
+    if (count++ %60 == 0) {
+        OE_NOTICE << "cvmag2="<< cvMag2 << "; minMag2="<< min_cvMag2 << "; vhMag2=" << _vhMag2 << "; alt=" << alt << "; vh=" << vh.length() << "\n";
+    }
+#endif
 }
 
 bool
@@ -91,9 +140,6 @@ Horizon::occludes(const osg::Vec3d& targetECEF,
 bool
 Horizon::getPlane(osg::Plane& out_plane) const
 {
-    if ( _eyeLen == 0.0 )
-        return false;
-
     // calculate scaled distance from center to viewer:
     double magVC = _cv.length();
     if ( magVC == 0.0 )
@@ -102,15 +148,14 @@ Horizon::getPlane(osg::Plane& out_plane) const
     // calculate scaled distance from center to horizon plane:
     double magPC = 1.0/magVC;
 
-    // convert back to real space:
-    double dist   = _eyeLen * magPC/magVC;
+    osg::Vec3d normal = _cv;
+    normal.normalize();
 
-    // normalize the eye vector:
-    osg::Vec3d normal = _eye;
-    normal /= _eyeLen; // normalize
+    osg::Vec3d pcWorld = osg::componentMultiply(normal*magPC, _scaleInv);
+    double dist = pcWorld.length();
 
     // compute a new clip plane:
-    out_plane.set(normal, normal*dist);
+    out_plane.set(normal, -dist);
     return true;
 }
 
@@ -140,7 +185,7 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
         // make a local copy to support multi-threaded cull
         Horizon horizon(_horizon);
-        horizon.setEye( osg::Vec3d(nv->getEyePoint()) * local2world );
+        horizon.setEye( osg::Vec3d(nv->getViewPoint()) * local2world );
 
         const osg::BoundingSphere& bs = node->getBound();
 

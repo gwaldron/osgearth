@@ -1,18 +1,23 @@
 #version 130
 #extension GL_EXT_texture_array : enable
 
+#pragma vp_entryPoint "oe_splat_fragment"
+#pragma vp_location   "fragment_coloring"
+
+// define to activate 'edit' mode in which uniforms control
+// the splatting parameters.
+#pragma vp_define "SPLAT_EDIT"
+
+// define to activate GPU-generated noise instead of a noise texture.
+#pragma vp_define "SPLAT_GPU_NOISE"
+
+// include files
 #pragma include "Splat.types.glsl"
 #pragma include "Splat.frag.common.glsl"
 
 // ref: Splat.getRenderInfo.frag.glsl
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);
 
-// define to activate 'edit' mode in which uniforms control
-// the splatting parameters.
-#undef SPLAT_EDIT
-
-// define to activate GPU-generated noise instead of a noise texture.
-#undef SPLAT_GPU_NOISE
 
 // from the terrain engine:
 varying vec4 oe_layer_tilec;

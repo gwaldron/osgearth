@@ -72,8 +72,8 @@ namespace osgEarth
         osg::Vec3d _cv;
         double     _vhMag2;
         osg::Vec3d _scale;
-        osg::Vec3d _eye;
-        double     _eyeLen;
+        osg::Vec3d _scaleInv;
+        osg::Vec3d _scaleToMinHAE;
     };
 
 
@@ -91,8 +91,7 @@ namespace osgEarth
         HorizonCullCallback(const Horizon& horizon);
 
         /** Enable/disable */
-        void setEnabled(bool value) { _enabled = true; }
-        bool isEnabled() const      { return _enabled; }
+        void setEnabled(bool value) { _enabled = value; }
 
         /** The horizon to use for culling. */
         void setHorizon(const Horizon& horizon) { _horizon = horizon; }

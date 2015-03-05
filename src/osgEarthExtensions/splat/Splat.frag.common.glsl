@@ -1,7 +1,7 @@
 // begin: Splat.frag.common.glsl
 
-// the follow def may be replaced by SplatTerrainEffect.cpp:
-#undef OE_USE_NORMAL_MAP
+#pragma vp_define "OE_USE_NORMAL_MAP"
+
 
 #ifdef OE_USE_NORMAL_MAP
 

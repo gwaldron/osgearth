@@ -866,40 +866,21 @@ MPTerrainEngineNode::updateState()
             vp->addBindAttribLocation( "oe_terrain_attr",  osg::Drawable::ATTRIBUTE_6 );
             vp->addBindAttribLocation( "oe_terrain_attr2", osg::Drawable::ATTRIBUTE_7 );
 
-            // Vertex shader:
-            std::string vs_model = ShaderLoader::load(
-                Shaders::MPVertModel,
-                Shaders::MPVertModelSource );
+            Shaders package;
 
-            osgEarth::replaceIn( vs_model, "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
-            osgEarth::replaceIn( vs_model, "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
+            package.replace( "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
+            package.replace( "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
+
+            package.define( "MP_USE_BLENDING", (_terrainOptions.enableBlending() == true) );
+
+            package.loadFunction( vp, package.VertexModel );
+            package.loadFunction( vp, package.VertexView );
+            package.loadFunction( vp, package.Fragment );
             
-            vp->setFunction( "oe_mp_vertModel", vs_model, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
-
-            std::string vs_view = ShaderLoader::load(
-                Shaders::MPVertView,
-                Shaders::MPVertViewSource);
-
-            vp->setFunction( "oe_mp_vertView", vs_view, ShaderComp::LOCATION_VERTEX_VIEW, 0.0 );
-
-            // Fragment shader:
-            std::string fs = ShaderLoader::load(
-                Shaders::MPFrag,
-                Shaders::MPFragSource );
 
             // terrain background color; negative means use the vertex color.
             Color terrainColor = _terrainOptions.color().getOrUse( Color(-1,-1,-1,-1) );
             terrainStateSet->addUniform(new osg::Uniform("oe_terrain_color", terrainColor));
-
-            bool useBlending = _terrainOptions.enableBlending() == true;
-            if ( !useBlending )
-            {
-                osgEarth::replaceIn( fs,
-                    "#define MP_USE_BLENDING",
-                    "#undef MP_USE_BLENDING" );
-            }
-
-            vp->setFunction( "oe_mp_apply_coloring", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
 
             
             // assemble color filter code snippets.

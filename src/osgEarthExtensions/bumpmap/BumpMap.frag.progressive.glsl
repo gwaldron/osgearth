@@ -1,7 +1,7 @@
 #version 110
 
 #pragma vp_entryPoint "oe_bumpmap_fragment"
-#pragma vp_location   "fragment_color"
+#pragma vp_location   "fragment_coloring"
 #pragma vp_order      "3.0"
 
 #pragma include "BumpMap.frag.common.glsl"

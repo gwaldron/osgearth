@@ -216,6 +216,7 @@ namespace osgEarth
          * For debugging - tracks activities in progress.
          */
         void startActivity(const std::string& name);
+        void startActivity(const std::string& name, const std::string& text);
         void endActivity(const std::string& name);
         void getActivities(std::set<std::string>& output);
 
@@ -289,7 +290,13 @@ namespace osgEarth
         std::string _terrainEngineDriver;
         std::string _cacheDriver;
 
-        std::set<std::string> _activities;
+        typedef std::pair<std::string,std::string> Activity;
+        struct ActivityLess {
+            bool operator()(const Activity& lhs, const Activity& rhs) const {
+                return lhs.first < rhs.first;
+            }
+        };
+        std::set<Activity,ActivityLess> _activities;
         mutable Threading::Mutex _activityMutex;
         
         ProgramSharedRepo _programRepo;

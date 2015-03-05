@@ -6,7 +6,7 @@ MACRO(DETECT_OSG_VERSION)
     OPTION(APPEND_OPENSCENEGRAPH_VERSION "Append the OSG version number to the osgPlugins directory" ON)
 	
     # detect if osgversion can be found
-    FIND_PROGRAM(OSG_VERSION_EXE NAMES'
+    FIND_PROGRAM(OSG_VERSION_EXE NAMES
         osgversion
         ${OSG_DIR}/bin/osgversion
         ${OSG_DIR}/bin/osgversiond)

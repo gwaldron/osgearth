@@ -217,15 +217,21 @@ _mode   ( 0 )
 {
     this->setThreadSafeRefUnref( true );
 
-    int l2CacheSize = 0;
+
+    // Initialize the l2 cache size to the options.
+    int l2CacheSize = *options.L2CacheSize();
+
+    // See if it was overridden with an env var.
     char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
     if ( l2env )
     {
         l2CacheSize = as<int>( std::string(l2env), 0 );
     }
-    else if ( *options.L2CacheSize() > 0 )
+
+    // Initialize the l2 cache if it's size is > 0
+    if ( l2CacheSize > 0 )
     {
-        _memCache = new MemCache( *options.L2CacheSize() );
+        _memCache = new MemCache( l2CacheSize );
     }
 
     if (_options.blacklistFilename().isSet())

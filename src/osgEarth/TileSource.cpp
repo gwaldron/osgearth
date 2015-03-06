@@ -487,6 +487,27 @@ TileSource::hasDataInExtent( const GeoExtent& extent ) const
     return intersects;
 }
 
+bool
+TileSource::hasDataAt( const GeoPoint& location) const
+{
+    // If the location is invalid then return false
+    if (!location.isValid())
+        return false;
+
+    // If no data extents are provided, just return true
+    if ( _dataExtents.size() == 0 )
+        return true;
+
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+    {
+        if (itr->contains( location ) )
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 bool
 TileSource::hasData(const osgEarth::TileKey& key) const

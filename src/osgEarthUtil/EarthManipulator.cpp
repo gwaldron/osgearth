@@ -1131,6 +1131,41 @@ EarthManipulator::getViewpoint() const
         getSRS() );
 }
 
+void
+EarthManipulator::breakTether()
+{
+    _tether_completed = true;
+
+    if (_tether_node != 0L)
+    {
+        _offset_x = 0.0;
+        _offset_y = 0.0;
+
+        // rekajigger the distance, center, and pitch to legal non-tethered values:
+        double pitch;
+        getLocalEulerAngles(0L, &pitch);
+
+        double maxPitch = osg::DegreesToRadians(-10.0);
+        if ( pitch > maxPitch )
+            rotate( 0.0, -(pitch-maxPitch) );
+
+        osg::Vec3d eye = getMatrix().getTrans();
+
+        // calculate the center point in front of the eye. The reference frame here 
+        // is the view plane of the camera.
+        osg::Matrix m( _rotation * _centerRotation );
+        recalculateCenter( m );
+
+        double newDistance = (eye-_center).length();
+        setDistance( newDistance );
+
+        // invoke the callback if set
+        if ( _tetherCallback.valid() )
+        {
+            (*_tetherCallback.get())( _tether_node.get() );
+        }
+    }
+}
 
 void
 EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
@@ -1139,30 +1174,8 @@ EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
 
     if (_tether_node != node)
     {
-        _offset_x = 0.0;
-        _offset_y = 0.0;
-
-        if ( node == 0L )
-        {
-            // rekajigger the distance, center, and pitch to legal non-tethered values:
-            double pitch;
-            getLocalEulerAngles(0L, &pitch);
-
-            double maxPitch = osg::DegreesToRadians(-10.0);
-            if ( pitch > maxPitch )
-                rotate( 0.0, -(pitch-maxPitch) );
-
-            osg::Vec3d eye = getMatrix().getTrans();
-
-            // calculate the center point in front of the eye. The reference frame here 
-            // is the view plane of the camera.
-            osg::Matrix m( _rotation * _centerRotation );
-            recalculateCenter( m );
-
-            double newDistance = (eye-_center).length();
-            setDistance( newDistance );
-        }
-    }    
+        breakTether();
+    }   
 
     _tether_node = node;
 
@@ -1171,12 +1184,45 @@ EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
         _tether_completed = false;
         Viewpoint destVP = getTetherNodeViewpoint();
         setViewpoint( destVP, duration_s );
-    }
 
-    // invoke the callback if set
-    if ( _tetherCallback.valid() )
+        if ( _tetherCallback.valid() )
+        {
+            (*_tetherCallback.get())( _tether_node.get() );
+        }
+    }
+}
+
+void
+EarthManipulator::setTetherNode(osg::Node* node,
+                                double     duration_s,
+                                double     newHeadingDeg,
+                                double     newPitchDeg,
+                                double     newRangeM)
+{
+    _tether_completed = true;
+
+    if (_tether_node != node)
     {
-        (*_tetherCallback.get())( _tether_node.get() );
+        breakTether();
+    }   
+
+    _tether_node = node;
+
+    if (_tether_node.valid() && duration_s > 0.0)
+    {                
+        _tether_completed = false;
+        Viewpoint destVP = getTetherNodeViewpoint();
+
+        destVP.setHeading( newHeadingDeg );
+        destVP.setPitch  ( newPitchDeg );
+        destVP.setRange  ( newRangeM );
+
+        setViewpoint( destVP, duration_s );
+
+        if ( _tetherCallback.valid() )
+        {
+            (*_tetherCallback.get())( _tether_node.get() );
+        }
     }
 }
 

@@ -30,6 +30,7 @@
 #include <osgEarthUtil/ActivityMonitorTool>
 #include <osgEarthUtil/LogarithmicDepthBuffer>
 
+#include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
 #include <osgEarthUtil/ContourMap>
 
@@ -729,6 +730,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
             mapNode->getMap()->endUpdate();
         }
         OE_INFO << LC << "...found " << imageLayers.size() << " image layers." << std::endl;
+    }
+
+    // Install elevation morphing
+    if ( !lodBlendingConf.empty() )
+    {
+        mapNode->getTerrainEngine()->addEffect( new LODBlending(lodBlendingConf) );
     }
 
     // Install vertical scaler

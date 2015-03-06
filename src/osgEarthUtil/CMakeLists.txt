@@ -32,6 +32,7 @@ SET(HEADERS_ROOT
     LatLongFormatter
     LineOfSight
     LinearLineOfSight
+    LODBlending
 	LogarithmicDepthBuffer
     MeasureTool
     MGRSFormatter
@@ -106,6 +107,7 @@ SET(SOURCES_ROOT
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
 	LogarithmicDepthBuffer.cpp
+    LODBlending.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp

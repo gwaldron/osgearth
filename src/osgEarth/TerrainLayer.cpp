@@ -453,9 +453,13 @@ TerrainLayer::getCacheBin(const Profile* profile, const std::string& binId)
                 {
                     //todo: check the profile too
                     if ( *meta._sourceDriver != tileSource->getOptions().getDriver() )
-                    {
-                        OE_WARN << LC << "Cache has an incompatible driver or profile... disabling"
-                            << std::endl;
+                    {                     
+                        OE_WARN << LC 
+                            << "Layer \"" << getName() << "\" is requesting a \""
+                            << tileSource->getOptions().getDriver() << " cache, but a \""
+                            << *meta._sourceDriver << "\" cache exists at the specified location. "
+                            << "The cache will ignored for this layer.\n";
+
                         setCachePolicy( CachePolicy::NO_CACHE );
                         return 0L;
                     }

@@ -56,17 +56,18 @@ namespace
 
 typedef std::map<std::string,std::string> StringMap;
 
+
 std::string
 ShaderLoader::load(const std::string&    filename,
-                   const ShaderPackage&  sources,
+                   const ShaderPackage&  package,
                    const osgDB::Options* dbOptions)
 {
     std::string output;
     bool useInlineSource = false;
     
     std::string inlineSource;
-    ShaderPackage::SourceMap::const_iterator source = sources.context().find(filename);
-    if ( source != sources.context().end() )
+    ShaderPackage::SourceMap::const_iterator source = package._sources.find(filename); //.context().find(filename);
+    if ( source != package._sources.end() ) //.context().end() )
         inlineSource = source->second;
 
     std::string path = osgDB::findDataFile(filename, dbOptions);
@@ -125,10 +126,50 @@ ShaderLoader::load(const std::string&    filename,
         // don't break the MULTILINE macro if the last line of the include
         // file is a comment.
         std::string fileSource = Stringify()
-            << load(fileToInclude, sources, dbOptions)
+            << load(fileToInclude, package, dbOptions)
             << "\n";
 
         osgEarth::replaceIn(output, includeStatement, fileSource);
+    }
+
+    // Process any "#pragma define" statements
+    while(true)
+    {
+        std::string::size_type definePos = output.find("#pragma vp_define");
+        if ( definePos == std::string::npos )
+            break;        
+
+        std::string::size_type openQuotePos = output.find('\"', definePos);
+        if ( openQuotePos == std::string::npos )
+            break;
+
+        std::string::size_type closeQuotePos = output.find('\"', openQuotePos+1);
+        if ( closeQuotePos == std::string::npos )
+            break;
+        
+        std::string defineStatement = output.substr( definePos, (closeQuotePos-definePos)+1 );
+
+        std::string varName = output.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
+
+        ShaderPackage::DefineMap::const_iterator d = package._defines.find( varName );
+
+        bool defineIt =
+            d != package._defines.end() &&
+            d->second == true;
+
+        std::string newStatement = Stringify()
+            << (defineIt? "#define " : "#undef ")
+            << varName;
+
+        osgEarth::replaceIn( output, defineStatement, newStatement );
+    }
+
+    // Finally, do any replacements.
+    for(ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();
+        i != package._replaces.end();
+        ++i)
+    {
+        osgEarth::replaceIn( output, i->first, i->second );
     }
 
     return output;
@@ -277,9 +318,21 @@ ShaderLoader::unloadFunction(VirtualProgram*       vp,
     return true;
 }
 
+//...................................................................
 
+void
+ShaderPackage::define(const std::string& name,
+                      bool               defOrUndef)
+{
+    _defines[name] = defOrUndef;
+}
 
-
+void
+ShaderPackage::replace(const std::string& pattern,
+                       const std::string& value)
+{
+    _replaces[pattern] = value;
+}
 
 bool
 ShaderPackage::loadFunction(VirtualProgram*       vp,

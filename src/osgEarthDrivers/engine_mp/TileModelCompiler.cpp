@@ -2068,6 +2068,7 @@ namespace
             geode->addDrawable(geom);
 
             sizeStr = Stringify() << bbox.xMax()-bbox.xMin();
+            sizeStr = Stringify() << "min="<<bbox.zMin()<<"\nmax="<<bbox.zMax();
             zpos = bbox.zMax();
         }
 

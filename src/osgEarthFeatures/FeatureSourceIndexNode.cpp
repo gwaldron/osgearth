@@ -171,6 +171,19 @@ FeatureSourceIndexNode::tagNode( osg::Node* node, Feature* feature ) const
 
 
 bool
+FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const
+{
+    output.reserve( _drawSets.size() );
+    output.clear();
+    for(FeatureIDDrawSetMap::const_iterator i = _drawSets.begin(); i != _drawSets.end(); ++i )
+    {
+        output.push_back( i->first );
+    }
+    return true;
+}
+
+
+bool
 FeatureSourceIndexNode::getFID(osg::PrimitiveSet* primSet, FeatureID& output) const
 {
     const RefFeatureID* fid = dynamic_cast<const RefFeatureID*>( primSet->getUserData() );

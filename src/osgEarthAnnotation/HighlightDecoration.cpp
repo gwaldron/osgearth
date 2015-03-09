@@ -75,7 +75,7 @@ HighlightDecoration::apply(AnnotationNode& node, bool enable)
             VirtualProgram* vp = VirtualProgram::getOrCreate( ss );
             if ( vp->getShader(FRAG_FUNCTION) == 0L )
             {
-                vp->setFunction(FRAG_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING);
+                vp->setFunction(FRAG_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.6f);
                 ss->addUniform( _colorUniform.get() );
             }
             _colorUniform->set(_color);

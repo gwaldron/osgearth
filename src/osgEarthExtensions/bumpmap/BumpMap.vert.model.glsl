@@ -2,6 +2,8 @@
 
 #pragma vp_entryPoint "oe_bumpmap_vertexModel"
 #pragma vp_location   "vertex_model"
+#pragma vp_order      "0.5"
+#pragma vp_define     "OE_USE_NORMAL_MAP"
 
 uniform vec4 oe_tile_key;
 uniform float oe_bumpmap_scale;
@@ -11,9 +13,6 @@ varying vec3 oe_Normal;
 
 varying vec2 oe_bumpmap_coords;
 varying float oe_bumpmap_range;
-
-// the follow def may be replaced by BumpMapTerrainEffect.cpp:
-#undef OE_USE_NORMAL_MAP
 
 #ifdef OE_USE_NORMAL_MAP
 uniform mat4 oe_nmap_normalTexMatrix;
@@ -53,7 +52,7 @@ void oe_bumpmap_vertexModel(inout vec4 VertexMODEL)
     oe_bumpmap_coords = oe_bumpmap_scaleCoords(oe_layer_tilec.st, targetLOD) * iscale;
 
 #ifdef OE_USE_NORMAL_MAP
-    oe_bumpmap_normalCoords = oe_nmap_normalTexMatrix * ot_layer_tilec;
+    oe_bumpmap_normalCoords = oe_nmap_normalTexMatrix * oe_layer_tilec;
 #else
     // calcluate slope and augment it.
     oe_bumpmap_slope = clamp(2.5*(1.0-oe_Normal.z), 0.0, 1.0);

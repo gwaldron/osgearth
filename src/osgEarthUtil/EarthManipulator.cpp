@@ -1010,7 +1010,8 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 
 void EarthManipulator::collisionDetect()
 {
-    if ( getSettings()->getTerrainAvoidanceEnabled() == false )
+    if (!getSettings()->getTerrainAvoidanceEnabled() ||
+        !_cached_srs.valid() )
     {
         return;
     }
@@ -1130,6 +1131,41 @@ EarthManipulator::getViewpoint() const
         getSRS() );
 }
 
+void
+EarthManipulator::breakTether()
+{
+    _tether_completed = true;
+
+    if (_tether_node != 0L)
+    {
+        _offset_x = 0.0;
+        _offset_y = 0.0;
+
+        // rekajigger the distance, center, and pitch to legal non-tethered values:
+        double pitch;
+        getLocalEulerAngles(0L, &pitch);
+
+        double maxPitch = osg::DegreesToRadians(-10.0);
+        if ( pitch > maxPitch )
+            rotate( 0.0, -(pitch-maxPitch) );
+
+        osg::Vec3d eye = getMatrix().getTrans();
+
+        // calculate the center point in front of the eye. The reference frame here 
+        // is the view plane of the camera.
+        osg::Matrix m( _rotation * _centerRotation );
+        recalculateCenter( m );
+
+        double newDistance = (eye-_center).length();
+        setDistance( newDistance );
+
+        // invoke the callback if set
+        if ( _tetherCallback.valid() )
+        {
+            (*_tetherCallback.get())( _tether_node.get() );
+        }
+    }
+}
 
 void
 EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
@@ -1138,30 +1174,8 @@ EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
 
     if (_tether_node != node)
     {
-        _offset_x = 0.0;
-        _offset_y = 0.0;
-
-        if ( node == 0L )
-        {
-            // rekajigger the distance, center, and pitch to legal non-tethered values:
-            double pitch;
-            getLocalEulerAngles(0L, &pitch);
-
-            double maxPitch = osg::DegreesToRadians(-10.0);
-            if ( pitch > maxPitch )
-                rotate( 0.0, -(pitch-maxPitch) );
-
-            osg::Vec3d eye = getMatrix().getTrans();
-
-            // calculate the center point in front of the eye. The reference frame here 
-            // is the view plane of the camera.
-            osg::Matrix m( _rotation * _centerRotation );
-            recalculateCenter( m );
-
-            double newDistance = (eye-_center).length();
-            setDistance( newDistance );
-        }
-    }    
+        breakTether();
+    }   
 
     _tether_node = node;
 
@@ -1170,12 +1184,45 @@ EarthManipulator::setTetherNode( osg::Node* node, double duration_s )
         _tether_completed = false;
         Viewpoint destVP = getTetherNodeViewpoint();
         setViewpoint( destVP, duration_s );
-    }
 
-    // invoke the callback if set
-    if ( _tetherCallback.valid() )
+        if ( _tetherCallback.valid() )
+        {
+            (*_tetherCallback.get())( _tether_node.get() );
+        }
+    }
+}
+
+void
+EarthManipulator::setTetherNode(osg::Node* node,
+                                double     duration_s,
+                                double     newHeadingDeg,
+                                double     newPitchDeg,
+                                double     newRangeM)
+{
+    _tether_completed = true;
+
+    if (_tether_node != node)
     {
-        (*_tetherCallback.get())( _tether_node.get() );
+        breakTether();
+    }   
+
+    _tether_node = node;
+
+    if (_tether_node.valid() && duration_s > 0.0)
+    {                
+        _tether_completed = false;
+        Viewpoint destVP = getTetherNodeViewpoint();
+
+        destVP.setHeading( newHeadingDeg );
+        destVP.setPitch  ( newPitchDeg );
+        destVP.setRange  ( newRangeM );
+
+        setViewpoint( destVP, duration_s );
+
+        if ( _tetherCallback.valid() )
+        {
+            (*_tetherCallback.get())( _tether_node.get() );
+        }
     }
 }
 
@@ -1765,7 +1812,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 resetMouse( aa );
                 addMouseEvent( ea );
                 action = _settings->getAction( ea.getEventType(), ea.getScrollingMotion(), ea.getModKeyMask() );
-                if ( handleScrollAction( action, 0.2 ) )
+                if ( handleScrollAction( action, action.getDoubleOption(OPTION_DURATION, 0.2) ) )
                     aa.requestRedraw();
                 handled = true;
                 break;
@@ -2471,7 +2518,8 @@ EarthManipulator::zoom( double dx, double dy )
     collisionDetect();
 }
 
-
+#if 0 // removing this as it is hopefully no longer needed;
+      // will delete it later if all goes well. (gw 2/21/15)
 namespace
 {
     // osg::View::getCameraContainingPosition has a bug in it. If the camera's current event
@@ -2506,6 +2554,7 @@ namespace
         return view->getCameraContainingPosition(x, y, out_local_x, out_local_y);
     }
 }
+#endif
 
 
 bool
@@ -2523,7 +2572,7 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
         return false;
 
     float local_x, local_y = 0.0;
-    const osg::Camera* camera = getCameraContainingPosition(view, x, y, local_x, local_y);
+    const osg::Camera* camera =  view->getCameraContainingPosition(x, y, local_x, local_y);
     if ( !camera )
         return false;
 

@@ -39,60 +39,8 @@ namespace
 
         "uniform float oe_autoscale_zp; \n"
 
-#if 0
-        "uniform float oe_autoscale_scale; \n"
-
-        "vec3 oe_autoscale_multquat( in vec3 v, in vec4 quat ) \n"
-        "{ \n"
-        "    vec3 uv, uuv; \n"
-        "    uv = cross(quat.xyz, v); \n"
-        "    uuv = cross(quat.xyz, uv); \n"
-        "    uv *= (2.0 * quat.w); \n"
-        "    uuv *= 2.0; \n"
-        "    return v + uv + uuv; \n"
-        "} \n"
-
-        "vec4 oe_autoscale_makequat( in vec3 a, in vec3 b ) \n"
-        "{ \n"
-        "    float dotProdPlus1 = 1.0 + dot(a, b); \n"
-
-        "    if ( dotProdPlus1 < 0.000001 ) { \n"
-        "        if (abs(a.x) < 0.6) { \n"
-        "            float n = sqrt(1.0 - a.x*a.x); \n"
-        "            return vec4(0.0, a.z/n, -a.y/n, 0.0); \n"
-        "        } \n"
-        "        else if (abs(a.y) < 0.6) { \n"
-        "            float n = sqrt(1.0 - a.y*a.y); \n"
-        "            return vec4(-a.z/n, 0.0, a.x/n, 0.0); \n"
-        "        } \n"
-        "        else { \n"
-        "            float n = sqrt(1.0 - a.z*a.z); \n"
-        "            return vec4(a.y/n, -a.x/n, 0.0, 0.0); \n"
-        "        } \n"
-        "    } \n"
-        "    else { \n"
-        "        float s = sqrt(0.5 * dotProdPlus1); \n"
-        "        vec3 tmp = cross(a, b/(2.0*s)); \n"
-        "        return vec4(tmp, s); \n"
-        "    } \n"
-        "} \n"
-
-        "void oe_autoscale_rotate( inout vec4 VertexVIEW ) \n"
-        "{ \n"
-        "    float s = oe_autoscale_scale; \n"
-        "    mat4 m2; \n"
-        "    m2[0] = vec4( s,   0.0,  0.0, 0.0 ); \n"
-        "    m2[1] = vec4( 0.0, 0.0, -s,   0.0 ); \n"
-        "    m2[2] = vec4( 0.0, s,    0.0, 0.0 ); \n"
-        "    m2[3] = gl_ModelViewMatrix[3]; \n"
-        "    VertexVIEW = m2 * gl_Vertex; \n"
-        "} \n"
-#endif
-
         "void oe_autoscale_vertex( inout vec4 VertexVIEW ) \n"
         "{ \n"
-        //"    oe_autoscale_rotate(VertexVIEW); \n"
-
         "    float z       = -VertexVIEW.z; \n"
 
         "    vec4  cp       = gl_ModelViewMatrix * vec4(0.0,0.0,0.0,1.0); \n" // control point into view space
@@ -134,8 +82,7 @@ namespace
             _stateset = new osg::StateSet();
 
             VirtualProgram* vp = VirtualProgram::getOrCreate(_stateset.get());
-            vp->setFunction( "oe_autoscale_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
-            //_stateset->setAttributeAndModes( vp, osg::StateAttribute::ON );
+            vp->setFunction( "oe_autoscale_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
 
             _zp = _stateset->getOrCreateUniform("oe_autoscale_zp", osg::Uniform::FLOAT);
         }

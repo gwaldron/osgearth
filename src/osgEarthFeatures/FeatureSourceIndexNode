@@ -67,7 +67,8 @@ namespace osgEarth { namespace Features
      * Maintains an index that maps FeatureID's from a FeatureSource to
      * PrimitiveSets within the subgraph's geometry.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureSourceIndexNode : public osg::Group, public FeatureSourceIndex
+    class OSGEARTHFEATURES_EXPORT FeatureSourceIndexNode : public osg::Group,
+                                                           public FeatureSourceIndex
     {
     public:
         /**
@@ -104,6 +105,12 @@ namespace osgEarth { namespace Features
          * any tagged drawables found. (See tagPrimitiveSets for tagging drawables).
          */
         void reindex();
+
+        /**
+         * Gets a collection of all feature IDs tracked by this index.
+         * @param output Container to populate with all FIDs.
+         */
+        bool getAllFIDs(std::vector<FeatureID>& output) const;
 
         /**
          * Given a primitive set, returns the feature ID corresponding to that set.
@@ -159,8 +166,9 @@ namespace osgEarth { namespace Features
         
         FeatureSourceIndexOptions _options;
 
+        // optionally embedded features; only populated when _options.embedFeatures = true
         typedef std::map< FeatureID, osg::ref_ptr<const Feature> > FeatureMap;
-        mutable FeatureMap _features; // cache
+        mutable FeatureMap _features;
 
     public:
         virtual const char* className() const { return "FeatureSourceIndexNode"; }

@@ -104,7 +104,7 @@ VerticalScale::onInstall(TerrainEngineNode* engine)
         stateset->addUniform( _scaleUniform.get() );
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setFunction( "oe_vertscale_vertex", vs, ShaderComp::LOCATION_VERTEX_MODEL );
+        vp->setFunction( "oe_vertscale_vertex", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f);
     }
 }
 

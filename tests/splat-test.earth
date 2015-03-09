@@ -30,12 +30,12 @@
         <bumpmap>
             <image>../data/rock_hard.jpg</image>
             <octaves>32</octaves>
+            <intensity>1.5</intensity>
         </bumpmap>
     
         <splat>
             <coverage>GLOBCOVER</coverage>
             <legend>../data/splat/GLOBCOVER_legend.xml</legend>
-            <biomes>../data/splat/splat_biomes.xml</biomes>
             <catalog>../data/splat/splat_catalog.xml</catalog>
         </splat>
         

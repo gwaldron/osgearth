@@ -32,9 +32,11 @@
 #include <map>
 
 #ifdef OSG_GLES2_AVAILABLE
+#    define GLSL_VERSION                 100
 #    define GLSL_VERSION_STR             "100"
 #    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
 #else
+#    define GLSL_VERSION                 120
 #    define GLSL_VERSION_STR             "120" 
 #    define GLSL_DEFAULT_PRECISION_FLOAT ""
 #endif

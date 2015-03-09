@@ -19,7 +19,6 @@ SET(HEADERS_ROOT
     ContourMap
     ClampCallback
     DataScanner
-    DateTime
     EarthManipulator
 	Ephemeris
     ExampleResources
@@ -107,8 +106,8 @@ SET(SOURCES_ROOT
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
-    LODBlending.cpp
 	LogarithmicDepthBuffer.cpp
+    LODBlending.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp

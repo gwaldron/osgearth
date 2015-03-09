@@ -1140,7 +1140,13 @@ FeatureModelGraph::createStyleGroup(const Style&         style,
         _options.layout().isSet() && _options.layout()->cropFeatures() == true ? 
         CropFilter::METHOD_CROPPING : CropFilter::METHOD_CENTROID );
 
+    unsigned sizeBefore = workingSet.size();
+
     context = crop.push( workingSet, context );
+
+    unsigned sizeAfter = workingSet.size();
+
+    OE_DEBUG << LC << "Cropped out " << sizeBefore-sizeAfter << " features\n";
 
     // next, if the usable extent is less than the full extent (i.e. we had to clamp the feature
     // extent to fit on the map), calculate the extent of the features in this tile and 

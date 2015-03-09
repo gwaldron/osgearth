@@ -141,31 +141,25 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             stateset->addUniform(new osg::Uniform("oe_splat_detailRange",  1000000.0f));
 
-            // Configure the vertex shader:
-            std::string vertexShaderModel = ShaderLoader::load(_shaders.VertModel, _shaders);
-            std::string vertexShaderView = ShaderLoader::load(_shaders.VertView, _shaders);
 
-            osgEarth::replaceIn( vertexShaderView, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
+            Shaders package;
+
+            package.define( "SPLAT_EDIT",        _editMode );
+            package.define( "SPLAT_GPU_NOISE",   _gpuNoise );
+            package.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
+
+            package.replace( "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
-            // Configure the fragment shader:
-            std::string fragmentShader = ShaderLoader::load(_shaders.Frag, _shaders);
-
-            if ( _editMode ) 
-            {
-                osgEarth::replaceIn( fragmentShader, "#undef SPLAT_EDIT", "#define SPLAT_EDIT" );
-            }
-
-            // are normal maps available?
-            if ( engine->normalTexturesRequired() )
-            {
-                osgEarth::replaceIn( fragmentShader, "#undef OE_USE_NORMAL_MAP", "#define OE_USE_NORMAL_MAP" );
-            }
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+            package.loadFunction( vp, package.VertModel );
+            package.loadFunction( vp, package.VertView );
+            package.loadFunction( vp, package.Frag );
 
             // GPU noise is expensive, so only use it to tweak noise function values that you
             // can later bake into the noise texture generator.
             if ( _gpuNoise )
             {                
-                osgEarth::replaceIn( fragmentShader, "#undef SPLAT_GPU_NOISE", "#define SPLAT_GPU_NOISE" );
+                //osgEarth::replaceIn( fragmentShader, "#undef SPLAT_GPU_NOISE", "#define SPLAT_GPU_NOISE" );
 
                 // Use --uniform on the command line to tweak these values:
                 stateset->addUniform(new osg::Uniform("oe_splat_freq",   32.0f));
@@ -185,16 +179,10 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 }
             }
 
-            // shader components
-            VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            vp->setFunction( "oe_splat_vertex_model", vertexShaderModel, ShaderComp::LOCATION_VERTEX_MODEL );
-            vp->setFunction( "oe_splat_vertex_view",  vertexShaderView,  ShaderComp::LOCATION_VERTEX_VIEW );
-            vp->setFunction( "oe_splat_fragment",     fragmentShader,    ShaderComp::LOCATION_FRAGMENT_COLORING, _renderOrder );
-
             if ( _gpuNoise )
             {
                 // support shaders
-                std::string noiseShaderSource = ShaderLoader::load(_shaders.Noise, _shaders);
+                std::string noiseShaderSource = ShaderLoader::load( package.Noise, package );
                 osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
                 vp->setShader( "oe_splat_noiseshaders", noiseShader );
             }
@@ -381,9 +369,10 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
     if ( slopeCount > 0 )
         slopeBuf << ";\n";
 
+    Shaders package;
     std::string code = ShaderLoader::load(
-        _shaders.FragGetRenderInfo,
-        _shaders);
+        package.FragGetRenderInfo,
+        package);
 
     std::string codeToInject = Stringify()
         << IND

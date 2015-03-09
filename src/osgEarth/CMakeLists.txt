@@ -83,6 +83,7 @@ SET(LIB_PUBLIC_HEADERS
     GeoMath
 	GeoTransform
     HeightFieldUtils
+    Horizon
     HTTPClient
     ImageLayer
     ImageMosaic
@@ -228,6 +229,7 @@ set(TARGET_SRC
     GeoMath.cpp
 	GeoTransform.cpp
     HeightFieldUtils.cpp
+    Horizon.cpp
     HTTPClient.cpp
     ImageLayer.cpp
     ImageMosaic.cpp

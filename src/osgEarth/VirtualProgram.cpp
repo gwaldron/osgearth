@@ -1015,13 +1015,6 @@ VirtualProgram::apply( osg::State& state ) const
         // as the default fallback, we use the "_inheritSet" flag to differeniate. This
         // prevents any shader leakage from a VP-enabled node.
         const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,true);
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
-		if( ! extensions->isGlslSupported ) return;
-#else
-		if( ! extensions->isGlslSupported() ) return;
-#endif
-        
-
         extensions->glUseProgram( 0 );
         state.setLastAppliedProgramObject(0);
         return;
@@ -1212,7 +1205,13 @@ VirtualProgram::apply( osg::State& state ) const
         }
 #endif // USE_STACK_MEMORY
 
-        osg::Program::PerContextProgram* pcp = program->getPCP( contextID );
+        osg::Program::PerContextProgram* pcp;
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,4)
+        pcp = program->getPCP( state );
+#else
+        pcp = program->getPCP( contextID );
+#endif
         bool useProgram = state.getLastAppliedProgramObject() != pcp;
 
 #ifdef DEBUG_APPLY_COUNTS

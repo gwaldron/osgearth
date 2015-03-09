@@ -4,6 +4,7 @@
 
 #pragma vp_entryPoint "oe_di_setInstancePosition"
 #pragma vp_location   "vertex_model"
+#pragma vp_order      "0.0"
 
 uniform sampler2D oe_di_postex;
 uniform vec2 oe_di_postex_size;

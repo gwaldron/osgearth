@@ -1,0 +1,96 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_GRATICULE_OPTIONS
+#define OSGEARTH_DRIVER_GRATICULE_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/URI>
+#include <osgEarthSymbology/Color>
+
+namespace osgEarth { namespace Graticule
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Options governing normal mapping of the terrain.
+     */
+    class GraticuleOptions : public DriverConfigOptions // NO EXPORT; header only
+    {
+    public:
+        /** Grid cell resolution (0..1 across the profile) */
+        optional<float>& resolution() { return _resolution; }
+        const optional<float>& resolution() const { return _resolution; }
+
+        /** Grid line color */
+        optional<Color>& color() { return _color; }
+        const optional<Color>& color() const { return _color; }
+
+        /** Grid line width in pixels */
+        optional<float>& lineWidth() { return _lineWidth; }
+        const optional<float>& lineWidth() const { return _lineWidth; }
+
+    public: // uniform names
+        static const char* resolutionUniformName() { return "oe_graticule_resolution"; }
+        static const char* colorUniformName()      { return "oe_graticule_color"; }
+        static const char* lineWidthUniformName()  { return "oe_graticule_lineWidth"; }
+
+    public:
+        GraticuleOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
+        {
+            setDriver( "graticule" );
+            _lineWidth.init ( 1.0f );
+            _resolution.init( 10.0f/360.0f );
+            _color.init     ( Color(Color::Yellow, 0.5f) );
+            fromConfig( _conf );
+        }
+
+        virtual ~GraticuleOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = DriverConfigOptions::getConfig();
+            conf.addIfSet("line_width", _lineWidth);
+            conf.addIfSet("color",      _color);
+            conf.addIfSet("resolution", _resolution);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            DriverConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("line_width", _lineWidth);
+            conf.getIfSet("color",      _color);
+            conf.getIfSet("resolution", _resolution);
+        }
+
+        optional<float> _lineWidth;
+        optional<float> _resolution;
+        optional<Color> _color;
+    };
+
+} } // namespace osgEarth::Graticule
+
+#endif // OSGEARTH_DRIVER_GRATICULE_OPTIONS
+

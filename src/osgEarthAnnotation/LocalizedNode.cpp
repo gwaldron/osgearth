@@ -35,7 +35,7 @@ LocalizedNode::LocalizedNode(MapNode*        mapNode,
                              const GeoPoint& position) :
 PositionedAnnotationNode( mapNode ),
 _initComplete           ( false ),
-_horizonCulling         ( true ),
+_horizonCullingRequested( true ),
 _scale                  ( 1.0f, 1.0f, 1.0f ),
 _mapPosition            ( position )
 {
@@ -46,7 +46,9 @@ _mapPosition            ( position )
 void
 LocalizedNode::init()
 {
-    this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+    this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );    
+    _horizonCuller = new HorizonCullCallback();
+    this->addCullCallback( _horizonCuller.get() );
 }
 
 
@@ -66,7 +68,7 @@ LocalizedNode::computeBound() const
         if ( !_initComplete )
         {
             const_cast<LocalizedNode*>(this)->_initComplete = true;
-            const_cast<LocalizedNode*>(this)->setHorizonCulling( _horizonCulling );
+            const_cast<LocalizedNode*>(this)->setHorizonCulling( _horizonCullingRequested );
             const_cast<LocalizedNode*>(this)->setPosition      ( _mapPosition );
         }
     }
@@ -82,11 +84,7 @@ LocalizedNode::setMapNode( MapNode* mapNode )
         PositionedAnnotationNode::setMapNode( mapNode );
 
         // The horizon culler depends on the map node, so reinitialize it:
-        if ( _horizonCulling )
-        {
-            setHorizonCulling( false );
-            setHorizonCulling( true );
-        }
+        setHorizonCulling( _horizonCullingRequested );
 
         // re-apply the position since the map has changed
         setPosition( _mapPosition );
@@ -208,24 +206,20 @@ LocalizedNode::getLocalRotation() const
 void
 LocalizedNode::setHorizonCulling( bool value )
 {
-    _horizonCulling = value;
+    _horizonCullingRequested = value;
 
-    if ( _initComplete && getMapNode() && getMapNode()->isGeocentric() )
+    if ( _initComplete )
     {
-        if ( _horizonCulling && !_cullByHorizonCB.valid() )
+        if ( getMapNode() )
         {
-            _cullByHorizonCB = new CullNodeByHorizon(
-                getTransform(),
-                getMapNode()->getMapSRS()->getEllipsoid() );
-
-            addCullCallback( _cullByHorizonCB.get() );
+            _horizonCuller->setHorizon(
+                Horizon(*getMapNode()->getMapSRS()->getEllipsoid()) );
         }
 
-        else if ( !_horizonCulling && _cullByHorizonCB.valid() )
-        {
-            removeCullCallback( _cullByHorizonCB.get() );
-            _cullByHorizonCB = 0L;
-        }
+        _horizonCuller->setEnabled(
+            _horizonCullingRequested &&
+            getMapNode() &&
+            getMapNode()->isGeocentric() );
     }
 }
 
@@ -288,7 +282,7 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
 LocalizedNode::LocalizedNode(MapNode* mapNode, const Config& conf) :
 PositionedAnnotationNode( mapNode, conf ),
 _initComplete           ( false ),
-_horizonCulling         ( true ),
+_horizonCullingRequested( true ),
 _scale                  ( 1.0f, 1.0f, 1.0f )
 {
     if ( conf.hasChild( "position" ) )

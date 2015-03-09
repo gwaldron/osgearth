@@ -649,7 +649,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
         {
             double y = ymin + (dy * (double)r);
 
-            GeoPoint sampleLocation(keySRS, x, y);
+            //GeoPoint sampleLocation(keySRS, x, y);
 
             // Collect elevations from each layer as necessary.
             bool resolved = false;
@@ -659,12 +659,17 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 if ( heightFailed[i] )
                     continue;
 
+                // GW: I found that the following check was slowing down tile creation by an
+                //     order of magnitude, I assume b/c of constant coordinate reprojection.
+                //     Taking it out for now. 3/9/15
+
                 // Only create a heightfield for a layer if it has data at the given location
-                if (contenders[i]->getTileSource() &&
-                    !contenders[i]->getTileSource()->hasDataAt(sampleLocation))
-                {
-                    continue;
-                }
+                //if (contenders[i]->getTileSource() &&
+                //    !contenders[i]->getTileSource()->hasDataAt(sampleLocation))
+                //{
+                //    continue;
+                //}
+
 
                 GeoHeightField& layerHF = heightFields[i];
                 if ( !layerHF.valid() )

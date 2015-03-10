@@ -568,7 +568,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                                           ElevationInterpolation interpolation,
                                           ProgressCallback*      progress ) const
 {
-    osg::Timer_t startTime = osg::Timer::instance()->tick();
+    //osg::Timer_t startTime = osg::Timer::instance()->tick();
     // heightfield must already exist.
     if ( !hf )
         return false;
@@ -748,8 +748,8 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
         }
     }   
 
-    osg::Timer_t endTime = osg::Timer::instance()->tick();
-    OE_NOTICE << "populateHeightField took " << osg::Timer::instance()->delta_s(startTime, endTime) << "s" << std::endl;
+    //osg::Timer_t endTime = osg::Timer::instance()->tick();
+    //OE_NOTICE << "populateHeightField took " << osg::Timer::instance()->delta_s(startTime, endTime) << "s" << std::endl;
 
     // Return whether or not we actually read any real data
     return realData;

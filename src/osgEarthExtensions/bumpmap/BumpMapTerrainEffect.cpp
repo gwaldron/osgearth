@@ -73,7 +73,7 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
         osg::StateSet* stateset = engine->getTerrainStateSet();
 
         // install the NormalMap texture array:
-        if ( engine->getResources()->reserveTextureImageUnit(_bumpMapUnit) )
+        if ( engine->getResources()->reserveTextureImageUnit(_bumpMapUnit, "BumpMap") )
         {
             // NormalMap sampler
             _bumpMapTexUniform = stateset->getOrCreateUniform(BUMP_SAMPLER, osg::Uniform::SAMPLER_2D);

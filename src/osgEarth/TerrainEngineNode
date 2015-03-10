@@ -97,13 +97,13 @@ namespace osgEarth
         }
 
         /** Whether the implementation should generate normal map rasters. */
-        void requireNormalTextures() { _requireNormalTextures = true; }
+        void requireNormalTextures();
         
         /** Whether the implementation should generate elevation map rasters. */
-        void requireElevationTextures() { _requireElevationTextures = true; }
+        void requireElevationTextures();
 
         /** Whether the implementation should generate parent color textures. */
-        void requireParentTextures() { _requireParentTextures = true; }
+        void requireParentTextures();
 
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getTerrainStateSet() { return getOrCreateStateSet(); }

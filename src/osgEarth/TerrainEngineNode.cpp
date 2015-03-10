@@ -162,6 +162,28 @@ TerrainEngineNode::~TerrainEngineNode()
 
 
 void
+TerrainEngineNode::requireNormalTextures()
+{
+    _requireNormalTextures = true;
+    dirty();
+}
+
+void
+TerrainEngineNode::requireElevationTextures()
+{
+    _requireElevationTextures = true;
+    dirty();
+}
+
+void
+TerrainEngineNode::requireParentTextures()
+{
+    _requireParentTextures = true;
+    dirty();
+}
+
+
+void
 TerrainEngineNode::dirty()
 {
     if ( 0 == _dirtyCount++ )

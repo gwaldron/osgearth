@@ -343,88 +343,107 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
 
     bool isFallback = false;
 
-    // look up the parent's heightfield to use as a template
-    osg::ref_ptr<const TileModel> parentModel;
-    osg::ref_ptr<osg::HeightField> parentHF;
+    unsigned minNormalLOD =
+        _terrainOptions.minNormalMapLOD().isSet() ?
+        _terrainOptions.minNormalMapLOD().get() : 0u;
+
+    if ( key.getLOD() >= minNormalLOD )
+    {
+        // look up the parent's heightfield to use as a template
+        osg::ref_ptr<const TileModel> parentModel;
+        osg::ref_ptr<osg::HeightField> parentHF;
     
-    TileKey parentKey = key.createParentKey();
-    if ( accumulate )
-    {
-        osg::ref_ptr<TileNode> parentNode;
-        if (_liveTiles->get(parentKey, parentNode))
+        TileKey parentKey = key.createParentKey();
+        if ( accumulate )
         {
-            parentModel = parentNode->getTileModel();
-            parentHF = parentModel->_normalData.getHeightField();
-        }
-    }
-
-    // Make a new heightfield:
-    if (_normalHFCache->getOrCreateHeightField(frame, key, parentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
-    {
-        if ( isFallback && parentModel.valid() )
-        {
-            model->_normalData = parentModel->_normalData;
-            model->_normalData._fallbackData = true;
-        }
-        else
-        {
-            model->_normalData = TileModel::NormalData(
-                hf,
-                GeoLocator::createForKey( key, mapInfo ),
-                isFallback );
-        }
-
-        // Edge normalization: requires adjacency information.
-        // NOTE: this isn't needed if you use TileNodeRegistry::listenFor's.
-        if ( _terrainOptions.normalizeEdges() == true )
-        {
-            for( int x=-1; x<=1; x++ )
+            osg::ref_ptr<TileNode> parentNode;
+            if (_liveTiles->get(parentKey, parentNode))
             {
-                for( int y=-1; y<=1; y++ )
+                parentModel = parentNode->getTileModel();
+                parentHF = parentModel->_normalData.getHeightField();
+            }
+        }
+
+        // Make a new heightfield:
+        if (_normalHFCache->getOrCreateHeightField(frame, key, parentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress))
+        {
+            if ( isFallback && parentModel.valid() )
+            {
+                model->_normalData = parentModel->_normalData;
+                model->_normalData._fallbackData = true;
+            }
+            else
+            {
+                model->_normalData = TileModel::NormalData(
+                    hf,
+                    GeoLocator::createForKey( key, mapInfo ),
+                    isFallback );
+            }
+
+            // Edge normalization: requires adjacency information.
+            // NOTE: this isn't needed if you use TileNodeRegistry::listenFor's.
+            if ( _terrainOptions.normalizeEdges() == true )
+            {
+                for( int x=-1; x<=1; x++ )
                 {
-                    if ( x != 0 || y != 0 )
+                    for( int y=-1; y<=1; y++ )
                     {
-                        TileKey neighborKey = key.createNeighborKey(x, y);
-                        if ( neighborKey.valid() )
+                        if ( x != 0 || y != 0 )
                         {
-                            osg::ref_ptr<osg::HeightField> neighborParentHF;
-                            if ( accumulate )
+                            TileKey neighborKey = key.createNeighborKey(x, y);
+                            if ( neighborKey.valid() )
                             {
-                                TileKey neighborParentKey = neighborKey.createParentKey();
-                                if (neighborParentKey == parentKey)
+                                osg::ref_ptr<osg::HeightField> neighborParentHF;
+                                if ( accumulate )
                                 {
-                                    neighborParentHF = parentHF;
-                                }
-                                else
-                                {
-                                    osg::ref_ptr<TileNode> neighborParentNode;
-                                    if (_liveTiles->get(neighborParentKey, neighborParentNode))
+                                    TileKey neighborParentKey = neighborKey.createParentKey();
+                                    if (neighborParentKey == parentKey)
                                     {
-                                        neighborParentHF = neighborParentNode->getTileModel()->_normalData.getHeightField();
+                                        neighborParentHF = parentHF;
+                                    }
+                                    else
+                                    {
+                                        osg::ref_ptr<TileNode> neighborParentNode;
+                                        if (_liveTiles->get(neighborParentKey, neighborParentNode))
+                                        {
+                                            neighborParentHF = neighborParentNode->getTileModel()->_normalData.getHeightField();
+                                        }
                                     }
                                 }
-                            }
                             
-                            // only pull the tile if we have a valid parent HF for it -- otherwise
-                            // you might get a flat tile when upsampling data.
-                            if ( neighborParentHF.valid() )
-                            {
-                                osg::ref_ptr<osg::HeightField> hf;
-                                if (_normalHFCache->getOrCreateHeightField(frame, neighborKey, neighborParentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                                // only pull the tile if we have a valid parent HF for it -- otherwise
+                                // you might get a flat tile when upsampling data.
+                                if ( neighborParentHF.valid() )
                                 {
-                                    model->_normalData.setNeighbor( x, y, hf.get() );
+                                    osg::ref_ptr<osg::HeightField> hf;
+                                    if (_normalHFCache->getOrCreateHeightField(frame, neighborKey, neighborParentHF.get(), hf, isFallback, SAMPLE_FIRST_VALID, interp, progress) )
+                                    {
+                                        model->_normalData.setNeighbor( x, y, hf.get() );
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // parent too.
-            if ( parentHF.valid() )
-            {
-                model->_normalData.setParent( parentHF.get() );
+                // parent too.
+                if ( parentHF.valid() )
+                {
+                    model->_normalData.setParent( parentHF.get() );
+                }
             }
+        }
+
+        else
+        {
+            // empty HF must be at least 2x2 for normal texture gen to work
+            hf = HeightFieldUtils::createReferenceHeightField(
+                key.getExtent(), 17, 17, true );
+
+            model->_normalData = TileModel::NormalData(
+                hf,
+                GeoLocator::createForKey( key, mapInfo ),
+                isFallback );
         }
 
         if ( isFallback && parentModel.valid() )

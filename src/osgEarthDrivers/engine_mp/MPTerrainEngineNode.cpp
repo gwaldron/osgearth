@@ -395,6 +395,13 @@ MPTerrainEngineNode::getPayloadStateSet()
 }
 
 void
+MPTerrainEngineNode::dirty()
+{
+    TerrainEngineNode::dirty();
+    updateState();
+}
+
+void
 MPTerrainEngineNode::createTerrain()
 {
     // scrub the heightfield cache.
@@ -420,26 +427,6 @@ MPTerrainEngineNode::createTerrain()
 #endif
 
     this->addChild( _terrain );
-    
-    // reserve GPU space.
-    if ( _primaryUnit < 0 )
-    {
-        this->getResources()->reserveTextureImageUnit( _primaryUnit );
-        OE_INFO << LC << "Primary color unit = " << _primaryUnit << "\n";
-    }
-
-    if ( _secondaryUnit < 0 )
-    {
-        this->getResources()->reserveTextureImageUnit( _secondaryUnit );
-        OE_INFO << LC << "Secondary color unit = " << _secondaryUnit << "\n";
-    }
-
-    if ( _elevationTextureUnit < 0 )
-    {
-        // testing
-        this->getResources()->reserveTextureImageUnit( _elevationTextureUnit );
-        OE_INFO << LC << "Elevation unit = " << _elevationTextureUnit << "\n";
-    }
 
     // Factory to create the root keys:
     KeyNodeFactory* factory = getKeyNodeFactory();
@@ -750,7 +737,7 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             if ( !unit.isSet() )
             {
                 int temp;
-                if ( getResources()->reserveTextureImageUnit(temp) )
+                if ( getResources()->reserveTextureImageUnit(temp, "MP Engine Shared Layer") )
                 {
                     unit = temp;
                     OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << layerAdded->getName() << std::endl;
@@ -842,7 +829,24 @@ MPTerrainEngineNode::updateState()
         _stateUpdateRequired = true;
     }
     else
-    {
+    {    
+        // reserve GPU space.
+        if ( _primaryUnit < 0 )
+        {
+            getResources()->reserveTextureImageUnit( _primaryUnit, "MP Engine Primary" );
+        }
+
+        // "Secondary" unit serves double duty; it's used for parent textures BUT it's also
+        // used at the "slot" for the tile coordinates.
+        if ( _secondaryUnit < 0 )
+        {
+            getResources()->reserveTextureImageUnit( _secondaryUnit, "MP Engine Secondary" );
+        }
+
+        if ( _elevationTextureUnit < 0 && elevationTexturesRequired() )
+        {
+            getResources()->reserveTextureImageUnit( _elevationTextureUnit, "MP Engine Elevation" );
+        }
 
         osg::StateSet* terrainStateSet = getTerrainStateSet();
         
@@ -869,7 +873,7 @@ MPTerrainEngineNode::updateState()
             Shaders package;
 
             package.replace( "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
-            package.replace( "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
+            package.replace( "$MP_SECONDARY_UNIT", Stringify() << (_secondaryUnit>=0?_secondaryUnit:0) );
 
             package.define( "MP_USE_BLENDING", (_terrainOptions.enableBlending() == true) );
 
@@ -952,19 +956,24 @@ MPTerrainEngineNode::updateState()
                 "oe_layer_tex", osg::Uniform::SAMPLER_2D )->set( _primaryUnit );
 
             // binding for the secondary texture (for LOD blending)
-            terrainStateSet->getOrCreateUniform(
-                "oe_layer_tex_parent", osg::Uniform::SAMPLER_2D )->set( _secondaryUnit );
+            if ( parentTexturesRequired() )
+            {
+                terrainStateSet->getOrCreateUniform(
+                    "oe_layer_tex_parent", osg::Uniform::SAMPLER_2D )->set( _secondaryUnit );
+
+                // binding for the default secondary texture matrix
+                osg::Matrixf parent_mat;
+                parent_mat(0,0) = 0.0f;
+                terrainStateSet->getOrCreateUniform(
+                    "oe_layer_parent_matrix", osg::Uniform::FLOAT_MAT4 )->set( parent_mat );
+            }
 
             // uniform for accessing the elevation texture sampler.
-            // TODO: put in the _terrain's SS, not the bin's SS.
-            terrainStateSet->getOrCreateUniform(
-                "oe_terrain_tex", osg::Uniform::SAMPLER_2D)->set( _elevationTextureUnit );
-
-            // binding for the default secondary texture matrix
-            osg::Matrixf parent_mat;
-            parent_mat(0,0) = 0.0f;
-            terrainStateSet->getOrCreateUniform(
-                "oe_layer_parent_matrix", osg::Uniform::FLOAT_MAT4 )->set( parent_mat );
+            if ( elevationTexturesRequired() )
+            {
+                terrainStateSet->getOrCreateUniform(
+                    "oe_terrain_tex", osg::Uniform::SAMPLER_2D)->set( _elevationTextureUnit );
+            }
 
             // uniform that controls per-layer opacity
             terrainStateSet->getOrCreateUniform(

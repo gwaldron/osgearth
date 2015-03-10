@@ -332,7 +332,7 @@ DrapingTechnique::reestablish(TerrainEngineNode* engine)
         else if ( !_textureUnit.isSet() )
         {
             int texUnit;
-            if ( engine->getResources()->reserveTextureImageUnit( texUnit ) )
+            if ( engine->getResources()->reserveTextureImageUnit(texUnit, "DrapingTechnique") )
             {
                 _textureUnit = texUnit;
                 OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;

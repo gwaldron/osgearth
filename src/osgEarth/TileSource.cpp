@@ -328,12 +328,19 @@ const GeoExtent& TileSource::getDataExtentsUnion() const
 {
     if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0)
     {
-        GeoExtent e(_dataExtents[0].getSRS());
-        for (unsigned int i = 0; i < _dataExtents.size(); i++)
+        static Threading::Mutex s_mutex;
+        Threading::ScopedMutexLock lock(s_mutex);
         {
-            e.expandToInclude(_dataExtents[i]);
+            if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0) // double-check
+            {
+                GeoExtent e(_dataExtents[0].getSRS());
+                for (unsigned int i = 0; i < _dataExtents.size(); i++)
+                {
+                    e.expandToInclude(_dataExtents[i]);
+                }
+                const_cast<TileSource*>(this)->_dataExtentsUnion = e;
+            }
         }
-        const_cast<TileSource*>(this)->_dataExtentsUnion = e;
     }
     return _dataExtentsUnion;
 }

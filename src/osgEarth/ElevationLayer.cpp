@@ -660,7 +660,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 if ( heightFailed[i] )
                     continue;
 
-#if 0
+#if 1
                 // Only create a heightfield for a layer if it has data at the given location
                 // We do a non-exact hasDataAt call b/c we just want to trivially reject heightfields that
                 // obviously have no data.

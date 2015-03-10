@@ -172,6 +172,10 @@ namespace osgEarth
         bool _requireNormalTextures;
         bool _requireParentTextures;
 
+        // called by addTileNodeCallback to notify any already-existing nodes
+        // of the new callback.
+        virtual void notifyExistingNodes(TerrainTileNodeCallback* cb) { }
+
     public: // TerrainTileNodeBroker
 
         void notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node* node);

@@ -134,22 +134,6 @@ TileNodeRegistry::add( TileNode* tile )
     }
 }
 
-
-//void
-//TileNodeRegistry::add( const TileNodeVector& tiles )
-//{
-//    if ( tiles.size() > 0 )
-//    {
-//        Threading::ScopedWriteLock exclusive( _tilesMutex );
-//        for( TileNodeVector::const_iterator i = tiles.begin(); i != tiles.end(); ++i )
-//        {
-//            _tiles[ i->get()->getKey() ] = i->get();
-//        }
-//        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
-//    }
-//}
-
-
 void
 TileNodeRegistry::remove( TileNode* tile )
 {

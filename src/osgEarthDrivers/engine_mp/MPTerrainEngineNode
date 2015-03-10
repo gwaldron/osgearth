@@ -113,6 +113,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         
         virtual void dirty();
 
+        virtual void notifyExistingNodes(TerrainTileNodeCallback* cb);
+
     private:
         void init();
         void syncMapModel();

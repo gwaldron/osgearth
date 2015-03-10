@@ -355,6 +355,7 @@ TerrainEngineNode::addTileNodeCallback(TerrainTileNodeCallback* cb)
 {
     Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
     _tileNodeCallbacks.push_back( cb );
+    notifyExistingNodes( cb );
 }
 
 void

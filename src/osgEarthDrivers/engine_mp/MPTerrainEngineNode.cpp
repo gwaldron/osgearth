@@ -312,11 +312,6 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
 
     _batchUpdateInProgress = false;
 
-    // install some terrain-wide uniforms
-    this->getOrCreateStateSet()->getOrCreateUniform(
-        "oe_min_tile_range_factor",
-        osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
-
     // register this instance to the osgDB plugin can find it.
     registerEngine( this );
 
@@ -400,6 +395,35 @@ MPTerrainEngineNode::getTerrainStateSet()
 #endif
 }
 
+namespace
+{
+    struct NotifyExistingNodesOp : public TileNodeRegistry::Operation
+    {
+        TerrainTileNodeCallback* _cb;
+
+        NotifyExistingNodesOp(TerrainTileNodeCallback* cb) : _cb(cb) { }
+
+        void operator()(TileNodeRegistry::TileNodeMap& tiles)
+        {
+            //OE_INFO << LC << "Gonna notify " << tiles.size() << " existing nodes...\n";
+
+            for(TileNodeRegistry::TileNodeMap::iterator i = tiles.begin();
+                i != tiles.end();
+                ++i)
+            {
+                _cb->operator()(i->first, i->second.get());
+            }
+        }
+    };
+}
+
+void
+MPTerrainEngineNode::notifyExistingNodes(TerrainTileNodeCallback* cb)
+{
+    NotifyExistingNodesOp op( cb );
+    _liveTiles->run( op );
+}
+
 
 osg::StateSet*
 MPTerrainEngineNode::getPayloadStateSet()
@@ -411,7 +435,8 @@ void
 MPTerrainEngineNode::dirty()
 {
     TerrainEngineNode::dirty();
-    updateState();
+    createTerrain();
+    //updateState();
 }
 
 void
@@ -993,6 +1018,10 @@ MPTerrainEngineNode::updateState()
             // default min/max range uniforms.
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", FLT_MAX) );
+            
+            terrainStateSet->getOrCreateUniform(
+                "oe_min_tile_range_factor",
+                osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
         }
 
         _stateUpdateRequired = false;

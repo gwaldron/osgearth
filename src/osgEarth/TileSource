@@ -265,6 +265,17 @@ namespace osgEarth
         DataExtentList& getDataExtents() { return _dataExtents; }
 
         /**
+         * Call when you modify the data extents list.
+         */
+        void dirtyDataExtents();
+
+        /**
+         * Gets the union of all the data extents
+         */
+        const GeoExtent& getDataExtentsUnion() const;
+
+
+        /**
          * Creates an image for the given TileKey. The TileKey's profile must match
          * the profile of the TileSource.
          */
@@ -375,8 +386,12 @@ namespace osgEarth
 
         /**
          * Whether the tile source has data at the given location
+         * @param location
+         *     The location to check
+         * @param exact
+         *     If true, check all the data extents for this TileSource.  If false, just do a quick check of the union of all the data extents.
          */
-        virtual bool hasDataAt( const GeoPoint& location) const;
+        virtual bool hasDataAt( const GeoPoint& location, bool exact = false) const;
 
         /**
          * Whether this TileSource produces tiles whose data can change after
@@ -500,6 +515,7 @@ namespace osgEarth
         osg::ref_ptr<MemCache> _memCache;
 
         DataExtentList _dataExtents;
+        GeoExtent      _dataExtentsUnion;
         Status         _status;
         Mode           _mode;
     };

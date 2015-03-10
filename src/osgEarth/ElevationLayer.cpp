@@ -568,6 +568,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                                           ElevationInterpolation interpolation,
                                           ProgressCallback*      progress ) const
 {
+    osg::Timer_t startTime = osg::Timer::instance()->tick();
     // heightfield must already exist.
     if ( !hf )
         return false;
@@ -649,7 +650,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
         {
             double y = ymin + (dy * (double)r);
 
-            //GeoPoint sampleLocation(keySRS, x, y);
+            GeoPoint sampleLocation(keySRS, x, y);
 
             // Collect elevations from each layer as necessary.
             bool resolved = false;
@@ -659,16 +660,15 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 if ( heightFailed[i] )
                     continue;
 
-                // GW: I found that the following check was slowing down tile creation by an
-                //     order of magnitude, I assume b/c of constant coordinate reprojection.
-                //     Taking it out for now. 3/9/15
-
+                
                 // Only create a heightfield for a layer if it has data at the given location
-                //if (contenders[i]->getTileSource() &&
-                //    !contenders[i]->getTileSource()->hasDataAt(sampleLocation))
-                //{
-                //    continue;
-                //}
+                // We do a non-exact hasDataAt call b/c we just want to trivially reject heightfields that
+                // obviously have no data.
+                if (contenders[i]->getTileSource() &&
+                    !contenders[i]->getTileSource()->hasDataAt(sampleLocation, false))
+                {
+                    continue;
+                }
 
 
                 GeoHeightField& layerHF = heightFields[i];
@@ -747,6 +747,9 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
             //OE_NOTICE << "Completed " << completed << " of " << total << std::endl;
         }
     }   
+
+    osg::Timer_t endTime = osg::Timer::instance()->tick();
+    OE_NOTICE << "populateHeightField took " << osg::Timer::instance()->delta_s(startTime, endTime) << "s" << std::endl;
 
     // Return whether or not we actually read any real data
     return realData;

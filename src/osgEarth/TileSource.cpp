@@ -318,6 +318,26 @@ TileSource::getPixelsPerTile() const
     return _options.tileSize().value();
 }
 
+
+void TileSource::dirtyDataExtents()
+{
+    _dataExtentsUnion = GeoExtent::INVALID;
+}
+
+const GeoExtent& TileSource::getDataExtentsUnion() const
+{
+    if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0)
+    {
+        GeoExtent e(_dataExtents[0].getSRS());
+        for (unsigned int i = 0; i < _dataExtents.size(); i++)
+        {
+            e.expandToInclude(_dataExtents[i]);
+        }
+        const_cast<TileSource*>(this)->_dataExtentsUnion = e;
+    }
+    return _dataExtentsUnion;
+}
+
 osg::Image*
 TileSource::createImage(const TileKey&        key,
                         ImageOperation*       prepOp, 
@@ -440,6 +460,7 @@ TileSource::getProfile() const
 bool
 TileSource::hasDataAtLOD( unsigned lod ) const
 {
+    return true;
     // the sematics here are really "MIGHT have data at LOD".
 
     // Explicit max data level?
@@ -466,6 +487,7 @@ TileSource::hasDataAtLOD( unsigned lod ) const
 bool
 TileSource::hasDataInExtent( const GeoExtent& extent ) const
 {
+    return true;
     // if the extent is invalid, no intersection.
     if ( !extent.isValid() )
         return false;
@@ -488,8 +510,9 @@ TileSource::hasDataInExtent( const GeoExtent& extent ) const
 }
 
 bool
-TileSource::hasDataAt( const GeoPoint& location) const
+TileSource::hasDataAt( const GeoPoint& location, bool exact) const
 {
+    return true;
     // If the location is invalid then return false
     if (!location.isValid())
         return false;
@@ -497,6 +520,12 @@ TileSource::hasDataAt( const GeoPoint& location) const
     // If no data extents are provided, just return true
     if ( _dataExtents.size() == 0 )
         return true;
+
+    if (!exact)
+    {
+        return getDataExtentsUnion().contains(location);
+    }
+   
 
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {

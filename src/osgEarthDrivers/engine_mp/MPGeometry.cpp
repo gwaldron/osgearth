@@ -445,7 +445,9 @@ MPGeometry:: COMPUTE_BOUND() const
         }
 
         if ( _tileCoords.valid() && _tileCoords->getVertexBufferObject() == 0L )
+        {
             _tileCoords->setVertexBufferObject( ncthis->getVertexArray()->getVertexBufferObject() );
+        }
     }
     return bbox;
 }

@@ -270,6 +270,19 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     {
         _deadTiles = new TileNodeRegistry("dead");
     }
+
+    // reserve GPU resources. Must do this before initializing the model factory.
+    if ( _primaryUnit < 0 )
+    {
+        getResources()->reserveTextureImageUnit( _primaryUnit, "MP Engine Primary" );
+    }
+
+    // "Secondary" unit serves double duty; it's used for parent textures BUT it's also
+    // used at the "slot" for the tile coordinates.
+    if ( _secondaryUnit < 0 )
+    {
+        getResources()->reserveTextureImageUnit( _secondaryUnit, "MP Engine Secondary" );
+    }
     
     // initialize the model factory:
     _tileModelFactory = new TileModelFactory(_liveTiles.get(), _terrainOptions, this);
@@ -304,11 +317,11 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
         "oe_min_tile_range_factor",
         osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
 
-    // set up the initial shaders
-    updateState();
-
     // register this instance to the osgDB plugin can find it.
     registerEngine( this );
+
+    // set up the initial shaders and reserve the texture image units.
+    updateState();
 
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
@@ -829,20 +842,7 @@ MPTerrainEngineNode::updateState()
         _stateUpdateRequired = true;
     }
     else
-    {    
-        // reserve GPU space.
-        if ( _primaryUnit < 0 )
-        {
-            getResources()->reserveTextureImageUnit( _primaryUnit, "MP Engine Primary" );
-        }
-
-        // "Secondary" unit serves double duty; it's used for parent textures BUT it's also
-        // used at the "slot" for the tile coordinates.
-        if ( _secondaryUnit < 0 )
-        {
-            getResources()->reserveTextureImageUnit( _secondaryUnit, "MP Engine Secondary" );
-        }
-
+    {
         if ( _elevationTextureUnit < 0 && elevationTexturesRequired() )
         {
             getResources()->reserveTextureImageUnit( _elevationTextureUnit, "MP Engine Elevation" );

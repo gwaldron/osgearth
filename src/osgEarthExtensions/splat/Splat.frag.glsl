@@ -298,8 +298,4 @@ void oe_splat_fragment(inout vec4 color)
 
     // uncomment to visualize slope.
     //color.rgba = vec4(env.slope,0,0,1);
-
-    color.r = oe_layer_tilec.s;
-    color.g = 0.0;
-    color.b = 0.0;
 }

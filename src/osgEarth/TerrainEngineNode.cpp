@@ -100,35 +100,11 @@ TerrainEngineNode::getResources() const
     return _texCompositor.get();
 }
 
-
-// this handler adjusts the uniform set when a terrain layer's "enabed" state changes
-void
-TerrainEngineNode::ImageLayerController::onVisibleChanged( TerrainLayer* layer )
-{
-    _engine->dirty();
-}
-
-
-// this handler adjusts the uniform set when a terrain layer's "opacity" value changes
-void
-TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
-{
-    _engine->dirty();
-}
-
-void
-TerrainEngineNode::ImageLayerController::onVisibleRangeChanged( ImageLayer* layer )
-{
-    _engine->dirty();
-}
-
 void
 TerrainEngineNode::ImageLayerController::onColorFiltersChanged( ImageLayer* layer )
 {
     _engine->updateTextureCombining();
-    _engine->dirty();
 }
-
 
 
 //------------------------------------------------------------------------

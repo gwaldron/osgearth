@@ -203,11 +203,7 @@ namespace osgEarth
         struct ImageLayerController : public ImageLayerCallback
         {
             ImageLayerController( const Map* map, TerrainEngineNode* engine );
-
-            void onVisibleChanged( TerrainLayer* layer );
-            void onOpacityChanged( ImageLayer* layer );
-            void onColorFiltersChanged( ImageLayer* layer );      
-            void onVisibleRangeChanged( ImageLayer* layer );
+            void onColorFiltersChanged( ImageLayer* layer ); 
 
         private:
             MapFrame           _mapf;

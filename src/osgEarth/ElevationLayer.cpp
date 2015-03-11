@@ -594,6 +594,9 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     LayerAndKeyVector contenders;
     LayerAndKeyVector offsets;
 
+    // Track the number of layers that would return fallback data.
+    unsigned numFallbackLayers = 0;
+
     // Check them in reverse order since the highest priority is last.
     for(ElevationLayerVector::const_reverse_iterator i = this->rbegin(); i != this->rend(); ++i)
     {
@@ -617,11 +620,23 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 {
                     useLayer = false;
                 }
-
+                
                 // Find the "best available" mapped key from the tile source:
-                else if ( !layer->getTileSource()->getBestAvailableTileKey(mappedKey, bestKey) )
+                else 
                 {
-                    useLayer = false;
+                    if ( layer->getTileSource()->getBestAvailableTileKey(mappedKey, bestKey) )
+                    {
+                        // If the bestKey is not the mappedKey, this layer is providing
+                        // fallback data (data at a lower resolution than requested)
+                        if ( mappedKey != bestKey )
+                        {
+                            numFallbackLayers++;
+                        }
+                    }
+                    else
+                    {
+                        useLayer = false;
+                    }
                 }
             }
 
@@ -645,7 +660,11 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
         return false;
     }
 
-    //OE_INFO << key.str() << " : contenders = " << contenders.size() << "\n";
+    // if everything is fallback data, bail out.
+    if ( contenders.size() + offsets.size() == numFallbackLayers )
+    {
+        return false;
+    }
     
     // Sample the layers into our target.
     unsigned numColumns = hf->getNumColumns();

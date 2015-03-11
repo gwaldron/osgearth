@@ -333,8 +333,8 @@ const GeoExtent& TileSource::getDataExtentsUnion() const
         {
             if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0) // double-check
             {
-                GeoExtent e(_dataExtents[0].getSRS());
-                for (unsigned int i = 0; i < _dataExtents.size(); i++)
+                GeoExtent e(_dataExtents[0]);
+                for (unsigned int i = 1; i < _dataExtents.size(); i++)
                 {
                     e.expandToInclude(_dataExtents[i]);
                 }
@@ -467,7 +467,6 @@ TileSource::getProfile() const
 bool
 TileSource::hasDataAtLOD( unsigned lod ) const
 {
-    return true;
     // the sematics here are really "MIGHT have data at LOD".
 
     // Explicit max data level?
@@ -494,7 +493,6 @@ TileSource::hasDataAtLOD( unsigned lod ) const
 bool
 TileSource::hasDataInExtent( const GeoExtent& extent ) const
 {
-    return true;
     // if the extent is invalid, no intersection.
     if ( !extent.isValid() )
         return false;
@@ -519,13 +517,12 @@ TileSource::hasDataInExtent( const GeoExtent& extent ) const
 bool
 TileSource::hasDataAt( const GeoPoint& location, bool exact) const
 {
-    return true;
     // If the location is invalid then return false
     if (!location.isValid())
         return false;
 
     // If no data extents are provided, just return true
-    if ( _dataExtents.size() == 0 )
+    if (_dataExtents.size() == 0)
         return true;
 
     if (!exact)
@@ -592,6 +589,74 @@ TileSource::hasData(const osgEarth::TileKey& key) const
     }
 
     return intersectsData;
+}
+
+bool
+TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
+                                    osgEarth::TileKey&       output) const
+{
+    // trivial accept: no data extents = not enough info.
+    if (_dataExtents.size() == 0)
+    {
+        output = key;
+        return true;
+    }
+
+    // trivial reject: key doesn't intersect the union of data extents at all.
+    if ( !getDataExtentsUnion().intersects(key.getExtent()) )
+    {
+        return false;
+    }
+
+    bool     intersects = false;
+    unsigned highestLOD = 0;
+
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+    {
+        // check for 2D intersection:
+        if (key.getExtent().intersects( *itr ))
+        {
+            // check that the extent isn't higher-resolution than our key:
+            if ( !itr->minLevel().isSet() || key.getLOD() >= itr->minLevel().get() )
+            {
+                // Got an intersetion; now test the LODs:
+                intersects = true;
+                
+                // Is the high-LOD set? If not, there's not enough information
+                // so just assume our key might be good.
+                if ( itr->maxLevel().isSet() == false )
+                {
+                    output = key;
+                    return true;
+                }
+
+                // Is our key at a lower or equal LOD than the max key in this extent?
+                // If so, our key is good.
+                else if ( key.getLOD() <= itr->maxLevel().get() )
+                {
+                    output = key;
+                    return true;
+                }
+
+                // otherwise, record the highest encountered LOD that
+                // intersects our key.
+                else if ( itr->maxLevel().get() > highestLOD )
+                {
+                    highestLOD = itr->maxLevel().get();
+                }
+            }
+        }
+    }
+
+    if ( intersects )
+    {
+        output = key.createAncestorKey( highestLOD );
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 bool

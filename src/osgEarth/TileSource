@@ -394,6 +394,23 @@ namespace osgEarth
         virtual bool hasDataAt( const GeoPoint& location, bool exact = false) const;
 
         /**
+         * Returns (in "output") the TileKey of the best available data that intersects
+         * the input TileKey (according to the DataExtents). For example, if the highest
+         * DataExtent reports an LOD of 9, and the input TileKey is LOD 13, the function
+         * will return the LOD 9 ancestor of the input TileKey IF they intersect.
+         *
+         * If you DataExtents or LOD information is available, the function copies the
+         * input to the output and returns true.
+         *
+         * @param key    TileKey to test
+         * @param output Corresponding ancestor written here if available
+         * @return True if an intersecting key was found; false if not.
+         */
+        virtual bool getBestAvailableTileKey(
+            const osgEarth::TileKey& key,
+            osgEarth::TileKey&       output) const;
+
+        /**
          * Whether this TileSource produces tiles whose data can change after
          * it's been created.
          */

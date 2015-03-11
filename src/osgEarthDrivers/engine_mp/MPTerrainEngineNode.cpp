@@ -358,7 +358,9 @@ MPTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
 void
 MPTerrainEngineNode::refresh(bool forceDirty)
 {
-    if ( _batchUpdateInProgress )
+    // if we're in the middle of a batch update OR if the terrain has not
+    // been fully initialized for rendering, mark it for later.
+    if ( _batchUpdateInProgress || _update_mapf == 0L )
     {
         _refreshRequired = true;
     }
@@ -382,7 +384,10 @@ MPTerrainEngineNode::refresh(bool forceDirty)
 void
 MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
-    createTerrain();
+    if ( _update_mapf != 0L )
+    {
+        createTerrain();
+    }
 }
 
 osg::StateSet*
@@ -435,8 +440,7 @@ void
 MPTerrainEngineNode::dirty()
 {
     TerrainEngineNode::dirty();
-    createTerrain();
-    //updateState();
+    refresh();
 }
 
 void
@@ -468,7 +472,7 @@ MPTerrainEngineNode::createTerrain()
 
     // Factory to create the root keys:
     KeyNodeFactory* factory = getKeyNodeFactory();
-
+    
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector< TileKey > keys;

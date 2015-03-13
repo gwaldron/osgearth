@@ -395,7 +395,7 @@ namespace osgEarth
         static HTTPClient& getClient();
 
     private:
-        void decodeMultipartStream(
+        bool decodeMultipartStream(
             const std::string&   boundary,
             HTTPResponse::Part*  input,
             HTTPResponse::Parts& output) const;

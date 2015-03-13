@@ -28,7 +28,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Progress>
-#include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
 
 #include <osg/Depth>
@@ -838,7 +838,7 @@ RexTerrainEngineNode::updateState()
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
             // Vertex shader:
-            std::string vs = ShaderLoader::loadSource(
+            std::string vs = ShaderLoader::load(
                 Shaders::VertFile,
                 Shaders::VertSource );
 
@@ -856,7 +856,7 @@ RexTerrainEngineNode::updateState()
             vp->setFunction( "oe_rexEngine_vert", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0f );
 
             // Fragment shader:
-            std::string fs = ShaderLoader::loadSource(
+            std::string fs = ShaderLoader::load(
                 Shaders::FragFile,
                 Shaders::FragSource );
             

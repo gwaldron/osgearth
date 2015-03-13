@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "BumpMapTerrainEffect"
+#include "BumpMapOptions"
 
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -36,8 +37,12 @@ using namespace osgEarth::BumpMap;
 
 BumpMapTerrainEffect::BumpMapTerrainEffect(const osgDB::Options* dbOptions)
 {
-    _scaleUniform     = new osg::Uniform("oe_bumpmap_scale", 1.0f);
-    _intensityUniform = new osg::Uniform("oe_bumpmap_intensity", 1.0f);
+    BumpMapOptions defaults;
+    _octaves = defaults.octaves().get();
+    _maxRange = defaults.maxRange().get();
+
+    _scaleUniform     = new osg::Uniform("oe_bumpmap_scale", defaults.scale().get());
+    _intensityUniform = new osg::Uniform("oe_bumpmap_intensity", defaults.intensity().get());
 }
 
 void
@@ -65,10 +70,10 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 {
     if ( engine && _bumpMapTex.valid() )
     {
-        osg::StateSet* stateset = engine->getTerrainStateSet(); //OrCreateStateSet();
+        osg::StateSet* stateset = engine->getTerrainStateSet();
 
         // install the NormalMap texture array:
-        if ( engine->getTextureCompositor()->reserveTextureImageUnit(_bumpMapUnit) )
+        if ( engine->getResources()->reserveTextureImageUnit(_bumpMapUnit) )
         {
             // NormalMap sampler
             _bumpMapTexUniform = stateset->getOrCreateUniform(BUMP_SAMPLER, osg::Uniform::SAMPLER_2D);
@@ -76,14 +81,40 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             stateset->setTextureAttribute( _bumpMapUnit, _bumpMapTex.get(), osg::StateAttribute::ON );
 
             // configure shaders
-            Shaders shaders;
-            std::string vertShader = ShaderLoader::loadSource(shaders.Vertex, shaders);
-            std::string fragShader = ShaderLoader::loadSource(shaders.Fragment, shaders);
-
-            // shader components
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            vp->setFunction( "oe_bumpmap_vertex",   vertShader, ShaderComp::LOCATION_VERTEX_MODEL );
-            vp->setFunction( "oe_bumpmap_fragment", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, -1.0f);
+
+            Shaders shaders;
+            shaders.loadFunction( vp, shaders.VertexModel );
+            shaders.loadFunction( vp, shaders.VertexView );
+
+            //vp->setFunction(
+            //    "oe_bumpmap_vertexModel",   
+            //    ShaderLoader::load(shaders.VertexModel, shaders),
+            //    ShaderComp::LOCATION_VERTEX_MODEL );
+
+            //vp->setFunction(
+            //    "oe_bumpmap_vertexView",
+            //    ShaderLoader::load(shaders.VertexView, shaders),
+            //    ShaderComp::LOCATION_VERTEX_VIEW );
+
+            std::string fragShader = _octaves <= 1 ? shaders.FragmentSimple : shaders.FragmentProgressive;
+            std::string fragSource = ShaderLoader::load(fragShader, shaders);
+
+            if ( engine->normalTexturesRequired() )
+            {
+                osgEarth::replaceIn(fragSource, "#undef OE_USE_NORMAL_MAP", "#define OE_USE_NORMAL_MAP");
+            }
+
+            vp->setFunction(
+                "oe_bumpmap_fragment",
+                fragSource,
+                ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+                -1.0f);
+
+            if ( _octaves > 1 )
+                stateset->addUniform(new osg::Uniform("oe_bumpmap_octaves", _octaves));
+
+            stateset->addUniform(new osg::Uniform("oe_bumpmap_maxRange", _maxRange));
 
             stateset->addUniform( _scaleUniform.get() );
             stateset->addUniform( _intensityUniform.get() );
@@ -100,6 +131,8 @@ BumpMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
     {
         if ( _bumpMapTex.valid() )
         {
+            stateset->removeUniform("oe_bumpmap_maxRange");
+            stateset->removeUniform("oe_bumpmap_octaves");
             stateset->removeUniform( _scaleUniform.get() );
             stateset->removeUniform( _intensityUniform.get() );
             stateset->removeUniform( _bumpMapTexUniform.get() );
@@ -109,14 +142,17 @@ BumpMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::get(stateset);
         if ( vp )
         {
-            vp->removeShader( "oe_bumpmap_vertex" );
-            vp->removeShader( "oe_bumpmap_fragment" );
+            Shaders pkg;
+            pkg.unloadFunction( vp, pkg.VertexModel );
+            pkg.unloadFunction( vp, pkg.VertexView );
+            pkg.unloadFunction( vp, pkg.FragmentSimple );
+            pkg.unloadFunction( vp, pkg.FragmentProgressive );
         }
     }
     
     if ( _bumpMapUnit >= 0 )
     {
-        engine->getTextureCompositor()->releaseTextureImageUnit( _bumpMapUnit );
+        engine->getResources()->releaseTextureImageUnit( _bumpMapUnit );
         _bumpMapUnit = -1;
     }
 }

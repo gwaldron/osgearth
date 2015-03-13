@@ -63,7 +63,7 @@ ImageLayerOptions::setDefaults()
 {
     _opacity.init( 1.0f );
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
-    _minRange.init( -FLT_MAX );
+    _minRange.init( 0.0 );
     _maxRange.init( FLT_MAX );
     _lodBlending.init( false );
     _featherPixels.init( false );
@@ -684,11 +684,16 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         ImageUtils::featherAlphaRegions( result.get() );
     }    
     
-    // If image creation failed (but was not intentionally canceled),
+    // If image creation failed (but was not intentionally canceled and 
+    // didn't time out or end for any other recoverable reason), then
     // blacklist this tile for future requests.
-    if ( result == 0L && (!progress || !progress->isCanceled()) )
+    if (result == 0L)
     {
-        source->getBlacklist()->add( key );
+        if ( progress == 0L ||
+             ( !progress->isCanceled() && !progress->needsRetry() ) )
+        {
+            source->getBlacklist()->add( key );
+        }
     }
 
     return GeoImage(result.get(), key.getExtent());
@@ -723,11 +728,11 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
         bool retry = false;
         ImageMosaic mosaic;
 
+        // keep track of failed tiles.
+        std::vector<TileKey> failedKeys;
+
         for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
         {
-            double minX, minY, maxX, maxY;
-            k->getExtent().getBounds(minX, minY, maxX, maxY);
-
             GeoImage image = createImageFromTileSource( *k, progress );
             if ( image.valid() )
             {
@@ -755,6 +760,8 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             else
             {
                 // the tile source did not return a tile, so make a note of it.
+                failedKeys.push_back( *k );
+
                 if (progress && (progress->isCanceled() || progress->needsRetry()))
                 {
                     retry = true;
@@ -768,6 +775,49 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             // if we didn't get any data, fail.
             OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
             return GeoImage::INVALID;
+        }
+
+        // We got at least one good tile, so go through the bad ones and try to fall back on
+        // lower resolution data to fill in the gaps. The entire mosaic must be populated or
+        // this qualifies as a bad tile.
+        for(std::vector<TileKey>::iterator k = failedKeys.begin(); k != failedKeys.end(); ++k)
+        {
+            GeoImage image;
+
+            for(TileKey parentKey = k->createParentKey();
+                parentKey.valid() && !image.valid();
+                parentKey = parentKey.createParentKey())
+            {
+                image = createImageFromTileSource( parentKey, progress );
+                if ( image.valid() )
+                {
+                    ImageUtils::normalizeImage(image.getImage());
+                    if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
+                        || (image.getImage()->getPixelFormat() != GL_RGBA) )
+                    {
+                        osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
+                        if (convertedImg.valid())
+                        {
+                            image = GeoImage(convertedImg, image.getExtent());
+                        }
+                    }
+
+                    OE_DEBUG << LC << "Tile " << k->str() << " fell back on " << parentKey.str() << "\n";
+                    
+                    // cut out the piece we need:
+                    GeoImage croppedImage = image.crop( k->getExtent(), true, image.getImage()->s(), image.getImage()->t() );
+
+                    // and queue it.
+                    mosaic.getImages().push_back( TileImage(croppedImage.getImage(), *k) );
+                }
+            }
+
+            if ( !image.valid() )
+            {
+                // a tile completely failed, even with fallback. Eject.
+                OE_DEBUG << LC << "Couldn't fallback on tiles for ImageMosaic" << std::endl;
+                return GeoImage::INVALID;
+            }
         }
 
         // all set. Mosaic all the images together.

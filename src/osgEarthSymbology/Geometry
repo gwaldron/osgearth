@@ -181,6 +181,12 @@ namespace osgEarth { namespace Symbology
         virtual void rewind( Orientation ori );
 
         /**
+         * Removes consecutive duplicates in the geometry to prepare for tesselation.
+         */
+        virtual void removeDuplicates();
+
+
+        /**
          * Get the winding orientation of the geometry (if you consider the last point
          * to connect back to the first in a ring.)
          */
@@ -310,6 +316,8 @@ namespace osgEarth { namespace Symbology
         virtual void open();
 
         virtual void close();
+
+        virtual void removeDuplicates();
 
     public:
         RingCollection& getHoles() { return _holes; }

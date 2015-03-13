@@ -155,7 +155,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 return _neighbors;
             }
 
-        private:
+        public:
             osg::ref_ptr<osg::HeightField> _hf;
             osg::ref_ptr<GeoLocator>       _locator;
             bool                           _fallbackData;
@@ -252,7 +252,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public:
         TileModel( const osgEarth::Revision& mapModelRevision, const MapInfo& mapInfo )
-            : _revision(mapModelRevision), _mapInfo(mapInfo) { }
+            : _revision(mapModelRevision), _mapInfo(mapInfo), _useParentData(false) { }
         TileModel(const TileModel& rhs);
         virtual ~TileModel() { }
 
@@ -275,6 +275,12 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** Whether there is a heightfield */
         bool hasElevation() const { return _elevationData.getHeightField() != 0L; }
 
+        /** Whether there's a normal map */
+        bool hasNormalMap() const { return _normalData.getHeightField() != 0L; }
+
+        /** Whether to use parent data if it's available. */
+        bool useParentData() const { return _useParentData; }
+
         MapInfo                      _mapInfo;
         Revision                     _revision;
         TileKey                      _tileKey;
@@ -285,6 +291,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         float                        _sampleRatio;
         osg::ref_ptr<osg::Texture>   _elevationTexture;
         osg::ref_ptr<osg::Texture>   _normalTexture;
+        bool                         _useParentData;
         
         osg::ref_ptr<osg::StateSet>        _parentStateSet;
         osg::observer_ptr<const TileModel> _parentModel;

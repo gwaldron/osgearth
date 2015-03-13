@@ -35,7 +35,8 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         SimpleSkyOptions(const ConfigOptions& options =ConfigOptions()) :
           SkyOptions(options),
           _atmosphericLighting(true),
-          _exposure           (3.0f)
+          _exposure           (3.0f),
+          _allowWireframe     (false)
         {
             setDriver( "simple" );
             fromConfig( _conf );
@@ -57,12 +58,17 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         optional<std::string>& starFile() { return _starFile; }
         const optional<std::string>& starFile() const { return _starFile; }
 
+        /** Whether to permit wireframe/point polygonmode rendering. Default is false. */
+        optional<bool>& allowWireframe() { return _allowWireframe; }
+        const optional<bool>& allowWireframe() const { return _allowWireframe; }
+
     public:
         Config getConfig() const {
             Config conf = SkyOptions::getConfig();
             conf.addIfSet("atmospheric_lighting", _atmosphericLighting);
             conf.addIfSet("exposure", _exposure);
             conf.addIfSet("star_file", _starFile);
+            conf.addIfSet("allow_wireframe", _allowWireframe);
             return conf;
         }
 
@@ -77,11 +83,13 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
             conf.getIfSet("atmospheric_lighting", _atmosphericLighting);
             conf.getIfSet("exposure", _exposure);
             conf.getIfSet("star_file", _starFile);
+            conf.getIfSet("allow_wireframe", _allowWireframe);
         }
 
         optional<bool>        _atmosphericLighting;
         optional<float>       _exposure;
         optional<std::string> _starFile;
+        optional<bool>        _allowWireframe;
     };
 
 } } } // namespace osgEarth::Drivers::SimpleSky

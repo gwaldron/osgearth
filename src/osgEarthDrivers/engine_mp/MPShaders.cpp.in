@@ -6,12 +6,17 @@
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
 
-const char* Shaders::MPVertFile     = "MPEngine.vert.glsl";
-const char* Shaders::MPVertSource   = MULTILINE(
-@MPEngine.vert.glsl@
+const char* Shaders::MPVertModel       = "MPEngine.vert.model.glsl";
+const char* Shaders::MPVertModelSource  = MULTILINE(
+@MPEngine.vert.model.glsl@
 );
 
-const char* Shaders::MPFragFile   = "MPEngine.frag.glsl";	
+const char* Shaders::MPVertView        = "MPEngine.vert.view.glsl";
+const char* Shaders::MPVertViewSource  = MULTILINE(
+@MPEngine.vert.view.glsl@
+);
+
+const char* Shaders::MPFrag       = "MPEngine.frag.glsl";	
 const char* Shaders::MPFragSource = MULTILINE(
 @MPEngine.frag.glsl@
 );

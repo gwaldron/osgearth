@@ -18,6 +18,7 @@
 */
 #include "GeometryPool"
 #include <osgEarth/Locators>
+#include <cstdlib> // for getenv
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -25,16 +26,20 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 #define LC "[GeometryPool] "
 
 // TODO: experiment with sharing a single texture coordinate array 
-// across all shared geometries.
-//#define SHARE_TEX_COORDS 1
+//// across all shared geometries.
+#define SHARE_TEX_COORDS 1
 
 
 GeometryPool::GeometryPool(unsigned                       tileSize,
                            const RexTerrainEngineOptions& options) :
 _tileSize( tileSize ),
-_options ( options )
+_options ( options ),
+_debug   ( false )
 {
-    // nop
+    if ( getenv("OSGEARTH_DEBUG_REX_GEOMETRY_POOL") != 0L )
+    {
+        _debug = true;
+    }
 }
 
 void
@@ -60,7 +65,11 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
         // Not found. Create it.
         out = createGeometry( tileKey, mapInfo, 0L );
         _geometryMap[ geomKey ] = out.get();
-        OE_DEBUG << LC << "Geometry pool size = " << _geometryMap.size() << "\n";
+
+        if ( _debug )
+        {
+            OE_NOTICE << LC << "Geometry pool size = " << _geometryMap.size() << "\n";
+        }
     }
 }
 

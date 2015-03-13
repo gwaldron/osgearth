@@ -67,6 +67,8 @@ _activeDs   ( 0L )
 
     // always blend.
     this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
+    // always draw after the terrain.
+    this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
 }
 
 AnnotationNode::AnnotationNode(MapNode* mapNode, const Config& conf) :
@@ -98,7 +100,9 @@ _activeDs   ( 0L )
         // blend by default.
         this->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::ON );
     }
-
+    
+    // always draw after the terrain.
+    this->getOrCreateStateSet()->setRenderBinDetails( 1, "DepthSortedBin" );
 }
 
 AnnotationNode::~AnnotationNode()
@@ -406,7 +410,7 @@ AnnotationNode::applyGeneralSymbology(const Style& style)
                 (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
-        if ( render->depthOffset().isSet() ) // && !_depthAdj )
+        if ( render->depthOffset().isSet() )
         {
             _doAdapter.setDepthOffsetOptions( *render->depthOffset() );
             setDepthAdjustment( true );

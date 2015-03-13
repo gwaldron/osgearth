@@ -191,7 +191,7 @@ SkinResource::createImage( const osgDB::Options* dbOptions ) const
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(skin, SkinSymbol);
 
 SkinSymbol::SkinSymbol(const SkinSymbol& rhs,const osg::CopyOp& copyop):
-Taggable(rhs, copyop),
+Taggable<Symbol>(rhs, copyop),
 _library(rhs._library),
 _objHeight(rhs._objHeight),
 _minObjHeight(rhs._minObjHeight),

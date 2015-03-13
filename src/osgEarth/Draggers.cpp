@@ -29,6 +29,7 @@
 
 #include <osgManipulator/Dragger>
 
+#define LC "[Dragger] "
 
 
 using namespace osgEarth;
@@ -137,7 +138,7 @@ void Dragger::updateTransform(osg::Node* patch)
         mapPoint = mapPoint.transform( _mapNode->getMapSRS() );
         if (!mapPoint.makeAbsolute( getMapNode()->getTerrain() ))
         {
-            OE_WARN << "Failed to clamp dragger" << std::endl;
+            OE_INFO << LC << "Failed to clamp dragger" << std::endl;
             return;            
         }
 

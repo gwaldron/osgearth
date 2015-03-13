@@ -94,19 +94,23 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
             osgDB::Options*      _op;
             Reader(osgDB::ReaderWriter* rw, osgDB::Options* op) : _rw(rw), _op(op) { }
             virtual osgDB::ReaderWriter::ReadResult read(std::istream& in) const = 0;
+            virtual std::string name() const = 0;
         };
 
         struct ImageReader : public Reader {
             ImageReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
             osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readImage(in, _op); }
+            std::string name() const { return "ImageReader"; }
         };
         struct NodeReader : public Reader {
             NodeReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
             osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readNode(in, _op); }
+            std::string name() const { return "NodeReader"; }
         };
         struct ObjectReader : public Reader {
             ObjectReader(osgDB::ReaderWriter* rw, osgDB::Options* op) : Reader(rw, op) { }
             osgDB::ReaderWriter::ReadResult read(std::istream& in) const { return _rw->readObject(in, _op); }
+            std::string name() const { return "ObjectReader"; }
         };
 
         ReadResult read(const std::string& key, const Reader& reader);

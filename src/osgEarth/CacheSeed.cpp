@@ -120,7 +120,7 @@ _visitor(new TileVisitor())
 
 TileVisitor* CacheSeed::getVisitor() const
 {
-    return _visitor;
+    return _visitor.get();
 }
 
 void CacheSeed::setVisitor(TileVisitor* visitor)

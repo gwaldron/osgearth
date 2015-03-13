@@ -21,9 +21,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
     struct Shaders
 	{
-		static const char* MPVertFile;
-		static const char* MPVertSource;
-		static const char* MPFragFile;
+		static const char* MPVertModel;
+		static const char* MPVertModelSource;
+		static const char* MPVertView;
+		static const char* MPVertViewSource;
+		static const char* MPFrag;
 		static const char* MPFragSource;
 	};
 	

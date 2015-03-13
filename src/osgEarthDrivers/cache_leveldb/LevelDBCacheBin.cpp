@@ -281,7 +281,12 @@ LevelDBCacheBin::read(const std::string& key, const Reader& reader)
     osgDB::ReaderWriter::ReadResult r = reader.read(datastream);
     if ( !r.success() )
     {
-        OE_WARN << LC << "Read failure - bad key?" << std::endl;
+        OE_WARN << LC << "Cache read failure!"
+            << "\n reader = " << reader.name()
+            << "\n error detail = " << r.message()
+            << "\n data value = " << datavalue
+            << "\n";
+
         return ReadResult(ReadResult::RESULT_READER_ERROR);
     }
         
@@ -335,16 +340,31 @@ LevelDBCacheBin::write(const std::string& key, const osg::Object* object, const 
 
     if ( dynamic_cast<const osg::Image*>(object) )
     {
+        if ( (_rw->supportedFeatures() & _rw->FEATURE_WRITE_IMAGE) == 0 )
+        {
+            OE_WARN << LC << "Internal: tried to write image to " << _rw->className() << "\n";
+            return false;
+        }
         r = _rw->writeImage( *static_cast<const osg::Image*>(object), datastream, _rwOptions.get() );
         objWriteOK = r.success();
     }
     else if ( dynamic_cast<const osg::Node*>(object) )
     {
+        if ( (_rw->supportedFeatures() & _rw->FEATURE_WRITE_NODE) == 0 )
+        {
+            OE_WARN << LC << "Internal: tried to write node to " << _rw->className() << "\n";
+            return false;
+        }
         r = _rw->writeNode( *static_cast<const osg::Node*>(object), datastream, _rwOptions.get() );
         objWriteOK = r.success();
     }
     else
     {
+        if ( (_rw->supportedFeatures() & _rw->FEATURE_WRITE_OBJECT) == 0 )
+        {
+            OE_WARN << LC << "Internal: tried to write an object to " << _rw->className() << "\n";
+            return false;
+        }
         r = _rw->writeObject( *object, datastream );
         objWriteOK = r.success();
     }

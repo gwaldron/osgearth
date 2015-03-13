@@ -56,6 +56,8 @@ _imageUnit       ( imageUnit )
     _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
     _texMatParentUniformNameID = osg::Uniform::getNameID( "oe_layer_parent_texmat" );
+    _minRangeUniformNameID     = osg::Uniform::getNameID( "oe_layer_minRange" );
+    _maxRangeUniformNameID     = osg::Uniform::getNameID( "oe_layer_maxRange" );
 
     // we will set these later (in TileModelCompiler)
     this->setUseVertexBufferObjects(false);
@@ -123,6 +125,8 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     GLint uidLocation           = -1;
     GLint orderLocation         = -1;
     GLint texMatParentLocation  = -1;
+    GLint minRangeLocation      = -1;
+    GLint maxRangeLocation      = -1;
 
     // The PCP can change (especially in a VirtualProgram environment). So we do need to
     // requery the uni locations each time unfortunately. TODO: explore optimizations.
@@ -179,6 +183,15 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     //    _elevTex->apply( state );
     //    // todo: probably need an elev texture matrix as well. -gw
     //}
+    
+
+    // track the active image unit.
+    int activeImageUnit = -1;
+
+    // remember whether we applied a parent texture.
+    bool usedTexParent = false;
+    bool useMinVisibleRange = false;
+    bool useMaxVisibleRange = false;
 
     if ( _layers.size() > 0 )
     {
@@ -223,11 +236,27 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                         // no texture LOD blending for shared layers for now. maybe later.
                     }
                 }
+
+                // check for min/rax range usage.
+                const ImageLayerOptions& layerOptions = layer._imageLayer->getImageLayerOptions();
+                if ( layerOptions.minVisibleRange().isSet() )
+                    useMinVisibleRange = true;
+                if ( layerOptions.maxVisibleRange().isSet() )
+                    useMaxVisibleRange = true;
             }
         }
 
-        // track the active image unit.
-        int activeImageUnit = -1;
+        // look up the minRange uniform if necessary
+        if ( useMinVisibleRange && pcp )
+        {
+            minRangeLocation = pcp->getUniformLocation( _minRangeUniformNameID );
+        }
+        
+        // look up the maxRange uniform if necessary
+        if ( useMaxVisibleRange && pcp )
+        {
+            maxRangeLocation = pcp->getUniformLocation( _maxRangeUniformNameID );
+        }
 
         if (renderColor)
         {
@@ -273,6 +302,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                         state.setActiveTextureUnit( _imageUnitParent );
                         activeImageUnit = _imageUnitParent;
                         layer._texParent->apply( state );
+                        usedTexParent = true;
                     }
 
                     // bind the texture coordinates for this layer.
@@ -310,6 +340,18 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                         if ( texMatParentLocation >= 0 && layer._texParent.valid() )
                         {
                             ext->glUniformMatrix4fv( texMatParentLocation, 1, GL_FALSE, layer._texMatParent.ptr() );
+                        }
+
+                        // assign the min range
+                        if ( minRangeLocation >= 0 )
+                        {
+                            ext->glUniform1f( minRangeLocation, layer._imageLayer->getImageLayerOptions().minVisibleRange().get() );
+                        }
+
+                        // assign the max range
+                        if ( maxRangeLocation >= 0 )
+                        {
+                            ext->glUniform1f( maxRangeLocation, layer._imageLayer->getImageLayerOptions().maxVisibleRange().get() );
                         }
                     }
 
@@ -358,6 +400,16 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         if ( renderColor )
         {
             glBindTexture( GL_TEXTURE_2D, 0 );
+
+            // if a parent texture was applied, need to disable both.
+            if ( usedTexParent )
+            {
+                state.setActiveTextureUnit(
+                    activeImageUnit != _imageUnitParent ? _imageUnitParent :
+                    _imageUnit );
+
+                glBindTexture( GL_TEXTURE_2D, 0);
+            }
         }
     }
 }
@@ -382,6 +434,18 @@ MPGeometry:: COMPUTE_BOUND() const
         // update the uniform.
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
         _tileKeyValue.w() = bbox.radius();
+        
+        // make sure everyone's got a vbo.
+        MPGeometry* ncthis = const_cast<MPGeometry*>(this);
+
+        for(std::vector<Layer>::iterator i = _layers.begin(); i != _layers.end(); ++i)
+        {
+            if ( i->_texCoords.valid() && i->_texCoords->getVertexBufferObject() == 0L )
+                i->_texCoords->setVertexBufferObject( ncthis->getVertexArray()->getVertexBufferObject() );
+        }
+
+        if ( _tileCoords.valid() && _tileCoords->getVertexBufferObject() == 0L )
+            _tileCoords->setVertexBufferObject( ncthis->getVertexArray()->getVertexBufferObject() );
     }
     return bbox;
 }

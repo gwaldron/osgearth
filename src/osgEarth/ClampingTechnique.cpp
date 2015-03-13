@@ -23,6 +23,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
+#include <osgEarth/Shaders>
 
 #include <osg/Depth>
 #include <osg/PolygonMode>
@@ -75,92 +76,6 @@ namespace
 
 ClampingTechnique::TechniqueProvider ClampingTechnique::Provider = s_providerImpl;
 
-//--------------------------------------------------------------------------
-
-
-// SUPPORT_Z is a placeholder - we need to come up with another method for
-// clamping verts relative to Z without needing the current Model Matrix
-// (as we would now). Leave this #undef's until further notice.
-#define SUPPORT_Z 1
-#undef  SUPPORT_Z
-
-namespace
-{
-    const char clampingVertexShader[] =
-
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-         // uniforms from this ClampingTechnique:
-         "uniform sampler2D oe_clamp_depthTex; \n"
-         "uniform mat4 oe_clamp_cameraView2depthClip; \n"
-#ifdef SUPPORT_Z
-         "uniform mat4 oe_clamp_depthClip2depthView; \n"
-         "uniform mat4 oe_clamp_depthView2cameraView; \n"
-#else
-         "uniform mat4 oe_clamp_depthClip2cameraView; \n"
-#endif
-
-         "uniform float oe_clamp_horizonDistance; \n"
-         "varying float oe_clamp_alphaFactor; \n"
-
-         "void oe_clamp_vertex(inout vec4 VertexVIEW) \n"
-         "{ \n"
-         //   start by mocing the vertex into view space.
-         "    vec4 v_view_orig = VertexVIEW; \n"
-
-         //   if the distance to the vertex is beyond the visible horizon,
-         //   "hide" the vertex by setting its alpha component to 0.0.
-         //   if this is the case, there's no point in continuing -- so we 
-         //   would normally branch here, but since this happens on the fly 
-         //   the shader engine will run both branches regardless. So keep going.
-         "    float vert_distance = length(v_view_orig.xyz/v_view_orig.w); \n"
-         "    oe_clamp_alphaFactor = clamp(oe_clamp_horizonDistance - vert_distance, 0.0, 1.0 ); \n"
-
-         //   transform the vertex into the depth texture's clip coordinates.
-         "    vec4 v_depthClip = oe_clamp_cameraView2depthClip * v_view_orig; \n"
-
-         //   sample the depth map.
-         "    float d = texture2DProj( oe_clamp_depthTex, v_depthClip ).r; \n"
-
-         //   blank it out if it's at the far plane (no terrain visible)
-         "    if ( d > 0.999999 ) { oe_clamp_alphaFactor = 0.0; } \n"
-
-         //   now transform into depth-view space so we can apply the height-above-ground:
-         "    vec4 p_depthClip = vec4(v_depthClip.x, v_depthClip.y, d, 1.0); \n"
-
-#ifdef SUPPORT_Z
-         "    vec4 p_depthView = oe_clamp_depthClip2depthView * p_depthClip; \n"
-
-              // next, apply the vert's Z value for that ground offset.
-              // TODO: This calculation is not right!
-              //       I think perhaps the model matrix is not earth-aligned.
-         "    p_depthView.z += gl_Vertex.z*gl_Vertex.w/p_depthView.w; \n"
-
-              // then transform the vert back into camera view space.
-         "    VertexVIEW = oe_clamp_depthView2cameraView * p_depthView; \n"
-#else
-              // transform the depth-clip point back into camera view coords.
-         "    VertexVIEW = oe_clamp_depthClip2cameraView * p_depthClip; \n"
-#endif
-         "} \n";
-
-
-    const char clampingFragmentShader[] =
-
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "varying float oe_clamp_alphaFactor; \n"
-
-        "void oe_clamp_fragment(inout vec4 color)\n"
-        "{ \n"
-             // adjust the alpha component to "hide" geometry beyond the visible horizon.
-        "    color.a *= oe_clamp_alphaFactor; \n"
-        "}\n";
-
-}
-
 //---------------------------------------------------------------------------
 
 namespace
@@ -176,7 +91,7 @@ namespace
         osg::ref_ptr<osg::Uniform>   _depthClipToDepthViewUniform;
         osg::ref_ptr<osg::Uniform>   _depthViewToCamViewUniform;
 
-        osg::ref_ptr<osg::Uniform>   _horizonDistanceUniform;
+        osg::ref_ptr<osg::Uniform>   _horizonDistance2Uniform;
 
         unsigned _renderLeafCount;
 
@@ -362,6 +277,12 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     rttStateSet->setAttributeAndModes(
         new osg::PolygonMode( osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::FILL ),
         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+
+    // install a VP on the stateset that cancels out any higher-up VP code.
+    // This will prevent things like VPs on the main camera (e.g., log depth buffer)
+    // from interfering with the depth camera
+    VirtualProgram* rttVP = VirtualProgram::getOrCreate(rttStateSet);
+    rttVP->setInheritShaders(false);
     
     // attach the terrain to the camera.
     // todo: should probably protect this with a mutex.....
@@ -387,8 +308,8 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     local->_groupStateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 
     // uniform for the horizon distance (== max clamping distance)
-    local->_horizonDistanceUniform = local->_groupStateSet->getOrCreateUniform(
-        "oe_clamp_horizonDistance",
+    local->_horizonDistance2Uniform = local->_groupStateSet->getOrCreateUniform(
+        "oe_clamp_horizonDistance2",
         osg::Uniform::FLOAT );
 
     // sampler for depth map texture:
@@ -422,11 +343,16 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
 #endif
 
+    // default value for altitude offset; can be overriden by geometry.
+    local->_groupStateSet->addUniform( new osg::Uniform("oe_clamp_altitudeOffset", 0.0f) );
+
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = VirtualProgram::getOrCreate(local->_groupStateSet.get());
-    vp->setName( "ClampingTechnique" );
-    vp->setFunction( "oe_clamp_vertex",   clampingVertexShader,   ShaderComp::LOCATION_VERTEX_VIEW );
-    vp->setFunction( "oe_clamp_fragment", clampingFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
+    vp->setName( "GPUClamping" );
+
+    osgEarth::Shaders pkg;
+    pkg.loadFunction(vp, pkg.GPUClampingVertex);
+    pkg.loadFunction(vp, pkg.GPUClampingFragment);
 }
 
 
@@ -473,16 +399,6 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 
         LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
 
-#if 0
-        osg::Vec3d eye, lookat, up;
-        params._rttViewMatrix.getLookAt(eye, lookat, up);
-        OE_WARN << "rtt eye=" << eye.x() << ", " << eye.y() << ", " << eye.z() << std::endl;
-
-        double left, right, bottom, top, n, f;
-        params._rttProjMatrix.getOrtho(left, right, bottom, top, n, f);
-        OE_WARN << "rtt prj=" << left << ", " << right << ", " << bottom << ", " << top << ", " << n << ", " << f << std::endl << std::endl;
-#endif
-
         // create the depth texture (render the terrain to tex)
         params._rttCamera->accept( *cv );
 
@@ -512,7 +428,8 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
             depthViewToDepthClip;
         local._camViewToDepthClipUniform->set( cameraViewToDepthClip );
 
-        local._horizonDistanceUniform->set( float(*params._horizonDistance) );
+        float hd = (float)(*params._horizonDistance);
+        local._horizonDistance2Uniform->set( hd*hd );
 
         //OE_NOTICE << "HD = " << std::setprecision(8) << float(*params._horizonDistance) << std::endl;
 
@@ -545,7 +462,6 @@ ClampingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 
             // cull the clampable geometry.
             params._group->accept( pcv );
-            //params._group->accept( *cv ); // old way - direct traversal
 
             // done; pop the clamping shaders.
             cv->popStateSet();

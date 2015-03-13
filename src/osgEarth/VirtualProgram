@@ -32,10 +32,12 @@
 #include <map>
 
 #ifdef OSG_GLES2_AVAILABLE
+#    define GLSL_VERSION                 100
 #    define GLSL_VERSION_STR             "100"
 #    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;"
 #else
-#    define GLSL_VERSION_STR             "110" 
+#    define GLSL_VERSION                 120
+#    define GLSL_VERSION_STR             "120" 
 #    define GLSL_DEFAULT_PRECISION_FLOAT ""
 #endif
 
@@ -256,7 +258,10 @@ namespace osgEarth
         osg::Program* getTemplate() { return _template.get(); }
         const osg::Program* getTemplate() const { return _template.get(); }
 
+        /** Enable logging to the console, for debugging. */
         void setShaderLogging( bool log );
+
+        /** Enable logging to a file, for deugging. */
         void setShaderLogging( bool log, const std::string& filepath );
 
 
@@ -346,6 +351,10 @@ namespace osgEarth
         bool _logShaders;
         std::string _logPath;
 
+        // whether to use the "attribute stack memory" feature. default = true.
+        // see below.
+        bool _useStackMemory;
+
         // Mechnism for remembering whether a VP has been applied during the same frame
         // and with the same attribute stack.
         struct AttrStackMemory
@@ -377,7 +386,8 @@ namespace osgEarth
             unsigned           mask,
             ShaderMap&         accumShaderMap,
             AttribBindingList& accumAttribBindings,
-            AttribAliasMap&    accumAttribAliases);
+            AttribAliasMap&    accumAttribAliases,
+            bool&              acceptCallbacksPresent);
         
         bool readProgramCache(
             const ShaderVector& vec,

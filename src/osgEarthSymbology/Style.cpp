@@ -55,10 +55,10 @@ _uri     ( rhs._uri )
 Style&
 Style::operator = ( const Style& rhs )
 {
-    _name.clear();
-    _origType.clear();
-    _origData.clear();
-    _uri.unset();
+    _name = rhs._name;
+    _origType = rhs._origType;
+    _origData = rhs._origData;
+    _uri = rhs._uri;
     _symbols.clear();
     copySymbols(rhs);
     return *this;

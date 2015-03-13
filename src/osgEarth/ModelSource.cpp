@@ -85,11 +85,10 @@ ModelSource::~ModelSource()
 
 
 osg::Node* 
-ModelSource::createNode(const Map*            map,
-                        const osgDB::Options* dbOptions,
-                        ProgressCallback*     progress )
+ModelSource::createNode(const Map*        map,
+                        ProgressCallback* progress )
 {
-    osg::Node* node = createNodeImplementation(map, dbOptions, progress);
+    osg::Node* node = createNodeImplementation(map, progress);
     if ( node )
     {
         firePostProcessors( node );

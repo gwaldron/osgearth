@@ -145,6 +145,9 @@ namespace osgEarth
 
         void setDone();
 
+        bool isFull() const;
+        bool isEmpty() const;
+
         unsigned int getMaxSize() const { return _maxSize;}
 
         void setStamp( int value ) { _stamp = value; }
@@ -156,9 +159,8 @@ namespace osgEarth
     private:
         TaskRequestPriorityMap _requests;
         OpenThreads::Mutex _mutex;
-        OpenThreads::Mutex _addMutex;
-        OpenThreads::Condition _cond;
-        OpenThreads::Condition _addCond;
+        OpenThreads::Condition _notFull;
+        OpenThreads::Condition _notEmpty;
         volatile bool _done;
         unsigned int _maxSize;
 

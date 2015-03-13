@@ -99,7 +99,7 @@ namespace osgEarth { namespace Annotation
          * Text label content
          */
         void setText( const std::string& text );
-        const std::string& getText() const { return _text; }
+        virtual const std::string& getText() const { return _text; }
 
         /**
          * Style (for text and placement)

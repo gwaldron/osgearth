@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_SPLAT_SHADERS
 #define OSGEARTH_SPLAT_SHADERS 1
 
-#include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderLoader>
 
 namespace osgEarth { namespace Splat
 {
@@ -33,7 +33,8 @@ namespace osgEarth { namespace Splat
             VertModel,
             VertView,
             Frag,
-            GetRenderInfo;
+            FragCommon,
+            FragGetRenderInfo;
 	};
 	
 } } // namespace osgEarth::Splat

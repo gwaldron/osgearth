@@ -23,13 +23,14 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TerrainTileNode>
+#include <osgEarth/ShaderLoader>
 
 #include "NormalMapShaders"
 
 #define LC "[NormalMap] "
 
 #define NORMAL_SAMPLER "oe_nmap_normalTex"
-#define NORMAL_MATRIX  "oe_nmap_normalMatrix"
+#define NORMAL_MATRIX  "oe_nmap_normalTexMatrix"
 
 using namespace osgEarth;
 using namespace osgEarth::NormalMap;
@@ -42,25 +43,34 @@ namespace
     public:
         NormalTexInstaller(NormalMapTerrainEffect* effect, int unit)
             : _effect(effect), _unit(unit) { }
-
+        
     public: // TileNodeCallback
         void operator()(const TileKey& key, osg::Node* node)
         {
             TerrainTileNode* tile = osgEarth::findTopMostNodeOfType<TerrainTileNode>(node);
-            if ( !tile ) return;
+            if ( !tile )
+                return;
+            
+            osg::StateSet* ss = node->getOrCreateStateSet();
             osg::Texture* tex = tile->getNormalTexture();
             if ( tex )
             {
-                osg::StateSet* ss = node->getOrCreateStateSet();
-                ss->setTextureAttributeAndModes(_unit, tex, 1);
-                ss->getOrCreateUniform(NORMAL_SAMPLER, osg::Uniform::SAMPLER_2D)->set(_unit);
-                
-                osg::RefMatrix* mat = tile->getNormalTextureMatrix();
-                if ( mat )
-                {
-                    ss->getOrCreateUniform(NORMAL_MATRIX, osg::Uniform::FLOAT_MAT4)->set( *mat );
-                }
+                ss->setTextureAttribute(_unit, tex);
             }
+
+            osg::RefMatrixf* mat = tile->getNormalTextureMatrix();
+            osg::Matrixf fmat;
+            if ( mat )
+            {
+                fmat = osg::Matrixf(*mat);
+            }
+            else
+            {
+                // special marker indicating that there's no valid normal texture.
+                fmat(0,0) = 0.0f;
+            }
+
+            ss->addUniform(new osg::Uniform(NORMAL_MATRIX, fmat) );
         }
 
     private:
@@ -70,7 +80,8 @@ namespace
 }
 #endif
 
-NormalMapTerrainEffect::NormalMapTerrainEffect(const osgDB::Options* dbOptions)
+NormalMapTerrainEffect::NormalMapTerrainEffect(const osgDB::Options* dbOptions) :
+_normalMapUnit( -1 )
 {
     //nop
 }
@@ -82,22 +93,24 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
     {
         engine->requireNormalTextures();
 
-        int unit;
-        engine->getTextureCompositor()->reserveTextureImageUnit(unit);
-        //engine->addTileNodeCallback( new NormalTexInstaller(this, unit) );
+        //engine->getResources()->reserveTextureImageUnit(_normalMapUnit);
+        //OE_INFO << LC << "Normal unit = " << _normalMapUnit << "\n";
+        //engine->addTileNodeCallback( new NormalTexInstaller(this, _normalMapUnit) );
 
         // configure shaders
-        std::string vertShader = ShaderLoader::loadSource(
+        std::string vertShader = ShaderLoader::load(
             Shaders::VertexShaderFile, Shaders::VertexShaderSource);
 
-        std::string fragShader = ShaderLoader::loadSource(
+        std::string fragShader = ShaderLoader::load(
             Shaders::FragmentShaderFile, Shaders::FragmentShaderSource);
 
         // shader components
-        osg::StateSet* stateset = engine->getTerrainStateSet(); //getOrCreateStateSet();
+        osg::StateSet* stateset = engine->getTerrainStateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setFunction( "oe_nmap_vertex",   vertShader, ShaderComp::LOCATION_VERTEX_MODEL );
         vp->setFunction( "oe_nmap_fragment", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, -2.0f);
+        
+        stateset->addUniform( new osg::Uniform(NORMAL_SAMPLER, _normalMapUnit) );
     }
 }
 
@@ -114,11 +127,12 @@ NormalMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
             vp->removeShader( "oe_nmap_vertex" );
             vp->removeShader( "oe_nmap_fragment" );
         }
+        stateset->removeUniform( NORMAL_SAMPLER );
     }
     
     if ( _normalMapUnit >= 0 )
     {
-        engine->getTextureCompositor()->releaseTextureImageUnit( _normalMapUnit );
+        engine->getResources()->releaseTextureImageUnit( _normalMapUnit );
         _normalMapUnit = -1;
     }
 }

@@ -70,6 +70,15 @@ namespace osgEarth { namespace Features
             Session*                         session,
             const FeatureModelSourceOptions& options,
             FeatureNodeFactory*              factory,
+            ModelSource*                     modelSource,
+            RefNodeOperationVector*          preMergeOperations,
+            RefNodeOperationVector*          postMergeOperations);
+        
+        /* @deprecated */
+        FeatureModelGraph(
+            Session*                         session,
+            const FeatureModelSourceOptions& options,
+            FeatureNodeFactory*              factory,
             RefNodeOperationVector*          preMergeOperations,
             RefNodeOperationVector*          postMergeOperations);
 
@@ -131,6 +140,8 @@ namespace osgEarth { namespace Features
 
 
     private:
+
+        void ctor();
         
         osg::Group* createStyleGroup(
             const Style&        style, 
@@ -179,7 +190,7 @@ namespace osgEarth { namespace Features
         GeoExtent                        _usableMapExtent;
         osg::BoundingSphered             _fullWorldBound;
         bool                             _useTiledSource;
-        osgEarth::Revision               _revision;
+        osgEarth::Revision               _featureSourceRev, _modelSourceRev;
         bool                             _dirty;
         bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
@@ -202,6 +213,8 @@ namespace osgEarth { namespace Features
 
         osg::ref_ptr<RefNodeOperationVector> _preMergeOperations;
         osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
+
+        osg::observer_ptr<ModelSource> _modelSource;
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);

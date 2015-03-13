@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/Fog>
+#include <osgEarthUtil/Shaders>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/VirtualProgram>
@@ -26,35 +27,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-
-
-namespace
-{
-    const char* vs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "varying float fogFactor;\n"
-
-        "void oe_fog_vertex(inout vec4 VertexVIEW) \n"
-        "{ \n"        
-        "    float z = length( VertexVIEW.xyz );\n"
-        "    const float LOG2 = 1.442695;\n"        
-        "    fogFactor = exp2( -gl_Fog.density * gl_Fog.density * z * z * LOG2 );\n"
-        "    fogFactor = clamp(fogFactor, 0.0, 1.0);\n"
-        "} \n";
-
-    const char* fs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-        "varying float fogFactor;\n"
-
-        "void oe_fog_frag(inout vec4 color) \n"
-        "{ \n"        
-        "    color.rgb = mix( gl_Fog.color.rgb, color.rgb, fogFactor);\n"
-        "} \n";
-}
 
 
 FogEffect::FogEffect()
@@ -69,8 +41,9 @@ FogEffect::~FogEffect()
 void FogEffect::attach( osg::StateSet* stateSet )
 {
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateSet );
-    vp->setFunction( "oe_fog_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW );
-    vp->setFunction( "oe_fog_frag", fs, ShaderComp::LOCATION_FRAGMENT_LIGHTING );
+    Shaders pkg;
+    pkg.loadFunction( vp, pkg.Fog_Vertex );
+    pkg.loadFunction( vp, pkg.Fog_Fragment );
     _statesets.push_back(stateSet);
 }
 
@@ -79,8 +52,9 @@ void FogEffect::detach( osg::StateSet* stateSet )
     VirtualProgram* vp = VirtualProgram::get(stateSet);
     if ( vp )
     {
-        vp->removeShader( "oe_fog_vertex" );
-        vp->removeShader( "oe_fog_frag" );
+        Shaders pkg;
+        pkg.unloadFunction( vp, pkg.Fog_Vertex );
+        pkg.unloadFunction( vp, pkg.Fog_Fragment );
     }
 }
 

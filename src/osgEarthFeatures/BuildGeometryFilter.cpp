@@ -25,7 +25,6 @@
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/Tessellator>
 #include <osgEarth/Utils>
@@ -140,6 +139,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
         while( parts.hasMore() )
         {
             Geometry* part = parts.next();
+
+            part->removeDuplicates();
 
             // skip geometry that is invalid for a polygon
             if ( part->size() < 3 )

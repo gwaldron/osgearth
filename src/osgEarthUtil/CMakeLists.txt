@@ -39,7 +39,6 @@ SET(HEADERS_ROOT
     MGRSFormatter
     MGRSGraticule
     MouseCoordsTool
-    NormalMap
     ObjectLocator
     Ocean
     PolyhedralLineOfSight
@@ -66,14 +65,23 @@ SET(HEADERS_ROOT
 SOURCE_GROUP( Headers FILES ${HEADERS_ROOT} )
 
 
+# Generate inline shaders.
+set(SHADERS_CPP
+    "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+
 set(TARGET_GLSL
+    ContourMap.vert.glsl
+    ContourMap.frag.glsl
+    Fog.vert.glsl
+    Fog.frag.glsl
     LogDepthBuffer.vert.glsl
-    LogDepthBuffer.frag.glsl
-    LogDepthBuffer.VertOnly.vert.glsl)
+    LogDepthBuffer.VertOnly.vert.glsl    
+    LogDepthBuffer.frag.glsl )
 
-set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
+set(TARGET_IN
+    Shaders.cpp.in)
 
-configure_shaders(
+configure_shaders(            
     Shaders.cpp.in
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
@@ -105,7 +113,6 @@ SET(SOURCES_ROOT
     MGRSFormatter.cpp
     MGRSGraticule.cpp
     MouseCoordsTool.cpp
-    NormalMap.cpp
     ObjectLocator.cpp
     Ocean.cpp
     PolyhedralLineOfSight.cpp
@@ -168,6 +175,8 @@ SET(LIB_COMMON_FILES
 ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${LIB_COMMON_FILES}
+    ${TARGET_GLSL}
+    ${TARGET_IN}
 )
 
 # Setting this tells ModuleInstall not to set source groups (since we're doing it here)

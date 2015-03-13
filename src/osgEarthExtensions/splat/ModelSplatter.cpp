@@ -174,7 +174,7 @@ ModelSplatter::operator()(const TileKey& key, osg::Node* node)
         //    return;
         //}
 
-        //osg::RefMatrix* elevationTexMat = tile->getElevationTextureMatrix();
+        //osg::RefMatrixf* elevationTexMat = tile->getElevationTextureMatrix();
         //if ( !elevationTexMat )
         //{
         //    //OE_WARN << LC << "No elevation texture matrix for key " << key.str() << "\n";

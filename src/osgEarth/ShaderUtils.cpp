@@ -805,7 +805,7 @@ DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
                 "oe_discardalpha_frag",
                 code,
                 ShaderComp::LOCATION_FRAGMENT_COLORING,
-                0L, 2.0f);
+                0L, 0.95f);
         }
     }
 }

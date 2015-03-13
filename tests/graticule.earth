@@ -2,7 +2,7 @@
 osgEarth Sample - Graticule Extension.
 
 -->
-<map name="Graticule demo" type="projected">
+<map name="Graticule demo" type="geocentric">
     
     <options>
         <terrain first_lod="1"/>

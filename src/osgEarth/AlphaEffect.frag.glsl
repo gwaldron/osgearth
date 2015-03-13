@@ -2,7 +2,7 @@
 
 #pragma vp_entryPoint "oe_alphaEffect_frag"
 #pragma vp_location   "fragment_coloring"
-#pragma vp_order      "2.0"
+#pragma vp_order      "0.5"
 
 uniform float oe_alphaEffect_alpha;
 

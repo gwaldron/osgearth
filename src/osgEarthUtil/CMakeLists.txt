@@ -106,8 +106,8 @@ SET(SOURCES_ROOT
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
-    LODBlending.cpp
 	LogarithmicDepthBuffer.cpp
+    LODBlending.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp

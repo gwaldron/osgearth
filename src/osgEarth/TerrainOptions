@@ -178,6 +178,15 @@ namespace osgEarth
         const optional<unsigned>& secondaryTraversalMask() const { return _secondaryTraversalMask; }
 
         /**
+         * The minimum level of detail at which to generate elevation-based normal maps,
+         * assuming normal maps have been activated. This mitigates the overhead of 
+         * calculating normal maps for very high altitude scenes where they are no
+         * of much use. Default is 0 (zero).
+         */
+        optional<unsigned>& minNormalMapLOD() { return _minNormalMapLOD; }
+        const optional<unsigned>& minNormalMapLOD() const { return _minNormalMapLOD; }
+
+        /**
          * debugging mode
          */
         optional<bool>& debug() { return _debug; }
@@ -216,6 +225,7 @@ namespace osgEarth
         optional<ElevationInterpolation> _elevationInterpolation;
         optional<unsigned> _primaryTraversalMask;
         optional<unsigned> _secondaryTraversalMask;
+        optional<unsigned> _minNormalMapLOD;
         optional<bool> _debug;
     };
 }

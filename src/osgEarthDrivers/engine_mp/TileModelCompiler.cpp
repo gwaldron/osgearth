@@ -2119,6 +2119,7 @@ TileModelCompiler::compile(TileModel*        model,
 
     // Working data for the build.
     Data d(model, frame, _maskLayers, _modelLayers);
+    d.textureImageUnit = _textureImageUnit;
 
     GeoPoint centroid;
     model->_tileKey.getExtent().getCentroid(centroid);

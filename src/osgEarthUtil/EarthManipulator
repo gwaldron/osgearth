@@ -609,7 +609,23 @@ namespace osgEarth { namespace Util
          * @param duration_s
          *      The duration that the camera should transition when tethering to the node.
          */
-        void setTetherNode( osg::Node* node, double duration_s =0.0  );
+        void setTetherNode(osg::Node* node, double duration_s =0.0);
+        
+        /**
+         * Same as setTether(node, duration) but you also specify the final 
+         * heading, pitch, and range offset from the tethered node.
+         */
+        void setTetherNode(
+            osg::Node* nodeToTetherTo,
+            double     duration_seconds,
+            double     newHeading_degrees,
+            double     newPitch_degrees,
+            double     newRange_meters);
+
+        /**
+         * Same as calling setTetherNode(NULL).
+         */
+        void breakTether();
 
         /**
          * Sets a callback to be invoked upon a tether or tether break

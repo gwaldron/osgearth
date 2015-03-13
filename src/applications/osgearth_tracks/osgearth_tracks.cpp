@@ -63,7 +63,6 @@ using namespace osgEarth::Symbology;
 static MGRSFormatter s_format(MGRSFormatter::PRECISION_10000M);
 
 // globals for this demo
-osg::StateSet*      g_declutterStateSet = 0L;
 bool                g_showCoords        = true;
 optional<float>     g_duration          = 60.0;
 unsigned            g_numTracks         = 500;
@@ -193,6 +192,8 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
         data->setPriority( float(i) );
         track->setAnnotationData( data );
 
+        Decluttering::setEnabled(track->getOrCreateStateSet(), true);
+
         parent->addChild( track );
 
         // add a simulator for this guy
@@ -221,7 +222,7 @@ createControls( osgViewer::View* view )
     // checkbox that toggles decluttering of tracks
     struct ToggleDecluttering : public ControlEventHandler {
         void onValueChanged( Control* c, bool on ) {
-            Decluttering::setEnabled( g_declutterStateSet, on );
+            Decluttering::setEnabled( on );
         }
     };
     HBox* dcToggle = vbox->addControl( new HBox() );
@@ -319,7 +320,6 @@ main(int argc, char** argv)
     // create some track nodes.
     TrackSims trackSims;
     osg::Group* tracks = new osg::Group();
-    //HTMGroup* tracks = new HTMGroup();
     createTrackNodes( mapNode, tracks, schema, trackSims );
     root->addChild( tracks );
 
@@ -328,8 +328,6 @@ main(int argc, char** argv)
     // sorting, which looks at the AnnotationData::priority field for each drawable.
     // (By default, objects are sorted by disatnce-to-camera.) Finally, we customize 
     // a couple of the decluttering options to get the animation effects we want.
-    g_declutterStateSet = tracks->getOrCreateStateSet();
-    Decluttering::setEnabled( g_declutterStateSet, true );
     g_dcOptions = Decluttering::getOptions();
     g_dcOptions.inAnimationTime()  = 1.0f;
     g_dcOptions.outAnimationTime() = 1.0f;
@@ -342,6 +340,7 @@ main(int argc, char** argv)
 
     // configure a UI for controlling the demo
     createControls( &viewer );
-
+    
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     viewer.run();
 }

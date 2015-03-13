@@ -1,6 +1,7 @@
 #version 110
 #pragma vp_entryPoint "oe_graticule_fragment"
 #pragma vp_location   "fragment_coloring"
+#pragma vp_order      "0.6"
 
 uniform float oe_graticule_lineWidth;
 uniform float oe_graticule_resolution;

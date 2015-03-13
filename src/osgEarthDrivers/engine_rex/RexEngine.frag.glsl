@@ -28,17 +28,17 @@ void oe_rexEngine_frag(inout vec4 color)
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
     vec4 texel = mix(color, texture2D(oe_layer_tex, oe_layer_texc.st), applyImagery);
     texel.a = mix(texel.a, texel.a*oe_layer_opacity, applyImagery);
-    
+
+    float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0;
+
 #ifdef REX_LOD_BLENDING
     vec4 parentTexel = texture2D(oe_layer_parentTex, oe_layer_texcparent.st);
-    float enable = step(0.09, parentTexel.a);                  // did we get a parent texel?
-    parentTexel.rgb = mix(texel.rgb, parentTexel.rgb, enable); // if not, use the incoming color for the blend
-    parentTexel.a = mix(0.0, texel.a, enable);                 // ...and blend from alpha=0 for a fade-in effect.
-    texel = mix(texel, parentTexel, oe_rexlod_r);
+    float enable = firstLayer == 1.0 ? step(0.09, parentTexel.a) : 1.0;                  // did we get a parent texel?
+    parentTexel.a *= oe_layer_opacity;
+    texel = mix(texel, parentTexel, oe_rexlod_r * enable);
 #endif
 
 #ifdef REX_USE_BLENDING
-    float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0;
     color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer);
 #else
     color = texel;

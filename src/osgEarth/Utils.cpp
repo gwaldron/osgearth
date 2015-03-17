@@ -442,6 +442,8 @@ GeometryValidator::apply(osg::Geometry& geom)
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,1,9)
 
+    std::set<osg::BufferObject*> _vbos;
+
     osg::Geometry::ArrayList arrays;
     geom.getArrayList(arrays);
     for(unsigned i=0; i<arrays.size(); ++i)
@@ -459,6 +461,13 @@ GeometryValidator::apply(osg::Geometry& geom)
         {
             OE_WARN << LC << "Found BIND_PER_VERTEX with wrong number of elements\n";
         }
+
+        _vbos.insert( a->getVertexBufferObject() );
+    }
+
+    if ( _vbos.size() != 1 )
+    {
+        OE_WARN << LC << "Found a Geometry that uses more than one VBO (non-optimal sharing)\n";
     }
 
 #else // pre-3.1.9 ... phase out.
@@ -490,6 +499,8 @@ GeometryValidator::apply(osg::Geometry& geom)
 #endif
 
     const osg::Geometry::PrimitiveSetList& plist = geom.getPrimitiveSetList();
+    
+    std::set<osg::BufferObject*> _ebos;
 
     for( osg::Geometry::PrimitiveSetList::const_iterator p = plist.begin(); p != plist.end(); ++p )
     {
@@ -520,6 +531,7 @@ GeometryValidator::apply(osg::Geometry& geom)
                 OE_WARN << LC << "DrawElementsUByte used when numVerts > 255 (" << numVerts << ")" << std::endl;
             }
             validateDE(de_byte, 0xFF, numVerts );
+            _ebos.insert( de_byte->getElementBufferObject() );
         }
 
         osg::DrawElementsUShort* de_short = dynamic_cast<osg::DrawElementsUShort*>(pset);
@@ -530,12 +542,14 @@ GeometryValidator::apply(osg::Geometry& geom)
                 OE_WARN << LC << "DrawElementsUShort used when numVerts > 65535 (" << numVerts << ")" << std::endl;
             }
             validateDE(de_short, 0xFFFF, numVerts );
+            _ebos.insert( de_short->getElementBufferObject() );
         }
 
         osg::DrawElementsUInt* de_int = dynamic_cast<osg::DrawElementsUInt*>(pset);
         if ( de_int )
         {
             validateDE(de_int, 0xFFFFFFFF, numVerts );
+            _ebos.insert( de_int->getElementBufferObject() );
         }
 
         if ( pset->getNumIndices() == 0 )
@@ -554,6 +568,11 @@ GeometryValidator::apply(osg::Geometry& geom)
         {
             OE_WARN << LC << "Primset: non-even index count for GL_LINES\n";
         }
+    }
+
+    if ( _ebos.size() != 1 )
+    {
+        OE_WARN << LC << "Found a Geometry with non-optimal EBO sharing (!=1)\n";
     }
 }
 

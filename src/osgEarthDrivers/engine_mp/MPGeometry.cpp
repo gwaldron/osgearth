@@ -502,22 +502,6 @@ MPGeometry::releaseGLObjects(osg::State* state) const
 
     // Note: don't release the textures here; instead we release them in the
     // TileModel where they were created. -gw
-
-#if 0
-    for(unsigned i=0; i<_layers.size(); ++i)
-    {
-        const Layer& layer = _layers[i];
-
-        //Moved to TileModel since that's where the texture is created. Releasing it
-        // here could break texture sharing.
-        //if ( layer._tex.valid() )
-        //    layer._tex->releaseGLObjects( state );
-
-        // Check the refcount since texcoords can be cached/shared.
-        if ( layer._texCoords.valid() && layer._texCoords->referenceCount() == 1 )
-            layer._texCoords->releaseGLObjects( state );
-    }
-#endif
 }
 
 
@@ -536,28 +520,6 @@ MPGeometry::resizeGLObjectBuffers(unsigned maxSize)
     if ( _pcd.size() < maxSize )
     {
         _pcd.resize(maxSize);
-    }
-}
-
-namespace
-{
-    void compileBufferObject(BufferObject* bo, unsigned contextID)
-    {
-        if ( bo )
-        {
-            GLBufferObject* glBufferObject = bo->getOrCreateGLBufferObject(contextID);
-            if (glBufferObject && glBufferObject->isDirty())
-            {
-                glBufferObject->compileBuffer();
-            }
-        }
-    }
-    void compileBufferObject(osg::Array* a, unsigned contextID)
-    {
-        if ( a )
-        {
-            compileBufferObject( a->getBufferObject(), contextID );
-        }
     }
 }
 
@@ -582,57 +544,6 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
     }
 
     osg::Geometry::compileGLObjects( renderInfo );
-    
-#if 0
-    State& state = *renderInfo.getState();
-    unsigned contextID = state.getContextID();
-
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
-    osg::GLExtensions* extensions = osg::GLExtensions::Get(contextID, true);
-#else
-    GLBufferObject::Extensions* extensions = GLBufferObject::getExtensions(contextID, true);
-#endif
-    if (!extensions)
-        return;
-
-    MPGeometry* ncthis = const_cast<MPGeometry*>(this);
-
-    //ncthis->validate();
-
-    compileBufferObject(ncthis->getVertexArray(), contextID);
-    compileBufferObject(ncthis->getNormalArray(), contextID);
-
-    for(unsigned i=0; i<getVertexAttribArrayList().size(); ++i) 
-    {
-        osg::Array* a = GET_ARRAY( getVertexAttribArrayList()[i] ).get();
-        compileBufferObject( a, contextID );
-    }
-    
-    for(PrimitiveSetList::const_iterator i = _primitives.begin(); i != _primitives.end(); ++i )
-    {
-        compileBufferObject( i->get()->getBufferObject(), contextID );
-    }
-    
-    // compile the layer-specific things:
-    for(unsigned i=0; i<_layers.size(); ++i)
-    {
-        const Layer& layer = _layers[i];
-
-        compileBufferObject( layer._texCoords.get(), contextID );
-
-        if ( layer._tex.valid() )
-            layer._tex->apply( *renderInfo.getState() );
-    }
-
-    compileBufferObject( _tileCoords.get(), contextID );
-
-    if ( _elevTex.valid() )
-        _elevTex->apply( *renderInfo.getState() );
-
-    // unbind the BufferObjects
-    extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
-    extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
-#endif
 }
 
 

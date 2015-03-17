@@ -162,7 +162,6 @@ namespace
             renderTileCoords = 0L;
             ownsTileCoords   = false;
             stitchTileCoords = 0L;
-            //stitchGeom       = 0L;
             installParentData = false;
         }
 
@@ -1956,61 +1955,7 @@ namespace
     // Optimize the data. Convert all modes to GL_TRIANGLES and run the
     // critical vertex cache optimizations.
     void optimize( Data& d, bool runMeshOptimizers, ProgressCallback* progress )
-    { 
-#if 0
-        // For vertex cache optimization to work, all the arrays must be in
-        // the geometry. MP doesn't store texture/tile coords in the geometry
-        // so we need to temporarily add them.
-        //
-        // Note: the MeshOptimizer will duplicate shared arrays if it finds any.
-        // We don't want that. And since we already have pointers to our texture
-        // arrays elsewhere, it mistakingly thinks there are shared (sine they
-        // have refcount>1). So we need to UNREF them, optimize, and then RE-REF
-        // them afterwards. :/ -gw
-
-        // We also need to add the tex coords list to the main array so that all of the vertex buffer objects are shared.
-
-#if OSG_MIN_VERSION_REQUIRED(3, 1, 8) // after osg::Geometry API changes
-
-        osg::Geometry::ArrayList* surface_tdl = &d.surface->getTexCoordArrayList();
-        int u=0;
-        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
-        {
-            if ( r->_texCoords.valid() && r->_ownsTexCoords )
-            {
-                r->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-                surface_tdl->push_back( r->_texCoords.get() );
-                r->_texCoords->unref_nodelete();
-            }
-        }
-        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
-        {
-            d.renderTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-            surface_tdl->push_back( d.renderTileCoords.get() );
-            d.renderTileCoords->unref_nodelete();
-        }
-
-#else // OSG version < 3.1.8 (before osg::Geometry API changes)
-
-        osg::Geometry::ArrayDataList* surface_tdl = &d.surface->getTexCoordArrayList();
-        int u=0;
-        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
-        {
-            if ( r->_ownsTexCoords && r->_texCoords.valid() )
-            {
-                surface_tdl->push_back( osg::Geometry::ArrayData(r->_texCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
-                r->_texCoords->unref_nodelete();
-            }
-        }
-        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
-        {
-            surface_tdl->push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
-            d.renderTileCoords->unref_nodelete();
-        }
-
-#endif
-
-#endif
+    {
         // Run the index mesh optimizer.
         if (runMeshOptimizers && d.maskRecords.size() < 1)
         {
@@ -2022,29 +1967,6 @@ namespace
                 progress->stats()["index_mesh_time"] += OE_STOP_TIMER(index_mesh_time);
 
         }
-
-#if 0
-        // For some reason we need to do this here to force the vbo's to be shared....
-        d.surface->setUseVertexBufferObjects(false);
-        d.surface->setUseVertexBufferObjects(true);
-
-
-        // re-ref all the things we un-ref'd earlier.
-        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
-        {
-            if ( r->_texCoords.valid() && r->_ownsTexCoords )
-            {
-                r->_texCoords->ref();
-            }
-        }
-        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
-        {
-            d.renderTileCoords->ref();
-        }
-
-        // clear the data out of the actual geometry now that we're done optimizing.
-        surface_tdl->clear();
-#endif
     }
 
     struct CullByTraversalMask : public osg::Drawable::CullCallback
@@ -2215,24 +2137,19 @@ TileModelCompiler::compile(TileModel*        model,
         tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
     }
 
-    // performance optimizations.
-    optimize( d, _options.optimizeTiles() == true, progress );
-
     // installs the per-layer rendering data into the Geometry objects.
     installRenderData( d );
+
+    // performance optimizations.
+    optimize( d, _options.optimizeTiles() == true, progress );
     
+    // install a KdTree index if necessary
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())
     {            
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
         tile->accept(*builder);
     }
-
-#if 0
-    // allocate shared buffer objects.
-    AllocateBufferObjectsVisitor boAllocator;
-    tile->accept( boAllocator );
-#endif
 
     // Temporary solution to the OverlayDecorator techniques' inappropriate setting of
     // uniform values during the CULL traversal, which causes corruption of the RTT 

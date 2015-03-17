@@ -77,13 +77,23 @@ namespace
 {
     struct AllocateBufferObjectsVisitor : public osg::NodeVisitor
     {
+    public:
+        AllocateBufferObjectsVisitor():
+          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+        {
+        }
+
         void apply(osg::Geode& geode)
         {
             for(unsigned i=0; i<geode.getNumDrawables(); ++i)
             {
                 osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
                 if ( geom )
+                {
+                    // We disable vbo's and then re-enable them to enable sharing of all the arrays.
+                    geom->setUseVertexBufferObjects( false );
                     geom->setUseVertexBufferObjects( true );
+                }
             }
         }
     };
@@ -1943,77 +1953,82 @@ namespace
         // arrays elsewhere, it mistakingly thinks there are shared (sine they
         // have refcount>1). So we need to UNREF them, optimize, and then RE-REF
         // them afterwards. :/ -gw
-        
-		if (runMeshOptimizers && d.maskRecords.size() < 1)
-		{
+
+        // We also need to add the tex coords list to the main array so that all of the vertex buffer objects are shared.
 
 #if OSG_MIN_VERSION_REQUIRED(3, 1, 8) // after osg::Geometry API changes
 
-            osg::Geometry::ArrayList* surface_tdl = &d.surface->getTexCoordArrayList();
-            int u=0;
-            for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        osg::Geometry::ArrayList* surface_tdl = &d.surface->getTexCoordArrayList();
+        int u=0;
+        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        {
+            if ( r->_texCoords.valid() && r->_ownsTexCoords )
             {
-                if ( r->_texCoords.valid() && r->_ownsTexCoords )
-                {
-                    r->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-                    surface_tdl->push_back( r->_texCoords.get() );
-                    r->_texCoords->unref_nodelete();
-                }
+                r->_texCoords->setBinding( osg::Array::BIND_PER_VERTEX );
+                surface_tdl->push_back( r->_texCoords.get() );
+                r->_texCoords->unref_nodelete();
             }
-            if ( d.renderTileCoords.valid() && d.ownsTileCoords )
-            {
-                d.renderTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
-                surface_tdl->push_back( d.renderTileCoords.get() );
-                d.renderTileCoords->unref_nodelete();
-            }
+        }
+        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
+        {
+            d.renderTileCoords->setBinding( osg::Array::BIND_PER_VERTEX );
+            surface_tdl->push_back( d.renderTileCoords.get() );
+            d.renderTileCoords->unref_nodelete();
+        }
 
 #else // OSG version < 3.1.8 (before osg::Geometry API changes)
 
-            osg::Geometry::ArrayDataList* surface_tdl = &d.surface->getTexCoordArrayList();
-            int u=0;
-            for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        osg::Geometry::ArrayDataList* surface_tdl = &d.surface->getTexCoordArrayList();
+        int u=0;
+        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        {
+            if ( r->_ownsTexCoords && r->_texCoords.valid() )
             {
-                if ( r->_ownsTexCoords && r->_texCoords.valid() )
-                {
-                    surface_tdl->push_back( osg::Geometry::ArrayData(r->_texCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
-                    r->_texCoords->unref_nodelete();
-                }
+                surface_tdl->push_back( osg::Geometry::ArrayData(r->_texCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+                r->_texCoords->unref_nodelete();
             }
-            if ( d.renderTileCoords.valid() && d.ownsTileCoords )
-            {
-                surface_tdl->push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
-                d.renderTileCoords->unref_nodelete();
-            }
+        }
+        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
+        {
+            surface_tdl->push_back( osg::Geometry::ArrayData(d.renderTileCoords.get(), osg::Geometry::BIND_PER_VERTEX) );
+            d.renderTileCoords->unref_nodelete();
+        }
 
 #endif
 
+        // Run the index mesh optimizer.
+        if (runMeshOptimizers && d.maskRecords.size() < 1)
+        {
             OE_START_TIMER(index_mesh_time);
-			osgUtil::Optimizer o;
-			o.optimize( d.surfaceGeode, osgUtil::Optimizer::INDEX_MESH );
+            osgUtil::Optimizer o;
+            o.optimize( d.surfaceGeode, osgUtil::Optimizer::INDEX_MESH );
 
             if (progress)
                 progress->stats()["index_mesh_time"] += OE_STOP_TIMER(index_mesh_time);
-		
 
-            // re-ref all the things we un-ref'd earlier.
-            for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
-            {
-                if ( r->_texCoords.valid() && r->_ownsTexCoords )
-                {
-                    r->_texCoords->ref();
-                }
-            }
-            if ( d.renderTileCoords.valid() && d.ownsTileCoords )
-            {
-                d.renderTileCoords->ref();
-            }
-
-            // clear the data out of the actual geometry now that we're done optimizing.
-            surface_tdl->clear();
         }
+
+        // For some reason we need to do this here to force the vbo's to be shared....
+        d.surface->setUseVertexBufferObjects(false);
+        d.surface->setUseVertexBufferObjects(true);
+
+
+        // re-ref all the things we un-ref'd earlier.
+        for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
+        {
+            if ( r->_texCoords.valid() && r->_ownsTexCoords )
+            {
+                r->_texCoords->ref();
+            }
+        }
+        if ( d.renderTileCoords.valid() && d.ownsTileCoords )
+        {
+            d.renderTileCoords->ref();
+        }
+
+        // clear the data out of the actual geometry now that we're done optimizing.
+        surface_tdl->clear();
     }
-
-
 
     struct CullByTraversalMask : public osg::Drawable::CullCallback
     {

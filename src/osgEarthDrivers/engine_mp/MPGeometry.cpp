@@ -60,8 +60,8 @@ _imageUnit       ( imageUnit )
     _maxRangeUniformNameID     = osg::Uniform::getNameID( "oe_layer_maxRange" );
 
     // we will set these later (in TileModelCompiler)
-    this->setUseVertexBufferObjects(false);
     this->setUseDisplayList(false);
+    this->setUseVertexBufferObjects(true);
 }
 
 
@@ -435,6 +435,7 @@ MPGeometry:: COMPUTE_BOUND() const
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
         _tileKeyValue.w() = bbox.radius();
         
+#if 0
         // make sure everyone's got a vbo.
         MPGeometry* ncthis = const_cast<MPGeometry*>(this);
 
@@ -448,6 +449,7 @@ MPGeometry:: COMPUTE_BOUND() const
         {
             _tileCoords->setVertexBufferObject( ncthis->getVertexArray()->getVertexBufferObject() );
         }
+#endif
     }
     return bbox;
 }
@@ -498,6 +500,10 @@ MPGeometry::releaseGLObjects(osg::State* state) const
 {
     osg::Geometry::releaseGLObjects( state );
 
+    // Note: don't release the textures here; instead we release them in the
+    // TileModel where they were created. -gw
+
+#if 0
     for(unsigned i=0; i<_layers.size(); ++i)
     {
         const Layer& layer = _layers[i];
@@ -511,6 +517,7 @@ MPGeometry::releaseGLObjects(osg::State* state) const
         if ( layer._texCoords.valid() && layer._texCoords->referenceCount() == 1 )
             layer._texCoords->releaseGLObjects( state );
     }
+#endif
 }
 
 
@@ -558,8 +565,25 @@ namespace
 void 
 MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
 {
-    //osg::Geometry::compileGLObjects( renderInfo );
+    State& state = *renderInfo.getState();
     
+    // compile the image textures:
+    for(unsigned i=0; i<_layers.size(); ++i)
+    {
+        const Layer& layer = _layers[i];
+        if ( layer._tex.valid() )
+            layer._tex->apply( state );
+    }
+
+    // compile the elevation texture:
+    if ( _elevTex.valid() )
+    {
+        _elevTex->apply( state );
+    }
+
+    osg::Geometry::compileGLObjects( renderInfo );
+    
+#if 0
     State& state = *renderInfo.getState();
     unsigned contextID = state.getContextID();
 
@@ -600,12 +624,15 @@ MPGeometry::compileGLObjects( osg::RenderInfo& renderInfo ) const
             layer._tex->apply( *renderInfo.getState() );
     }
 
+    compileBufferObject( _tileCoords.get(), contextID );
+
     if ( _elevTex.valid() )
         _elevTex->apply( *renderInfo.getState() );
 
     // unbind the BufferObjects
     extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
     extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
+#endif
 }
 
 

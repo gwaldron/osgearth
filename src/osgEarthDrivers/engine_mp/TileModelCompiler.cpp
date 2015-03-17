@@ -1923,8 +1923,14 @@ namespace
                 layer._texMatParent = sbmatrix;
             }
 
-            // the surface:
-            layer._texCoords  = r->_texCoords;
+            // the texture coords:
+            layer._texCoords  = r->_texCoords.get();
+            if ( r->_texCoords.valid() )
+            {
+                int index = d.surface->getTexCoordArrayList().size();
+                d.surface->setTexCoordArray( index, r->_texCoords.get() );
+            }
+
             d.surface->_layers[order] = layer;
 
             // the mask geometries:
@@ -1933,6 +1939,13 @@ namespace
                 layer._texCoords = r->_stitchTexCoords.get();
                 mr->_geom->_layers[order] = layer;
             }
+        }
+
+        // install the tile coordinates in the geometry.
+        if ( d.surface->_tileCoords.valid() )
+        {
+            int index = d.surface->getTexCoordArrayList().size();
+            d.surface->setTexCoordArray( index, d.surface->_tileCoords.get() );
         }
 
         // elevation texture.
@@ -1944,6 +1957,7 @@ namespace
     // critical vertex cache optimizations.
     void optimize( Data& d, bool runMeshOptimizers, ProgressCallback* progress )
     { 
+#if 0
         // For vertex cache optimization to work, all the arrays must be in
         // the geometry. MP doesn't store texture/tile coords in the geometry
         // so we need to temporarily add them.
@@ -1996,6 +2010,7 @@ namespace
 
 #endif
 
+#endif
         // Run the index mesh optimizer.
         if (runMeshOptimizers && d.maskRecords.size() < 1)
         {
@@ -2008,6 +2023,7 @@ namespace
 
         }
 
+#if 0
         // For some reason we need to do this here to force the vbo's to be shared....
         d.surface->setUseVertexBufferObjects(false);
         d.surface->setUseVertexBufferObjects(true);
@@ -2028,6 +2044,7 @@ namespace
 
         // clear the data out of the actual geometry now that we're done optimizing.
         surface_tdl->clear();
+#endif
     }
 
     struct CullByTraversalMask : public osg::Drawable::CullCallback
@@ -2211,9 +2228,11 @@ TileModelCompiler::compile(TileModel*        model,
         tile->accept(*builder);
     }
 
+#if 0
     // allocate shared buffer objects.
     AllocateBufferObjectsVisitor boAllocator;
     tile->accept( boAllocator );
+#endif
 
     // Temporary solution to the OverlayDecorator techniques' inappropriate setting of
     // uniform values during the CULL traversal, which causes corruption of the RTT 

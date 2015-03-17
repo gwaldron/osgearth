@@ -699,8 +699,6 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
         {
             double y = ymin + (dy * (double)r);
 
-            GeoPoint sampleLocation(keySRS, x, y);
-
             // Collect elevations from each layer as necessary.
             bool resolved = false;
 
@@ -710,15 +708,6 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     continue;
 
                 ElevationLayer* layer = contenders[i].first.get();
-
-                // Only create a heightfield for a layer if it has data at the given location
-                // We do a non-exact hasDataAt call b/c we just want to trivially reject heightfields that
-                // obviously have no data.
-                if (layer->getTileSource() &&
-                    !layer->getTileSource()->hasDataAt(sampleLocation, false))
-                {
-                    continue;
-                }
 
                 GeoHeightField& layerHF = heightFields[i];
                 if ( !layerHF.valid() )

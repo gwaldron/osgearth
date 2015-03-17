@@ -376,6 +376,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     }
 
     // Check the memory cache first
+    bool fromMemCache = false;
     if ( _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
@@ -385,6 +386,8 @@ ElevationLayer::createHeightField(const TileKey&    key,
             result = GeoHeightField(
                 static_cast<osg::HeightField*>(cacheResult.releaseObject()),
                 key.getExtent());
+
+            fromMemCache = true;
         }
         //_memCache->dumpStats(key.getProfile()->getFullSignature());
     }
@@ -459,13 +462,6 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 hf = 0L; // to fall back on cached data if possible.
             }
 
-            // memory cache first:
-            if ( hf && _memCache.valid() )
-            {
-                CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
-                bin->write(key.str(), hf.get());
-            }
-
             // cache if necessary
             if ( hf            && 
                  cacheBin      && 
@@ -502,6 +498,13 @@ ElevationLayer::createHeightField(const TileKey&    key,
         {
             result = GeoHeightField( hf.get(), key.getExtent() );
         }
+    }
+
+    // write to mem cache if needed:
+    if ( result.valid() && !fromMemCache && _memCache.valid() )
+    {
+        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
+        bin->write(key.str(), result.getHeightField());
     }
 
     // post-processing:

@@ -208,6 +208,7 @@ TerrainLayer::init()
     if ( l2CacheSize > 0 )
     {
         _memCache = new MemCache( l2CacheSize );
+        OE_INFO << LC << "Layer " << getName() << ": L2 cache size = " << l2CacheSize << "\n";
     }
 }
 
@@ -239,13 +240,16 @@ TerrainLayer::setCache( Cache* cache )
                 Config driverConf = _runtimeOptions->driver()->getConfig();
                 Config hashConf   = driverConf - layerConf;
 
-                OE_DEBUG << LC << "Hash JSON is: " << hashConf.toJSON(false) << std::endl;
+                OE_INFO << LC << "LayerConf = " << layerConf.toJSON(false) << std::endl;
 
                 // remove cache-control properties before hashing.
                 hashConf.remove( "cache_only" );
                 hashConf.remove( "cache_enabled" );
                 hashConf.remove( "cache_policy" );
                 hashConf.remove( "cacheid" );
+                hashConf.remove( "l2_cache_size" );
+
+                OE_INFO << LC << "Hash JSON is: " << hashConf.toJSON(false) << std::endl;
                 
                 // need this, b/c data is vdatum-transformed before caching.
                 if ( layerConf.hasValue("vdatum") )

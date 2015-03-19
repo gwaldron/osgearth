@@ -92,8 +92,7 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
     {
         engine->requireNormalTextures();
 
-        engine->getResources()->reserveTextureImageUnit(_normalMapUnit);
-        OE_INFO << LC << "Normal unit = " << _normalMapUnit << "\n";
+        engine->getResources()->reserveTextureImageUnit(_normalMapUnit, "NormalMap");
         engine->addTileNodeCallback( new NormalTexInstaller(this, _normalMapUnit) );
         
         // shader components

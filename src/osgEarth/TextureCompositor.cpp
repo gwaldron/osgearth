@@ -32,7 +32,8 @@ TextureCompositor::TextureCompositor()
 }
 
 bool
-TextureCompositor::reserveTextureImageUnit(int& out_unit)
+TextureCompositor::reserveTextureImageUnit(int&        out_unit,
+                                           const char* requestor)
 {
     out_unit = -1;
     unsigned maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
@@ -44,6 +45,10 @@ TextureCompositor::reserveTextureImageUnit(int& out_unit)
         {
             _reservedUnits.insert( i );
             out_unit = i;
+            if ( requestor )
+            {
+                OE_INFO << LC << "Texture unit " << i << " reserved for " << requestor << "\n";
+            }
             return true;
         }
     }
@@ -55,4 +60,20 @@ TextureCompositor::releaseTextureImageUnit(int unit)
 {
     Threading::ScopedMutexLock exclusiveLock( _reservedUnitsMutex );
     _reservedUnits.erase( unit );
+}
+
+bool
+TextureCompositor::setTextureImageUnitOffLimits(int unit)
+{
+    Threading::ScopedMutexLock exclusiveLock( _reservedUnitsMutex );
+    if (_reservedUnits.find(unit) != _reservedUnits.end())
+    {
+        // uh-on. Already in use!
+        return false;
+    }
+    else
+    {
+        _reservedUnits.insert( unit );
+        return true;
+    }
 }

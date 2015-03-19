@@ -127,7 +127,7 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     if ( am.empty() )
         am = "clampToGround"; // default.
 
-    bool isPoly = _geom->getComponentType() == Geometry::TYPE_POLYGON;
+    bool isPoly = _geom.valid() && _geom->getComponentType() == Geometry::TYPE_POLYGON;
 
     // Resolve the correct altitude symbol. CLAMP_TO_TERRAIN is the default, but the
     // technique will depend on the geometry's type and setup.

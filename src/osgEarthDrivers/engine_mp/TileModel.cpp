@@ -422,4 +422,10 @@ TileModel::releaseGLObjects(osg::State* state) const
 {
     for(ColorDataByUID::const_iterator i = _colorData.begin(); i != _colorData.end(); ++i )
         i->second.releaseGLObjects( state );
+
+    if (_normalTexture.valid() && _normalTexture->referenceCount() == 1)
+        _normalTexture->releaseGLObjects(state);
+
+    if (_elevationTexture.valid() && _elevationTexture->referenceCount() == 1)
+        _elevationTexture->releaseGLObjects(state);
 }

@@ -30,16 +30,10 @@ using namespace osgEarth::Features;
 
 #define OV(p) "("<<p.x()<<","<<p.y()<<")"
 
+#define ATTR_LOCATION osg::Drawable::SECONDARY_COLORS
+
 namespace
 {
-    inline osg::Vec3 normalize(const osg::Vec3& in) 
-    {
-      osg::Vec3 temp(in);
-      temp.normalize();
-      return temp;
-    }
-
-
     typedef std::pair<osg::Vec3,osg::Vec3> Segment;
     
     // Given two rays (point + direction vector), find the intersection
@@ -172,9 +166,9 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     if ( autoScale )
     {
         spine = new osg::Vec3Array( *verts );
-        geom->setVertexAttribArray    ( osg::Drawable::ATTRIBUTE_6, spine );
-        geom->setVertexAttribBinding  ( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
-        geom->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
+        geom->setVertexAttribArray    ( ATTR_LOCATION, spine );
+        geom->setVertexAttribBinding  ( ATTR_LOCATION, osg::Geometry::BIND_PER_VERTEX );
+        geom->setVertexAttribNormalize( ATTR_LOCATION, false );
     }
 
     // initialize the texture coordinates.
@@ -454,7 +448,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
         geom->setColorArray( colors );
         geom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
     }
-
+     
 #if 0
     //TESTING
     osg::Image* image = osgDB::readImageFile("E:/data/textures/road.jpg");
@@ -538,7 +532,7 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
         "} \n";
 
     vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f );
-    vp->addBindAttribLocation( "oe_polyline_center", osg::Drawable::ATTRIBUTE_6 );
+    vp->addBindAttribLocation( "oe_polyline_center", ATTR_LOCATION );
 
     // add the default scaling uniform.
     // good way to test:
@@ -620,6 +614,8 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
             // turn the lines into polygons.
             osg::Geometry* geom = polygonize( verts, normals );
+
+            // install.
             geode->addDrawable( geom );
 
             // record the geometry's primitive set(s) in the index:

@@ -93,6 +93,11 @@ ResampleFilter::push( Feature* input, FilterContext& context )
 
         unsigned int origSize = part->size();
 
+        // whether to resample the virtual segment that closes an open ring:
+        bool loop =
+            part->getComponentType() == Geometry::TYPE_RING &&
+            static_cast<Ring*>(part)->isOpen();
+
         // copy the original part to a linked list. use a std::list since insert/erase
         // will not invalidate iterators.
         std::list<osg::Vec3d> plist;

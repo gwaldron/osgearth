@@ -28,6 +28,7 @@
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/Tessellator>
 #include <osgEarth/Utils>
+#include <osgEarth/Clamping>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>
@@ -960,6 +961,12 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             applyPointSymbology( geode->getOrCreateStateSet(), point );
             result->addChild( geode.get() );
         }
+    }
+
+    if (_style.has<AltitudeSymbol>() &&
+        _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+    {
+        Clamping::applyDefaultClampingAttrs(result.get());
     }
 
     if ( result->getNumChildren() > 0 )

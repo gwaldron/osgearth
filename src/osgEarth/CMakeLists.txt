@@ -51,6 +51,7 @@ SET(LIB_PUBLIC_HEADERS
     CachePolicy
     CacheSeed
     Capabilities
+    Clamping
     ClampableNode
     ClampingTechnique
     ColorFilter
@@ -201,6 +202,7 @@ set(TARGET_SRC
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp
+    Clamping.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp
     ColorFilter.cpp

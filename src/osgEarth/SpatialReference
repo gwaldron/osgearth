@@ -113,6 +113,11 @@ namespace osgEarth
             const SpatialReference* outputSRS,
             double                  latitude =0.0) const;
 
+        static double transformUnits(
+            const Distance&         distance,
+            const SpatialReference* outputSRS,
+            double                  latitude =0.0);
+
 
     public: // World transformations.
 

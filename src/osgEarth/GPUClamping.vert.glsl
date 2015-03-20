@@ -6,15 +6,24 @@
 
 #pragma include "GPUClamping.vert.lib.glsl"
 
-attribute vec4 oe_clamp_attrs;
+attribute vec4 oe_clamp_anchor;
+attribute float oe_clamp_offset;
+uniform bool oe_clamp_hasAttrs;
+
 uniform float oe_clamp_altitudeOffset;
 uniform float oe_clamp_horizonDistance2;
-uniform bool oe_clamp_hasAttrs;
 varying float oe_clamp_alpha;
+
+// From osgEarth::MapNode
+uniform bool oe_isGeocentric;
+uniform vec3 oe_ellipsoidFrame;
+uniform vec3 oe_ellipsoidFrameInverse;
 
 // clamp a vertex to the ground
 void oe_clamp_vertex(inout vec4 vertexView)
 {
+    const float ClampToAnchor = 1.0;
+
     // check distance; alpha out if its beyone the horizon distance.
     float dist2 = vertexView.z*vertexView.z;
     oe_clamp_alpha = clamp(oe_clamp_horizonDistance2 - dist2, 0.0, 1.0);
@@ -23,31 +32,61 @@ void oe_clamp_vertex(inout vec4 vertexView)
     // note: no branch divergence in the vertex shader
     if ( oe_clamp_alpha > 0.0 )
     {
-        vec4  clampedPoint;
+        bool relativeToAnchor = (oe_clamp_hasAttrs) && (oe_clamp_anchor.a == ClampToAnchor);
+
+        // if we are using the anchor point, xform it into view space to prepare
+        // for clamping.
+        vec4 pointToClamp = relativeToAnchor?
+            gl_ModelViewMatrix * vec4(oe_clamp_anchor.xyz, 1.0) :
+            vertexView;
+
+        // find the clamped point.
+        vec4 clampedPoint;
         float depth;
-        float move = 0.0f;
+        oe_getClampedViewVertex(pointToClamp, clampedPoint, depth);
+        
+        float dh = 0.0f;
 
-        bool applyClampAttrs = (oe_clamp_hasAttrs == true) && (oe_clamp_attrs.a == 1.0);
-
-        if ( applyClampAttrs )
+        if ( relativeToAnchor )
         {
-            // roof/extruded point:
-            vec4 refPoint = gl_ModelViewMatrix * vec4(oe_clamp_attrs.xyz, 1.0);
-            oe_getClampedViewVertex(refPoint, clampedPoint, depth);            
-            move = distance(refPoint, clampedPoint);
+            // if we are clamping relative to the anchor point, just adjust the HAT
+            // to account for the terrain height.
+            dh = distance(pointToClamp, clampedPoint);
         }
         else
         {
-            // base/ground point:
-            oe_getClampedViewVertex(vertexView, clampedPoint, depth);
-            vertexView.xyz = clampedPoint.xyz;
+            // if we are clamping to the terrain, the vertex becomes the
+            // clamped point.
+            vertexView.xyz = clampedPoint.xyz/clampedPoint.w;
+
+            dh = gl_Vertex.z;
+
+            if ( oe_isGeocentric )
+            {
+              #if 0 // right idea, but I cannot figure out how to properly get
+                    // length(gl_Vertex.xy) into the ellipsoidal frame.
+                vec3 vertXY2 = vec3(gl_Vertex.xy*gl_Vertex.xy,0.0) * oe_ellipsoidFrame;
+                vec3 M = sqrt(1.0 - vertXY2); // R2 = 1
+                vec3 curvatureOffset = (1.0 - M) * oe_ellipsoidFrameInverse; // R = 1
+                dh += curvatureOffset.length();
+              #else
+                float vertXY2 = gl_Vertex.x*gl_Vertex.x + gl_Vertex.y*gl_Vertex.y;
+                float R2   = oe_ellipsoidFrameInverse.x*oe_ellipsoidFrameInverse.x;
+                float m    = sqrt(R2-vertXY2);
+                float curvatureOffset = oe_ellipsoidFrameInverse.x - m;
+                dh += curvatureOffset;
+              #endif
+            }
         }
 
-        // apply the altitude offset.
-        vec3 up;
-        oe_getClampingUpVector(up);
-        
-        vertexView.xyz += up*(move + oe_clamp_altitudeOffset);
+        // apply the z-offset if there is one.
+        float hOffset = dh + oe_clamp_altitudeOffset;
+        if ( hOffset != 0.0 )
+        {
+            vec3 up;
+            oe_getClampingUpVector(up);
+            vertexView.xyz += up * hOffset;
+        }
 
         // if the clamped depth value is near the far plane, suppress drawing
         // to avoid rendering anomalies.

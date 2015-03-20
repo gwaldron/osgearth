@@ -286,6 +286,14 @@ public:
                 << "Feature Source: no valid source data available" << std::endl;
         }
 
+        if ( result )
+        {
+            if ( _options.geoInterp().isSet() )
+            {
+                result->geoInterp() = _options.geoInterp().get();
+            }
+        }
+
         return result;
     }
 
@@ -326,7 +334,7 @@ public:
                     layerHandle, 
                     this,
                     getFeatureProfile(),
-                    query, 
+                    query,
                     _options.filters() );
             }
             else
@@ -371,9 +379,7 @@ public:
             OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
             if (handle)
             {
-                const FeatureProfile* p = getFeatureProfile();
-                const SpatialReference* srs = p ? p->getSRS() : 0L;
-                result = OgrUtils::createFeature( handle, srs );
+                result = OgrUtils::createFeature( handle, getFeatureProfile() );
                 OGR_F_Destroy( handle );
             }
         }

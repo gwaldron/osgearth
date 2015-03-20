@@ -48,43 +48,6 @@ using namespace osgEarth::Symbology;
 
 //-----------------------------------------------------------------------
 
-namespace
-{
-    /**
-     * Visitor that will exaggerate the bounding box of each Drawable
-     * in the scene graph to encompass a local high and low mark. We use this
-     * to support GPU-clamping, which will move vertex positions in the 
-     * GPU code. Since OSG is not aware of this movement, it may inadvertenly
-     * cull geometry which is actually visible.
-     */
-    struct OverlayGeometryAdjuster : public osg::NodeVisitor
-    {
-        float _low, _high;
-
-        OverlayGeometryAdjuster(float low, float high)
-            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _low(low), _high(high) { }
-
-        void apply(osg::Geode& geode)
-        {
-            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
-            {
-                osg::Drawable* d = geode.getDrawable(i);
-
-                osg::BoundingBox bbox = Utils::getBoundingBox(d);
-
-                if ( bbox.zMin() > _low )
-                    bbox.expandBy( osg::Vec3f(bbox.xMin(), bbox.yMin(), _low) );
-                if ( bbox.zMax() < _high )
-                    bbox.expandBy( osg::Vec3f(bbox.xMax(), bbox.yMax(), _high) );
-                d->setInitialBound( bbox );
-                d->dirtyBound();
-            }
-        }
-    };
-}
-
-//-----------------------------------------------------------------------
-
 GeometryCompilerOptions GeometryCompilerOptions::s_defaults(true);
 
 void
@@ -270,12 +233,21 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     const IconSymbol*      icon      = style.get<IconSymbol>();
     const ModelSymbol*     model     = style.get<ModelSymbol>();
 
-    // check whether we need tessellation:
-    if ( line && line->tessellation().isSet() )
+    // Perform tessellation first.
+    if ( line )
     {
-        TemplateFeatureFilter<TessellateOperator> filter;
-        filter.setNumPartitions( *line->tessellation() );
-        sharedCX = filter.push( workingSet, sharedCX );
+        if ( line->tessellation().isSet() )
+        {
+            TemplateFeatureFilter<TessellateOperator> filter;
+            filter.setNumPartitions( *line->tessellation() );
+            sharedCX = filter.push( workingSet, sharedCX );
+        }
+        else if ( line->tessellationSize().isSet() )
+        {
+            TemplateFeatureFilter<TessellateOperator> filter;
+            filter.setMaxPartitionSize( *line->tessellationSize() );
+            sharedCX = filter.push( workingSet, sharedCX );
+        }
     }
 
     // if the style was empty, use some defaults based on the geometry type of the

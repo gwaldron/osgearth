@@ -62,12 +62,12 @@ namespace
 }
 
 
-FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH           dsHandle,
-                                   OGRLayerH                layerHandle,
-                                   const FeatureSource*     source,
-                                   const FeatureProfile*    profile,
-                                   const Symbology::Query&  query,
-                                   const FeatureFilterList& filters ) :
+FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH              dsHandle,
+                                   OGRLayerH                   layerHandle,
+                                   const FeatureSource*        source,
+                                   const FeatureProfile*       profile,
+                                   const Symbology::Query&     query,
+                                   const FeatureFilterList&    filters) :
 _source           ( source ),
 _dsHandle         ( dsHandle ),
 _layerHandle      ( layerHandle ),
@@ -227,7 +227,7 @@ FeatureCursorOGR::readChunk()
 
     if ( _nextHandleToQueue )
     {
-        osg::ref_ptr<Feature> f = OgrUtils::createFeature( _nextHandleToQueue, _profile->getSRS() );
+        osg::ref_ptr<Feature> f = OgrUtils::createFeature( _nextHandleToQueue, _profile.get() );
         if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
         {
             if ( isGeometryValid( f->getGeometry() ) )
@@ -235,7 +235,9 @@ FeatureCursorOGR::readChunk()
                 _queue.push( f );
 
                 if ( _filters.size() > 0 )
+                {
                     preProcessList.push_back( f.release() );
+                }
             }
             else
             {
@@ -254,7 +256,7 @@ FeatureCursorOGR::readChunk()
         OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
         if ( handle )
         {
-            osg::ref_ptr<Feature> f = OgrUtils::createFeature( handle, _profile->getSRS() );
+            osg::ref_ptr<Feature> f = OgrUtils::createFeature( handle, _profile.get() );
             if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
             {
                 if (isGeometryValid( f->getGeometry() ) )
@@ -262,7 +264,9 @@ FeatureCursorOGR::readChunk()
                     _queue.push( f );
 
                     if ( _filters.size() > 0 )
+                    {
                         preProcessList.push_back( f.release() );
+                    }
                 }
                 else
                 {

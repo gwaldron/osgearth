@@ -177,6 +177,11 @@ public:
             }
         }
 
+        if ( _featureProfile.valid() && _options.geoInterp().isSet() )
+        {
+            _featureProfile->geoInterp() = _options.geoInterp().get();
+        }
+
         return _featureProfile.get();
     }
 
@@ -240,16 +245,13 @@ public:
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
         if ( layer )
         {
-            FeatureProfile* fp = getFeatureProfile();
-            const SpatialReference* srs = fp ? fp->getSRS() : 0L;
-
             OGR_L_ResetReading(layer);                                
             OGRFeatureH feat_handle;
             while ((feat_handle = OGR_L_GetNextFeature( layer )) != NULL)
             {
                 if ( feat_handle )
                 {
-                    osg::ref_ptr<Feature> f = OgrUtils::createFeature( feat_handle, srs );
+                    osg::ref_ptr<Feature> f = OgrUtils::createFeature( feat_handle, getFeatureProfile() );
                     if ( f.valid() && !isBlacklisted(f->getFID()) )
                     {
                         features.push_back( f.release() );

@@ -82,10 +82,9 @@ TessellateOperator::tessellateGeo( const osg::Vec3d& p0, const osg::Vec3d& p1, u
 
 //------------------------------------------------------------------------
 
-TessellateOperator::TessellateOperator(unsigned                numPartitions,
-                                       GeoInterpolation        defaultInterp ) :
-_numPartitions( numPartitions ),
-_defaultInterp( defaultInterp )
+TessellateOperator::TessellateOperator() :
+_numPartitions( 20 ),
+_defaultInterp( GEOINTERP_GREAT_CIRCLE )
 {
     //nop
 }
@@ -101,9 +100,17 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
         return;
     }
 
+    Units featureUnits = feature->getSRS() ? feature->getSRS()->getUnits() : Units::METERS;
     bool isGeo = feature->getSRS() ? feature->getSRS()->isGeographic() : true;
-    //bool isGeo = context.profile() ? context.profile()->getSRS()->isGeographic() : true;
     GeoInterpolation interp = feature->geoInterp().isSet() ? *feature->geoInterp() : _defaultInterp;
+
+    double sliceSize = 0.0;
+    if ( _maxDistance.isSet() )
+    {
+        // copmpute the slice size in feature units.
+        double latitude = feature->getGeometry()->getBounds().center().y();
+        sliceSize = SpatialReference::transformUnits( _maxDistance.value(), feature->getSRS(), latitude );
+    }
 
     GeometryIterator i( feature->getGeometry(), true );
     while( i.hasMore() )
@@ -112,24 +119,33 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
         bool isRing = dynamic_cast<Ring*>( g ) != 0L;
 
         Vec3dVector newVerts;
-        newVerts.reserve( g->size() * _numPartitions );
 
         for( Geometry::const_iterator v = g->begin(); v != g->end(); ++v )
         {
+            unsigned slices = _numPartitions;
+
             const osg::Vec3d& p0 = *v;
             if ( v != g->end()-1 ) // not last vert
             {
+                // calculate slice count
+                if ( sliceSize > 0.0 )
+                    slices = std::max( 1u, (unsigned)((*v - *(v+1)).length() / sliceSize) );
+
                 if ( isGeo )
-                    tessellateGeo( *v, *(v+1), _numPartitions, interp, newVerts );
+                    tessellateGeo( *v, *(v+1), slices, interp, newVerts );
                 else
-                    tessellateLinear( *v, *(v+1), _numPartitions, newVerts );
+                    tessellateLinear( *v, *(v+1), slices, newVerts );
             }
             else if ( isRing )
             {
+                // calculate slice count
+                if ( sliceSize > 0.0 )
+                    slices = std::max( 1u, (unsigned)((*v - *g->begin()).length() / sliceSize) );
+
                 if ( isGeo )
-                    tessellateGeo( *v, *g->begin(), _numPartitions, interp, newVerts );
+                    tessellateGeo( *v, *g->begin(), slices, interp, newVerts );
                 else
-                    tessellateLinear( *v, *g->begin(), _numPartitions, newVerts );
+                    tessellateLinear( *v, *g->begin(), slices, newVerts );
             }
             else 
             {

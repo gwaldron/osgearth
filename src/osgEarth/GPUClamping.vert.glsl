@@ -25,8 +25,9 @@ void oe_clamp_vertex(inout vec4 vertexView)
     const float ClampToAnchor = 1.0;
 
     // check distance; alpha out if its beyone the horizon distance.
-    float dist2 = vertexView.z*vertexView.z;
-    oe_clamp_alpha = clamp(oe_clamp_horizonDistance2 - dist2, 0.0, 1.0);
+    oe_clamp_alpha = oe_isGeocentric ? 
+        clamp(oe_clamp_horizonDistance2 - (vertexView.z*vertexView.z), 0.0, 1.0) :
+        1.0;
 
     // if visible, calculate clamping.
     // note: no branch divergence in the vertex shader
@@ -90,6 +91,8 @@ void oe_clamp_vertex(inout vec4 vertexView)
 
         // if the clamped depth value is near the far plane, suppress drawing
         // to avoid rendering anomalies.
-        oe_clamp_alpha = 1.0-step(0.99999, depth);
+        const float limit = 0.9;
+        oe_clamp_alpha = 1.0 - clamp( (depth-limit)/(1.0-limit), 0.0, 1.0 );
+        //oe_clamp_alpha = 1.0-step(0.9999, depth);
     }
 }

@@ -113,6 +113,11 @@ public:
         if ( _options.url().isSet() )
         {
             _source = _options.url()->full();
+            if (osgEarth::endsWith(_source, ".zip", false) ||
+                _source.find(".zip/") != std::string::npos)
+            {
+                _source = Stringify() << "/vsizip/" << _source;
+            }
         }
         else if ( _options.connection().isSet() )
         {

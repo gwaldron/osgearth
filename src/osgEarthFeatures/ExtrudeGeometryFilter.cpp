@@ -72,6 +72,8 @@ namespace
     }
 }
 
+#define AS_VEC4(V3, X) osg::Vec4f( (V3).x(), (V3).y(), (V3).z(), X )
+
 //------------------------------------------------------------------------
 
 ExtrudeGeometryFilter::ExtrudeGeometryFilter() :
@@ -570,16 +572,12 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             
             if ( anchors )
             {
-                float x = structure.baseCentroid.x();
-                float y = structure.baseCentroid.y();
-                float z = structure.baseCentroid.z();
-
-                (*anchors)[vertptr+0].set( x, y, z, Clamping::ClampToAnchor );
-                (*anchors)[vertptr+1].set( x, y, z, Clamping::ClampToGround );
-                (*anchors)[vertptr+2].set( x, y, z, Clamping::ClampToGround );
-                (*anchors)[vertptr+3].set( x, y, z, Clamping::ClampToGround );
-                (*anchors)[vertptr+4].set( x, y, z, Clamping::ClampToAnchor );
-                (*anchors)[vertptr+5].set( x, y, z, Clamping::ClampToAnchor );
+                (*anchors)[vertptr+0] = AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor );
+                (*anchors)[vertptr+1] = AS_VEC4(structure.baseCentroid, Clamping::ClampToGround );
+                (*anchors)[vertptr+2] = AS_VEC4(structure.baseCentroid, Clamping::ClampToGround );
+                (*anchors)[vertptr+3] = AS_VEC4(structure.baseCentroid, Clamping::ClampToGround );
+                (*anchors)[vertptr+4] = AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor );
+                (*anchors)[vertptr+5] = AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor );
             }
 
             // Assign wall polygon colors.
@@ -754,6 +752,16 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
 
     osg::DrawElements* de = new osg::DrawElementsUInt(GL_LINES);
     outline->addPrimitiveSet(de);
+    
+    osg::Vec4Array* anchors = 0L;
+    if (_style.has<AltitudeSymbol>() &&
+        _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+    {
+        anchors = new osg::Vec4Array();
+        outline->setVertexAttribArray    ( Clamping::AnchorAttrLocation, anchors );
+        outline->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
+        outline->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
+    }
 
     unsigned vertptr = 0;
     for(Elevations::const_iterator e = structure.elevations.begin(); e != structure.elevations.end(); ++e)
@@ -777,11 +785,13 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( drawPost || drawCrossbar )
             {
                 verts->push_back( f->left.roof );
+                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor) );
             }
 
             if ( drawPost )
             {
                 verts->push_back( f->left.base );
+                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToGround) );
                 de->addElement(vertptr);
                 de->addElement(verts->size()-1);
             }
@@ -789,7 +799,7 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( drawCrossbar )
             {
                 verts->push_back( f->right.roof );
-
+                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor) );
                 de->addElement(vertptr);
                 de->addElement(verts->size()-1);
             }
@@ -804,8 +814,10 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
         {
             Faces::const_iterator last = e->faces.end()-1;
             verts->push_back( last->right.roof );
+            if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor) );
             de->addElement( verts->size()-1 );
             verts->push_back( last->right.base );
+            if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToGround) );
             de->addElement( verts->size()-1 );
         }
     }

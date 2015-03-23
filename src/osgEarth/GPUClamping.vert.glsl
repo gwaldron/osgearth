@@ -91,8 +91,6 @@ void oe_clamp_vertex(inout vec4 vertexView)
 
         // if the clamped depth value is near the far plane, suppress drawing
         // to avoid rendering anomalies.
-        const float limit = 0.9;
-        oe_clamp_alpha = 1.0 - clamp( (depth-limit)/(1.0-limit), 0.0, 1.0 );
-        //oe_clamp_alpha = 1.0-step(0.9999, depth);
+        oe_clamp_alpha = 1.0-step(0.9999, depth);
     }
 }

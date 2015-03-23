@@ -456,10 +456,11 @@ SplatTerrainEffect::createNoiseTexture() const
         OE_INFO << LC << "Noise: MIN = " << nmin << "; MAX = " << nmax << "\n";
     }
 
-
+#if 0
     std::string filename("noise.png");
     osgDB::writeImageFile(*image, filename);
     OE_NOTICE << LC << "Wrote noise texture to " << filename << "\n";
+#endif
 
     // make a texture:
     osg::Texture2D* tex = new osg::Texture2D( image );

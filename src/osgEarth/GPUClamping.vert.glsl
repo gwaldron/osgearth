@@ -36,9 +36,9 @@ void oe_clamp_vertex(inout vec4 vertexView)
         bool relativeToAnchor = (oe_clamp_hasAttrs) && (oe_clamp_anchor.a == ClampToAnchor);
 
         // if we are using the anchor point, xform it into view space to prepare
-        // for clamping.
+        // for clamping. Force Z=0 for anchoring.
         vec4 pointToClamp = relativeToAnchor?
-            gl_ModelViewMatrix * vec4(oe_clamp_anchor.xyz, 1.0) :
+            gl_ModelViewMatrix * vec4(oe_clamp_anchor.xy, 0.0, 1.0) :
             vertexView;
 
         // find the clamped point.
@@ -46,39 +46,47 @@ void oe_clamp_vertex(inout vec4 vertexView)
         float depth;
         oe_getClampedViewVertex(pointToClamp, clampedPoint, depth);
         
-        float dh = 0.0f;
+        float dh;
+
+        // account for the curvature of the earth as the vertex gains distance
+        // from the local origin.
+        if ( oe_isGeocentric )
+        {
+          #if 0
+            // right idea, but I cannot figure out how to properly get
+            // length(gl_Vertex.xy) into the ellipsoidal frame.
+            vec3 vertXY2 = vec3(gl_Vertex.xy*gl_Vertex.xy,0.0) * oe_ellipsoidFrame;
+            vec3 M = sqrt(1.0 - vertXY2); // R2 = 1
+            vec3 curvatureOffset = (1.0 - M) * oe_ellipsoidFrameInverse; // R = 1
+            dh = curvatureOffset.length();
+          #else
+            float vertXY2 = gl_Vertex.x*gl_Vertex.x + gl_Vertex.y*gl_Vertex.y;
+            float R2   = oe_ellipsoidFrameInverse.x*oe_ellipsoidFrameInverse.x;
+            float m    = sqrt(R2-vertXY2);
+            float curvatureOffset = oe_ellipsoidFrameInverse.x - m;
+            dh  = curvatureOffset;
+          #endif
+        }
+        else
+        {
+            dh = 0.0;
+        }
 
         if ( relativeToAnchor )
         {
-            // if we are clamping relative to the anchor point, just adjust the HAT
-            // to account for the terrain height.
-            dh = distance(pointToClamp, clampedPoint);
+            // if we are clamping relative to the anchor point, adjust the HAT based on the
+            // distance from the anchor point to the terrain. Since distance() is unsigned,
+            // we use the vector dot product to calculate whether to adjust up or down.
+            float dist = distance(pointToClamp, clampedPoint);
+            float dir = dot(clampedPoint-pointToClamp, vertexView-pointToClamp) < 0.0 ? -1.0 : 1.0;
+            dh += (dist * dir);
         }
         else
         {
             // if we are clamping to the terrain, the vertex becomes the
             // clamped point.
             vertexView.xyz = clampedPoint.xyz/clampedPoint.w;
-
-            dh = gl_Vertex.z;
-
-            if ( oe_isGeocentric )
-            {
-              #if 0
-                // right idea, but I cannot figure out how to properly get
-                // length(gl_Vertex.xy) into the ellipsoidal frame.
-                vec3 vertXY2 = vec3(gl_Vertex.xy*gl_Vertex.xy,0.0) * oe_ellipsoidFrame;
-                vec3 M = sqrt(1.0 - vertXY2); // R2 = 1
-                vec3 curvatureOffset = (1.0 - M) * oe_ellipsoidFrameInverse; // R = 1
-                dh += curvatureOffset.length();
-              #else
-                float vertXY2 = gl_Vertex.x*gl_Vertex.x + gl_Vertex.y*gl_Vertex.y;
-                float R2   = oe_ellipsoidFrameInverse.x*oe_ellipsoidFrameInverse.x;
-                float m    = sqrt(R2-vertXY2);
-                float curvatureOffset = oe_ellipsoidFrameInverse.x - m;
-                dh += curvatureOffset;
-              #endif
-            }
+            dh += gl_Vertex.z;
         }
 
         // apply the z-offset if there is one.

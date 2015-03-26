@@ -912,6 +912,10 @@ public:
         else if ( !srcProj.empty() )
         {
             src_srs = SpatialReference::create( srcProj );
+            if ( !src_srs.valid() )
+            {
+                OE_DEBUG << LC << "Cannot create source SRS from its projection info: " << srcProj << std::endl;
+            }
         }
 
         // assert SRS is present
@@ -948,17 +952,26 @@ public:
         if ( warpProfile )
         {
             profile = warpProfile;
+            if ( profile )
+            {
+                OE_DEBUG << LC << INDENT << "Using warp Profile: " << profile->toString() <<  std::endl;
+            }
         }
 
         // If we have an override profile, just take it.
         if ( getProfile() )
         {
             profile = getProfile();
+            if ( profile )
+            {
+                OE_DEBUG << LC << INDENT << "Using override Profile: " << profile->toString() <<  std::endl;
+            }
         }
 
         // If neither a warp nor override profile were provided, work out the profile from the source's own SRS.
         if ( !profile && src_srs->isGeographic() )
         {
+            OE_DEBUG << LC << INDENT << "Creating Profile from source's geographic SRS: " << src_srs->getName() <<  std::endl;
             profile = Profile::create(src_srs.get(), -180.0, -90.0, 180.0, 90.0, 2u, 1u);
             if ( !profile )
             {
@@ -1012,6 +1025,7 @@ public:
         //Get the _geotransform
         if ( getProfile() )
         {
+            OE_DEBUG << LC << INDENT << "Get geotransform from Override Profile" <<  std::endl;
             _geotransform[0] =  getProfile()->getExtent().xMin(); //Top left x
             _geotransform[1] =  getProfile()->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
             _geotransform[2] =  0;
@@ -1023,6 +1037,7 @@ public:
         }
         else
         {
+            OE_DEBUG << LC << INDENT << "Get geotransform from warped dataset" <<  std::endl;
             _warpedDS->GetGeoTransform(_geotransform);
         }
 
@@ -1123,6 +1138,7 @@ public:
 
         //Set the profile
         setProfile( profile );
+        OE_DEBUG << LC << INDENT << "Set Profile to " << (profile ? profile->toString() : "NULL") <<  std::endl;
 
         return STATUS_OK;
     }

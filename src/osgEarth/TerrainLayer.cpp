@@ -656,6 +656,7 @@ TerrainLayer::initTileSource()
     {
         if ( !_profile.valid() && !_tileSourceInitFailed )
         {
+            OE_DEBUG << LC << "Get Profile from tile source" << std::endl;
             _profile = _tileSource->getProfile();
         }
 

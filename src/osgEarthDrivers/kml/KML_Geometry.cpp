@@ -28,17 +28,18 @@
 using namespace osgEarth_kml;
 
 void 
-KML_Geometry::build( xml_node<>* parent, KMLContext& cx, Style& style)
+KML_Geometry::build( xml_node<>* parent, KMLContext& cx, const Style& baseStyle)
 {
 	for (xml_node<>* node = parent->first_node(); node; node = node->next_sibling())
 	{
-		buildChild(node, cx, style);
+		buildChild(node, cx, baseStyle);
 	}
 }
 
 void
-KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, Style& style)
+KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, const Style& baseStyle)
 {
+    Style style = baseStyle;
 	std::string name = toLower(node->name());
     if ( name == "point" )
     {

@@ -32,8 +32,8 @@ namespace osgEarth_kml
         KML_Geometry() : _extrude(false), _tessellate(false) { }
         virtual void parseCoords( xml_node<>* node, KMLContext& cx );
         virtual void parseStyle( xml_node<>* node, KMLContext& cs, Style& style );
-        virtual void build( xml_node<>* node, KMLContext& cx, Style& style );
-        void buildChild( xml_node<>* node, KMLContext& cx, Style& style );
+        virtual void build( xml_node<>* node, KMLContext& cx, const Style& baseStyle );
+        void buildChild( xml_node<>* node, KMLContext& cx, const Style& baseStyle );
         osg::ref_ptr<Geometry> _geom;
         bool _extrude, _tessellate;
     private:    

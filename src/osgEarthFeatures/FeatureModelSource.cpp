@@ -209,6 +209,8 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
        _preMergeOps.get(),
        _postMergeOps.get() );
 
+    graph->setName( this->getName() );
+
     // then run the ops on the staring graph:
     firePostProcessors( graph );
 

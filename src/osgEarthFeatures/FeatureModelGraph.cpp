@@ -46,7 +46,7 @@
 #include <algorithm>
 #include <iterator>
 
-#define LC "[FeatureModelGraph] "
+#define LC "[FeatureModelGraph] " << getName()
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -170,7 +170,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         Threading::ScopedWriteLock lock( _fmgMutex );
         UID key = ++_uid;
         _fmgRegistry[key] = graph;
-        OE_TEST << LC << "Registered FMG " << key << std::endl;
+        OE_TEST << "Registered FMG " << key << std::endl;
         return key;
     }
 
@@ -178,7 +178,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
     {
         Threading::ScopedWriteLock lock( _fmgMutex );
         _fmgRegistry.erase( uid );
-        OE_TEST << LC << "UNregistered FMG " << uid << std::endl;
+        OE_TEST << "UNregistered FMG " << uid << std::endl;
     }
 
     static FeatureModelGraph* getGraph( UID uid ) 
@@ -348,6 +348,21 @@ FeatureModelGraph::ctor()
         // provides its own levels setup)
         _useTiledSource = false;
 
+        // If the user asked for a particular tile size, give it to them!
+        if (_options.layout()->tileSize().isSet() &&
+            _options.layout()->tileSize() > 0.0 )
+        {
+            float maxRange = FLT_MAX;
+            maxRange = _options.maxRange().getOrUse(maxRange);
+            maxRange = _options.layout()->maxRange().getOrUse(maxRange);
+            maxRange = std::min( maxRange, _options.layout()->getLevel(0)->maxRange() );
+        
+            _options.layout()->tileSizeFactor() = maxRange / _options.layout()->tileSize().get();
+
+            OE_INFO << LC << "Tile size = " << (*_options.layout()->tileSize()) << " ==> TRF = " << 
+                (*_options.layout()->tileSizeFactor()) << "\n";
+        }
+
         // for each custom level, calculate the best LOD match and store it in the level
         // layout data. We will use this information later when constructing the SG in
         // the pager.
@@ -489,32 +504,37 @@ FeatureModelGraph::setupPaging()
             userMaxRange = *_options.layout()->maxRange();
         if ( _options.maxRange().isSet() )
             userMaxRange = std::min(userMaxRange, *_options.maxRange());
-
-        if (featureProfile->getTiled() )
+        
+        if ( featureProfile->getTiled() )
         {
+            // Cannot change the tile size of a tiled data source.
+            if (_options.layout()->tileSize().isSet() )
+            {
+                OE_WARN << LC << getName()
+                    << ": Illegal: you cannot set a tile size on a pre-tiled feature source. Ignoring.\n";
+            }
+
             if ( !_options.layout()->tileSizeFactor().isSet() )
             {
-                //Automatically compute the tileSizeFactor based on the max range
-                //TODO: This is no longer correct. "max_range" is actually an altitude,
-                //not a distance-from-tile, so if the user sets it we need to do something
-                //different. -gw
+                // So automatically compute the tileSizeFactor based on the max range
                 double width, height;
                 featureProfile->getProfile()->getTileDimensions(featureProfile->getFirstLevel(), width, height);
 
                 GeoExtent ext(featureProfile->getSRS(),
-                              featureProfile->getExtent().west(),
-                              featureProfile->getExtent().south(),
-                              featureProfile->getExtent().west() + width,
-                              featureProfile->getExtent().south() + height);
-                osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf);
+                                featureProfile->getExtent().west(),
+                                featureProfile->getExtent().south(),
+                                featureProfile->getExtent().west() + width,
+                                featureProfile->getExtent().south() + height);
+                osg::BoundingSphered bounds = getBoundInWorldCoords( ext, &mapf );
 
                 float tileSizeFactor = userMaxRange / bounds.radius();
                 //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
                 tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
                 OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
-                _options.layout()->tileSizeFactor() = tileSizeFactor * 1.5;
+                _options.layout()->tileSizeFactor() = tileSizeFactor * 1.5; // approx sqrt(2)
             }
         }
+
         else
         {
             // user set a max_range, but we'd not tiled. Just override the top level plod.

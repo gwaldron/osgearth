@@ -64,8 +64,9 @@ void oe_clamp_vertex(inout vec4 vertexView)
 
             if ( oe_isGeocentric )
             {
-              #if 0 // right idea, but I cannot figure out how to properly get
-                    // length(gl_Vertex.xy) into the ellipsoidal frame.
+              #if 0
+                // right idea, but I cannot figure out how to properly get
+                // length(gl_Vertex.xy) into the ellipsoidal frame.
                 vec3 vertXY2 = vec3(gl_Vertex.xy*gl_Vertex.xy,0.0) * oe_ellipsoidFrame;
                 vec3 M = sqrt(1.0 - vertXY2); // R2 = 1
                 vec3 curvatureOffset = (1.0 - M) * oe_ellipsoidFrameInverse; // R = 1

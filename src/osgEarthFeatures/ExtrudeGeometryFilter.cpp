@@ -548,6 +548,12 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
     unsigned vertptr = 0;
     bool     tex_repeats_y = wallSkin && wallSkin->isTiled() == true;
 
+    bool flatten =
+        _style.has<ExtrusionSymbol>() &&
+        _style.get<ExtrusionSymbol>()->flatten() == true;
+
+    float roofClampRef = flatten ? Clamping::ClampToAnchor : Clamping::ClampToGround;
+
     for(Elevations::const_iterator elev = structure.elevations.begin(); elev != structure.elevations.end(); ++elev)
     {
         osg::DrawElements* de = 
@@ -572,12 +578,12 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             
             if ( anchors )
             {
-                (*anchors)[vertptr+0] = AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor );
+                (*anchors)[vertptr+0] = AS_VEC4(structure.baseCentroid, roofClampRef );
                 (*anchors)[vertptr+1] = AS_VEC4(structure.baseCentroid, Clamping::ClampToGround );
                 (*anchors)[vertptr+2] = AS_VEC4(structure.baseCentroid, Clamping::ClampToGround );
                 (*anchors)[vertptr+3] = AS_VEC4(structure.baseCentroid, Clamping::ClampToGround );
-                (*anchors)[vertptr+4] = AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor );
-                (*anchors)[vertptr+5] = AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor );
+                (*anchors)[vertptr+4] = AS_VEC4(structure.baseCentroid, roofClampRef );
+                (*anchors)[vertptr+5] = AS_VEC4(structure.baseCentroid, roofClampRef );
             }
 
             // Assign wall polygon colors.
@@ -713,6 +719,12 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
     if (_style.has<AltitudeSymbol>() &&
         _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
     {
+        bool flatten =
+            _style.has<ExtrusionSymbol>() &&
+            _style.get<ExtrusionSymbol>()->flatten() == true;
+
+        float clampReference = flatten ? Clamping::ClampToAnchor : Clamping::ClampToGround;
+
         unsigned count = roof->getVertexArray()->getNumElements();
         osg::Vec4Array* anchors = new osg::Vec4Array();
         anchors->reserve( count );
@@ -722,7 +734,7 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
                 structure.baseCentroid.x(),
                 structure.baseCentroid.y(),
                 structure.baseCentroid.z(),
-                Clamping::ClampToAnchor) );
+                clampReference) );
         }
         roof->setVertexAttribArray    ( Clamping::AnchorAttrLocation, anchors );
         roof->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
@@ -754,6 +766,8 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
     outline->addPrimitiveSet(de);
     
     osg::Vec4Array* anchors = 0L;
+    float roofClampRef;
+
     if (_style.has<AltitudeSymbol>() &&
         _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
     {
@@ -761,7 +775,14 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
         outline->setVertexAttribArray    ( Clamping::AnchorAttrLocation, anchors );
         outline->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
         outline->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
+
+        bool flatten =
+            _style.has<ExtrusionSymbol>() &&
+            _style.get<ExtrusionSymbol>()->flatten() == true;
+
+        roofClampRef = flatten ? Clamping::ClampToAnchor : Clamping::ClampToGround;
     }
+
 
     unsigned vertptr = 0;
     for(Elevations::const_iterator e = structure.elevations.begin(); e != structure.elevations.end(); ++e)
@@ -785,7 +806,7 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( drawPost || drawCrossbar )
             {
                 verts->push_back( f->left.roof );
-                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor) );
+                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, roofClampRef) );
             }
 
             if ( drawPost )
@@ -799,7 +820,7 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( drawCrossbar )
             {
                 verts->push_back( f->right.roof );
-                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor) );
+                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, roofClampRef) );
                 de->addElement(vertptr);
                 de->addElement(verts->size()-1);
             }
@@ -814,7 +835,7 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
         {
             Faces::const_iterator last = e->faces.end()-1;
             verts->push_back( last->right.roof );
-            if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToAnchor) );
+            if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, roofClampRef) );
             de->addElement( verts->size()-1 );
             verts->push_back( last->right.base );
             if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToGround) );

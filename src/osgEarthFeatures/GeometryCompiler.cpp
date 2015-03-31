@@ -69,7 +69,7 @@ _useTextureArrays      ( true ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _optimizeStateSharing  ( true ),
-_optimize              ( true )
+_optimize              ( false )
 {
    //nop
 }
@@ -535,9 +535,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             osgUtil::Optimizer::MERGE_GEOMETRY |
             osgUtil::Optimizer::CHECK_GEOMETRY |
             osgUtil::Optimizer::MERGE_GEODES |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM |
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::INDEX_MESH |
             osgUtil::Optimizer::STATIC_OBJECT_DETECTION;
 
         osgUtil::Optimizer opt;

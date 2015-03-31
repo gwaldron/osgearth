@@ -37,6 +37,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>
+#include <osgUtil/Optimizer>
 
 #define LC "[GeometryCompiler] "
 
@@ -67,7 +68,8 @@ _useVertexBufferObjects( true ),
 _useTextureArrays      ( true ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
-_optimizeStateSharing  ( true )
+_optimizeStateSharing  ( true ),
+_optimize              ( true )
 {
    //nop
 }
@@ -85,7 +87,8 @@ _useVertexBufferObjects( s_defaults.useVertexBufferObjects().value() ),
 _useTextureArrays      ( s_defaults.useTextureArrays().value() ),
 _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
 _geoInterp             ( s_defaults.geoInterp().value() ),
-_optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() )
+_optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
+_optimize              ( s_defaults.optimize().value() )
 {
     fromConfig(_conf);
 }
@@ -104,6 +107,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.getIfSet   ( "use_texture_arrays", _useTextureArrays );
     conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
+    conf.getIfSet   ( "optimize", _optimize );
 
     conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -125,6 +129,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.addIfSet   ( "use_texture_arrays", _useTextureArrays );
     conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
+    conf.addIfSet   ( "optimize", _optimize );
 
     conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -516,6 +521,30 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             sscache->optimize( resultGroup.get() );
         }
     }
+
+    if ( _options.optimize() == true )
+    {
+        OE_DEBUG << LC << "optimize begin" << std::endl;
+
+        // Run the optimizer on the resulting graph
+        int optimizations =
+            osgUtil::Optimizer::FLATTEN_STATIC_TRANSFORMS |
+            osgUtil::Optimizer::REMOVE_REDUNDANT_NODES |
+            osgUtil::Optimizer::COMBINE_ADJACENT_LODS |
+            osgUtil::Optimizer::SHARE_DUPLICATE_STATE |
+            osgUtil::Optimizer::MERGE_GEOMETRY |
+            osgUtil::Optimizer::CHECK_GEOMETRY |
+            osgUtil::Optimizer::MERGE_GEODES |
+            osgUtil::Optimizer::VERTEX_POSTTRANSFORM |
+            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+            osgUtil::Optimizer::INDEX_MESH |
+            osgUtil::Optimizer::STATIC_OBJECT_DETECTION;
+
+        osgUtil::Optimizer opt;
+        opt.optimize(resultGroup.get(), optimizations);
+        OE_DEBUG << LC << "optimize complete" << std::endl;
+    }
+    
 
     //test: dump the tile to disk
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );

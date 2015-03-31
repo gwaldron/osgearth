@@ -126,6 +126,7 @@ FIND_PACKAGE(LevelDB)
 
 FIND_PACKAGE(SilverLining)
 FIND_PACKAGE(Triton)
+FIND_PACKAGE(Protobuf)
 
 # JavaScript Engines:
 SET(V8_DIR "" CACHE PATH "set to base V8 install path")

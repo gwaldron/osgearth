@@ -437,13 +437,6 @@ MPTerrainEngineNode::getPayloadStateSet()
 }
 
 void
-MPTerrainEngineNode::dirty()
-{
-    TerrainEngineNode::dirty();
-    refresh();
-}
-
-void
 MPTerrainEngineNode::createTerrain()
 {
     // scrub the heightfield cache.

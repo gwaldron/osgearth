@@ -111,8 +111,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         // override from TerrainEngineNode
         virtual void updateTextureCombining() { updateState(); }
         
-        virtual void dirty();
-
         virtual void notifyExistingNodes(TerrainTileNodeCallback* cb);
 
     private:

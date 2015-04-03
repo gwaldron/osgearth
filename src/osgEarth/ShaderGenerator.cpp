@@ -24,6 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
+#include <osgEarth/URI>
 
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -122,18 +123,26 @@ struct OSGEarthShaderGenPseudoLoader : public osgDB::ReaderWriter
 
         std::string stripped = osgDB::getNameLessExtension(filename);
 
-        OE_INFO << LC << "Loading " << stripped << " and generating shaders." << std::endl;
+        OE_INFO << LC << "Loading " << stripped << " from PLOD/Proxy and generating shaders." << std::endl;
         
-        osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(stripped, options);
-        if ( node.valid() )
+        osgEarth::ReadResult result = URI(stripped).readNode(options);
+        if ( result.succeeded() && result.getNode() != 0L )
         {
+            osg::ref_ptr<osg::Node> node = result.releaseNode();
+
             osgEarth::Registry::shaderGenerator().run(
                 node.get(),
                 osgDB::getSimpleFileName(stripped),
                 Registry::stateSetCache() );
+
+            return ReadResult( node.release() );
         }
 
-        return node.valid() ? ReadResult(node.release()) : ReadResult::ERROR_IN_READING_FILE;
+        else
+        {
+            OE_WARN << LC << "Error loading \"" << stripped << "\": " << result.errorDetail() << "\n";
+            return ReadResult::ERROR_IN_READING_FILE;
+        }
     }
 };
 

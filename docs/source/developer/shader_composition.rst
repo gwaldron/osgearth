@@ -111,7 +111,7 @@ have injected via ``VirtualProgram``.
 Adding Functions
 ~~~~~~~~~~~~~~~~
 
-From the genreated mains we saw eariler, osgEarth calls into user functions.
+From the generated mains we saw earlier, osgEarth calls into user functions.
 These don't exist in the default shaders that osgEarth generates;
 rather, they represent code that you as the developer can "inject"
 into various locations in the shader pipeline.
@@ -206,7 +206,7 @@ the pipeline at which to call it, like so::
     ....
     vp->setFunction( "color_it_red", shaderSource, ShaderComp::LOCATION_FRAGMENT_COLORING );
 
-That works. But if the funtion name or the inject location changes, you need to remember
+That works. But if the function name or the inject location changes, you need to remember
 to keep the GLSL code in sync with the ``setFunction()`` parameters.
 
 It would be easier to specify this all in once place. A ``ShaderPackage`` lets you do just that.

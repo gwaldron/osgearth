@@ -6,6 +6,9 @@ set(TARGET_GLSL
     NormalMap.vert.glsl
     NormalMap.frag.glsl)
 
+set(TARGET_IN
+    NormalMapShaders.cpp.in)
+
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
 configure_shaders(

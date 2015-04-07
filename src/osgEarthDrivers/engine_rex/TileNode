@@ -41,6 +41,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::Group* getOrCreatePayloadGroup();
 
+    public:
+
+        void notifyOfArrival(TileNode* that);
+
 
     public:
         /**
@@ -102,6 +106,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual ~TileNode() { }
 
         osg::ref_ptr<const TerrainTileModel> _model;
+
         UID                                  _engineUID;
         Revision                             _mapRevision;
         unsigned                             _lastTraversalFrame;
@@ -109,6 +114,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool                                 _dirty;
         osg::BoundingBox                     _terrainBBox;
         osg::ref_ptr<osg::Group>             _payload;
+
+        osg::ref_ptr<osg::Texture>           _elevationTexture;
+        osg::ref_ptr<osg::RefMatrixf>        _elevationTextureMatrix;
+        osg::ref_ptr<osg::Texture>           _normalTexture;
+        osg::ref_ptr<osg::RefMatrixf>        _normalTextureMatrix;
     };
 
 

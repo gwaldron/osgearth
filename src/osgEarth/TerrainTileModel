@@ -133,12 +133,17 @@ namespace osgEarth
         osg::ref_ptr<TerrainTileElevationModel>& elevationModel() { return _elevationLayer; }
         const osg::ref_ptr<TerrainTileElevationModel>& elevationModel() const { return _elevationLayer; }
 
+        /** Normal model (one) */
+        osg::ref_ptr<TerrainTileLayerModel>& normalModel() { return _normalLayer; }
+        const osg::ref_ptr<TerrainTileLayerModel>& normalModel() const { return _normalLayer; }
+
         /** Shared raster layers (bound for all rendering) */
         TerrainTileImageLayerModelVector& sharedLayers() { return _sharedLayers; }
         const TerrainTileImageLayerModelVector& sharedLayers() const { return _sharedLayers; }
 
         /** Try to find a layer */
         const TerrainTileImageLayerModel* findColorLayerByUID(const UID& uid) const;
+        const TerrainTileImageLayerModel* findSharedLayerByUID(const UID& uid) const;
         const TerrainTileImageLayerModel* findSharedLayerByName(const std::string& name) const;
 
         /** Height field neighborhood surrounding the tile */
@@ -150,12 +155,20 @@ namespace osgEarth
         void setRequiresUpdateTraverse(bool value) { _requiresUpdateTraverse = value; }
         bool requiresUpdateTraverse() const { return _requiresUpdateTraverse; }
 
+    public: // convenience getters.
+        osg::Texture* getNormalTexture() const;
+        osg::RefMatrixf* getNormalTextureMatrix() const;
+
+        osg::Texture* getElevationTexture() const;
+        osg::RefMatrixf* getElevationTextureMatrix() const;
+
     protected:
         TileKey                                 _key;
         Revision                                _revision;
         TerrainTileImageLayerModelVector        _colorLayers;
         TerrainTileImageLayerModelVector        _sharedLayers;
         osg::ref_ptr<TerrainTileElevationModel> _elevationLayer;
+        osg::ref_ptr<TerrainTileLayerModel>     _normalLayer;
         HeightFieldNeighborhood                 _heightFields;
         bool                                    _requiresUpdateTraverse;
     };

@@ -54,6 +54,8 @@ SkyNode::baseInit(const SkyOptions& options)
     _starsVisible = true;
     _minimumAmbient.set(0.0f, 0.0f, 0.0f, 0.0f);
 
+    _lightingUniformsHelper = new UpdateLightingUniformsHelper();
+
     setLighting( osg::StateAttribute::ON );
 
     if ( options.hours().isSet() )

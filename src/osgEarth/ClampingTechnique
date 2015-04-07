@@ -22,7 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/OverlayDecorator>
 
-#define OSGEARTH_CLAMPING_BIN "osgEarth::ClampingBin"
+#define OSGEARTH_CLAMPING_BIN           "osgEarth::ClampingBin"
 
 namespace osgEarth
 {

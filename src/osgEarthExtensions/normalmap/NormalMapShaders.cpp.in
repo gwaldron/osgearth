@@ -2,12 +2,13 @@
 
 #include <osgEarthExtensions/normalmap/NormalMapShaders>
 
-#define MULTILINE(...) #__VA_ARGS__
-
 using namespace osgEarth::NormalMap;
 
-const char* Shaders::VertexShaderFile     = "NormalMap.vert.glsl";
-const char* Shaders::VertexShaderSource   = MULTILINE(@NormalMap.vert.glsl@);
+Shaders::Shaders()
+{
+    Vertex = "NormalMap.vert.glsl";
+    _sources[Vertex] = OE_MULTILINE(@NormalMap.vert.glsl@);
 
-const char* Shaders::FragmentShaderFile   = "NormalMap.frag.glsl";
-const char* Shaders::FragmentShaderSource = MULTILINE(@NormalMap.frag.glsl@);
+    Fragment = "NormalMap.frag.glsl";
+    _sources[Fragment] = OE_MULTILINE(@NormalMap.frag.glsl@);
+}

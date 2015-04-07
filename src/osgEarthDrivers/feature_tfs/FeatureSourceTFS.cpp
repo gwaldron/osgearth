@@ -123,6 +123,8 @@ public:
             result->setFirstLevel( _layer.getFirstLevel());
             result->setMaxLevel( _layer.getMaxLevel());
             result->setProfile( osgEarth::Profile::create(_layer.getSRS(), _layer.getExtent().xMin(), _layer.getExtent().yMin(), _layer.getExtent().xMax(), _layer.getExtent().yMax(), 1, 1) );
+            if ( _options.geoInterp().isSet() )
+                result->geoInterp() = _options.geoInterp().get();
         }
         return result;        
     }
@@ -167,7 +169,7 @@ public:
             {
                 if ( feat_handle )
                 {
-                    osg::ref_ptr<Feature> f = OgrUtils::createFeature( feat_handle, srs );
+                    osg::ref_ptr<Feature> f = OgrUtils::createFeature( feat_handle, getFeatureProfile() );
                     if ( f.valid() && !isBlacklisted(f->getFID()) )
                     {
                         features.push_back( f.release() );

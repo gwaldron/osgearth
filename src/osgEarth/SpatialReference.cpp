@@ -1317,6 +1317,29 @@ SpatialReference::transformUnits(double                  input,
     }
 }
 
+double
+SpatialReference::transformUnits(const Distance&         distance,
+                                 const SpatialReference* outSRS,
+                                 double                  latitude)
+{
+    if ( distance.getUnits().isLinear() && outSRS->isGeographic() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputDegrees = distance.as(Units::METERS) / (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
+        return Units::DEGREES.convertTo( outSRS->getUnits(), inputDegrees );
+    }
+    else if ( distance.getUnits().isAngular() && outSRS->isProjected() )
+    {
+        double metersPerEquatorialDegree = (outSRS->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+        double inputMeters = distance.as(Units::DEGREES) * (metersPerEquatorialDegree * cos(osg::DegreesToRadians(latitude)));
+        return Units::METERS.convertTo( outSRS->getUnits(), inputMeters );
+    }
+    else // both projected or both geographic.
+    {
+        return distance.as( outSRS->getUnits() );
+    }
+}
+
 bool
 SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
                                        double&                 in_out_xmin,

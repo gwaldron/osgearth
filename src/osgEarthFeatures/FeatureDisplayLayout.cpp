@@ -80,6 +80,7 @@ _priorityScale ( 1.0f )
 void
 FeatureDisplayLayout::fromConfig( const Config& conf )
 {
+    conf.getIfSet( "tile_size",        _tileSize );
     conf.getIfSet( "tile_size_factor", _tileSizeFactor );
     conf.getIfSet( "crop_features",    _cropFeatures );
     conf.getIfSet( "priority_offset",  _priorityOffset );
@@ -95,6 +96,7 @@ Config
 FeatureDisplayLayout::getConfig() const
 {
     Config conf( "layout" );
+    conf.addIfSet( "tile_size",        _tileSize );
     conf.addIfSet( "tile_size_factor", _tileSizeFactor );
     conf.addIfSet( "crop_features",    _cropFeatures );
     conf.addIfSet( "priority_offset",  _priorityOffset );
@@ -129,12 +131,6 @@ FeatureDisplayLayout::getLevel( unsigned n ) const
     }
     return 0L;
 }
-
-//float
-//FeatureDisplayLayout::getMaxRange() const
-//{
-//    return _levels.size() > 0 ? _levels.begin()->second.maxRange() : 0.0f;
-//}
 
 unsigned
 FeatureDisplayLayout::chooseLOD( const FeatureLevel& level, double fullExtentRadius ) const

@@ -3,7 +3,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint "oe_mp_vertView"
 #pragma vp_location   "vertex_view"
-#pragma vp_order      "0"
+#pragma vp_order      "0.5"
 
 uniform float oe_layer_minRange;
 uniform float oe_layer_maxRange;
@@ -18,7 +18,8 @@ void oe_mp_vertView(inout vec4 vertexView)
     float maxFadeSpan    = min(rangeSpanSlice, oe_layer_maxRange*0.1);
     float minFadeSpan    = min(rangeSpanSlice, oe_layer_minRange*0.1);
 
-    oe_terrain_rangeOpacity =
+    oe_terrain_rangeOpacity =  
+        oe_layer_minRange >= oe_layer_maxRange  ? 1.0 : // disabled
         range > oe_layer_maxRange + maxFadeSpan ? 0.0 :
         range > oe_layer_maxRange               ? 1.0-(range-oe_layer_maxRange)/maxFadeSpan :
         range > oe_layer_minRange + minFadeSpan ? 1.0 :

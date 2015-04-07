@@ -1,18 +1,24 @@
 #version 130
 #extension GL_EXT_texture_array : enable
 
+#pragma vp_entryPoint "oe_splat_fragment"
+#pragma vp_location   "fragment_coloring"
+#pragma vp_order      "0.4"
+
+// define to activate 'edit' mode in which uniforms control
+// the splatting parameters.
+#pragma vp_define "SPLAT_EDIT"
+
+// define to activate GPU-generated noise instead of a noise texture.
+#pragma vp_define "SPLAT_GPU_NOISE"
+
+// include files
 #pragma include "Splat.types.glsl"
 #pragma include "Splat.frag.common.glsl"
 
 // ref: Splat.getRenderInfo.frag.glsl
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);
 
-// define to activate 'edit' mode in which uniforms control
-// the splatting parameters.
-#undef SPLAT_EDIT
-
-// define to activate GPU-generated noise instead of a noise texture.
-#undef SPLAT_GPU_NOISE
 
 // from the terrain engine:
 varying vec4 oe_layer_tilec;
@@ -76,14 +82,21 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 
     // start with the noise value
     float n = env.noise.x;
+	
+    // apply slope limiter, then reclamp and threshold:
+    float s;
+    if ( env.slope >= minSlope )
+        s = 1.0;
+    else if ( env.slope < 0.1*minSlope )
+        s = 0.0;
+    else
+        s = (env.slope-0.1*minSlope)/(minSlope-0.1*minSlope);
+
+    brightness *= s;
 
     // apply brightness and contrast, then reclamp
     n = clamp(((n-0.5)*contrast + 0.5) * brightness, 0.0, 1.0);
-	
-    // apply slope limiter, then reclamp and threshold:
-    float s = clamp(1.0-((env.slope-minSlope)/(minSlope)), 0.0, 1.0);
-    n = n > s ? n : 0.0;
-
+    
     // apply final threshold:
 	n = n < threshold ? 0.0 : n;
 
@@ -220,13 +233,13 @@ vec2 oe_splat_getSplatCoords(float lod)
     vec2 result = oe_layer_tilec.st * scale;
 
     // For upsampling we need to calculate an offset as well
-    float upSampleToggle = factor >= 1.0 ? 1.0 : 0.0;
+    if ( factor >= 1.0 )
     {
         vec2 a = floor(oe_tile_key.xy * invFactor);
         vec2 b = a * factor;
         vec2 c = (a+1.0) * factor;
         vec2 offset = (oe_tile_key.xy-b)/(c-b);
-        result += upSampleToggle * offset;
+        result += offset;
     }
 
     return result;
@@ -243,7 +256,7 @@ void oe_splat_fragment(inout vec4 color)
     env.range = oe_splat_range;
     env.slope = oe_splat_getSlope();
     env.noise = oe_splat_getNoise(noiseCoords);
-    env.elevation = texture2D(oe_terrain_tex, (oe_terrain_tex_matrix*oe_layer_tilec).st).r;
+    env.elevation = 0.0; // usused atm. //texture2D(oe_terrain_tex, (oe_terrain_tex_matrix*oe_layer_tilec).st).r;
 
     // Mapping of view ranges to splat texture levels of detail.
 #define RANGE_COUNT 9

@@ -317,6 +317,22 @@ void osg_LightSourceParameters::setUniformsFromOsgLight(const osg::Light* light,
                                                       light->getSpecular().z() * frontSpecular.z(),
                                                       light->getSpecular().w() * frontSpecular.w()));
         }
+        else {
+            _frontLightProduct.ambient->set(osg::Vec4(light->getAmbient().x(),
+                                                      light->getAmbient().y(),
+                                                      light->getAmbient().z(),
+                                                      light->getAmbient().w()));
+            
+            _frontLightProduct.diffuse->set(osg::Vec4(light->getDiffuse().x(),
+                                                      light->getDiffuse().y(),
+                                                      light->getDiffuse().z(),
+                                                      light->getDiffuse().w()));
+            
+            _frontLightProduct.specular->set(osg::Vec4(light->getSpecular().x(),
+                                                      light->getSpecular().y(),
+                                                      light->getSpecular().z(),
+                                                      light->getSpecular().w()));
+        }
     }
 }
 
@@ -789,7 +805,7 @@ DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
                 "oe_discardalpha_frag",
                 code,
                 ShaderComp::LOCATION_FRAGMENT_COLORING,
-                0L, 2.0f);
+                0L, 0.95f);
         }
     }
 }

@@ -1533,7 +1533,7 @@ namespace
         //Create a dataset from the source image
         GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
 
-        OE_DEBUG << LC << "Source image is " << srcImage->s() << "x" << srcImage->t() << std::endl;
+        OE_DEBUG << LC << "Source image is " << srcImage->s() << "x" << srcImage->t() << " in " << srcWKT << std::endl;
 
 
         if (width == 0 || height == 0)
@@ -1550,7 +1550,7 @@ namespace
                 0);
             GDALDestroyGenImgProjTransformer(transformer);
         }
-	    OE_DEBUG << "Creating warped output of " << width <<"x" << height << std::endl;
+	    OE_DEBUG << "Creating warped output of " << width <<"x" << height << " in " << destWKT << std::endl;
        
         GDALDataset* destDS = createMemDS(width, height, destMinX, destMinY, destMaxX, destMaxY, destWKT);
 

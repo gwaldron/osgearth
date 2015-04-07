@@ -22,6 +22,7 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/Decluttering>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/Horizon>
 #include <osgEarth/CullingUtils>
 #include <osg/AutoTransform>
 #include <osg/MatrixTransform>
@@ -84,9 +85,9 @@ namespace osgEarth { namespace Annotation
         const osg::Vec3d& getLocalOffset() const;
 
         /**
-         * Enables or disable automatic horizon culling
+         * Enables or disable automatic horizon culling for geocentric maps
          */
-        void setHorizonCulling( bool value );
+        void setHorizonCulling(bool value);
         bool getHorizonCulling() const;
 
         /**
@@ -125,13 +126,13 @@ namespace osgEarth { namespace Annotation
         osg::AutoTransform*            _autoxform;
         osg::MatrixTransform*          _matxform;
         osg::Group*                    _attachPoint;
-        bool                           _horizonCulling;
         bool                           _occlusionCulling;
         optional< double >             _occlusionCullingMaxAltitude;
         GeoPoint                       _mapPosition;
         osg::Vec3d                     _localOffset;
+        bool                           _horizonCullingRequested;
 
-        osg::ref_ptr< CullNodeByHorizon > _horizonCuller;
+        osg::ref_ptr< HorizonCullCallback >      _horizonCuller;
         osg::ref_ptr< OcclusionCullingCallback > _occlusionCuller;
 
         void init();

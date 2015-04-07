@@ -265,6 +265,17 @@ namespace osgEarth
         DataExtentList& getDataExtents() { return _dataExtents; }
 
         /**
+         * Call when you modify the data extents list.
+         */
+        void dirtyDataExtents();
+
+        /**
+         * Gets the union of all the data extents
+         */
+        const GeoExtent& getDataExtentsUnion() const;
+
+
+        /**
          * Creates an image for the given TileKey. The TileKey's profile must match
          * the profile of the TileSource.
          */
@@ -372,6 +383,32 @@ namespace osgEarth
          * Whether the tile source can generate data within the specified extent
          */
         virtual bool hasDataInExtent( const GeoExtent& extent ) const;
+
+        /**
+         * Whether the tile source has data at the given location
+         * @param location
+         *     The location to check
+         * @param exact
+         *     If true, check all the data extents for this TileSource.  If false, just do a quick check of the union of all the data extents.
+         */
+        virtual bool hasDataAt( const GeoPoint& location, bool exact = false) const;
+
+        /**
+         * Returns (in "output") the TileKey of the best available data that intersects
+         * the input TileKey (according to the DataExtents). For example, if the highest
+         * DataExtent reports an LOD of 9, and the input TileKey is LOD 13, the function
+         * will return the LOD 9 ancestor of the input TileKey IF they intersect.
+         *
+         * If you DataExtents or LOD information is available, the function copies the
+         * input to the output and returns true.
+         *
+         * @param key    TileKey to test
+         * @param output Corresponding ancestor written here if available
+         * @return True if an intersecting key was found; false if not.
+         */
+        virtual bool getBestAvailableTileKey(
+            const osgEarth::TileKey& key,
+            osgEarth::TileKey&       output) const;
 
         /**
          * Whether this TileSource produces tiles whose data can change after
@@ -495,6 +532,7 @@ namespace osgEarth
         osg::ref_ptr<MemCache> _memCache;
 
         DataExtentList _dataExtents;
+        GeoExtent      _dataExtentsUnion;
         Status         _status;
         Mode           _mode;
     };

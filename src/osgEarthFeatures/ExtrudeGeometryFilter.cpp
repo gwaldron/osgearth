@@ -24,15 +24,16 @@
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/ECEF>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
+#include <osgEarth/Clamping>
 #include <osgEarth/Utils>
+#include <osgEarth/Tessellator>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
 #include <osgUtil/SmoothingVisitor>
+#include <osgUtil/Simplifier>
 #include <osg/LineWidth>
 #include <osg/PolygonOffset>
 
@@ -71,16 +72,18 @@ namespace
     }
 }
 
+#define AS_VEC4(V3, X) osg::Vec4f( (V3).x(), (V3).y(), (V3).z(), X )
+
 //------------------------------------------------------------------------
 
 ExtrudeGeometryFilter::ExtrudeGeometryFilter() :
-_maxAngle_deg       ( 5.0 ),
-_mergeGeometry      ( true ),
-_wallAngleThresh_deg( 60.0 ),
-_styleDirty         ( true ),
-_makeStencilVolume  ( false ),
+_maxAngle_deg          ( 5.0 ),
+_mergeGeometry         ( true ),
+_wallAngleThresh_deg   ( 60.0 ),
+_styleDirty            ( true ),
+_makeStencilVolume     ( false ),
 _useVertexBufferObjects( true ),
-_useTextureArrays( true )
+_useTextureArrays      ( true )
 {
     //NOP
 }
@@ -184,7 +187,6 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
 bool
 ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
                                       double                  height,
-                                      double                  heightOffset,
                                       bool                    flatten,
                                       const SkinResource*     wallSkin,
                                       const SkinResource*     roofSkin,
@@ -236,9 +238,13 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
         }
     }
 
+    osg::Vec2d c = input->getBounds().center2d();
+    osg::Vec3d centroid(c.x(), c.y(), minLoc.z());
+    transformAndLocalize(centroid, srs, structure.baseCentroid, mapSRS, _world2local, makeECEF );
+
     // apply the height offsets
-    height    -= heightOffset;
-    targetLen -= heightOffset;
+    //height    -= heightOffset;
+    //targetLen -= heightOffset;
     
     float   roofRotation  = 0.0f;
     Bounds  roofBounds;
@@ -527,8 +533,26 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
         walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
     }
 
+    osg::Vec4Array* anchors = 0L;
+    
+    // If GPU clamping is in effect, create clamping attributes.
+    if (_style.has<AltitudeSymbol>() &&
+        _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+    {
+        anchors = new osg::Vec4Array( numWallVerts );
+        walls->setVertexAttribArray    ( Clamping::AnchorAttrLocation, anchors );
+        walls->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
+        walls->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
+    }
+
     unsigned vertptr = 0;
     bool     tex_repeats_y = wallSkin && wallSkin->isTiled() == true;
+
+    bool flatten =
+        _style.has<ExtrusionSymbol>() &&
+        _style.get<ExtrusionSymbol>()->flatten() == true;
+
+    float roofClampRef = flatten ? Clamping::ClampToAnchor : Clamping::ClampToGround;
 
     for(Elevations::const_iterator elev = structure.elevations.begin(); elev != structure.elevations.end(); ++elev)
     {
@@ -551,34 +575,26 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             (*verts)[vertptr+3] = f->right.base;
             (*verts)[vertptr+4] = f->right.roof;
             (*verts)[vertptr+5] = f->left.roof;
+            
+            if ( anchors )
+            {
+                (*anchors)[vertptr+0] = AS_VEC4(structure.baseCentroid, roofClampRef );
+                (*anchors)[vertptr+1] = AS_VEC4(structure.baseCentroid, Clamping::ClampToGround );
+                (*anchors)[vertptr+2] = AS_VEC4(structure.baseCentroid, Clamping::ClampToGround );
+                (*anchors)[vertptr+3] = AS_VEC4(structure.baseCentroid, Clamping::ClampToGround );
+                (*anchors)[vertptr+4] = AS_VEC4(structure.baseCentroid, roofClampRef );
+                (*anchors)[vertptr+5] = AS_VEC4(structure.baseCentroid, roofClampRef );
+            }
 
             // Assign wall polygon colors.
             if (useColor)
             {
-#if 0
-                // experimental: apply some ambient occlusion to tight inside corners                
-                float bL = f->left.cosAngle > 0.0 ? 1.0 : (1.0+f->left.cosAngle);
-                float bR = f->right.cosAngle > 0.0 ? 1.0 : (1.0+f->right.cosAngle);
-
-                osg::Vec4f leftColor      = Color(wallColor).brightness(bL);
-                osg::Vec4f leftBaseColor  = Color(wallBaseColor).brightness(bL);
-                osg::Vec4f rightColor     = Color(wallColor).brightness(bR);
-                osg::Vec4f rightBaseColor = Color(wallBaseColor).brightness(bR);
-
-                (*colors)[vertptr+0] = leftColor;
-                (*colors)[vertptr+1] = leftBaseColor;
-                (*colors)[vertptr+2] = rightBaseColor;
-                (*colors)[vertptr+3] = rightBaseColor;
-                (*colors)[vertptr+4] = rightColor;
-                (*colors)[vertptr+5] = leftColor;
-#else
                 (*colors)[vertptr+0] = wallColor;
                 (*colors)[vertptr+1] = wallBaseColor;
                 (*colors)[vertptr+2] = wallBaseColor;
                 (*colors)[vertptr+3] = wallBaseColor;
                 (*colors)[vertptr+4] = wallColor;
                 (*colors)[vertptr+5] = wallColor;
-#endif
             }
 
             // Calculate texture coordinates:
@@ -617,7 +633,9 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             }
 
             for(int i=0; i<6; ++i)
+            {
                 de->addElement( vertptr+i );
+            }
         }
     }
     
@@ -678,7 +696,6 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
         }
         roof->addPrimitiveSet( new osg::DrawArrays(GL_LINE_LOOP, elevptr, vertptr-elevptr) );
     }
-    
 
     osg::Vec3Array* normal = new osg::Vec3Array(verts->size());
     roof->setNormalArray( normal );
@@ -686,10 +703,43 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
     normal->assign( verts->size(), osg::Vec3(0,0,1) );
 
     // Tessellate the roof lines into polygons.
-    osgUtil::Tessellator tess;
-    tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
-    tess.retessellatePolygons( *roof );
+    osgEarth::Tessellator oeTess;
+    if (!oeTess.tessellateGeometry(*roof))
+    {
+        //fallback to osg tessellator
+        OE_DEBUG << LC << "Falling back on OSG tessellator (" << roof->getName() << ")" << std::endl;
+
+        osgUtil::Tessellator tess;
+        tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+        tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
+        tess.retessellatePolygons( *roof );
+    }
+
+    // If GPU clamping is in effect, add the calmping attributes. 
+    if (_style.has<AltitudeSymbol>() &&
+        _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+    {
+        bool flatten =
+            _style.has<ExtrusionSymbol>() &&
+            _style.get<ExtrusionSymbol>()->flatten() == true;
+
+        float clampReference = flatten ? Clamping::ClampToAnchor : Clamping::ClampToGround;
+
+        unsigned count = roof->getVertexArray()->getNumElements();
+        osg::Vec4Array* anchors = new osg::Vec4Array();
+        anchors->reserve( count );
+        for(unsigned i=0; i<count; ++i)
+        {
+            anchors->push_back( osg::Vec4f(
+                structure.baseCentroid.x(),
+                structure.baseCentroid.y(),
+                structure.baseCentroid.z(),
+                clampReference) );
+        }
+        roof->setVertexAttribArray    ( Clamping::AnchorAttrLocation, anchors );
+        roof->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
+        roof->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
+    }
 
     return true;
 }
@@ -714,6 +764,25 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
 
     osg::DrawElements* de = new osg::DrawElementsUInt(GL_LINES);
     outline->addPrimitiveSet(de);
+    
+    osg::Vec4Array* anchors = 0L;
+    float roofClampRef;
+
+    if (_style.has<AltitudeSymbol>() &&
+        _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+    {
+        anchors = new osg::Vec4Array();
+        outline->setVertexAttribArray    ( Clamping::AnchorAttrLocation, anchors );
+        outline->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
+        outline->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
+
+        bool flatten =
+            _style.has<ExtrusionSymbol>() &&
+            _style.get<ExtrusionSymbol>()->flatten() == true;
+
+        roofClampRef = flatten ? Clamping::ClampToAnchor : Clamping::ClampToGround;
+    }
+
 
     unsigned vertptr = 0;
     for(Elevations::const_iterator e = structure.elevations.begin(); e != structure.elevations.end(); ++e)
@@ -737,11 +806,13 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( drawPost || drawCrossbar )
             {
                 verts->push_back( f->left.roof );
+                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, roofClampRef) );
             }
 
             if ( drawPost )
             {
                 verts->push_back( f->left.base );
+                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToGround) );
                 de->addElement(vertptr);
                 de->addElement(verts->size()-1);
             }
@@ -749,7 +820,7 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( drawCrossbar )
             {
                 verts->push_back( f->right.roof );
-
+                if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, roofClampRef) );
                 de->addElement(vertptr);
                 de->addElement(verts->size()-1);
             }
@@ -764,8 +835,10 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
         {
             Faces::const_iterator last = e->faces.end()-1;
             verts->push_back( last->right.roof );
+            if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, roofClampRef) );
             de->addElement( verts->size()-1 );
             verts->push_back( last->right.base );
+            if ( anchors ) anchors->push_back( AS_VEC4(structure.baseCentroid, Clamping::ClampToGround) );
             de->addElement( verts->size()-1 );
         }
     }
@@ -873,13 +946,6 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 height = *_extrusionSymbol->height();
             }
 
-            // calculate the height offset from the base:
-            float offset = 0.0;
-            if ( _heightOffsetExpr.isSet() )
-            {
-                offset = input->eval( _heightOffsetExpr.mutable_value(), &context );
-            }
-
             osg::ref_ptr<osg::StateSet> wallStateSet;
             osg::ref_ptr<osg::StateSet> roofStateSet;
 
@@ -890,7 +956,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( _wallResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_wallSkinSymbol.get() );
-                    querySymbol.objectHeight() = fabs(height) - offset;
+                    querySymbol.objectHeight() = fabs(height);
                     wallSkin = _wallResLib->getSkin( &querySymbol, wallSkinPRNG, context.getDBOptions() );
                 }
 
@@ -921,8 +987,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             buildStructure(
                 part, 
-                height, 
-                offset, 
+                height,
                 _extrusionSymbol->flatten().get(),
                 wallSkin,
                 roofSkin,
@@ -1096,7 +1161,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
                 //i->second->accept( vco );
             }
             else
-            {                
+            {
                 //TODO: try this -- issues: it won't work on lines, and will it screw up
                 // feature indexing?
                 osgUtil::Optimizer o;
@@ -1112,12 +1177,15 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     // parent geometry with a delocalizer (if necessary)
     osg::Group* group = createDelocalizeGroup();
     
-    // combines geometries where the statesets are the same.
+    // add all the geodes
     for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
     {
         group->addChild( i->second.get() );
     }
     _geodes.clear();
+
+    // set a uniform indiciating that clamping attributes are available.
+    group->getOrCreateStateSet()->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, true) );
 
     // if we drew outlines, apply a poly offset too.
     if ( _outlineSymbol.valid() )

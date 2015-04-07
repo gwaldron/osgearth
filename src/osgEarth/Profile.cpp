@@ -748,10 +748,10 @@ Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
     while( true )
     {
         double prevDelta = delta;
-
-        currLOD++;
+        
         double w, h;
         getTileDimensions(currLOD, w, h);
+
         delta = osg::absolute( h - rhsTargetHeight );
         if (delta < prevDelta)
         {
@@ -763,7 +763,7 @@ Profile::getEquivalentLOD( const Profile* rhsProfile, unsigned rhsLOD ) const
             // We are further away from the previous lod so stop.
             break;
         }        
-        destLOD = currLOD;
+        currLOD++;
     }
     return destLOD;
 }

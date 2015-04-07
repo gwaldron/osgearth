@@ -52,7 +52,7 @@ namespace
         }
     };
 
-        // Scale and bias matrices, one for each TileKey quadrant.
+    // Scale and bias matrices, one for each TileKey quadrant.
     const osg::Matrixf scaleBias[4] =
     {
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.5f,0,1.0f),
@@ -144,7 +144,7 @@ TileGroupFactory::createTileNode(TerrainTileModel* model,
         }
     }
 
-    if ( model->elevationModel() )
+    if ( model->elevationModel().valid() )
     {
         const TerrainTileElevationModel* em = model->elevationModel();
         
@@ -165,6 +165,28 @@ TileGroupFactory::createTileNode(TerrainTileModel* model,
                 elevMatrix ));
 
             // (note: sampler uniform is set at the top level by the engine)
+        }
+    }
+
+    if ( model->normalModel().valid() )
+    {
+        const TerrainTileLayerModel* m = model->normalModel().get();
+
+        if ( m->getTexture() )
+        {
+            osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+
+            stateSet->setTextureAttribute(
+                _renderBindings.normal().unit(),
+                m->getTexture() );
+
+            osg::Matrixf matrix;
+            if ( m->getMatrix() )
+                matrix = *(m->getMatrix());
+
+            stateSet->addUniform( new osg::Uniform(
+                _renderBindings.normal().matrixName().c_str(),
+                matrix ));
         }
     }
     

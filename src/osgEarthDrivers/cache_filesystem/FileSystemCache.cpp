@@ -216,7 +216,11 @@ namespace
     bool
     FileSystemCacheBin::binValidForReading(bool silent)
     {
-        if ( !_binPathExists )
+        if ( !_rw.valid() )
+        {
+            _ok = false;
+        }
+        else if ( !_binPathExists )
         {
             if ( osgDB::fileExists(_binPath) )
             {
@@ -241,7 +245,11 @@ namespace
     bool
     FileSystemCacheBin::binValidForWriting(bool silent)
     {
-        if ( !_binPathExists )
+        if ( !_rw.valid() )
+        {
+            _ok = false;
+        }
+        else if ( !_binPathExists )
         {
             osgEarth::makeDirectoryForFile( _metaPath );
 

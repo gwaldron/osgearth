@@ -93,6 +93,39 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
     }
 }
 
+void
+TileNodeRegistry::addSafely(TileNode* tile)
+{
+    _tiles[ tile->getKey() ] = tile;
+    if ( _revisioningEnabled )
+        tile->setMapRevision( _maprev );
+
+    // check for waiters.
+    Notifications::iterator i = _notifications.find(tile->getKey());
+    if ( i != _notifications.end() )
+    {
+        TileKeyVector& waiters = i->second;
+        for(unsigned j=0; j<waiters.size(); )
+        {
+            TileKey& waiter = waiters[j];
+            TileNodeMap::iterator k = _tiles.find(waiter);
+            if ( k != _tiles.end() )
+            {
+                k->second->notifyOfArrival( tile );
+                waiter = waiters.back();
+                waiters.resize( waiters.size()-1 );
+            }
+            else
+            {
+                ++j;
+            }
+        }
+        if ( waiters.size() == 0 )
+        {
+            _notifications.erase( i );
+        }
+    }
+}
 
 void
 TileNodeRegistry::add( TileNode* tile )
@@ -100,13 +133,9 @@ TileNodeRegistry::add( TileNode* tile )
     if ( tile )
     {
         Threading::ScopedWriteLock exclusive( _tilesMutex );
-        _tiles[ tile->getKey() ] = tile;
-        if ( _revisioningEnabled )
-            tile->setMapRevision( _maprev );
-        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
+        addSafely( tile );
     }
 }
-
 
 void
 TileNodeRegistry::add( const TileNodeVector& tiles )
@@ -116,12 +145,12 @@ TileNodeRegistry::add( const TileNodeVector& tiles )
         Threading::ScopedWriteLock exclusive( _tilesMutex );
         for( TileNodeVector::const_iterator i = tiles.begin(); i != tiles.end(); ++i )
         {
-            _tiles[ i->get()->getKey() ] = i->get();
+            if ( i->valid() )
+                addSafely( i->get() );
         }
         OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
     }
 }
-
 
 void
 TileNodeRegistry::remove( TileNode* tile )
@@ -150,11 +179,11 @@ TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
 
 
 bool
-TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile ) const
+TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
 {
     Threading::ScopedReadLock shared( _tilesMutex );
 
-    TileNodeMap::const_iterator i = _tiles.find(key);
+    TileNodeMap::iterator i = _tiles.find(key);
     if ( i != _tiles.end() )
     {
         out_tile = i->second.get();
@@ -180,15 +209,6 @@ TileNodeRegistry::take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
     return false;
 }
 
-
-TileNode*
-TileNodeRegistry::takeAny()
-{
-    Threading::ScopedWriteLock exclusive( _tilesMutex );
-    osg::ref_ptr<TileNode> tile = _tiles.begin()->second.get();
-    _tiles.erase( _tiles.begin() );
-    return tile.release();
-}
 
 void
 TileNodeRegistry::run( TileNodeRegistry::Operation& op )
@@ -217,7 +237,33 @@ TileNodeRegistry::empty() const
     return _tiles.empty();
 }
 
+void
+TileNodeRegistry::listenFor(const TileKey& tileToWaitFor, TileNode* waiter)
+{
+    Threading::ScopedWriteLock lock( _tilesMutex );
+    TileNodeMap::iterator i = _tiles.find( tileToWaitFor );
+    if ( i != _tiles.end() )
+    {
+        OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str()
+            << ", but it was already in the repo.\n";
 
+        waiter->notifyOfArrival( i->second.get() );
+    }
+    else
+    {
+        OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
+        _notifications[tileToWaitFor].push_back( waiter->getKey() );
+    }
+}
+        
+TileNode*
+TileNodeRegistry::takeAny()
+{
+    Threading::ScopedWriteLock exclusive( _tilesMutex );
+    osg::ref_ptr<TileNode> tile = _tiles.begin()->second.get();
+    _tiles.erase( _tiles.begin() );
+    return tile.release();
+}
 
 bool
 TileNodeRegistry::get(const TileKey& key, osg::ref_ptr<const TerrainTileModel>& out_model) const

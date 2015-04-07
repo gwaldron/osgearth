@@ -45,6 +45,7 @@ usage( const std::string& msg )
         << "    --first-level      ; The first level where features will be added to the quadtree" << std::endl
         << "    --max-level        ; The maximum level of the feature quadtree" << std::endl
         << "    --max-features     ; The maximum number of features per tile" << std::endl
+        << "    --grid             ; Generate a single level grid with the specified resolution.  Default units are meters. (ex. 50, 100km, 200mi)" << std::endl
         << "    --out              ; The destination directory" << std::endl
         << "    --layer            ; The name of the layer to be written to the metadata document" << std::endl
         << "    --description      ; The abstract/description of the layer to be written to the metadata document" << std::endl
@@ -107,6 +108,18 @@ int main(int argc, char** argv)
     std::string destSRS;
     while(arguments.read("--dest-srs", destSRS));
 
+    std::string grid;
+    float gridSizeMeters = -1.0f;
+    while (arguments.read("--grid", grid));
+    if (!grid.empty())
+    {
+        float gridSize;
+        Units units;
+        if ( Units::parse(grid, gridSize, units, Units::METERS) ) {
+             gridSizeMeters = Distance(gridSize, units).as(Units::METERS);
+        }
+    }
+
     // Custom bounding box
     Bounds bounds;
     double xmin=DBL_MAX, ymin=DBL_MAX, xmax=DBL_MIN, ymax=DBL_MIN;
@@ -156,20 +169,6 @@ int main(int argc, char** argv)
 
     std::string method = cropMethod == CropFilter::METHOD_CENTROID ? "Centroid" : "Cropping";
 
-    OE_NOTICE << "Processing " << filename << std::endl
-              << "  FirstLevel=" << firstLevel << std::endl
-              << "  MaxLevel=" << maxLevel << std::endl
-              << "  MaxFeatures=" << maxFeatures << std::endl
-              << "  Destination=" << destination << std::endl
-              << "  Layer=" << layer << std::endl
-              << "  Description=" << description << std::endl
-              << "  Expression=" << queryExpression << std::endl
-              << "  OrderBy=" << queryOrderBy << std::endl
-              << "  Method= " << method << std::endl
-              << "  DestSRS= " << destSRS << std::endl
-              << std::endl;
-
-
     Query query;
     if (!queryExpression.empty())
     {
@@ -182,6 +181,49 @@ int main(int argc, char** argv)
     }    
 
     osg::Timer_t startTime = osg::Timer::instance()->tick();
+
+    // Use the feature extent by default.
+    GeoExtent ext = features->getFeatureProfile()->getExtent();
+    if (!destSRS.empty())
+    {
+        ext = ext.transform(osgEarth::SpatialReference::create( destSRS ));
+    }
+
+    if (bounds.isValid())
+    {
+        // If a custom bounds was specified use that instead.
+        ext = GeoExtent(osgEarth::SpatialReference::create( destSRS ), bounds);
+    }
+
+    if (gridSizeMeters > 0.0)
+    {
+        // Compute the level in the destination profile that is closest to the desired resolution.
+        osg::ref_ptr< const osgEarth::Profile > profile = osgEarth::Profile::create(ext.getSRS(), ext.xMin(), ext.yMin(), ext.xMax(), ext.yMax(), 1, 1);
+        float res = gridSizeMeters;
+        // Estimate meters to degrees if necessary
+        if (profile->getSRS()->isGeographic())
+        {
+            res /= 111000.0;
+        }
+        unsigned int level = profile->getLevelOfDetailForHorizResolution(res, 1.0);
+        firstLevel = level;
+        maxLevel = level;
+        OE_NOTICE << "Computed grid level " << level << " from grid resolution of " << gridSizeMeters << "m" << std::endl;
+    }
+
+    OE_NOTICE << "Processing " << filename << std::endl
+        << "  FirstLevel=" << firstLevel << std::endl
+        << "  MaxLevel=" << maxLevel << std::endl
+        << "  MaxFeatures=" << maxFeatures << std::endl
+        << "  Destination=" << destination << std::endl
+        << "  Layer=" << layer << std::endl
+        << "  Description=" << description << std::endl
+        << "  Expression=" << queryExpression << std::endl
+        << "  OrderBy=" << queryOrderBy << std::endl
+        << "  Method= " << method << std::endl
+        << "  DestSRS= " << destSRS << std::endl
+        << std::endl;
+
     //buildTFS( features.get(), firstLevel, maxLevel, maxFeatures, destination, layer, description, query, cropMethod);
     TFSPackager packager;
     packager.setFirstLevel( firstLevel );
@@ -190,10 +232,8 @@ int main(int argc, char** argv)
     packager.setQuery( query );
     packager.setMethod( cropMethod );    
     packager.setDestSRS( destSRS );
-    if (bounds.isValid())
-    {
-        packager.setLod0Extent(GeoExtent(osgEarth::SpatialReference::create( destSRS ), bounds));
-    }
+    packager.setLod0Extent(ext);
+
     packager.package( features, destination, layer, description );
     osg::Timer_t endTime = osg::Timer::instance()->tick();
     OE_NOTICE << "Completed in " << osg::Timer::instance()->delta_s( startTime, endTime ) << " s " << std::endl;

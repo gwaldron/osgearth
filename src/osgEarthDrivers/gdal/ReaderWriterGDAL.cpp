@@ -912,6 +912,10 @@ public:
         else if ( !srcProj.empty() )
         {
             src_srs = SpatialReference::create( srcProj );
+            if ( !src_srs.valid() )
+            {
+                OE_DEBUG << LC << "Cannot create source SRS from its projection info: " << srcProj << std::endl;
+            }
         }
 
         // assert SRS is present
@@ -944,36 +948,42 @@ public:
 
         const Profile* profile = NULL;
 
+        // The warp profile, if provided, takes precedence.
         if ( warpProfile )
         {
             profile = warpProfile;
+            if ( profile )
+            {
+                OE_DEBUG << LC << INDENT << "Using warp Profile: " << profile->toString() <<  std::endl;
+            }
         }
 
         // If we have an override profile, just take it.
         if ( getProfile() )
         {
             profile = getProfile();
+            if ( profile )
+            {
+                OE_DEBUG << LC << INDENT << "Using override Profile: " << profile->toString() <<  std::endl;
+            }
         }
 
+        // If neither a warp nor override profile were provided, work out the profile from the source's own SRS.
         if ( !profile && src_srs->isGeographic() )
         {
-            profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+            OE_DEBUG << LC << INDENT << "Creating Profile from source's geographic SRS: " << src_srs->getName() <<  std::endl;
+            profile = Profile::create(src_srs.get(), -180.0, -90.0, 180.0, 90.0, 2u, 1u);
+            if ( !profile )
+            {
+                return Status::Error( Stringify()
+                    << "Cannot create geographic Profile from dataset's spatial reference information: " << src_srs->getName() );
+            }
         }
-
-        //Note:  Can cause odd rendering artifacts if we have a dataset that is mercator that doesn't encompass the whole globe
-        //       if we take on the global profile.
-        /*
-        if ( !profile && src_srs->isMercator() )
-        {
-            profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
-        }*/
 
         std::string warpedSRSWKT;
 
         if ( requiresReprojection || (profile && !profile->getSRS()->isEquivalentTo( src_srs.get() )) )
         {
-            std::string destWKT = profile ? profile->getSRS()->getWKT() : src_srs->getWKT();
-
             if ( profile && profile->getSRS()->isGeographic() && (src_srs->isNorthPolar() || src_srs->isSouthPolar()) )
             {
                 _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRTforPolarStereographic(
@@ -986,6 +996,7 @@ public:
             }
             else
             {
+                std::string destWKT = profile ? profile->getSRS()->getWKT() : src_srs->getWKT();
                 _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRT(
                     _srcDS,
                     src_srs->getWKT().c_str(),
@@ -1006,9 +1017,15 @@ public:
             warpedSRSWKT = src_srs->getWKT();
         }
 
+        if ( !_warpedDS )
+        {
+            return Status::Error( "Failed to create a warping VRT" );
+        }
+
         //Get the _geotransform
         if ( getProfile() )
         {
+            OE_DEBUG << LC << INDENT << "Get geotransform from Override Profile" <<  std::endl;
             _geotransform[0] =  getProfile()->getExtent().xMin(); //Top left x
             _geotransform[1] =  getProfile()->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
             _geotransform[2] =  0;
@@ -1020,6 +1037,7 @@ public:
         }
         else
         {
+            OE_DEBUG << LC << INDENT << "Get geotransform from warped dataset" <<  std::endl;
             _warpedDS->GetGeoTransform(_geotransform);
         }
 
@@ -1066,6 +1084,12 @@ public:
             profile = Profile::create(
                 warpedSRSWKT,
                 minX, minY, maxX, maxY);
+
+            if ( !profile )
+            {
+                return Status::Error( Stringify()
+                    << "Cannot create projected Profile from dataset's warped spatial reference WKT: " << warpedSRSWKT );
+            }
 
             OE_INFO << LC << INDENT << source << " is projected, SRS = "
                 << warpedSRSWKT << std::endl;
@@ -1114,6 +1138,7 @@ public:
 
         //Set the profile
         setProfile( profile );
+        OE_DEBUG << LC << INDENT << "Set Profile to " << (profile ? profile->toString() : "NULL") <<  std::endl;
 
         return STATUS_OK;
     }

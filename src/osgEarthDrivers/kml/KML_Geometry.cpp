@@ -28,17 +28,18 @@
 using namespace osgEarth_kml;
 
 void 
-KML_Geometry::build( xml_node<>* parent, KMLContext& cx, Style& style)
+KML_Geometry::build( xml_node<>* parent, KMLContext& cx, const Style& baseStyle)
 {
 	for (xml_node<>* node = parent->first_node(); node; node = node->next_sibling())
 	{
-		buildChild(node, cx, style);
+		buildChild(node, cx, baseStyle);
 	}
 }
 
 void
-KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, Style& style)
+KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, const Style& baseStyle)
 {
+    Style style = baseStyle;
 	std::string name = toLower(node->name());
     if ( name == "point" )
     {
@@ -127,7 +128,7 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     if ( am.empty() )
         am = "clampToGround"; // default.
 
-    bool isPoly = _geom->getComponentType() == Geometry::TYPE_POLYGON;
+    bool isPoly = _geom.valid() && _geom->getComponentType() == Geometry::TYPE_POLYGON;
 
     // Resolve the correct altitude symbol. CLAMP_TO_TERRAIN is the default, but the
     // technique will depend on the geometry's type and setup.

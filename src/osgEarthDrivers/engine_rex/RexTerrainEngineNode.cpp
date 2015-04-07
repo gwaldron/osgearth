@@ -413,17 +413,17 @@ RexTerrainEngineNode::createTerrain()
         _renderBindings.color().matrixName()  = "oe_layer_texMatrix";
 
         this->getTextureCompositor()->reserveTextureImageUnit(
-            _renderBindings.color().unit() );
+            _renderBindings.color().unit(), "Rex Engine Color" );
     }
 
     // reserve GPU unit for the secondary (parent blending) texture:
-    if ( _renderBindings.parentColor().unit() < 0 )
+    if ( _renderBindings.parentColor().unit() < 0 && this->parentTexturesRequired() )
     {
         _renderBindings.parentColor().samplerName() = "oe_layer_parentTex";
         _renderBindings.parentColor().matrixName()  = "oe_layer_parentTexMatrix";
 
         this->getTextureCompositor()->reserveTextureImageUnit(
-            _renderBindings.parentColor().unit() );
+            _renderBindings.parentColor().unit(), "Rex Engine Parent Color" );
     }
 
     // reserve a GPU unit for the primary elevation texture:
@@ -433,17 +433,37 @@ RexTerrainEngineNode::createTerrain()
         _renderBindings.elevation().matrixName()  = "oe_tile_elevationTexMatrix";
 
         this->getTextureCompositor()->reserveTextureImageUnit(
-            _renderBindings.elevation().unit() );
+            _renderBindings.elevation().unit(), "Rex Engine Elevation" );
     }
 
     // reserve a GPU unit for the secondary (parent blending) elevation texture:
-    if ( _renderBindings.parentElevation().unit() < 0 )
+    if ( _renderBindings.parentElevation().unit() < 0 && this->parentTexturesRequired() )
     {
         _renderBindings.parentElevation().samplerName() = "oe_tile_parentElevationTex";
         _renderBindings.parentElevation().matrixName()  = "oe_tile_parentElevationTexMatrix";
 
         this->getTextureCompositor()->reserveTextureImageUnit(
-            _renderBindings.parentElevation().unit() );
+            _renderBindings.parentElevation().unit(), "Rex Engine Parent Elevation" );
+    }
+
+    // reserve a GPU unit for the normal texture:
+    if ( _renderBindings.normal().unit() < 0 )
+    {
+        _renderBindings.normal().samplerName() = "oe_tile_normalTex";
+        _renderBindings.normal().matrixName()  = "oe_tile_normalTexMatrix";
+
+        this->getTextureCompositor()->reserveTextureImageUnit(
+            _renderBindings.normal().unit(), "Rex Engine Normals" );
+    }
+
+    // reserve a GPU unit for the secondary (parent blending) elevation texture:
+    if ( _renderBindings.parentNormal().unit() < 0 && this->parentTexturesRequired() )
+    {
+        _renderBindings.parentNormal().samplerName() = "oe_tile_parentNormalTex";
+        _renderBindings.parentNormal().matrixName()  = "oe_tile_parentNormalTexMatrix";
+
+        this->getTextureCompositor()->reserveTextureImageUnit(
+            _renderBindings.parentNormal().unit(), "Rex Engine Parent Normals" );
     }
 
     // Factory to create the root keys:
@@ -842,8 +862,8 @@ RexTerrainEngineNode::updateState()
                 Shaders::VertFile,
                 Shaders::VertSource );
 
-            osgEarth::replaceIn( vs, "$REX_PRIMARY_UNIT",   Stringify() << _renderBindings.color().unit() );
-            osgEarth::replaceIn( vs, "$REX_SECONDARY_UNIT", Stringify() << _renderBindings.parentColor().unit() );
+            //osgEarth::replaceIn( vs, "$REX_PRIMARY_UNIT",   Stringify() << _renderBindings.color().unit() );
+            //osgEarth::replaceIn( vs, "$REX_SECONDARY_UNIT", Stringify() << _renderBindings.parentColor().unit() );
 
             bool lodBlending = _terrainOptions.enableLODBlending() == true;
             if ( !lodBlending )
@@ -949,16 +969,6 @@ RexTerrainEngineNode::updateState()
                         0.0 );
                 }
             }
-            
-            // uniform for the elevation texture sampler.
-            terrainStateSet->addUniform( new osg::Uniform(
-                _renderBindings.elevation().samplerName().c_str(),
-                _renderBindings.elevation().unit() ));
-
-            // uniform for the parent elevation texture sampler.
-            terrainStateSet->addUniform( new osg::Uniform(
-                _renderBindings.parentElevation().samplerName().c_str(),
-                _renderBindings.parentElevation().unit() ));
 
             // binding for the terrain texture
             terrainStateSet->addUniform( new osg::Uniform(
@@ -969,8 +979,28 @@ RexTerrainEngineNode::updateState()
             terrainStateSet->addUniform( new osg::Uniform(
                 _renderBindings.parentColor().samplerName().c_str(),
                 _renderBindings.parentColor().unit() ));
+            
+            // uniform for the elevation texture sampler.
+            terrainStateSet->addUniform( new osg::Uniform(
+                _renderBindings.elevation().samplerName().c_str(),
+                _renderBindings.elevation().unit() ));
 
-            //// binding for the default secondary texture matrix
+            // uniform for the parent elevation texture sampler.
+            terrainStateSet->addUniform( new osg::Uniform(
+                _renderBindings.parentElevation().samplerName().c_str(),
+                _renderBindings.parentElevation().unit() ));
+            
+            // uniform for the normal texture sampler.
+            terrainStateSet->addUniform( new osg::Uniform(
+                _renderBindings.normal().samplerName().c_str(),
+                _renderBindings.normal().unit() ));
+
+            // uniform for the parent normal texture sampler.
+            terrainStateSet->addUniform( new osg::Uniform(
+                _renderBindings.parentNormal().samplerName().c_str(),
+                _renderBindings.parentNormal().unit() ));
+
+            // binding for the default secondary texture matrix
             osg::Matrixf parent_mat;
             parent_mat(0,0) = 0.0f;
             terrainStateSet->getOrCreateUniform(

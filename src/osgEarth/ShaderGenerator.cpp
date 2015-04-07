@@ -24,6 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
+#include <osgEarth/URI>
 
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -122,18 +123,26 @@ struct OSGEarthShaderGenPseudoLoader : public osgDB::ReaderWriter
 
         std::string stripped = osgDB::getNameLessExtension(filename);
 
-        OE_INFO << LC << "Loading " << stripped << " and generating shaders." << std::endl;
+        OE_INFO << LC << "Loading " << stripped << " from PLOD/Proxy and generating shaders." << std::endl;
         
-        osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(stripped, options);
-        if ( node.valid() )
+        osgEarth::ReadResult result = URI(stripped).readNode(options);
+        if ( result.succeeded() && result.getNode() != 0L )
         {
+            osg::ref_ptr<osg::Node> node = result.releaseNode();
+
             osgEarth::Registry::shaderGenerator().run(
                 node.get(),
                 osgDB::getSimpleFileName(stripped),
                 Registry::stateSetCache() );
+
+            return ReadResult( node.release() );
         }
 
-        return node.valid() ? ReadResult(node.release()) : ReadResult::ERROR_IN_READING_FILE;
+        else
+        {
+            OE_WARN << LC << "Error loading \"" << stripped << "\": " << result.errorDetail() << "\n";
+            return ReadResult::ERROR_IN_READING_FILE;
+        }
     }
 };
 
@@ -676,7 +685,7 @@ ShaderGenerator::apply(osg::ClipNode& node)
     osg::StateSet* stateSet = cloneOrCreateStateSet(&node);
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
     if ( vp->referenceCount() == 1 ) vp->setName( _name );
-    vp->setFunction( "oe_sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW );
+    vp->setFunction( "oe_sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW, 0.95f );
 
     apply( static_cast<osg::Group&>(node) );
 }
@@ -766,8 +775,8 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
         INDENT "color.a *= texel.a; \n"
         "}\n";
 
-    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW );
-    vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING );
+    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
+    vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
 
     return replacement.valid();
@@ -886,7 +895,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
                 << vertBodySource
                 << "}\n";
 
-            vp->setFunction(VERTEX_FUNCTION, vertSource, ShaderComp::LOCATION_VERTEX_VIEW);
+            vp->setFunction(VERTEX_FUNCTION, vertSource, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f);
         }
 
 
@@ -905,7 +914,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
                 << fragBodySource
                 << "}\n";
 
-            vp->setFunction(FRAGMENT_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            vp->setFunction(FRAGMENT_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f);
         }
     }
 

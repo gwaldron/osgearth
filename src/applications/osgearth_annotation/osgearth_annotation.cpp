@@ -430,6 +430,7 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
+    
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     return viewer.run();
 }

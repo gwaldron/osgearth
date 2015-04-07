@@ -27,6 +27,7 @@
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/ImageUtils>
 #include <osgUtil/Optimizer>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -96,4 +97,94 @@ TileNode::getOrCreatePayloadGroup()
         this->addChild( _payload.get() );
     }
     return _payload.get();
+}
+
+#define OE_TEST OE_DEBUG
+void
+TileNode::notifyOfArrival(TileNode* that)
+{
+    OE_TEST << LC << this->getKey().str()
+        << " was waiting on "
+        << that->getKey().str() << " and it arrived.\n";
+        
+    osg::Texture* thisTex = this->getModel()->getNormalTexture();
+    osg::Texture* thatTex = that->getModel()->getNormalTexture();
+    if ( !thisTex || !thatTex ) {
+        OE_TEST << LC << "bailed on " << getKey().str() << " - null normal texture\n";
+        return;
+    }
+
+    osg::RefMatrixf* thisTexMat = this->getModel()->getNormalTextureMatrix();
+    osg::RefMatrixf* thatTexMat = that->getModel()->getNormalTextureMatrix();
+    if ( !thisTexMat || !thatTexMat || !thisTexMat->isIdentity() || !thatTexMat->isIdentity() ) {
+        OE_TEST << LC << "bailed on " << getKey().str() << " - null texmat\n";
+        return;
+    }
+
+    osg::Image* thisImage = thisTex->getImage(0);
+    osg::Image* thatImage = thatTex->getImage(0);
+    if ( !thisImage || !thatImage ) {
+        OE_TEST << LC << "bailed on " << getKey().str() << " - null image\n";
+        return;
+    }
+
+    int width = thisImage->s();
+    int height = thisImage->t();
+    if ( width != thatImage->s() || height != thatImage->t() ) {
+        OE_TEST << LC << "bailed on " << getKey().str() << " - mismatched sizes\n";
+        return;
+    }
+
+    //if (_model->_normalData.isFallbackData()) {
+    //    OE_TEST << LC << "bailed on " << getKey().str() << " - fallback data\n";
+    //    return;
+    //}
+
+    // Just copy the neighbor's edge normals over to our texture.
+    // Averaging them would be more accurate, but then we'd have to
+    // re-generate each texture multiple times instead of just once.
+    // Besides, there's almost no visual difference anyway.
+    ImageUtils::PixelReader readThat(thatImage);
+    ImageUtils::PixelWriter writeThis(thisImage);
+
+    bool thisDirty = false;
+
+    if ( that->getKey() == getKey().createNeighborKey(1,0) )
+    {
+        // neighbor is to the east:
+        for(int t=1; t<height; ++t) // start at 1 to skip the corner piece
+        {
+            writeThis(readThat(0,t), width-1, t);
+        }
+        thisDirty = true;
+    }
+
+    else if ( that->getKey() == getKey().createNeighborKey(0,1) )
+    {
+        // neighbor is to the south:
+        for(int s=0; s<width-1; ++s) // -1 because of the corner piece
+        {
+            writeThis(readThat(s, height-1), s, 0);
+        }
+        thisDirty = true;
+    }
+
+    else if ( that->getKey() == getKey().createNeighborKey(1,1) )
+    {
+        // the corner
+        writeThis(readThat(0,height-1), width-1, 0);
+        thisDirty = true;
+    }
+
+    else
+    {
+        OE_INFO << LC << "Unhandled notify\n";
+    }
+
+    if ( thisDirty )
+    {
+        // so heavy handed. Wish we could just write the row
+        // or column that changed.
+        thisImage->dirty();
+    }
 }

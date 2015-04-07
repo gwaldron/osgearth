@@ -606,7 +606,8 @@ _active            ( true ),
 _inherit           ( true ),
 _inheritSet        ( false ),
 _logShaders        ( false ),
-_logPath           ( "" )
+_logPath           ( "" ),
+_acceptCallbacksVaryPerFrame( false )
 {
     // Note: we cannot set _active here. Wait until apply().
     // It will cause a conflict in the Registry.
@@ -1015,13 +1016,6 @@ VirtualProgram::apply( osg::State& state ) const
         // as the default fallback, we use the "_inheritSet" flag to differeniate. This
         // prevents any shader leakage from a VP-enabled node.
         const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,true);
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
-		if( ! extensions->isGlslSupported ) return;
-#else
-		if( ! extensions->isGlslSupported() ) return;
-#endif
-        
-
         extensions->glUseProgram( 0 );
         state.setLastAppliedProgramObject(0);
         return;
@@ -1040,7 +1034,7 @@ VirtualProgram::apply( osg::State& state ) const
 #ifdef USE_STACK_MEMORY
     bool programRecalled = false;
     const AttrStack* stack = StateEx::getProgramStack(state);
-    if ( stack )
+    if ( stack)
     {
         program = _vpStackMemory.recall(state, *stack);
         programRecalled = program.valid();
@@ -1050,7 +1044,7 @@ VirtualProgram::apply( osg::State& state ) const
     // We need to tracks whether there are any accept callbacks, because if so
     // we cannot store the program in stack memory -- the accept callback can
     // exclude shaders based on any condition.
-    bool acceptCallbacksPresent = false;
+    bool acceptCallbacksVary = _acceptCallbacksVaryPerFrame;
 
     if ( !program.valid() )
     {
@@ -1069,7 +1063,7 @@ VirtualProgram::apply( osg::State& state ) const
                 accumShaderMap,
                 accumAttribBindings,
                 accumAttribAliases,
-                acceptCallbacksPresent);
+                acceptCallbacksVary);
         }
         
         // Next, add the shaders from this VP.
@@ -1078,11 +1072,6 @@ VirtualProgram::apply( osg::State& state ) const
 
             for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
             {
-                if ( i->second._accept.valid() )
-                {
-                    acceptCallbacksPresent = true;
-                }
-
                 if ( i->second.accept(state) )
                 {
                     addToAccumulatedMap( accumShaderMap, i->first, i->second );
@@ -1205,14 +1194,20 @@ VirtualProgram::apply( osg::State& state ) const
         // during the same frame.
         if (programRecalled == false        &&   // recalled a program? not necessary
             getDataVariance() != DYNAMIC    &&   // DYNAMIC variance? might change during ST cull; no memory
-            acceptCallbacksPresent == false &&   // accept callbacks? cannot use memory
+            !acceptCallbacksVary            &&   // accept callbacks vary per frame? cannot use memory
             stack != 0L )
         {
             _vpStackMemory.remember(state, *stack, program.get());
         }
 #endif // USE_STACK_MEMORY
 
-        osg::Program::PerContextProgram* pcp = program->getPCP( contextID );
+        osg::Program::PerContextProgram* pcp;
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,4)
+        pcp = program->getPCP( state );
+#else
+        pcp = program->getPCP( contextID );
+#endif
         bool useProgram = state.getLastAppliedProgramObject() != pcp;
 
 #ifdef DEBUG_APPLY_COUNTS
@@ -1448,8 +1443,10 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
                                   ShaderMap&         accumShaderMap,
                                   AttribBindingList& accumAttribBindings,
                                   AttribAliasMap&    accumAttribAliases,
-                                  bool&              acceptCallbacksPresent)
+                                  bool&              acceptCallbacksVary)
 {
+    acceptCallbacksVary = false;
+
     const AttrStack* av = StateEx::getProgramStack(state);
     if ( av && av->size() > 0 )
     {
@@ -1470,14 +1467,13 @@ VirtualProgram::accumulateShaders(const osg::State&  state,
             {
                 ShaderMap vpShaderMap;
                 vp->getShaderMap( vpShaderMap );
+                if (vp->getAcceptCallbacksVaryPerFrame())
+                {
+                    acceptCallbacksVary = true;
+                }
 
                 for( ShaderMap::const_iterator i = vpShaderMap.begin(); i != vpShaderMap.end(); ++i )
                 {
-                    if ( i->second._accept.valid() )
-                    {
-                        acceptCallbacksPresent = true;
-                    }
-
                     if ( i->second.accept(state) )
                     {
                         addToAccumulatedMap( accumShaderMap, i->first, i->second );
@@ -1504,10 +1500,10 @@ VirtualProgram::getShaders(const osg::State&                        state,
     ShaderMap         shaders;
     AttribBindingList bindings;
     AttribAliasMap    aliases;
-    bool              acceptCallbacksPresent;
+    bool              acceptCallbacksVary;
 
     // build the collection:
-    accumulateShaders(state, ~0, shaders, bindings, aliases, acceptCallbacksPresent);
+    accumulateShaders(state, ~0, shaders, bindings, aliases, acceptCallbacksVary);
 
     // pre-allocate space:
     output.reserve( shaders.size() );
@@ -1528,4 +1524,14 @@ void VirtualProgram::setShaderLogging( bool log, const std::string& filepath )
 {
     _logShaders = log;
     _logPath = filepath;
+}
+
+bool VirtualProgram::getAcceptCallbacksVaryPerFrame() const
+{
+    return _acceptCallbacksVaryPerFrame;
+}
+
+void VirtualProgram::setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerFrame)
+{
+    _acceptCallbacksVaryPerFrame = acceptCallbacksVaryPerFrame;
 }

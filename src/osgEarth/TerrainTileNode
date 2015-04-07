@@ -49,20 +49,6 @@ namespace osgEarth
 
         osg::ref_ptr<TerrainTileModel> _model;
     };
-
-    /**
-     * Interface for notification of the creation of TerrainTileNodes by
-     * the terrain engine.
-     */
-    class /*header-only*/ TerrainTileNodeBroker
-    {
-    public:
-        /**
-         * Terrain engine calls this when it finishes creating a single tile node
-         * for a given tile key. (Typically that will happen in a pager thread.)
-         */
-        virtual void notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node* node) =0;
-    };
 };
 
 #endif // OSGEARTH_TILE_NODE_H

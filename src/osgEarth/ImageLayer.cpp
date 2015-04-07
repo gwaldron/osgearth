@@ -65,7 +65,6 @@ ImageLayerOptions::setDefaults()
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _minRange.init( 0.0 );
     _maxRange.init( FLT_MAX );
-    _lodBlending.init( false );
     _featherPixels.init( false );
     _minFilter.init( osg::Texture::LINEAR_MIPMAP_LINEAR );
     _magFilter.init( osg::Texture::LINEAR );
@@ -88,7 +87,6 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "opacity",        _opacity );
     conf.getIfSet( "min_range",      _minRange );
     conf.getIfSet( "max_range",      _maxRange );
-    conf.getIfSet( "lod_blending",   _lodBlending );
     conf.getIfSet( "shared",         _shared );
     conf.getIfSet( "coverage",       _coverage );
     conf.getIfSet( "feather_pixels", _featherPixels);
@@ -130,7 +128,6 @@ ImageLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "opacity",        _opacity );
     conf.updateIfSet( "min_range",      _minRange );
     conf.updateIfSet( "max_range",      _maxRange );
-    conf.updateIfSet( "lod_blending",   _lodBlending );
     conf.updateIfSet( "shared",         _shared );
     conf.updateIfSet( "coverage",       _coverage );
     conf.updateIfSet( "feather_pixels", _featherPixels );
@@ -382,12 +379,6 @@ const ColorFilterChain&
 ImageLayer::getColorFilters() const
 {
     return _runtimeOptions.colorFilters();
-}
-
-void 
-ImageLayer::disableLODBlending()
-{
-    _runtimeOptions.lodBlending() = false;
 }
 
 void

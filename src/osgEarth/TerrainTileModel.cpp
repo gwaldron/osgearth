@@ -101,9 +101,11 @@ TerrainTileModel::findSharedLayerByName(const std::string& name) const
 }
 
 const TerrainTileImageLayerModel*
-TerrainTileModel::findColorLayerByUID(const UID& uid) const
+TerrainTileModel::findSharedLayerByUID(const UID& uid) const
 {
-    for(TerrainTileImageLayerModelVector::const_iterator i = _colorLayers.begin(); i != _colorLayers.end(); ++i)
+    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin();
+        i != _sharedLayers.end();
+        ++i)
     {
         if ( i->get()->getImageLayer() && i->get()->getImageLayer()->getUID() == uid )
         {
@@ -111,4 +113,43 @@ TerrainTileModel::findColorLayerByUID(const UID& uid) const
         }
     }
     return 0L;
+}
+
+const TerrainTileImageLayerModel*
+TerrainTileModel::findColorLayerByUID(const UID& uid) const
+{
+    for(TerrainTileImageLayerModelVector::const_iterator i = _colorLayers.begin();
+        i != _colorLayers.end();
+        ++i)
+    {
+        if ( i->get()->getImageLayer() && i->get()->getImageLayer()->getUID() == uid )
+        {
+            return i->get();
+        }
+    }
+    return 0L;
+}
+
+osg::Texture* 
+TerrainTileModel::getNormalTexture() const
+{
+    return _normalLayer.valid() ? _normalLayer->getTexture() : 0L;
+}
+
+osg::RefMatrixf* 
+TerrainTileModel::getNormalTextureMatrix() const
+{
+    return _normalLayer.valid() ? _normalLayer->getMatrix() : 0L;
+}
+
+osg::Texture* 
+TerrainTileModel::getElevationTexture() const
+{
+    return _elevationLayer.valid() ? _elevationLayer->getTexture() : 0L;
+}
+
+osg::RefMatrixf* 
+TerrainTileModel::getElevationTextureMatrix() const
+{
+    return _elevationLayer.valid() ? _elevationLayer->getMatrix() : 0L;
 }

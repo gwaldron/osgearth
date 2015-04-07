@@ -1,0 +1,172 @@
+<!--
+osgEarth Sample.
+
+Demonstrates the use of a Resource Library in order to apply "typical" textures
+to extruded buildings.
+-->
+
+<map name="Boston Demo" type="geocentric" version="2">
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
+    </image>
+    
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+      
+    <model name="buildings" driver="feature_geom">
+             
+        <features name="buildings" driver="ogr">
+            <url>../data/boston_buildings_utm19.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+			<resample min_length="2.5"/>
+        </features>
+        
+		<!-- Uncomment this for the featuremanip or featurequery demo. -->
+        <!-- <feature_indexing/> -->
+        
+        <!--
+           The "layout" element activates tiling and paging of the feature set. If you
+           omit the layout element, the entire feature set will render as one pre-loaded
+           model (no tiling or paging).
+           
+           Each "level" is a level of detail for features, and should select a style
+              to use for that level. It also can specify min and max camera ranges,
+              in meters.
+              
+           The "tile size factor" controls how a feature is tiled. The higher this factor,
+              the smaller the tile size, and the more tiles will be used to render a given
+              level of detail. The default is 15. tile size = max range / tile size factor.
+        -->
+        
+        <layout tile_size_factor="52">
+            <level name="default" max_range="20000" style="buildings"/>
+        </layout>
+        
+        <styles>            
+            <library name="us_resources">
+                <url>../data/resources/textures_us/catalog.xml</url>
+            </library>
+            
+            <style type="text/css">
+                buildings {
+                    extrusion-height:        3.5 * max([story_ht_], 1);
+                    extrusion-flatten:       true;
+                    extrusion-wall-style:    building-wall;
+                    extrusion-wall-gradient: 0.5;
+                    extrusion-roof-style:    building-rooftop;
+                    altitude-clamping:       terrain-gpu;
+                }            
+                building-wall {
+                    skin-library:     us_resources;
+                    skin-tags:        building;
+                    skin-random-seed: 1;
+                }
+                building-rooftop {
+                    skin-library:     us_resources;
+                    skin-tags:        rooftop;
+                    skin-tiled:       true;
+                    skin-random-seed: 1;
+                }
+            </style>
+        </styles>   
+    </model>
+    
+    
+    <model name="Streets" driver="feature_geom" enabled="true">
+        <features name="streets" driver="ogr" build_spatial_index="true">
+            <url>../data/boston-scl-utm19n-meters.shp</url>
+			<resample min_length="25" max_length="25"/>
+        </features>
+        
+        <layout crop_features="true" tile_size_factor="7.5">
+            <level max_range="5000"/>
+        </layout>
+        
+        <styles>
+            <style type="text/css">
+                streets {
+                    stroke:                       #ffff7f7f;
+                    stroke-width:                 7.5m;
+                    altitude-clamping:            terrain-gpu;
+                    render-depth-offset-min-bias: 3.6;
+                }
+            </style>
+        </styles>        
+    </model>
+	
+	
+	<model name="streetlamps" driver="feature_geom">
+
+        <features name="street centerlines" driver="ogr" build_spatial_index="true">
+            <url>../data/boston-scl-utm19n-meters.shp</url>
+			<resample min_length="25" max_length="25"/>
+		</features>
+
+        <layout tile_size_factor="5" crop_features="true">
+            <level max_range="1000" style="default"/>
+        </layout>
+        
+        <instancing>true</instancing>
+		<cluster_culling>false</cluster_culling>
+        
+        <styles>
+            <style type="text/css">
+                default {
+                    model:             "../data/streetlight.osgb";
+                    model-script:      positionAlongSegments();
+					model-heading:     feature.properties.heading;
+                    altitude-clamping: terrain-gpu;                    
+                    render-depth-offset:    false;
+                }
+            </style>
+            <script language="javascript">
+				<url>../data/scripts/createLineOffsetPoints.js</url>
+			</script>
+        </styles>   
+    </model>
+    
+    
+    <model name="Parks" driver="feature_geom" enabled="true">
+        <features name="parks" driver="ogr" build_spatial_index="true">
+            <url>../data/boston-parks.shp</url>
+        </features>
+        
+        <layout tile_size_factor="3">
+            <level max_range="2000"/>
+        </layout>
+        
+        <instancing>true</instancing>
+		<cluster_culling>false</cluster_culling>
+        
+        <styles>
+            <style type="text/css">
+                parks {
+                   model:                  "../data/loopix/tree4.osgb.(0.15).scale";
+				   //model-scale:            0.15 + 0.1*Math.random();
+                   model-placement:        random;
+                   model-density:          3000;
+				   model-heading:          Math.random() * 360.0;
+                   altitude-clamping:      terrain-gpu;
+				   render-min-alpha:       0.15;
+                   render-depth-offset:    false;
+                }
+            </style>
+        </styles>        
+    </model>
+    
+    
+    <external>
+        <viewpoints>
+            <viewpoint name="Boston Overview" heading="24.261" height="0" lat="42.34425" long="-71.076262" pitch="-21.6" range="3450"/>
+            <viewpoint name="Boston Downtown 1" heading="117" lat="42.3568" long="-71.0585" height="0" pitch="-20.4" range="1500" />
+            <viewpoint name="Boston Downtown 2" heading="-128.5" lat="42.3582" long="-71.0546" height="0" pitch="-19" range="1620" />
+            <viewpoint name="Boston Street Level" heading="-145.64081" lat="42.364015" long="-71.054149" pitch="-9.701" range="144.95"/>
+        </viewpoints>
+        <sky driver="simple" hours="14.0"/>
+        <vertical_scale/>
+        <normalmap/>
+    </external>
+  
+</map>

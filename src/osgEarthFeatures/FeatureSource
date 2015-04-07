@@ -65,6 +65,10 @@ namespace osgEarth { namespace Features
         /** Explicitly overrides profile information contained in the actual data source. */
         optional<ProfileOptions>& profile() { return _profile; }
         const optional<ProfileOptions>& profile() const { return _profile; }
+        
+        /** Interpolation type to use for geodetic points */
+        optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
+        const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
     public:
         FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
@@ -80,11 +84,12 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        FeatureFilterList        _filters;
-        optional<std::string>    _name;
-        optional< bool >         _openWrite;
-        optional<ProfileOptions> _profile;
-        optional<CachePolicy>    _cachePolicy;
+        FeatureFilterList          _filters;
+        optional<std::string>      _name;
+        optional< bool >           _openWrite;
+        optional<ProfileOptions>   _profile;
+        optional<CachePolicy>      _cachePolicy;
+        optional<GeoInterpolation> _geoInterp;
     };
 
     /**

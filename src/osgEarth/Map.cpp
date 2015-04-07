@@ -962,25 +962,41 @@ Map::calculateProfile()
                         << std::endl;
                 }
             }
-
-            if ( !_profile.valid() )
-            {
-                // by default, set a geocentric map to use global-geodetic WGS84.
-                _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-            }
         }
-
         else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE )
         {
-            //If the map type is a Geocentric Cube, set the profile to the cube profile.
-            _profile = osgEarth::Registry::instance()->getCubeProfile();
+            if ( userProfile.valid() )
+            {
+                if ( userProfile->isOK() && userProfile->getSRS()->isCube() )
+                {
+                    _profile = userProfile.get();
+                }
+                else
+                {
+                    OE_WARN << LC 
+                        << "Map is geocentric cube, but the configured profile SRS ("
+                        << userProfile->getSRS()->getName() << ") is not geocentric cube; "
+                        << "it will be ignored."
+                        << std::endl;
+                }
+            }
         }
-
         else // CSTYPE_PROJECTED
         {
             if ( userProfile.valid() )
             {
-                _profile = userProfile.get();
+                if ( userProfile->isOK() && userProfile->getSRS()->isProjected() )
+                {
+                    _profile = userProfile.get();
+                }
+                else
+                {
+                    OE_WARN << LC 
+                        << "Map is projected, but the configured profile SRS ("
+                        << userProfile->getSRS()->getName() << ") is not projected; "
+                        << "it will be ignored."
+                        << std::endl;
+                }
             }
         }
 
@@ -1008,13 +1024,27 @@ Map::calculateProfile()
             }
         }
 
-        // convert the profile to Plate Carre if necessary.
-        if (_profile.valid() &&
-            _profile->getSRS()->isGeographic() && 
-            getMapOptions().coordSysType() == MapOptions::CSTYPE_PROJECTED )
+        // ensure that the profile we found is the correct kind
+        // convert a geographic profile to Plate Carre if necessary
+        if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC && !( _profile.valid() && _profile->getSRS()->isGeographic() ) )
+        {
+            // by default, set a geocentric map to use global-geodetic WGS84.
+            _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        }
+        else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE && !( _profile.valid() && _profile->getSRS()->isCube() ) )
+        {
+            //If the map type is a Geocentric Cube, set the profile to the cube profile.
+            _profile = osgEarth::Registry::instance()->getCubeProfile();
+        }
+        else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_PROJECTED && _profile.valid() && _profile->getSRS()->isGeographic() )
         {
             OE_INFO << LC << "Projected display with geographic SRS; activating Plate Carre mode" << std::endl;
             _profile = _profile->overrideSRS( _profile->getSRS()->createPlateCarreGeographicSRS() );
+        }
+        else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_PROJECTED && !( _profile.valid() && _profile->getSRS()->isProjected() ) )
+        {
+            // TODO: should there be a default projected profile?
+            _profile = 0;
         }
 
         // finally, fire an event if the profile has been set.

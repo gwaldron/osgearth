@@ -47,6 +47,9 @@ namespace osgEarth
         virtual bool elevationTexturesRequired() const =0;
         virtual bool normalTexturesRequired() const =0;
         virtual bool parentTexturesRequired() const =0;
+
+    public:
+        virtual ~TerrainEngineRequirements() { }
     };
 
     /**
@@ -150,13 +153,13 @@ namespace osgEarth
         }
 
         /** Whether the implementation should generate normal map rasters. */
-        void requireNormalTextures() { _requireNormalTextures = true; }
+        void requireNormalTextures();
         
         /** Whether the implementation should generate elevation map rasters. */
-        void requireElevationTextures() { _requireElevationTextures = true; }
+        void requireElevationTextures();
 
         /** Whether the implementation should generate parent color textures. */
-        void requireParentTextures() { _requireParentTextures = true; }
+        void requireParentTextures();
 
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getTerrainStateSet() { return getOrCreateStateSet(); }
@@ -258,6 +261,10 @@ namespace osgEarth
         bool _requireNormalTextures;
         bool _requireParentTextures;
 
+        // called by addTileNodeCallback to notify any already-existing nodes
+        // of the new callback.
+        virtual void notifyExistingNodes(TerrainEngine::NodeCallback* cb) { }
+
     public: // utility
 
         /**
@@ -284,11 +291,7 @@ namespace osgEarth
         struct ImageLayerController : public ImageLayerCallback
         {
             ImageLayerController( const Map* map, TerrainEngineNode* engine );
-
-            void onVisibleChanged( TerrainLayer* layer );
-            void onOpacityChanged( ImageLayer* layer );
-            void onColorFiltersChanged( ImageLayer* layer );      
-            void onVisibleRangeChanged( ImageLayer* layer );
+            void onColorFiltersChanged( ImageLayer* layer ); 
 
         private:
             MapFrame           _mapf;
@@ -313,8 +316,8 @@ namespace osgEarth
         typedef std::vector<osg::ref_ptr<TerrainEffect> > TerrainEffectVector;
         TerrainEffectVector effects_;
 
-        typedef std::vector<osg::ref_ptr<TerrainEngine::NodeCallback> > TerrainTileNodeCallbackVector;
-        TerrainTileNodeCallbackVector _tileNodeCallbacks;
+        typedef std::vector<osg::ref_ptr<TerrainEngine::NodeCallback> > NodeCallbackVector;
+        NodeCallbackVector _tileNodeCallbacks;
         mutable Threading::Mutex _tileNodeCallbacksMutex;
         
         typedef std::vector<osg::ref_ptr<CreateTileModelCallback> > CreateTileModelCallbacks;

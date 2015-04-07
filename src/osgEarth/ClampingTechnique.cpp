@@ -24,6 +24,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Shaders>
+#include <osgEarth/Clamping>
 
 #include <osg/Depth>
 #include <osg/PolygonMode>
@@ -344,11 +345,16 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 #endif
 
     // default value for altitude offset; can be overriden by geometry.
-    local->_groupStateSet->addUniform( new osg::Uniform("oe_clamp_altitudeOffset", 0.0f) );
+    local->_groupStateSet->addUniform( new osg::Uniform(Clamping::AltitudeOffsetUniformName, 0.0f) );
 
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = VirtualProgram::getOrCreate(local->_groupStateSet.get());
     vp->setName( "GPUClamping" );
+
+    // Bind clamping attribute location, and a default uniform indicating whether
+    // they are available (default is false).
+    vp->addBindAttribLocation( Clamping::AnchorAttrName, Clamping::AnchorAttrLocation );
+    local->_groupStateSet->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, false) );
 
     osgEarth::Shaders pkg;
     pkg.loadFunction(vp, pkg.GPUClampingVertex);

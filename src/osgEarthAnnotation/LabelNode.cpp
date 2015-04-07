@@ -88,6 +88,11 @@ void
 LabelNode::init( const Style& style )
 {
     _geode = new osg::Geode();
+
+    // ensure that (0,0,0) is the bounding sphere control/center point.
+    // useful for things like horizon culling.
+    _geode->setComputeBoundingSphereCallback(new ControlPointCallback());
+
     getAttachPoint()->addChild( _geode.get() );
 
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();

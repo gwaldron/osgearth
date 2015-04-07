@@ -346,6 +346,7 @@ MapNode::init()
     _map->addMapCallback( _mapCallback.get()  );
 
     osg::StateSet* stateset = getOrCreateStateSet();
+
     if ( _mapNodeOptions.enableLighting().isSet() )
     {
         stateset->addUniform(Registry::shaderFactory()->createUniformForGLMode(
@@ -355,6 +356,23 @@ MapNode::init()
         stateset->setMode( 
             GL_LIGHTING, 
             _mapNodeOptions.enableLighting().value() ? 1 : 0);
+    }
+
+    // Add in some global uniforms
+    stateset->addUniform( new osg::Uniform("oe_isGeocentric", _map->isGeocentric()) );
+    if ( _map->isGeocentric() )
+    {
+        OE_INFO << LC << "Adding ellipsoid uniforms.\n";
+
+        // for a geocentric map, use an ellipsoid unit-frame transform and its inverse:
+        osg::Vec3d ellipFrameInverse(
+            _map->getSRS()->getEllipsoid()->getRadiusEquator(),
+            _map->getSRS()->getEllipsoid()->getRadiusEquator(),
+            _map->getSRS()->getEllipsoid()->getRadiusPolar());
+        stateset->addUniform( new osg::Uniform("oe_ellipsoidFrameInverse", osg::Vec3f(ellipFrameInverse)) );
+
+        osg::Vec3d ellipFrame = osg::componentDivide(osg::Vec3d(1.0,1.0,1.0), ellipFrameInverse);
+        stateset->addUniform( new osg::Uniform("oe_ellipsoidFrame", osg::Vec3f(ellipFrame)) );
     }
 
     dirtyBound();

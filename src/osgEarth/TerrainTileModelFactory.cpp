@@ -189,7 +189,10 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                 TileKey parentKey = key.createParentKey();
                 if ( modelStore->get(parentKey, parentModel) )
                 {
-                    const TerrainTileLayerModel* parentLayerModel = parentModel->findColorLayerByUID(layer->getUID());
+                    const TerrainTileLayerModel* parentLayerModel = layer->isShared() ?
+                        parentModel->findSharedLayerByUID(layer->getUID()) :                        
+                        parentModel->findColorLayerByUID(layer->getUID());
+
                     if ( parentLayerModel )
                     {
                         layerModel->setTexture( parentLayerModel->getTexture() );
@@ -219,7 +222,10 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
             }
 #endif
 
-            model->colorLayers().push_back( layerModel );
+            if ( layer->isShared() )
+                model->sharedLayers().push_back( layerModel );
+            else
+                model->colorLayers().push_back( layerModel );
 
             if ( layerModel->getMatrix() == 0L )
                 OE_WARN << LC << "NO MATRIX!\n";
@@ -369,6 +375,7 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
 
     if ( model->heightFields().getNeighbor(0, 0) != 0L )
     {
+#if 0
         // assemble the neighboring heightfields so we can get the edges correct:
         for(int x=-1; x<=1; x+=2)
         {
@@ -383,6 +390,7 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
                 }
             }
         }
+#endif
 
         // Create an image encoding normals and curvature:
         image = HeightFieldUtils::convertToNormalMap(
@@ -396,6 +404,7 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
         osg::Texture* texture = createNormalTexture( image );
         layerModel->setTexture( texture );
     }
+
     else if ( modelStore )
     {
         // no image; use the parent texture with a scale/bias matrix.
@@ -403,8 +412,8 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
         TileKey parentKey = key.createParentKey();
         if ( modelStore->get(parentKey, parentModel) )
         {
-            const TerrainTileLayerModel* parentLayerModel = parentModel->findSharedLayerByName(
-                "oe_normal_map" );
+            const TerrainTileLayerModel* parentLayerModel = parentModel->normalModel().get();
+                //findSharedLayerByName( "oe_normal_map" );
 
             if ( parentLayerModel )
             {
@@ -415,7 +424,8 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
         }
     }
 
-    model->sharedLayers().push_back( layerModel );
+    model->normalModel() = layerModel;
+    //model->sharedLayers().push_back( layerModel );
 
     if (progress)
         progress->stats()["fetch_normalmap_time"] += OE_STOP_TIMER(fetch_normalmap);
@@ -453,6 +463,13 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
         return true;
     }
 
+    if ( !out_hf.valid() )
+    {
+        // This sets the elevation tile size; query size for all tiles.
+        out_hf = HeightFieldUtils::createReferenceHeightField(
+            key.getExtent(), 257, 257, true );
+    }
+
     bool populated = frame.populateHeightField(
         out_hf,
         key,
@@ -485,7 +502,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
-    tex->setResizeNonPowerOfTwoHint(false);
+    tex->setResizeNonPowerOfTwoHint(true); //false);
 
     osg::Texture::FilterMode magFilter = 
         layer ? layer->getImageLayerOptions().magFilter().get() : osg::Texture::LINEAR;

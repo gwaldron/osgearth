@@ -96,21 +96,23 @@ Query::combineWith( const Query& rhs ) const
     {
         merged.tileKey() = *_tileKey;
     }
-    else
+    else if ( rhs._tileKey.isSet() )
     {
-        // merge the bounds:
-        if ( bounds().isSet() && rhs.bounds().isSet() )
-        {
-            merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
-        }
-        else if ( bounds().isSet() )
-        {
-            merged.bounds() = *bounds();
-        }
-        else if ( rhs.bounds().isSet() )
-        {
-            merged.bounds() = *rhs.bounds();
-        }
+        merged.tileKey() = *rhs._tileKey;
+    }
+
+    // merge the bounds:
+    if ( bounds().isSet() && rhs.bounds().isSet() )
+    {
+        merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
+    }
+    else if ( bounds().isSet() )
+    {
+        merged.bounds() = *bounds();
+    }
+    else if ( rhs.bounds().isSet() )
+    {
+        merged.bounds() = *rhs.bounds();
     }
 
     return merged;

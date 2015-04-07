@@ -101,35 +101,11 @@ TerrainEngineNode::getResources() const
     return _texCompositor.get();
 }
 
-
-// this handler adjusts the uniform set when a terrain layer's "enabed" state changes
-void
-TerrainEngineNode::ImageLayerController::onVisibleChanged( TerrainLayer* layer )
-{
-    _engine->dirty();
-}
-
-
-// this handler adjusts the uniform set when a terrain layer's "opacity" value changes
-void
-TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
-{
-    _engine->dirty();
-}
-
-void
-TerrainEngineNode::ImageLayerController::onVisibleRangeChanged( ImageLayer* layer )
-{
-    _engine->dirty();
-}
-
 void
 TerrainEngineNode::ImageLayerController::onColorFiltersChanged( ImageLayer* layer )
 {
     _engine->updateTextureCombining();
-    _engine->dirty();
 }
-
 
 
 //------------------------------------------------------------------------
@@ -158,6 +134,28 @@ TerrainEngineNode::~TerrainEngineNode()
             i->get()->removeCallback( _imageLayerController.get() );
         }
     }
+}
+
+
+void
+TerrainEngineNode::requireNormalTextures()
+{
+    _requireNormalTextures = true;
+    dirty();
+}
+
+void
+TerrainEngineNode::requireElevationTextures()
+{
+    _requireElevationTextures = true;
+    dirty();
+}
+
+void
+TerrainEngineNode::requireParentTextures()
+{
+    _requireParentTextures = true;
+    dirty();
 }
 
 
@@ -384,13 +382,14 @@ TerrainEngineNode::addTileNodeCallback(TerrainEngine::NodeCallback* cb)
 {
     Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
     _tileNodeCallbacks.push_back( cb );
+    notifyExistingNodes( cb );
 }
 
 void
 TerrainEngineNode::removeTileNodeCallback(TerrainEngine::NodeCallback* cb)
 {
     Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
-    for(TerrainTileNodeCallbackVector::iterator i = _tileNodeCallbacks.begin(); i != _tileNodeCallbacks.end(); ++i)
+    for(NodeCallbackVector::iterator i = _tileNodeCallbacks.begin(); i != _tileNodeCallbacks.end(); ++i)
     {
         if ( i->get() == cb )
         {

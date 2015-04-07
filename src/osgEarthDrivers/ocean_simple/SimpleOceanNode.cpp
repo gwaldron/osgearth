@@ -178,8 +178,8 @@ SimpleOceanNode::rebuild()
         std::string vertSource = _options.maskLayer().isSet() ? source_vertMask : source_vertProxy;
         std::string fragSource = _options.maskLayer().isSet() ? source_fragMask : source_fragProxy;
 
-        vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING );
+        vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
+        vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
 
         // install the slot attribute(s)
         ss->getOrCreateUniform( "ocean_data", osg::Uniform::SAMPLER_2D )->set( 0 );

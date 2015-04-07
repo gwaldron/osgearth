@@ -58,11 +58,19 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         SamplerBinding& parentElevation() { return _parentElevationBinding; }
         const SamplerBinding& parentElevation() const { return _parentElevationBinding; }
 
+        SamplerBinding& normal() { return _normalBinding; }
+        const SamplerBinding& normal() const { return _normalBinding; }
+
+        SamplerBinding& parentNormal() { return _parentNormalBinding; }
+        const SamplerBinding& parentNormal() const { return _parentNormalBinding; }
+
     private:
         SamplerBinding _colorBinding;
         SamplerBinding _parentColorBinding;
         SamplerBinding _elevationBinding;
         SamplerBinding _parentElevationBinding;
+        SamplerBinding _normalBinding;
+        SamplerBinding _parentNormalBinding;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

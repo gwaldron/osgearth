@@ -35,10 +35,6 @@ namespace osgEarth
      * but this is advanced usage and rarely necessary. If you think you need to alter
      * the built-in mains, consider whether you can accomplish your goal by using a
      * VirtualProgram instead!
-     *
-     * The only exception, currently, is if you are looking to replace the built-in
-     * lighting shaders. However we intend to decouple this functionality in the 
-     * future and remove the installLightingShaders() method from the ShaderFactory.
      */
     class OSGEARTH_EXPORT ShaderFactory : public osg::Referenced
     {

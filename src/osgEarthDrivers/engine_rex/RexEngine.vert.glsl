@@ -26,7 +26,7 @@ uniform float oe_lodblend_duration;
 void oe_rexEngine_vert(inout vec4 vertexModel)
 {
     // Texture coordinate for the tile (always 0..1)
-    oe_layer_tilec = gl_MultiTexCoord$REX_PRIMARY_UNIT;
+    oe_layer_tilec = gl_MultiTexCoord0;
 
     // Texture coordinate for the color texture (scale,bias)
     oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec;

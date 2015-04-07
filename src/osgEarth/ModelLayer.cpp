@@ -187,6 +187,8 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
         _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
         if ( _modelSource.valid() )
         {
+            _modelSource->setName( this->getName() );
+
             _modelSource->initialize( _dbOptions.get() );
 
             // the mask, if there is one:

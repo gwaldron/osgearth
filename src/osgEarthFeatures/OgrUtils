@@ -43,10 +43,14 @@ struct OSGEARTHFEATURES_EXPORT OgrUtils
     static OGRGeometryH encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type );    
 
     static OGRGeometryH createOgrGeometry(const Geometry* geometry, OGRwkbGeometryType requestedType = wkbUnknown);
+
+    static Feature* createFeature( OGRFeatureH handle, const FeatureProfile* profile );
+    
+    static AttributeType getAttributeType( OGRFieldType type );  
+
+private:
     
     static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs );
-    
-    static AttributeType getAttributeType( OGRFieldType type );    
 };
 
 

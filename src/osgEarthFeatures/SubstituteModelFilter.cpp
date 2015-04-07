@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/GeometryUtils>
 #include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarthSymbology/MeshFlattener>
 #include <osgEarth/ECEF>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/DrawInstanced>
@@ -39,6 +40,7 @@
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
+#include <osgDB/WriteFile>
 
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>
@@ -467,6 +469,7 @@ private:
 //typedef std::map< osg::Node*, FeatureList > MarkerToFeatures;
 typedef std::map< osg::ref_ptr<osg::Node>, FeatureList > ModelBins;
 
+
 //clustering:
 //  troll the external model for geodes. for each geode, create a geode in the target
 //  model. then, for each geometry in that geode, replicate it once for each instance of
@@ -598,16 +601,17 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     osg::Group* group = createDelocalizeGroup();
 
+    osg::ref_ptr< osg::Group > attachPoint = new osg::Group;
+    group->addChild(attachPoint.get());
+
     // Process the feature set, using clustering if requested
     bool ok = true;
-    if ( _cluster )
-    {
-        ok = cluster( features, symbol, context.getSession(), group, newContext );
-    }
 
-    else
+    process( features, symbol, context.getSession(), attachPoint.get(), newContext );
+    if (_cluster)
     {
-        process( features, symbol, context.getSession(), group, newContext );
+        // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
+        MeshFlattener::run(attachPoint);
     }
 
     // return proper context
@@ -621,7 +625,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         // TODO: carefully test for this, since GL_NORMALIZE hurts performance in 
         // FFP mode (RESCALE_NORMAL is faster for uniform scaling); and I think auto-normal-scaling
         // is disabled entirely when using shaders. For now I believe we are dropping to FFP
-        // when not using instancing...so just check for that
+        // when not using instancing ...so just check for that
         if ( !_useDrawInstanced )
         {
             group->getOrCreateStateSet()->setMode( GL_NORMALIZE, osg::StateAttribute::ON );

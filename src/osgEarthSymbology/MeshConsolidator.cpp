@@ -21,6 +21,7 @@
 #include <osgEarth/StringUtils>
 #include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>
+#include <osg/Version>
 #include <osgDB/WriteFile>
 #include <osgUtil/MeshOptimizers>
 #include <limits>
@@ -139,42 +140,11 @@ namespace
         case osg::Array::Vec4sArrayType:
             return convertToBindPerVertex<osg::Vec4sArray>(static_cast<osg::Vec4sArray*>(array), numVerts);
 
-        case osg::Array::Vec2iArrayType:
-            return convertToBindPerVertex<osg::Vec2iArray>(static_cast<osg::Vec2iArray*>(array), numVerts);
-
-        case osg::Array::Vec3iArrayType:
-            return convertToBindPerVertex<osg::Vec3iArray>(static_cast<osg::Vec3iArray*>(array), numVerts);
-
-        case osg::Array::Vec4iArrayType:
-            return convertToBindPerVertex<osg::Vec4iArray>(static_cast<osg::Vec4iArray*>(array), numVerts);
-
-        case osg::Array::Vec2ubArrayType:
-            return convertToBindPerVertex<osg::Vec2ubArray>(static_cast<osg::Vec2ubArray*>(array), numVerts );
-
-        case osg::Array::Vec3ubArrayType:
-            return convertToBindPerVertex<osg::Vec3ubArray>(static_cast<osg::Vec3ubArray*>(array), numVerts );
+        
 
         case osg::Array::Vec4ubArrayType:
             return convertToBindPerVertex<osg::Vec4ubArray>(static_cast<osg::Vec4ubArray*>(array), numVerts);
 
-
-        case osg::Array::Vec2usArrayType:
-            return convertToBindPerVertex<osg::Vec2usArray>(static_cast<osg::Vec2usArray*>(array), numVerts);
-
-        case osg::Array::Vec3usArrayType:
-            return convertToBindPerVertex<osg::Vec3usArray>(static_cast<osg::Vec3usArray*>(array), numVerts );
-
-        case osg::Array::Vec4usArrayType:
-            return convertToBindPerVertex<osg::Vec4usArray >(static_cast<osg::Vec4usArray*>(array), numVerts );
-
-        case osg::Array::Vec2uiArrayType:
-            return convertToBindPerVertex<osg::Vec2uiArray>(static_cast<osg::Vec2uiArray*>(array), numVerts);
-
-        case osg::Array::Vec3uiArrayType:
-            return convertToBindPerVertex<osg::Vec3uiArray>(static_cast<osg::Vec3uiArray*>(array), numVerts);
-
-        case osg::Array::Vec4uiArrayType:
-            return convertToBindPerVertex<osg::Vec4uiArray>(static_cast<osg::Vec4uiArray*>(array), numVerts);
 
         case osg::Array::Vec2ArrayType:
             return convertToBindPerVertex<osg::Vec2Array>(static_cast<osg::Vec2Array*>(array), numVerts);
@@ -198,9 +168,43 @@ namespace
         case osg::Array::MatrixArrayType:
             return convertToBindPerVertex<osg::MatrixfArray>(static_cast<osg::MatrixfArray*>(array), numVerts);
 
+#if OSG_MIN_VERSION_REQUIRED(3,1,9)
+        case osg::Array::Vec2iArrayType:
+            return convertToBindPerVertex<osg::Vec2iArray>(static_cast<osg::Vec2iArray*>(array), numVerts);
+
+        case osg::Array::Vec3iArrayType:
+            return convertToBindPerVertex<osg::Vec3iArray>(static_cast<osg::Vec3iArray*>(array), numVerts);
+
+        case osg::Array::Vec4iArrayType:
+            return convertToBindPerVertex<osg::Vec4iArray>(static_cast<osg::Vec4iArray*>(array), numVerts);
+
+        case osg::Array::Vec2ubArrayType:
+            return convertToBindPerVertex<osg::Vec2ubArray>(static_cast<osg::Vec2ubArray*>(array), numVerts );
+
+        case osg::Array::Vec3ubArrayType:
+            return convertToBindPerVertex<osg::Vec3ubArray>(static_cast<osg::Vec3ubArray*>(array), numVerts );
+
+        case osg::Array::Vec2usArrayType:
+            return convertToBindPerVertex<osg::Vec2usArray>(static_cast<osg::Vec2usArray*>(array), numVerts);
+
+        case osg::Array::Vec3usArrayType:
+            return convertToBindPerVertex<osg::Vec3usArray>(static_cast<osg::Vec3usArray*>(array), numVerts );
+
+        case osg::Array::Vec4usArrayType:
+            return convertToBindPerVertex<osg::Vec4usArray >(static_cast<osg::Vec4usArray*>(array), numVerts );
+
+        case osg::Array::Vec2uiArrayType:
+            return convertToBindPerVertex<osg::Vec2uiArray>(static_cast<osg::Vec2uiArray*>(array), numVerts);
+
+        case osg::Array::Vec3uiArrayType:
+            return convertToBindPerVertex<osg::Vec3uiArray>(static_cast<osg::Vec3uiArray*>(array), numVerts);
+
+        case osg::Array::Vec4uiArrayType:
+            return convertToBindPerVertex<osg::Vec4uiArray>(static_cast<osg::Vec4uiArray*>(array), numVerts);
+
         case osg::Array::MatrixdArrayType:
             return convertToBindPerVertex<osg::MatrixdArray>(static_cast<osg::MatrixdArray*>(array),  numVerts);
-
+#endif
         default:
             return array;
         }

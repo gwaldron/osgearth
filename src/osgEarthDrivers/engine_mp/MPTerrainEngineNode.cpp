@@ -374,7 +374,7 @@ MPTerrainEngineNode::refresh(bool forceDirty)
         }
         else
         {
-            createTerrain();
+            dirtyTerrain();
         }
 
         _refreshRequired = false;
@@ -386,7 +386,7 @@ MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     if ( _update_mapf != 0L )
     {
-        createTerrain();
+        dirtyTerrain();
     }
 }
 
@@ -437,7 +437,7 @@ MPTerrainEngineNode::getPayloadStateSet()
 }
 
 void
-MPTerrainEngineNode::createTerrain()
+MPTerrainEngineNode::dirtyTerrain()
 {
     // scrub the heightfield cache.
     if (_tileModelFactory)
@@ -499,6 +499,9 @@ MPTerrainEngineNode::createTerrain()
     _rootTilesRegistered = false;
 
     updateState();
+
+    // Call the base class
+    TerrainEngineNode::dirtyTerrain();
 }
 
 namespace

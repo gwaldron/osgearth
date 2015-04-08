@@ -119,7 +119,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         // Reloads all the tiles in the terrain due to a data model change
         void refresh(bool force =false);
-        void createTerrain();
+        virtual void dirtyTerrain();
 
         void addImageLayer( ImageLayer* layer );
         void addElevationLayer( ElevationLayer* layer );
@@ -132,6 +132,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
         
         void updateState(); 
+
 
     private:
         MPTerrainEngineOptions _terrainOptions;

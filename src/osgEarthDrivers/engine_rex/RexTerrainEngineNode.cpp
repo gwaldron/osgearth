@@ -192,6 +192,9 @@ _stateUpdateRequired  ( false )
     // unique ID for this engine:
     _uid = Registry::instance()->createUID();
 
+    // always require elevation.
+    _requireElevationTextures = true;
+
     // Register our render bins protos.
     {
         // Mutex because addRenderBinPrototype isn't thread-safe.
@@ -244,6 +247,9 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // merge in the custom options:
     _terrainOptions.merge( options );
 
+    if ( _terrainOptions.enableLODBlending() == true )
+        _requireParentTextures = true;
+
     // A shared registry for tile nodes in the scene graph. Enable revision tracking
     // if requested in the options. Revision tracking lets the registry notify all
     // live tiles of the current map revision so they can inrementally update
@@ -276,9 +282,6 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     map->getElevationLayers( elevationLayers );
     for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
         addElevationLayer( i->get() );
-
-    if ( elevationLayers.size() > 0 && !elevationTexturesRequired() )
-        requireElevationTextures();
 
     ImageLayerVector imageLayers;
     map->getImageLayers( imageLayers );
@@ -812,9 +815,6 @@ RexTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
         return;
 
     layer->addCallback( _elevationCallback.get() );
-
-    if ( !elevationTexturesRequired() )
-        requireElevationTextures();
 
     refresh();
 }

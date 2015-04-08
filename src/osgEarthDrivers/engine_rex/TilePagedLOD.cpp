@@ -181,10 +181,14 @@ TilePagedLOD::addChild(osg::Node* node)
                 {
                     nodes.push_back( tileNode );
 
-                    const TileKey& key = tileNode->getKey();
-                    _live->listenFor( key.createNeighborKey(1, 0), tileNode );
-                    _live->listenFor( key.createNeighborKey(0, 1), tileNode );
-                    _live->listenFor( key.createNeighborKey(1, 1), tileNode );
+                    // if we are smoothing normals, we need to listen for adjoining tiles.
+                    if ( tileNode->getModel()->normalModel().valid() )
+                    {
+                        const TileKey& key = tileNode->getKey();
+                        _live->listenFor( key.createNeighborKey(1, 0), tileNode );
+                        _live->listenFor( key.createNeighborKey(0, 1), tileNode );
+                        _live->listenFor( key.createNeighborKey(1, 1), tileNode );
+                    }
                 }
             }
             _live->add( nodes );

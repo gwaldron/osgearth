@@ -68,10 +68,11 @@ _heightFieldCache(true, 128)
 }
 
 TerrainTileModel*
-TerrainTileModelFactory::createTileModel(const MapFrame&              frame,
-                                         const TileKey&               key,
-                                         const TerrainTileModelStore* modelStore,
-                                         ProgressCallback*            progress)
+TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
+                                         const TileKey&                   key,
+                                         const TerrainTileModelStore*     modelStore,
+                                         const TerrainEngineRequirements* requirements,
+                                         ProgressCallback*                progress)
 {
     // Make a new model:
     osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
@@ -80,8 +81,16 @@ TerrainTileModelFactory::createTileModel(const MapFrame&              frame,
 
     // assemble all the components:
     addImageLayers( model.get(), frame, key, modelStore, progress );
-    addElevation  ( model.get(), frame, key, modelStore, progress );
-    addNormalMap  ( model.get(), frame, key, modelStore, progress );
+
+    if ( requirements == 0L || requirements->elevationTexturesRequired() )
+    {
+        addElevation( model.get(), frame, key, modelStore, progress );
+    }
+
+    if ( requirements == 0L || requirements->normalTexturesRequired() )
+    {
+        addNormalMap( model.get(), frame, key, modelStore, progress );
+    }
 
     // done.
     return model.release();

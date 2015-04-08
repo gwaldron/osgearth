@@ -37,6 +37,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         std::string& matrixName() { return _matrixName; }
         const std::string& matrixName() const { return _matrixName; }
 
+    public:
+        bool isActive() const { return _unit >= 0; }
+
     private:
         int         _unit;
         std::string _samplerName;

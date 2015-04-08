@@ -293,9 +293,15 @@ TerrainEngineNode::createTileModel(const MapFrame&              frame,
                                    const TerrainTileModelStore* modelStore,
                                    ProgressCallback*            progress)
 {
+    TerrainEngineRequirements* requirements = this;
+
     // Ask the factory to create a new tile model:
     osg::ref_ptr<TerrainTileModel> model = _tileModelFactory->createTileModel(
-        frame, key, modelStore, progress);
+        frame, 
+        key, 
+        modelStore,
+        requirements, 
+        progress);
 
     if ( model.valid() )
     {

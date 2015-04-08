@@ -100,30 +100,42 @@ TileNodeRegistry::addSafely(TileNode* tile)
     if ( _revisioningEnabled )
         tile->setMapRevision( _maprev );
 
-    // check for waiters.
-    Notifications::iterator i = _notifications.find(tile->getKey());
-    if ( i != _notifications.end() )
+    // check for tiles that are waiting on this tile, and notify them!
+    TileKeyOneToMany::iterator notifier = _notifiers.find( tile->getKey() );
+    if ( notifier != _notifiers.end() )
     {
-        TileKeyVector& waiters = i->second;
-        for(unsigned j=0; j<waiters.size(); )
+        TileKeySet& listeners = notifier->second;
+
+        for(TileKeySet::iterator listener = listeners.begin(); listener != listeners.end(); ++listener)
         {
-            TileKey& waiter = waiters[j];
-            TileNodeMap::iterator k = _tiles.find(waiter);
-            if ( k != _tiles.end() )
+            TileNodeMap::iterator listenerTile = _tiles.find( *listener );
+            if ( listenerTile != _tiles.end() )
             {
-                k->second->notifyOfArrival( tile );
-                waiter = waiters.back();
-                waiters.resize( waiters.size()-1 );
-            }
-            else
-            {
-                ++j;
+                listenerTile->second->notifyOfArrival( tile );
             }
         }
-        if ( waiters.size() == 0 )
-        {
-            _notifications.erase( i );
-        }
+        _notifiers.erase( notifier );
+    }
+
+    OE_TEST << LC << _name 
+        << ": tiles=" << _tiles.size()
+        << ", notifiers=" << _notifiers.size()
+        << std::endl;
+}
+
+void
+TileNodeRegistry::removeSafely(const TileKey& key)
+{
+    _tiles.erase( key );
+
+    for(TileKeyOneToMany::iterator i = _notifiers.begin(); i != _notifiers.end(); )
+    {
+        i->second.erase( key );
+
+        if ( i->second.size() == 0 )
+            i = _notifiers.erase( i );
+        else
+            ++i;
     }
 }
 
@@ -158,8 +170,7 @@ TileNodeRegistry::remove( TileNode* tile )
     if ( tile )
     {
         Threading::ScopedWriteLock exclusive( _tilesMutex );
-        _tiles.erase( tile->getKey() );
-        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
+        removeSafely( tile->getKey() );
     }
 }
 
@@ -202,8 +213,7 @@ TileNodeRegistry::take( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
     if ( i != _tiles.end() )
     {
         out_tile = i->second.get();
-        _tiles.erase( i );
-        OE_TEST << LC << _name << ": tiles=" << _tiles.size() << std::endl;
+        removeSafely( key );
         return true;
     }
     return false;
@@ -252,7 +262,8 @@ TileNodeRegistry::listenFor(const TileKey& tileToWaitFor, TileNode* waiter)
     else
     {
         OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
-        _notifications[tileToWaitFor].push_back( waiter->getKey() );
+        //_notifications[tileToWaitFor].push_back( waiter->getKey() );
+        _notifiers[tileToWaitFor].insert( waiter->getKey() );
     }
 }
         
@@ -261,7 +272,7 @@ TileNodeRegistry::takeAny()
 {
     Threading::ScopedWriteLock exclusive( _tilesMutex );
     osg::ref_ptr<TileNode> tile = _tiles.begin()->second.get();
-    _tiles.erase( _tiles.begin() );
+    removeSafely( tile->getKey() );
     return tile.release();
 }
 

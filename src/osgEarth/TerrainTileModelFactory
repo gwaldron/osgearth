@@ -22,6 +22,7 @@
 
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/TerrainOptions>
+#include <osgEarth/TerrainEngineRequirements>
 #include <osgEarth/MapFrame>
 #include <osgEarth/Progress>
 
@@ -48,10 +49,11 @@ namespace osgEarth
          * @param progress    Progress tracking callback
          */
         virtual TerrainTileModel* createTileModel(
-            const MapFrame&              frame,
-            const TileKey&               key,
-            const TerrainTileModelStore* modelStore,
-            ProgressCallback*            progress);
+            const MapFrame&                  frame,
+            const TileKey&                   key,
+            const TerrainTileModelStore*     modelStore,
+            const TerrainEngineRequirements* requirements,
+            ProgressCallback*                progress);
 
     protected:
 

@@ -143,15 +143,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         OpenThreads::Atomic               _frameNumber;
         mutable Threading::ReadWriteMutex _tilesMutex;
 
-        typedef std::vector<TileKey> TileKeyVector;
-        typedef std::map<TileKey, TileKeyVector> Notifications;
-        Notifications _notifications;
+        //typedef std::vector<TileKey> TileKeyVector;
+        typedef fast_set<TileKey> TileKeySet;
+        typedef std::map<TileKey, TileKeySet> TileKeyOneToMany;
+
+        TileKeyOneToMany _notifiers;
 
     private:
 
         /** adds a tile node, assuming the write-lock has been taken by the caller and
             that node is not NULL */
         void addSafely(TileNode* node);
+        void removeSafely(const TileKey& key);
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

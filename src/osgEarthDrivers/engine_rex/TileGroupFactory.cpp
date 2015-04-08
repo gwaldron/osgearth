@@ -117,34 +117,37 @@ TileGroupFactory::createTileNode(TerrainTileModel* model,
 {
     TileNode* tileNode = new TileNode(model);
     
-    for(TerrainTileImageLayerModelVector::const_iterator i = model->colorLayers().begin();
-        i != model->colorLayers().end();
-        ++i)
+    if ( _renderBindings.color().isActive() )
     {
-        const TerrainTileLayerModel* layer = i->get();
-
-        if ( layer->getTexture() )
+        for(TerrainTileImageLayerModelVector::const_iterator i = model->colorLayers().begin();
+            i != model->colorLayers().end();
+            ++i)
         {
-            osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+            const TerrainTileLayerModel* layer = i->get();
 
-            stateSet->setTextureAttribute(
-                _renderBindings.color().unit(),
-                layer->getTexture() );
+            if ( layer->getTexture() )
+            {
+                osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
 
-            // (note: sampler uniform is set at the top level by the engine)
-        }
+                stateSet->setTextureAttribute(
+                    _renderBindings.color().unit(),
+                    layer->getTexture() );
 
-        if ( layer->getMatrix() )
-        {
-            osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+                // (note: sampler uniform is set at the top level by the engine)
+            }
 
-            stateSet->addUniform( new osg::Uniform(
-                _renderBindings.color().matrixName().c_str(),
-                *(layer->getMatrix())) );
+            if ( layer->getMatrix() )
+            {
+                osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+
+                stateSet->addUniform( new osg::Uniform(
+                    _renderBindings.color().matrixName().c_str(),
+                    *(layer->getMatrix())) );
+            }
         }
     }
 
-    if ( model->elevationModel().valid() )
+    if ( model->elevationModel().valid() && _renderBindings.elevation().isActive() )
     {
         const TerrainTileElevationModel* em = model->elevationModel();
         
@@ -168,7 +171,7 @@ TileGroupFactory::createTileNode(TerrainTileModel* model,
         }
     }
 
-    if ( model->normalModel().valid() )
+    if ( model->normalModel().valid() && _renderBindings.normal().isActive() )
     {
         const TerrainTileLayerModel* m = model->normalModel().get();
 
@@ -187,6 +190,8 @@ TileGroupFactory::createTileNode(TerrainTileModel* model,
             stateSet->addUniform( new osg::Uniform(
                 _renderBindings.normal().matrixName().c_str(),
                 matrix ));
+
+            // (note: sampler uniform is set at the top level by the engine)
         }
     }
     
@@ -231,60 +236,66 @@ TileGroupFactory::createTileNode(TerrainTileModel* model,
 
     if ( _liveTiles->get(parentKey, parentModel) )
     {
-        for(TerrainTileImageLayerModelVector::const_iterator i = parentModel->colorLayers().begin();
-            i != parentModel->colorLayers().end();
-            ++i)
+        if ( _renderBindings.parentColor().isActive() )
         {
-            const TerrainTileLayerModel* layer = i->get();
-
-            if ( layer->getTexture() )
+            for(TerrainTileImageLayerModelVector::const_iterator i = parentModel->colorLayers().begin();
+                i != parentModel->colorLayers().end();
+                ++i)
             {
-                osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+                const TerrainTileLayerModel* layer = i->get();
 
-                stateSet->setTextureAttribute(
-                    _renderBindings.parentColor().unit(),
-                    layer->getTexture() );
+                if ( layer->getTexture() )
+                {
+                    osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
 
-                // (note: sampler uniform is set at the top level by the engine)
-            }
+                    stateSet->setTextureAttribute(
+                        _renderBindings.parentColor().unit(),
+                        layer->getTexture() );
 
-            if ( layer->getMatrix() )
-            {
-                osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+                    // (note: sampler uniform is set at the top level by the engine)
+                }
 
-                osg::Matrixf parentTexMatrix;
                 if ( layer->getMatrix() )
-                    parentTexMatrix = *(osg::clone(layer->getMatrix()));
+                {
+                    osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
 
-                applyScaleBias( &parentTexMatrix, model->getKey().getQuadrant() );
+                    osg::Matrixf parentTexMatrix;
+                    if ( layer->getMatrix() )
+                        parentTexMatrix = *(osg::clone(layer->getMatrix()));
 
-                stateSet->addUniform( new osg::Uniform(
-                    _renderBindings.parentColor().matrixName().c_str(),
-                    parentTexMatrix) );
+                    applyScaleBias( &parentTexMatrix, model->getKey().getQuadrant() );
+
+                    stateSet->addUniform( new osg::Uniform(
+                        _renderBindings.parentColor().matrixName().c_str(),
+                        parentTexMatrix) );
+                }
             }
         }
 
-        if ( parentModel->elevationModel() )
+        if ( _renderBindings.parentElevation().isActive() )
         {
-            const TerrainTileElevationModel* parentEM = parentModel->elevationModel();
-
-            if (parentEM->getTexture())
+            if ( parentModel->elevationModel() )
             {
-                osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
+                const TerrainTileElevationModel* parentEM = parentModel->elevationModel();
 
-                stateSet->setTextureAttribute(
-                    _renderBindings.parentElevation().unit(),
-                    parentEM->getTexture() );
+                if (parentEM->getTexture())
+                {
+                    osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
 
-                osg::Matrixf parentElevMatrix;
-                if ( parentEM->getMatrix() )
-                    parentElevMatrix = *(osg::clone(parentEM->getMatrix()));
+                    stateSet->setTextureAttribute(
+                        _renderBindings.parentElevation().unit(),
+                        parentEM->getTexture() );
 
-                applyScaleBias( &parentElevMatrix, model->getKey().getQuadrant() );
+                    osg::Matrixf parentElevMatrix;
+                    if ( parentEM->getMatrix() )
+                        parentElevMatrix = *(osg::clone(parentEM->getMatrix()));
 
-                stateSet->addUniform( new osg::Uniform(
-                    _renderBindings.parentElevation().matrixName().c_str(),
-                    parentElevMatrix ));
+                    applyScaleBias( &parentElevMatrix, model->getKey().getQuadrant() );
+
+                    stateSet->addUniform( new osg::Uniform(
+                        _renderBindings.parentElevation().matrixName().c_str(),
+                        parentElevMatrix ));
+                }
             }
         }
     }
@@ -372,11 +383,10 @@ TileGroupFactory::createTileNodeGraph(TerrainTileModel* model,
         // Install a callback to reject back-facing tiles.
         if ( _frame.getMapInfo().isGeocentric() && _options.clusterCulling() == true )
         {
-            const osg::HeightField* heightField = model->elevationModel()->getHeightField();
-            if ( heightField )
+            if ( model->elevationModel().valid() && model->elevationModel()->getHeightField() )
             {
                 tileNode->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
-                    heightField,
+                    model->elevationModel()->getHeightField(),
                     tileNode->getKey().getProfile()->getSRS()->getEllipsoid(),
                     *_options.verticalScale() ) );
             }

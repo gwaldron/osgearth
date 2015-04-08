@@ -141,6 +141,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainLayer
     TerrainOptions
     TerrainEngineNode
+    TerrainEngineRequirements
     TerrainTileModel
     TerrainTileModelFactory
     TerrainTileNode

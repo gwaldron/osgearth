@@ -25,6 +25,7 @@
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/TerrainTileNode>
+#include <osgEarth/TerrainEngineRequirements>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Progress>
@@ -37,20 +38,6 @@
 namespace osgEarth
 {
     class TerrainEffect;
-
-    /**
-     * Interface for querying terrain engine feature requirements.
-     */
-    class TerrainEngineRequirements
-    {
-    public:
-        virtual bool elevationTexturesRequired() const =0;
-        virtual bool normalTexturesRequired() const =0;
-        virtual bool parentTexturesRequired() const =0;
-
-    public:
-        virtual ~TerrainEngineRequirements() { }
-    };
 
     /**
      * Interface for and object that can create a new terrain tile models

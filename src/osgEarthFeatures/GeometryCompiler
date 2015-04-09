@@ -96,6 +96,10 @@ namespace osgEarth { namespace Features
         optional<bool>& optimizeStateSharing() { return _optimizeStateSharing; }
         const optional<bool>& optimizeStateSharing() const { return _optimizeStateSharing; }
 
+        /** Whether to run the optimizer on the resulting group. */
+        optional<bool>& optimize() { return _optimize; }
+        const optional<bool>& optimize() const { return _optimize; }
+
 
     public:
         Config getConfig() const;
@@ -115,6 +119,7 @@ namespace osgEarth { namespace Features
         optional<ShaderPolicy>         _shaderPolicy;
         optional<bool>                 _useTextureArrays;
         optional<bool>                 _optimizeStateSharing;
+        optional<bool>                 _optimize;
 
         void fromConfig( const Config& conf );
 

@@ -163,7 +163,10 @@ namespace osgEarth
         virtual void postInitialize( const Map* map, const TerrainOptions& options );
 
         // signals that a redraw is needed because something changed.
-        virtual void dirty();
+        virtual void requestRedraw();
+
+        // Request that the terrain tiles be rebuilt.
+        virtual void dirtyTerrain();
 
         // allow subclasses direct access for convenience.
         osg::ref_ptr<TextureCompositor> _texCompositor;

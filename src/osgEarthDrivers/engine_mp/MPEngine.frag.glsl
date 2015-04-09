@@ -15,8 +15,6 @@ uniform float oe_layer_opacity;
 varying vec4 oe_layer_texc;
 varying float oe_terrain_rangeOpacity;
 
-uniform float m;
-
 void oe_mp_apply_coloring(inout vec4 color)
 {
     color = oe_terrain_color.a >= 0.0 ? oe_terrain_color : color;

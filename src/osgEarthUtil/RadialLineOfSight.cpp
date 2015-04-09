@@ -88,7 +88,7 @@ _displayMode( LineOfSight::MODE_SPLIT ),
 _fill(false),
 _terrainOnly( false )
 {
-    compute(getNode());
+    //compute(getNode());
     _terrainChangedCallback = new RadialLineOfSightNodeTerrainChangedCallback( this );
     _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );        
     setNumChildrenRequiringUpdateTraversal( 1 );

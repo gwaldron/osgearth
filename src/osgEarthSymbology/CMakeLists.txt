@@ -33,6 +33,7 @@ SET(LIB_PUBLIC_HEADERS
     MarkerResource
     MarkerSymbol
     MeshConsolidator
+    MeshFlattener
     MeshSubdivider
     ModelResource
     ModelSymbol
@@ -75,6 +76,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     MarkerResource.cpp
     MarkerSymbol.cpp
     MeshConsolidator.cpp
+    MeshFlattener.cpp
     MeshSubdivider.cpp
     ModelResource.cpp
     ModelSymbol.cpp

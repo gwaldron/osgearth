@@ -31,9 +31,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     /**
      * TileGroup is a group node that contians four sibling TileNodes
-     * in the quadtree structure. It has the ability to update itself
-     * by checking the map revision and scheduling an incremental
-     * update of its TileNode set.
+     * in the quadtree structure.
      */
     class TileGroup : public osg::Group
     {

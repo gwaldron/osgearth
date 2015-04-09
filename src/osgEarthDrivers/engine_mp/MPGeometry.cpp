@@ -202,7 +202,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
         // in !renderColor mode b/c these textures could be used by vertex shaders
         // to alter the geometry.
         int sharedLayers = 0;
-        if ( _supportsGLSL )
+        if ( pcp )
         {
             for(unsigned i=0; i<_layers.size(); ++i)
             {
@@ -224,21 +224,17 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                         // Shared layers need a texture matrix since the terrain engine doesn't
                         // provide a "current texture coordinate set" uniform (i.e. oe_layer_texc)
                         GLint texMatLocation = 0;
-                        if ( pcp )
+                        texMatLocation = pcp->getUniformLocation( layer._texMatUniformID );
+                        if ( texMatLocation >= 0 )
                         {
-                            texMatLocation = pcp->getUniformLocation( layer._texMatUniformID );
-                            if ( texMatLocation >= 0 )
-                            {
-                                ext->glUniformMatrix4fv( texMatLocation, 1, GL_FALSE, layer._texMat.ptr() );
-                            }
+                            ext->glUniformMatrix4fv( texMatLocation, 1, GL_FALSE, layer._texMat.ptr() );
                         }
-
-                        // no texture LOD blending for shared layers for now. maybe later.
                     }
                 }
 
                 // check for min/rax range usage.
                 const ImageLayerOptions& layerOptions = layer._imageLayer->getImageLayerOptions();
+
                 if ( layerOptions.minVisibleRange().isSet() )
                     useMinVisibleRange = true;
                 if ( layerOptions.maxVisibleRange().isSet() )
@@ -291,7 +287,7 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
                     layer._tex->apply( state );
 
                     // in FFP mode, we need to enable the GL mode for texturing:
-                    if (!_supportsGLSL)
+                    if ( !pcp ) //!_supportsGLSL)
                     {
                         state.applyMode(GL_TEXTURE_2D, true);
                     }
@@ -378,12 +374,15 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
     // if we didn't draw anything, draw the raw tiles anyway with no texture.
     if ( layersDrawn == 0 )
     {
-        if ( opacityLocation >= 0 )
-            ext->glUniform1f( opacityLocation, (GLfloat)1.0f );
-        if ( uidLocation >= 0 )
-            ext->glUniform1i( uidLocation, (GLint)-1 );
-        if ( orderLocation >= 0 )
-            ext->glUniform1i( orderLocation, (GLint)0 );
+        if ( pcp )
+        {
+            if ( opacityLocation >= 0 )
+                ext->glUniform1f( opacityLocation, (GLfloat)1.0f );
+            if ( uidLocation >= 0 )
+                ext->glUniform1i( uidLocation, (GLint)-1 );
+            if ( orderLocation >= 0 )
+                ext->glUniform1i( orderLocation, (GLint)0 );
+        }
 
         // draw the primitives themselves.
         for(unsigned int primitiveSetNum=0; primitiveSetNum!=_primitives.size(); ++primitiveSetNum)

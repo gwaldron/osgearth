@@ -782,15 +782,10 @@ RangeUniformCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 //------------------------------------------------------------------------
 
-namespace
-{
-    
-}
-
 void
 DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
 {
-    if ( ss && minAlpha < 1.0f )
+    if ( ss && minAlpha < 1.0f && Registry::capabilities().supportsGLSL() )
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
         if ( vp )

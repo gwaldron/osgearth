@@ -30,7 +30,7 @@ using namespace osgEarth::Features;
 
 #define OV(p) "("<<p.x()<<","<<p.y()<<")"
 
-#define ATTR_LOCATION osg::Drawable::SECONDARY_COLORS
+#define ATTR_LOCATION osg::Drawable::ATTRIBUTE_7
 
 namespace
 {
@@ -620,7 +620,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
             // record the geometry's primitive set(s) in the index:
             if ( cx.featureIndex() )
-                cx.featureIndex()->tagPrimitiveSets( geom, f );
+                cx.featureIndex()->tagGeometry( geom, f );
         }
     }
 

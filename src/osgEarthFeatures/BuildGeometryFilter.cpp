@@ -222,7 +222,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
                 // record the geometry's primitive set(s) in the index:
                 if ( context.featureIndex() )
-                    context.featureIndex()->tagPrimitiveSets( osgGeom, input );
+                    context.featureIndex()->tagGeometry( osgGeom, input );
             }
         }
     }
@@ -305,7 +305,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&         features,
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagPrimitiveSets( geom, input );
+                context.featureIndex()->tagGeometry( geom, input );
         }
 
         polygonizer.installShaders( geode );
@@ -415,7 +415,7 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagPrimitiveSets( osgGeom, input );
+                context.featureIndex()->tagGeometry( osgGeom, input );
         }
     }
     
@@ -495,7 +495,7 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagPrimitiveSets( osgGeom, input );
+                context.featureIndex()->tagGeometry( osgGeom, input );
         }
     }
     

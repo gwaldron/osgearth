@@ -19,17 +19,13 @@
 
 #include <osgEarthUtil/FeatureQueryTool>
 #include <osgEarth/Pickers>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
 #include <osgViewer/View>
-#include <osg/Depth>
 
 #define LC "[FeatureQueryTool] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Controls;
 
 //#undef OE_DEBUG
 //#define OE_DEBUG OE_INFO
@@ -101,8 +97,14 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
                 FeatureSourceIndexNode* index = picker.getNode<FeatureSourceIndexNode>( *hit );
                 if ( index && (hit->ratio < closestDistance) )
                 {
+                    if ( hit->indexList.size() == 0 )
+                    {
+                        OE_WARN << LC << "Index list is empty. Fix that.\n";
+                        return true;
+                    }
+
                     FeatureID fid;
-                    if ( index->getFID( hit->drawable, hit->primitiveIndex, fid ) )
+                    if ( index->getFID( hit->drawable, *hit->indexList.begin(), fid ) )
                     {
                         closestIndex    = index;
                         closestFID      = fid;
@@ -175,157 +177,4 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
     }
 
     return handled;
-}
-
-//-----------------------------------------------------------------------
-
-void
-FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args )
-{
-    clear();
-
-    FeatureDrawSet& drawSet = index->getDrawSet(fid);
-    if ( !drawSet.empty() )
-    {
-        osg::Group* container = 0L;
-        osg::Group* group = new osg::Group();
-        osg::Geode* geode = 0L;
-
-        OE_DEBUG << "Slices = " << drawSet.slices().size() << std::endl;
-
-        for( FeatureDrawSet::DrawableSlices::iterator d = drawSet.slices().begin(); d != drawSet.slices().end(); ++d )
-        {
-            FeatureDrawSet::DrawableSlice& slice = *d;
-            osg::Geometry* featureGeom = slice.drawable->asGeometry();
-
-            osg::Geometry* highlightGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
-            osg::Vec4Array* highlightColor = new osg::Vec4Array(1);
-            (*highlightColor)[0] = osg::Vec4f(0,1,1,0.5);
-            highlightGeom->setColorArray(highlightColor);
-            highlightGeom->setColorBinding(osg::Geometry::BIND_OVERALL);
-            highlightGeom->setPrimitiveSetList( d->primSets );
-
-            if ( !geode )
-            {
-                geode = new osg::Geode();
-                group->addChild( geode );
-            }
-
-            geode->addDrawable(highlightGeom);
-
-            if ( !container )
-            {
-                // establishes a container for the highlight geometry.
-                osg::Geode* featureGeode = dynamic_cast<osg::Geode*>( featureGeom->getParent(0) );
-                container = featureGeode->getParent(0);
-                if ( featureGeom->getStateSet() )
-                    geode->getOrCreateStateSet()->merge( *featureGeom->getStateSet() );
-            }
-        }
-
-        for( FeatureDrawSet::Nodes::iterator n = drawSet.nodes().begin(); n != drawSet.nodes().end(); ++n )
-        {
-            group->addChild( *n );
-            if ( !container )
-                container = (*n)->getParent(0);
-        }
-
-        osg::StateSet* sset = group->getOrCreateStateSet();
-
-        // set up to overwrite the real geometry:
-        sset->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL,0,1,false), osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );
-        sset->setRenderBinDetails( 42, "DepthSortedBin" );
-
-        // turn off texturing:
-        for( int ii = 0; ii < Registry::instance()->getCapabilities().getMaxFFPTextureUnits(); ++ii )
-        {
-            sset->setTextureMode( ii, GL_TEXTURE_2D, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
-            sset->setTextureMode( ii, GL_TEXTURE_3D, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
-            //sset->setTextureMode( ii, GL_TEXTURE_RECTANGLE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
-            //sset->setTextureMode( ii, GL_TEXTURE_CUBE_MAP, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
-        }
-
-        sset->setMode( GL_BLEND,    osg::StateAttribute::ON  | osg::StateAttribute::OVERRIDE );
-        sset->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
-
-        container->addChild( group );
-
-        Selection selection;
-        selection._index     = index;
-        selection._fid       = fid;
-        selection._group     = group;
-
-        _selections.insert( selection );
-    }
-}
-
-void
-FeatureHighlightCallback::onMiss( const EventArgs& args )
-{
-    clear();
-}
-
-void
-FeatureHighlightCallback::clear()
-{
-    for( SelectionSet::const_iterator i = _selections.begin(); i != _selections.end(); ++i )
-    {
-        const Selection& selection = *i;
-        osg::ref_ptr<osg::Group> safeGroup = selection._group.get();
-        if ( safeGroup.valid() && safeGroup->getNumParents() > 0 )
-        {
-            osg::Group* parent = safeGroup->getParent(0);
-            if ( parent ) 
-                parent->removeChild( safeGroup.get() );
-        }
-    }
-    _selections.clear();
-}
-
-
-//-----------------------------------------------------------------------
-
-FeatureReadoutCallback::FeatureReadoutCallback( Container* container )
-{
-    _grid = new Grid();
-    _grid->setBackColor( Color(Color::Black,0.7f) );
-    container->addControl( _grid );
-}
-
-void
-FeatureReadoutCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args )
-{
-    clear();
-    const Feature* f = 0L;
-    if ( index && index->getFeature(fid, f) )
-    {
-        unsigned r=0;
-
-        _grid->setControl( 0, r, new LabelControl("FID", Color::Red) );
-        _grid->setControl( 1, r, new LabelControl(Stringify()<<fid, Color::White) );
-        ++r;
-
-        const AttributeTable& attrs = f->getAttrs();
-        for( AttributeTable::const_iterator i = attrs.begin(); i != attrs.end(); ++i, ++r )
-        {
-            _grid->setControl( 0, r, new LabelControl(i->first, 14.0f, Color::Yellow) );
-            _grid->setControl( 1, r, new LabelControl(i->second.getString(), 14.0f, Color::White) );
-        }
-        _grid->setVisible( true );
-    }
-    args._aa->requestRedraw();
-}
-
-void
-FeatureReadoutCallback::onMiss( const EventArgs& args )
-{
-    clear();
-    args._aa->requestRedraw();
-}
-
-void
-FeatureReadoutCallback::clear()
-{
-    _grid->clearControls();
-    _grid->setVisible( false );
 }

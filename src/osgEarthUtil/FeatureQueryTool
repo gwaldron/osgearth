@@ -23,13 +23,10 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapNodeObserver>
-#include <osgEarth/GeoData>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthUtil/Controls>
 #include <osgGA/GUIEventHandler>
-#include <osg/View>
 
 namespace osgEarth { namespace Util
 {
@@ -95,10 +92,6 @@ namespace osgEarth { namespace Util
         void addCallback( Callback* callback );
 
         /**
-         * Removes a feature query callback.
-         */
-
-        /**
          * Sets a custom input test. By default, the action is a left-click.
          */
         void setInputPredicate( InputPredicate* value ) { _inputPredicate = value; }
@@ -126,59 +119,6 @@ namespace osgEarth { namespace Util
         typedef std::vector< osg::observer_ptr<Callback> > Callbacks;
         Callbacks _callbacks;
     };
-
-    //--------------------------------------------------------------------
-
-    /**
-     * Sample callback that will highlight a feature upon a query hit.
-     */
-    class OSGEARTHUTIL_EXPORT FeatureHighlightCallback : public FeatureQueryTool::Callback
-    {
-    public:
-        virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
-
-        virtual void onMiss( const EventArgs& args );
-
-    protected:
-        void clear();
-
-        struct Selection {
-            osg::observer_ptr<FeatureSourceIndexNode> _index;
-            osg::observer_ptr<osg::Group>             _group;
-            FeatureID                                 _fid;
-            bool operator < ( const Selection& rhs ) const { return _fid < rhs._fid; }
-        };
-        typedef std::set<Selection> SelectionSet;
-        SelectionSet _selections;
-
-        /** dtor */
-        virtual ~FeatureHighlightCallback() { }
-    };
-
-
-    //--------------------------------------------------------------------
-
-    /**
-     * Sample callback that will display feature attributes upon a query hit.
-     */
-    class OSGEARTHUTIL_EXPORT FeatureReadoutCallback : public FeatureQueryTool::Callback
-    {
-    public:
-        FeatureReadoutCallback( Controls::Container* container );
-
-    public:
-        virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
-
-        virtual void onMiss( const EventArgs& args );
-
-    protected:
-        void clear();
-        Controls::Grid* _grid;
-
-        /** dtor */
-        virtual ~FeatureReadoutCallback() { }
-    };
-
 
 } } // namespace osgEarthUtil
 

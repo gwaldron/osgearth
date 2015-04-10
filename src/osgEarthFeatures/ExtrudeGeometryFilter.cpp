@@ -872,7 +872,7 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*      drawable,
 
     if ( index )
     {
-        index->tagPrimitiveSets( drawable, feature );
+        index->tagGeometry( drawable, feature );
     }
 }
 
@@ -1148,6 +1148,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
+#if 0
             if ( context.featureIndex() || _outlineSymbol.valid())
             {
                 // The MC will recognize the presence of feature indexing tags and
@@ -1161,14 +1162,15 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
                 //i->second->accept( vco );
             }
             else
+#endif
             {
                 //TODO: try this -- issues: it won't work on lines, and will it screw up
                 // feature indexing?
                 osgUtil::Optimizer o;
                 o.optimize( i->second.get(),
                     osgUtil::Optimizer::MERGE_GEOMETRY |
-                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
                     osgUtil::Optimizer::INDEX_MESH |
+                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
                     osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
             }
         }

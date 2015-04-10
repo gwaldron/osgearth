@@ -57,7 +57,7 @@ namespace osgEarth { namespace Features
     class FeatureSourceIndex
     {
     public: // tagging functions
-        virtual void tagPrimitiveSets( osg::Drawable* drawable, Feature* feature ) const =0;
+        virtual void tagGeometry( osg::Drawable* drawable, Feature* feature ) const =0;
         virtual void tagNode( osg::Node* node, Feature* feature ) const =0;
 
         virtual ~FeatureSourceIndex() { }
@@ -70,6 +70,10 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSourceIndexNode : public osg::Group,
                                                            public FeatureSourceIndex
     {
+    public:
+        /** The attribute location for FID vertex tags. */
+        static const int IndexAttrLocation;
+
     public:
         /**
          * Constructs a new index node.
@@ -84,9 +88,14 @@ namespace osgEarth { namespace Features
     public: // FeatureSourceIndex
 
         /**
+         * Tags the vertex array in a Drawable with the specified FeatureID.
+         */
+        //void tagDrawable(osg::Drawable* drawable, Feature* feature) const;
+
+        /**
          * Tags all the primitive sets in a Drawable with the specified FeatureID.
          */
-        void tagPrimitiveSets( osg::Drawable* drawable, Feature* feature ) const;
+        void tagGeometry( osg::Drawable* drawable, Feature* feature ) const;
 
         /**
          * Tags a node with the specified FeatureID.
@@ -102,7 +111,7 @@ namespace osgEarth { namespace Features
 
         /**
          * Traverses this node's subgraph and rebuilds the feature index based on
-         * any tagged drawables found. (See tagPrimitiveSets for tagging drawables).
+         * any tagged drawables found. (See tagGeometry for tagging drawables).
          */
         void reindex();
 
@@ -130,7 +139,8 @@ namespace osgEarth { namespace Features
          * @param output         Holds the result of the query, if returning true
          * @return true if successful
          */
-        bool getFID(osg::Drawable* drawable, int primitiveIndex, FeatureID& output) const;
+        //bool getFID(osg::Drawable* drawable, int primitiveIndex, FeatureID& output) const;
+        bool getFID(osg::Drawable* drawable, int vertIndex, FeatureID& output) const;
 
         /**
          * Given a FeatureID, returns the collection of drawable/primitiveset combinations
@@ -157,11 +167,12 @@ namespace osgEarth { namespace Features
         FeatureIDDrawSetMap _drawSets;
 
         struct Collect : public osg::NodeVisitor {
-            Collect(FeatureIDDrawSetMap&);
+            Collect(FeatureIDDrawSetMap&, int);
             void apply(osg::Node&);
             void apply(osg::Geode&);
             FeatureIDDrawSetMap& _index;
             unsigned _psets;
+            int _idAttrArraySlot;
         };
         
         FeatureSourceIndexOptions _options;
@@ -169,6 +180,8 @@ namespace osgEarth { namespace Features
         // optionally embedded features; only populated when _options.embedFeatures = true
         typedef std::map< FeatureID, osg::ref_ptr<const Feature> > FeatureMap;
         mutable FeatureMap _features;
+
+        int _idAttrArraySlot;
 
     public:
         virtual const char* className() const { return "FeatureSourceIndexNode"; }

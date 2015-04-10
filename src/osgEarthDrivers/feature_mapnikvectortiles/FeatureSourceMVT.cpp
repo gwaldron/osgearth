@@ -159,6 +159,9 @@ public:
         sqlite3_bind_int( select, 3, tileY );
 
         rc = sqlite3_step( select );
+
+        FeatureList features;
+
         if ( rc == SQLITE_ROW)
         {                     
             // the pointer returned from _blob gets freed internally by sqlite, supposedly
@@ -184,26 +187,19 @@ public:
             }
 
             
-            FeatureList features;
+            
             mapnik::vector::tile tile;
 
             if (tile.ParseFromString(dataBuffer))
             {
-                OE_NOTICE << "Wow it parsed!" << std::endl;
-                OE_NOTICE << "It has " << tile.layers().size() << " layers" << std::endl;
                 // Get the layer in question
                 for (unsigned int i = 0; i < tile.layers().size(); i++)
                 {
                     const mapnik::vector::tile_layer &layer = tile.layers().Get(i);
 
-                    OE_NOTICE << "Got layer " << layer.name() << " which has " << layer.features().size() << " and extent=" <<  layer.extent() << std::endl;
-
-
                     for (unsigned int j = 0; j < layer.features().size(); j++)
                     {
                         const mapnik::vector::tile_feature &feature = layer.features().Get(j);
-
-                        
 
                         osg::ref_ptr< osgEarth::Symbology::Geometry > geometry; 
 
@@ -226,6 +222,7 @@ public:
                         else
                         {
                             //OE_NOTICE << "uknown" << std::endl;
+                            geometry = new osgEarth::Symbology::LineString();
                         }
 
                         osg::ref_ptr< Feature > oeFeature = new Feature(geometry, key.getProfile()->getSRS());
@@ -241,21 +238,13 @@ public:
                         int x = 0;
                         int y = 0;
 
-                        int min_x = INT_MAX;
-                        int min_y = INT_MAX;
-                        int max_x = -INT_MAX;
-                        int max_y = -INT_MAX;
-
-
                         for (int k = 0; k < feature.geometry_size();)
                         {
                             if (!length)
                             {
                                 unsigned int cmd_length = feature.geometry(k++);
-                                //OE_NOTICE << "cmd_length=" << cmd_length << std::endl;
                                 cmd = cmd_length & ((1 << cmd_bits) - 1);
                                 length = cmd_length >> cmd_bits;
-                                //OE_NOTICE << "length=" << length << std::endl;
                                 g_length = 0;
                             } 
                             if (length > 0)
@@ -267,71 +256,27 @@ public:
                                     int py = feature.geometry(k++);
                                     px = zig_zag_decode(px);
                                     py = zig_zag_decode(py);
-                                    //OSG_NOTICE << "cmd " << cmd << ": " << px << ", " << py << std::endl;
                                     if (cmd == SEG_MOVETO)
                                     {
                                         x += px;
                                         y += py;
-
-                                        if (x < min_x) min_x = x;
-                                        if (y < min_y) min_y = y;
-                                        if (x > max_x) max_x = x;
-                                        if (y > max_y) max_y = y;
                                     }
                                     else if (cmd == SEG_LINETO)
                                     {
+                                        x += px;
+                                        y += py;
+
                                         double width = key.getExtent().width();
                                         double height = key.getExtent().height();
 
                                         double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
                                         double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
-                                        //double geoX = key.getExtent().xMin() + (double)x;
-                                        //double geoY = key.getExtent().yMax() - (double)y;
-                                        //geoY *= -1.0;
-                                        //geometry->push_back(geoX, geoY, 0);
-
-                                        /*
-                                        if (!key.getExtent().contains(geoX, geoY))
-                                        {
-                                            OE_NOTICE << "You're dumb" << std::endl;
-                                            OE_NOTICE << "Extent " << key.getExtent().toString() << std::endl;
-                                            OE_NOTICE << "Point " << geoX << ", " << geoY << std::endl;
-                                        }
-                                        */
-
-                                        GeoPoint pt(key.getProfile()->getSRS(), geoX, geoY, 0, ALTMODE_ABSOLUTE);
-                                        pt = pt.transform(SpatialReference::create("epsg:4326"));
-                                        //OE_NOTICE << "Geo " << pt.x() << ", " << pt.y() << std::endl;
-
-                                        x += px;
-                                        y += py;
-
-                                        if (x < min_x) min_x = x;
-                                        if (y < min_y) min_y = y;
-                                        if (x > max_x) max_x = x;
-                                        if (y > max_y) max_y = y;
-
-                                        geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
-                                        geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
-                                        //geoX = key.getExtent().xMin() + (double)x;
-                                        //geoY = key.getExtent().yMax() - (double)y;
-                                        //geoY *= -1.0;
                                         geometry->push_back(geoX, geoY, 0);
-                                        /*
-                                        if (!key.getExtent().contains(geoX, geoY))
-                                        {
-                                            OE_NOTICE << "You're dumb" << std::endl;
-                                            OE_NOTICE << "Extent " << key.getExtent().toString() << std::endl;
-                                            OE_NOTICE << "Point " << geoX << ", " << geoY << std::endl;
-                                        }
-                                        */
                                     }
-                                    //OSG_NOTICE << "" << px << ", " << py << std::endl;
                                 }
                                 else if (cmd == (SEG_CLOSE & ((1 << cmd_bits) - 1)))
                                 {
                                     geometry->push_back(geometry->front());
-                                    //OE_NOTICE << "Seg close" << std::endl;
                                 }
                             }
                         }
@@ -341,45 +286,11 @@ public:
                        
                     }
                 }
-
-                OE_NOTICE << "Created " << features.size() << " features" << std::endl;
-                return new FeatureListCursor(features);
             }
             else
             {
                 OE_DEBUG << "Failed to parse, not surprising" << std::endl;
             }
-
-            
-            /*
-
-            // decompress if necessary:
-            if ( _compressor.valid() )
-            {
-                std::istringstream inputStream(dataBuffer);
-                std::string value;
-                if ( !_compressor->decompress(inputStream, value) )
-                {
-                    OE_WARN << LC << "Decompression failed" << std::endl;
-                    valid = false;
-                }
-                else
-                {
-                    dataBuffer = value;
-                }
-            }
-           
-            // decode the raw image data:
-            if ( valid )
-            {
-                std::istringstream inputStream(dataBuffer);
-                osgDB::ReaderWriter::ReadResult rr = _rw->readImage( inputStream );
-                if (rr.validImage())
-                {
-                    result = rr.takeImage();                
-                }
-            }
-            */
         }
         else
         {
@@ -388,6 +299,11 @@ public:
         }
 
         sqlite3_finalize( select );
+
+        if (!features.empty())
+        {
+            return new FeatureListCursor(features);
+        }
 
         return 0;
     }

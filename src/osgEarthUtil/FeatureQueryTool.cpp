@@ -20,6 +20,7 @@
 #include <osgEarthUtil/FeatureQueryTool>
 #include <osgEarth/Pickers>
 #include <osgViewer/View>
+#include <osgEarth/DPLineSegmentIntersector>
 
 #define LC "[FeatureQueryTool] "
 
@@ -99,7 +100,7 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
                 {
                     if ( hit->indexList.size() == 0 )
                     {
-                        OE_WARN << LC << "Index list is empty. Fix that.\n";
+                        OE_INFO << LC << "Index list is empty\n";
                         return true;
                     }
 

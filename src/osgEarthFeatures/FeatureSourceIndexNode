@@ -57,8 +57,11 @@ namespace osgEarth { namespace Features
     class FeatureSourceIndex
     {
     public: // tagging functions
-        virtual void tagGeometry( osg::Drawable* drawable, Feature* feature ) const =0;
-        virtual void tagNode( osg::Node* node, Feature* feature ) const =0;
+        virtual void tagDrawable(osg::Drawable* drawable, const Feature* feature) const =0;
+
+        virtual void tagAllDrawables(osg::Node* node, const Feature* feature) const =0;
+
+        virtual void tagNode(osg::Node* node, const Feature* feature) const =0;
 
         virtual ~FeatureSourceIndex() { }
     };
@@ -82,25 +85,31 @@ namespace osgEarth { namespace Features
             FeatureSource*                   featureSource,
             const FeatureSourceIndexOptions& options );
 
-        virtual ~FeatureSourceIndexNode() { }
+        /**
+         * Destructor 
+         */
+        virtual ~FeatureSourceIndexNode();
 
 
     public: // FeatureSourceIndex
 
         /**
-         * Tags the vertex array in a Drawable with the specified FeatureID.
+         * Associates a Drawable with a Feature.
          */
-        //void tagDrawable(osg::Drawable* drawable, Feature* feature) const;
+        void tagDrawable(osg::Drawable* drawable, const Feature* feature) const;
 
         /**
-         * Tags all the primitive sets in a Drawable with the specified FeatureID.
+         * Finds all the Drawables user a node, and associates each one with the
+         * specified feature.
          */
-        void tagGeometry( osg::Drawable* drawable, Feature* feature ) const;
+        void tagAllDrawables(osg::Node* node, const Feature* feature) const;
 
         /**
-         * Tags a node with the specified FeatureID.
+         * Associates a node with a Feature. This method does NOT tag the underlying
+         * drawables; it just tags the node itself. So shader code that accesses the
+         * FeatureID attribute array will not function when using this approach.
          */
-        void tagNode( osg::Node* node, Feature* feature ) const;
+        void tagNode(osg::Node* node, const Feature* feature) const;
 
 
     public:
@@ -122,24 +131,14 @@ namespace osgEarth { namespace Features
         bool getAllFIDs(std::vector<FeatureID>& output) const;
 
         /**
-         * Given a primitive set, returns the feature ID corresponding to that set.
-         *
-         * @param pset Primitive set to query
-         * @param output Holds the result of the query, if returning true
-         * @return true if successful
-         */
-        bool getFID(osg::PrimitiveSet* pset, FeatureID& output) const;
-
-        /**
-         * Gets the Feature ID corresponding to a drawable and a prim index. This is
-         * useful to call using the results of an intersection test.
+         * Gets the Feature ID corresponding a particular vertex in a Drawable.
+         * This is primarily useful when processing the results of an intersector test.
          *
          * @param drawable       Drawable for which to lookup the feature ID
          * @param primitiveIndex Index of the primitive to look up
          * @param output         Holds the result of the query, if returning true
          * @return true if successful
          */
-        //bool getFID(osg::Drawable* drawable, int primitiveIndex, FeatureID& output) const;
         bool getFID(osg::Drawable* drawable, int vertIndex, FeatureID& output) const;
 
         /**

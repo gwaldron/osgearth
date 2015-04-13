@@ -155,6 +155,10 @@ _idAttrArraySlot( IndexAttrLocation )
     //nop
 }
 
+FeatureSourceIndexNode::~FeatureSourceIndexNode()
+{
+    //nop
+}
 
 // Rebuilds the feature index based on all the tagged primitive sets found in a graph
 void
@@ -170,7 +174,7 @@ FeatureSourceIndexNode::reindex()
 
 // Tags the vertex array with the specified FeatureID.
 void
-FeatureSourceIndexNode::tagGeometry(osg::Drawable* drawable, Feature* feature) const
+FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, const Feature* feature) const
 {
     if ( drawable == 0L )
         return;
@@ -195,8 +199,44 @@ FeatureSourceIndexNode::tagGeometry(osg::Drawable* drawable, Feature* feature) c
     }
 }
 
+namespace
+{
+    struct FindAndTagDrawables : public osg::NodeVisitor
+    {
+        FindAndTagDrawables(const Feature* f, const FeatureSourceIndex* i) : _feature(f), _index(i)
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Geode& geode)
+        {
+            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+            {
+                osg::Drawable* d = geode.getDrawable(i);
+                if ( d )
+                    _index->tagDrawable( d, _feature );
+            }
+            // not traverse necessary
+        }
+
+        const FeatureSourceIndex* _index;
+        const Feature*            _feature;
+    };
+}
+
 void
-FeatureSourceIndexNode::tagNode( osg::Node* node, Feature* feature ) const
+FeatureSourceIndexNode::tagAllDrawables(osg::Node* node, const Feature* feature) const
+{
+    if ( node && feature )
+    {
+        FindAndTagDrawables visitor(feature, this);
+        node->accept( visitor );
+    }
+}
+
+void
+FeatureSourceIndexNode::tagNode( osg::Node* node, const Feature* feature ) const
 {
     node->setUserData( new RefFeatureID(feature->getFID()) );
 
@@ -219,21 +259,6 @@ FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const
     return true;
 }
 
-
-bool
-FeatureSourceIndexNode::getFID(osg::PrimitiveSet* primSet, FeatureID& output) const
-{
-    const RefFeatureID* fid = dynamic_cast<const RefFeatureID*>( primSet->getUserData() );
-    if ( fid )
-    {
-        output = *fid;
-        return true;
-    }
-
-    OE_DEBUG << LC << "getFID failed b/c the primSet was not tagged with a RefFeatureID" << std::endl;
-    return false;
-}
-
 bool
 FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int vertIndex, FeatureID& output) const
 {
@@ -251,80 +276,6 @@ FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int vertIndex, FeatureID
     output = (*ids)[vertIndex];
     return true;
 }
-
-#if 0
-bool
-FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID& output) const
-{
-    if ( drawable == 0L || primIndex < 0 )
-        return false;
-
-    for( FeatureIDDrawSetMap::const_iterator i = _drawSets.begin(); i != _drawSets.end(); ++i )
-    {
-        const FeatureDrawSet& drawSet = i->second;
-        FeatureDrawSet::DrawableSlices::const_iterator d = drawSet.slice(drawable);
-        if ( d != drawSet.slices().end() )
-        {
-            const osg::Geometry* geom = drawable->asGeometry();
-            if ( geom )
-            {
-                const osg::Geometry::PrimitiveSetList& geomPrimSets = geom->getPrimitiveSetList();
-
-                unsigned encounteredPrims = 0;
-                for( osg::Geometry::PrimitiveSetList::const_iterator p = geomPrimSets.begin(); p != geomPrimSets.end(); ++p )
-                {
-                    const osg::PrimitiveSet* pset = p->get();
-                    unsigned numPrims = pset->getNumPrimitives();
-                    encounteredPrims += numPrims;
-
-                    if ( encounteredPrims > (unsigned)primIndex )
-                    {
-                        // check for a feature ID in the userdata first:
-                        const RefFeatureID* fid = dynamic_cast<const RefFeatureID*>( pset->getUserData() );
-                        if ( fid )
-                        {
-                            output = *fid;
-                            return true;
-                        }
-
-                        // failing that, check for vertex attribution:
-                        else
-                        {
-                            const osg::IntArray* ids = dynamic_cast<const osg::IntArray*>(geom->getVertexAttribArray(_idAttrArraySlot));
-                            if ( ids && ids->getNumElements() > 0 )
-                            {
-                                output = *ids->begin(); // first one.
-                                return true;
-                            }
-
-                            else
-                            {
-                                OE_DEBUG << LC << "INTERNAL: found primset, but it's not tagged with a FID" << std::endl;
-                                return false;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // see if we have a node in the path
-    for( osg::Node* node = drawable->getParent(0); node != 0L; node = (node->getNumParents()>0?node->getParent(0):0L) )
-    {
-        RefFeatureID* fid = dynamic_cast<RefFeatureID*>( node->getUserData() );
-        if ( fid )
-        {
-            output = *fid;
-            return true;
-        }
-    }
-
-    return false;
-}
-#endif
-
-
 
 FeatureDrawSet&
 FeatureSourceIndexNode::getDrawSet(const FeatureID& fid )
@@ -349,7 +300,7 @@ FeatureSourceIndexNode::getFeature(const FeatureID& fid, const Feature*& output)
             return output != 0L;
         }
     }
-    else if ( _featureSource.valid() )
+    else if ( _featureSource.valid() && _featureSource->supportsGetFeature() )
     {
         output = _featureSource->getFeature( fid );
         return output != 0L;

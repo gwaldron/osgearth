@@ -620,7 +620,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
             // record the geometry's primitive set(s) in the index:
             if ( cx.featureIndex() )
-                cx.featureIndex()->tagGeometry( geom, f );
+                cx.featureIndex()->tagDrawable( geom, f );
         }
     }
 

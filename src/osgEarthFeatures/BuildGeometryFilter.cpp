@@ -151,8 +151,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
             osg::Vec4f primaryColor = poly->fill()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            osgGeom->setUseVertexBufferObjects( true );
-            osgGeom->setUseDisplayList( false );
+            //osgGeom->setUseVertexBufferObjects( true );
+            //osgGeom->setUseDisplayList( false );
 
             // are we embedding a feature name?
             if ( _featureNameExpr.isSet() )
@@ -222,7 +222,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
                 // record the geometry's primitive set(s) in the index:
                 if ( context.featureIndex() )
-                    context.featureIndex()->tagGeometry( osgGeom, input );
+                    context.featureIndex()->tagDrawable( osgGeom, input );
             }
         }
     }
@@ -305,7 +305,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&         features,
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagGeometry( geom, input );
+                context.featureIndex()->tagDrawable( geom, input );
         }
 
         polygonizer.installShaders( geode );
@@ -367,8 +367,8 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
             osg::Vec4f primaryColor = line->stroke()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            osgGeom->setUseVertexBufferObjects( true );
-            osgGeom->setUseDisplayList( false );
+            //osgGeom->setUseVertexBufferObjects( true );
+            //osgGeom->setUseDisplayList( false );
 
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
@@ -415,7 +415,7 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagGeometry( osgGeom, input );
+                context.featureIndex()->tagDrawable( osgGeom, input );
         }
     }
     
@@ -461,8 +461,8 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
             osg::Vec4f primaryColor = point->fill()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            osgGeom->setUseVertexBufferObjects( true );
-            osgGeom->setUseDisplayList( false );
+            //osgGeom->setUseVertexBufferObjects( true );
+            //osgGeom->setUseDisplayList( false );
 
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
@@ -495,7 +495,7 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagGeometry( osgGeom, input );
+                context.featureIndex()->tagDrawable( osgGeom, input );
         }
     }
     
@@ -896,15 +896,13 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPolygons(polygons, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            if ( !context.featureIndex() )
-            {
-                osgUtil::Optimizer o;
-                o.optimize( geode.get(), 
-                    osgUtil::Optimizer::MERGE_GEOMETRY |
-                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                    osgUtil::Optimizer::INDEX_MESH |
-                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-            }
+            osgUtil::Optimizer o;
+            o.optimize( geode.get(), 
+                osgUtil::Optimizer::MERGE_GEOMETRY |
+                osgUtil::Optimizer::INDEX_MESH |
+                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
             result->addChild( geode.get() );
         }
     }
@@ -916,15 +914,13 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPolygonizedLines(polygonizedLines, twosided, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            if ( !context.featureIndex() )
-            {
-                osgUtil::Optimizer o;
-                o.optimize( geode.get(), 
-                    osgUtil::Optimizer::MERGE_GEOMETRY |
-                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                    osgUtil::Optimizer::INDEX_MESH |
-                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-            }
+            osgUtil::Optimizer o;
+            o.optimize( geode.get(), 
+                osgUtil::Optimizer::MERGE_GEOMETRY |
+                osgUtil::Optimizer::INDEX_MESH |
+                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
             result->addChild( geode.get() );
         }
     }
@@ -935,12 +931,10 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processLines(lines, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            if ( !context.featureIndex() )
-            {
-                osgUtil::Optimizer o;
-                o.optimize( geode.get(), 
-                    osgUtil::Optimizer::MERGE_GEOMETRY );
-            }
+            osgUtil::Optimizer o;
+            o.optimize( geode.get(), 
+                osgUtil::Optimizer::MERGE_GEOMETRY );
+
             applyLineSymbology( geode->getOrCreateStateSet(), line );
             result->addChild( geode.get() );
         }
@@ -952,12 +946,10 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPoints(points, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            if ( !context.featureIndex() )
-            {
-                osgUtil::Optimizer o;
-                o.optimize( geode.get(), 
-                    osgUtil::Optimizer::MERGE_GEOMETRY );
-            }
+            osgUtil::Optimizer o;
+            o.optimize( geode.get(), 
+                osgUtil::Optimizer::MERGE_GEOMETRY );
+
             applyPointSymbology( geode->getOrCreateStateSet(), point );
             result->addChild( geode.get() );
         }
@@ -968,6 +960,12 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         Clamping::applyDefaultClampingAttrs(result.get());
     }
+    
+
+    // Prepare buffer objects.
+    AllocateAndMergeBufferObjectsVisitor allocAndMerge;
+    result->accept( allocAndMerge );
+
 
     if ( result->getNumChildren() > 0 )
     {

@@ -526,10 +526,6 @@ GeometryValidator::apply(osg::Geometry& geom)
         osg::DrawElementsUByte* de_byte = dynamic_cast<osg::DrawElementsUByte*>(pset);
         if ( de_byte )
         {
-            if ( numVerts > 0xFF )
-            {
-                OE_WARN << LC << "DrawElementsUByte used when numVerts > 255 (" << numVerts << ")" << std::endl;
-            }
             validateDE(de_byte, 0xFF, numVerts );
             _ebos.insert( de_byte->getElementBufferObject() );
         }
@@ -537,10 +533,6 @@ GeometryValidator::apply(osg::Geometry& geom)
         osg::DrawElementsUShort* de_short = dynamic_cast<osg::DrawElementsUShort*>(pset);
         if ( de_short )
         {
-            if ( numVerts > 0xFFFF )
-            {
-                OE_WARN << LC << "DrawElementsUShort used when numVerts > 65535 (" << numVerts << ")" << std::endl;
-            }
             validateDE(de_short, 0xFFFF, numVerts );
             _ebos.insert( de_short->getElementBufferObject() );
         }
@@ -572,7 +564,7 @@ GeometryValidator::apply(osg::Geometry& geom)
 
     if ( _ebos.size() != 1 )
     {
-        OE_WARN << LC << "Found a Geometry with non-optimal EBO sharing (!=1)\n";
+        OE_WARN << LC << "Found a Geometry that uses more than one EBO (non-optimal sharing)\n";
     }
 }
 
@@ -592,4 +584,29 @@ GeometryValidator::apply(osg::Geode& geode)
             --i;
         }
     }
+}
+//------------------------------------------------------------------------
+
+AllocateAndMergeBufferObjectsVisitor::AllocateAndMergeBufferObjectsVisitor()
+{
+    setVisitorType(NODE_VISITOR);
+    setTraversalMode(TRAVERSE_ALL_CHILDREN);
+    setNodeMaskOverride(~0);
+}
+
+void
+AllocateAndMergeBufferObjectsVisitor::apply(osg::Geode& geode)
+{
+    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+    {
+        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+        if ( geom )
+        {
+            // We disable vbo's and then re-enable them to enable sharing of all the arrays.
+            geom->setUseDisplayList( false );
+            geom->setUseVertexBufferObjects( false );
+            geom->setUseVertexBufferObjects( true );
+        }
+    }
+    traverse(geode);
 }

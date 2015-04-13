@@ -1162,7 +1162,7 @@ EarthManipulator::breakTether()
         // invoke the callback if set
         if ( _tetherCallback.valid() )
         {
-            (*_tetherCallback.get())( _tether_node.get() );
+            (*_tetherCallback.get())( 0L );
         }
     }
 }

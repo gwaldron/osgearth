@@ -126,7 +126,7 @@ public:
             {
                 if ( context.featureIndex() )
                 {
-                    context.featureIndex()->tagNode(node, const_cast<Feature*>(feature));
+                    context.featureIndex()->tagNode(node, feature);
                 }
 
                 group->addChild( node );

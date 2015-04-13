@@ -872,7 +872,7 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*      drawable,
 
     if ( index )
     {
-        index->tagGeometry( drawable, feature );
+        index->tagDrawable( drawable, feature );
     }
 }
 
@@ -901,7 +901,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             Geometry* part = iter.next();
 
             osg::ref_ptr<osg::Geometry> walls = new osg::Geometry();
-            walls->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
+            //walls->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
             
             osg::ref_ptr<osg::Geometry> rooflines = 0L;
             osg::ref_ptr<osg::Geometry> baselines = 0L;
@@ -910,7 +910,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( part->getType() == Geometry::TYPE_POLYGON )
             {
                 rooflines = new osg::Geometry();
-                rooflines->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
+                //rooflines->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
 
                 // prep the shapes by making sure all polys are open:
                 static_cast<Polygon*>(part)->open();
@@ -920,14 +920,14 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( _outlineSymbol != 0L )
             {
                 outlines = new osg::Geometry();
-                outlines->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
+                //outlines->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
             }
 
             // make a base cap if we're doing stencil volumes.
             if ( _makeStencilVolume )
             {
                 baselines = new osg::Geometry();
-                baselines->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
+                //baselines->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
             }
 
             // calculate the extrusion height:
@@ -1068,22 +1068,22 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             FeatureSourceIndex* index = context.featureIndex();
 
-            if ( walls.valid() )
+            if ( walls.valid() && walls->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( walls.get(), wallStateSet.get(), name, input, index );
             }
 
-            if ( rooflines.valid() )
+            if ( rooflines.valid() && rooflines->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( rooflines.get(), roofStateSet.get(), name, input, index );
             }
 
-            if ( baselines.valid() )
+            if ( baselines.valid() && baselines->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( baselines.get(), 0L, name, input, index );
             }
 
-            if ( outlines.valid() )
+            if ( outlines.valid() && outlines->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( outlines.get(), 0L, name, input, index );
             }
@@ -1143,38 +1143,28 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     // push all the features through the extruder.
     bool ok = process( input, context );
 
+#if 0
     // convert everything to triangles and combine drawables.
     if ( _mergeGeometry == true && _featureNameExpr.empty() )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
         {
-#if 0
-            if ( context.featureIndex() || _outlineSymbol.valid())
-            {
-                // The MC will recognize the presence of feature indexing tags and
-                // preserve them. The Cache optimizer however will not, so it is
-                // out for now.
-                // The Optimizer also doesn't work with line geometry, so if we have outlines
-                // then we need to use MC.                
-                MeshConsolidator::run( *i->second.get() );
+            osgUtil::Optimizer o;
 
-                //VertexCacheOptimizer vco;
-                //i->second->accept( vco );
-            }
-            else
-#endif
+            unsigned mask = osgUtil::Optimizer::MERGE_GEOMETRY;
+
+            // Because the mesh optimizers damaga line geometry.
+            if ( !_outlineSymbol.valid() )
             {
-                //TODO: try this -- issues: it won't work on lines, and will it screw up
-                // feature indexing?
-                osgUtil::Optimizer o;
-                o.optimize( i->second.get(),
-                    osgUtil::Optimizer::MERGE_GEOMETRY |
-                    osgUtil::Optimizer::INDEX_MESH |
-                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+                mask |= osgUtil::Optimizer::INDEX_MESH;
+                mask |= osgUtil::Optimizer::VERTEX_PRETRANSFORM;
+                mask |= osgUtil::Optimizer::VERTEX_POSTTRANSFORM;
             }
+
+            o.optimize( i->second.get(), mask );
         }
     }
+#endif
 
     // parent geometry with a delocalizer (if necessary)
     osg::Group* group = createDelocalizeGroup();
@@ -1185,6 +1175,27 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         group->addChild( i->second.get() );
     }
     _geodes.clear();
+
+    if ( _mergeGeometry == true && _featureNameExpr.empty() )
+    {
+        osgUtil::Optimizer o;
+
+        unsigned mask = osgUtil::Optimizer::MERGE_GEOMETRY;
+
+        // Because the mesh optimizers damaga line geometry.
+        if ( !_outlineSymbol.valid() )
+        {
+            mask |= osgUtil::Optimizer::INDEX_MESH;
+            mask |= osgUtil::Optimizer::VERTEX_PRETRANSFORM;
+            mask |= osgUtil::Optimizer::VERTEX_POSTTRANSFORM;
+        }
+
+        o.optimize( group, mask );
+    }
+
+    // Prepare buffer objects.
+    AllocateAndMergeBufferObjectsVisitor allocAndMerge;
+    group->accept( allocAndMerge );
 
     // set a uniform indiciating that clamping attributes are available.
     group->getOrCreateStateSet()->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, true) );

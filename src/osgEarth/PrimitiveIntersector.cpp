@@ -161,6 +161,7 @@ struct PrimitiveIntersectorFunctor
         this->triNoBuffer(v1, v2, v3, &v1, &v2, &v3, treatVertexDataAsTemporary);
         if (_limitOneIntersection && _hit) return;
 
+#if 0
         // now buffer each edge and test against that.
         float thickness = _thickness.length();
         osg::Vec3d ln, buf;
@@ -190,6 +191,7 @@ struct PrimitiveIntersectorFunctor
 
         --_index;
         this->triNoBuffer(v3+buf, v1-buf, v3-buf, &v1, &v2, &v3, treatVertexDataAsTemporary);
+#endif
     }
 
     //TRIANGLE (no buffer applied)

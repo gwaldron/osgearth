@@ -437,7 +437,7 @@ struct ClusterVisitor : public osg::NodeVisitor
                             geode.addDrawable( newDrawable.get() );
 
                             if ( _cx.featureIndex() )
-                                _cx.featureIndex()->tagGeometry( newDrawable.get(), feature );
+                                _cx.featureIndex()->tagDrawable( newDrawable.get(), feature );
                         }
                     }
 

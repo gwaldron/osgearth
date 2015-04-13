@@ -73,32 +73,6 @@ CompilerCache::TexCoordArrayCache::get(const osg::Vec4d& mat,
     return this->back().second;
 }
 
-namespace
-{
-    struct AllocateBufferObjectsVisitor : public osg::NodeVisitor
-    {
-    public:
-        AllocateBufferObjectsVisitor():
-          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
-        {
-        }
-
-        void apply(osg::Geode& geode)
-        {
-            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-            {
-                osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-                if ( geom )
-                {
-                    // We disable vbo's and then re-enable them to enable sharing of all the arrays.
-                    geom->setUseVertexBufferObjects( false );
-                    geom->setUseVertexBufferObjects( true );
-                }
-            }
-        }
-    };
-}
-
 //------------------------------------------------------------------------
 
 

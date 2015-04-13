@@ -117,7 +117,7 @@ Picker::pick( float x, float y, Hits& results ) const
         picker = new osgEarth::PrimitiveIntersector(camera->getViewport() ? osgUtil::Intersector::WINDOW : osgUtil::Intersector::PROJECTION, local_x, local_y, _buffer);
     }
 
-    //picker->setIntersectionLimit( (osgUtil::Intersector::IntersectionLimit)_limit );
+    picker->setIntersectionLimit( (osgUtil::Intersector::IntersectionLimit)_limit );
     osgUtil::IntersectionVisitor iv(picker.get());
 
     //picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE_PER_DRAWABLE );

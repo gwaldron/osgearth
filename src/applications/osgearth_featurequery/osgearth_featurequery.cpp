@@ -60,7 +60,8 @@ const char* vertexShader = OE_MULTILINE(
     uniform int fid_highlight;
     in int fid_attr;
     out vec4 mixColor;
-    void featureQueryVertex(inout vec4 vertex) {
+    void featureQueryVertex(inout vec4 vertex)
+    {
         if ( fid_attr == fid_highlight )
             mixColor = vec4(0, 1, 1, 0.5);
         else
@@ -70,7 +71,8 @@ const char* vertexShader = OE_MULTILINE(
 
 const char* fragmentShader = OE_MULTILINE(
     in vec4 mixColor;
-    void featureQueryFragment(inout vec4 color) {
+    void featureQueryFragment(inout vec4 color)
+    {
         color.rgb = mix(color.rgb, mixColor.rgb, mixColor.a);
     }
 );

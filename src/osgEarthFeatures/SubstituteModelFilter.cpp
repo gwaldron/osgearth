@@ -38,6 +38,8 @@
 #include <osg/ShapeDrawable>
 #include <osg/AlphaFunc>
 
+#include <osgSim/LightPointNode>
+
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 #include <osgDB/WriteFile>
@@ -545,6 +547,50 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
     return true;
 }
 
+/**
+ * Extracts lightpoints from the given scene graph and copies them into a cloned scene graph
+ * This actually just removes all geodes from the scene graph, so this could be applied to any other type of node that you want to keep
+ * The geodes will be clustered together in the flattened graph.
+ */
+osg::Node* extractLightPoints(osg::Node* node)
+{
+    // First, check to see if we have any lightpoints.
+    FindNodesVisitor<osgSim::LightPointNode> findLightPoints;
+    node->accept(findLightPoints);
+    
+    if (findLightPoints._results.empty())
+    {
+        return 0;
+    }
+
+    // Clone the scene graph
+    osg::ref_ptr< osg::Node > clone = (osg::Node*)node->clone(osg::CopyOp::DEEP_COPY_NODES);
+    // Now remove any geodes
+    FindNodesVisitor<osg::Geode> findGeodes;
+    clone->accept(findGeodes);
+    for (unsigned int i = 0; i < findGeodes._results.size(); i++)
+    {
+        osg::ref_ptr< osg::Geode > geode = findGeodes._results[i];
+        if (geode->getNumParents() > 0)
+        {
+            // Get all the parents for the geode and remove it from them.
+            std::vector< osg::ref_ptr< osg::Group > > parents;
+            for (unsigned int j = 0; j < geode->getNumParents(); j++)
+            {
+                parents.push_back(geode->getParent(j));
+            }
+
+            for (unsigned int j = 0; j < parents.size(); j++)
+            {
+                parents[j]->removeChild(geode);
+            }
+        }
+    }
+
+    return clone.release();
+};
+
+
 osg::Node*
 SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 {
@@ -610,8 +656,17 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     process( features, symbol, context.getSession(), attachPoint.get(), newContext );
     if (_cluster)
     {
+        // Extract the lightpoints
+        osg::ref_ptr< osg::Node > lightPoints = extractLightPoints(attachPoint);
+
         // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
         MeshFlattener::run(attachPoint);
+
+        // Add the lightpoints back to the attach point after the rest of the graph was flattened.
+        if (lightPoints.valid())
+        {
+            attachPoint->addChild(lightPoints);
+        }
     }
 
     // return proper context

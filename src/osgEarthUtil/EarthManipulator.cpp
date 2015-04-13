@@ -1841,6 +1841,46 @@ EarthManipulator::postUpdate()
     updateTether();
 }
 
+namespace
+{
+    /// Helper class for generating NodePathList.
+    class CollectAllParentPaths : public osg::NodeVisitor
+    {
+    public:
+        CollectAllParentPaths(const osg::Node* haltTraversalAtNode=0) :
+            osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_PARENTS),
+            _haltTraversalAtNode(haltTraversalAtNode)
+        {
+            // This is the same as the osg::CollectParentPaths visitor (which is not exported)
+            // except for this node mask override to ensure that it will even traverse nodes hidden via  node mask.
+            setNodeMaskOverride(~0);
+        }
+
+        virtual void apply(osg::Node& node)
+        {
+            if (node.getNumParents()==0 || &node==_haltTraversalAtNode)
+            {
+                _nodePaths.push_back(getNodePath());
+            }
+            else
+            {
+                traverse(node);
+            }
+       }
+
+        const osg::Node*     _haltTraversalAtNode;
+        osg::NodePath        _nodePath;
+        osg::NodePathList    _nodePaths;
+    };
+}
+
+osg::NodePathList getAllParentalNodePaths(osg::Node* node, osg::Node* haltTraversalAtNode = 0)
+{
+    CollectAllParentPaths cpp(haltTraversalAtNode);
+    node->accept(cpp);
+    return cpp._nodePaths;
+}
+
 void
 EarthManipulator::updateTether()
 {
@@ -1851,7 +1891,9 @@ EarthManipulator::updateTether()
         {            
             osg::Matrix localToWorld;
 
-            osg::NodePathList nodePaths = tether_node->getParentalNodePaths();
+            // We use our getAllParentalNodePaths function instead of tether_node->getParentalNodePaths() so that we can
+            // ensure even nodes hidden via a node mask are traversed.
+            osg::NodePathList nodePaths = getAllParentalNodePaths(tether_node);
             if ( nodePaths.empty() )
                 return;
 

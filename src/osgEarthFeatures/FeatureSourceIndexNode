@@ -26,6 +26,7 @@
 #include <osg/Config>
 #include <osg/Group>
 #include <osg/Drawable>
+#include <osgGA/GUIEventHandler>
 
 namespace osgEarth { namespace Features
 {
@@ -65,6 +66,45 @@ namespace osgEarth { namespace Features
 
         virtual ~FeatureSourceIndex() { }
     };
+    
+
+    /**
+     * Picks features.
+     */
+    class OSGEARTHFEATURES_EXPORT FeaturePicker : public osgGA::GUIEventHandler
+    {
+    public:
+        struct Callback : public osg::Referenced
+        {
+            virtual void onPick(const std::set<FeatureID>& results) = 0;
+        };
+
+        void setCallback(Callback* callback) { _callback = callback; }
+
+    public:
+        FeaturePicker();
+
+        virtual ~FeaturePicker() { }
+
+        void setPickGraph(osg::Node* graph);
+
+    public: // osgGA::GUIEventHandler
+
+        virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+
+    protected:
+        
+        void pick(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+
+        void checkForPickResults();
+
+        osg::ref_ptr<osg::Camera>    _camera;
+        osg::ref_ptr<osg::Image>     _image;
+        osg::observer_ptr<osg::Node> _graph;
+        osg::ref_ptr<Callback>       _callback;
+        bool                         _pickInProgress;
+    };
+
 
     /**
      * Maintains an index that maps FeatureID's from a FeatureSource to

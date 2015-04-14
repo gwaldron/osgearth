@@ -23,6 +23,7 @@
 
 using namespace osgEarth;
 
+
 Picker::Picker( osgViewer::View* view, osg::Node* root, unsigned travMask, float buffer, Limit limit ) :
 _view    ( view ),
 _root    ( root ),

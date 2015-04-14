@@ -21,11 +21,25 @@
 #include <osgEarth/Notify>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 
 #define LC "[viewer] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Features;
+
+
+struct FeaturePickCallback : public FeaturePicker::Callback
+{
+    void onPick(const std::set<FeatureID>& results)
+    {
+        for(std::set<FeatureID>::const_iterator i = results.begin(); i != results.end(); ++i)
+        {
+            OE_NOTICE << "Picked feature " << *i << "\n";
+        }
+    }
+};
 
 int
 usage(const char* name)
@@ -56,7 +70,7 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
     // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator() );
+    viewer.setCameraManipulator( new EarthManipulator() );    
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
@@ -67,6 +81,11 @@ main(int argc, char** argv)
 
         viewer.getCamera()->setNearFarRatio(0.00002);
         viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+        FeaturePicker* picker = new FeaturePicker();
+        viewer.addEventHandler( picker );
+        picker->setPickGraph( MapNode::get(node)->getModelLayerGroup() );
+        picker->setCallback( new FeaturePickCallback() );
 
         return viewer.run();
     }

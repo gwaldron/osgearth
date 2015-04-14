@@ -17,7 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/VirtualProgram>
 #include <osg/MatrixTransform>
+#include <osgViewer/View>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -29,6 +32,161 @@ using namespace osgEarth::Features;
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
+namespace
+{
+    const char* pickVertex =
+        "#version 130\n"
+        "in int oe_fid_attr;\n"
+        "out vec4 oe_pick_fid;\n"
+        "void oe_pick_vertex(inout vec4 vertex) {\n"
+        "    int b3 = oe_fid_attr >> 24; \n"
+        "    int b2 = (oe_fid_attr >> 16) & 0xff; \n"
+        "    int b1 = (oe_fid_attr >> 8) & 0xff; \n"
+        "    int b0 = oe_fid_attr & 0xff; \n"
+        "    oe_pick_fid = vec4( float(b3)/255.0, float(b2)/255.0, float(b2)/255.0, float(b0)/255.0 ); \n"
+        "} \n";
+
+    const char* pickFragment =
+        "in vec4 oe_pick_fid;\n"
+        "void oe_pick_fragment(inout vec4 color) {\n"
+        "    color = oe_pick_fid; \n"
+        "}\n";
+
+    struct CB : public osg::NodeCallback
+    {
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            OE_WARN << "Shmoo.\n";
+            traverse(node, nv);
+        }
+    };
+}
+
+
+FeaturePicker::FeaturePicker()
+{
+    _pickInProgress = false;
+
+    unsigned size = 1;
+
+    _image = new osg::Image();
+    _image->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+    _camera = new osg::Camera();
+    _camera->setClearColor( osg::Vec4(0,0,0,0) );
+    _camera->setReferenceFrame( osg::Camera::RELATIVE_RF );
+    _camera->setViewport( 0, 0, size, size );
+    _camera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    _camera->setRenderOrder( osg::Camera::PRE_RENDER );
+    _camera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+    _camera->setImplicitBufferAttachmentMask(0, 0);
+    _camera->attach( osg::Camera::COLOR_BUFFER0, _image.get() );
+    _camera->setCullingActive(false);
+
+    //_camera->setCullCallback( new CB() );
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(_camera->getOrCreateStateSet());
+    vp->setFunction( "oe_pick_vertex",   pickVertex,   ShaderComp::LOCATION_VERTEX_MODEL );
+    vp->setFunction( "oe_pick_fragment", pickFragment, ShaderComp::LOCATION_FRAGMENT_LIGHTING, FLT_MAX );
+    vp->addBindAttribLocation( "oe_fid_attr", FeatureSourceIndexNode::IndexAttrLocation );
+}
+
+void
+FeaturePicker::setPickGraph(osg::Node* graph)
+{
+    _camera->removeChildren(0, _camera->getNumChildren());
+
+    _graph = graph;
+
+    if ( _graph.valid() )
+    {
+        _camera->addChild( _graph.get() );
+    }
+}
+
+bool
+FeaturePicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+{
+    //OE_WARN << "PIP = " << _pickInProgress << "\n";
+
+    if ( _pickInProgress && ea.getEventType() == ea.FRAME )
+    {
+        _pickInProgress = false;
+        checkForPickResults();
+    }
+    else if ( !_pickInProgress && ea.getEventType() == ea.PUSH )
+    {
+        pick(ea, aa);
+    }
+    return false;
+}
+
+void
+FeaturePicker::pick(const osgGA::GUIEventAdapter& ea,
+                    osgGA::GUIActionAdapter&      aa)
+{
+    if ( !_graph.valid() || !_callback.valid() )
+        return;
+    
+    osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
+    if ( !view )
+        return;
+
+    osg::Camera* cam = view->getCamera();
+    if ( !cam )
+        return;
+
+    const osg::Viewport* vp = view->getCamera()->getViewport();
+    if ( !vp )
+        return;
+
+    //_camera->setViewport( new osg::Viewport(*vp) ); //(int)ea.getX(), (int)ea.getY(), 1, 1 );
+    _camera->setViewport( (int)ea.getX(), (int)ea.getY(), 1, 1 );
+
+    _pickInProgress = true;
+    aa.requestRedraw();
+    
+    if ( _camera->getNumParents() == 0 )
+    {
+        cam->addChild( _camera.get() );
+    }
+}
+
+void
+FeaturePicker::checkForPickResults()
+{
+    // first remove the RTT camera:
+    //while( _camera->getNumParents() > 0 )
+    //{
+    //    _camera->getParent(0)->removeChild( _camera.get() );
+    //}
+
+    OE_WARN << "CFPR: s=" << _image->s() << ", t=" << _image->t() << "\n";
+    
+    // decode the results
+    std::set<FeatureID> results;    
+    ImageUtils::PixelReader read(_image.get());
+    for(int s=0; s<_image->s(); ++s)
+    {
+        for(int t=0; t<_image->t(); ++t)
+        {
+            osg::Vec4f value = read(s, t);
+
+            FeatureID fid(
+                ((unsigned)(value.r()*255.0) << 24) +
+                ((unsigned)(value.g()*255.0) << 16) +
+                ((unsigned)(value.b()*255.0) <<  8) +
+                ((unsigned)(value.a()*255.0)));
+
+            OE_WARN << "r=" << value.r() << ", g=" << value.g() << ", b=" << value.b() << ", a=" << value.a() << "\n";
+
+            results.insert(fid);
+        }
+    }
+
+    // invoke the callback
+    _callback->onPick(results);
+}
 
 //-----------------------------------------------------------------------------
 

@@ -20,6 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/VirtualProgram>
 #include <osg/MatrixTransform>
+#include <osgDB/WriteFile>
 #include <osgViewer/View>
 #include <algorithm>
 
@@ -36,164 +37,268 @@ namespace
 {
     const char* pickVertex =
         "#version 130\n"
-        "in int oe_fid_attr;\n"
-        "out vec4 oe_pick_fid;\n"
-        "void oe_pick_vertex(inout vec4 vertex) {\n"
-        "    int b3 = oe_fid_attr >> 24; \n"
-        "    int b2 = (oe_fid_attr >> 16) & 0xff; \n"
-        "    int b1 = (oe_fid_attr >> 8) & 0xff; \n"
-        "    int b0 = oe_fid_attr & 0xff; \n"
-        "    oe_pick_fid = vec4( float(b3)/255.0, float(b2)/255.0, float(b2)/255.0, float(b0)/255.0 ); \n"
+
+        "in uint oe_fid_attr;\n"
+        "out vec4 oe_pick_encoded_fid;\n"
+        "void oe_pick_vertex(inout vec4 vertex) \n"
+        "{\n"
+        "    float b0 = float((oe_fid_attr & uint(0xff000000)) >> 24)/255.0; \n"
+        "    float b1 = float((oe_fid_attr & uint(0x00ff0000)) >> 16)/255.0; \n"
+        "    float b2 = float((oe_fid_attr & uint(0x0000ff00)) >>  8)/255.0; \n"
+        "    float b3 = float((oe_fid_attr & uint(0x000000ff)) >>  0)/255.0; \n"
+        "    oe_pick_encoded_fid = vec4(b0, b1, b2, b3); \n"
         "} \n";
 
     const char* pickFragment =
-        "in vec4 oe_pick_fid;\n"
-        "void oe_pick_fragment(inout vec4 color) {\n"
-        "    color = oe_pick_fid; \n"
+        "in vec4 oe_pick_encoded_fid;\n"
+        "void oe_pick_fragment(inout vec4 color)\n"
+        "{\n"
+        "    gl_FragColor = oe_pick_encoded_fid; \n"
         "}\n";
-
-    struct CB : public osg::NodeCallback
-    {
-        void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            OE_WARN << "Shmoo.\n";
-            traverse(node, nv);
-        }
-    };
 }
 
-
-FeaturePicker::FeaturePicker()
+FeaturePicker::FeaturePicker(int size)
 {
-    _pickInProgress = false;
+    initialize( size );
+}
 
-    unsigned size = 1;
-
-    _image = new osg::Image();
-    _image->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
-    _camera = new osg::Camera();
-    _camera->setClearColor( osg::Vec4(0,0,0,0) );
-    _camera->setReferenceFrame( osg::Camera::RELATIVE_RF );
-    _camera->setViewport( 0, 0, size, size );
-    _camera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    _camera->setRenderOrder( osg::Camera::PRE_RENDER );
-    _camera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    _camera->setImplicitBufferAttachmentMask(0, 0);
-    _camera->attach( osg::Camera::COLOR_BUFFER0, _image.get() );
-    _camera->setCullingActive(false);
-
-    //_camera->setCullCallback( new CB() );
-
-    VirtualProgram* vp = VirtualProgram::getOrCreate(_camera->getOrCreateStateSet());
-    vp->setFunction( "oe_pick_vertex",   pickVertex,   ShaderComp::LOCATION_VERTEX_MODEL );
-    vp->setFunction( "oe_pick_fragment", pickFragment, ShaderComp::LOCATION_FRAGMENT_LIGHTING, FLT_MAX );
-    vp->addBindAttribLocation( "oe_fid_attr", FeatureSourceIndexNode::IndexAttrLocation );
+FeaturePicker::~FeaturePicker()
+{
+    if ( _rtt.valid() )
+    {
+        while( _rtt->getNumParents() > 0 )
+        {
+            _rtt->getParent(0)->removeChild( _rtt.get() );
+        }
+    }
 }
 
 void
-FeaturePicker::setPickGraph(osg::Node* graph)
+FeaturePicker::initialize(int rttSize)
 {
-    _camera->removeChildren(0, _camera->getNumChildren());
+    _rttSize = std::max(rttSize, 4);
 
-    _graph = graph;
+    _pickInProgress = false;
+    
+    _buffer = 2;
 
-    if ( _graph.valid() )
+    _image = new osg::Image();
+    _image->allocateImage(_rttSize, _rttSize, 1, GL_RGBA, GL_UNSIGNED_BYTE);    
+    
+    _rtt = new osg::Camera();
+    _rtt->setClearColor( osg::Vec4(0,0,0,0) );
+    _rtt->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT ); 
+    _rtt->setViewport( 0, 0, _rttSize, _rttSize );
+    _rtt->setRenderOrder( osg::Camera::PRE_RENDER );
+    _rtt->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+    _rtt->attach( osg::Camera::COLOR_BUFFER0, _image.get() );
+    
+    osg::StateSet* rttSS = _rtt->getOrCreateStateSet();
+
+    osg::StateAttribute::GLModeValue disable = osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
+
+    rttSS->setMode(GL_BLEND,     disable );    
+    rttSS->setMode(GL_LIGHTING,  disable );
+    rttSS->setMode(GL_CULL_FACE, disable );
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate( rttSS );
+    vp->setFunction( "oe_pick_vertex",   pickVertex,   ShaderComp::LOCATION_VERTEX_MODEL );
+    vp->setFunction( "oe_pick_fragment", pickFragment, ShaderComp::LOCATION_FRAGMENT_OUTPUT );
+    vp->addBindAttribLocation( "oe_fid_attr", FeatureSourceIndexNode::IndexAttrLocation );
+}
+
+osg::Texture2D*
+FeaturePicker::getTexture()
+{
+    if ( !_tex.valid() )
     {
-        _camera->addChild( _graph.get() );
+        _tex = new osg::Texture2D(_image.get());
+        _tex->setTextureSize(_image->s(), _image->t());
+        _tex->setUnRefImageDataAfterApply(false);
+        _tex->setFilter(_tex->MIN_FILTER, _tex->NEAREST);
+        _tex->setFilter(_tex->MAG_FILTER, _tex->NEAREST);
     }
+    return _tex.get();
 }
 
 bool
 FeaturePicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {
-    //OE_WARN << "PIP = " << _pickInProgress << "\n";
-
     if ( _pickInProgress && ea.getEventType() == ea.FRAME )
     {
-        _pickInProgress = false;
         checkForPickResults();
+        _pickInProgress = false;
     }
-    else if ( !_pickInProgress && ea.getEventType() == ea.PUSH )
+    else if ( !_pickInProgress && _callback.valid() && _callback->accept(ea, aa) )
     {
-        pick(ea, aa);
+        _pickInProgress = pick(ea, aa);
+        if ( _pickInProgress )
+            aa.requestRedraw();
     }
     return false;
 }
 
-void
-FeaturePicker::pick(const osgGA::GUIEventAdapter& ea,
-                    osgGA::GUIActionAdapter&      aa)
+bool
+FeaturePicker::pick(osg::View* view, float nx, float ny)
 {
-    if ( !_graph.valid() || !_callback.valid() )
-        return;
-    
-    osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
     if ( !view )
-        return;
+        return false;
 
     osg::Camera* cam = view->getCamera();
     if ( !cam )
-        return;
+        return false;
 
-    const osg::Viewport* vp = view->getCamera()->getViewport();
+    const osg::Viewport* vp = cam->getViewport();
     if ( !vp )
-        return;
+        return false;
 
-    //_camera->setViewport( new osg::Viewport(*vp) ); //(int)ea.getX(), (int)ea.getY(), 1, 1 );
-    _camera->setViewport( (int)ea.getX(), (int)ea.getY(), 1, 1 );
-
-    _pickInProgress = true;
-    aa.requestRedraw();
-    
-    if ( _camera->getNumParents() == 0 )
+    if ( _rtt->getNumParents() == 0 )
     {
-        cam->addChild( _camera.get() );
+        cam->addChild( _rtt.get() );
     }
+
+    float u = 0.5f*(nx + 1.0f);
+    float v = 0.5f*(ny + 1.0f);
+
+    double L, R, B, T, N, F;
+    cam->getProjectionMatrix().getFrustum(L, R, B, T, N, F);
+
+    double X = L + u*(R-L);
+    double Y = B + v*(T-B);
+    double U = (R-L)/vp->width();
+    double V = (T-B)/vp->height();
+
+    L = X - U*0.5*double(_image->s());
+    R = X + U*0.5*double(_image->s());
+    B = Y - V*0.5*double(_image->t());
+    T = Y + V*0.5*double(_image->t());
+    
+    _rtt->setProjectionMatrix( osg::Matrix::frustum(L, R, B, T, N, F) );
+
+    _rtt->setProjectionMatrix( cam->getProjectionMatrix() );
+    _rtt->setViewMatrix( cam->getViewMatrix() );
+    _pickU = u;
+    _pickV = v;
+    
+    return true;
+}
+
+bool
+FeaturePicker::pick(const osgGA::GUIEventAdapter& ea,
+                    osgGA::GUIActionAdapter&      aa)
+{
+    if ( !_callback.valid() )
+        return false;
+
+    return pick(aa.asView(), ea.getXnormalized(), ea.getYnormalized());
+}
+
+namespace
+{
+    // Iterates through the pixels in a grid, starting at u,v [0..1] and spiraling out.
+    // http://stackoverflow.com/a/14010215/4218920
+    struct SpiralIterator
+    {
+        unsigned _ring;
+        unsigned _maxRing;
+        unsigned _leg;
+        int      _x, _y;
+        int      _w, _h;
+        int      _offsetX, _offsetY;
+        unsigned _count;
+
+        SpiralIterator(int w, int h, int maxDist, float u, float v) : 
+            _w(w), _h(h), _maxRing(maxDist), _count(0), _ring(1), _leg(0), _x(0), _y(0)
+        {
+            _offsetX = (int)(u * (float)w);
+            _offsetY = (int)(v * (float)h);
+        }
+
+        bool next()
+        {
+            if ( _count++ == 0 )
+                return true;
+
+            do {
+                switch(_leg) {
+                case 0: ++_x; if (  _x == _ring ) ++_leg; break;
+                case 1: ++_y; if (  _y == _ring ) ++_leg; break;
+                case 2: --_x; if ( -_x == _ring ) ++_leg; break;
+                case 3: --_y; if ( -_y == _ring ) { _leg = 0; ++_ring; } break;
+                }
+            }
+            while(_ring <= _maxRing && (_x+_offsetX < 0 || _x+_offsetX >= _w || _y+_offsetY < 0 || _y+_offsetY >= _h));
+
+            return _ring <= _maxRing;
+        }
+
+        int s() const { return _x+_offsetX; }
+
+        int t() const { return _y+_offsetY; }
+    };
 }
 
 void
 FeaturePicker::checkForPickResults()
-{
-    // first remove the RTT camera:
-    //while( _camera->getNumParents() > 0 )
-    //{
-    //    _camera->getParent(0)->removeChild( _camera.get() );
-    //}
+{    
+    //osgDB::writeImageFile( *_image.get(), "out.png" );
 
-    OE_WARN << "CFPR: s=" << _image->s() << ", t=" << _image->t() << "\n";
-    
     // decode the results
-    std::set<FeatureID> results;    
     ImageUtils::PixelReader read(_image.get());
-    for(int s=0; s<_image->s(); ++s)
+
+    SpiralIterator iter(_image->s(), _image->t(), std::max(_buffer,1), _pickU, _pickV);
+    while(iter.next())
     {
-        for(int t=0; t<_image->t(); ++t)
+        osg::Vec4f value = read(iter.s(), iter.t());
+
+        unsigned fidPlusOne =
+            ((unsigned)(value.r()*255.0) << 24) +
+            ((unsigned)(value.g()*255.0) << 16) +
+            ((unsigned)(value.b()*255.0) <<  8) +
+            ((unsigned)(value.a()*255.0));
+
+        if ( fidPlusOne > 0 )
         {
-            osg::Vec4f value = read(s, t);
-
-            FeatureID fid(
-                ((unsigned)(value.r()*255.0) << 24) +
-                ((unsigned)(value.g()*255.0) << 16) +
-                ((unsigned)(value.b()*255.0) <<  8) +
-                ((unsigned)(value.a()*255.0)));
-
-            OE_WARN << "r=" << value.r() << ", g=" << value.g() << ", b=" << value.b() << ", a=" << value.a() << "\n";
-
-            results.insert(fid);
+            _callback->onHit( FeatureID(fidPlusOne-1u) );
+            return;
         }
     }
 
-    // invoke the callback
-    _callback->onPick(results);
+    _callback->onMiss();
+}
+
+bool
+FeaturePicker::addChild( osg::Node* child )
+{
+    return _rtt->addChild( child );
+}
+
+bool
+FeaturePicker::insertChild( unsigned i, osg::Node* child )
+{
+    return _rtt->insertChild( i, child );
+}
+
+bool
+FeaturePicker::removeChild( osg::Node* child )
+{
+    return _rtt->removeChild( child );
+}
+
+bool
+FeaturePicker::replaceChild( osg::Node* oldChild, osg::Node* newChild )
+{
+    return _rtt->replaceChild( oldChild, newChild );
 }
 
 //-----------------------------------------------------------------------------
 
 
 FeatureSourceIndexOptions::FeatureSourceIndexOptions(const Config& conf) :
+_enabled      ( true ),
 _embedFeatures( false )
 {
+    conf.getIfSet( "enabled",        _enabled );
     conf.getIfSet( "embed_features", _embedFeatures );
 }
 
@@ -201,6 +306,7 @@ Config
 FeatureSourceIndexOptions::getConfig() const
 {
     Config conf("feature_indexing");
+    conf.addIfSet( "enabled",        _enabled );
     conf.addIfSet( "embed_features", _embedFeatures );
     return conf;
 }
@@ -348,7 +454,9 @@ FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, const Feature* feat
     geom->setVertexAttribBinding  (_idAttrArraySlot, osg::Geometry::BIND_PER_VERTEX);
     geom->setVertexAttribNormalize(_idAttrArraySlot, false);
 
-    ids->assign( geom->getVertexArray()->getNumElements(), (int)feature->getFID() );
+    // The tag is actually FeatureID + 1, to preserve "0" as an "empty" value.
+    int tag = feature->getFID() + 1;
+    ids->assign( geom->getVertexArray()->getNumElements(), tag );
 
     // optionally save the actual feature object in the index.
     if ( _options.embedFeatures() == true )

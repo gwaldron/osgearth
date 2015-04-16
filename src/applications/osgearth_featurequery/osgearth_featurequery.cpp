@@ -58,11 +58,11 @@ Container* createUI()
 const char* vertexShader = OE_MULTILINE(
     #version 130\n
     uniform int fid_highlight;
-    in int fid_attr;
+    in uint fid_attr;
     out vec4 mixColor;
     void featureQueryVertex(inout vec4 vertex)
     {
-        if ( fid_attr == fid_highlight )
+        if ( fid_attr == uint(fid_highlight) )
             mixColor = vec4(0, 1, 1, 0.5);
         else
             mixColor = vec4(0);
@@ -139,7 +139,7 @@ private:
 class ReadoutCallback : public FeatureQueryTool::Callback
 {
 public:
-    ReadoutCallback(ControlCanvas* container) : _lastFID( -1u )
+    ReadoutCallback(ControlCanvas* container) : _lastFID( ~0 )
     {
         _grid = new Grid();
         _grid->setBackColor( Color(Color::Black,0.7f) );

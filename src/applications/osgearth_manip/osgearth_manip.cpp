@@ -68,7 +68,7 @@ namespace
     /**
      * Builds our help menu UI.
      */
-    Control* createHelp( osgViewer::View* view )
+    Container* createHelp( osgViewer::View* view )
     {
         const char* text[] =
         {
@@ -100,8 +100,6 @@ namespace
 
         VBox* v = new VBox();
         v->addControl( g );
-
-        
 
         return v;
     }
@@ -411,7 +409,7 @@ int main(int argc, char** argv)
     viewer.setCameraManipulator( manip );
 
     // UI:
-    Control* help = createHelp(&viewer);
+    Container* help = createHelp(&viewer);
 
     osg::Node* earthNode = MapNodeHelper().load( arguments, &viewer, help );
     if (!earthNode)

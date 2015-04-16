@@ -17,16 +17,17 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgViewer/CompositeViewer>
-#include <osgEarth/Notify>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ExampleResources>
-#include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgGA/TrackballManipulator>
-#include <osg/BlendFunc>
+#include <osgEarth/RTTPicker>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
+
+#include <osgViewer/CompositeViewer>
+#include <osgGA/TrackballManipulator>
+#include <osg/BlendFunc>
 
 #define LC "[rttpicker] "
 
@@ -44,18 +45,18 @@ static osg::Uniform*     s_highlightUniform;
 /**
  * Callback that you install on the RTTPicker.
  */
-struct FeaturePickCallback : public FeaturePicker::Callback
+struct MyPickCallback : public RTTPicker::Callback
 {
-    void onHit(const FeatureID& fid)
+    void onHit(int id)
     {
-        s_fidLabel->setText( Stringify() << "Feature ID = " << (int)fid );
-        s_highlightUniform->set( (int)fid );
+        s_fidLabel->setText( Stringify() << "Object ID = " << id );
+        s_highlightUniform->set( id );
     }
 
     void onMiss()
     {
-        s_fidLabel->setText( "Feature ID = none" );
-        s_highlightUniform->set( (int)~0 );
+        s_fidLabel->setText( "Object ID = none" );
+        s_highlightUniform->set( ~0 );
     }
 
     // pick whenever the mouse moves.
@@ -68,16 +69,16 @@ struct FeaturePickCallback : public FeaturePicker::Callback
 //-----------------------------------------------------------------------
 
 /**
- * Shaders that will highlight the currently "picked" feature.
- */
+    * Shaders that will highlight the currently "picked" feature.
+    */
 const char* highlightVert = OE_MULTILINE(
     #version 130\n
-    uniform int fid_highlight;
-    in uint fidPlusOne_attr;
+    uniform int object_id_to_highlight;
+    in uint object_id;
     out vec4 mixColor;
     void highlightVertex(inout vec4 vertex)
     {
-        if ( fidPlusOne_attr == uint(fid_highlight+1) )
+        if ( object_id == uint(object_id_to_highlight) )
             mixColor = vec4(0, 1, 1, 0.5);
         else
             mixColor = vec4(0);
@@ -92,17 +93,17 @@ const char* highlightFrag = OE_MULTILINE(
     }
 );
 
-void installHighlighter(osg::StateSet* stateSet)
+void installHighlighter(osg::StateSet* stateSet, int attrLocation)
 {
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
     vp->setFunction( "highlightVertex",    highlightVert, ShaderComp::LOCATION_VERTEX_MODEL );
     vp->setFunction( "highlightFragment",  highlightFrag, ShaderComp::LOCATION_FRAGMENT_COLORING );
-    vp->addBindAttribLocation( "fidPlusOne_attr", FeatureSourceIndexNode::IndexAttrLocation );
-    s_highlightUniform = new osg::Uniform("fid_highlight", (int)~0);
+    vp->addBindAttribLocation( "object_id", attrLocation );
+    s_highlightUniform = new osg::Uniform("object_id_to_highlight", ~0);
     stateSet->addUniform( s_highlightUniform );
 }
 
-//-----------------------------------------------------------------------
+//------------------------------------------------------------------------
 
 // Configures a window that lets you see what the RTT camera sees.
 void
@@ -195,15 +196,18 @@ main(int argc, char** argv)
     {
         mainView->setSceneData( node );
 
+        // Binding location for object IDs.
+        int attrLocation = FeatureSourceIndexNode::IndexAttrLocation;
+
         // create a picker of the specified size.
-        FeaturePicker* picker = new FeaturePicker();
+        RTTPicker* picker = new RTTPicker( attrLocation );
         mainView->addEventHandler( picker );
 
         // add the graph that will be picked.
         picker->addChild( MapNode::get(node) );
 
         // install a callback that controls the picker and listens for hits.
-        picker->setCallback( new FeaturePickCallback() );
+        picker->setCallback( new MyPickCallback() );
 
         // Make a view that lets us see what the picker sees.
         osgViewer::View* rttView = new osgViewer::View();
@@ -212,7 +216,7 @@ main(int argc, char** argv)
         setupRTTView( rttView, picker->getTexture() );
 
         // Hightlight features as we pick'em.
-        installHighlighter( MapNode::get(node)->getModelLayerGroup()->getOrCreateStateSet() );
+        installHighlighter( MapNode::get(node)->getModelLayerGroup()->getOrCreateStateSet(), attrLocation );
 
         return viewer.run();
     }

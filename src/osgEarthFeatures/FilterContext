@@ -60,11 +60,6 @@ namespace osgEarth { namespace Features
         void setResourceCache( ResourceCache* value ) { _resourceCache = value; }
 
         /**
-         * Sets the feature index that the filter chain should populate
-         */
-        void setFeatureIndex( FeatureSourceIndex* value ) { _index = value; }
-
-        /**
          * Sets the profile (SRS etc) of the feature data
          */
         void setProfile( const FeatureProfile* profile );

@@ -46,7 +46,7 @@ public:
     osg::Node* createNode(
         const FeatureList&   input,
         const Style&         style,
-        const FilterContext& context )
+        FilterContext&       context )
     {
         if ( style.get<TextSymbol>() == 0L && style.get<IconSymbol>() == 0L )
             return 0L;
@@ -67,7 +67,7 @@ public:
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
-            const Feature* feature = i->get();
+            Feature* feature = i->get();
             if ( !feature )
                 continue;
             
@@ -140,10 +140,10 @@ public:
     }
 
 
-    osg::Node* makePlaceNode(const FilterContext& context,
-                             const Feature*       feature, 
-                             const Style&         style, 
-                             NumericExpression&   priorityExpr )
+    osg::Node* makePlaceNode(FilterContext&     context,
+                             Feature*           feature, 
+                             const Style&       style, 
+                             NumericExpression& priorityExpr )
     {
         osg::Vec3d center = feature->getGeometry()->getBounds().center();
         GeoPoint point(feature->getSRS(), center.x(), center.y());

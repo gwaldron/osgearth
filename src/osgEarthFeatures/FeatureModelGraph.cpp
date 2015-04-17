@@ -785,12 +785,18 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     if (featureSource)
     {
         const FeatureProfile* fp = featureSource->getFeatureProfile();
+
         if ( fp && fp->getTiled() && !_options.featureIndexing()->embedFeatures().isSet() )
         {
             _options.featureIndexing()->embedFeatures() = true;
         }
 
-        index = new FeatureSourceIndexNode( _session->getFeatureSource(), _options.featureIndexing().value() );
+        // create an index node to track the features under this graph
+        index = new FeatureSourceIndexNode(
+            _session->getFeatureSource(),
+            Registry::objectIndex(),
+            _options.featureIndexing().value() );
+
         group = index;
     }
     else

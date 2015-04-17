@@ -27,6 +27,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
+#include <OpenThreads/Atomic>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -47,6 +48,7 @@ namespace osgEarth
     class URIReadCallback;
     class ColorFilterRegistry;
     class StateSetCache;
+    class ObjectIndex;
     
     typedef SharedSARepo<osg::Program> ProgramSharedRepo;
 
@@ -149,6 +151,12 @@ namespace osgEarth
         ShaderGeneratorProxy getShaderGenerator() const;
         void setShaderGenerator(ShaderGenerator* gen);
         static ShaderGeneratorProxy shaderGenerator() { return instance()->getShaderGenerator(); }
+
+        /**
+         * Global object index.
+         */
+        ObjectIndex* getObjectIndex() const;
+        static ObjectIndex* objectIndex() { return instance()->getObjectIndex(); }
 
         /**
          * A default StateSetCache to use by any process that uses one.
@@ -302,6 +310,8 @@ namespace osgEarth
         ProgramSharedRepo _programRepo;
 
         optional<bool> _unRefImageDataAfterApply;
+
+        osg::ref_ptr<ObjectIndex> _objectIndex;
     };
 }
 

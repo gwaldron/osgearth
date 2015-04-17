@@ -19,6 +19,7 @@
 #include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
 #include <osg/MatrixTransform>
 #include <algorithm>
 
@@ -118,7 +119,7 @@ FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
                             for(unsigned i = 0; i < de->getNumIndices(); ++i)
                             {
                                 int vi = de->getElement(i);
-                                if ( vi < ids->getNumElements() )
+                                if ( vi < (int)ids->getNumElements() )
                                 {
                                     FeatureID fid( (*ids)[vi] );
 
@@ -151,8 +152,10 @@ const int FeatureSourceIndexNode::IndexAttrLocation = osg::Drawable::SECONDARY_C
 
 
 FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSource*                   featureSource, 
+                                               ObjectIndex*                     index,
                                                const FeatureSourceIndexOptions& options) :
 _featureSource  ( featureSource ), 
+_masterIndex    ( index ),
 _options        ( options ),
 _idAttrArraySlot( IndexAttrLocation )
 {
@@ -161,7 +164,11 @@ _idAttrArraySlot( IndexAttrLocation )
 
 FeatureSourceIndexNode::~FeatureSourceIndexNode()
 {
-    //nop
+    if ( _masterIndex.valid() && !_oids.empty() )
+    {
+        _masterIndex->remove( _oids.begin(), _oids.end() );
+        _oids.clear();
+    }
 }
 
 // Rebuilds the feature index based on all the tagged primitive sets found in a graph
@@ -177,82 +184,29 @@ FeatureSourceIndexNode::reindex()
 }
 
 // Tags the vertex array with the specified FeatureID.
-void
-FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, const Feature* feature) const
+ObjectID
+FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, Feature* feature)
 {
-    if ( drawable == 0L )
-        return;
-
-    osg::Geometry* geom = drawable->asGeometry();
-    if ( !geom )
-        return;
-
-    // add a new integer attributer to store the feautre ID per vertex.
-    osg::IntArray* ids = new osg::IntArray();
-    ids->setPreserveDataType(true);
-    geom->setVertexAttribArray    (_idAttrArraySlot, ids);
-    geom->setVertexAttribBinding  (_idAttrArraySlot, osg::Geometry::BIND_PER_VERTEX);
-    geom->setVertexAttribNormalize(_idAttrArraySlot, false);
-
-    // The tag is actually FeatureID + 1, to preserve "0" as an "empty" value.
-    // TODO: use a UID generator and mapping instead.
-    int objectID = feature->getFID() + 1;
-    ids->assign( geom->getVertexArray()->getNumElements(), objectID );
-
-    // optionally save the actual feature object in the index.
-    if ( _options.embedFeatures() == true )
-    {
-        _features[feature->getFID()] = feature;
-    }
+    ObjectID oid = _masterIndex->tagDrawable(drawable, feature);
+    _oids.insert( oid );
+    return oid;
 }
 
-namespace
+ObjectID
+FeatureSourceIndexNode::tagAllDrawables(osg::Node* node, Feature* feature)
 {
-    struct FindAndTagDrawables : public osg::NodeVisitor
-    {
-        FindAndTagDrawables(const Feature* f, const FeatureSourceIndex* i) : _feature(f), _index(i)
-        {
-            setTraversalMode(TRAVERSE_ALL_CHILDREN);
-            setNodeMaskOverride(~0);
-        }
-
-        void apply(osg::Geode& geode)
-        {
-            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-            {
-                osg::Drawable* d = geode.getDrawable(i);
-                if ( d )
-                    _index->tagDrawable( d, _feature );
-            }
-            // not traverse necessary
-        }
-
-        const FeatureSourceIndex* _index;
-        const Feature*            _feature;
-    };
+    ObjectID oid = _masterIndex->tagAllDrawables(node, feature);
+    _oids.insert( oid );
+    return oid;
 }
 
-void
-FeatureSourceIndexNode::tagAllDrawables(osg::Node* node, const Feature* feature) const
+ObjectID
+FeatureSourceIndexNode::tagNode(osg::Node* node, Feature* feature)
 {
-    if ( node && feature )
-    {
-        FindAndTagDrawables visitor(feature, this);
-        node->accept( visitor );
-    }
+    ObjectID oid = _masterIndex->tagNode(node, feature);
+    _oids.insert( oid );
+    return oid;
 }
-
-void
-FeatureSourceIndexNode::tagNode( osg::Node* node, const Feature* feature ) const
-{
-    node->setUserData( new RefFeatureID(feature->getFID()) );
-
-    if ( _options.embedFeatures() == true )
-    {
-        _features[feature->getFID()] = feature;
-    }
-}
-
 
 bool
 FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const

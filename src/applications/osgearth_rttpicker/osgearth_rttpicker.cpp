@@ -20,10 +20,11 @@
 #include <osgEarth/RTTPicker>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/ObjectIndex>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
-#include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osgEarthFeatures/Feature>
 
 #include <osgViewer/CompositeViewer>
 #include <osgGA/TrackballManipulator>
@@ -38,6 +39,7 @@ using namespace osgEarth::Features;
 namespace ui = osgEarth::Util::Controls;
 
 static ui::LabelControl* s_fidLabel;
+static ui::LabelControl* s_nameLabel;
 static osg::Uniform*     s_highlightUniform;
 
 //-----------------------------------------------------------------------
@@ -47,16 +49,28 @@ static osg::Uniform*     s_highlightUniform;
  */
 struct MyPickCallback : public RTTPicker::Callback
 {
-    void onHit(int id)
+    void onHit(ObjectID id)
     {
-        s_fidLabel->setText( Stringify() << "Object ID = " << id );
+        Feature* feature = Registry::objectIndex()->get<Feature>( id );
+        if ( feature )
+        {
+            s_fidLabel->setText( Stringify() << "Feature ID = " << feature->getFID() );
+            s_nameLabel->setText( Stringify() << "Name = " << feature->getString("name") );
+        }
+        else
+        {
+            s_fidLabel->setText( Stringify() << "Object ID = " << id );
+            s_nameLabel->setText( "Name = " );
+        }
+
         s_highlightUniform->set( id );
     }
 
     void onMiss()
     {
-        s_fidLabel->setText( "Object ID = none" );
-        s_highlightUniform->set( ~0 );
+        s_fidLabel->setText( "No pick." );
+        s_nameLabel->setText( "Name = " );
+        s_highlightUniform->set( 0u );
     }
 
     // pick whenever the mouse moves.
@@ -73,12 +87,13 @@ struct MyPickCallback : public RTTPicker::Callback
     */
 const char* highlightVert = OE_MULTILINE(
     #version 130\n
-    uniform int object_id_to_highlight;
-    in uint object_id;
-    out vec4 mixColor;
+    uniform uint hilite;
+    uniform uint oe_index_objectid;         // override objectid if > 0
+    in      uint attr_objectid;             // objectid in vertex attrib
+    out     vec4 mixColor;
     void highlightVertex(inout vec4 vertex)
     {
-        if ( object_id == uint(object_id_to_highlight) )
+        if (hilite > uint(0) && (hilite == oe_index_objectid || hilite == attr_objectid))
             mixColor = vec4(0, 1, 1, 0.5);
         else
             mixColor = vec4(0);
@@ -98,8 +113,8 @@ void installHighlighter(osg::StateSet* stateSet, int attrLocation)
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
     vp->setFunction( "highlightVertex",    highlightVert, ShaderComp::LOCATION_VERTEX_MODEL );
     vp->setFunction( "highlightFragment",  highlightFrag, ShaderComp::LOCATION_FRAGMENT_COLORING );
-    vp->addBindAttribLocation( "object_id", attrLocation );
-    s_highlightUniform = new osg::Uniform("object_id_to_highlight", ~0);
+    vp->addBindAttribLocation( "attr_objectid", attrLocation );
+    s_highlightUniform = new osg::Uniform("hilite", 0u);
     stateSet->addUniform( s_highlightUniform );
 }
 
@@ -189,6 +204,7 @@ main(int argc, char** argv)
     uiContainer->addControl( new ui::LabelControl("RTT Picker Test", osg::Vec4(1,1,0,1)) );
     s_fidLabel = new ui::LabelControl("---");
     uiContainer->addControl( s_fidLabel );
+    s_nameLabel = uiContainer->addControl( new ui::LabelControl( "---" ) );
 
     // Load up the earth file.
     osg::Node* node = MapNodeHelper().load( arguments, mainView, uiContainer );
@@ -197,10 +213,10 @@ main(int argc, char** argv)
         mainView->setSceneData( node );
 
         // Binding location for object IDs.
-        int attrLocation = FeatureSourceIndexNode::IndexAttrLocation;
+        int attrLocation = Registry::objectIndex()->getAttribLocation();
 
         // create a picker of the specified size.
-        RTTPicker* picker = new RTTPicker( attrLocation );
+        RTTPicker* picker = new RTTPicker();
         mainView->addEventHandler( picker );
 
         // add the graph that will be picked.

@@ -101,7 +101,7 @@ _geoInterp    ( GEOINTERP_RHUMB_LINE )
 }
 
 osg::Geode*
-BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext& context)
+BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 
@@ -232,9 +232,9 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
 
 osg::Geode*
-BuildGeometryFilter::processPolygonizedLines(FeatureList&         features, 
-                                             bool                 twosided,
-                                             const FilterContext& context)
+BuildGeometryFilter::processPolygonizedLines(FeatureList&   features, 
+                                             bool           twosided,
+                                             FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 
@@ -315,7 +315,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&         features,
 
 
 osg::Geode*
-BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& context)
+BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 
@@ -424,7 +424,7 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
 
 
 osg::Geode*
-BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& context)
+BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 

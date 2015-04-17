@@ -114,6 +114,7 @@ SET(LIB_PUBLIC_HEADERS
     NodeUtils
     Notify
     optional
+    ObjectIndex
     OverlayDecorator
     OverlayNode
 	PhongLightingEffect
@@ -259,6 +260,7 @@ set(TARGET_SRC
     ModelSource.cpp
     NodeUtils.cpp
     Notify.cpp
+    ObjectIndex.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
 	PhongLightingEffect.cpp

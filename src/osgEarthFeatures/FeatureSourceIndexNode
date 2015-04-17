@@ -21,8 +21,10 @@
 #define OSGEARTHFEATURES_FEATURE_SOURCE_INDEX_NODE_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureDrawSet>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/ObjectIndex>
 #include <osg/Config>
 #include <osg/Group>
 #include <osg/Drawable>
@@ -58,21 +60,7 @@ namespace osgEarth { namespace Features
         optional<bool> _embedFeatures;
     };
 
-
-    /**
-     * Interface for feature indexing.
-     */
-    class FeatureSourceIndex
-    {
-    public: // tagging functions
-        virtual void tagDrawable(osg::Drawable* drawable, const Feature* feature) const =0;
-
-        virtual void tagAllDrawables(osg::Node* node, const Feature* feature) const =0;
-
-        virtual void tagNode(osg::Node* node, const Feature* feature) const =0;
-
-        virtual ~FeatureSourceIndex() { }
-    };
+    class FeatureSourceIndex : public ObjectIndexBuilder<Feature> { };
 
 
     /**
@@ -92,6 +80,7 @@ namespace osgEarth { namespace Features
          */
         FeatureSourceIndexNode(
             FeatureSource*                   featureSource,
+            ObjectIndex*                     masterIndex,
             const FeatureSourceIndexOptions& options );
 
         /**
@@ -102,23 +91,11 @@ namespace osgEarth { namespace Features
 
     public: // FeatureSourceIndex
 
-        /**
-         * Associates a Drawable with a Feature.
-         */
-        void tagDrawable(osg::Drawable* drawable, const Feature* feature) const;
+        ObjectID tagDrawable(osg::Drawable* drawable, Feature* feature);
 
-        /**
-         * Finds all the Drawables user a node, and associates each one with the
-         * specified feature.
-         */
-        void tagAllDrawables(osg::Node* node, const Feature* feature) const;
+        ObjectID tagAllDrawables(osg::Node* node, Feature* feature);
 
-        /**
-         * Associates a node with a Feature. This method does NOT tag the underlying
-         * drawables; it just tags the node itself. So shader code that accesses the
-         * FeatureID attribute array will not function when using this approach.
-         */
-        void tagNode(osg::Node* node, const Feature* feature) const;
+        ObjectID tagNode(osg::Node* node, Feature* feature);
 
 
     public:
@@ -184,6 +161,10 @@ namespace osgEarth { namespace Features
         };
         
         FeatureSourceIndexOptions _options;
+
+        std::set<ObjectID> _oids;
+
+        osg::ref_ptr<ObjectIndex> _masterIndex;
 
         // optionally embedded features; only populated when _options.embedFeatures = true
         typedef std::map< FeatureID, osg::ref_ptr<const Feature> > FeatureMap;

@@ -24,6 +24,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Containers>
 
 #include "MPTerrainEngineOptions"
 #include "KeyNodeFactory"
@@ -156,7 +157,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
         osg::ref_ptr<TileNodeRegistry> _deadTiles;        // tiles that used to be in the scene graph.
 
-        Threading::PerThread< osg::ref_ptr<KeyNodeFactory> > _perThreadKeyNodeFactories;
+        PerThread< osg::ref_ptr<KeyNodeFactory> > _perThreadKeyNodeFactories;
         KeyNodeFactory* getKeyNodeFactory();
 
         osg::Timer _timer;

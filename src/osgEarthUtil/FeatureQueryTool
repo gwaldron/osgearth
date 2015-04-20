@@ -23,6 +23,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapNodeObserver>
+#include <osgEarth/RTTPicker>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
@@ -35,89 +36,25 @@ namespace osgEarth { namespace Util
 
     /**
      * Tool that let you query the map for Features generated from a FeatureSource.
-     *
-     * By default, an unmodified left-click will activate a query. You can replace
-     * this test by calling setInputPredicate().
      */
-    class OSGEARTHUTIL_EXPORT FeatureQueryTool : public osgGA::GUIEventHandler,
-                                                 public MapNodeObserver
+    class OSGEARTHUTIL_EXPORT FeatureQueryTool : public RTTPicker
     {
     public:
-
-        struct Callback : public osg::Referenced
+        struct Callback : public RTTPicker::Callback
         {
-            struct EventArgs 
-            {
-                const osgGA::GUIEventAdapter*  _ea;
-                osgGA::GUIActionAdapter*       _aa;
-                osg::Vec3d                     _worldPoint;
-            };
-
-            // called when a valid feature is found under the mouse coords
-            virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args ) { }
-
-            // called when no feature is found under the mouse coords
-            virtual void onMiss( const EventArgs& args ) { }
-        };
-
-        /**
-         * Interface for a custom input test.
-         */
-        class InputPredicate : public osg::Referenced
-        {
-        public:
-            // return true to active a query under the mouse cursor.
-            virtual bool accept( const osgGA::GUIEventAdapter& ea ) =0;
         };
 
     public:
         /**
          * Constructs a new feature query tool.
          *
-         * @param mapNode
-         *      Map node containing feature data to query
          * @param callbackToAdd
          *      (optional) convenience; calls addCallback with this parameter
          */
-        FeatureQueryTool( 
-            MapNode*  mapNode,
-            Callback* callbackToAdd =0L );
+        FeatureQueryTool();
 
         /** dtor */
         virtual ~FeatureQueryTool() { }
-
-        /**
-         * Adds a feature query callback.
-         */
-        void addCallback( Callback* callback );
-
-        /**
-         * Sets a custom input test. By default, the action is a left-click.
-         */
-        void setInputPredicate( InputPredicate* value ) { _inputPredicate = value; }
-
-
-    public: // GUIEventHandler
-
-        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
-
-
-    public: // MapNodeObserver
-
-        virtual void setMapNode( MapNode* mapNode );
-
-        virtual MapNode* getMapNode() { return _mapNode.get(); }
-
-
-    protected:
-        osg::observer_ptr<MapNode> _mapNode;
-        bool                       _mouseDown;
-        float                      _mouseDownX, _mouseDownY;
-
-        osg::ref_ptr<InputPredicate> _inputPredicate;
-
-        typedef std::vector< osg::observer_ptr<Callback> > Callbacks;
-        Callbacks _callbacks;
     };
 
 } } // namespace osgEarthUtil

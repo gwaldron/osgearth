@@ -21,10 +21,13 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
+#include <osg/ref_ptr>
 #include <osg/observer_ptr>
 #include <osg/State>
 #include <list>
 #include <vector>
+#include <set>
+#include <map>
 
 namespace osgEarth
 {
@@ -463,6 +466,264 @@ namespace osgEarth
 
     private:
         vector_type _impl;
+    };
+
+
+    /** Template for per-thread data storage */
+    template<typename T>
+    struct PerThread
+    {
+        T& get() {
+            Threading::ScopedMutexLock lock(_mutex);
+            return _data[Threading::getCurrentThreadId()];
+        }
+    private:
+        std::map<unsigned,T> _data;
+        Threading::Mutex     _mutex;
+    };
+    
+
+    /** Template for thread safe per-object data storage */
+    template<typename KEY, typename DATA>
+    struct PerObjectMap
+    {
+        DATA& get(KEY k)
+        {
+            {
+                osgEarth::Threading::ScopedReadLock readLock(_mutex);
+                typename std::map<KEY,DATA>::iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second;
+            }
+            {
+                osgEarth::Threading::ScopedWriteLock lock(_mutex);
+                typename std::map<KEY,DATA>::iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second;
+                else
+                    return _data[k];
+            }
+        }
+
+        void remove(KEY k)
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            _data.erase( k );
+        }
+
+    private:
+        std::map<KEY,DATA>                  _data;
+        osgEarth::Threading::ReadWriteMutex _mutex;
+    };
+
+    /** Template for thread safe per-object data storage */
+    template<typename KEY, typename DATA>
+    struct PerObjectFastMap
+    {
+        DATA& get(KEY k)
+        {
+            {
+                osgEarth::Threading::ScopedReadLock readLock(_mutex);
+                typename osgEarth::fast_map<KEY,DATA>::iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second;
+            }
+            {
+                osgEarth::Threading::ScopedWriteLock lock(_mutex);
+                typename osgEarth::fast_map<KEY,DATA>::iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second;
+                else
+                    return _data[k];
+            }
+        }
+
+        void remove(KEY k)
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            _data.erase( k );
+        }
+
+    private:
+        osgEarth::fast_map<KEY,DATA>        _data;
+        osgEarth::Threading::ReadWriteMutex _mutex;
+    };
+
+    /** Template for thread safe per-object data storage */
+    template<typename KEY, typename DATA>
+    struct PerObjectRefMap
+    {
+        DATA* get(KEY k)
+        {
+            osgEarth::Threading::ScopedReadLock lock(_mutex);
+            typename std::map<KEY,osg::ref_ptr<DATA > >::const_iterator i = _data.find(k);
+            if ( i != _data.end() )
+                return i->second.get();
+
+            return 0L;
+        }
+
+        DATA* getOrCreate(KEY k, DATA* newDataIfNeeded)
+        {
+            osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
+            {
+                osgEarth::Threading::ScopedReadLock lock(_mutex);
+                typename std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second.get();
+            }
+
+            {
+                osgEarth::Threading::ScopedWriteLock lock(_mutex);
+                typename std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second.get();
+
+                _data[k] = newDataIfNeeded;
+                return newDataIfNeeded;
+            }
+        }
+
+        void remove(KEY k)
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            _data.erase( k );
+        }
+
+        void remove(DATA* data)
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            for( typename std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
+            {
+                if ( i->second.get() == data )
+                {
+                    _data.erase( i );
+                    break;
+                }
+            }
+        }
+
+    private:
+        std::map<KEY,osg::ref_ptr<DATA> >    _data;
+        osgEarth::Threading::ReadWriteMutex  _mutex;
+    };
+
+    /** Template for thread safe per-object data storage */
+    template<typename KEY, typename DATA>
+    struct PerObjectObsMap
+    {
+        DATA* get(KEY k)
+        {
+            osgEarth::Threading::ScopedReadLock lock(_mutex);
+            typename std::map<KEY, osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
+            if ( i != _data.end() )
+                return i->second.get();
+
+            return 0L;
+        }
+
+        DATA* getOrCreate(KEY k, DATA* newDataIfNeeded)
+        {
+            osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
+            {
+                osgEarth::Threading::ScopedReadLock lock(_mutex);
+                typename std::map<KEY,osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second.get();
+            }
+
+            {
+                osgEarth::Threading::ScopedWriteLock lock(_mutex);
+                typename std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second.get();
+
+                _data[k] = newDataIfNeeded;
+                return newDataIfNeeded;
+            }
+        }
+
+        void remove(KEY k)
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            _data.erase( k );
+        }
+
+        void remove(DATA* data)
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            for( typename std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
+            {
+                if ( i->second.get() == data )
+                {
+                    _data.erase( i );
+                    break;
+                }
+            }
+        }
+
+    private:
+        std::map<KEY,osg::observer_ptr<DATA> >    _data;
+        osgEarth::Threading::ReadWriteMutex       _mutex;
+    };
+
+
+    /** Template for thread safe observer set */
+    template<typename T>
+    struct ThreadSafeObserverSet
+    {
+        typedef void (*Functor)(T*);
+        typedef void (*ConstFunctor)(const T*);
+
+        void iterate( const Functor& f )
+        {
+            osgEarth::Threading::ScopedWriteLock lock(_mutex);
+            for( typename std::set<T>::iterator i = _data.begin(); i != _data.end(); )
+            {
+                if ( i->valid() )
+                {
+                    f( i->get() );
+                    ++i;
+                }
+                else
+                {
+                    i = _data.erase( i );
+                }
+            }
+        }
+
+        void iterate( const ConstFunctor& f )
+        {
+            osgEarth::Threading::ScopedReadLock lock(_mutex);
+            for( typename std::set<T>::iterator i = _data.begin(); i != _data.end(); )
+            {
+                if ( i->valid() )
+                {
+                    f( i->get() );
+                    ++i;
+                }
+                else
+                {
+                    i = _data.erase( i );
+                }
+            }
+        }
+
+        void insert(T* obj)
+        {
+            osgEarth::Threading::ScopedWriteLock lock(_mutex);
+            _data.insert( obj );
+        }
+
+        void remove(T* obj)
+        {
+            osgEarth::Threading::ScopedWriteLock lock(_mutex);
+            _data.erase( obj );
+        }
+
+    private:
+        std::set<osg::observer_ptr<T> >      _data;
+        osgEarth::Threading::ReadWriteMutex  _mutex;
     };
 }
 

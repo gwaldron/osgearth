@@ -890,10 +890,6 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
             }
         }
 
-        // if indexing is enabled, build the index now.
-        if ( index )
-            index->reindex();
-
         return group.release();
     }
 

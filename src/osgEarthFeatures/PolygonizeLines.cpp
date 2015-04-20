@@ -466,10 +466,12 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
 namespace
 {
+#if 0
     struct PixelSizeVectorCullCallback : public osg::NodeCallback
     {
         PixelSizeVectorCullCallback(osg::StateSet* stateset)
         {
+            _frameNumber = 0;
             _pixelSizeVectorUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_PixelSizeVector");
             stateset->addUniform( _pixelSizeVectorUniform.get() );
         }
@@ -477,11 +479,44 @@ namespace
         void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            _pixelSizeVectorUniform->set( cv->getCurrentCullingSet().getPixelSizeVector() );
+
+            // temporary patch to prevent uniform overwrite -gw
+            if ( nv->getFrameStamp() && nv->getFrameStamp()->getFrameNumber() > _frameNumber )
+            {
+                _pixelSizeVectorUniform->set( cv->getCurrentCullingSet().getPixelSizeVector() );    
+                _frameNumber = nv->getFrameStamp()->getFrameNumber();
+            }
+
             traverse(node, nv);
         }
 
         osg::ref_ptr<osg::Uniform> _pixelSizeVectorUniform;
+        int _frameNumber;        
+    };
+#endif
+
+    class PixelScalingGeode : public osg::Geode
+    {
+    public:
+        void traverse(osg::NodeVisitor& nv)
+        {
+            osgUtil::CullVisitor* cv = 0L;
+            if (nv.getVisitorType() == nv.CULL_VISITOR &&
+                (cv = Culling::asCullVisitor(nv)) != 0L &&
+                cv->getCurrentCamera() )
+            {
+                osg::ref_ptr<osg::StateSet>& ss = _stateSets.get( cv->getCurrentCamera() );
+                if ( !ss.valid() )
+                    ss = new osg::StateSet();
+
+                ss->getOrCreateUniform("oe_PixelSizeVector", osg::Uniform::FLOAT_VEC4)->set(
+                    cv->getCurrentCullingSet().getPixelSizeVector() );
+            }
+
+            osg::Geode::traverse( nv );
+        }
+
+        PerObjectFastMap<osg::Camera*, osg::ref_ptr<osg::StateSet> > _stateSets;
     };
 }
 
@@ -547,7 +582,7 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
     stateset->addUniform( minPixelsU, 1 );
 
     // this will install and update the oe_PixelSizeVector uniform.
-    node->addCullCallback( new PixelSizeVectorCullCallback(stateset) );
+    //node->addCullCallback( new PixelSizeVectorCullCallback(stateset) );
 
     // DYNAMIC since we will be altering the uniforms and we don't want 
     // the stateset to get shared via statesetcache optimization.
@@ -588,7 +623,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
     PolygonizeLinesOperator polygonize( line ? (*line->stroke()) : Stroke() );
 
     // Geode to hold all the geometries.
-    osg::Geode* geode = new osg::Geode();
+    osg::Geode* geode = new PixelScalingGeode(); //osg::Geode();
 
     // iterate over all features.
     for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )

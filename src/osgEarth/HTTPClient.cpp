@@ -352,7 +352,7 @@ namespace
     // TODO: consider moving this stuff into the osgEarth::Registry;
     // don't like it here in the global scope
     // per-thread client map (must be global scope)
-    static Threading::PerThread<HTTPClient> s_clientPerThread;
+    static PerThread<HTTPClient>       s_clientPerThread;
 
     static optional<ProxySettings>     s_proxySettings;
 

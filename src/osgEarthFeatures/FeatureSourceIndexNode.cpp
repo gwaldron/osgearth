@@ -17,10 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarth/ImageUtils>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
-#include <osg/MatrixTransform>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -52,112 +49,14 @@ FeatureSourceIndexOptions::getConfig() const
     return conf;
 }
 
-
 //-----------------------------------------------------------------------------
-
-FeatureSourceIndexNode::Collect::Collect(FeatureIDDrawSetMap& index, int idAttrArraySlot) :
-osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-_index          ( index ),
-_psets          ( 0 ),
-_idAttrArraySlot( idAttrArraySlot )
-{
-    _index.clear();
-}
-
-void
-FeatureSourceIndexNode::Collect::apply( osg::Node& node )
-{
-    RefFeatureID* fid = dynamic_cast<RefFeatureID*>( node.getUserData() );
-    if ( fid )
-    {
-        FeatureDrawSet& drawSet = _index[*fid];
-        drawSet.nodes().push_back( &node );
-    }
-    traverse(node);
-}
-
-void
-FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
-{
-    RefFeatureID* fid = dynamic_cast<RefFeatureID*>( geode.getUserData() );
-    if ( fid )
-    {
-        FeatureDrawSet& drawSet = _index[*fid];
-        drawSet.nodes().push_back( &geode );
-    }
-    else
-    {
-        for( unsigned i = 0; i < geode.getNumDrawables(); ++i )
-        {
-            osg::Geometry* geom = dynamic_cast<osg::Geometry*>( geode.getDrawable(i) );
-            if ( geom )
-            {
-                osg::IntArray* ids = dynamic_cast<osg::IntArray*>(geom->getVertexAttribArray(_idAttrArraySlot));
-
-                osg::Geometry::PrimitiveSetList& psets = geom->getPrimitiveSetList();
-                for( unsigned p = 0; p < psets.size(); ++p )
-                {
-                    osg::PrimitiveSet* pset = psets[p];
-
-                    // first check for user data:
-                    RefFeatureID* fid = dynamic_cast<RefFeatureID*>( pset->getUserData() );
-                    if ( fid )
-                    {
-                        FeatureDrawSet& drawSet = _index[*fid];
-                        drawSet.getOrCreateSlice(geom).push_back(pset);
-                        _psets++;
-                    }
-
-                    // failing that, check for attribution:
-                    else if ( ids )
-                    {
-                        osg::DrawElements* de = pset->getDrawElements();
-                        if ( de && de->getNumIndices() > 0 )
-                        {
-                            std::set<FeatureID> fidsVisitedInThisPSet;
-
-                            for(unsigned i = 0; i < de->getNumIndices(); ++i)
-                            {
-                                int vi = de->getElement(i);
-                                if ( vi < (int)ids->getNumElements() )
-                                {
-                                    FeatureID fid( (*ids)[vi] );
-
-                                    if ( fidsVisitedInThisPSet.find(fid) == fidsVisitedInThisPSet.end() )
-                                    {
-                                        FeatureDrawSet& drawSet = _index[fid];
-                                        drawSet.getOrCreateSlice(geom).push_back(pset);
-                                        fidsVisitedInThisPSet.insert(fid);
-                                        _psets++;
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            OE_WARN << LC << "TODO: try DrawArrays\n";
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // NO traverse.
-}
-
-//-----------------------------------------------------------------------------
-
-const int FeatureSourceIndexNode::IndexAttrLocation = osg::Drawable::SECONDARY_COLORS;
-
 
 FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSource*                   featureSource, 
                                                ObjectIndex*                     index,
                                                const FeatureSourceIndexOptions& options) :
 _featureSource  ( featureSource ), 
 _masterIndex    ( index ),
-_options        ( options ),
-_idAttrArraySlot( IndexAttrLocation )
+_options        ( options )
 {
     //nop
 }
@@ -171,19 +70,6 @@ FeatureSourceIndexNode::~FeatureSourceIndexNode()
     }
 }
 
-// Rebuilds the feature index based on all the tagged primitive sets found in a graph
-void
-FeatureSourceIndexNode::reindex()
-{
-    _drawSets.clear();
-
-    Collect c(_drawSets, _idAttrArraySlot);
-    this->accept( c );
-
-    OE_DEBUG << LC << "Reindexed; draw sets = " << _drawSets.size() << std::endl;
-}
-
-// Tags the vertex array with the specified FeatureID.
 ObjectID
 FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, Feature* feature)
 {
@@ -211,61 +97,39 @@ FeatureSourceIndexNode::tagNode(osg::Node* node, Feature* feature)
 bool
 FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const
 {
-    output.reserve( _drawSets.size() );
-    output.clear();
-    for(FeatureIDDrawSetMap::const_iterator i = _drawSets.begin(); i != _drawSets.end(); ++i )
+    if ( !_masterIndex.valid() )
+        return false;
+
+    for(std::set<ObjectID>::const_iterator oid = _oids.begin(); oid != _oids.end(); ++oid)
     {
-        output.push_back( i->first );
+        Feature* feature = _masterIndex->get<Feature>( *oid );
+        if ( feature )
+            output.push_back( feature->getFID() );
     }
+
     return true;
 }
 
 bool
 FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int vertIndex, FeatureID& output) const
 {
-    if ( drawable == 0L || vertIndex < 0 )
+    if ( drawable == 0L || vertIndex < 0 || !_masterIndex.valid() )
         return false;
 
     osg::Geometry* geom = drawable->asGeometry();
     if ( geom == 0L )
         return false;
 
-    osg::IntArray* ids = dynamic_cast<osg::IntArray*>( geom->getVertexAttribArray(_idAttrArraySlot) );
+    int slot = Registry::objectIndex()->getAttribLocation();
+    osg::UIntArray* ids = dynamic_cast<osg::UIntArray*>( geom->getVertexAttribArray(slot) );
     if ( ids == 0L )
         return false;
     
-    output = (*ids)[vertIndex];
-    return true;
-}
+    ObjectID oid = (*ids)[vertIndex];
 
-FeatureDrawSet&
-FeatureSourceIndexNode::getDrawSet(const FeatureID& fid )
-{
-    static FeatureDrawSet s_empty;
+    Feature* feature = _masterIndex->get<Feature>( oid );
+    if ( feature )
+        output = feature->getFID();
 
-    FeatureIDDrawSetMap::iterator i = _drawSets.find(fid);
-    return i != _drawSets.end() ? i->second : s_empty;
-}
-
-
-bool
-FeatureSourceIndexNode::getFeature(const FeatureID& fid, const Feature*& output) const
-{
-    if ( _options.embedFeatures() == true )
-    {
-        FeatureMap::const_iterator f = _features.find(fid);
-
-        if(f != _features.end())
-        {
-            output = f->second.get();
-            return output != 0L;
-        }
-    }
-    else if ( _featureSource.valid() && _featureSource->supportsGetFeature() )
-    {
-        output = _featureSource->getFeature( fid );
-        return output != 0L;
-    }
-
-    return false;
+    return feature != 0L;
 }

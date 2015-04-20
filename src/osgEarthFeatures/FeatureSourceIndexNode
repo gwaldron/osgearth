@@ -105,12 +105,6 @@ namespace osgEarth { namespace Features
         FeatureSource* getFeatureSource() { return _featureSource.get(); }
 
         /**
-         * Traverses this node's subgraph and rebuilds the feature index based on
-         * any tagged drawables found. (See tagGeometry for tagging drawables).
-         */
-        void reindex();
-
-        /**
          * Gets a collection of all feature IDs tracked by this index.
          * @param output Container to populate with all FIDs.
          */
@@ -127,53 +121,14 @@ namespace osgEarth { namespace Features
          */
         bool getFID(osg::Drawable* drawable, int vertIndex, FeatureID& output) const;
 
-        /**
-         * Given a FeatureID, returns the collection of drawable/primitiveset combinations
-         * corresponding to that feature.
-         *
-         * @param fid Feature ID to look up
-         * @return Corresponding collection of primitive sets (empty if the query fails)
-         */
-        FeatureDrawSet& getDrawSet( const FeatureID& fid );
-
-        /**
-         * Given a FeatureID, returns the cached feature.
-         *
-         * @param fid     Feature ID to look up
-         * @param output  cached feature 
-         * @return true if successful 
-         */
-        bool getFeature(const FeatureID& fid, const Feature*& output) const;
-
     private:
-        osg::ref_ptr<FeatureSource> _featureSource;
-
-        typedef std::map<FeatureID, FeatureDrawSet> FeatureIDDrawSetMap;
-        FeatureIDDrawSetMap _drawSets;
-
-        struct Collect : public osg::NodeVisitor {
-            Collect(FeatureIDDrawSetMap&, int);
-            void apply(osg::Node&);
-            void apply(osg::Geode&);
-            FeatureIDDrawSetMap& _index;
-            unsigned _psets;
-            int _idAttrArraySlot;
-        };
-        
-        FeatureSourceIndexOptions _options;
-
-        std::set<ObjectID> _oids;
-
-        osg::ref_ptr<ObjectIndex> _masterIndex;
-
-        // optionally embedded features; only populated when _options.embedFeatures = true
-        typedef std::map< FeatureID, osg::ref_ptr<const Feature> > FeatureMap;
-        mutable FeatureMap _features;
-
-        int _idAttrArraySlot;
+        osg::ref_ptr<FeatureSource> _featureSource;        
+        FeatureSourceIndexOptions   _options;
+        std::set<ObjectID>          _oids;
+        osg::ref_ptr<ObjectIndex>   _masterIndex;
 
     public:
-        virtual const char* className() const { return "FeatureSourceIndexNode"; }
+        virtual const char* className()   const { return "FeatureSourceIndexNode"; }
         virtual const char* libraryName() const { return "osgEarthFeatures"; }
     };
 

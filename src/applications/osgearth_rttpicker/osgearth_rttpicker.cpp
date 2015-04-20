@@ -212,9 +212,6 @@ main(int argc, char** argv)
     {
         mainView->setSceneData( node );
 
-        // Binding location for object IDs.
-        int attrLocation = Registry::objectIndex()->getAttribLocation();
-
         // create a picker of the specified size.
         RTTPicker* picker = new RTTPicker();
         mainView->addEventHandler( picker );
@@ -223,16 +220,18 @@ main(int argc, char** argv)
         picker->addChild( MapNode::get(node) );
 
         // install a callback that controls the picker and listens for hits.
-        picker->setCallback( new MyPickCallback() );
+        picker->setDefaultCallback( new MyPickCallback() );
 
         // Make a view that lets us see what the picker sees.
         osgViewer::View* rttView = new osgViewer::View();
         rttView->getCamera()->setGraphicsContext( mainView->getCamera()->getGraphicsContext() );
         viewer.addView( rttView );
-        setupRTTView( rttView, picker->getTexture() );
+        setupRTTView( rttView, picker->getOrCreateTexture(mainView) );
 
         // Hightlight features as we pick'em.
-        installHighlighter( MapNode::get(node)->getModelLayerGroup()->getOrCreateStateSet(), attrLocation );
+        installHighlighter(
+            MapNode::get(node)->getModelLayerGroup()->getOrCreateStateSet(),
+            Registry::objectIndex()->getAttribLocation() );
 
         return viewer.run();
     }

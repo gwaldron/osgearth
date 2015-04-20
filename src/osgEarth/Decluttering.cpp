@@ -18,6 +18,7 @@
 */
 #include <osgEarth/Decluttering>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Containers>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
 #include <osgUtil/RenderBin>
@@ -165,7 +166,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
     DeclutterSortFunctor* _customSortFunctor;
     DeclutterContext*     _context;
 
-    Threading::PerObjectMap<osg::Camera*, PerCamInfo> _perCam;
+    PerObjectFastMap<osg::Camera*, PerCamInfo> _perCam;
 
     /**
      * Constructs the new sorter.
@@ -421,9 +422,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
  */
 struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
 {
-    DeclutterContext*                                    _context;
-    Threading::PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
-    osg::ref_ptr<osg::Uniform> _fade;
+    DeclutterContext*                         _context;
+    PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
+    osg::ref_ptr<osg::Uniform>                _fade;
 
     /**
      * Constructs the decluttering draw callback.

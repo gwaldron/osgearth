@@ -34,6 +34,7 @@
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+#if 0
 
 //-----------------------------------------------------------------------
 
@@ -237,3 +238,12 @@ main(int argc, char** argv)
             << MapNodeHelper().usage() << std::endl;
     }
 }
+
+#else
+
+int
+main(int argc, char** argv)
+{
+    return 0;
+}
+#endif

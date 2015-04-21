@@ -16,15 +16,15 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <SilverLining.h>
 #include "SilverLiningSkyDrawable"
 #include "SilverLiningContext"
 #include <osgEarth/SpatialReference>
-#include <SilverLining.h>
 
 #define LC "[SilverLining:SkyDrawable] "
 
-using namespace osgEarth;
-using namespace osgEarth::Drivers::SilverLining;
+using namespace osgEarth::SilverLining;
+
 
 SkyDrawable::SkyDrawable(SilverLiningContext* SL) :
 _SL( SL )

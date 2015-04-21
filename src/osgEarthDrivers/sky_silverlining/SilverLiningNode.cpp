@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <SilverLining.h>
 
 #include "SilverLiningNode"
 #include "SilverLiningContext"
@@ -25,15 +26,13 @@
 #include <osg/Light>
 #include <osg/LightSource>
 #include <osgEarth/CullingUtils>
-#include <SilverLining.h>
 
+#undef  LC
 #define LC "[SilverLiningNode] "
 
-using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Drivers::SilverLining;
+using namespace osgEarth::SilverLining;
 
-SilverLiningNode::SilverLiningNode(const Map*                 map,
+SilverLiningNode::SilverLiningNode(const osgEarth::Map*       map,
                                    const SilverLiningOptions& options) :
 _options     (options),
 _lastAltitude(DBL_MAX)

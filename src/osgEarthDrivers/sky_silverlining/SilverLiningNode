@@ -23,21 +23,18 @@
 #include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
 
-namespace osgEarth { namespace Drivers { namespace SilverLining
+namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
-
-    using namespace osgEarth;
-    using namespace osgEarth::Util;
 
     /**
      * Node that roots the silverlining adapter.
      */
-    class SilverLiningNode : public SkyNode
+    class SilverLiningNode : public osgEarth::Util::SkyNode
     {
     public:
         SilverLiningNode(
-            const Map*                 map,
+            const osgEarth::Map*       map,
             const SilverLiningOptions& options );
 
     public: // SkyNode
@@ -64,7 +61,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         osg::ref_ptr<osg::Light> _light;
 		double _lastAltitude;
 		const SilverLiningOptions _options;
-        osg::ref_ptr<PhongLightingEffect> _lighting;
+        osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
     };
 
-} } } // namespace osgEarth::Drivers::SilverLining
+} } // namespace osgEarth::SilverLining

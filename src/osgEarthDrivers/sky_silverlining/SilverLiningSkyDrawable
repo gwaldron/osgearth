@@ -20,11 +20,9 @@
 #include <osg/RenderInfo>
 #include <osg/Version>
 
-namespace osgEarth { namespace Drivers { namespace SilverLining
+namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
-
-    using namespace osgEarth;
 
     /**
      * Custom drawable for rendering the SilverLining effects
@@ -55,4 +53,4 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         SkyDrawable(const SkyDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };
 
-} } } // namespace osgEarth::Drivers::SilverLining
+} } // namespace osgEarth::SilverLining

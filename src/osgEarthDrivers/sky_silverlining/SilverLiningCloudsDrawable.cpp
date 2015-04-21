@@ -44,7 +44,7 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     {
         const osg::State* state = renderInfo.getState();
 
-        ProgramAdapters& adapters = _adapters[state->getContextID()]; // thread safe.
+        ProgramAdapterCollection& adapters = _adapters[ state->getContextID() ]; // thread safe.
         if ( adapters.empty() )
         {
             adapters.push_back( new ProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader()) );
@@ -57,7 +57,7 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
                 adapters.push_back( new ProgramAdapter(state, handles[i]) );
         }
 
-        reinterpret_cast<const StateEx*>(state)->applyUniformsToPrograms( adapters );
+        adapters.apply( state );
 
         renderInfo.getState()->disableAllVertexArrays();
         _SL->getAtmosphere()->DrawObjects( true, true, true );

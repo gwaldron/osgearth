@@ -11,7 +11,6 @@ SET(TARGET_H
     SilverLiningContext
     SilverLiningSkyDrawable
     SilverLiningCloudsDrawable
-    StateAdapter
 )
 
 INCLUDE_DIRECTORIES( 

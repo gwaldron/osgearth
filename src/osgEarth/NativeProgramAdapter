@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_SILVERLINING_OSG_STATE_ADAPTER
-#define OSGEARTH_SILVERLINING_OSG_STATE_ADAPTER
+#ifndef OSGEARTH_NATIVE_PROGRAM_ADAPTER
+#define OSGEARTH_NATIVE_PROGRAM_ADAPTER
 
 #include <osg/State>
 #include <osg/Uniform>
@@ -28,21 +28,22 @@
 #include <vector>
 
 #undef  LC
-#define LC "[ProgramAdapter] "
+#define LC "[NativeProgramAdapter] "
 
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
-namespace osgEarth { namespace SilverLining
+namespace osgEarth
 {
     /**
      * Wraps a native glProgram handle so we can earch it form uniforms and
      * apply values to them.
      */
-    struct ProgramAdapter : public osg::Referenced
+    class NativeProgramAdapter : public osg::Referenced
     {
+    public:
         /** Create a program adapter under the current state that wraps the provided glProgram handle. */
-        ProgramAdapter(const osg::State* state, GLint handle)
+        NativeProgramAdapter(const osg::State* state, GLint handle)
         {
             OE_DEBUG << LC << "Create adapter for glProgram " << handle << "\n";
 
@@ -106,7 +107,7 @@ namespace osgEarth { namespace SilverLining
 
         struct StateEx : public osg::State 
         {
-            void applyUniformsToProgram(const ProgramAdapter& adapter) const
+            void applyUniformsToProgram(const NativeProgramAdapter& adapter) const
             {
                 bool useProgram = true;
                 for(UniformMap::const_iterator i = _uniformMap.begin(); i != _uniformMap.end(); ++i)
@@ -128,7 +129,7 @@ namespace osgEarth { namespace SilverLining
     /**
      * Collection of program adapters.
      */
-    class ProgramAdapterCollection: public osg::MixinVector< osg::ref_ptr<ProgramAdapter> >
+    class NativeProgramAdapterCollection: public osg::MixinVector< osg::ref_ptr<NativeProgramAdapter> >
     {
     public:
         void apply(const osg::State* state) const
@@ -138,6 +139,6 @@ namespace osgEarth { namespace SilverLining
         }
     };
 
-} }
+}
 
-#endif // OSGEARTH_SILVERLINING_OSG_STATE_ADAPTER
+#endif // OSGEARTH_NATIVE_PROGRAM_ADAPTER

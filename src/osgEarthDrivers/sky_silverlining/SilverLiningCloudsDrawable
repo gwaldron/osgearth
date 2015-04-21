@@ -16,10 +16,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "StateAdapter"
 #include <osg/Drawable>
 #include <osg/RenderInfo>
 #include <osg/Version>
+#include <osgEarth/NativeProgramAdapter>
 #include <vector>
 #include <map>
 
@@ -56,7 +56,7 @@ namespace osgEarth { namespace SilverLining
 
         osg::observer_ptr<SilverLiningContext> _SL;
 
-        mutable osg::buffered_object<ProgramAdapterCollection> _adapters;
+        mutable osg::buffered_object<osgEarth::NativeProgramAdapterCollection> _adapters;
         
         CloudsDrawable(const CloudsDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };

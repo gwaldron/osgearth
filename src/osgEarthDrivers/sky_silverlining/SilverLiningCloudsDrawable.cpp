@@ -44,17 +44,17 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     {
         const osg::State* state = renderInfo.getState();
 
-        ProgramAdapterCollection& adapters = _adapters[ state->getContextID() ]; // thread safe.
+        osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ]; // thread safe.
         if ( adapters.empty() )
         {
-            adapters.push_back( new ProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader()) );
-            adapters.push_back( new ProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShader()) );
-            adapters.push_back( new ProgramAdapter(state, _SL->getAtmosphere()->GetStarShader()) );
-            adapters.push_back( new ProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader()) );
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader()) );
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShader()) );
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetStarShader()) );
+            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader()) );
 
             SL_VECTOR(unsigned) handles = _SL->getAtmosphere()->GetActivePlanarCloudShaders();
             for(int i=0; i<handles.size(); ++i)          
-                adapters.push_back( new ProgramAdapter(state, handles[i]) );
+                adapters.push_back( new osgEarth::NativeProgramAdapter(state, handles[i]) );
         }
 
         adapters.apply( state );

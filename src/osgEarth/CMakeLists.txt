@@ -111,6 +111,7 @@ SET(LIB_PUBLIC_HEADERS
     MemCache
     ModelLayer
     ModelSource
+    NativeProgramAdapter
     NodeUtils
     Notify
     optional

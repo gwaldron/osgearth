@@ -27,8 +27,9 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/Terrain>
+#include <osgEarth/NativeProgramAdapter>
 
-const unsigned int OCEAN_MASK         = 0x4; // 0100
+const unsigned int TRITON_OCEAN_MASK = 0x4; // 0100
 
 namespace osgEarth { namespace Triton
 {
@@ -73,6 +74,8 @@ namespace osgEarth { namespace Triton
         
         osg::ref_ptr< osg::Texture2D >       _planarReflectionMap;
         osg::ref_ptr< osg::RefMatrix >       _planarReflectionProjection;
+
+        mutable osg::buffered_object<osgEarth::NativeProgramAdapterCollection> _adapters;
         
         TritonDrawable(const TritonDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };

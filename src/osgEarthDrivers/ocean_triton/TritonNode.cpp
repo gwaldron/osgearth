@@ -45,7 +45,7 @@ _options ( options )
     _drawable = tritonDrawable;
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( _drawable );
-    geode->setNodeMask( OCEAN_MASK );
+    geode->setNodeMask( TRITON_OCEAN_MASK );
 
     this->addChild( geode );
 

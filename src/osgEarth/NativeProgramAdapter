@@ -43,7 +43,7 @@ namespace osgEarth
     {
     public:
         /** Create a program adapter under the current state that wraps the provided glProgram handle. */
-        NativeProgramAdapter(const osg::State* state, GLint handle)
+        NativeProgramAdapter(const osg::State* state, GLint handle, const char* prefix = 0L)
         {
             OE_DEBUG << LC << "Create adapter for glProgram " << handle << "\n";
 
@@ -64,13 +64,16 @@ namespace osgEarth
 
                 for( GLint i = 0; i < numUniforms; ++i )
                 {
-                    _ext->glGetActiveUniform( _handle, i, maxLen, 0, &size, &type, name );                        
-                    GLint loc = _ext->glGetUniformLocation( _handle, name );
-                    if ( loc != -1 )
+                    _ext->glGetActiveUniform( _handle, i, maxLen, 0, &size, &type, name );      
+                    if ( !prefix || (::strlen(name) >= ::strlen(prefix) && ::strncmp(name, prefix, ::strlen(prefix)) == 0) )
                     {
-                        _uniformLocations[osg::Uniform::getNameID(reinterpret_cast<const char*>(name))] = loc;
+                        GLint loc = _ext->glGetUniformLocation( _handle, name );
+                        if ( loc != -1 )
+                        {
+                            _uniformLocations[osg::Uniform::getNameID(reinterpret_cast<const char*>(name))] = loc;
                         
-                        OE_DEBUG << LC << "    Uniform = \"" << name << "\", location = " << loc << "\n";
+                            OE_DEBUG << LC << "    Uniform = \"" << name << "\", location = " << loc << "\n";
+                        }
                     }
                 }
             }
@@ -140,5 +143,7 @@ namespace osgEarth
     };
 
 }
+
+#undef LC
 
 #endif // OSGEARTH_NATIVE_PROGRAM_ADAPTER

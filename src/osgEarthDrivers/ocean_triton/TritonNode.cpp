@@ -17,24 +17,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include <Triton.h>
 #include "TritonNode"
 #include "TritonContext"
 #include "TritonDrawable"
 #include <osgEarth/CullingUtils>
-#include <Triton.h>
 
 #define LC "[TritonNode] "
 
-using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Drivers::Triton;
+using namespace osgEarth::Triton;
 
-TritonNode::TritonNode(MapNode*           mapNode,
+TritonNode::TritonNode(osgEarth::MapNode*   mapNode,
                        const TritonOptions& options) :
 OceanNode( options ),
 _options ( options )
 {
-    const Map* map = mapNode->getMap();
+    const osgEarth::Map* map = mapNode->getMap();
     if ( map )
         setSRS( map->getSRS() );
 
@@ -82,5 +80,5 @@ TritonNode::traverse(osg::NodeVisitor& nv)
     {
         _TRITON->update(nv.getFrameStamp()->getSimulationTime());
     }
-    OceanNode::traverse(nv);
+    osgEarth::Util::OceanNode::traverse(nv);
 }

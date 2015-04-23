@@ -162,7 +162,7 @@ setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
     
     const char* fs = "void swap(inout vec4 c) { c.rgba = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1); }\n";
     osgEarth::Registry::shaderGenerator().run(geode);
-    VirtualProgram::getOrCreate(stateSet)->setFunction("swap", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    VirtualProgram::getOrCreate(geode->getOrCreateStateSet())->setFunction("swap", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
 
     view->setSceneData( geode );
 }

@@ -786,16 +786,10 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     {
         const FeatureProfile* fp = featureSource->getFeatureProfile();
 
-        if ( fp && fp->getTiled() && !_options.featureIndexing()->embedFeatures().isSet() )
+        if ( _featureIndex.valid() )
         {
-            _options.featureIndexing()->embedFeatures() = true;
+            index = new FeatureSourceIndexNode( _featureIndex.get() );
         }
-
-        // create an index node to track the features under this graph
-        index = new FeatureSourceIndexNode(
-            _session->getFeatureSource(),
-            Registry::objectIndex(),
-            _options.featureIndexing().value() );
 
         group = index;
     }
@@ -901,10 +895,10 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
 
 osg::Group*
-FeatureModelGraph::build(const Style&        defaultStyle, 
-                         const Query&        baseQuery, 
-                         const GeoExtent&    workingExtent,
-                         FeatureSourceIndex* index)
+FeatureModelGraph::build(const Style&         defaultStyle, 
+                         const Query&         baseQuery, 
+                         const GeoExtent&     workingExtent,
+                         FeatureIndexBuilder* index)
 {
     osg::ref_ptr<osg::Group> group = new osg::Group();
 
@@ -1037,7 +1031,7 @@ FeatureModelGraph::build(const Style&        defaultStyle,
 void
 FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
                                     const Query&         baseQuery,
-                                    FeatureSourceIndex*  index,
+                                    FeatureIndexBuilder* index,
                                     osg::Group*          parent)
 {
     OE_TEST << LC << "buildStyleGroups: " << selector->name() << std::endl;
@@ -1083,7 +1077,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
 void
 FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
                                                const StringExpression& styleExpr,
-                                               FeatureSourceIndex*     index,
+                                               FeatureIndexBuilder*    index,
                                                osg::Group*             parent)
 {
     // the profile of the features
@@ -1212,9 +1206,9 @@ FeatureModelGraph::createStyleGroup(const Style&         style,
 
 
 osg::Group*
-FeatureModelGraph::createStyleGroup(const Style&        style, 
-                                    const Query&        query, 
-                                    FeatureSourceIndex* index)
+FeatureModelGraph::createStyleGroup(const Style&         style, 
+                                    const Query&         query, 
+                                    FeatureIndexBuilder* index)
 {
     osg::Group* styleGroup = 0L;
 
@@ -1446,6 +1440,15 @@ FeatureModelGraph::redraw()
 {
     // clear it out
     removeChildren( 0, getNumChildren() );
+
+    // initialize the index if necessary.
+    if ( _options.featureIndexing()->enabled() == true )
+    {
+        _featureIndex = new FeatureSourceIndex(
+            _session->getFeatureSource(),
+            Registry::objectIndex(),
+            _options.featureIndexing().get() );
+    }
 
     // zero out any decorators
     _clampable          = 0L;

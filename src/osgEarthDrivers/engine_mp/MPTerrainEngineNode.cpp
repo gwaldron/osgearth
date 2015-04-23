@@ -34,6 +34,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
+#include <osgEarth/ObjectIndex>
 
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -1022,6 +1023,9 @@ MPTerrainEngineNode::updateState()
             terrainStateSet->getOrCreateUniform(
                 "oe_min_tile_range_factor",
                 osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
+
+            // special object ID that denotes the terrain surface.
+            terrainStateSet->addUniform( new osg::Uniform("oe_index_objectid", OSGEARTH_OBJECTID_TERRAIN) );
         }
 
         _stateUpdateRequired = false;

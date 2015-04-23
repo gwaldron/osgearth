@@ -25,6 +25,9 @@
 #include <OpenThreads/Atomic>
 #include <algorithm>
 
+#define OSGEARTH_OBJECTID_EMPTY   (ObjectID)0u
+#define OSGEARTH_OBJECTID_TERRAIN (ObjectID)1u
+
 namespace osgEarth
 {
     typedef unsigned ObjectID;
@@ -160,10 +163,10 @@ namespace osgEarth
         virtual ~ObjectIndex() { }
         
         typedef std::map<ObjectID, osg::ref_ptr<osg::Referenced> > IndexMap;
-        typedef std::map<osg::Referenced*, ObjectID>               ReverseIndexMap;
+        //typedef std::map<osg::Referenced*, ObjectID>               ReverseIndexMap;
 
         IndexMap                 _index;
-        ReverseIndexMap          _reverseIndex;
+        //ReverseIndexMap          _reverseIndex;
         int                      _attribLocation;
         std::string              _attribUniformName;
         mutable Threading::Mutex _mutex;

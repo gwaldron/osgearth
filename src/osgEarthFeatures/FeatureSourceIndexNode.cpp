@@ -23,11 +23,31 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-#define LC "[FeatureSourceIndexNode] "
-
 // for testing:
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
+
+namespace
+{
+    // nifty template to iterate over a map's keys
+    template<typename T>
+    struct KeyIter : public T::iterator
+    {
+        KeyIter() : T::iterator() { }
+        KeyIter(typename T::iterator i) : T::iterator(i) { }
+        typename T::key_type* operator->() { return (T ::key_type* const)&(T::iterator::operator->()->first); }
+        typename T::key_type operator*() { return T::iterator::operator*().first; }
+    };
+
+    template<typename T>
+    struct ConstKeyIter : public T::const_iterator
+    {
+        ConstKeyIter() : T::const_iterator() { }
+        ConstKeyIter(typename T::const_iterator i) : T::const_iterator(i) { }
+        typename T::key_type* operator->() { return (T ::key_type* const)&(T::const_iterator::operator->()->first); }
+        typename T::key_type operator*() { return T::const_iterator::operator*().first; }
+    };
+}
 
 //-----------------------------------------------------------------------------
 
@@ -51,85 +71,217 @@ FeatureSourceIndexOptions::getConfig() const
 
 //-----------------------------------------------------------------------------
 
-FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSource*                   featureSource, 
-                                               ObjectIndex*                     index,
-                                               const FeatureSourceIndexOptions& options) :
-_featureSource  ( featureSource ), 
-_masterIndex    ( index ),
-_options        ( options )
+#undef  LC
+#define LC "[FeatureSourceIndexNode] "
+
+FeatureSourceIndexNode::FeatureSourceIndexNode(FeatureSourceIndex* index) :
+_index( index )
 {
-    //nop
+    if ( !index )
+    {
+        OE_WARN << LC << "INTERNAL ERROR: created a feature source index node with a NULL index.\n";
+    }
 }
 
 FeatureSourceIndexNode::~FeatureSourceIndexNode()
 {
-    if ( _masterIndex.valid() && !_oids.empty() )
+    if ( _index.valid() )
     {
-        _masterIndex->remove( _oids.begin(), _oids.end() );
-        _oids.clear();
+        // must copy and clear the original list first to dereference the RefIDPair instances.
+        std::set<FeatureID> fidsToRemove;
+        fidsToRemove.insert( KeyIter<FIDMap>(_fids.begin()), KeyIter<FIDMap>(_fids.end()) );
+        _fids.clear();
+
+        OE_DEBUG << LC << "Removing " << fidsToRemove.size() << " fids\n";
+        _index->removeFIDs( fidsToRemove.begin(), fidsToRemove.end() );
     }
 }
 
 ObjectID
 FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, Feature* feature)
 {
-    ObjectID oid = _masterIndex->tagDrawable(drawable, feature);
-    _oids.insert( oid );
-    return oid;
+    if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
+    RefIDPair* r = _index->tagDrawable( drawable, feature );
+    if ( r ) _fids[ feature->getFID() ] = r;
+    return r ? r->_oid : OSGEARTH_OBJECTID_EMPTY;
 }
 
 ObjectID
 FeatureSourceIndexNode::tagAllDrawables(osg::Node* node, Feature* feature)
 {
-    ObjectID oid = _masterIndex->tagAllDrawables(node, feature);
-    _oids.insert( oid );
-    return oid;
+    if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
+    RefIDPair* r = _index->tagAllDrawables( node, feature );
+    if ( r ) _fids[ feature->getFID() ] = r;
+    return r ? r->_oid : OSGEARTH_OBJECTID_EMPTY;
 }
 
 ObjectID
 FeatureSourceIndexNode::tagNode(osg::Node* node, Feature* feature)
 {
-    ObjectID oid = _masterIndex->tagNode(node, feature);
-    _oids.insert( oid );
-    return oid;
+    if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
+    RefIDPair* r = _index->tagNode( node, feature );
+    if ( r ) _fids[ feature->getFID() ] = r;
+    return r ? r->_oid : OSGEARTH_OBJECTID_EMPTY;
 }
 
 bool
 FeatureSourceIndexNode::getAllFIDs(std::vector<FeatureID>& output) const
 {
-    if ( !_masterIndex.valid() )
-        return false;
-
-    for(std::set<ObjectID>::const_iterator oid = _oids.begin(); oid != _oids.end(); ++oid)
+    ConstKeyIter<FIDMap> start( _fids.begin() );
+    ConstKeyIter<FIDMap> end  ( _fids.end() );
+    for(ConstKeyIter<FIDMap> i = start; i != end; ++i )
     {
-        Feature* feature = _masterIndex->get<Feature>( *oid );
-        if ( feature )
-            output.push_back( feature->getFID() );
+        output.push_back( *i );
     }
 
     return true;
 }
 
-bool
-FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int vertIndex, FeatureID& output) const
+//-----------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[FeatureSourceIndex] "
+
+FeatureSourceIndex::FeatureSourceIndex(FeatureSource* featureSource, 
+                                       ObjectIndex*   index,
+                                       const FeatureSourceIndexOptions& options) :
+_featureSource  ( featureSource ), 
+_masterIndex    ( index ),
+_options        ( options )
 {
-    if ( drawable == 0L || vertIndex < 0 || !_masterIndex.valid() )
-        return false;
+    //nop
+}
+FeatureSourceIndex::~FeatureSourceIndex()
+{
+    if ( _masterIndex.valid() && !_oids.empty() )
+    {
+        // remove all OIDs from the master index.
+        _masterIndex->remove( KeyIter<OIDMap>(_oids.begin()), KeyIter<OIDMap>(_oids.end()) );
+    }
 
-    osg::Geometry* geom = drawable->asGeometry();
-    if ( geom == 0L )
-        return false;
+    _oids.clear();
+    _fids.clear();
+    _embeddedFeatures.clear();
+}
 
-    int slot = Registry::objectIndex()->getAttribLocation();
-    osg::UIntArray* ids = dynamic_cast<osg::UIntArray*>( geom->getVertexAttribArray(slot) );
-    if ( ids == 0L )
-        return false;
+RefIDPair*
+FeatureSourceIndex::tagDrawable(osg::Drawable* drawable, Feature* feature)
+{
+    if ( !feature ) return 0L;
+
+    Threading::ScopedMutexLock lock(_mutex);
     
-    ObjectID oid = (*ids)[vertIndex];
+    RefIDPair* p = 0L;
+    FeatureID fid = feature->getFID();
 
-    Feature* feature = _masterIndex->get<Feature>( oid );
-    if ( feature )
-        output = feature->getFID();
+    FIDMap::const_iterator f = _fids.find( fid );
+    if ( f != _fids.end() )
+    {
+        ObjectID oid = f->second->_oid;
+        _masterIndex->tagDrawable( drawable, oid );
+        p = f->second.get();
+    }
+    else
+    {
+        ObjectID oid = _masterIndex->tagDrawable( drawable, this );
+        p = new RefIDPair( fid, oid );
+        _fids[fid] = p;
+        _oids[oid] = fid;
+    
+        if ( !_featureSource.valid() || !_featureSource->supportsGetFeature() )
+        {
+            _embeddedFeatures[fid] = feature;
+        }
+    }
 
-    return feature != 0L;
+    return p;
+}
+
+RefIDPair*
+FeatureSourceIndex::tagAllDrawables(osg::Node* node, Feature* feature)
+{
+    if ( !feature ) return 0L;
+
+    Threading::ScopedMutexLock lock(_mutex);
+    
+    RefIDPair* p = 0L;
+    FeatureID fid = feature->getFID();
+
+    FIDMap::const_iterator f = _fids.find( fid );
+    if ( f != _fids.end() )
+    {
+        ObjectID oid = f->second->_oid;
+        _masterIndex->tagAllDrawables( node, oid );
+        p = f->second.get();
+    }
+    else
+    {
+        ObjectID oid = _masterIndex->tagAllDrawables( node, this );
+        p = new RefIDPair( fid, oid );
+        _fids[fid] = p;
+        _oids[oid] = fid;
+    
+        if ( !_featureSource.valid() || !_featureSource->supportsGetFeature() )
+        {
+            _embeddedFeatures[fid] = feature;
+        }
+    }
+
+    return p;
+}
+
+RefIDPair*
+FeatureSourceIndex::tagNode(osg::Node* node, Feature* feature)
+{
+    if ( !feature ) return 0L;
+
+    Threading::ScopedMutexLock lock(_mutex);
+    
+    RefIDPair* p = 0L;
+    FeatureID fid = feature->getFID();
+
+    FIDMap::const_iterator f = _fids.find( fid );
+    if ( f != _fids.end() )
+    {
+        ObjectID oid = f->second->_oid;
+        _masterIndex->tagNode( node, oid );
+        p = f->second.get();
+    }
+    else
+    {
+        ObjectID oid = _masterIndex->tagNode( node, this );
+        p = new RefIDPair( fid, oid );
+        _fids[fid] = p;
+        _oids[oid] = fid;
+    
+        if ( !_featureSource.valid() || !_featureSource->supportsGetFeature() )
+        {
+            _embeddedFeatures[fid] = feature;
+        }
+    }
+
+    return p;
+}
+
+Feature*
+FeatureSourceIndex::getFeature(ObjectID oid) const
+{
+    Feature* feature = 0L;
+    Threading::ScopedMutexLock lock(_mutex);
+    OIDMap::const_iterator i = _oids.find( oid );
+    if ( i != _oids.end() )
+    {
+        FeatureID fid = i->second;
+
+        if ( !_embeddedFeatures.empty() )
+        {
+            FeatureMap::const_iterator j = _embeddedFeatures.find( fid );
+            feature = j != _embeddedFeatures.end() ? j->second.get() : 0L;
+        }
+        else if ( _featureSource.valid() && _featureSource->supportsGetFeature() )
+        {
+            feature = _featureSource->getFeature( fid );
+        }
+    }
+    return feature;
 }

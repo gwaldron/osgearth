@@ -374,6 +374,9 @@ MapNode::init()
         stateset->addUniform( new osg::Uniform("oe_ellipsoidFrame", osg::Vec3f(ellipFrame)) );
     }
 
+    // install the default rendermode uniform:
+    stateset->addUniform( new osg::Uniform("oe_isPickCamera", false) );
+
     dirtyBound();
 
     // register for event traversals so we can deal with blacklisted filenames

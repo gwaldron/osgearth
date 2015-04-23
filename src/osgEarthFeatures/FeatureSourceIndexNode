@@ -22,18 +22,19 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FeatureDrawSet>
+#include <osgEarthFeatures/FeatureIndex>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/ObjectIndex>
 #include <osg/Config>
 #include <osg/Group>
 #include <osg/Drawable>
-#include <osg/Image>
-#include <osg/Texture2D>
-#include <osgGA/GUIEventHandler>
+#include <map>
+#include <set>
 
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+
     /**
      * Options for a feature index
      */
@@ -60,72 +61,110 @@ namespace osgEarth { namespace Features
         optional<bool> _embedFeatures;
     };
 
-    class FeatureSourceIndex : public ObjectIndexBuilder<Feature> { };
+    struct RefIDPair : public osg::Referenced
+    {
+        RefIDPair(FeatureID fid, ObjectID oid) : _fid(fid), _oid(oid) { }
+        FeatureID _fid;
+        ObjectID  _oid;
+    };
+
+    /**
+     * Internal class that maintains a feature index for a single feature source.
+     * Internal - not exported!
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureSourceIndex : public FeatureIndex
+    {
+    public:
+        FeatureSourceIndex(FeatureSource* source,
+                           ObjectIndex*   masterIndex,
+                           const FeatureSourceIndexOptions& options);
+
+    public: // FeatureIndex
+
+        Feature* getFeature(ObjectID oid) const;
+
+        int size() const { return _fids.size(); }
+
+    public: // Functions called by FeatureSourceIndexNode
+
+        RefIDPair* tagDrawable    (osg::Drawable* drawable, Feature* feature);
+        RefIDPair* tagAllDrawables(osg::Node*     node,     Feature* feature);
+        RefIDPair* tagNode        (osg::Node*     node,     Feature* feature);
+
+        // removes a collection of FIDs from the index. If the refcount goes to zero,
+        // remove it from the master index as well.
+        template<typename InputIter>
+        void removeFIDs(InputIter first, InputIter last)
+        {
+            Threading::ScopedMutexLock lock(_mutex);
+            for(typename InputIter fid = first; fid != last; ++fid )
+            {
+                FIDMap::iterator f = _fids.find( *fid );
+                if ( f != _fids.end() && f->second->referenceCount() == 1 )
+                {
+                    ObjectID oid = f->second->_oid;
+                    _oids.erase( oid );
+                    _fids.erase( f );
+                    _embeddedFeatures.erase( *fid );
+                    if ( _masterIndex.valid() )
+                        _masterIndex->remove( oid );
+                }
+            }
+        }
+        
+    public: // types
+
+        typedef std::map<ObjectID,  FeatureID>                OIDMap;
+        typedef std::map<FeatureID, osg::ref_ptr<RefIDPair> > FIDMap;
+        typedef std::map<FeatureID, osg::ref_ptr<Feature> >   FeatureMap;
+
+    protected:
+        virtual ~FeatureSourceIndex();
+
+    private:
+        osg::ref_ptr<FeatureSource> _featureSource;
+        osg::ref_ptr<ObjectIndex>   _masterIndex;
+        FeatureSourceIndexOptions   _options;
+        
+        mutable Threading::Mutex _mutex;
+
+        OIDMap     _oids;
+        FIDMap     _fids;
+        FeatureMap _embeddedFeatures;
+    };
 
 
     /**
-     * Maintains an index that maps FeatureID's from a FeatureSource to
-     * PrimitiveSets within the subgraph's geometry.
+     * Node that houses a FeatureSourceIndex, so that it can un-register index
+     * entries when it pages out.
      */
     class OSGEARTHFEATURES_EXPORT FeatureSourceIndexNode : public osg::Group,
-                                                           public FeatureSourceIndex
+                                                           public FeatureIndexBuilder
     {
     public:
-        /** The attribute location for FID vertex tags. */
-        static const int IndexAttrLocation;
+        FeatureSourceIndexNode(FeatureSourceIndex* index);
 
-    public:
-        /**
-         * Constructs a new index node.
-         */
-        FeatureSourceIndexNode(
-            FeatureSource*                   featureSource,
-            ObjectIndex*                     masterIndex,
-            const FeatureSourceIndexOptions& options );
+        /** The index referenced by this node. */
+        FeatureSourceIndex* getIndex() { return _index.get(); }
 
-        /**
-         * Destructor 
-         */
-        virtual ~FeatureSourceIndexNode();
-
-
-    public: // FeatureSourceIndex
-
-        ObjectID tagDrawable(osg::Drawable* drawable, Feature* feature);
-
-        ObjectID tagAllDrawables(osg::Node* node, Feature* feature);
-
-        ObjectID tagNode(osg::Node* node, Feature* feature);
-
-
-    public:
-        /**
-         * The feature source tied to this node 
-         */
-        FeatureSource* getFeatureSource() { return _featureSource.get(); }
-
-        /**
-         * Gets a collection of all feature IDs tracked by this index.
-         * @param output Container to populate with all FIDs.
-         */
+        /** Fetches the entire set of FIDs registered with the index by this node. */
         bool getAllFIDs(std::vector<FeatureID>& output) const;
 
-        /**
-         * Gets the Feature ID corresponding a particular vertex in a Drawable.
-         * This is primarily useful when processing the results of an intersector test.
-         *
-         * @param drawable       Drawable for which to lookup the feature ID
-         * @param primitiveIndex Index of the primitive to look up
-         * @param output         Holds the result of the query, if returning true
-         * @return true if successful
-         */
-        bool getFID(osg::Drawable* drawable, int vertIndex, FeatureID& output) const;
+    public: // FeatureIndexBuilder
+
+        ObjectID tagDrawable    (osg::Drawable* drawable, Feature* feature);
+        ObjectID tagAllDrawables(osg::Node*     node,     Feature* feature);
+        ObjectID tagNode        (osg::Node*     node,     Feature* feature);
+
+    protected:
+        
+        /** dtor - unregisters any FIDs added by this node. */
+        virtual ~FeatureSourceIndexNode();
 
     private:
-        osg::ref_ptr<FeatureSource> _featureSource;        
-        FeatureSourceIndexOptions   _options;
-        std::set<ObjectID>          _oids;
-        osg::ref_ptr<ObjectIndex>   _masterIndex;
+        typedef std::map<FeatureID, osg::ref_ptr<RefIDPair> > FIDMap;
+        osg::ref_ptr<FeatureSourceIndex> _index;
+        FIDMap _fids;
 
     public:
         virtual const char* className()   const { return "FeatureSourceIndexNode"; }

@@ -847,11 +847,11 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
 }
 
 void
-ExtrudeGeometryFilter::addDrawable(osg::Drawable*      drawable,
-                                   osg::StateSet*      stateSet,
-                                   const std::string&  name,
-                                   Feature*            feature,
-                                   FeatureSourceIndex* index )
+ExtrudeGeometryFilter::addDrawable(osg::Drawable*       drawable,
+                                   osg::StateSet*       stateSet,
+                                   const std::string&   name,
+                                   Feature*             feature,
+                                   FeatureIndexBuilder* index )
 {
     // find the geode for the active stateset, creating a new one if necessary. NULL is a 
     // valid key as well.
@@ -1066,7 +1066,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( !_featureNameExpr.empty() )
                 name = input->eval( _featureNameExpr, &context );
 
-            FeatureSourceIndex* index = context.featureIndex();
+            FeatureIndexBuilder* index = context.featureIndex();
 
             if ( walls.valid() && walls->getVertexArray()->getNumElements() > 0 )
             {

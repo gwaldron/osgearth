@@ -95,6 +95,11 @@ namespace osgEarth
         iterator erase(iterator& i) { return _data.erase( i ); }
 
         int size() const { return _data.size(); }
+
+        template<typename InputIterator>
+        void insert(InputIterator a, InputIterator b) {
+            for(InputIterator i = a; i != b; ++i) (*this)[i->first] = i->second;
+        }
     };
 
     //------------------------------------------------------------------------

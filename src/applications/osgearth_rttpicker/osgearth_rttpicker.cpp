@@ -25,6 +25,7 @@
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureIndex>
 
 #include <osgViewer/CompositeViewer>
 #include <osgGA/TrackballManipulator>
@@ -51,15 +52,17 @@ struct MyPickCallback : public RTTPicker::Callback
 {
     void onHit(ObjectID id)
     {
-        Feature* feature = Registry::objectIndex()->get<Feature>( id );
+        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>( id );
+        Feature* feature = index ? index->getFeature( id ) : 0L;
+
         if ( feature )
         {
-            s_fidLabel->setText( Stringify() << "Feature ID = " << feature->getFID() );
+            s_fidLabel->setText( Stringify() << "Feature ID = " << feature->getFID() << " (oid = " << id << ")" );
             s_nameLabel->setText( Stringify() << "Name = " << feature->getString("name") );
         }
         else
         {
-            s_fidLabel->setText( Stringify() << "Object ID = " << id );
+            s_fidLabel->setText( Stringify() << "oid = " << id );
             s_nameLabel->setText( "Name = " );
         }
 
@@ -82,29 +85,28 @@ struct MyPickCallback : public RTTPicker::Callback
 
 //-----------------------------------------------------------------------
 
-/**
-    * Shaders that will highlight the currently "picked" feature.
-    */
+// Shaders that will highlight the currently "picked" feature.
+
 const char* highlightVert = OE_MULTILINE(
     #version 130\n
-    uniform uint hilite;
+    uniform uint oid_to_hilite;
     uniform uint oe_index_objectid;         // override objectid if > 0
     in      uint attr_objectid;             // objectid in vertex attrib
-    out     vec4 mixColor;
+    flat out int selected;
     void highlightVertex(inout vec4 vertex)
     {
-        if (hilite > uint(0) && (hilite == oe_index_objectid || hilite == attr_objectid))
-            mixColor = vec4(0, 1, 1, 0.5);
-        else
-            mixColor = vec4(0);
+        selected = (oid_to_hilite > uint(0) && (oid_to_hilite == oe_index_objectid || oid_to_hilite == attr_objectid)) ? 1 : 0;
     }
 );
 
 const char* highlightFrag = OE_MULTILINE(
-    in vec4 mixColor;
+    #version 130\n
+    flat in int selected;
     void highlightFragment(inout vec4 color)
     {
-        color.rgb = mix(color.rgb, mixColor.rgb, mixColor.a);
+        //color.rgb = mix(color.rgb, mixColor.rgb, mixColor.a);
+        if ( selected == 1 )
+            color.rgb = mix(color.rgb, clamp(vec3(0.5,0.5,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5);
     }
 );
 
@@ -114,7 +116,7 @@ void installHighlighter(osg::StateSet* stateSet, int attrLocation)
     vp->setFunction( "highlightVertex",    highlightVert, ShaderComp::LOCATION_VERTEX_MODEL );
     vp->setFunction( "highlightFragment",  highlightFrag, ShaderComp::LOCATION_FRAGMENT_COLORING );
     vp->addBindAttribLocation( "attr_objectid", attrLocation );
-    s_highlightUniform = new osg::Uniform("hilite", 0u);
+    s_highlightUniform = new osg::Uniform("oid_to_hilite", 0u);
     stateSet->addUniform( s_highlightUniform );
 }
 

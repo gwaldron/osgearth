@@ -6,6 +6,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_order      "0.5"
 #pragma vp_define     "MP_USE_BLENDING"
 
+uniform bool oe_isPickCamera;
 uniform vec4 oe_terrain_color;
 uniform sampler2D oe_layer_tex;
 uniform int oe_layer_uid;
@@ -17,6 +18,12 @@ varying float oe_terrain_rangeOpacity;
 
 void oe_mp_apply_coloring(inout vec4 color)
 {
+    if ( oe_isPickCamera )
+    {
+        color = vec4(0,0,0,0);
+        return;
+    }
+
     color = oe_terrain_color.a >= 0.0 ? oe_terrain_color : color;
 
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;

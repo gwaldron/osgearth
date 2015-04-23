@@ -34,26 +34,36 @@ namespace
         "#version 130\n"
 
         //... uniform ...
-        "uniform uint oe_index_objectid; \n"                 // override objectid if > 0
-        "in      uint oe_rttpick_objectid; \n"               // objectid in vertex attrib
-        "out     vec4 oe_rttpick_encoded_objectid; \n"
+        "uniform  uint  oe_index_objectid; \n"                  // override objectid if > 0
+        "in       uint  oe_rttpick_objectid; \n"                // objectid in vertex attrib
+        "out      vec4  oe_rttpick_encoded_objectid; \n"        // output encoded oid to fragment shader
+        "flat out int   oe_rttpick_color_contains_objectid; \n" // whether color already contains oid (written by another RTT camera)
 
         "void oe_rttpick_vertex(inout vec4 vertex) \n"
         "{ \n"
         "    uint oid = oe_index_objectid > uint(0) ? oe_index_objectid : oe_rttpick_objectid; \n"
-        "    float b0 = float((oid & uint(0xff000000)) >> 24)/255.0; \n"
-        "    float b1 = float((oid & uint(0x00ff0000)) >> 16)/255.0; \n"
-        "    float b2 = float((oid & uint(0x0000ff00)) >>  8)/255.0; \n"
-        "    float b3 = float((oid & uint(0x000000ff)) >>  0)/255.0; \n"
-        "    oe_rttpick_encoded_objectid = vec4(b0, b1, b2, b3); \n"
+        "    oe_rttpick_color_contains_objectid = (oid == uint(1)) ? 1 : 0; \n"
+        "    if ( oe_rttpick_color_contains_objectid == 0 ) \n"
+        "    { \n"
+        "        float b0 = float((oid & uint(0xff000000)) >> 24)/255.0; \n"
+        "        float b1 = float((oid & uint(0x00ff0000)) >> 16)/255.0; \n"
+        "        float b2 = float((oid & uint(0x0000ff00)) >>  8)/255.0; \n"
+        "        float b3 = float((oid & uint(0x000000ff)) >>  0)/255.0; \n"
+        "        oe_rttpick_encoded_objectid = vec4(b0, b1, b2, b3); \n"
+        "    } \n"
         "} \n";
 
     const char* pickFragment =
-        "in vec4 oe_rttpick_encoded_objectid; \n"
+        "#version 130\n"
+        "in vec4     oe_rttpick_encoded_objectid; \n"
+        "flat in int oe_rttpick_color_contains_objectid; \n"
 
         "void oe_rttpick_fragment(inout vec4 color) \n"
         "{ \n"
-        "    gl_FragColor = oe_rttpick_encoded_objectid;\n"
+        "    if ( oe_rttpick_color_contains_objectid == 1 ) \n"
+        "        gl_FragColor = color; \n"
+        "    else \n"
+        "        gl_FragColor = oe_rttpick_encoded_objectid; \n"
         "} \n";
 }
 
@@ -61,6 +71,7 @@ VirtualProgram*
 RTTPicker::createRTTProgram()
 {
     VirtualProgram* vp = new VirtualProgram();
+    vp->setName( "osgEarth::RTTPicker" );
     vp->setFunction( "oe_rttpick_vertex",   pickVertex,   ShaderComp::LOCATION_VERTEX_MODEL );
     vp->setFunction( "oe_rttpick_fragment", pickFragment, ShaderComp::LOCATION_FRAGMENT_OUTPUT );
     vp->addBindAttribLocation( "oe_rttpick_objectid", Registry::objectIndex()->getAttribLocation() );
@@ -130,6 +141,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     c._pickCamera = new osg::Camera();
     c._pickCamera->addChild( _group.get() );
     c._pickCamera->setClearColor( osg::Vec4(0,0,0,0) );
+    c._pickCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     c._pickCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT ); 
     c._pickCamera->setViewport( 0, 0, _rttSize, _rttSize );
     c._pickCamera->setRenderOrder( osg::Camera::PRE_RENDER, 1 );
@@ -149,7 +161,8 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     vp->setFunction( "oe_rttpick_fragment", pickFragment, ShaderComp::LOCATION_FRAGMENT_OUTPUT );
     vp->addBindAttribLocation( "oe_rttpick_objectid", Registry::objectIndex()->getAttribLocation() );
 
-    rttSS->addUniform( new osg::Uniform("shmoo", false) );
+    // designate this as a pick camera, overriding any defaults below
+    rttSS->addUniform( new osg::Uniform("oe_isPickCamera", true), osg::StateAttribute::OVERRIDE );
 
     // default value for the objectid override uniform:
     rttSS->addUniform( new osg::Uniform(Registry::objectIndex()->getAttribUniformName().c_str(), 0u) );

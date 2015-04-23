@@ -76,6 +76,12 @@ ObjectIndex::insert(osg::Referenced* object)
 ObjectID
 ObjectIndex::insertImpl(osg::Referenced* object)
 {
+    // internal: assume mutex is locked
+    ObjectID id = ++_idGen;
+    _index[id] = object;
+    OE_DEBUG << "Insert " << id << "; size = " << _index.size() << "\n";
+    return id;
+#if 0
     ReverseIndexMap::iterator i = _reverseIndex.find( object );
     if ( i != _reverseIndex.end() )
     {
@@ -87,8 +93,8 @@ ObjectIndex::insertImpl(osg::Referenced* object)
     _index[id] = object;
     _reverseIndex[object] = id;
 
-    OE_DEBUG << "Insert " << id << "; size = " << _index.size() << "\n";
     return id;
+#endif
 }
 
 osg::Referenced*
@@ -110,6 +116,10 @@ void
 ObjectIndex::removeImpl(ObjectID id)
 {
     // internal - assume mutex is locked
+    _index.erase( id );
+    OE_DEBUG << "Remove " << id << "; size = " << _index.size() << "\n";
+
+#if 0
     IndexMap::iterator i = _index.find(id);
     if ( i != _index.end() )
     {
@@ -117,6 +127,7 @@ ObjectIndex::removeImpl(ObjectID id)
         _index.erase( i );
          OE_DEBUG << "Remove " << id << "; size = " << _index.size() << "\n";
     }
+#endif
 }
 
 ObjectID

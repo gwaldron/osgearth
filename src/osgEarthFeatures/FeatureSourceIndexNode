@@ -124,7 +124,8 @@ namespace osgEarth { namespace Features
     private:
         osg::ref_ptr<FeatureSource> _featureSource;
         osg::ref_ptr<ObjectIndex>   _masterIndex;
-        FeatureSourceIndexOptions   _options;
+        FeatureSourceIndexOptions   _options;        
+        bool                        _embed;
         
         mutable Threading::Mutex _mutex;
 

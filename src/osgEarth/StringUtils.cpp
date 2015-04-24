@@ -452,6 +452,17 @@ osgEarth::ciEquals(const std::string& lhs, const std::string& rhs, const std::lo
     return true;
 }
 
+#ifdef _IPHONE
+#  define STRICMP ::strcasecmp
+#else
+#  define STRICMP ::stricmp
+#endif
+
+bool CIStringComp::operator()(const std::string& lhs, const std::string& rhs) const
+{
+    return STRICMP( lhs.c_str(), rhs.c_str() ) < 0;
+}
+
 bool
 osgEarth::startsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
 {

@@ -108,6 +108,7 @@ namespace osgEarth { namespace Features
             float      wallTexHeightAdjusted;
             bool       isFromSource;
             float      cosAngle;
+            float      baseZ, roofZ;
         };
         typedef std::list<Corner> Corners; // use a list to prevent iterator invalidation
 
@@ -138,6 +139,7 @@ namespace osgEarth { namespace Features
             Elevations elevations;
             bool       isPolygon;
             osg::Vec3d baseCentroid;
+            float      verticalOffset;
 
             unsigned getNumPoints() const {
                 unsigned c = 0;
@@ -193,6 +195,7 @@ namespace osgEarth { namespace Features
         bool buildStructure(const Geometry*         input,
                             double                  height,
                             bool                    flatten,
+                            float                   verticalOffset,
                             const SkinResource*     wallSkin,
                             const SkinResource*     roofSkin,
                             Structure&              out_structure,

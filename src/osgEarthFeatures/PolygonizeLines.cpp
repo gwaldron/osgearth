@@ -466,7 +466,6 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
 
 namespace
 {
-#if 0
     struct PixelSizeVectorCullCallback : public osg::NodeCallback
     {
         PixelSizeVectorCullCallback(osg::StateSet* stateset)
@@ -493,7 +492,6 @@ namespace
         osg::ref_ptr<osg::Uniform> _pixelSizeVectorUniform;
         int _frameNumber;        
     };
-#endif
 
     class PixelScalingGeode : public osg::Geode
     {
@@ -582,7 +580,7 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
     stateset->addUniform( minPixelsU, 1 );
 
     // this will install and update the oe_PixelSizeVector uniform.
-    //node->addCullCallback( new PixelSizeVectorCullCallback(stateset) );
+    node->addCullCallback( new PixelSizeVectorCullCallback(stateset) );
 
     // DYNAMIC since we will be altering the uniforms and we don't want 
     // the stateset to get shared via statesetcache optimization.

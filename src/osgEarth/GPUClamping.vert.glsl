@@ -19,7 +19,8 @@ uniform bool oe_isGeocentric;
 uniform vec3 oe_ellipsoidFrame;
 uniform vec3 oe_ellipsoidFrameInverse;
 
-// clamp a vertex to the ground
+uniform mat4 osg_ViewMatrixInverse;
+
 void oe_clamp_vertex(inout vec4 vertexView)
 {
     const float ClampToAnchor = 1.0;
@@ -33,7 +34,9 @@ void oe_clamp_vertex(inout vec4 vertexView)
     // note: no branch divergence in the vertex shader
     if ( oe_clamp_alpha > 0.0 )
     {
-        bool relativeToAnchor = (oe_clamp_hasAttrs) && (oe_clamp_anchor.a == ClampToAnchor);
+        bool relativeToAnchor = oe_clamp_hasAttrs && (oe_clamp_anchor.a == ClampToAnchor);
+
+        float verticalOffset = oe_clamp_hasAttrs ? oe_clamp_anchor.z : 0.0;
 
         // if we are using the anchor point, xform it into view space to prepare
         // for clamping. Force Z=0 for anchoring.
@@ -42,35 +45,11 @@ void oe_clamp_vertex(inout vec4 vertexView)
             vertexView;
 
         // find the clamped point.
-        vec4 clampedPoint;
+        vec4  clampedPoint;
         float depth;
         oe_getClampedViewVertex(pointToClamp, clampedPoint, depth);
-        
-        float dh;
 
-        // account for the curvature of the earth as the vertex gains distance
-        // from the local origin.
-        if ( oe_isGeocentric )
-        {
-          #if 0
-            // right idea, but I cannot figure out how to properly get
-            // length(gl_Vertex.xy) into the ellipsoidal frame.
-            vec3 vertXY2 = vec3(gl_Vertex.xy*gl_Vertex.xy,0.0) * oe_ellipsoidFrame;
-            vec3 M = sqrt(1.0 - vertXY2); // R2 = 1
-            vec3 curvatureOffset = (1.0 - M) * oe_ellipsoidFrameInverse; // R = 1
-            dh = curvatureOffset.length();
-          #else
-            float vertXY2 = gl_Vertex.x*gl_Vertex.x + gl_Vertex.y*gl_Vertex.y;
-            float R2   = oe_ellipsoidFrameInverse.x*oe_ellipsoidFrameInverse.x;
-            float m    = sqrt(R2-vertXY2);
-            float curvatureOffset = oe_ellipsoidFrameInverse.x - m;
-            dh  = curvatureOffset;
-          #endif
-        }
-        else
-        {
-            dh = 0.0;
-        }
+        float dh = 0.0;
 
         if ( relativeToAnchor )
         {
@@ -86,11 +65,12 @@ void oe_clamp_vertex(inout vec4 vertexView)
             // if we are clamping to the terrain, the vertex becomes the
             // clamped point.
             vertexView.xyz = clampedPoint.xyz/clampedPoint.w;
-            dh += gl_Vertex.z;
+            //dh += verticalOffset;
+            //dh += gl_Vertex.z;
         }
 
         // apply the z-offset if there is one.
-        float hOffset = dh + oe_clamp_altitudeOffset;
+        float hOffset = dh + oe_clamp_altitudeOffset + verticalOffset;
         if ( hOffset != 0.0 )
         {
             vec3 up;

@@ -223,6 +223,13 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                 // record the geometry's primitive set(s) in the index:
                 if ( context.featureIndex() )
                     context.featureIndex()->tagDrawable( osgGeom, input );
+        
+                // install clamping attributes if necessary
+                if (_style.has<AltitudeSymbol>() &&
+                    _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+                {            
+                    Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+                }
             }
         }
     }
@@ -254,7 +261,6 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* input = i->get();
-
         // extract the required line symbol; bail out if not found.
         const LineSymbol* line =
             input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
@@ -306,6 +312,13 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
                 context.featureIndex()->tagDrawable( geom, input );
+        
+            // install clamping attributes if necessary
+            if (_style.has<AltitudeSymbol>() &&
+                _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+            {
+                Clamping::applyDefaultClampingAttrs( geom, input->getDouble("__oe_verticalOffset", 0.0) );
+            }
         }
 
         polygonizer.installShaders( geode );
@@ -416,6 +429,13 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
                 context.featureIndex()->tagDrawable( osgGeom, input );
+        
+            // install clamping attributes if necessary
+            if (_style.has<AltitudeSymbol>() &&
+                _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+            {
+                Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+            }
         }
     }
     
@@ -496,6 +516,13 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
                 context.featureIndex()->tagDrawable( osgGeom, input );
+        
+            // install clamping attributes if necessary
+            if (_style.has<AltitudeSymbol>() &&
+                _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+            {            
+                Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+            }
         }
     }
     
@@ -955,12 +982,12 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         }
     }
 
+    // indicate that geometry contains clamping attributes
     if (_style.has<AltitudeSymbol>() &&
         _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
     {
-        Clamping::applyDefaultClampingAttrs(result.get());
-    }
-    
+        Clamping::installHasAttrsUniform( result->getOrCreateStateSet() );
+    }    
 
     // Prepare buffer objects.
     AllocateAndMergeBufferObjectsVisitor allocAndMerge;

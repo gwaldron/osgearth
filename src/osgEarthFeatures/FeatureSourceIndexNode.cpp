@@ -149,8 +149,12 @@ _featureSource  ( featureSource ),
 _masterIndex    ( index ),
 _options        ( options )
 {
-    //nop
+    _embed = 
+        _options.embedFeatures() == true ||
+        featureSource == 0L ||
+        featureSource->supportsGetFeature() == false;
 }
+
 FeatureSourceIndex::~FeatureSourceIndex()
 {
     if ( _masterIndex.valid() && !_oids.empty() )
@@ -188,7 +192,7 @@ FeatureSourceIndex::tagDrawable(osg::Drawable* drawable, Feature* feature)
         _fids[fid] = p;
         _oids[oid] = fid;
     
-        if ( !_featureSource.valid() || !_featureSource->supportsGetFeature() )
+        if ( _embed )
         {
             _embeddedFeatures[fid] = feature;
         }
@@ -221,7 +225,7 @@ FeatureSourceIndex::tagAllDrawables(osg::Node* node, Feature* feature)
         _fids[fid] = p;
         _oids[oid] = fid;
     
-        if ( !_featureSource.valid() || !_featureSource->supportsGetFeature() )
+        if ( _embed )
         {
             _embeddedFeatures[fid] = feature;
         }
@@ -254,7 +258,7 @@ FeatureSourceIndex::tagNode(osg::Node* node, Feature* feature)
         _fids[fid] = p;
         _oids[oid] = fid;
     
-        if ( !_featureSource.valid() || !_featureSource->supportsGetFeature() )
+        if ( _embed )
         {
             _embeddedFeatures[fid] = feature;
         }
@@ -273,7 +277,7 @@ FeatureSourceIndex::getFeature(ObjectID oid) const
     {
         FeatureID fid = i->second;
 
-        if ( !_embeddedFeatures.empty() )
+        if ( _embed )
         {
             FeatureMap::const_iterator j = _embeddedFeatures.find( fid );
             feature = j != _embeddedFeatures.end() ? j->second.get() : 0L;

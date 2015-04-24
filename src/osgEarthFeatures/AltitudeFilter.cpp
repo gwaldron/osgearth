@@ -73,6 +73,10 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
     if ( _altitude.valid() && _altitude->verticalOffset().isSet() )
         offsetExpr = *_altitude->verticalOffset();
 
+    bool gpuClamping =
+        _altitude.valid() &&
+        _altitude->technique() == _altitude->TECHNIQUE_GPU;
+
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
@@ -101,8 +105,11 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
             Geometry* geom = gi.next();
             for( Geometry::iterator g = geom->begin(); g != geom->end(); ++g )
             {
-                g->z() *= scaleZ;
-                g->z() += offsetZ;
+                if ( !gpuClamping )
+                {
+                    g->z() *= scaleZ;
+                    g->z() += offsetZ;
+                }
 
                 if ( g->z() < minHAT )
                     minHAT = g->z();
@@ -115,6 +122,13 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         {
             feature->set( "__min_hat", minHAT );
             feature->set( "__max_hat", maxHAT );
+        }
+
+        // encode the Z offset if
+        if ( gpuClamping )
+        {
+            feature->set("__oe_verticalScale",  scaleZ);
+            feature->set("__oe_verticalOffset", offsetZ);
         }
     }
 }
@@ -155,6 +169,8 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     // whether the SRS's have a compatible vertical datum.
     bool vertEquiv =
         featureSRS->isVertEquivalentTo( mapSRS );
+
+
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {

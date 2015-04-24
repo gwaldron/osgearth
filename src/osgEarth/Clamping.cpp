@@ -36,42 +36,72 @@ namespace
 {
     struct ApplyDefaultsVisitor : public osg::NodeVisitor
     {
-        ApplyDefaultsVisitor()
+        float _verticalOffset;
+
+        ApplyDefaultsVisitor(float verticalOffset)
         {
+            _verticalOffset = verticalOffset;
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
             setNodeMaskOverride( ~0 );
+        }
+
+        void apply(osg::Geometry* geom)
+        {
+            if ( geom )
+            {
+                osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+                osg::Vec4Array* anchors = new osg::Vec4Array();
+                anchors->reserve( verts->size() );
+                for(unsigned i=0; i<verts->size(); ++i)
+                {
+                    anchors->push_back( osg::Vec4f(
+                        (*verts)[i].x(), (*verts)[i].y(),
+                        _verticalOffset,
+                        Clamping::ClampToGround) );
+                }
+
+                geom->setVertexAttribArray    (Clamping::AnchorAttrLocation, anchors);
+                geom->setVertexAttribBinding  (Clamping::AnchorAttrLocation, geom->BIND_PER_VERTEX);
+                geom->setVertexAttribNormalize(Clamping::AnchorAttrLocation, false);
+            }
         }
 
         void apply(osg::Geode& geode) 
         {
             for(unsigned i=0; i<geode.getNumDrawables(); ++i)
             {
-                osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-                if ( geom )
-                {
-                    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
-                    osg::Vec4Array* anchors = new osg::Vec4Array();
-                    anchors->reserve( verts->size() );
-                    for(unsigned i=0; i<verts->size(); ++i)
-                        anchors->push_back(osg::Vec4f((*verts)[i].x(), (*verts)[i].y(), (*verts)[i].z(), Clamping::ClampToGround));
-
-                    geom->setVertexAttribArray(Clamping::AnchorAttrLocation, anchors);
-                    geom->setVertexAttribBinding(Clamping::AnchorAttrLocation, geom->BIND_PER_VERTEX);
-                    geom->setVertexAttribNormalize(Clamping::AnchorAttrLocation, false);
-                }
+                apply( geode.getDrawable(i)->asGeometry() );
             }
         }
     };
 }
 
 void
-Clamping::applyDefaultClampingAttrs(osg::Node* node)
+Clamping::applyDefaultClampingAttrs(osg::Node* node, float verticalOffset)
 {
     if ( node )
     {
-        ApplyDefaultsVisitor visitor;
+        ApplyDefaultsVisitor visitor( verticalOffset );
         node->accept( visitor );
-        node->getOrCreateStateSet()->addUniform(
-            new osg::Uniform(Clamping::HasAttrsUniformName, true));
+    }
+}
+
+void
+Clamping::applyDefaultClampingAttrs(osg::Geometry* geom, float verticalOffset)
+{
+    if ( geom )
+    {
+        ApplyDefaultsVisitor visitor( verticalOffset );
+        visitor.apply( geom );
+    }
+}
+
+
+void
+Clamping::installHasAttrsUniform(osg::StateSet* stateset)
+{
+    if ( stateset )
+    {
+        stateset->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, true) );
     }
 }

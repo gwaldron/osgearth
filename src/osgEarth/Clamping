@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osg/Node>
+#include <osg/Geometry>
 
 namespace osgEarth
 {
@@ -32,12 +33,6 @@ namespace osgEarth
 
         // Name of the clamping anchor vertex attribute
         static const char* AnchorAttrName;
-
-        // Vertex attribute binding location for Offset attribute
-        //static const int OffsetAttrLocation;
-
-        // Name of the clamping offset vertex attribute
-        //static const char* OffsetAttrName;
 
         // Name of the boolean uniform that tells the shader whether the
         // geometry has clamping attributes.
@@ -52,7 +47,16 @@ namespace osgEarth
         static const float ClampToAnchor;
         static const float ClampToGround;
 
-        static void applyDefaultClampingAttrs(osg::Node* node);
+        static void applyDefaultClampingAttrs(
+            osg::Node* node,
+            float      verticalOffset =0.0f);
+
+        static void applyDefaultClampingAttrs(
+            osg::Geometry* geom,
+            float          verticalOffset =0.0f);
+
+        static void installHasAttrsUniform(
+            osg::StateSet* stateset );
     };
 }
 

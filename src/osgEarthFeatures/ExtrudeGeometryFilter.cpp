@@ -865,7 +865,7 @@ ExtrudeGeometryFilter::buildOutlineGeometry(const Structure&  structure,
             if ( anchors && !flatten ) anchors->push_back(osg::Vec4f(x, y, vo + last->right.height, Clamping::ClampToGround));
             de->addElement( verts->size()-1 );
             verts->push_back( last->right.base );
-            if ( anchors ) anchors->push_back( osg::Vec4f(x, y, vo, Clamping::ClampToGround) );
+            if ( anchors ) anchors->push_back( osg::Vec4f(x, y, vo, Clamping::ClampToGround));
             de->addElement( verts->size()-1 );
         }
     }

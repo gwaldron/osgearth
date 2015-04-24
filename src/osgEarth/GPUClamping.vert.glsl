@@ -6,20 +6,14 @@
 
 #pragma include "GPUClamping.vert.lib.glsl"
 
-attribute vec4 oe_clamp_anchor;
+attribute vec4 oe_clamp_attrs;
 attribute float oe_clamp_offset;
 uniform bool oe_clamp_hasAttrs;
 
+uniform bool  oe_isGeocentric;
 uniform float oe_clamp_altitudeOffset;
 uniform float oe_clamp_horizonDistance2;
 varying float oe_clamp_alpha;
-
-// From osgEarth::MapNode
-uniform bool oe_isGeocentric;
-uniform vec3 oe_ellipsoidFrame;
-uniform vec3 oe_ellipsoidFrameInverse;
-
-uniform mat4 osg_ViewMatrixInverse;
 
 void oe_clamp_vertex(inout vec4 vertexView)
 {
@@ -34,14 +28,14 @@ void oe_clamp_vertex(inout vec4 vertexView)
     // note: no branch divergence in the vertex shader
     if ( oe_clamp_alpha > 0.0 )
     {
-        bool relativeToAnchor = oe_clamp_hasAttrs && (oe_clamp_anchor.a == ClampToAnchor);
+        bool relativeToAnchor = oe_clamp_hasAttrs && (oe_clamp_attrs.a == ClampToAnchor);
 
-        float verticalOffset = oe_clamp_hasAttrs ? oe_clamp_anchor.z : 0.0;
+        float verticalOffset = oe_clamp_hasAttrs ? oe_clamp_attrs.z : 0.0;
 
         // if we are using the anchor point, xform it into view space to prepare
         // for clamping. Force Z=0 for anchoring.
         vec4 pointToClamp = relativeToAnchor?
-            gl_ModelViewMatrix * vec4(oe_clamp_anchor.xy, 0.0, 1.0) :
+            gl_ModelViewMatrix * vec4(oe_clamp_attrs.xy, 0.0, 1.0) :
             vertexView;
 
         // find the clamped point.
@@ -65,8 +59,6 @@ void oe_clamp_vertex(inout vec4 vertexView)
             // if we are clamping to the terrain, the vertex becomes the
             // clamped point.
             vertexView.xyz = clampedPoint.xyz/clampedPoint.w;
-            //dh += verticalOffset;
-            //dh += gl_Vertex.z;
         }
 
         // apply the z-offset if there is one.

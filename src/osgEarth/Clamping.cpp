@@ -25,7 +25,7 @@
 using namespace osgEarth;
 
 const int   Clamping::AnchorAttrLocation        = osg::Drawable::ATTRIBUTE_6;
-const char* Clamping::AnchorAttrName            = "oe_clamp_anchor";
+const char* Clamping::AnchorAttrName            = "oe_clamp_attrs";
 const char* Clamping::HasAttrsUniformName       = "oe_clamp_hasAttrs";
 const char* Clamping::AltitudeOffsetUniformName = "oe_clamp_altitudeOffset";
 

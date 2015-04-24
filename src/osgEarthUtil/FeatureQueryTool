@@ -40,11 +40,6 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT FeatureQueryTool : public RTTPicker
     {
     public:
-        struct Callback : public RTTPicker::Callback
-        {
-        };
-
-    public:
         /**
          * Constructs a new feature query tool.
          *

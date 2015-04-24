@@ -758,7 +758,7 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
     if (!oeTess.tessellateGeometry(*roof))
     {
         //fallback to osg tessellator
-        OE_INFO << LC << "Falling back on OSG tessellator (" << roof->getName() << ")" << std::endl;
+        OE_DEBUG << LC << "Falling back on OSG tessellator (" << roof->getName() << ")" << std::endl;
 
         osgUtil::Tessellator tess;
         tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );

@@ -17,14 +17,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osg/Notify>
-#include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/ObjectIndex>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
@@ -34,7 +34,6 @@
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-#if 0
 
 //-----------------------------------------------------------------------
 
@@ -45,90 +44,11 @@ Container* createUI()
 {
     VBox* vbox = new VBox();
     vbox->setVertAlign( Control::ALIGN_TOP );
-    vbox->setHorizAlign( Control::ALIGN_LEFT );
+    vbox->setHorizAlign( Control::ALIGN_RIGHT );
     vbox->addControl( new LabelControl("Feature Query Demo", Color::Yellow) );
     vbox->addControl( new LabelControl("Click on a feature to see its attributes.") );
     return vbox;
 }
-
-//-----------------------------------------------------------------------
-
-/**
- * Feautre highlighting shader snippets.
- */
-const char* vertexShader = OE_MULTILINE(
-    #version 130\n
-    uniform int fid_highlight;
-    in uint fid_attr;
-    out vec4 mixColor;
-    void featureQueryVertex(inout vec4 vertex)
-    {
-        if ( fid_attr == uint(fid_highlight) )
-            mixColor = vec4(0, 1, 1, 0.5);
-        else
-            mixColor = vec4(0);
-    }
-);
-
-const char* fragmentShader = OE_MULTILINE(
-    in vec4 mixColor;
-    void featureQueryFragment(inout vec4 color)
-    {
-        color.rgb = mix(color.rgb, mixColor.rgb, mixColor.a);
-    }
-);
-
-//-----------------------------------------------------------------------
-
-/**
- * A custom InputPredicate that determines whether to perform a feature query.
- * By default, a left-click starts a query. This custom predicate will query
- * upon each MOVE event; i.e. as you move the mouse without clicking.
- */
-class HoverPredicate : public FeatureQueryTool::InputPredicate
-{
-public:
-     bool accept(const osgGA::GUIEventAdapter& ea)
-     {
-         return ea.getHandled() == false && ea.getEventType() == ea.MOVE;
-     }
-};
-
-//-----------------------------------------------------------------------
-
-/**
- * Query callback that will install the highlighting shader and a control uniform.
- * The FeatureQueryTool will invoke the "onHit" method when it finds a feature
- * intersection, and the "onMiss" when an intersection fails to return a feature.
- */
-class HighlightingCallback : public FeatureQueryTool::Callback
-{
-public:
-    HighlightingCallback(osg::StateSet* stateSet)
-    {
-        _fidUniform = new osg::Uniform("fid_highlight", (int)-1);
-        stateSet->addUniform( _fidUniform );
-
-        VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-        vp->setFunction( "featureQueryVertex", vertexShader, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->setFunction( "featureQueryFragment", fragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING );
-        vp->addBindAttribLocation( "fid_attr", FeatureSourceIndexNode::IndexAttrLocation );
-    }
-
-    void onHit(FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args)
-    {
-        _fidUniform->set( (int)fid );
-    }
-
-    void onMiss(const EventArgs& args)
-    {
-        _fidUniform->set( (int)-1 );
-    }
-
-private:
-    osg::Uniform* _fidUniform;
-};
-
 
 //-----------------------------------------------------------------------
 
@@ -147,23 +67,20 @@ public:
         container->addControl( _grid );
     }
 
-    void onHit(FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args)
+    void onHit(ObjectID id)
     {
-        const Feature* f = 0L;
-        if ( !index || !index->getFeature(fid, f) )
-        {
-            _grid->setVisible( false );
-        }
-        else if ( !_grid->visible() || fid != _lastFID )
+        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>( id );
+        Feature* feature = index ? index->getFeature( id ) : 0L;
+        if ( feature && feature->getFID() != _lastFID )
         {
             _grid->clearControls();
             unsigned r=0;
 
             _grid->setControl( 0, r, new LabelControl("FID", Color::Red) );
-            _grid->setControl( 1, r, new LabelControl(Stringify()<<fid, Color::White) );
+            _grid->setControl( 1, r, new LabelControl(Stringify()<<feature->getFID(), Color::White) );
             ++r;
 
-            const AttributeTable& attrs = f->getAttrs();
+            const AttributeTable& attrs = feature->getAttrs();
             for( AttributeTable::const_iterator i = attrs.begin(); i != attrs.end(); ++i, ++r )
             {
                 _grid->setControl( 0, r, new LabelControl(i->first, 14.0f, Color::Yellow) );
@@ -172,15 +89,19 @@ public:
             if ( !_grid->visible() )
                 _grid->setVisible( true );
         
-            _lastFID = fid;
+            _lastFID = feature->getFID();
         }
-        args._aa->requestRedraw();
     }
 
-    void onMiss(const EventArgs& args)
+    void onMiss()
     {
         _grid->setVisible(false);
-        args._aa->requestRedraw();
+        _lastFID = 0u;
+    }
+
+    bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa) 
+    {
+        return ea.getEventType() == ea.RELEASE; // click
     }
 
     Grid*     _grid;
@@ -207,26 +128,17 @@ main(int argc, char** argv)
     {
         viewer.setSceneData( root );
 
-        // configure the near/far so we don't clip things that are up close
-        viewer.getCamera()->setNearFarRatio(0.00002);
-
         MapNode* mapNode = MapNode::findMapNode( root );
         if ( mapNode )
         {
             // Install the query tool.
-            FeatureQueryTool* tool = new FeatureQueryTool( mapNode );
+            FeatureQueryTool* tool = new FeatureQueryTool();
             viewer.addEventHandler( tool );
-
-            // Install our custom highlighting effect.
-            osg::StateSet* modelsStateSet = mapNode->getModelLayerGroup()->getOrCreateStateSet();
-            tool->addCallback( new HighlightingCallback(modelsStateSet) );
+            tool->addChild( mapNode );
 
             // Install a readout for feature metadata.
             ControlCanvas* canvas = ControlCanvas::getOrCreate(&viewer);
-            tool->addCallback( new ReadoutCallback(canvas) );
-
-            // Install a query-on-hover predicate.
-            tool->setInputPredicate( new HoverPredicate() );
+            tool->setDefaultCallback( new ReadoutCallback(canvas) );
         }
 
         return viewer.run();
@@ -238,12 +150,3 @@ main(int argc, char** argv)
             << MapNodeHelper().usage() << std::endl;
     }
 }
-
-#else
-
-int
-main(int argc, char** argv)
-{
-    return 0;
-}
-#endif

@@ -459,7 +459,7 @@ GeometryValidator::apply(osg::Geometry& geom)
         }
         else if ( a->getBinding() == a->BIND_PER_VERTEX && a->getNumElements() != numVerts )
         {
-            OE_WARN << LC << "Found BIND_PER_VERTEX with wrong number of elements\n";
+            OE_WARN << LC << "Found BIND_PER_VERTEX with wrong number of elements (expecting " << numVerts << "; found " << a->getNumElements() << ")\n";
         }
 
         _vbos.insert( a->getVertexBufferObject() );

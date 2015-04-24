@@ -108,7 +108,7 @@ namespace osgEarth { namespace Features
             float      wallTexHeightAdjusted;
             bool       isFromSource;
             float      cosAngle;
-            float      baseZ, roofZ;
+            float      height;
         };
         typedef std::list<Corner> Corners; // use a list to prevent iterator invalidation
 
@@ -169,6 +169,7 @@ namespace osgEarth { namespace Features
         Style                          _style;
         bool                           _styleDirty;
         optional<bool>                 _useTextureArrays;
+        bool                           _gpuClamping;
 
         osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;
         osg::ref_ptr<const SkinSymbol>      _wallSkinSymbol;

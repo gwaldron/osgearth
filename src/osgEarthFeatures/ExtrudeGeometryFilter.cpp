@@ -81,7 +81,8 @@ _wallAngleThresh_deg   ( 60.0 ),
 _styleDirty            ( true ),
 _makeStencilVolume     ( false ),
 _useVertexBufferObjects( true ),
-_useTextureArrays      ( true )
+_useTextureArrays      ( true ),
+_gpuClamping           ( false )
 {
     //NOP
 }
@@ -564,8 +565,6 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
         _style.has<ExtrusionSymbol>() &&
         _style.get<ExtrusionSymbol>()->flatten() == true;
 
-    float roofClampRef = flatten ? Clamping::ClampToAnchor : Clamping::ClampToGround;
-
     for(Elevations::const_iterator elev = structure.elevations.begin(); elev != structure.elevations.end(); ++elev)
     {
         osg::DrawElements* de = 
@@ -699,10 +698,11 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
     osg::Vec4Array* anchors = 0L;    
     if ( _gpuClamping )
     {
+        // fake out the OSG tessellator. It does not preserve attrib arrays in the Tessellator.
+        // so we will put them in one of the texture arrays and copy them to an attrib array 
+        // after tessellation. #osghack
         anchors = new osg::Vec4Array();
-        roof->setVertexAttribArray    ( Clamping::AnchorAttrLocation, anchors );
-        roof->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
-        roof->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
+        roof->setTexCoordArray(1, anchors);
     }
 
     bool flatten =
@@ -732,7 +732,11 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
 
                 if ( anchors )
                 {
-                    float x = structure.baseCentroid.x(), y = structure.baseCentroid.y(), vo = structure.verticalOffset;
+                    float 
+                        x = structure.baseCentroid.x(),
+                        y = structure.baseCentroid.y(), 
+                        vo = structure.verticalOffset;
+
                     if ( flatten )
                     {
                         anchors->push_back( osg::Vec4f(x, y, vo, Clamping::ClampToAnchor) );
@@ -746,12 +750,14 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
             }
         }
         roof->addPrimitiveSet( new osg::DrawArrays(GL_LINE_LOOP, elevptr, vertptr-elevptr) );
-    }
+    } 
 
     osg::Vec3Array* normal = new osg::Vec3Array(verts->size());
     roof->setNormalArray( normal );
     roof->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
     normal->assign( verts->size(), osg::Vec3(0,0,1) );
+
+    int v = verts->size();
 
     // Tessellate the roof lines into polygons.
     osgEarth::Tessellator oeTess;
@@ -765,6 +771,13 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
         tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
         tess.retessellatePolygons( *roof );
     }
+
+    // Move the anchors to the correct place. :)
+    osg::Vec4Array* a = static_cast<osg::Vec4Array*>(roof->getTexCoordArray(1));
+    roof->setVertexAttribArray    ( Clamping::AnchorAttrLocation, a );
+    roof->setVertexAttribBinding  ( Clamping::AnchorAttrLocation, osg::Geometry::BIND_PER_VERTEX );
+    roof->setVertexAttribNormalize( Clamping::AnchorAttrLocation, false );
+    roof->setTexCoordArray(1, 0L);
 
     return true;
 }

@@ -523,6 +523,8 @@ GeometryValidator::apply(osg::Geometry& geom)
             }
         }
 
+        bool isDe = pset->getDrawElements() != 0L;
+
         osg::DrawElementsUByte* de_byte = dynamic_cast<osg::DrawElementsUByte*>(pset);
         if ( de_byte )
         {
@@ -556,7 +558,7 @@ GeometryValidator::apply(osg::Geometry& geom)
         {
             OE_WARN << LC << "Primset: not enough indicies for linear prim type\n";
         }
-        else if ( pset->getType() == GL_LINES && pset->getNumIndices() % 2 != 0 )
+        else if ( isDe && pset->getType() == GL_LINES && pset->getNumIndices() % 2 != 0 )
         {
             OE_WARN << LC << "Primset: non-even index count for GL_LINES\n";
         }

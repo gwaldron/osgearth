@@ -26,6 +26,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Shaders>
+#include <osgEarth/ObjectIndex>
 
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
@@ -127,7 +128,14 @@ namespace
     };
 #endif // USE_INSTANCE_LODS
 
-    typedef std::map< osg::ref_ptr<osg::Node>, std::vector<osg::Matrix> > ModelNodeMatrices;
+    struct ModelInstance
+    {
+        ModelInstance() : objectID( OSGEARTH_OBJECTID_EMPTY ) { }
+        osg::Matrix matrix;
+        ObjectID    objectID;
+    };
+
+    typedef std::map< osg::ref_ptr<osg::Node>, std::vector<ModelInstance> > ModelInstanceMap;
     
     /**
      * Simple bbox callback to return a static bbox.
@@ -306,7 +314,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     parent->setComputeBoundingSphereCallback( new StaticBound(bs) );
     parent->dirtyBound();
 
-    ModelNodeMatrices models;
+    ModelInstanceMap models;
 
     // collect the matrices for all the MT's under the parent. Obviously this assumes
     // a particular scene graph structure.
@@ -316,10 +324,24 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         osg::MatrixTransform* mt = dynamic_cast<osg::MatrixTransform*>( parent->getChild(i) );
         if ( mt )
         {
-            // we have to deep-copy the primitives because we're going to convert them
-            // to use draw-instancing.
             osg::Node* n = mt->getChild(0);
-            models[n].push_back( mt->getMatrix() );
+            //models[n].push_back( mt->getMatrix() );
+
+            ModelInstance instance;
+            instance.matrix = mt->getMatrix();
+
+            // See whether the ObjectID is encoded in a uniform on the MT.
+            osg::StateSet* stateSet = mt->getStateSet();
+            if ( stateSet )
+            {
+                osg::Uniform* uniform = stateSet->getUniform( Registry::objectIndex()->getObjectIDUniformName() );
+                if ( uniform )
+                {
+                    uniform->get( (unsigned&)instance.objectID );
+                }
+            }
+
+            models[n].push_back( instance );
         }
     }
 
@@ -331,10 +353,10 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     unsigned maxSliceSize = (maxTexSize*maxTexSize)/4; // 4 vec4s per matrix.
 
     // For each model:
-    for( ModelNodeMatrices::iterator i = models.begin(); i != models.end(); ++i )
+    for( ModelInstanceMap::iterator i = models.begin(); i != models.end(); ++i )
     {
-        osg::Node*                node     = i->first.get();
-        std::vector<osg::Matrix>& matrices = i->second;
+        osg::Node*                  node      = i->first.get();
+        std::vector<ModelInstance>& instances = i->second;
 
         // calculate the overall bounding box for the model:
         osg::ComputeBoundsVisitor cbv;
@@ -342,23 +364,22 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         const osg::BoundingBox& nodeBox = cbv.getBoundingBox();
 
         osg::BoundingBox bbox;
-        for( std::vector<osg::Matrix>::iterator m = matrices.begin(); m != matrices.end(); ++m )
+        for( std::vector<ModelInstance>::iterator m = instances.begin(); m != instances.end(); ++m )
         {
-            osg::Matrix& matrix = *m;
-            bbox.expandBy(nodeBox.corner(0) * matrix);
-            bbox.expandBy(nodeBox.corner(1) * matrix);
-            bbox.expandBy(nodeBox.corner(2) * matrix);
-            bbox.expandBy(nodeBox.corner(3) * matrix);
-            bbox.expandBy(nodeBox.corner(4) * matrix);
-            bbox.expandBy(nodeBox.corner(5) * matrix);
-            bbox.expandBy(nodeBox.corner(6) * matrix);
-            bbox.expandBy(nodeBox.corner(7) * matrix);
+            bbox.expandBy(nodeBox.corner(0) * m->matrix);
+            bbox.expandBy(nodeBox.corner(1) * m->matrix);
+            bbox.expandBy(nodeBox.corner(2) * m->matrix);
+            bbox.expandBy(nodeBox.corner(3) * m->matrix);
+            bbox.expandBy(nodeBox.corner(4) * m->matrix);
+            bbox.expandBy(nodeBox.corner(5) * m->matrix);
+            bbox.expandBy(nodeBox.corner(6) * m->matrix);
+            bbox.expandBy(nodeBox.corner(7) * m->matrix);
         }
 
         // calculate slice count and sizes:
-        unsigned sliceSize = std::min(matrices.size(), (size_t)maxSliceSize);
-        unsigned numSlices = matrices.size() / maxSliceSize;
-        unsigned lastSliceSize = matrices.size() % maxSliceSize;
+        unsigned sliceSize     = std::min(instances.size(), (size_t)maxSliceSize);
+        unsigned numSlices     = instances.size() / maxSliceSize;
+        unsigned lastSliceSize = instances.size() % maxSliceSize;
         if ( lastSliceSize == 0 )
             lastSliceSize = sliceSize;
         else
@@ -452,13 +473,29 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             stateset->getOrCreateUniform("oe_di_postex_size", osg::Uniform::FLOAT_VEC2)->set(texSize);
 
             // could use PixelWriter but we know the format.
+            // Note: we are building a transposed matrix because it makes the decoding easier in the shader.
             GLfloat* ptr = reinterpret_cast<GLfloat*>( image->data() );
             for(unsigned m=0; m<currentSize; ++m)
             {
-                const osg::Matrixf& mat = matrices[offset + m];
-                for(int col=0; col<4; ++col)
+                ModelInstance& i = instances[offset + m];
+                const osg::Matrixf& mat = i.matrix;
+
+                // copy the first 3 columns:
+                for(int col=0; col<3; ++col)
+                {
                     for(int row=0; row<4; ++row)
+                    {
                         *ptr++ = mat(row,col);
+                    }
+                }
+
+                // encode the ObjectID in the last column, which is always (0,0,0,1)
+                // in a standard scale/rot/trans matrix. We will reinstate it in the 
+                // shader after extracting the object ID.
+                *ptr++ = (float)((i.objectID      ) & 0xff);
+                *ptr++ = (float)((i.objectID >>  8) & 0xff);
+                *ptr++ = (float)((i.objectID >> 16) & 0xff);
+                *ptr++ = (float)((i.objectID >> 24) & 0xff);
 
                 // store them int the metadata as well
                 if (currentNode == node)

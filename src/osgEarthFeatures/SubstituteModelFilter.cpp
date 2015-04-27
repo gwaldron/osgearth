@@ -286,7 +286,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     xform->addChild( model.get() );
                     attachPoint->addChild( xform );
 
-                    if ( context.featureIndex() && !_useDrawInstanced )
+                    if ( context.featureIndex() ) // && !_useDrawInstanced )
                     {
                         context.featureIndex()->tagNode( xform, input );
                     }
@@ -547,49 +547,51 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
     return true;
 }
 
-/**
- * Extracts lightpoints from the given scene graph and copies them into a cloned scene graph
- * This actually just removes all geodes from the scene graph, so this could be applied to any other type of node that you want to keep
- * The geodes will be clustered together in the flattened graph.
- */
-osg::Node* extractLightPoints(osg::Node* node)
+namespace
 {
-    // First, check to see if we have any lightpoints.
-    FindNodesVisitor<osgSim::LightPointNode> findLightPoints;
-    node->accept(findLightPoints);
+    /**
+     * Extracts lightpoints from the given scene graph and copies them into a cloned scene graph
+     * This actually just removes all geodes from the scene graph, so this could be applied to any other type of node that you want to keep
+     * The geodes will be clustered together in the flattened graph.
+     */
+    osg::Node* extractLightPoints(osg::Node* node)
+    {
+        // First, check to see if we have any lightpoints.
+        FindNodesVisitor<osgSim::LightPointNode> findLightPoints;
+        node->accept(findLightPoints);
     
-    if (findLightPoints._results.empty())
-    {
-        return 0;
-    }
-
-    // Clone the scene graph
-    osg::ref_ptr< osg::Node > clone = (osg::Node*)node->clone(osg::CopyOp::DEEP_COPY_NODES);
-    // Now remove any geodes
-    FindNodesVisitor<osg::Geode> findGeodes;
-    clone->accept(findGeodes);
-    for (unsigned int i = 0; i < findGeodes._results.size(); i++)
-    {
-        osg::ref_ptr< osg::Geode > geode = findGeodes._results[i];
-        if (geode->getNumParents() > 0)
+        if (findLightPoints._results.empty())
         {
-            // Get all the parents for the geode and remove it from them.
-            std::vector< osg::ref_ptr< osg::Group > > parents;
-            for (unsigned int j = 0; j < geode->getNumParents(); j++)
-            {
-                parents.push_back(geode->getParent(j));
-            }
+            return 0;
+        }
 
-            for (unsigned int j = 0; j < parents.size(); j++)
+        // Clone the scene graph
+        osg::ref_ptr< osg::Node > clone = (osg::Node*)node->clone(osg::CopyOp::DEEP_COPY_NODES);
+        // Now remove any geodes
+        FindNodesVisitor<osg::Geode> findGeodes;
+        clone->accept(findGeodes);
+        for (unsigned int i = 0; i < findGeodes._results.size(); i++)
+        {
+            osg::ref_ptr< osg::Geode > geode = findGeodes._results[i];
+            if (geode->getNumParents() > 0)
             {
-                parents[j]->removeChild(geode);
+                // Get all the parents for the geode and remove it from them.
+                std::vector< osg::ref_ptr< osg::Group > > parents;
+                for (unsigned int j = 0; j < geode->getNumParents(); j++)
+                {
+                    parents.push_back(geode->getParent(j));
+                }
+
+                for (unsigned int j = 0; j < parents.size(); j++)
+                {
+                    parents[j]->removeChild(geode);
+                }
             }
         }
-    }
 
-    return clone.release();
-};
-
+        return clone.release();
+    };
+}
 
 osg::Node*
 SubstituteModelFilter::push(FeatureList& features, FilterContext& context)

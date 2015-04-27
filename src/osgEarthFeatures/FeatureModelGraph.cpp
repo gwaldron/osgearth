@@ -789,11 +789,11 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
         if ( _featureIndex.valid() )
         {
             index = new FeatureSourceIndexNode( _featureIndex.get() );
+            group = index;
         }
-
-        group = index;
     }
-    else
+
+    if ( !group.valid() )
     {
         group = new osg::Group();
     }

@@ -89,13 +89,12 @@ struct MyPickCallback : public RTTPicker::Callback
 
 const char* highlightVert = OE_MULTILINE(
     #version 130\n
-    uniform uint oid_to_hilite;
-    uniform uint oe_index_objectid;         // override objectid if > 0
-    in      uint attr_objectid;             // objectid in vertex attrib
+    uniform uint objectid_to_highlight;
+    uint    oe_index_objectid;      // Stage global containing object id
     flat out int selected;
     void highlightVertex(inout vec4 vertex)
     {
-        selected = (oid_to_hilite > uint(0) && (oid_to_hilite == oe_index_objectid || oid_to_hilite == attr_objectid)) ? 1 : 0;
+        selected = (objectid_to_highlight > uint(0) && objectid_to_highlight == oe_index_objectid) ? 1 : 0;
     }
 );
 
@@ -104,7 +103,6 @@ const char* highlightFrag = OE_MULTILINE(
     flat in int selected;
     void highlightFragment(inout vec4 color)
     {
-        //color.rgb = mix(color.rgb, mixColor.rgb, mixColor.a);
         if ( selected == 1 )
             color.rgb = mix(color.rgb, clamp(vec3(0.5,0.5,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5);
     }
@@ -112,11 +110,16 @@ const char* highlightFrag = OE_MULTILINE(
 
 void installHighlighter(osg::StateSet* stateSet, int attrLocation)
 {
+    // This shader program will highlight the selected object.
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-    vp->setFunction( "highlightVertex",    highlightVert, ShaderComp::LOCATION_VERTEX_MODEL );
+    vp->setFunction( "highlightVertex",    highlightVert, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );
     vp->setFunction( "highlightFragment",  highlightFrag, ShaderComp::LOCATION_FRAGMENT_COLORING );
-    vp->addBindAttribLocation( "attr_objectid", attrLocation );
-    s_highlightUniform = new osg::Uniform("oid_to_hilite", 0u);
+
+    // Since we're accessing object IDs, we need to load the indexing shader as well:
+    Registry::objectIndex()->loadShaders( vp );
+
+    // A uniform that will tell the shader which object to highlight:
+    s_highlightUniform = new osg::Uniform("objectid_to_highlight", 0u);
     stateSet->addUniform( s_highlightUniform );
 }
 
@@ -233,7 +236,7 @@ main(int argc, char** argv)
         // Hightlight features as we pick'em.
         installHighlighter(
             MapNode::get(node)->getModelLayerGroup()->getOrCreateStateSet(),
-            Registry::objectIndex()->getAttribLocation() );
+            Registry::objectIndex()->getObjectIDAttribLocation() );
 
         return viewer.run();
     }

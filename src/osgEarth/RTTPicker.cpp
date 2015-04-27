@@ -20,6 +20,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderLoader>
 #include <osgEarth/ObjectIndex>
 
 using namespace osgEarth;
@@ -30,51 +31,66 @@ namespace
 {
     // SHADERS for the RTT pick camera.
 
-    const char* pickVertex =
+    const char* pickVertexEncode =
         "#version 130\n"
 
-        //... uniform ...
-        "uniform  uint  oe_index_objectid; \n"                  // override objectid if > 0
-        "in       uint  oe_rttpick_objectid; \n"                // objectid in vertex attrib
-        "out      vec4  oe_rttpick_encoded_objectid; \n"        // output encoded oid to fragment shader
-        "flat out int   oe_rttpick_color_contains_objectid; \n" // whether color already contains oid (written by another RTT camera)
+        "#pragma vp_entryPoint \"oe_pick_vert_encode\" \n"
+        "#pragma vp_location   \"vertex_clip\" \n"
+        "#pragma vp_order      \"FLT_MAX\" \n"
+        
+        "uint oe_index_objectid; \n"                        // Stage global containing the Object ID.
 
-        "void oe_rttpick_vertex(inout vec4 vertex) \n"
+        "flat out vec4 oe_pick_encoded_objectid; \n"        // output encoded oid to fragment shader
+        "flat out int  oe_pick_color_contains_objectid; \n" // whether color already contains oid (written by another RTT camera)
+
+        "void oe_pick_vert_encode(inout vec4 vertex) \n"
         "{ \n"
-        "    uint oid = oe_index_objectid > uint(0) ? oe_index_objectid : oe_rttpick_objectid; \n"
-        "    oe_rttpick_color_contains_objectid = (oid == uint(1)) ? 1 : 0; \n"
-        "    if ( oe_rttpick_color_contains_objectid == 0 ) \n"
+        "    oe_pick_color_contains_objectid = (oe_index_objectid == uint(1)) ? 1 : 0; \n"
+        "    if ( oe_pick_color_contains_objectid == 0 ) \n"
         "    { \n"
-        "        float b0 = float((oid & uint(0xff000000)) >> 24)/255.0; \n"
-        "        float b1 = float((oid & uint(0x00ff0000)) >> 16)/255.0; \n"
-        "        float b2 = float((oid & uint(0x0000ff00)) >>  8)/255.0; \n"
-        "        float b3 = float((oid & uint(0x000000ff)) >>  0)/255.0; \n"
-        "        oe_rttpick_encoded_objectid = vec4(b0, b1, b2, b3); \n"
+        "        float b0 = float((oe_index_objectid & uint(0xff000000)) >> 24)/255.0; \n"
+        "        float b1 = float((oe_index_objectid & uint(0x00ff0000)) >> 16)/255.0; \n"
+        "        float b2 = float((oe_index_objectid & uint(0x0000ff00)) >>  8)/255.0; \n"
+        "        float b3 = float((oe_index_objectid & uint(0x000000ff)) >>  0)/255.0; \n"
+        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3); \n"
         "    } \n"
         "} \n";
 
     const char* pickFragment =
         "#version 130\n"
-        "in vec4     oe_rttpick_encoded_objectid; \n"
-        "flat in int oe_rttpick_color_contains_objectid; \n"
 
-        "void oe_rttpick_fragment(inout vec4 color) \n"
+        "#pragma vp_entryPoint \"oe_pick_frag\" \n"
+        "#pragma vp_location   \"fragment_output\" \n"
+
+        "flat in vec4 oe_pick_encoded_objectid; \n"
+        "flat in int  oe_pick_color_contains_objectid; \n"
+        
+        "out vec4 fragColor; \n"
+
+        "void oe_pick_frag(inout vec4 color) \n"
         "{ \n"
-        "    if ( oe_rttpick_color_contains_objectid == 1 ) \n"
-        "        gl_FragColor = color; \n"
+        "    if ( oe_pick_color_contains_objectid == 1 ) \n"
+        "        fragColor = color; \n"
         "    else \n"
-        "        gl_FragColor = oe_rttpick_encoded_objectid; \n"
+        "        fragColor = oe_pick_encoded_objectid; \n"
         "} \n";
 }
 
 VirtualProgram* 
 RTTPicker::createRTTProgram()
-{
+{    
     VirtualProgram* vp = new VirtualProgram();
     vp->setName( "osgEarth::RTTPicker" );
-    vp->setFunction( "oe_rttpick_vertex",   pickVertex,   ShaderComp::LOCATION_VERTEX_MODEL );
-    vp->setFunction( "oe_rttpick_fragment", pickFragment, ShaderComp::LOCATION_FRAGMENT_OUTPUT );
-    vp->addBindAttribLocation( "oe_rttpick_objectid", Registry::objectIndex()->getAttribLocation() );
+
+    // Install RTT picker shaders:
+    ShaderPackage pickShaders;
+    pickShaders.add( "RTTPicker.vert.glsl", pickVertexEncode );
+    pickShaders.add( "RTTPicker.frag.glsl", pickFragment );
+    pickShaders.loadAll( vp );
+
+    // Install shaders and bindings from the ObjectIndex:
+    Registry::objectIndex()->loadShaders( vp );
+
     return vp;
 }
 
@@ -138,6 +154,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     c._image = new osg::Image();
     c._image->allocateImage(_rttSize, _rttSize, 1, GL_RGBA, GL_UNSIGNED_BYTE);    
     
+    // make an RTT camera and bind it to our imag:
     c._pickCamera = new osg::Camera();
     c._pickCamera->addChild( _group.get() );
     c._pickCamera->setClearColor( osg::Vec4(0,0,0,0) );
@@ -150,22 +167,22 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     
     osg::StateSet* rttSS = c._pickCamera->getOrCreateStateSet();
 
+    // disable all the things that break ObjectID picking:
     osg::StateAttribute::GLModeValue disable = osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED;
 
     rttSS->setMode(GL_BLEND,     disable );    
     rttSS->setMode(GL_LIGHTING,  disable );
     rttSS->setMode(GL_CULL_FACE, disable );
 
-    VirtualProgram* vp = VirtualProgram::getOrCreate( rttSS );
-    vp->setFunction( "oe_rttpick_vertex",   pickVertex,   ShaderComp::LOCATION_VERTEX_MODEL );
-    vp->setFunction( "oe_rttpick_fragment", pickFragment, ShaderComp::LOCATION_FRAGMENT_OUTPUT );
-    vp->addBindAttribLocation( "oe_rttpick_objectid", Registry::objectIndex()->getAttribLocation() );
+    // install the picking shaders:
+    VirtualProgram* vp = createRTTProgram();
+    rttSS->setAttribute( vp );
 
     // designate this as a pick camera, overriding any defaults below
     rttSS->addUniform( new osg::Uniform("oe_isPickCamera", true), osg::StateAttribute::OVERRIDE );
 
     // default value for the objectid override uniform:
-    rttSS->addUniform( new osg::Uniform(Registry::objectIndex()->getAttribUniformName().c_str(), 0u) );
+    rttSS->addUniform( new osg::Uniform(Registry::objectIndex()->getObjectIDUniformName().c_str(), 0u) );
     
     // install the pick camera on the main camera.
     view->getCamera()->addChild( c._pickCamera.get() );

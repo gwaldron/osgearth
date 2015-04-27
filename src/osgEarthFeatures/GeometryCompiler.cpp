@@ -561,7 +561,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         << std::endl;
 #endif
 
-#if 1
+#if 0
     //test: run the geometry validator to make sure geometry it legal
     osgEarth::GeometryValidator validator;
     resultGroup->accept(validator);

@@ -79,6 +79,9 @@ namespace osgEarth { namespace Features
                            ObjectIndex*   masterIndex,
                            const FeatureSourceIndexOptions& options);
 
+        /** FeatureSource behind this index */
+        FeatureSource* getFeatureSource() { return _featureSource.get(); }
+
     public: // FeatureIndex
 
         Feature* getFeature(ObjectID oid) const;

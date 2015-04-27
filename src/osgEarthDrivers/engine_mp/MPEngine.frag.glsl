@@ -18,12 +18,6 @@ varying float oe_terrain_rangeOpacity;
 
 void oe_mp_apply_coloring(inout vec4 color)
 {
-    if ( oe_isPickCamera )
-    {
-        color = vec4(0,0,0,0);
-        return;
-    }
-
     color = oe_terrain_color.a >= 0.0 ? oe_terrain_color : color;
 
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
@@ -36,4 +30,8 @@ void oe_mp_apply_coloring(inout vec4 color)
 #else
     color = texel;
 #endif
+
+    // disable primary coloring for pick cameras.
+    float pick = oe_isPickCamera ? 1.0 : 0.0;
+    color = mix(color, vec4(0), pick);
 }

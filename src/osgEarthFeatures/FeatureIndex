@@ -37,7 +37,7 @@ namespace osgEarth { namespace Features
         /** Get a feature given an object id. */
         virtual Feature* getFeature(ObjectID oid) const =0;
 
-        /** Number of entries in the index */
+        /** Number of features in the index */
         virtual int size() const =0;
     };
 

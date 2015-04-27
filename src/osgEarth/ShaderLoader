@@ -50,6 +50,20 @@ namespace osgEarth
             const osgDB::Options* dbOptions =0L ) const;
 
         /**
+         * Adds all the functions in this package to the VirtualProgram.
+         */
+        bool loadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Removes all the functions in this package from the VirtualProgram.
+         */
+        bool unloadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
          * Defs or undefs a GLSL #define proprocessor macro.
          * Don't include the "#" in the defineName.
          */

@@ -349,3 +349,27 @@ ShaderPackage::unloadFunction(VirtualProgram*       vp,
 {
     return ShaderLoader::unloadFunction(vp, filename, *this, dbOptions);
 }
+
+bool
+ShaderPackage::loadAll(VirtualProgram*       vp,
+                       const osgDB::Options* dbOptions) const
+{
+    int oks = 0;
+    for(SourceMap::const_iterator i = _sources.begin(); i != _sources.end(); ++i)
+    {
+        oks += loadFunction( vp, i->first ) ? 1 : 0;
+    }
+    return oks == _sources.size();
+}
+
+bool
+ShaderPackage::unloadAll(VirtualProgram*       vp,
+                          const osgDB::Options* dbOptions) const
+{
+    int oks = 0;
+    for(SourceMap::const_iterator i = _sources.begin(); i != _sources.end(); ++i)
+    {
+        oks += unloadFunction( vp, i->first ) ? 1 : 0;
+    }
+    return oks == _sources.size();
+}

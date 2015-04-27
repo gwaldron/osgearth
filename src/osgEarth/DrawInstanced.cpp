@@ -33,6 +33,14 @@
 #include <osg/LOD>
 #include <osgUtil/MeshOptimizers>
 
+#if 0 //OSG_VERSION_GREATER_OR_EQUAL(3,1,7)
+#    define USE_TEXTURE_BUFFER 1
+#endif
+
+#ifdef USE_TEXTURE_BUFFER
+#include <osg/TextureBuffer>
+#endif
+
 #define LC "[DrawInstanced] "
 
 using namespace osgEarth;
@@ -412,6 +420,17 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             // sampler that will hold the instance matrices:
             osg::Image* image = new osg::Image();
             image->setName("osgearth.drawinstanced.postex");
+
+
+#ifdef USE_TEXTURE_BUFFER
+
+            osg::TextureBuffer* postex = new osg::TextureBuffer();
+            postex->setInternalFormat( GL_RGBA16F_ARB );
+            postex->setUnRefImageDataAfterApply( true );
+            if ( !ImageUtils::isPowerOfTwo(image) )
+                postex->setResizeNonPowerOfTwoHint( false );
+
+#else
             image->allocateImage( (int)texSize.x(), (int)texSize.y(), 1, GL_RGBA, GL_FLOAT );
 
             osg::Texture2D* postex = new osg::Texture2D( image );
@@ -423,6 +442,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
             postex->setUnRefImageDataAfterApply( true );
             if ( !ImageUtils::isPowerOfTwo(image) )
                 postex->setResizeNonPowerOfTwoHint( false );
+#endif
 
             // Tell the SG to skip the positioning texture.
             ShaderGenerator::setIgnoreHint(postex, true);

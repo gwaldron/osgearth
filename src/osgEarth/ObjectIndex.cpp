@@ -32,16 +32,54 @@ using namespace osgEarth;
 // Object IDs under this reserved
 #define STARTING_OBJECT_ID 10
 
+namespace
+{
+    const char* indexVertexInit =
+        "#version 130\n"
+
+        "#pragma vp_entryPoint \"oe_index_vert_initialize\" \n"
+        "#pragma vp_location   \"vertex_model\" \n"
+        "#pragma vp_order      \"-FLT_MAX\" \n"
+
+        "uniform uint oe_index_objectid_uniform; \n"   // override objectid if > 0
+        "in uint      oe_index_objectid_attr; \n"      // Vertex attribute containing the object ID.
+        "uint         oe_index_objectid; \n"           // Stage global containing the Object ID.
+
+        "void oe_index_vert_initialize(inout vec4 vertex) \n"
+        "{ \n"
+        "    if ( oe_index_objectid_uniform > uint(0) ) \n"
+        "        oe_index_objectid = oe_index_objectid_uniform; \n"
+        "    else if ( oe_index_objectid_attr > uint(0) ) \n"
+        "        oe_index_objectid = oe_index_objectid_attr; \n"
+        "    else \n"
+        "        oe_index_objectid = uint(0); \n"
+        "} \n";
+}
+
 ObjectIndex::ObjectIndex() :
 _idGen( STARTING_OBJECT_ID )
 {
-    _attribLocation    = osg::Drawable::SECONDARY_COLORS;
-    _attribUniformName = "oe_index_objectid";
+    _attribName     = "oe_index_objectid_attr";
+    _attribLocation = osg::Drawable::SECONDARY_COLORS;
+    _oidUniformName = "oe_index_objectid_uniform";
 
+    // set up the shader package.
+    _shaders.add( "ObjectIndex.vert.glsl", indexVertexInit );
+}
+
+bool
+ObjectIndex::loadShaders(VirtualProgram* vp) const
+{
+    if ( vp )
+    {
+        _shaders.loadAll( vp );
+        vp->addBindAttribLocation( getObjectIDAttribName(), getObjectIDAttribLocation() );
+    }
+    return vp != 0L;
 }
 
 void
-ObjectIndex::setAtrribLocation(int value)
+ObjectIndex::setObjectIDAtrribLocation(int value)
 {
     if ( _index.size() == 0 )
     {
@@ -49,20 +87,7 @@ ObjectIndex::setAtrribLocation(int value)
     } 
     else
     {
-        OE_WARN << LC << "Illgeal: Cannot change the attrib location once index is in use.\n";
-    }
-}
-
-void
-ObjectIndex::setAttribUniformName(const std::string& name)
-{
-    if ( _index.size() == 0 )
-    {
-        _attribUniformName = name;
-    }
-    else
-    {
-        OE_WARN << LC << "Illgeal: Cannot change the attrib uniform name once index is in use.\n";
+        OE_WARN << LC << "Illegal: Cannot change the attrib location once index is in use.\n";
     }
 }
 
@@ -81,20 +106,6 @@ ObjectIndex::insertImpl(osg::Referenced* object)
     _index[id] = object;
     OE_DEBUG << "Insert " << id << "; size = " << _index.size() << "\n";
     return id;
-#if 0
-    ReverseIndexMap::iterator i = _reverseIndex.find( object );
-    if ( i != _reverseIndex.end() )
-    {
-        return i->second;
-    }
-
-    // not found; need to new ObjectID.
-    ObjectID id = ++_idGen; // atomic
-    _index[id] = object;
-    _reverseIndex[object] = id;
-
-    return id;
-#endif
 }
 
 osg::Referenced*
@@ -119,15 +130,6 @@ ObjectIndex::removeImpl(ObjectID id)
     _index.erase( id );
     OE_DEBUG << "Remove " << id << "; size = " << _index.size() << "\n";
 
-#if 0
-    IndexMap::iterator i = _index.find(id);
-    if ( i != _index.end() )
-    {
-        _reverseIndex.erase( i->second.get() );
-        _index.erase( i );
-         OE_DEBUG << "Remove " << id << "; size = " << _index.size() << "\n";
-    }
-#endif
 }
 
 ObjectID
@@ -219,6 +221,6 @@ ObjectIndex::tagNode(osg::Node* node, ObjectID id) const
     if ( node )
     {
         osg::StateSet* stateSet = node->getOrCreateStateSet();
-        stateSet->addUniform( new osg::Uniform(_attribUniformName.c_str(), (unsigned)id) );
+        stateSet->addUniform( new osg::Uniform(_oidUniformName.c_str(), (unsigned)id) );
     }
 }

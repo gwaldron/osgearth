@@ -412,7 +412,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     //rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
 #if 0
-#if 0
+#if 1
     // install a new default shader program that replaces anything from above.
     VirtualProgram* rtt_vp = RTTPicker::createRTTProgram();
     rtt_vp->setInheritShaders( false );

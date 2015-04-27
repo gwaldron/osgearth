@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/ShaderLoader>
 #include <osg/Drawable>
 #include <OpenThreads/Atomic>
 #include <algorithm>
@@ -107,15 +108,33 @@ namespace osgEarth
          * The vertex attribute binding location to use when indexing geoemtry.
          * Warning: Changing this after tagging objects will cause undefined results.
          */
-        void setAtrribLocation(int value);
-        int getAttribLocation() const { return _attribLocation; }
+        void setObjectIDAtrribLocation(int value);
+        int getObjectIDAttribLocation() const { return _attribLocation; }
 
         /**
          * The name of the uniform used to tag nodes when tagNode() is called.
-         * Warning: Changing this after tagging objects will cause undefined results.
          */
-        void setAttribUniformName(const std::string& name);
-        const std::string& getAttribUniformName() const { return _attribUniformName; }
+        const std::string& getObjectIDUniformName() const { return _oidUniformName; }
+
+        /**
+         * The name of the ObjectID vertex attribute in the ObjectIndex shaders.
+         */
+        const std::string& getObjectIDAttribName() const { return _attribName; }
+
+        /**
+         * Convenience fuction to install shader components that will set the vertex-stage
+         * ObjectID variable whenever detected in the geometry. This will automatically use
+         * the ObjectID AttribLocation as set in this object.
+         *
+         * Returns false if the method fails for any reason (e.g., vp is NULL)
+         */
+        bool loadShaders(VirtualProgram* vp) const;
+
+        /**
+         * The ShaderPackage that includes the index initialization shaders. installShaders()
+         * calls this internally to get the virtual program components.
+         */
+        const ShaderPackage& getShaderPackage() const { return _shaders; }
 
 
     public: // ObjectIndexBuilder<osg::Referenced>
@@ -163,14 +182,14 @@ namespace osgEarth
         virtual ~ObjectIndex() { }
         
         typedef std::map<ObjectID, osg::ref_ptr<osg::Referenced> > IndexMap;
-        //typedef std::map<osg::Referenced*, ObjectID>               ReverseIndexMap;
 
         IndexMap                 _index;
-        //ReverseIndexMap          _reverseIndex;
         int                      _attribLocation;
-        std::string              _attribUniformName;
+        std::string              _oidUniformName;
         mutable Threading::Mutex _mutex;
         OpenThreads::Atomic      _idGen;
+        ShaderPackage            _shaders;
+        std::string              _attribName;
 
         ObjectID insertImpl(osg::Referenced*);
         void removeImpl(ObjectID id);

@@ -577,13 +577,15 @@ GeometryValidator::apply(osg::Geode& geode)
     {
         osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
         if ( geom )
+        {
             apply( *geom );
 
-        if ( geom->getVertexArray() == 0L )
-        {
-            OE_WARN << "removing " << geom->getName() << " b/c of null vertex array\n";
-            geode.removeDrawable( geom );
-            --i;
+            if ( geom->getVertexArray() == 0L )
+            {
+                OE_WARN << "removing " << geom->getName() << " b/c of null vertex array\n";
+                geode.removeDrawable( geom );
+                --i;
+            }
         }
     }
 }

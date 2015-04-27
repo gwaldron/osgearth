@@ -1025,7 +1025,8 @@ MPTerrainEngineNode::updateState()
                 osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
 
             // special object ID that denotes the terrain surface.
-            terrainStateSet->addUniform( new osg::Uniform("oe_index_objectid", OSGEARTH_OBJECTID_TERRAIN) );
+            terrainStateSet->addUniform( new osg::Uniform(
+                Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
         }
 
         _stateUpdateRequired = false;

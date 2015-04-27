@@ -26,6 +26,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureIndex>
+#include <osgEarthAnnotation/AnnotationNode>
 
 #include <osgViewer/CompositeViewer>
 #include <osgGA/TrackballManipulator>
@@ -36,6 +37,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Features;
+using namespace osgEarth::Annotation;
 
 namespace ui = osgEarth::Util::Controls;
 
@@ -52,6 +54,7 @@ struct MyPickCallback : public RTTPicker::Callback
 {
     void onHit(ObjectID id)
     {
+        // First see whether it's a feature:
         FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>( id );
         Feature* feature = index ? index->getFeature( id ) : 0L;
 
@@ -60,10 +63,23 @@ struct MyPickCallback : public RTTPicker::Callback
             s_fidLabel->setText( Stringify() << "Feature ID = " << feature->getFID() << " (oid = " << id << ")" );
             s_nameLabel->setText( Stringify() << "Name = " << feature->getString("name") );
         }
+
         else
         {
-            s_fidLabel->setText( Stringify() << "oid = " << id );
-            s_nameLabel->setText( "Name = " );
+            // Check whether it's an annotation:
+            AnnotationNode* anno = Registry::objectIndex()->get<AnnotationNode>( id );
+            if ( anno )
+            {
+                s_fidLabel->setText( Stringify() << "ObjectID = " << id );
+                s_nameLabel->setName( Stringify() << "Name = " << anno->getName() );
+            }
+
+            // None of the above.. clear.
+            else
+            {
+                s_fidLabel->setText( Stringify() << "oid = " << id );
+                s_nameLabel->setText( "Name = " );
+            }
         }
 
         s_highlightUniform->set( id );

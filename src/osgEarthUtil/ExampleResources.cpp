@@ -654,7 +654,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
         AnnotationRegistry::instance()->create( mapNode, annoConf, dbOptions.get(), annotations );
         if ( annotations )
         {
-            root->addChild( annotations );
+            mapNode->addChild( annotations );
+            //root->addChild( annotations );
         }
     }
 

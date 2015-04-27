@@ -206,8 +206,11 @@ main(int argc, char** argv)
 
     // create a viewer that will hold 2 viewports.
     osgViewer::CompositeViewer viewer(arguments);
+
     osgViewer::View* mainView = new osgViewer::View();
     mainView->setUpViewInWindow(10, 10, 1024, 768, 0);
+    mainView->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
     viewer.addView(mainView);
 
     // Tell the database pager to not modify the unref settings
@@ -246,12 +249,13 @@ main(int argc, char** argv)
         // Make a view that lets us see what the picker sees.
         osgViewer::View* rttView = new osgViewer::View();
         rttView->getCamera()->setGraphicsContext( mainView->getCamera()->getGraphicsContext() );
+        rttView->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
         viewer.addView( rttView );
         setupRTTView( rttView, picker->getOrCreateTexture(mainView) );
 
         // Hightlight features as we pick'em.
         installHighlighter(
-            MapNode::get(node)->getModelLayerGroup()->getOrCreateStateSet(),
+            MapNode::get(node)->getOrCreateStateSet(),
             Registry::objectIndex()->getObjectIDAttribLocation() );
 
         return viewer.run();

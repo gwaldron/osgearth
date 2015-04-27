@@ -408,22 +408,6 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // set up a StateSet for the RTT camera.
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
 
-    // lighting is off. We don't want draped items to be lit.
-    //rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-
-#if 0
-#if 1
-    // install a new default shader program that replaces anything from above.
-    VirtualProgram* rtt_vp = RTTPicker::createRTTProgram();
-    rtt_vp->setInheritShaders( false );
-    rttStateSet->setAttribute( rtt_vp );
-#else
-    VirtualProgram* rtt_vp = VirtualProgram::getOrCreate(rttStateSet);
-    rtt_vp->setName( "DrapingTechnique RTT" );
-    rtt_vp->setInheritShaders( false );
-#endif
-#endif
-
     osg::StateAttribute::OverrideValue forceOff =
         osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED | osg::StateAttribute::OVERRIDE;
 

@@ -107,7 +107,7 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        p->setRadius( bs.radius() );
+        p->setRadius( -1 ); //maxRange + bs.radius() );
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange + bs.radius() );
         p->setPriorityOffset( 0, priOffset );

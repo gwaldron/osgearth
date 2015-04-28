@@ -134,8 +134,8 @@ public:
         }
 
         // Note to self: need to change this to support picking later. -gw
-        VirtualProgram* vp = VirtualProgram::getOrCreate(group->getOrCreateStateSet());
-        vp->setInheritShaders( false );
+        //VirtualProgram* vp = VirtualProgram::getOrCreate(group->getOrCreateStateSet());
+        //vp->setInheritShaders( false );
 
         return group;
     }

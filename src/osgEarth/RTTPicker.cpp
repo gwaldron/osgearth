@@ -187,6 +187,9 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     // install the pick camera on the main camera.
     view->getCamera()->addChild( c._pickCamera.get() );
 
+    // associate the RTT camara with the view's camera.
+    c._pickCamera->setUserData( view->getCamera() );
+
     return c;
 }
 

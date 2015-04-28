@@ -110,7 +110,7 @@ const char* highlightVert = OE_MULTILINE(
     flat out int selected;
     void highlightVertex(inout vec4 vertex)
     {
-        selected = (objectid_to_highlight > uint(0) && objectid_to_highlight == oe_index_objectid) ? 1 : 0;
+        selected = (objectid_to_highlight > uint(1) && objectid_to_highlight == oe_index_objectid) ? 1 : 0;
     }
 );
 
@@ -208,7 +208,7 @@ main(int argc, char** argv)
     osgViewer::CompositeViewer viewer(arguments);
 
     osgViewer::View* mainView = new osgViewer::View();
-    mainView->setUpViewInWindow(10, 10, 1024, 768, 0);
+    mainView->setUpViewInWindow(30, 30, 1024, 1024, 0);
     mainView->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     viewer.addView(mainView);

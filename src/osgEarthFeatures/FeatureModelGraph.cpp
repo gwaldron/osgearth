@@ -469,11 +469,16 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     if ( _session->getMapInfo().isGeocentric() )
     {
-        const SpatialReference* ecefSRS = workingExtent.getSRS()->getECEF();
-        workingExtent.getSRS()->transform( center, ecefSRS, center );
-        workingExtent.getSRS()->transform( corner, ecefSRS, corner );
-        //workingExtent.getSRS()->transformToECEF( center, center );
-        //workingExtent.getSRS()->transformToECEF( corner, corner );
+        // simulate the same extent but shifted to the equator. This will
+        // account for differences in longitudinal width.
+        GeoExtent equatorialExtent(
+            workingExtent.getSRS(),
+            workingExtent.west(),
+            -workingExtent.height()/2.0,
+            workingExtent.east(),
+            workingExtent.height()/2.0 );
+
+        return osg::BoundingSphered( center, equatorialExtent.getBoundingGeoCircle().getRadius() );
     }
 
     if (workingExtent.getSRS()->isGeographic() &&

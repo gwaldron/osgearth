@@ -20,6 +20,7 @@
 #include <osgEarth/StringUtils>
 #include <osgDB/FileNameUtils>
 #include <cctype>
+#include <cstring>
 
 using namespace osgEarth;
 
@@ -452,10 +453,10 @@ osgEarth::ciEquals(const std::string& lhs, const std::string& rhs, const std::lo
     return true;
 }
 
-#ifdef _IPHONE
-#  define STRICMP ::strcasecmp
-#else
+#if defined(WIN32) && !defined(__CYGWIN__)
 #  define STRICMP ::stricmp
+#else
+#  define STRICMP ::strcasecmp
 #endif
 
 bool CIStringComp::operator()(const std::string& lhs, const std::string& rhs) const

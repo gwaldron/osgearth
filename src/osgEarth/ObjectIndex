@@ -100,7 +100,7 @@ namespace osgEarth
         template<typename ForwardIter>
         void remove(ForwardIter i0, ForwardIter i1) {
             _mutex.lock();
-            for(typename ForwardIter i = i0; i != i1; ++i) removeImpl( *i );
+            for(ForwardIter i = i0; i != i1; ++i) removeImpl( *i );
             _mutex.unlock();
         }
 

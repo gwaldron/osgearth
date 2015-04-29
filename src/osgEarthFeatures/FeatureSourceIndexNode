@@ -100,7 +100,7 @@ namespace osgEarth { namespace Features
         void removeFIDs(InputIter first, InputIter last)
         {
             Threading::ScopedMutexLock lock(_mutex);
-            for(typename InputIter fid = first; fid != last; ++fid )
+            for(InputIter fid = first; fid != last; ++fid )
             {
                 FIDMap::iterator f = _fids.find( *fid );
                 if ( f != _fids.end() && f->second->referenceCount() == 1 )

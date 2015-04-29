@@ -107,7 +107,7 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        p->setRadius( -1 ); //maxRange + bs.radius() );
+        p->setRadius( -1 );//maxRange + bs.radius() );
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange + bs.radius() );
         p->setPriorityOffset( 0, priOffset );
@@ -337,7 +337,7 @@ FeatureModelGraph::ctor()
 
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords( _usableMapExtent, 0L );
-
+    
     // whether to request tiles from the source (if available). if the source is tiled, but the
     // user manually specified schema levels, don't use the tiles.
     _useTiledSource = featureProfile->getTiled();
@@ -469,11 +469,21 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     if ( _session->getMapInfo().isGeocentric() )
     {
-        const SpatialReference* ecefSRS = workingExtent.getSRS()->getECEF();
-        workingExtent.getSRS()->transform( center, ecefSRS, center );
-        workingExtent.getSRS()->transform( corner, ecefSRS, corner );
-        //workingExtent.getSRS()->transformToECEF( center, center );
-        //workingExtent.getSRS()->transformToECEF( corner, corner );
+        // Convert the extent to lat/long and center it on the equator; this will ensure
+        // that all tiles in the same LOD have the same bounding radius.
+        GeoExtent eq = workingExtent.transform( workingExtent.getSRS()->getGeographicSRS() );
+
+        GeoExtent equatorialExtent(
+            eq.getSRS(),
+            eq.west(),
+            -eq.height()/2.0,
+            eq.east(),
+            eq.height()/2.0 );
+
+        GeoPoint centerPoint( workingExtent.getSRS(), center, ALTMODE_ABSOLUTE );
+        centerPoint.toWorld( center );
+
+        return osg::BoundingSphered( center, equatorialExtent.getBoundingGeoCircle().getRadius() );
     }
 
     if (workingExtent.getSRS()->isGeographic() &&

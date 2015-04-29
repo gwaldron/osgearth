@@ -67,6 +67,213 @@ ShaderFactory::ShaderFactory()
     _fragStageOrder = FRAGMENT_STAGE_ORDER_COLORING_LIGHTING;
 }
 
+
+
+bool
+ShaderFactory::createMains(const FunctionLocationMap&                functions,
+                           std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const
+{
+    FunctionLocationMap::const_iterator f;
+
+    // collect the "model" stage vertex functions:
+    f = functions.find( LOCATION_VERTEX_MODEL );
+    const OrderedFunctionMap* modelStage = f != functions.end() ? &f->second : 0L;
+
+    // collect the "view" stage vertex functions:
+    f = functions.find( LOCATION_VERTEX_VIEW );
+    const OrderedFunctionMap* viewStage = f != functions.end() ? &f->second : 0L;
+
+    // geometry shader functions:
+    f = functions.find( LOCATION_VERTEX_GEOMETRY );
+    const OrderedFunctionMap* geomStage = f != functions.end() ? &f->second : 0L;
+
+    // geometry shader functions:
+    f = functions.find( LOCATION_VERTEX_TESSELLATION_CONTROL );
+    const OrderedFunctionMap* tessStage = f != functions.end() ? &f->second : 0L;
+
+    // geometry shader functions:
+    f = functions.find( LOCATION_VERTEX_TESSELLATION_EVAL );
+    const OrderedFunctionMap* tessEvalStage = f != functions.end() ? &f->second : 0L;
+
+    // collect the "clip" stage functions:
+    f = functions.find( LOCATION_VERTEX_CLIP );
+    const OrderedFunctionMap* clipStage = f != functions.end() ? &f->second : 0L;
+
+    // fragment shader coloring functions:
+    f = functions.find( LOCATION_FRAGMENT_COLORING );
+    const OrderedFunctionMap* coloringStage = f != functions.end() ? &f->second : 0L;
+
+    // fragment shader lighting functions:
+    f = functions.find( LOCATION_FRAGMENT_LIGHTING );
+    const OrderedFunctionMap* lightingStage = f != functions.end() ? &f->second : 0L;
+
+    // what do we need to build?
+    bool hasVertShader     = modelStage || viewStage || (clipStage && !geomStage && !tessEvalStage);
+    bool hasGeomShader     = geomStage;
+    bool hasTessShader     = tessStage;
+    bool hasTessEvalShader = tessEvalStage;
+    bool hasFragShader     = coloringStage || lightingStage;
+    
+    // where to insert the clip stage functions:
+    bool clipStageInVertexShader   = !geomStage && !tessEvalStage;
+    bool clipStageInGeomShader     = geomStage && !tessEvalStage;
+    bool clipStageInTessEvalShader = tessEvalStage && !geomStage;
+
+    bool useInterfaceBlocks = false;
+
+    std::string versionHeader =
+        "#version " GLSL_VERSION_STR "\n"
+        GLSL_DEFAULT_PRECISION_FLOAT;
+
+    std::string vertGlobals =
+        "// osgEarth vertex stage globals:\n"
+        "vec4 oe_VertexModel, oe_VertexModel, oe_VertexClip; \n"
+        "vec3 oe_NormalModel, oe_NormalView; \n"
+        "vec4 oe_Color;";
+
+
+    // Build the vertex shader.
+    if ( hasVertShader )
+    {
+        std::stringstream buf;
+
+        buf << versionHeader << "\n"
+            << vertGlobals   << "\n";
+
+        // prototype functions:
+        if ( modelStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
+            {
+                buf << "void " << i->second._name << "(inout vec4 VertexMODEL); \n";
+            }
+        }
+
+        // prototypes for view stage methods:
+        if ( viewStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+            {
+                buf << "void " << i->second._name << "(inout vec4 VertexVIEW); \n";
+            }
+        }
+
+        // prototypes for clip stage methods:
+        if ( clipStage && clipStageInVertexShader )
+        {
+            for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+            {
+                buf << "void " << i->second._name << "(inout vec4 VertexCLIP); \n";
+            }
+        }
+
+        if ( hasGeomShader || hasTessShader || hasFragShader )
+        {
+            buf << "out vec4 oe_FrontColor_vertOut; \n"
+        }
+
+        if ( hasGeomShader || hasTessShader )
+        {
+            buf << "out vec3 oe_NormalView_vertOut; \n";
+        }
+
+
+        buf <<
+            "void main(void) \n"
+            "{ \n"
+            INDENT "oe_FrontColor_vertOut = gl_Color; \n"
+            INDENT "oe_VertexModel = gl_Vertex; \n"
+            INDENT "oe_NormalModel = gl_Normal; \n";
+
+        if ( modelStage )
+        {
+            buf <<
+                INDENT "oe_Normal = oe_NormalModel; // backwards compatibility \n";
+
+            for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
+            {
+                //insertRangeConditionals( i->second, buf );
+                buf << INDENT << i->second._name << "(oe_VertexModel); \n"
+            }
+
+            buf << INDENT
+                << "oe_NormalView = normalize(gl_NormalMatrix * oe_NormalModel; \n";
+        }
+        else
+        {
+            buf <<
+                INDENT << "oe_VertexView = gl_ModelViewMatrix * oe_VertexModel; \n"
+                INDENT << "oe_NormalView = gl_NormalMatrix * oe_NormalModel; \n"
+        }
+
+        // call View stage methods.
+        if ( viewStage )
+        {
+            buf << INDENT "vertex = gl_ModelViewMatrix * vertex; \n";
+
+            for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+            {
+                buf << INDENT << i->second._name << "(oe_VertexView); \n";
+            }
+        }
+
+
+        ///left off here........
+
+
+
+        // call Clip stage methods.
+        if ( clipStage )
+        {
+            if ( viewStage )
+            {
+                buf << INDENT "vertex = gl_ProjectionMatrix * vertex; \n";
+            }
+            else
+            {
+                buf << INDENT "vertex = gl_ModelViewProjectionMatrix * vertex; \n";
+            }
+
+            for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+            {
+                insertRangeConditionals( i->second, buf );
+                buf << INDENT << i->second._name << "(vertex); \n";
+            }
+        }
+
+        // finally, emit the position vertex.
+        if ( clipStage )
+        {
+            buf << INDENT "gl_Position = vertex; \n";
+        }
+        else if ( viewStage )
+        {
+            buf << INDENT "gl_Position = gl_ProjectionMatrix * vertex; \n";
+        }
+        else
+        {
+            buf << INDENT "gl_Position = gl_ModelViewProjectionMatrix * vertex; \n";
+        }
+
+        buf << "} \n";
+
+        std::string str;
+        str = buf.str();
+        osg::Shader* vertexShader = new osg::Shader( osg::Shader::VERTEX, str );
+        vertexShader->setName( "main(vertex)" );
+        out_shaders.push_back( vertexShader );
+    }
+}
+
+
+
+
+
+
+
+
+
+
 osg::Shader*
 ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) const
 {

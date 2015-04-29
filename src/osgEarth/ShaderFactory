@@ -59,6 +59,13 @@ namespace osgEarth
         ShaderFactory();
 
         /**
+         * Creates a Shader for each of the stages represented in the function map.
+         */
+        virtual bool createMains(
+            const ShaderComp::FunctionLocationMap&   functions,
+            std::vector< osg::ref_ptr<osg::Shader> > out_shaders );
+
+        /**
          * Creates a vertex shader main() function for use with VirtualPrograms.
          * Do not call this function directly; VirtualProgram will call it to
          * install its main() vertex function.
@@ -116,6 +123,9 @@ namespace osgEarth
 
         FragmentStageOrder _fragStageOrder;
     };
+
+
+
 
 
 } // namespace osgEarth

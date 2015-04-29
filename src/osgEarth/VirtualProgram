@@ -49,23 +49,32 @@ namespace osgEarth
         enum FunctionLocation
         {
             // vertex is in model space (equivalent to gl_Vertex).
-            LOCATION_VERTEX_MODEL = 0,
+            LOCATION_VERTEX_MODEL,
 
             // vertex is in view(aka eye) coordinates, with the camera at 0,0,0 
             // looking down the -Z axis.
-            LOCATION_VERTEX_VIEW = 1,
+            LOCATION_VERTEX_VIEW,
+
+            // geometry shader.
+            LOCATION_VERTEX_GEOMETRY,
+
+            // tessellation control shader
+            LOCATION_VERTEX_TESSELLATION_CONTROL,
+
+            // tessellation evalulation
+            LOCATION_VERTEX_TESSELLATION_EVAL,
 
             // vertex is in post-perspective coordinates; [-w..w] along each axis
-            LOCATION_VERTEX_CLIP = 2,
+            LOCATION_VERTEX_CLIP,
 
             // fragment is being colored.
-            LOCATION_FRAGMENT_COLORING = 3,
+            LOCATION_FRAGMENT_COLORING,
 
             // fragment is being lit.
-            LOCATION_FRAGMENT_LIGHTING = 4,
+            LOCATION_FRAGMENT_LIGHTING,
 
             // fragment output is being assigned.
-            LOCATION_FRAGMENT_OUTPUT = 5
+            LOCATION_FRAGMENT_OUTPUT
         };
 
         /**

@@ -103,8 +103,7 @@ struct MyPickCallback : public RTTPicker::Callback
 
 // Shaders that will highlight the currently "picked" feature.
 
-const char* highlightVert = OE_MULTILINE(
-    #version 130\n
+const char* highlightVert = OE_MULTILINE(#version 130\n
     uniform uint objectid_to_highlight;
     uint    oe_index_objectid;      // Stage global containing object id
     flat out int selected;
@@ -114,8 +113,7 @@ const char* highlightVert = OE_MULTILINE(
     }
 );
 
-const char* highlightFrag = OE_MULTILINE(
-    #version 130\n
+const char* highlightFrag = OE_MULTILINE(#version 130\n
     flat in int selected;
     void highlightFragment(inout vec4 color)
     {

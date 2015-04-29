@@ -107,7 +107,7 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        p->setRadius( -1 ); //maxRange + bs.radius() );
+        p->setRadius( -1 );//maxRange + bs.radius() );
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange + bs.radius() );
         p->setPriorityOffset( 0, priOffset );
@@ -337,7 +337,7 @@ FeatureModelGraph::ctor()
 
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords( _usableMapExtent, 0L );
-
+    
     // whether to request tiles from the source (if available). if the source is tiled, but the
     // user manually specified schema levels, don't use the tiles.
     _useTiledSource = featureProfile->getTiled();
@@ -469,16 +469,16 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     if ( _session->getMapInfo().isGeocentric() )
     {
-        // simulate the same extent but shifted to the equator. This will
-        // account for differences in longitudinal width.
-        GeoExtent equatorialExtent(
-            workingExtent.getSRS(),
-            workingExtent.west(),
-            -workingExtent.height()/2.0,
-            workingExtent.east(),
-            workingExtent.height()/2.0 );
+        // Same algorithm that the terrain engine uses to determine the bounding sphere for the tiles from an extent.
+        GeoPoint lowerLeft(workingExtent.getSRS(), workingExtent.xMin(), workingExtent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+        GeoPoint upperRight(workingExtent.getSRS(), workingExtent.xMax(), workingExtent.yMax(), 0.0, ALTMODE_ABSOLUTE);
+        osg::Vec3d ll, ur;
+        lowerLeft.toWorld( ll );
+        upperRight.toWorld( ur );
 
-        return osg::BoundingSphered( center, equatorialExtent.getBoundingGeoCircle().getRadius() );
+        double radius = (ur - ll).length() / 2.0;
+        osg::Vec3d center = (ur + ll) / 2.0;
+        return osg::BoundingSphered(center, radius);
     }
 
     if (workingExtent.getSRS()->isGeographic() &&

@@ -20,10 +20,12 @@ set(TARGET_SRC
 	GraticulePlugin.cpp
 	GraticuleExtension.cpp
 	GraticuleTerrainEffect.cpp
+	GraticuleNode.cpp
 	${SHADERS_CPP} )
 	
 set(LIB_PUBLIC_HEADERS
 	GraticuleExtension
+	GraticuleNode
 	GraticuleOptions
 	GraticuleTerrainEffect)
 	
@@ -33,7 +35,7 @@ set(TARGET_H
 
 
 set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES}
-    osgEarthAnnotation)
+    osgEarthAnnotation osgEarthUtil)
 	
 setup_extension(osgearth_graticule)
 

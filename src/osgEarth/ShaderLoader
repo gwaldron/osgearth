@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgDB/Options>
 #include <map>
+#include <set>
 
 namespace osgEarth
 {
@@ -141,6 +142,20 @@ namespace osgEarth
             const std::string&    filename,
             const ShaderPackage&  package,
             const osgDB::Options* dbOptions =0L );
+
+        /**
+         * Utility function that returns the value of a quoted #pragma; e.g.,
+         * #pragma vp_something "You are here"
+         * returns the string inside the quotes (without the quotes).
+         */
+        static std::string getQuotedPragmaValue(
+            const std::string& source,
+            const std::string& key);
+
+        static void getAllQuotedPragmaValues(
+            const std::string&     source,
+            const std::string&     key,
+            std::set<std::string>& output);
     };
 
 } // namespace osgEarth

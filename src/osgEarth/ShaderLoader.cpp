@@ -26,36 +26,63 @@
 
 using namespace osgEarth;
 
-namespace
-{
-    // find the value of a quoted pragma, e.g.:
-    //   #pragma oe_key "value"
-    // returns the string "value" (without the quotes).
-    std::string getQuotedPragmaValue(const std::string& source,
-                                     const std::string& key)
-    {
-        std::string::size_type includePos = source.find("#pragma " + key);
-        if ( includePos == std::string::npos )
-            return "";
-
-        std::string::size_type openQuotePos = source.find('\"', includePos);
-        if ( openQuotePos == std::string::npos )
-            return "";
-
-        std::string::size_type closeQuotePos = source.find('\"', openQuotePos+1);
-        if ( closeQuotePos == std::string::npos )
-            return "";
-
-        std::string statement = source.substr( includePos, (closeQuotePos-includePos)+1 );
-
-        std::string value = source.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
-
-        return value;
-    }
-}
 
 typedef std::map<std::string,std::string> StringMap;
 
+
+// find the value of a quoted pragma, e.g.:
+//   #pragma oe_key "value"
+// returns the string "value" (without the quotes).
+std::string
+ShaderLoader::getQuotedPragmaValue(const std::string& source, const std::string& key)
+{
+    std::string::size_type includePos = source.find("#pragma " + key);
+    if ( includePos == std::string::npos )
+        return "";
+
+    std::string::size_type openQuotePos = source.find('\"', includePos);
+    if ( openQuotePos == std::string::npos )
+        return "";
+
+    std::string::size_type closeQuotePos = source.find('\"', openQuotePos+1);
+    if ( closeQuotePos == std::string::npos )
+        return "";
+
+    std::string statement = source.substr( includePos, (closeQuotePos-includePos)+1 );
+
+    std::string value = source.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
+
+    return value;
+}
+
+void 
+ShaderLoader::getAllQuotedPragmaValues(const std::string&     source,
+                                       const std::string&     key,
+                                       std::set<std::string>& output)
+{
+    std::string::size_type includePos = 0;
+    while( includePos != std::string::npos )
+    {
+        includePos = source.find("#pragma " + key, includePos);
+        if ( includePos != std::string::npos )
+        {
+            std::string::size_type openQuotePos = source.find('\"', includePos);
+            if ( openQuotePos != std::string::npos )
+            {
+                std::string::size_type closeQuotePos = source.find('\"', openQuotePos+1);
+                if ( closeQuotePos != std::string::npos )
+                {
+                    std::string statement = source.substr( includePos, (closeQuotePos-includePos)+1 );
+                    std::string value = source.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
+                    if ( !value.empty() )
+                        output.insert( value );
+
+                    includePos = closeQuotePos;
+                }
+            }
+        }
+    }
+}
 
 std::string
 ShaderLoader::load(const std::string&    filename,

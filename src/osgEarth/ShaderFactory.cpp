@@ -19,6 +19,7 @@
 #include <osgEarth/ShaderFactory>
 
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/ShaderLoader>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osg/Shader>
@@ -70,7 +71,8 @@ ShaderFactory::ShaderFactory()
 
 
 bool
-ShaderFactory::createMains(const FunctionLocationMap&                functions,
+ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
+                           const VirtualProgram::ShaderMap&          in_shaders,
                            std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const
 {
     FunctionLocationMap::const_iterator f;
@@ -107,40 +109,124 @@ ShaderFactory::createMains(const FunctionLocationMap&                functions,
     f = functions.find( LOCATION_FRAGMENT_LIGHTING );
     const OrderedFunctionMap* lightingStage = f != functions.end() ? &f->second : 0L;
 
+    // fragment shader lighting functions:
+    f = functions.find( LOCATION_FRAGMENT_OUTPUT );
+    const OrderedFunctionMap* outputStage = f != functions.end() ? &f->second : 0L;
+
     // what do we need to build?
-    bool hasVertShader     = modelStage || viewStage || (clipStage && !geomStage && !tessEvalStage);
-    bool hasGeomShader     = geomStage;
-    bool hasTessShader     = tessStage;
-    bool hasTessEvalShader = tessEvalStage;
-    bool hasFragShader     = coloringStage || lightingStage;
+    bool hasGeomShader     = geomStage != 0L;
+    bool hasTessShader     = tessStage != 0L;
+    bool hasTessEvalShader = tessEvalStage != 0L;
+    bool hasFragShader     = coloringStage || lightingStage || outputStage;
+    bool hasVertShader     = hasGeomShader || hasTessShader || hasTessEvalShader || hasFragShader; //true; //modelStage || viewStage || (clipStage && !geomStage && !tessEvalStage);
     
-    // where to insert the clip stage functions:
-    bool clipStageInVertexShader   = !geomStage && !tessEvalStage;
-    bool clipStageInGeomShader     = geomStage && !tessEvalStage;
-    bool clipStageInTessEvalShader = tessEvalStage && !geomStage;
+    // where to insert the view/clip stage vertex functions:
+    bool viewStageInVertexShader   = !hasGeomShader && !hasTessEvalShader;
+    bool viewStageInGeomShader     = hasGeomShader && !hasTessEvalShader;
+    bool viewStageInTessEvalShader = hasTessEvalShader;
 
-    bool useInterfaceBlocks = false;
+    bool clipStageInVertexShader   = !hasGeomShader && !hasTessEvalShader;
+    bool clipStageInGeomShader     = hasGeomShader && !hasTessEvalShader;
+    bool clipStageInTessEvalShader = hasTessEvalShader;
 
-    std::string versionHeader =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT;
+    // search for pragma varyings and build up our interface block definitions.
+    typedef std::set<std::string> VaryingDefs;
+    VaryingDefs varyingDefs;
 
-    std::string vertGlobals =
-        "// osgEarth vertex stage globals:\n"
-        "vec4 oe_VertexModel, oe_VertexModel, oe_VertexClip; \n"
-        "vec3 oe_NormalModel, oe_NormalView; \n"
-        "vec4 oe_Color;";
+    // built-ins:
+    varyingDefs.insert( "vec4 vp_Color" );
+    varyingDefs.insert( "vec3 vp_Normal" );
+    //varyingDefs.insert( "mat3 vp_NormalMatrix" );
+    //varyingDefs.insert( "mat4 vp_ModelViewMatrix" );
+    //varyingDefs.insert( "mat4 vp_ProjectionMatrix" );
+    //varyingDefs.insert( "mat4 vp_ModelViewProjectionMatrix" );
 
+    for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
+    {
+        osg::Shader* shader = s->second._shader.get();
+        if ( shader )
+        {
+            ShaderLoader::getAllQuotedPragmaValues(shader->getShaderSource(), "vp_varying", varyingDefs);
+        }
+    }
+
+    typedef std::set< std::pair<std::string, std::string> > Varyings;
+    Varyings varyings;
+    for(VaryingDefs::iterator i = varyingDefs.begin(); i != varyingDefs.end(); ++i) 
+    {
+        std::vector<std::string> tokens;        
+        StringTokenizer(*i, tokens, " \t", "", false, true);
+        if ( tokens.size() == 2 )
+            varyings.insert( std::make_pair(tokens[0], tokens[1]) );
+    }
+
+
+
+    std::string
+        gl_Color                     = "gl_Color",
+        gl_Vertex                    = "gl_Vertex",
+        gl_Normal                    = "gl_Normal",
+        gl_Position                  = "gl_Position",
+        gl_ModelViewMatrix           = "gl_ModelViewMatrix",
+        gl_ProjectionMatrix          = "gl_ProjectionMatrix",
+        gl_ModelViewProjectionMatrix = "gl_ModelViewProjectionMatrix",
+        gl_NormalMatrix              = "gl_NormalMatrix",
+        gl_FrontColor                = "gl_FrontColor",
+        gl_FragColor                 = "gl_FragColor";
+
+    int version = 120;
+
+    std::string
+        varying_in                   = version <= 110 ? "varying" : version <= 120? "varying in"  : "in",
+        varying_out                  = version <= 110 ? "varying" : version <= 120? "varying out" : "out";
+
+    std::string header = Stringify()
+        << "#version 120\n"
+        << "#extension GL_ARB_gpu_shader5 : enable";
+
+
+    // build the vertex data interface block definition:
+    std::string vertdata;
+    {
+        std::stringstream buf;
+        buf << "VP_VertData { \n";
+        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+        {
+            buf << INDENT << i->first << " " << i->second << "; \n";
+        }
+        buf << "}";
+        vertdata = buf.str();
+    }
+
+    std::string fragdata = vertdata;
+        //"VP_FragData { \n"
+        //"    vec4 vp_Color; \n"
+        //"    vec3 vp_Normal; \n"
+        //"}";
 
     // Build the vertex shader.
     if ( hasVertShader )
     {
         std::stringstream buf;
 
-        buf << versionHeader << "\n"
-            << vertGlobals   << "\n";
+        buf << header << "\n"
+            "#pragma name \"VP Vertex Shader Main\"\n"
+            "\n// Vertex stage globals:\n"
+            "vec4 vp_Vertex; \n"
+            "vec3 vp_Normal; \n"
+            "vec4 vp_Color;  \n";
+        
+        if ( hasGeomShader || hasTessShader )
+            buf << "out " << vertdata << " vp_out; \n";
+        else
+            buf << "out " << fragdata << " vp_out; \n";
 
         // prototype functions:
+        if ( modelStage || viewStage || (clipStage && clipStageInVertexShader) )
+        {
+            buf << "\n// Function declarations:\n";
+        }
+
         if ( modelStage )
         {
             for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
@@ -169,90 +255,92 @@ ShaderFactory::createMains(const FunctionLocationMap&                functions,
 
         if ( hasGeomShader || hasTessShader || hasFragShader )
         {
-            buf << "out vec4 oe_FrontColor_vertOut; \n"
         }
 
         if ( hasGeomShader || hasTessShader )
         {
-            buf << "out vec3 oe_NormalView_vertOut; \n";
         }
 
-
         buf <<
-            "void main(void) \n"
+            "\nvoid main(void) \n"
             "{ \n"
-            INDENT "oe_FrontColor_vertOut = gl_Color; \n"
-            INDENT "oe_VertexModel = gl_Vertex; \n"
-            INDENT "oe_NormalModel = gl_Normal; \n";
+            INDENT "vp_Vertex = " << gl_Vertex << "; \n"
+            INDENT "vp_Normal = " << gl_Normal << "; \n"
+            INDENT "vp_Color  = " << gl_Color  << "; \n";
 
         if ( modelStage )
         {
-            buf <<
-                INDENT "oe_Normal = oe_NormalModel; // backwards compatibility \n";
-
             for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
             {
                 //insertRangeConditionals( i->second, buf );
-                buf << INDENT << i->second._name << "(oe_VertexModel); \n"
-            }
-
-            buf << INDENT
-                << "oe_NormalView = normalize(gl_NormalMatrix * oe_NormalModel; \n";
-        }
-        else
-        {
-            buf <<
-                INDENT << "oe_VertexView = gl_ModelViewMatrix * oe_VertexModel; \n"
-                INDENT << "oe_NormalView = gl_NormalMatrix * oe_NormalModel; \n"
-        }
-
-        // call View stage methods.
-        if ( viewStage )
-        {
-            buf << INDENT "vertex = gl_ModelViewMatrix * vertex; \n";
-
-            for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
-            {
-                buf << INDENT << i->second._name << "(oe_VertexView); \n";
+                buf << INDENT << i->second._name << "(vp_Vertex); \n";
             }
         }
 
-
-        ///left off here........
-
-
-
-        // call Clip stage methods.
-        if ( clipStage )
+        if ( viewStageInVertexShader )
         {
             if ( viewStage )
             {
-                buf << INDENT "vertex = gl_ProjectionMatrix * vertex; \n";
+                buf <<
+                    INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                    INDENT << "vp_Normal = " << gl_NormalMatrix    << " * vp_Normal; \n";
+
+                for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+                {
+                    buf << INDENT << i->second._name << "(vp_Vertex); \n";
+                }
             }
+
+            if ( clipStageInVertexShader )
+            {
+                if ( clipStage )
+                {
+                    if ( viewStage )
+                    {
+                        buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+                    }
+                    else
+                    {
+                        buf <<
+                            INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                            INDENT << "vp_Normal = " << gl_NormalMatrix              << " * vp_Normal; \n";
+                    }
+
+                    for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+                    {
+                        buf << INDENT << i->second._name << "(vp_Vertex); \n";
+                    }
+                }
+            }
+        }
+
+        // if there are no further vertex-processing stages, transform the position into clip coordinates
+        // for the fragment shader now:
+        if ( !hasGeomShader && !hasTessShader )
+        {
+            if ( clipStage )
+                buf << INDENT "gl_Position = vp_Vertex; \n";
+            else if ( viewStage )
+                buf << INDENT "gl_Position = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
             else
-            {
-                buf << INDENT "vertex = gl_ModelViewProjectionMatrix * vertex; \n";
-            }
-
-            for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
-            {
-                insertRangeConditionals( i->second, buf );
-                buf << INDENT << i->second._name << "(vertex); \n";
-            }
+                buf << INDENT "gl_Position = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
         }
 
-        // finally, emit the position vertex.
-        if ( clipStage )
-        {
-            buf << INDENT "gl_Position = vertex; \n";
-        }
-        else if ( viewStage )
-        {
-            buf << INDENT "gl_Position = gl_ProjectionMatrix * vertex; \n";
-        }
+        // otherwise, pass it along as-is.
         else
         {
-            buf << INDENT "gl_Position = gl_ModelViewProjectionMatrix * vertex; \n";
+            buf << INDENT "gl_Position = vp_Vertex; \n";
+        }
+
+
+        if ( hasGeomShader || hasTessShader || hasFragShader )
+        {
+            buf << INDENT << "vp_out.vp_Color = vp_Color; \n"
+                << INDENT << "vp_out.vp_Normal = vp_Normal; \n";
+        }
+
+        if ( hasGeomShader || hasTessShader )
+        {
         }
 
         buf << "} \n";
@@ -263,6 +351,247 @@ ShaderFactory::createMains(const FunctionLocationMap&                functions,
         vertexShader->setName( "main(vertex)" );
         out_shaders.push_back( vertexShader );
     }
+
+
+    //.................................................................................
+
+
+    // Build the geometry shader.
+    if ( hasGeomShader )
+    {
+        std::string in_suffix  = "_vsOut";
+        std::string out_suffix = "_gsOut";
+
+        std::stringstream buf;
+
+        buf << "#version 120\n"
+            << "#extension GL_ARB_gpu_shader5 : enable\n"
+            << "#pragma name \"VP Geometry Shader Main\"\n";
+
+        if ( hasVertShader )
+        {
+              buf << "\n// Geometry stage inputs:\n"
+                 << "in " << vertdata << " vp_in []; \n";
+        }
+        
+        buf << "\n// Geometry stage globals: \n"
+            << "vec4 vp_Color; \n"
+            << "vec3 vp_Normal; \n"
+            << "mat4 vp_ModelViewMatrix; \n"
+            << "mat4 vp_ModelViewProjectionMatrix; \n"
+            << "mat4 vp_ProjectionMatrix; \n"
+            << "mat3 vp_NormalMatrix; \n";
+        
+        buf << "\n// Geometry stage outputs: \n";
+        if ( hasTessShader )
+            buf << "out " << vertdata << " vp_out; \n";
+        else
+            buf << "out " << fragdata << " vp_out; \n";
+
+        if ( geomStage || (clipStage && clipStageInGeomShader) )
+        {
+            buf << "\n// Function declarations:\n";
+            if ( geomStage )
+            {
+                for( OrderedFunctionMap::const_iterator i = geomStage->begin(); i != geomStage->end(); ++i )
+                {
+                    buf << "void " << i->second._name << "(); \n";
+                }
+            }
+            if ( clipStage && clipStageInGeomShader )
+            {
+                for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+                {
+                    buf << "void " << i->second._name << "(inout vec4 VertexCLIP); \n";
+                }
+            }
+        }
+
+        buf << "\n"
+            << "void main(void) \n"
+            << "{ \n"
+            << "    vp_ModelViewProjectionMatrix = gl_ModelViewProjectionMatrix; \n"
+            << "    vp_ModelViewMatrix = gl_ModelViewMatrix; \n"
+            << "    vp_ProjectionMatrix = gl_ProjectionMatrix; \n"
+            << "    vp_NormalMatrix = gl_NormalMatrix; \n"
+            << INDENT "// copy default outputs: \n";
+
+        buf << INDENT "vp_out.vp_Color = vp_in[0].vp_Color; \n"
+            << INDENT "vp_out.vp_Normal = vp_in[0].vp_Normal; \n";
+
+
+        if ( geomStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = geomStage->begin(); i != geomStage->end(); ++i )
+            {
+                buf << INDENT << i->second._name << "(); \n";
+            }
+        }
+
+        if ( clipStage && clipStageInGeomShader )
+        {
+            buf << INDENT << "vec4 vp_VertexCLIP = " << gl_ModelViewProjectionMatrix << " * gl_in[0].gl_Position; \n";
+
+            for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+            {
+                buf << INDENT << i->second._name << "(vp_VertexCLIP); \n";
+            }
+        }
+
+        buf << "} \n";
+
+        std::string str;
+        str = buf.str();
+        osg::Shader* geomShader = new osg::Shader( osg::Shader::GEOMETRY, str );
+        geomShader->setName( "main(geometry)" );
+        out_shaders.push_back( geomShader );
+
+
+        // Construct the GS Helper Functions.
+        buf.str("");
+        buf << "#version 330\n"
+            << "#pragma name \"VP Geometry Shader Helper Functions\"\n\n";
+
+        buf << "in " << vertdata << " vp_in[]; \n\n";       
+        
+        if ( hasTessShader )
+            buf << "out " << vertdata << " vp_out; \n";
+        else
+            buf << "out " << fragdata << " vp_out; \n";
+
+        buf << "\n"
+            << "// Stage globals\n"
+            << "vec4 vp_Color; \n"
+            << "vec3 vp_Normal; \n";
+            //<< "mat4 vp_ModelViewProjectionMatrix; \n";
+
+        buf << "\nvoid VP_LoadVertex(in int index) \n"
+            << "{ \n";
+
+        buf << "    vp_Color = vp_in[index].vp_Color; \n"
+            << "    vp_Normal = vp_in[index].vp_Normal; \n";
+
+        buf << "} \n";
+
+        buf << "\nvoid VP_EmitVertex() \n"
+            << "{ \n";
+
+        buf << "    vp_out.vp_Color = vp_Color; \n"
+            << "    vp_out.vp_Normal = vp_Normal; \n";
+
+        buf << "    EmitVertex(); \n"
+            << "} \n";
+        
+        str = buf.str();
+        osg::Shader* helperShader = new osg::Shader(osg::Shader::GEOMETRY, str);
+        helperShader->setName("vp helpers(geometry)");
+        out_shaders.push_back( helperShader );
+    }
+    
+
+    //.................................................................................
+
+
+    // Build the Fragment shader.
+    if ( hasFragShader )
+    {
+        std::string in_suffix = hasTessEvalShader ? "_tesOut" : hasGeomShader ? "_gsOut" : "_vsOut";
+
+        std::stringstream buf;
+
+        buf << header << "\n"
+            << "#pragma name \"VP Fragment Shader Main\"\n";
+
+        buf << "\n// Fragment stage inputs:\n";
+        buf << "in " << fragdata << " vp_in; \n";
+        
+        buf <<
+            "\n// Fragment stage globals:\n"
+            "vec4 vp_Color; \n"
+            "vec3 vp_Normal; \n"; // old: oe_global_Normal;
+
+        if ( coloringStage || lightingStage || outputStage )
+        {
+            buf << "\n// Function declarations:\n";
+        }
+
+        if ( coloringStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = coloringStage->begin(); i != coloringStage->end(); ++i )
+            {
+                buf << "void " << i->second._name << "(inout vec4 color); \n";
+            }
+        }
+
+        if ( lightingStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = lightingStage->begin(); i != lightingStage->end(); ++i )
+            {
+                buf << "void " << i->second._name << "(inout vec4 color); \n";
+            }
+        }
+
+        if ( outputStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = outputStage->begin(); i != outputStage->end(); ++i )
+            {
+                buf << "void " << i->second._name << "(inout vec4 color); \n";
+            }
+        }
+
+        buf << 
+            "\nvoid main(void) \n"
+            "{ \n";
+
+        buf << 
+            INDENT "vp_Color  = vp_in.vp_Color; \n"
+            INDENT "vp_Normal = normalize(vp_in.vp_Normal); \n";
+
+        int coloringPass = _fragStageOrder == FRAGMENT_STAGE_ORDER_COLORING_LIGHTING ? 0 : 1;
+        int lightingPass = 1-coloringPass;
+
+        for(int pass=0; pass<2; ++pass)
+        {
+            if ( coloringStage && (pass == coloringPass) )
+            {
+                for( OrderedFunctionMap::const_iterator i = coloringStage->begin(); i != coloringStage->end(); ++i )
+                {
+                    buf << INDENT << i->second._name << "( vp_Color ); \n";
+                }
+            }
+
+            if ( lightingStage && (pass == lightingPass) )
+            {
+                for( OrderedFunctionMap::const_iterator i = lightingStage->begin(); i != lightingStage->end(); ++i )
+                {
+                    buf << INDENT << i->second._name << "( vp_Color ); \n";
+                }
+            }
+        }
+
+        if ( outputStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = outputStage->begin(); i != outputStage->end(); ++i )
+            {
+                buf << INDENT << i->second._name << "( vp_Color ); \n";
+            }
+        }
+        else
+        {
+            // in the absense of any output functions, generate a default output statement
+            // that simply writes to gl_FragColor.
+            buf << INDENT << gl_FragColor << " = vp_Color;\n";
+        }
+        buf << "}\n";
+
+        std::string str;
+        str = buf.str();
+        osg::Shader* shader = new osg::Shader( osg::Shader::FRAGMENT, str );
+        shader->setName( "main(fragment)" );
+        out_shaders.push_back( shader );
+    }
+
+    return true;
 }
 
 
@@ -326,7 +655,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
     // main:
     buf <<
         "varying vec4 osg_FrontColor; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
         "void main(void) \n"
         "{ \n"
         INDENT "osg_FrontColor = gl_Color; \n"
@@ -335,7 +664,7 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
     // call Model stage methods.
     if ( modelStage )
     {
-        buf << INDENT "oe_Normal = gl_Normal; \n";
+        buf << INDENT "vp_Normal = gl_Normal; \n";
 
         for( OrderedFunctionMap::const_iterator i = modelStage->begin(); i != modelStage->end(); ++i )
         {
@@ -343,11 +672,11 @@ ShaderFactory::createVertexShaderMain(const FunctionLocationMap& functions) cons
             buf << INDENT << i->second._name << "(vertex); \n";
         }
 
-        buf << INDENT << "oe_Normal = normalize(gl_NormalMatrix * oe_Normal); \n";
+        buf << INDENT << "vp_Normal = normalize(gl_NormalMatrix * vp_Normal); \n";
     }
     else
     {
-        buf << INDENT << "oe_Normal = normalize(gl_NormalMatrix * gl_Normal); \n";
+        buf << INDENT << "vp_Normal = normalize(gl_NormalMatrix * gl_Normal); \n";
     }
 
     // call View stage methods.
@@ -448,12 +777,12 @@ ShaderFactory::createFragmentShaderMain(const FunctionLocationMap& functions) co
 
     buf << 
         "varying vec4 osg_FrontColor; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
         "vec3 oe_global_Normal; \n" // stage-global
         "void main(void) \n"
         "{ \n"
         INDENT "vec4 color = osg_FrontColor; \n"
-        INDENT "oe_global_Normal = normalize(oe_Normal); \n";
+        INDENT "oe_global_Normal = normalize(vp_Normal); \n";
 
     int coloringPass = _fragStageOrder == FRAGMENT_STAGE_ORDER_COLORING_LIGHTING ? 0 : 1;
     int lightingPass = 1-coloringPass;

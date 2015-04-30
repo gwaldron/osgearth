@@ -252,6 +252,11 @@ namespace
         const osg::Program::UniformBlockBindingList& ubl = templateProgram->getUniformBlockBindingList();
         for( osg::Program::UniformBlockBindingList::const_iterator i = ubl.begin(); i != ubl.end(); ++i )
             program->addBindUniformBlock( i->first, i->second );
+
+        // dont' need unless we're using shader4 ext??
+        program->setParameter( GL_GEOMETRY_VERTICES_OUT_EXT, templateProgram->getParameter(GL_GEOMETRY_VERTICES_OUT_EXT) );
+        program->setParameter( GL_GEOMETRY_INPUT_TYPE_EXT,   templateProgram->getParameter(GL_GEOMETRY_INPUT_TYPE_EXT) );
+        program->setParameter( GL_GEOMETRY_OUTPUT_TYPE_EXT,  templateProgram->getParameter(GL_GEOMETRY_OUTPUT_TYPE_EXT) );
     }
 
 
@@ -337,13 +342,25 @@ namespace
         }
         else
         {
+            int c = 1;
             for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
             {
                 program->addShader( i->get() );
                 if ( s_dumpShaders )
                 {
+                    osg::Shader::Type t = i->get()->getType();
+
+                    std::string typeName =
+                        t == osg::Shader::VERTEX         ? "vertex" :
+                        t == osg::Shader::GEOMETRY       ? "geometry" :
+                        t == osg::Shader::TESSCONTROL    ? "tesscontrol" :
+                        t == osg::Shader::TESSEVALUATION ? "tesseval" :
+                        t == osg::Shader::FRAGMENT       ? "fragment" :
+                        t == osg::Shader::COMPUTE        ? "compute" :
+                                                           "UNKNOWN!";
+
                     OE_NOTIFY(osg::NOTICE,"")
-                        << "----------\n"
+                        << "--- [ " << (c++) << "/" << shaders.size() << " " << typeName << " ] ------------------\n\n"
                         << i->get()->getShaderSource() << std::endl;
                 }
             }
@@ -374,7 +391,7 @@ namespace
 #ifdef DEBUG_ACCUMULATION
 
         // test dump .. function map and shader map should always include identical data.
-        OE_INFO << LC << "====PROGRAM: " << programName << "\n";
+        OE_INFO << LC << "===PROGRAM: " << programName << "\n";
 
         // debug:
         OE_INFO << LC << "====FUNCTIONS:\n";
@@ -407,8 +424,10 @@ namespace
 #endif
 
         // create new MAINs for this function stack.
-        osg::Shader* vertMain = Registry::shaderFactory()->createVertexShaderMain( accumFunctions );
-        osg::Shader* fragMain = Registry::shaderFactory()->createFragmentShaderMain( accumFunctions );
+        VirtualProgram::ShaderVector mains;
+        Registry::shaderFactory()->createMains( accumFunctions, accumShaderMap, mains );
+        //osg::Shader* vertMain = Registry::shaderFactory()->createVertexShaderMain( accumFunctions );
+        //osg::Shader* fragMain = Registry::shaderFactory()->createFragmentShaderMain( accumFunctions );
 
         // build a new "key vector" now that we've changed the shader map.
         // we call is a key vector because it uniquely identifies this shader program
@@ -422,12 +441,20 @@ namespace
         // need to mains in the key vector since they are completely derived from the
         // other elements of the key vector.)
         VirtualProgram::ShaderVector buildVector( outputKeyVector );
-        buildVector.push_back( vertMain );
-        buildVector.push_back( fragMain );
+        buildVector.insert( buildVector.end(), mains.begin(), mains.end() );
+        //buildVector.push_back( vertMain );
+        //buildVector.push_back( fragMain );
 
         if ( s_dumpShaders )
         {
-            OE_NOTICE << LC << "\nPROGRAM: " << programName << " =============================\n" << std::endl;
+            if ( !programName.empty() )
+            {
+                OE_NOTICE << LC << "\n\n=== [ Program \"" << programName << "\" ] =============================\n\n" << std::endl;
+            }
+            else
+            {
+                OE_NOTICE << LC << "\n\n=== [ Program (unnamed) ] =============================\n\n" << std::endl;
+            }
         }
 
         // Create the new program.
@@ -899,8 +926,23 @@ VirtualProgram::setFunction(const std::string&           functionName,
         ofm.insert( OrderedFunction(ordering, function) );
 
         // create and add the new shader function.
-        osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_CLIP ?
-            osg::Shader::VERTEX : osg::Shader::FRAGMENT;
+        osg::Shader::Type type;
+
+        switch(location)
+        {
+            case LOCATION_VERTEX_MODEL:
+            case LOCATION_VERTEX_VIEW:
+            case LOCATION_VERTEX_CLIP:
+                type = osg::Shader::VERTEX;
+                break;
+                
+            case LOCATION_VERTEX_GEOMETRY:
+                type = osg::Shader::GEOMETRY;
+                break;
+
+            default:
+                type = osg::Shader::FRAGMENT;
+        }
 
         osg::Shader* shader = new osg::Shader(type, shaderSource);
         shader->setName( functionName );

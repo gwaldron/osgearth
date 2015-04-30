@@ -62,8 +62,9 @@ namespace osgEarth
          * Creates a Shader for each of the stages represented in the function map.
          */
         virtual bool createMains(
-            const ShaderComp::FunctionLocationMap&   functions,
-            std::vector< osg::ref_ptr<osg::Shader> > out_shaders );
+            const ShaderComp::FunctionLocationMap&    functions,
+            const VirtualProgram::ShaderMap&          in_shaders,
+            std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const;
 
         /**
          * Creates a vertex shader main() function for use with VirtualPrograms.

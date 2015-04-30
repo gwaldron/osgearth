@@ -52,6 +52,7 @@ int usage( const std::string& msg )
         << "           [--test4]    : Run the memory test \n"
         << "           [--test5]    : Run the Program state set test \n"
         << "           [--test6]    : Run the 2-camera test \n"
+        << "           [--test7]    : Run the geometry shader injection test \n"
         << std::endl;
 
     return -1;
@@ -379,6 +380,76 @@ namespace TEST_6
 
 //-------------------------------------------------------------------------
 
+namespace TEST_7
+{
+    const char* vert =
+        "#version 120\n"
+        //"#pragma vp_varying \"float oe_red\"\n"
+        "void myVertShader(inout vec4 vertex) { \n"
+        //"    oe_red = 1.0; \n"
+        "    //nop. \n"
+        "} \n";
+
+    const char* geom =
+        "#version 330\n"
+        "#pragma name \"ShaderComp Test 7 Geom Shader (Triangle Shrinker)\"\n"
+
+        "layout(triangles) in; \n"
+        "layout(triangle_strip) out; \n"
+        "layout(max_vertices = 3) out; \n"
+        
+        "void VP_LoadVertex(in int); \n"
+        "void VP_EmitVertex(); \n"
+
+        "// Stage globals (that we need): \n"
+        "vec3 vp_Normal; \n"
+        "mat4 vp_ModelViewProjectionMatrix; \n"
+
+        "void myGeomShader() \n"
+        "{ \n"
+        "    vec4 cen = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position)/3.0; \n"        
+        "    for(int i=0; i < 3; ++i ) \n"
+        "    { \n"
+        "        VP_LoadVertex(i); \n"
+        "        vec4 v =  gl_in[i].gl_Position; \n"
+        "        vec4 shrink = vec4(normalize(cen.xyz-v.xyz) * distance(cen, v) * 0.1, 0.0); \n"
+        "        gl_Position = vp_ModelViewProjectionMatrix * (v + shrink); \n"
+        "        VP_EmitVertex(); \n"
+        "    } \n"
+        "    EndPrimitive(); \n"
+        "} \n";
+
+    const char* frag =
+        "#version 120\n"
+        //"#pragma vp_varying \"float oe_red\"\n"
+        //"float oe_red; \n"
+        "void myFragShader(inout vec4 color) \n"
+        "{ \n"
+//        "    color.r = oe_red; \n"
+        "    //nop. \n"
+        "} \n";
+
+    osg::StateAttribute* createVP()
+    {
+        osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
+        vp->setFunction( "myVertShader", vert, osgEarth::ShaderComp::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "myGeomShader", geom, osgEarth::ShaderComp::LOCATION_VERTEX_GEOMETRY );
+        vp->setFunction( "myFragShader", frag, osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING );
+        vp->setShaderLogging(true, "test7.glsl");
+        return vp;
+    }
+
+    osg::Group* run( osg::Node* earth )
+    {   
+        osg::Group* g = new osg::Group();
+        g->addChild( earth );
+        g->getOrCreateStateSet()->setAttribute( createVP() );
+        return g;
+    }
+}
+
+//-------------------------------------------------------------------------
+
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
@@ -390,7 +461,8 @@ int main(int argc, char** argv)
     bool test4 = arguments.read("--test4");
     bool test5 = arguments.read("--test5");
     bool test6 = arguments.read("--test6");
-    bool ok    = test1 || test2 || test3 || test4 || test5 || test6;
+    bool test7 = arguments.read("--test7");
+    bool ok    = test1 || test2 || test3 || test4 || test5 || test6 || test7;
 
     if ( !ok )
     {
@@ -449,6 +521,12 @@ int main(int argc, char** argv)
         root->addChild( TEST_5::run() );
         label->setText( "Leakage test: red tri on the left, blue on the right." );
     }
+    else if ( test7 )
+    {
+        root->addChild( TEST_7::run( osgDB::readNodeFiles(arguments) ) );
+        label->setText("Geometry Shader Injection Test.");
+    }
+
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

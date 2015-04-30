@@ -61,7 +61,7 @@ namespace osgEarth
             // tessellation control shader
             LOCATION_VERTEX_TESSELLATION_CONTROL,
 
-            // tessellation evalulation
+            // tessellation evalulation shader
             LOCATION_VERTEX_TESSELLATION_EVAL,
 
             // vertex is in post-perspective coordinates; [-w..w] along each axis

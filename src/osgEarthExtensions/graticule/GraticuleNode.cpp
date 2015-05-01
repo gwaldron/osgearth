@@ -35,7 +35,7 @@ _mapNode(mapNode),
     setNumChildrenRequiringUpdateTraversal(1);
 
     // Initialize the formatter
-    _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS, osgEarth::Util::LatLongFormatter::USE_SYMBOLS);
+    _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE, LatLongFormatter::USE_SYMBOLS |LatLongFormatter::USE_PREFIXES);
 
     // Initialize the resolution uniform
     _resolutionUniform = mapNode->getTerrainEngine()->getTerrainStateSet()->getOrCreateUniform(GraticuleOptions::resolutionUniformName(), osg::Uniform::FLOAT);
@@ -219,7 +219,7 @@ void GraticuleNode::setResolution(double resolution)
 std::string GraticuleNode::getText(const GeoPoint& location, bool lat)
 { 
     double value = lat ? location.y() : location.x();
-    return _formatter->format(value);
+    return _formatter->format(value, lat);
 }
 
 osgEarth::GeoExtent GraticuleNode::getViewExtent(osg::Camera* camera)

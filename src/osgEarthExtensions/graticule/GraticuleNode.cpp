@@ -24,10 +24,11 @@ using namespace osgEarth::Graticule;
 #define LC "[GraticuleNode] "
 
 
-GraticuleNode::GraticuleNode(MapNode* mapNode):
+GraticuleNode::GraticuleNode(MapNode* mapNode, const GraticuleOptions& options):
 _mapNode(mapNode),
-    _resolution(30.0/180.0),
-    _maxResolution(30.0/180.0),
+    _resolution(options.maxResolution().get()),
+    _maxResolution(options.maxResolution().get()),
+    _options(options),
     _lat(0.0),
     _lon(0.0),
     _viewExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90)
@@ -56,7 +57,9 @@ void GraticuleNode::initLabelPool()
     Style style;
     TextSymbol* text = style.getOrCreateSymbol<TextSymbol>();
     text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
-    unsigned int labelPoolSize = 50;
+    text->fill()->color() = _options.labelColor().get();
+
+    unsigned int labelPoolSize = 8 * _options.gridLines().get();
     for (unsigned int i = 0; i < labelPoolSize; i++)
     {
         GeoPoint pt(srs, 0,0,0);
@@ -180,7 +183,7 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         }
 
     
-        double targetResolution = (_viewExtent.height() / 180.0) / 10;
+        double targetResolution = (_viewExtent.height() / 180.0) / _options.gridLines().get();
 
         double resolution = _maxResolution;
         while (resolution  > targetResolution)

@@ -38,7 +38,7 @@ namespace osgEarth { namespace Graticule
     {
     public:
 
-        GraticuleNode(MapNode* mapNode);
+        GraticuleNode(MapNode* mapNode, const GraticuleOptions& options);
 
         virtual void traverse(osg::NodeVisitor& nv);
 
@@ -71,6 +71,7 @@ namespace osgEarth { namespace Graticule
         GeoExtent _viewExtent;
         osg::Vec3d _focalPoint;
         std::vector< osg::ref_ptr< LabelNode > > _labelPool;
+        const GraticuleOptions _options;
 
     };
 

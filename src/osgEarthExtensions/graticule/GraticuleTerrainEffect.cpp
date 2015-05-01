@@ -52,7 +52,7 @@ GraticuleTerrainEffect::onInstall(TerrainEngineNode* engine)
         package.loadFunction( vp, package.Fragment );
 
         stateset->addUniform( new osg::Uniform(
-            GraticuleOptions::resolutionUniformName(), _options.resolution().get()) );
+            GraticuleOptions::resolutionUniformName(), _options.maxResolution().get()) );
 
         stateset->addUniform( new osg::Uniform(
             GraticuleOptions::colorUniformName(), _options.color().get()) );

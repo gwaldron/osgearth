@@ -86,6 +86,8 @@ void GraticuleNode::updateLabels()
     }
 
     double resDegrees = _resolution * 180.0;
+    // We want half the resolution so the labels don't appear as often as the grid lines
+    resDegrees *= 2.0;
 
     
     // Hide all the labels

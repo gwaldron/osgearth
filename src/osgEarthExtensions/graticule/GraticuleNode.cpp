@@ -29,7 +29,8 @@ _mapNode(mapNode),
     _resolution(30.0/180.0),
     _maxResolution(30.0/180.0),
     _lat(0.0),
-    _lon(0.0)
+    _lon(0.0),
+    _viewExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90)
 {
     setNumChildrenRequiringUpdateTraversal(1);
 
@@ -51,12 +52,17 @@ GraticuleNode::~GraticuleNode()
 void GraticuleNode::initLabelPool()
 {
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
+
+    Style style;
+    TextSymbol* text = style.getOrCreateSymbol<TextSymbol>();
+    text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     unsigned int labelPoolSize = 50;
     for (unsigned int i = 0; i < labelPoolSize; i++)
     {
         GeoPoint pt(srs, 0,0,0);
         LabelNode* label = new LabelNode(_mapNode.get(), pt, "0,0");
         label->setDynamic(true);
+        label->setStyle(style);
         _labelPool.push_back(label);
         addChild(label);
     }
@@ -66,67 +72,77 @@ void GraticuleNode::updateLabels()
 {
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
 
+    std::vector< GeoExtent > extents;
+    if (_viewExtent.crossesAntimeridian())
+    {
+        GeoExtent first, second;
+        _viewExtent.splitAcrossAntimeridian(first, second);
+        extents.push_back(first);
+        extents.push_back(second);
+    }
+    else
+    {
+        extents.push_back( _viewExtent );
+    }
+
     double resDegrees = _resolution * 180.0;
-    int minLonIndex = floor(((_viewExtent.xMin() + 180.0)/resDegrees));
-    int maxLonIndex = ceil(((_viewExtent.xMax() + 180.0)/resDegrees));
 
-    if (maxLonIndex < minLonIndex)
-    {
-        OE_NOTICE << "Fix this, lon flipped" << std::endl;
-        return;
-    }
-
-
-    int minLatIndex = floor(((_viewExtent.yMin() + 90)/resDegrees));
-    int maxLatIndex = ceil(((_viewExtent.yMax() + 90)/resDegrees));
-
-
-    if (maxLatIndex < minLatIndex)
-    {
-        OE_NOTICE << "Fix this, lat flipped" << std::endl;
-        return;
-    }
-
+    
     // Hide all the labels
     for (unsigned int i = 0; i < _labelPool.size(); i++)
     {
         _labelPool[i]->setNodeMask(0);
     }
 
-    unsigned int targetNumLabels = (maxLonIndex - minLonIndex + 1) + (maxLatIndex - minLatIndex + 1);
-    if (targetNumLabels >= _labelPool.size())
-    {
-        OE_DEBUG << "Requesting " << targetNumLabels << " and we only have " << _labelPool.size() << " available.  Bailing" << std::endl;
-        return;
-    }
 
 
 
+    
     unsigned int labelIndex = 0;
 
 
-    // Generate horizontal labels
-    for (unsigned int i = minLonIndex; i <= maxLonIndex; i++)
+    for (unsigned int extentIndex = 0; extentIndex < extents.size(); extentIndex++)
     {
-        GeoPoint point(srs, -180.0 + (double)i * resDegrees, _lat, 0, ALTMODE_ABSOLUTE);
-        LabelNode* label = _labelPool[labelIndex++];
-        label->setNodeMask(~0u);
-        label->setPosition(point);
-        std::string text = getText( point, false);
-        label->setText( text );
-    }
+        GeoExtent extent = extents[extentIndex];
+
+        int minLonIndex = floor(((extent.xMin() + 180.0)/resDegrees));
+        int maxLonIndex = ceil(((extent.xMax() + 180.0)/resDegrees));
+
+        int minLatIndex = floor(((extent.yMin() + 90)/resDegrees));
+        int maxLatIndex = ceil(((extent.yMax() + 90)/resDegrees));
+
+        // Generate horizontal labels
+        for (unsigned int i = minLonIndex; i <= maxLonIndex; i++)
+        {
+            GeoPoint point(srs, -180.0 + (double)i * resDegrees, _lat, 0, ALTMODE_ABSOLUTE);
+            LabelNode* label = _labelPool[labelIndex++];
+
+            label->setNodeMask(~0u);
+            label->setPosition(point);
+            std::string text = getText( point, false);
+            label->setText( text );
+            if (labelIndex == _labelPool.size() - 1)
+            {
+                return;
+            }
+        }
 
 
 
-    // Generate the vertical labels
-    for (unsigned int i = minLatIndex; i <= maxLatIndex; i++)
-    {
-        GeoPoint point(srs, _lon, -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
-        LabelNode* label = _labelPool[labelIndex++];
-        label->setNodeMask(~0u);
-        label->setPosition(point);
-        std::string text = getText( point, true);
-        label->setText( text );
+        // Generate the vertical labels
+        for (unsigned int i = minLatIndex; i <= maxLatIndex; i++)
+        {
+            GeoPoint point(srs, _lon, -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
+            LabelNode* label = _labelPool[labelIndex++];
+            label->setNodeMask(~0u);
+            label->setPosition(point);
+            std::string text = getText( point, true);
+            label->setText( text );
+            if (labelIndex == _labelPool.size() - 1)
+            {
+                return;
+            }
+        }
     }
 }
 

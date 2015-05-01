@@ -35,7 +35,7 @@ namespace
     {
         KeyIter() : T::iterator() { }
         KeyIter(typename T::iterator i) : T::iterator(i) { }
-        typename T::key_type* operator->() { return (T ::key_type* const)&(T::iterator::operator->()->first); }
+        typename T::key_type* operator->() { return (typename T::key_type* const)&(T::iterator::operator->()->first); }
         typename T::key_type operator*() { return T::iterator::operator*().first; }
     };
 
@@ -44,7 +44,7 @@ namespace
     {
         ConstKeyIter() : T::const_iterator() { }
         ConstKeyIter(typename T::const_iterator i) : T::const_iterator(i) { }
-        typename T::key_type* operator->() { return (T ::key_type* const)&(T::const_iterator::operator->()->first); }
+        typename T::key_type* operator->() { return (typename T::key_type* const)&(T::const_iterator::operator->()->first); }
         typename T::key_type operator*() { return T::const_iterator::operator*().first; }
     };
 }

@@ -107,7 +107,8 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        p->setRadius( -1 );//maxRange + bs.radius() );
+        p->setRadius( maxRange + bs.radius() );
+        //p->setRadius(-1);
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange + bs.radius() );
         p->setPriorityOffset( 0, priOffset );
@@ -469,16 +470,21 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     if ( _session->getMapInfo().isGeocentric() )
     {
-        // Same algorithm that the terrain engine uses to determine the bounding sphere for the tiles from an extent.
-        GeoPoint lowerLeft(workingExtent.getSRS(), workingExtent.xMin(), workingExtent.yMin(), 0.0, ALTMODE_ABSOLUTE);
-        GeoPoint upperRight(workingExtent.getSRS(), workingExtent.xMax(), workingExtent.yMax(), 0.0, ALTMODE_ABSOLUTE);
-        osg::Vec3d ll, ur;
-        lowerLeft.toWorld( ll );
-        upperRight.toWorld( ur );
+        // Convert the extent to lat/long and center it on the equator; this will ensure
+        // that all tiles in the same LOD have the same bounding radius.
+        GeoExtent eq = workingExtent.transform( workingExtent.getSRS()->getGeographicSRS() );
 
-        double radius = (ur - ll).length() / 2.0;
-        osg::Vec3d center = (ur + ll) / 2.0;
-        return osg::BoundingSphered(center, radius);
+        GeoExtent equatorialExtent(
+            eq.getSRS(),
+            eq.west(),
+            -eq.height()/2.0,
+            eq.east(),
+            eq.height()/2.0 );
+
+        GeoPoint centerPoint( workingExtent.getSRS(), center, ALTMODE_ABSOLUTE );
+        centerPoint.toWorld( center );
+
+        return osg::BoundingSphered( center, equatorialExtent.getBoundingGeoCircle().getRadius() );
     }
 
     if (workingExtent.getSRS()->isGeographic() &&

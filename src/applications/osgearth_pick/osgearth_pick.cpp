@@ -103,26 +103,24 @@ struct MyPickCallback : public RTTPicker::Callback
 
 // Shaders that will highlight the currently "picked" feature.
 
-const char* highlightVert = OE_MULTILINE(
-    #version 130\n
-    uniform uint objectid_to_highlight;
-    uint    oe_index_objectid;      // Stage global containing object id
-    flat out int selected;
-    void highlightVertex(inout vec4 vertex)
-    {
-        selected = (objectid_to_highlight > uint(1) && objectid_to_highlight == oe_index_objectid) ? 1 : 0;
-    }
-);
+const char* highlightVert =
+    "#version 130\n"
+    "uniform uint objectid_to_highlight; \n"
+    "uint oe_index_objectid;      // Stage global containing object id \n"
+    "flat out int selected; \n"
+    "void highlightVertex(inout vec4 vertex) \n"
+    "{ \n"
+    "    selected = (objectid_to_highlight > uint(1) && objectid_to_highlight == oe_index_objectid) ? 1 : 0; \n"
+    "} \n";
 
-const char* highlightFrag = OE_MULTILINE(
-    #version 130\n
-    flat in int selected;
-    void highlightFragment(inout vec4 color)
-    {
-        if ( selected == 1 )
-            color.rgb = mix(color.rgb, clamp(vec3(0.5,0.5,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5);
-    }
-);
+const char* highlightFrag =
+    "#version 130\n"
+    "flat in int selected; \n"
+    "void highlightFragment(inout vec4 color) \n"
+    "{ \n"
+    "    if ( selected == 1 ) \n"
+    "        color.rgb = mix(color.rgb, clamp(vec3(0.5,0.5,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5); \n"
+    "} \n";
 
 void installHighlighter(osg::StateSet* stateSet, int attrLocation)
 {

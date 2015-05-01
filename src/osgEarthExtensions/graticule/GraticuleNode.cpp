@@ -24,14 +24,16 @@ using namespace osgEarth::Graticule;
 #define LC "[GraticuleNode] "
 
 
-GraticuleNode::GraticuleNode(MapNode* mapNode, const GraticuleOptions& options):
+GraticuleNode::GraticuleNode(MapNode* mapNode, GraticuleTerrainEffect* effect, const GraticuleOptions& options):
 _mapNode(mapNode),
+    _effect(effect),
     _resolution(options.maxResolution().get()),
     _maxResolution(options.maxResolution().get()),
     _options(options),
     _lat(0.0),
     _lon(0.0),
-    _viewExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90)
+    _viewExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90),
+    _visible(true)
 {
     setNumChildrenRequiringUpdateTraversal(1);
 
@@ -48,6 +50,32 @@ _mapNode(mapNode),
 GraticuleNode::~GraticuleNode()
 {
     //nop
+}
+
+bool GraticuleNode::getVisible() const
+{
+    return _visible;
+}
+
+void GraticuleNode::setVisible(bool visible)
+{
+    if (_visible != visible)
+    {
+        _visible = visible;
+        if (_visible)
+        {
+            setNodeMask(~0u);
+            _mapNode->getTerrainEngine()->addEffect(_effect.get());
+            // We need to re-initilize the uniform b/c the uniform may have been removed when the effect was removed.
+            _resolutionUniform = _mapNode->getTerrainEngine()->getTerrainStateSet()->getOrCreateUniform(GraticuleOptions::resolutionUniformName(), osg::Uniform::FLOAT);
+            _resolutionUniform->set((float)_resolution);
+        }
+        else
+        {
+            setNodeMask(0);
+            _mapNode->getTerrainEngine()->removeEffect(_effect.get());
+        }
+    }
 }
 
 void GraticuleNode::initLabelPool()
@@ -193,7 +221,7 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         
 
         // Trippy
-        //double resolution = targetResolution;
+        //resolution = targetResolution;
 
         _viewExtent = getViewExtent( cv->getCurrentCamera() );
 

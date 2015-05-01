@@ -66,12 +66,15 @@ GraticuleTerrainEffect::onInstall(TerrainEngineNode* engine)
 void
 GraticuleTerrainEffect::onUninstall(TerrainEngineNode* engine)
 {
-    osg::StateSet* stateset = engine->getStateSet();
+    OE_NOTICE << "Remove" << std::endl;
+    osg::StateSet* stateset = engine->getTerrainStateSet();
     if ( stateset )
     {
+        OE_NOTICE << "Have stateset" << std::endl;
         VirtualProgram* vp = VirtualProgram::get(stateset);
         if ( vp )
         {
+            OE_NOTICE << "Removing effect" << std::endl;
             Shaders package;
             package.unloadFunction( vp, package.Vertex );
             package.unloadFunction( vp, package.Fragment );
@@ -79,6 +82,9 @@ GraticuleTerrainEffect::onUninstall(TerrainEngineNode* engine)
             stateset->removeUniform( GraticuleOptions::resolutionUniformName() );
             stateset->removeUniform( GraticuleOptions::colorUniformName() );
             stateset->removeUniform( GraticuleOptions::lineWidthUniformName() );
+        }
+        else
+        {
         }
     }
 }

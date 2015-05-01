@@ -62,7 +62,7 @@ GraticuleExtension::connect(MapNode* mapNode)
     _effect = new GraticuleTerrainEffect( _options, _dbOptions.get() );
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
 
-    _node = new GraticuleNode(mapNode, _options);
+    _node = new GraticuleNode(mapNode, _effect.get(), _options);
     mapNode->addChild(_node.get());
     
     OE_INFO << LC << "Installed!\n";

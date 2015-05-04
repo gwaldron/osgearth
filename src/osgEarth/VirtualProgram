@@ -55,17 +55,17 @@ namespace osgEarth
             // looking down the -Z axis.
             LOCATION_VERTEX_VIEW,
 
-            // geometry shader.
-            LOCATION_VERTEX_GEOMETRY,
-
-            // tessellation control shader
-            LOCATION_VERTEX_TESSELLATION_CONTROL,
-
-            // tessellation evalulation shader
-            LOCATION_VERTEX_TESSELLATION_EVAL,
-
             // vertex is in post-perspective coordinates; [-w..w] along each axis
             LOCATION_VERTEX_CLIP,
+
+            // tessellation control shader; model space
+            LOCATION_TESS_CONTROL,
+
+            // tessellation evalulation shader; model space
+            LOCATION_TESS_EVALUATION,
+
+            // geometry shader; inputs are in model space.
+            LOCATION_GEOMETRY,
 
             // fragment is being colored.
             LOCATION_FRAGMENT_COLORING,
@@ -74,7 +74,10 @@ namespace osgEarth
             LOCATION_FRAGMENT_LIGHTING,
 
             // fragment output is being assigned.
-            LOCATION_FRAGMENT_OUTPUT
+            LOCATION_FRAGMENT_OUTPUT,
+
+            // not defined.
+            LOCATION_UNDEFINED
         };
 
         /**
@@ -110,7 +113,52 @@ namespace osgEarth
 
         // user function sets, categorized by function location.
         typedef std::map<FunctionLocation, OrderedFunctionMap> FunctionLocationMap;
+
+        // Mask values that represents which stages a composed shader contains.
+        enum StageMaskValues
+        {
+            STAGE_VERTEX          = 1 << 0,
+            STAGE_TESSCONTROL     = 1 << 1,
+            STAGE_TESSEVALULATION = 1 << 2,
+            STAGE_GEOMETRY        = 1 << 3,
+            STAGE_FRAGMENT        = 1 << 4,
+            STAGE_COMPUTE         = 1 << 5
+        };
+        typedef unsigned StageMask;
     }
+
+
+    class OSGEARTH_EXPORT PolyShader : public osg::Referenced
+    {
+    public:
+        PolyShader();
+
+        PolyShader(osg::Shader* shader);
+
+        void setLocation(ShaderComp::FunctionLocation loc);
+        ShaderComp::FunctionLocation getLocation() const { return _location; }
+
+        void setShaderSource(const std::string& source);
+        const std::string& getShaderSource() const { return _source; }
+
+        osg::Shader* getShader(ShaderComp::StageMask mask) const;
+        osg::Shader* getNominalShader() const { return _nominalShader.get(); }
+
+        void prepare();
+
+    protected:
+        virtual ~PolyShader() { }
+
+        std::string                  _source;
+        ShaderComp::FunctionLocation _location;
+        osg::Shader::Type            _nominalType;
+        osg::ref_ptr<osg::Shader>    _nominalShader;
+        osg::ref_ptr<osg::Shader>    _geomShader;
+        osg::ref_ptr<osg::Shader>    _tessevalShader;
+        bool                         _dirty;
+    };
+
+    typedef std::vector< osg::ref_ptr<PolyShader> > ProgramKey;
 
 
     /**
@@ -296,7 +344,8 @@ namespace osgEarth
         {
             ShaderEntry();
             bool accept(const osg::State& state) const;
-            osg::ref_ptr<osg::Shader>                _shader;
+            //osg::ref_ptr<osg::Shader>                _shader;
+            osg::ref_ptr<PolyShader>                 _shader;
             osg::StateAttribute::OverrideValue       _overrideValue;
             osg::ref_ptr<ShaderComp::AcceptCallback> _accept;
             bool operator < (const ShaderEntry& rhs) const;
@@ -312,7 +361,8 @@ namespace osgEarth
         typedef std::map< std::string, std::string > AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;
         typedef std::vector< AttribAlias > AttribAliasVector;
-        typedef osgEarth::fast_map< ShaderVector, ProgramEntry > ProgramMap;
+        //typedef osgEarth::fast_map< ShaderVector, ProgramEntry > ProgramMap;
+        typedef osgEarth::fast_map< ProgramKey, ProgramEntry > ProgramMap;
         typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
         typedef std::vector< AttributePair > AttrStack;
 
@@ -406,7 +456,7 @@ namespace osgEarth
             bool&              acceptCallbacksPresent);
         
         bool readProgramCache(
-            const ShaderVector& vec,
+            const ProgramKey& key,
             unsigned frameNumber,
             osg::ref_ptr<osg::Program>& program);
 

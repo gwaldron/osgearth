@@ -139,7 +139,7 @@ namespace
 namespace
 {
     // Code borrowed from osg::State.cpp
-    static bool replace(std::string& str, const std::string& original_phrase, const std::string& new_phrase)
+    bool replace(std::string& str, const std::string& original_phrase, const std::string& new_phrase)
     {
         bool replacedStr = false;
         std::string::size_type pos = 0;
@@ -165,11 +165,74 @@ namespace
         return replacedStr;
     }
 
-    static void replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix ="")
+    bool replaceAndInsertDeclaration(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& declarationPrefix, const std::string& declarationSuffix ="")
     {
-        if (replace(source, originalStr, newStr))
+        bool yes = replace(source, originalStr, newStr);
+        if ( yes )
         {
             source.insert(declPos, declarationPrefix + newStr + declarationSuffix + std::string(";\n"));
+        }
+        return yes;
+    }
+
+    bool replaceAndInsertLiteral(std::string& source, std::string::size_type declPos, const std::string& originalStr, const std::string& newStr, const std::string& lit)
+    {
+        bool yes = replace(source, originalStr, newStr);
+        if ( yes )
+        {
+            source.insert(declPos, lit);
+        }
+        return yes;
+    }
+
+    // each output pair is "qualifier", "declaration".
+    struct Varying {
+        std::string original;
+        std::string qualifier;
+        std::string definition;
+        Varying(const std::string& a, const std::string& b, const std::string& c) : original(a), qualifier(b), definition(c) { }
+    };
+
+    void collectVaryings(osg::Shader::Type type, const std::string& source, std::vector<Varying>& out)
+    {
+        //OE_NOTICE << "\n\n\n\nShader\n\n\n\n";
+        std::string::size_type pos = 0;
+        while( pos != std::string::npos && pos < source.length() )
+        {
+            std::string::size_type end = source.find_first_of("\n;", pos);
+            if ( end == std::string::npos )
+                break;
+
+            std::string statement(source, pos, end-pos);
+            statement = trim(statement);
+
+            //OE_NOTICE << "Statement: " << statement << "\n";
+
+            //osgEarth::collapseWhitespace(line);
+
+            if ( startsWith(statement, "out ") && type != osg::Shader::FRAGMENT ) {
+                out.push_back( Varying(statement, "", std::string(statement, 4)) );
+            }
+            else if ( startsWith(statement, "in ") && type != osg::Shader::VERTEX ) {
+                out.push_back( Varying(statement, "", std::string(statement, 3)) );
+            }
+            else if ( startsWith(statement, "varying out ") && type != osg::Shader::FRAGMENT) {
+                out.push_back( Varying(statement, "", std::string(statement, 12)) );
+            }
+            else if ( startsWith(statement, "varying in ") && type != osg::Shader::VERTEX ) {
+                out.push_back( Varying(statement, "", std::string(statement, 11)) );
+            }
+            else if ( startsWith(statement, "flat out ") && type != osg::Shader::FRAGMENT ) {
+                out.push_back( Varying(statement, "flat ", std::string(statement, 9)) );
+            }
+            else if ( startsWith(statement, "flat in ") && type != osg::Shader::VERTEX ) {
+                out.push_back( Varying(statement, "flat ", std::string(statement, 8)) );
+            }
+            else if ( startsWith(statement, "varying ") ) {
+                out.push_back( Varying(statement, "", std::string(statement, 8)) );
+            }
+
+            pos = end+1;
         }
     }
 }
@@ -177,10 +240,11 @@ namespace
 void
 ShaderPreProcessor::run(osg::Shader* shader)
 {
-    // only runs for non-FFP (GLES, GL3+, etc.)
-
-    if ( s_NO_FFP && shader )
+    if ( shader )
     {
+        bool dirty = false;
+
+        // only runs for non-FFP (GLES, GL3+, etc.)
         std::string source = shader->getShaderSource();
 
         // find the first legal insertion point for replacement declarations. GLSL requires that nothing
@@ -197,28 +261,59 @@ ShaderPreProcessor::run(osg::Shader* shader)
             declPos = 0;
         }
 
-        int maxLights = Registry::capabilities().getMaxLights();
-
-        for( int i=0; i<maxLights; ++i )
+        // Perform the no-FFP replacements:
+        if ( s_NO_FFP )
         {
-            replaceAndInsertDeclaration(
-                source, declPos,
-                Stringify() << "gl_LightSource[" << i << "]",
-                Stringify() << "osg_LightSource" << i,
-                Stringify() 
-                    << osg_LightSourceParameters::glslDefinition() << "\n"
-                    << "uniform osg_LightSourceParameters " );
+            int maxLights = Registry::capabilities().getMaxLights();
 
-            replaceAndInsertDeclaration(
-                source, declPos,
-                Stringify() << "gl_FrontLightProduct[" << i << "]", 
-                Stringify() << "osg_FrontLightProduct" << i,
-                Stringify()
-                    << osg_LightProducts::glslDefinition() << "\n"
-                    << "uniform osg_LightProducts " );
+            for( int i=0; i<maxLights; ++i )
+            {
+                if ( replaceAndInsertDeclaration(
+                    source, declPos,
+                    Stringify() << "gl_LightSource[" << i << "]",
+                    Stringify() << "osg_LightSource" << i,
+                    Stringify() 
+                        << osg_LightSourceParameters::glslDefinition() << "\n"
+                        << "uniform osg_LightSourceParameters " ) )
+                {
+                    dirty = true;
+                }
+
+                if ( replaceAndInsertDeclaration(
+                    source, declPos,
+                    Stringify() << "gl_FrontLightProduct[" << i << "]", 
+                    Stringify() << "osg_FrontLightProduct" << i,
+                    Stringify()
+                        << osg_LightProducts::glslDefinition() << "\n"
+                        << "uniform osg_LightProducts " ) )
+                {
+                    dirty = true;
+                }
+            }
         }
 
-        shader->setShaderSource( source );
+        // Perform shader composition adjustments on ins and outs.        
+        std::vector<Varying> v;
+        collectVaryings( shader->getType(), source, v );
+        for(std::vector<Varying>::iterator i = v.begin(); i != v.end(); ++i)
+        {
+            if (replaceAndInsertLiteral(
+                source,
+                declPos,
+                i->original,
+                i->definition,
+                Stringify() << "#pragma vp_varying \"" << i->qualifier << i->definition << "\"\n" ))
+            {
+                dirty = true;
+            }
+
+            OE_DEBUG << "Replaced \"" << i->original << "\" with \"" << i->definition << "\"\n";
+        }
+
+        if ( dirty )
+        {
+            shader->setShaderSource( source );
+        }
     }
 }
 
@@ -816,4 +911,16 @@ DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
             vp->removeShader("oe_discardalpha_frag");
         }
     }
+}
+
+//------------------------------------------------------------------------
+
+ShaderLex::ShaderLex(const std::string& source)
+{
+    StringTokenizer tokenizer;
+    tokenizer.addDelims(" \t\r", false);
+    tokenizer.addDelim ('\n', true);
+    tokenizer.addDelim (';', true);
+    tokenizer.addQuote ('\"', true);
+    tokenizer.tokenize(source, _tokens);
 }

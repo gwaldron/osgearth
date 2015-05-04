@@ -385,7 +385,8 @@ namespace
                                VirtualProgram::AttribBindingList&  accumAttribBindings,
                                VirtualProgram::AttribAliasMap&     accumAttribAliases,
                                osg::Program*                       templateProgram,
-                               VirtualProgram::ShaderVector&       outputKeyVector)
+                               ProgramKey&                         outputKey)
+                               //VirtualProgram::ShaderVector&       outputKeyVector)
     {
 
 #ifdef DEBUG_ACCUMULATION
@@ -425,25 +426,31 @@ namespace
 
         // create new MAINs for this function stack.
         VirtualProgram::ShaderVector mains;
-        Registry::shaderFactory()->createMains( accumFunctions, accumShaderMap, mains );
-        //osg::Shader* vertMain = Registry::shaderFactory()->createVertexShaderMain( accumFunctions );
-        //osg::Shader* fragMain = Registry::shaderFactory()->createFragmentShaderMain( accumFunctions );
+        ShaderComp::StageMask stages = Registry::shaderFactory()->createMains( accumFunctions, accumShaderMap, mains );
 
         // build a new "key vector" now that we've changed the shader map.
         // we call is a key vector because it uniquely identifies this shader program
         // based on its accumlated function set.
         for( VirtualProgram::ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
         {
-            outputKeyVector.push_back( i->second._shader.get() );
+            outputKey.push_back( i->second._shader.get() );
         }
 
         // finally, add the mains (AFTER building the key vector .. we don't want or
         // need to mains in the key vector since they are completely derived from the
         // other elements of the key vector.)
+#if 0
         VirtualProgram::ShaderVector buildVector( outputKeyVector );
         buildVector.insert( buildVector.end(), mains.begin(), mains.end() );
-        //buildVector.push_back( vertMain );
-        //buildVector.push_back( fragMain );
+#endif
+
+        VirtualProgram::ShaderVector buildVector;
+        buildVector.reserve( accumShaderMap.size() + mains.size() );
+
+        for(ProgramKey::iterator i = outputKey.begin(); i != outputKey.end(); ++i)
+            buildVector.push_back( i->get()->getShader(stages) );
+
+        buildVector.insert( buildVector.end(), mains.begin(), mains.end() );
 
         if ( s_dumpShaders )
         {
@@ -546,7 +553,8 @@ VirtualProgram::ShaderEntry::accept(const osg::State& state) const
 bool
 VirtualProgram::ShaderEntry::operator < (const VirtualProgram::ShaderEntry& rhs) const
 {
-    if ( _shader->compare(*rhs._shader.get()) < 0 ) return true;
+    if ( _shader->getShaderSource().compare(rhs._shader->getShaderSource()) < 0 ) return true;
+    //if ( _shader->compare(*rhs._shader.get()) < 0 ) return true;
     if ( _overrideValue < rhs._overrideValue ) return true;
     if ( _accept.valid() && !rhs._accept.valid() ) return true;
     return false;
@@ -788,12 +796,12 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
 }
 
 osg::Shader*
-VirtualProgram::getShader( const std::string& shaderID ) const
+VirtualProgram::getShader(const std::string& shaderID) const
 {
     Threading::ScopedReadLock readonly( _dataModelMutex );
 
     ShaderMap::const_iterator i = _shaderMap.find(shaderID);
-    return i != _shaderMap.end() ? i->second._shader.get() : 0L;
+    return i != _shaderMap.end() ? i->second._shader->getShader(0u) : 0L;
 }
 
 
@@ -816,16 +824,21 @@ VirtualProgram::setShader(const std::string&                 shaderID,
     // set the name to the ID:
     shader->setName( shaderID );
 
+    PolyShader* pshader = new PolyShader( shader );
+    pshader->prepare();
+
+#if 0
     // pre-processes the shader's source to include GLES uniforms as necessary
     // (no-op on non-GLES)
     ShaderPreProcessor::run( shader );
+#endif
 
     // lock the data model and insert the new shader.
     {
         Threading::ScopedWriteLock exclusive( _dataModelMutex );
 
         ShaderEntry& entry = _shaderMap[shaderID];
-        entry._shader        = shader;
+        entry._shader        = pshader;
         entry._overrideValue = ov;
         entry._accept        = 0L;
     }
@@ -853,9 +866,14 @@ VirtualProgram::setShader(osg::Shader*                       shader,
         setInheritShaders( true );
     }
 
+    PolyShader* pshader = new PolyShader(shader);
+    pshader->prepare();
+
+#if 0
     // pre-processes the shader's source to include GLES uniforms as necessary
     // (no-op on non-GLES)
     ShaderPreProcessor::run( shader );
+#endif
 
     // lock the data model while changing it.
     {
@@ -864,7 +882,7 @@ VirtualProgram::setShader(osg::Shader*                       shader,
         checkSharing();
         
         ShaderEntry& entry = _shaderMap[shader->getName()];
-        entry._shader        = shader;
+        entry._shader        = pshader;
         entry._overrideValue = ov;
         entry._accept        = 0L;
     }
@@ -926,18 +944,33 @@ VirtualProgram::setFunction(const std::string&           functionName,
         ofm.insert( OrderedFunction(ordering, function) );
 
         // create and add the new shader function.
-        osg::Shader::Type type;
+        //osg::Shader::Type type;
 
+        // assemble the poly shader.
+        PolyShader* shader = new PolyShader();
+        shader->setLocation( location );
+        shader->setShaderSource( shaderSource );
+        shader->prepare();
+
+#if 0
         switch(location)
         {
             case LOCATION_VERTEX_MODEL:
             case LOCATION_VERTEX_VIEW:
             case LOCATION_VERTEX_CLIP:
-                type = osg::Shader::VERTEX;
+                type = osg::Shader::VERTEX; // depends where it gets inserted.....
                 break;
                 
             case LOCATION_VERTEX_GEOMETRY:
                 type = osg::Shader::GEOMETRY;
+                break;
+                
+            case LOCATION_VERTEX_TESSCONTROL:
+                type = osg::Shader::TESSCONTROL;
+                break;
+                
+            case LOCATION_VERTEX_TESSEVALUATION:
+                type = osg::Shader::TESSEVALUATION;
                 break;
 
             default:
@@ -949,6 +982,7 @@ VirtualProgram::setFunction(const std::string&           functionName,
 
         // pre-processes the shader's source to include GLES uniforms as necessary
         ShaderPreProcessor::run( shader );
+#endif
 
         ShaderEntry& entry = _shaderMap[functionName];
         entry._shader        = shader;
@@ -1135,7 +1169,8 @@ VirtualProgram::apply( osg::State& state ) const
         // attribute bindings. Technically it should, but in practice this might not be an
         // issue; it is unlikely one would have two identical shader programs with different
         // bindings.)
-        ShaderVector vec;
+        ProgramKey vec;
+        //ShaderVector vec;
         vec.reserve( accumShaderMap.size() );
         for( ShaderMap::iterator i = accumShaderMap.begin(); i != accumShaderMap.end(); ++i )
         {
@@ -1171,7 +1206,8 @@ VirtualProgram::apply( osg::State& state ) const
                 const_cast<VirtualProgram*>(this)->readProgramCache(vec, frameNumber, program);
                 if ( !program.valid() )
                 {
-                    ShaderVector keyVector;
+                    ProgramKey key;
+                    //ShaderVector keyVector;
 
                     //OE_NOTICE << LC << "Building new Program for VP " << getName() << std::endl;
 
@@ -1183,7 +1219,7 @@ VirtualProgram::apply( osg::State& state ) const
                         accumAttribBindings, 
                         accumAttribAliases, 
                         _template.get(),
-                        keyVector);
+                        key);
 
                     if ( _logShaders && program.valid() )
                     {
@@ -1217,7 +1253,8 @@ VirtualProgram::apply( osg::State& state ) const
                     Registry::programSharedRepo()->share( program );
 
                     // finally, put own new program in the cache.
-                    ProgramEntry& pe = _programCache[keyVector];
+                    //ProgramEntry& pe = _programCache[keyVector];
+                    ProgramEntry& pe = _programCache[key];
                     pe._program = program.get();
                     pe._frameLastUsed = frameNumber;
 
@@ -1340,7 +1377,8 @@ VirtualProgram::removeExpiredProgramsFromCache(osg::State& state, unsigned frame
 }
 
 bool
-VirtualProgram::readProgramCache(const ShaderVector& vec, unsigned frameNumber, osg::ref_ptr<osg::Program>& program)
+VirtualProgram::readProgramCache(const ProgramKey& vec, unsigned frameNumber, osg::ref_ptr<osg::Program>& program)
+//VirtualProgram::readProgramCache(const ShaderVector& vec, unsigned frameNumber, osg::ref_ptr<osg::Program>& program)
 {
     ProgramMap::iterator p = _programCache.find( vec );
     if ( p != _programCache.end() )
@@ -1553,7 +1591,7 @@ VirtualProgram::getShaders(const osg::State&                        state,
     // copy to output.
     for(ShaderMap::iterator i = shaders.begin(); i != shaders.end(); ++i)
     {
-        output.push_back( i->second._shader.get() );
+        output.push_back( i->second._shader->getShader(0u) );
     }
 }
 
@@ -1576,4 +1614,111 @@ bool VirtualProgram::getAcceptCallbacksVaryPerFrame() const
 void VirtualProgram::setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerFrame)
 {
     _acceptCallbacksVaryPerFrame = acceptCallbacksVaryPerFrame;
+}
+
+//.........................................................................
+
+PolyShader::PolyShader() :
+_dirty( true ),
+_location( ShaderComp::LOCATION_UNDEFINED )
+{
+    //nop
+}
+
+PolyShader::PolyShader(osg::Shader* shader) :
+_location( ShaderComp::LOCATION_UNDEFINED ),
+_nominalShader( shader )
+{
+    _dirty = shader != 0L;
+    if ( shader )
+    {
+        ShaderPreProcessor::run( shader );
+    }
+}
+
+void
+PolyShader::setShaderSource(const std::string& source)
+{
+    _source = source;
+    _dirty = true;
+}
+
+void
+PolyShader::setLocation(ShaderComp::FunctionLocation location)
+{
+    _location = location;
+    _dirty = true;
+}
+
+osg::Shader*
+PolyShader::getShader(ShaderComp::StageMask mask) const
+{
+    if (_location == ShaderComp::LOCATION_VERTEX_VIEW || _location == ShaderComp::LOCATION_VERTEX_CLIP)
+    {
+        OE_DEBUG << "getShader, mask = " << std::hex << mask << ", location = " << _location << "\n";
+        
+        if ( mask & ShaderComp::STAGE_TESSEVALULATION )
+        {
+            OE_DEBUG << "Installing TES for VIEW/CLIP shader!\n";
+            return _tessevalShader.get();
+        }
+        else if ( mask & ShaderComp::STAGE_GEOMETRY )
+        {
+            OE_DEBUG << "Installing GS for VIEW/CLIP shader!\n";
+            return _geomShader.get();
+        }
+    }
+
+    return _nominalShader.get();
+}
+
+void
+PolyShader::prepare()
+{
+    if ( _dirty )
+    {
+        osg::Shader::Type nominalType;
+        switch( _location )
+        {
+        case ShaderComp::LOCATION_VERTEX_MODEL:
+        case ShaderComp::LOCATION_VERTEX_VIEW:
+        case ShaderComp::LOCATION_VERTEX_CLIP:
+            nominalType = osg::Shader::VERTEX;
+            break;
+        case ShaderComp::LOCATION_VERTEX_TESSCONTROL:
+            nominalType = osg::Shader::TESSCONTROL;
+            break;
+        case ShaderComp::LOCATION_VERTEX_TESSEVALUATION:
+            nominalType = osg::Shader::TESSEVALUATION;
+            break;
+        case ShaderComp::LOCATION_VERTEX_GEOMETRY:
+            nominalType = osg::Shader::GEOMETRY;
+            break;
+        case ShaderComp::LOCATION_FRAGMENT_COLORING:
+        case ShaderComp::LOCATION_FRAGMENT_LIGHTING:
+        case ShaderComp::LOCATION_FRAGMENT_OUTPUT:
+            nominalType = osg::Shader::FRAGMENT;
+            break;
+        default:
+            nominalType = osg::Shader::UNDEFINED;
+        }
+
+        if (nominalType != osg::Shader::UNDEFINED )
+        {
+            _nominalShader = new osg::Shader(nominalType, _source);
+        }
+
+        ShaderPreProcessor::run( _nominalShader.get() );
+
+        // for a VERTEX_VIEW or VERTEX_CLIP shader, these might get moved to another stage.
+        if ( _location == ShaderComp::LOCATION_VERTEX_VIEW || _location == ShaderComp::LOCATION_VERTEX_CLIP )
+        {
+            _geomShader = new osg::Shader(osg::Shader::GEOMETRY, _source);
+            ShaderPreProcessor::run( _geomShader.get() );
+
+            _tessevalShader = new osg::Shader(osg::Shader::TESSEVALUATION, _source);
+            ShaderPreProcessor::run( _tessevalShader.get() );
+        }
+    }
+    _dirty = false;
 }

@@ -26,6 +26,7 @@
  * to add functionality.
  */
 #include <osg/Notify>
+#include <osg/CullFace>
 #include <osgDB/ReadFile>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
@@ -384,55 +385,50 @@ namespace TEST_7
 {
     const char* vert =
         "#version 120\n"
-        //"#pragma vp_varying \"float oe_red\"\n"
+        "out float oe_red; \n"
         "void myVertShader(inout vec4 vertex) { \n"
-        //"    oe_red = 1.0; \n"
-        "    //nop. \n"
+        "    oe_red = 1.0; \n"
         "} \n";
 
     const char* geom =
         "#version 330\n"
-        "#pragma name \"ShaderComp Test 7 Geom Shader (Triangle Shrinker)\"\n"
+        "#pragma name \"ShaderComp Test 7 Geom Shader (Triangle Viewer)\"\n"
 
         "layout(triangles) in; \n"
         "layout(triangle_strip) out; \n"
         "layout(max_vertices = 3) out; \n"
         
         "void VP_LoadVertex(in int); \n"
-        "void VP_EmitVertex(); \n"
+        "void VP_EmitVertex(in vec4); \n"
 
-        "// Stage globals (that we need): \n"
-        "vec3 vp_Normal; \n"
-        "mat4 vp_ModelViewProjectionMatrix; \n"
+        "uniform float osg_FrameTime; \n"
 
         "void myGeomShader() \n"
         "{ \n"
+        "    float strength = 0.25 + sin(osg_FrameTime*2.0)*0.25; \n"
         "    vec4 cen = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position)/3.0; \n"        
         "    for(int i=0; i < 3; ++i ) \n"
         "    { \n"
         "        VP_LoadVertex(i); \n"
-        "        vec4 v =  gl_in[i].gl_Position; \n"
-        "        vec4 shrink = vec4(normalize(cen.xyz-v.xyz) * distance(cen, v) * 0.1, 0.0); \n"
-        "        gl_Position = vp_ModelViewProjectionMatrix * (v + shrink); \n"
-        "        VP_EmitVertex(); \n"
+        "        vec4 vert = gl_in[i].gl_Position; \n"
+        "        vert = vert + vec4(normalize(cen.xyz-vert.xyz) * distance(cen, vert) * strength, 0.0); \n"
+        "        VP_EmitVertex(vert); \n"
         "    } \n"
         "    EndPrimitive(); \n"
         "} \n";
 
     const char* frag =
         "#version 120\n"
-        //"#pragma vp_varying \"float oe_red\"\n"
-        //"float oe_red; \n"
+        "in float oe_red; \n"
         "void myFragShader(inout vec4 color) \n"
         "{ \n"
-//        "    color.r = oe_red; \n"
-        "    //nop. \n"
+        "    // nop\n"
         "} \n";
 
     osg::StateAttribute* createVP()
     {
         osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
-        vp->setFunction( "myVertShader", vert, osgEarth::ShaderComp::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "myVertShader", vert, osgEarth::ShaderComp::LOCATION_VERTEX_MODEL );
         vp->setFunction( "myGeomShader", geom, osgEarth::ShaderComp::LOCATION_VERTEX_GEOMETRY );
         vp->setFunction( "myFragShader", frag, osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING );
         vp->setShaderLogging(true, "test7.glsl");
@@ -444,6 +440,7 @@ namespace TEST_7
         osg::Group* g = new osg::Group();
         g->addChild( earth );
         g->getOrCreateStateSet()->setAttribute( createVP() );
+        g->getOrCreateStateSet()->setAttributeAndModes(new osg::CullFace(osg::CullFace::BACK));
         return g;
     }
 }

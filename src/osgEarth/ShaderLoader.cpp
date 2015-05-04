@@ -286,6 +286,12 @@ ShaderLoader::loadFunction(VirtualProgram*       vp,
         location = ShaderComp::LOCATION_VERTEX_VIEW;
     else if ( ciEquals(loc, "vertex_clip") )
         location = ShaderComp::LOCATION_VERTEX_CLIP;
+    else if ( ciEquals(loc, "tess_control") || ciEquals(loc, "tessellation_control") )
+        location = ShaderComp::LOCATION_TESS_CONTROL;
+    else if ( ciEquals(loc, "tess_eval") || ciEquals(loc, "tessellation_eval") || ciEquals(loc, "tessellation_evaluation") || ciEquals(loc, "tess_evaluation") )
+        location = ShaderComp::LOCATION_TESS_EVALUATION;
+    else if ( ciEquals(loc, "vertex_geometry") || ciEquals(loc, "geometry") )
+        location = ShaderComp::LOCATION_GEOMETRY;
     else if ( ciEquals(loc, "fragment" ) )
         location = ShaderComp::LOCATION_FRAGMENT_COLORING;
     else if ( ciEquals(loc, "fragment_coloring") )

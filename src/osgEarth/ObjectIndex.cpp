@@ -47,12 +47,12 @@ namespace
 
         "void oe_index_vert_initialize(inout vec4 vertex) \n"
         "{ \n"
-        "    if ( oe_index_objectid_uniform > uint(0) ) \n"
+        "    if ( oe_index_objectid_uniform > 0u ) \n"
         "        oe_index_objectid = oe_index_objectid_uniform; \n"
-        "    else if ( oe_index_objectid_attr > uint(0) ) \n"
+        "    else if ( oe_index_objectid_attr > 0u ) \n"
         "        oe_index_objectid = oe_index_objectid_attr; \n"
         "    else \n"
-        "        oe_index_objectid = uint(0); \n"
+        "        oe_index_objectid = 0u; \n"
         "} \n";
 }
 

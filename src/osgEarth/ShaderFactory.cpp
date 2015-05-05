@@ -130,14 +130,14 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     
     // where to insert the view/clip stage vertex functions:
     bool viewStageInGeomShader     = hasGeomShader;
-    bool viewStageInTessEvalShader = !hasGeomShader && hasTessEvalShader;
+    bool viewStageInTessEvalShader = hasTessEvalShader && !hasGeomShader;
     bool viewStageInVertexShader   = !viewStageInTessEvalShader && !viewStageInGeomShader;
 
     OE_DEBUG << "hasGeomShader = " << hasGeomShader << "; viewStageInVertexShader = " << viewStageInVertexShader << "\n";
     
-    bool clipStageInTessEvalShader = hasTessEvalShader;
-    bool clipStageInVertexShader   = !hasGeomShader && !hasTessEvalShader;
-    bool clipStageInGeomShader     = hasGeomShader && !hasTessEvalShader;
+    bool clipStageInGeomShader     = hasGeomShader;
+    bool clipStageInTessEvalShader = hasTessEvalShader && !hasGeomShader;
+    bool clipStageInVertexShader   = !clipStageInGeomShader && !clipStageInTessEvalShader;
 
     // search for pragma varyings and build up our interface block definitions.
     typedef std::set<std::string> VaryingDefs;
@@ -146,6 +146,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     // built-ins:
     varyingDefs.insert( "vec4 vp_Color" );
     varyingDefs.insert( "vec3 vp_Normal" );
+    varyingDefs.insert( "vec4 vp_Vertex" );
 
     for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
     {
@@ -216,11 +217,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             "#pragma name \"VP Vertex Shader Main\" \n"
             "#extension GL_ARB_gpu_shader5 : enable \n";
 
-        buf <<
-            "\n// Vertex stage globals:\n"
-            "vec4 vp_Vertex; \n";
-
-        // Declare stage globals.
+        buf << "\n// Vertex stage globals:\n";
         for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
             buf << i->first << " " << i->second << "; \n";
         
@@ -349,10 +346,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 buf << INDENT << "vp_out." << i->second << " = " << i->second << "; \n";
         }
 
-        if ( hasTessShader || hasGeomShader )
-        {
-        }
-
         buf << "} \n";
 
         std::string str;
@@ -369,7 +362,60 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     if ( hasTessShader )
     {
         stages |= ShaderComp::STAGE_TESSCONTROL;
-        //todo
+        std::stringstream buf;
+
+        buf << "#version 400\n"
+            << "#pragma name \"VP Tessellation Control Shader (TCS) Main\" \n";
+
+        if ( hasVertShader )
+        {
+              buf << "\n// TCS stage inputs:\n"
+                 << "in " << vertdata << " vp_in []; \n";
+        }
+
+        // The TES is mandatory.
+        buf << "\n// TCS stage outputs to TES: \n"
+            << "out " << vertdata << " vp_out []; \n";
+
+        // Stage globals.
+        buf << "\n// TCS stage globals \n";
+        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+            buf << i->first << " " << i->second << "; \n";
+        
+        // Function declares
+        if ( tessStage )
+        {
+            buf << "\n// Function declarations:\n";
+            for( OrderedFunctionMap::const_iterator i = tessStage->begin(); i != tessStage->end(); ++i )
+                buf << "void " << i->second._name << "(); \n";
+        }
+
+        // Main
+        buf << "\nvoid main(void) \n"
+            << "{ \n"
+            << INDENT "// copy default outputs: \n";
+                
+        // Copy in to globals
+        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+            buf << INDENT << i->second << " = vp_in[gl_InvocationID]." << i->second << "; \n";
+
+        // Invoke functions
+        if ( tessStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = tessStage->begin(); i != tessStage->end(); ++i )
+                buf << INDENT << i->second._name << "(); \n";
+        }
+                
+        // Copy globals to out.
+        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+            buf << INDENT << "vp_out[gl_InvocationID]." << i->second << " = " << i->second << "; \n";
+
+        buf << "} \n";
+        
+        std::string str = buf.str();
+        osg::Shader* tcsShader = new osg::Shader(osg::Shader::TESSCONTROL, str);
+        tcsShader->setName("VP TCS");
+        out_shaders.push_back( tcsShader );
     }
 
 
@@ -379,7 +425,154 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     if ( hasTessEvalShader )
     {
         stages |= ShaderComp::STAGE_TESSEVALULATION;
-        //todo
+
+        std::stringstream buf;
+
+        buf << "#version 400 compatibility\n"
+            << "#pragma name \"VP Tessellation Evaluation (TES) Shader MAIN\" \n";
+
+        buf << "\n// TES stage inputs (required):\n"
+            << "in " << vertdata << " vp_in []; \n";
+        
+        // Declare stage globals.
+        buf << "\n// TES stage globals: \n";
+        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+            buf << i->first << " " << i->second << "; \n";
+        
+        buf << "\n// TES stage outputs: \n";
+        if ( hasGeomShader )
+            buf << "out " << vertdata << " vp_out; \n";
+        else
+            buf << "out " << fragdata << " vp_out; \n";
+
+        if ( tessEvalStage || (viewStage && viewStageInTessEvalShader) || (clipStage && clipStageInTessEvalShader) )
+        {
+            buf << "\n// Function declarations:\n";
+            if ( tessEvalStage )
+            {
+                for( OrderedFunctionMap::const_iterator i = tessEvalStage->begin(); i != tessEvalStage->end(); ++i )
+                {
+                    buf << "void " << i->second._name << "(); \n";
+                }
+            }
+
+            if (viewStage && viewStageInTessEvalShader)
+            {
+                for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+                {
+                    buf << "void " << i->second._name << "(inout vec4); \n";
+                }
+            }
+
+            if (clipStage && clipStageInTessEvalShader) 
+            {
+                for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+                {
+                    buf << "void " << i->second._name << "(inout vec4); \n";
+                }
+            }
+
+            // Helper functions:
+            buf << "\nvoid VP_LoadVertex(in int index) \n"
+                << "{ \n";
+        
+            // Copy input block to stage globals:
+            for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+                buf << INDENT << i->second << " = vp_in[index]." << i->second << "; \n";
+
+            buf << "} \n";
+
+            buf << "\nvoid VP_InterpolateVertex() \n"
+                << "{ \n";
+            
+            for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+            {
+                buf << INDENT << i->second << " = ("
+                    << "vp_in[0]." << i->second << "*gl_TessCoord.x + "
+                    << "vp_in[1]." << i->second << "*gl_TessCoord.y + "
+                    << "vp_in[2]." << i->second << "*gl_TessCoord.z); \n";
+
+                //buf << INDENT << i->second << " = normalize("
+                //    << "vp_in[0]." << i->second << "*gl_TessCoord.x + "
+                //    << "vp_in[1]." << i->second << "*gl_TessCoord.y + "
+                //    << "vp_in[2]." << i->second << "*gl_TessCoord.z); \n";
+            }
+
+            buf << "} \n";
+
+            buf << "\nvoid VP_EmitVertex() \n"
+                << "{ \n";
+
+            int space = SPACE_MODEL;
+
+            if ( viewStage && viewStageInTessEvalShader )
+            {
+                buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n";
+                space = SPACE_VIEW;
+
+                for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+                {
+                    buf << INDENT << i->second._name << "(vp_Vertex); \n";
+                }
+            }
+
+            if ( clipStage && clipStageInTessEvalShader )
+            {
+                if ( space == SPACE_MODEL )
+                    buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
+                else if ( space == SPACE_VIEW )
+                    buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+
+                space = SPACE_CLIP;
+
+                for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+                {
+                    buf << INDENT << i->second._name << "(vp_Vertex); \n";
+                }
+            }
+
+            // resolve vertex to its next space:
+            if ( space == SPACE_MODEL )
+                buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
+            else if ( space == SPACE_VIEW )
+                buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+        
+            // Copy globals to output block:
+            for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+                buf << INDENT << "vp_out." << i->second << " = " << i->second << "; \n";
+
+            buf // INDENT << "gl_Position = vp_Vertex; \n"
+                << "} \n";
+        }
+
+        buf << "\n"
+            << "void main(void) \n"
+            << "{ \n"
+            << INDENT "// copy default outputs: \n";
+        
+        if ( !tessEvalStage )
+        {
+            // Copy default input block to output block (auto passthrough on first vert)
+            // NOT SURE WE NEED THIS
+            for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+                buf << INDENT << "vp_out." << i->second << " = vp_in[0]." << i->second << "; \n";
+        }
+
+        if ( tessEvalStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = tessEvalStage->begin(); i != tessEvalStage->end(); ++i )
+            {
+                buf << INDENT << i->second._name << "(); \n";
+            }
+        }
+
+        buf << INDENT << "gl_Position = vp_Vertex; \n";
+        buf << "} \n";
+        
+        std::string str = buf.str();
+        osg::Shader* tesShader = new osg::Shader(osg::Shader::TESSEVALUATION, str);
+        tesShader->setName("VP TES");
+        out_shaders.push_back( tesShader );
     }
 
 

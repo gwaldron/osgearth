@@ -48,6 +48,7 @@ _magFilter( osg::Texture::LINEAR),
 _primaryTraversalMask  ( 0xFFFFFFFF ),
 _secondaryTraversalMask( 0x80000000 ),
 _minNormalMapLOD( 0u ),
+_gpuTessellation( false ),
 _debug( false )
 {
     fromConfig( _conf );
@@ -81,6 +82,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "primary_traversal_mask", _primaryTraversalMask );
     conf.updateIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
     conf.updateIfSet( "min_normal_map_lod", _minNormalMapLOD );
+    conf.updateIfSet( "gpu_tessellation", _gpuTessellation );
     conf.updateIfSet( "debug", _debug );
 
     //Save the filter settings
@@ -125,6 +127,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "primary_traversal_mask", _primaryTraversalMask );
     conf.getIfSet( "secondary_traversal_mask", _secondaryTraversalMask );
     conf.getIfSet( "min_normal_map_lod", _minNormalMapLOD );
+    conf.getIfSet( "gpu_tessellation", _gpuTessellation );
     conf.getIfSet( "debug", _debug );
 
     //Load the filter settings

@@ -1,0 +1,95 @@
+<!--
+osgEarth Sample - OpenGL Tessellation Shaders
+
+This example injects a Tessellation Control Shader (TCS) and 
+Tessellation Evaluation Shader (TES) into the terrain rendering
+pipeline. This is EXPERIMENTAL so please be advised of the 
+following caveats:
+
+* Terrain skirts will not render. Set "skirt_ratio" to zero or you
+  will get GL errors.
+* You must set gpu_tessellation="true" on the terrain options.
+* Tessellation inner and outer levels are in uniforms ("inner" and "outer")
+  so you can use the --uniform switch to control them like so:
+  
+osgearth_viewer tessshader.earth --uniform inner 1 20 --uniform outer 1 20  
+
+-->
+<map name="readymap.org" type="geocentric">
+    
+    <options>
+        <terrain first_lod="1" skirt_ratio="0" tile_size="7" gpu_tessellation="true"/>
+    </options>
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    
+    <image driver="debug"/>
+    
+    <extensions>
+    
+        <terrainshader>
+            <code><![CDATA[
+            
+                #version 400 compatibility
+                #pragma vp_entryPoint "configureTess"
+                #pragma vp_location   "tess_control"
+                
+                uniform float inner=3, outer=3;
+
+                layout(vertices = 3) out;
+                
+                void configureTess()
+                {
+                    if ( gl_InvocationID == 0 )
+                    {
+                        //Experimenting with distance-based tessellation levels:
+                        //float d = -(gl_ModelViewMatrix * gl_in[0].gl_Position).z;
+                        //float level = d < 10000.0 ? 4.0 : d < 100000.0 ? 3.0 : d < 1000000.0 ? 2.0 : 1.0;
+                    
+                        gl_TessLevelInner[0] = inner;
+                        gl_TessLevelOuter[0] = outer;
+                        gl_TessLevelOuter[1] = outer;
+                        gl_TessLevelOuter[2] = outer;
+                    }
+                }
+                
+            ]]></code>
+        </terrainshader>
+        
+        <terrainshader>
+            <code><![CDATA[            
+                #version 410
+                #pragma vp_entryPoint "generateVertex"
+                #pragma vp_location   "tess_eval"
+
+                layout(triangles, equal_spacing, ccw) in;
+                                
+                void VP_InterpolateVertex();
+                void VP_EmitVertex();    
+                
+                void generateVertex()
+                {                    
+                    VP_InterpolateVertex();
+                    VP_EmitVertex();
+                }
+            ]]></code>
+        </terrainshader>
+        
+        <viewpoints>
+            <viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>
+            <viewpoint name="Mt R. Nadir 30K" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>
+            <viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
+            <viewpoint name="Mt R. Closeup" heading="-109.6842970297122" height="3843.486737414263" lat="46.85528453766688" long="-121.7455004166102" pitch="-4.617466338845979" range="951.4780720092711"/>
+            <viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
+            <viewpoint name="Nepal Closeup" heading="-49.14546953546358" height="6334.332569343038" lat="27.9421778947837" long="86.9935949004298" pitch="-3.643325527310435" range="13302.81192964212"/>
+            <viewpoint name="Matterhorn" heading="-1.429462844200832" height="2282.858508689329" lat="45.95106319557" long="7.642741711675961" pitch="-25.12269405854052" range="26690.10606054494"/>
+        </viewpoints>
+        
+    </extensions>
+</map>

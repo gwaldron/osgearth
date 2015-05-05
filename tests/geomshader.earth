@@ -1,0 +1,58 @@
+<!--
+osgEarth Sample - Geometry Shader
+
+This example shows how to inject a GLSL Geometry Shader into the Terrain
+Rendering pipeline. 
+
+-->
+<map name="readymap.org" type="geocentric">
+    
+    <options>
+        <terrain first_lod="1" normalize_edges="true"/>
+    </options>
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    
+    <extensions>
+    
+        <terrainshader>
+            <code><![CDATA[
+            
+                #version 330
+                #pragma vp_entryPoint "pulsate"
+                #pragma vp_location   "geometry"
+
+                layout(triangles) in;
+                layout(triangle_strip) out;
+                layout(max_vertices = 3) out;
+                
+                void VP_LoadVertex(in int);
+                void VP_EmitVertex(in vec4);
+
+                uniform float osg_FrameTime;
+                
+                void pulsate()
+                {
+                    float strength = 0.25 + sin(osg_FrameTime*2.0)*0.25;
+                    vec4 cen = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position)/3.0;
+                    for(int i=0; i < 3; ++i)
+                    {
+                        VP_LoadVertex(i);
+                        vec4 vert = gl_in[i].gl_Position;
+                        vert += vec4(normalize(cen.xyz-vert.xyz) * distance(cen, vert) * strength, 0.0);
+                        VP_EmitVertex(vert);
+                    }
+                    EndPrimitive();
+                }
+                
+            ]]></code>
+        </terrainshader>
+        
+    </extensions>
+</map>

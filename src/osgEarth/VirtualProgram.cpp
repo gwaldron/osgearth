@@ -342,12 +342,29 @@ namespace
         }
         else
         {
-            int c = 1;
-            for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
+            if ( !s_dumpShaders )
             {
-                program->addShader( i->get() );
-                if ( s_dumpShaders )
+                for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
                 {
+                    program->addShader( i->get() );
+                }
+            }
+            else
+            {
+                struct SortByType {
+                    bool operator()(osg::Shader* lhs, osg::Shader* rhs) const {
+                        return lhs->getType() < rhs->getType();
+                    }
+                };
+                VirtualProgram::ShaderVector copy(shaders);
+                std::sort(copy.begin(), copy.end(), SortByType());
+
+                int c = 1;
+
+                for( VirtualProgram::ShaderVector::const_iterator i = copy.begin(); i != copy.end(); ++i )
+                {
+                    program->addShader( i->get() );
+
                     osg::Shader::Type t = i->get()->getType();
 
                     std::string typeName =
@@ -357,7 +374,7 @@ namespace
                         t == osg::Shader::TESSEVALUATION ? "tesseval" :
                         t == osg::Shader::FRAGMENT       ? "fragment" :
                         t == osg::Shader::COMPUTE        ? "compute" :
-                                                           "UNKNOWN!";
+                                                            "UNKNOWN!";
 
                     OE_NOTIFY(osg::NOTICE,"")
                         << "--- [ " << (c++) << "/" << shaders.size() << " " << typeName << " ] ------------------\n\n"
@@ -1685,13 +1702,13 @@ PolyShader::prepare()
         case ShaderComp::LOCATION_VERTEX_CLIP:
             nominalType = osg::Shader::VERTEX;
             break;
-        case ShaderComp::LOCATION_VERTEX_TESSCONTROL:
+        case ShaderComp::LOCATION_TESS_CONTROL:
             nominalType = osg::Shader::TESSCONTROL;
             break;
-        case ShaderComp::LOCATION_VERTEX_TESSEVALUATION:
+        case ShaderComp::LOCATION_TESS_EVALUATION:
             nominalType = osg::Shader::TESSEVALUATION;
             break;
-        case ShaderComp::LOCATION_VERTEX_GEOMETRY:
+        case ShaderComp::LOCATION_GEOMETRY:
             nominalType = osg::Shader::GEOMETRY;
             break;
         case ShaderComp::LOCATION_FRAGMENT_COLORING:

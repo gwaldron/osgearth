@@ -429,7 +429,7 @@ namespace TEST_7
     {
         osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
         vp->setFunction( "myVertShader", vert, osgEarth::ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->setFunction( "myGeomShader", geom, osgEarth::ShaderComp::LOCATION_VERTEX_GEOMETRY );
+        vp->setFunction( "myGeomShader", geom, osgEarth::ShaderComp::LOCATION_GEOMETRY );
         vp->setFunction( "myFragShader", frag, osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING );
         vp->setShaderLogging(true, "test7.glsl");
         return vp;

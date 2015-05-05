@@ -42,6 +42,7 @@
 #include <osg/Timer>
 #include <osg/Depth>
 #include <osg/BlendFunc>
+#include <osg/PatchParameter>
 #include <osgDB/DatabasePager>
 #include <osgUtil/RenderBin>
 #include <osgUtil/RenderLeaf>
@@ -875,6 +876,12 @@ MPTerrainEngineNode::updateState()
         }
 
         osg::StateSet* terrainStateSet = getTerrainStateSet();
+
+        // install patch param if we are tessellation on the GPU.
+        if ( _terrainOptions.gpuTessellation() == true )
+        {
+            terrainStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
+        }
         
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(

@@ -138,6 +138,7 @@ namespace
             ownsTileCoords   = false;
             stitchTileCoords = 0L;
             installParentData = false;
+            usePatches       = false;
         }
 
         osg::Matrixd local2world, world2local;
@@ -192,6 +193,8 @@ namespace
         // for masking/stitching:
         MaskRecordVector         maskRecords;
         //MPGeometry*              stitchGeom;
+
+        bool                     usePatches;
 
         bool useUInt;
         osg::DrawElements* newDrawElements(GLenum mode) {
@@ -1319,7 +1322,8 @@ namespace
 
         unsigned numSurfaceNormals = d.numRows * d.numCols;
 
-        osg::DrawElements* elements = d.newDrawElements(GL_TRIANGLES);
+        GLenum mode = d.usePatches ? GL_PATCHES : GL_TRIANGLES;
+        osg::DrawElements* elements = d.newDrawElements(mode);
         elements->reserveElements((d.numRows-1) * (d.numCols-1) * 6);
 
         if ( recalcNormals )
@@ -2062,6 +2066,7 @@ TileModelCompiler::compile(TileModel*        model,
     d.parentModel = model->getParentTileModel();
     d.heightScale = *_options.verticalScale();
     d.heightOffset = *_options.verticalOffset();
+    d.usePatches = *_options.gpuTessellation();
 
     // A Geode/Geometry for the surface:
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );

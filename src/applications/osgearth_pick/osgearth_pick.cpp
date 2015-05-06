@@ -110,7 +110,7 @@ const char* highlightVert =
     "flat out int selected; \n"
     "void highlightVertex(inout vec4 vertex) \n"
     "{ \n"
-    "    selected = (objectid_to_highlight > uint(1) && objectid_to_highlight == oe_index_objectid) ? 1 : 0; \n"
+    "    selected = (objectid_to_highlight > 1u && objectid_to_highlight == oe_index_objectid) ? 1 : 0; \n"
     "} \n";
 
 const char* highlightFrag =

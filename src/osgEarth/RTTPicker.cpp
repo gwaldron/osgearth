@@ -45,14 +45,14 @@ namespace
 
         "void oe_pick_vert_encode(inout vec4 vertex) \n"
         "{ \n"
-        "    oe_pick_color_contains_objectid = (oe_index_objectid == uint(1)) ? 1 : 0; \n"
+        "    oe_pick_color_contains_objectid = (oe_index_objectid == 1u) ? 1 : 0; \n"
         "    if ( oe_pick_color_contains_objectid == 0 ) \n"
         "    { \n"
-        "        float b0 = float((oe_index_objectid & uint(0xff000000)) >> 24)/255.0; \n"
-        "        float b1 = float((oe_index_objectid & uint(0x00ff0000)) >> 16)/255.0; \n"
-        "        float b2 = float((oe_index_objectid & uint(0x0000ff00)) >>  8)/255.0; \n"
-        "        float b3 = float((oe_index_objectid & uint(0x000000ff)) >>  0)/255.0; \n"
-        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3); \n"
+        "        float b0 = float((oe_index_objectid & 0xff000000u) >> 24u); \n"
+        "        float b1 = float((oe_index_objectid & 0x00ff0000u) >> 16u); \n"
+        "        float b2 = float((oe_index_objectid & 0x0000ff00u) >> 8u ); \n"
+        "        float b3 = float((oe_index_objectid & 0x000000ffu)       ); \n"
+        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3) * 0.00392156862; \n" // i.e. 1/255
         "    } \n"
         "} \n";
 

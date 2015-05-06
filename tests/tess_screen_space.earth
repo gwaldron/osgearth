@@ -1,55 +1,19 @@
 <!--
 osgEarth Sample - OpenGL Tessellation Shaders
 
-This example injects a Tessellation Control Shader (TCS) and 
-Tessellation Evaluation Shader (TES) into the terrain rendering
-pipeline. This is EXPERIMENTAL so please be advised of the 
-following caveats:
-
- * Terrain skirts will not render. Set "skirt_ratio" to zero or you
-   will get GL errors.
- * Set gpu_tessellation="true" on the terrain options.
- * EarthManipulator doesn't like GL_PATCHES (yet). Use the viewpoints.
-  
-Press 'w' for wireframe mode to see the tessellation!
+This example demonstrates screen-space terrain tessellation.
 -->
 
 <map name="readymap.org" type="geocentric">
     
     <options>        
-        <terrain first_lod="1" skirt_ratio="0" tile_size="7" gpu_tessellation="true"/>
+        <terrain first_lod="3" max_lod="3" skirt_ratio="0" tile_size="7" gpu_tessellation="true"/>
     </options>
     
     <image name="readymap_imagery" driver="tms" opacity="0.5">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
         
-    <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
-    </elevation>
-    
-    <!--
-     | Rasterized feature layer that we use to mask the tessellation.
-     | The max_data_level keeps the mask lo-res enough what we don't get
-     | artifacts at high LODs.
-     |
-     | Data is from NaturalEarth (www.naturalearthdata.com)
-     -->
-    <image name="features" driver="agglite" shared="true" visible="true" max_data_level="7">
-        <features driver="ogr">
-            <url>../data/ne_10m_coastline.zip/ne_10m_coastline.shp</url>
-        </features>
-        <styles>
-            <style type="text/css">
-                default {
-                    stroke: #ffbf007f;
-                    stroke-width: 2.5km;
-                }
-            </style>
-        </styles>
-        <cache_policy usage="no_cache"/>
-    </image>
-    
     <extensions>
     
         <terrainshader>
@@ -59,44 +23,42 @@ Press 'w' for wireframe mode to see the tessellation!
                 #pragma vp_entryPoint "configureTess"
                 #pragma vp_location   "tess_control"
                 
-                // Access to the rasterized mask layer. In the future these
-                // will be programmable..
-                uniform sampler2D oe_layer_2_tex;
-                uniform mat4      oe_layer_2_texmat;
-
-                // General tile coords [0..1]
-                in vec4 oe_layer_tilec;
-
                 layout(vertices=3) out;
                 
-                // Internal helper functions:
-                void VP_LoadVertex(in int);
+                // http://codeflow.org/entries/2010/nov/07/opengl-4-tessellation/
+                
+                uniform float pixelsPerEdge = 64;
+                uniform vec2  viewportSize  = vec2(1024,1024);
+                                
+                // convert model position to viewport coordinates.
+                vec2 toPixels(in vec4 pos) {    
+                    vec4 clip = gl_ModelViewProjectionMatrix * pos;
+                    return clamp( (clip.xy/clip.w), -1.3, 1.3) * (viewportSize*0.5);
+                }
+                
+                // calculate a tesselation level based on the maximum edge length uniform.
+                float tessLevel(in vec2 v0, in vec2 v1) {
+                    return clamp(distance(v0,v1)/pixelsPerEdge, 1.0, 64.0);
+                }
                 
                 void configureTess()
                 {
-                    #define id gl_InvocationID
                     // Only required for the first invocation:
-                    if ( id == 0 )
-                    {                         
-                        vec3 v;
+                    if ( gl_InvocationID == 0 )
+                    {                       
+                        vec2 ss0 = toPixels( gl_in[0].gl_Position );
+                        vec2 ss1 = toPixels( gl_in[1].gl_Position );
+                        vec2 ss2 = toPixels( gl_in[2].gl_Position );
                         
-                        // Sample the mask texture at all 3 verts of the triangle:
-                        for(int i=0; i<3; ++i)
-                        {
-                            VP_LoadVertex(i);
-                            v[i] = texture(oe_layer_2_tex, (oe_layer_2_texmat*oe_layer_tilec).st).a;
-                        }
+                        float e0 = tessLevel(ss1, ss2);
+                        float e1 = tessLevel(ss2, ss0);
+                        float e2 = tessLevel(ss0, ss1);
                         
-                        // Average the weights for each edge level:
-                        gl_TessLevelOuter[0] = 1.0 + 5.0*mix(v[1], v[2], 0.5);
-                        gl_TessLevelOuter[1] = 1.0 + 5.0*mix(v[2], v[0], 0.5);
-                        gl_TessLevelOuter[2] = 1.0 + 5.0*mix(v[0], v[1], 0.5);
+                        gl_TessLevelOuter[0] = e0;
+                        gl_TessLevelOuter[1] = e1;
+                        gl_TessLevelOuter[2] = e2;
                         
-                        // Average all weights for the inner ring count:
-                        gl_TessLevelInner[0] = 1.0 + 4.0*(v.x+v.y+v.z)/3.0;
-                        
-                        // Reset the loaded vertex to the current invocation.
-                        VP_LoadVertex(id);
+                        gl_TessLevelInner[0] = (e0+e1+e2)/3.0;
                     }
                 }
                 

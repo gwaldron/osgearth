@@ -189,7 +189,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     std::string vertdata;
     {
         std::stringstream buf;
-        buf << "VP_Transit { \n";
+        buf << "VP_PerVertex { \n";
         for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
         {
             buf << INDENT << i->first << " " << i->second << "; \n";
@@ -381,6 +381,17 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         buf << "\n// TCS stage globals \n";
         for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
             buf << i->first << " " << i->second << "; \n";
+
+        // Helper functions:
+        // TODO: move this into its own osg::Shader so it can be shared.
+        buf << "\nvoid VP_LoadVertex(in int index) \n"
+            << "{ \n";
+        
+        // Copy input block to stage globals:
+        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+            buf << INDENT << i->second << " = vp_in[index]." << i->second << "; \n";
+
+        buf << "} \n";
         
         // Function declares
         if ( tessStage )
@@ -445,6 +456,13 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         else
             buf << "out " << fragdata << " vp_out; \n";
 
+        buf <<
+            "\n// TES user-supplied interpolators: \n"
+            "float VP_Interpolate3(float,float,float); \n"
+            "vec2  VP_Interpolate3(vec2,vec2,vec2); \n"
+            "vec3  VP_Interpolate3(vec3,vec3,vec3); \n"
+            "vec4  VP_Interpolate3(vec4,vec4,vec4); \n";
+
         if ( tessEvalStage || (viewStage && viewStageInTessEvalShader) || (clipStage && clipStageInTessEvalShader) )
         {
             buf << "\n// Function declarations:\n";
@@ -487,15 +505,10 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             
             for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
             {
-                buf << INDENT << i->second << " = ("
-                    << "vp_in[0]." << i->second << "*gl_TessCoord.x + "
-                    << "vp_in[1]." << i->second << "*gl_TessCoord.y + "
-                    << "vp_in[2]." << i->second << "*gl_TessCoord.z); \n";
-
-                //buf << INDENT << i->second << " = normalize("
-                //    << "vp_in[0]." << i->second << "*gl_TessCoord.x + "
-                //    << "vp_in[1]." << i->second << "*gl_TessCoord.y + "
-                //    << "vp_in[2]." << i->second << "*gl_TessCoord.z); \n";
+                buf << INDENT << i->second << " = VP_Interpolate3"
+                    << "( vp_in[0]." << i->second
+                    << ", vp_in[1]." << i->second
+                    << ", vp_in[2]." << i->second << " ); \n";
             }
 
             buf << "} \n";

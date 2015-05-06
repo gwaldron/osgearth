@@ -792,6 +792,7 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             if ( !texMatUniformName.isSet() )
             {
                 texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texmat";
+                OE_INFO << LC << "Layer \"" << layerAdded->getName() << "\" texmat uniform = \"" << texMatUniformName.get() << "\"\n";
             }
         }
     }
@@ -891,6 +892,9 @@ MPTerrainEngineNode::updateState()
         terrainStateSet->setAttributeAndModes( 
             new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON );
+
+        // TESTING
+        terrainStateSet->addUniform( new osg::Uniform("sharedTexture", (int)2) );
 
         // install shaders, if we're using them.
         if ( Registry::capabilities().supportsGLSL() )
@@ -1034,6 +1038,18 @@ MPTerrainEngineNode::updateState()
             // special object ID that denotes the terrain surface.
             terrainStateSet->addUniform( new osg::Uniform(
                 Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
+
+            // bind the shared layer uniforms.
+            for(ImageLayerVector::const_iterator i = _update_mapf->imageLayers().begin(); i != _update_mapf->imageLayers().end(); ++i)
+            {
+                const ImageLayer* layer = i->get();
+                if ( layer->isShared() )
+                {
+                    std::string texName = Stringify() << "oe_layer_" << layer->getUID() << "_tex";
+                    terrainStateSet->addUniform( new osg::Uniform(texName.c_str(), layer->shareImageUnit().get()) );
+                    OE_INFO << LC << "Layer \"" << layer->getName() << "\" in uniform \"" << texName << "\"\n";
+                }
+            }
         }
 
         _stateUpdateRequired = false;

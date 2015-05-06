@@ -1674,15 +1674,17 @@ PolyShader::getShader(ShaderComp::StageMask mask) const
     {
         OE_DEBUG << "getShader, mask = " << std::hex << mask << ", location = " << _location << "\n";
         
-        if ( mask & ShaderComp::STAGE_TESSEVALULATION )
-        {
-            OE_DEBUG << "Installing TES for VIEW/CLIP shader!\n";
-            return _tessevalShader.get();
-        }
-        else if ( mask & ShaderComp::STAGE_GEOMETRY )
+        // geometry stage has priority (runs last)
+        if ( mask & ShaderComp::STAGE_GEOMETRY )
         {
             OE_DEBUG << "Installing GS for VIEW/CLIP shader!\n";
             return _geomShader.get();
+        }
+
+        else if ( mask & ShaderComp::STAGE_TESSEVALULATION )
+        {
+            OE_DEBUG << "Installing TES for VIEW/CLIP shader!\n";
+            return _tessevalShader.get();
         }
     }
 

@@ -95,7 +95,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
     // geometry shader functions:
     f = functions.find( LOCATION_TESS_CONTROL );
-    const OrderedFunctionMap* tessStage = f != functions.end() ? &f->second : 0L;
+    const OrderedFunctionMap* tessControlStage = f != functions.end() ? &f->second : 0L;
 
     // geometry shader functions:
     f = functions.find( LOCATION_TESS_EVALUATION );
@@ -122,22 +122,22 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     const OrderedFunctionMap* outputStage = f != functions.end() ? &f->second : 0L;
 
     // what do we need to build?
-    bool hasGeomShader     = geomStage     && !geomStage->empty();
-    bool hasTessShader     = tessStage     && !tessStage->empty();
-    bool hasTessEvalShader = tessEvalStage && !tessEvalStage->empty();
-    bool hasFragShader     = true;
-    bool hasVertShader     = true;
+    bool hasGS  = geomStage        && !geomStage->empty();
+    bool hasTCS = tessControlStage && !tessControlStage->empty();
+    bool hasTES = tessEvalStage    && !tessEvalStage->empty();
+    bool hasFS  = true;
+    bool hasVS  = true;
     
     // where to insert the view/clip stage vertex functions:
-    bool viewStageInGeomShader     = hasGeomShader;
-    bool viewStageInTessEvalShader = hasTessEvalShader && !hasGeomShader;
-    bool viewStageInVertexShader   = !viewStageInTessEvalShader && !viewStageInGeomShader;
+    bool viewStageInGS  = hasGS;
+    bool viewStageInTES = !viewStageInGS && hasTES;
+    bool viewStageInVS  = !viewStageInTES && !viewStageInGS;
 
-    OE_DEBUG << "hasGeomShader = " << hasGeomShader << "; viewStageInVertexShader = " << viewStageInVertexShader << "\n";
+    //OE_WARN << "viewStageInVS = " << viewStageInVS << "; viewStageInTES = " << viewStageInTES << "; viewStageInGS = " << viewStageInGS << "\n";
     
-    bool clipStageInGeomShader     = hasGeomShader;
-    bool clipStageInTessEvalShader = hasTessEvalShader && !hasGeomShader;
-    bool clipStageInVertexShader   = !clipStageInGeomShader && !clipStageInTessEvalShader;
+    bool clipStageInGS  = hasGS;
+    bool clipStageInTES = hasTES && !hasGS;
+    bool clipStageInVS  = !clipStageInGS && !clipStageInTES;
 
     // search for pragma varyings and build up our interface block definitions.
     typedef std::set<std::string> VaryingDefs;
@@ -206,7 +206,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         //"}";
 
     // Build the vertex shader.
-    if ( hasVertShader )
+    if ( hasVS )
     {
         stages |= ShaderComp::STAGE_VERTEX;
 
@@ -222,13 +222,13 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             buf << i->first << " " << i->second << "; \n";
         
         buf << "\n// Vertex stage outputs:\n";
-        if ( hasGeomShader || hasTessShader )
+        if ( hasGS || hasTCS )
             buf << "out " << vertdata << " vp_out; \n";
         else
             buf << "out " << fragdata << " vp_out; \n";
 
         // prototype functions:
-        if ( modelStage || (viewStage && viewStageInVertexShader) || (clipStage && clipStageInVertexShader) )
+        if ( modelStage || (viewStage && viewStageInVS) || (clipStage && clipStageInVS) )
         {
             buf << "\n// Function declarations:\n";
         }
@@ -242,7 +242,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         }
 
         // prototypes for view stage methods:
-        if ( viewStage != 0L && viewStageInVertexShader )
+        if ( viewStage != 0L && viewStageInVS )
         {
             for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
             {
@@ -251,20 +251,12 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         }
 
         // prototypes for clip stage methods:
-        if ( clipStage != 0L && clipStageInVertexShader )
+        if ( clipStage != 0L && clipStageInVS )
         {
             for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
             {
                 buf << "void " << i->second._name << "(inout vec4); \n";
             }
-        }
-
-        if ( hasGeomShader || hasTessShader || hasFragShader )
-        {
-        }
-
-        if ( hasGeomShader || hasTessShader )
-        {
         }
 
         buf <<
@@ -283,7 +275,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             }
         }
 
-        if ( viewStageInVertexShader )
+        if ( viewStageInVS )
         {
             if ( viewStage )
             {
@@ -297,7 +289,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 }
             }
 
-            if ( clipStageInVertexShader )
+            if ( clipStageInVS )
             {
                 if ( clipStage )
                 {
@@ -322,7 +314,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         // if there are no further vertex-processing stages, transform the position into clip coordinates
         // for the fragment shader now:
-        if ( !hasGeomShader && !hasTessShader )
+        if ( !hasGS && !hasTCS )
         {
             if ( clipStage )
                 buf << INDENT "gl_Position = vp_Vertex; \n";
@@ -339,7 +331,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         }
 
 
-        if ( hasTessShader || hasGeomShader || hasFragShader )
+        if ( hasTCS || hasGS || hasFS )
         {
             // Copy stage globals to output block:
             for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
@@ -359,7 +351,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     //.................................................................................
 
 
-    if ( hasTessShader )
+    if ( hasTCS )
     {
         stages |= ShaderComp::STAGE_TESSCONTROL;
         std::stringstream buf;
@@ -367,7 +359,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         buf << "#version 400\n"
             << "#pragma name \"VP Tessellation Control Shader (TCS) Main\" \n";
 
-        if ( hasVertShader )
+        if ( hasVS )
         {
               buf << "\n// TCS stage inputs:\n"
                  << "in " << vertdata << " vp_in []; \n";
@@ -394,10 +386,10 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         buf << "} \n";
         
         // Function declares
-        if ( tessStage )
+        if ( tessControlStage )
         {
             buf << "\n// Function declarations:\n";
-            for( OrderedFunctionMap::const_iterator i = tessStage->begin(); i != tessStage->end(); ++i )
+            for( OrderedFunctionMap::const_iterator i = tessControlStage->begin(); i != tessControlStage->end(); ++i )
                 buf << "void " << i->second._name << "(); \n";
         }
 
@@ -411,9 +403,9 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             buf << INDENT << i->second << " = vp_in[gl_InvocationID]." << i->second << "; \n";
 
         // Invoke functions
-        if ( tessStage )
+        if ( tessControlStage )
         {
-            for( OrderedFunctionMap::const_iterator i = tessStage->begin(); i != tessStage->end(); ++i )
+            for( OrderedFunctionMap::const_iterator i = tessControlStage->begin(); i != tessControlStage->end(); ++i )
                 buf << INDENT << i->second._name << "(); \n";
         }
                 
@@ -433,7 +425,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     //.................................................................................
 
 
-    if ( hasTessEvalShader )
+    if ( hasTES )
     {
         stages |= ShaderComp::STAGE_TESSEVALULATION;
 
@@ -451,7 +443,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             buf << i->first << " " << i->second << "; \n";
         
         buf << "\n// TES stage outputs: \n";
-        if ( hasGeomShader )
+        if ( hasGS )
             buf << "out " << vertdata << " vp_out; \n";
         else
             buf << "out " << fragdata << " vp_out; \n";
@@ -463,7 +455,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             "vec3  VP_Interpolate3(vec3,vec3,vec3); \n"
             "vec4  VP_Interpolate3(vec4,vec4,vec4); \n";
 
-        if ( tessEvalStage || (viewStage && viewStageInTessEvalShader) || (clipStage && clipStageInTessEvalShader) )
+        if ( tessEvalStage || (viewStage && viewStageInTES) || (clipStage && clipStageInTES) )
         {
             buf << "\n// Function declarations:\n";
             if ( tessEvalStage )
@@ -474,7 +466,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 }
             }
 
-            if (viewStage && viewStageInTessEvalShader)
+            if (viewStage && viewStageInTES)
             {
                 for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
                 {
@@ -482,7 +474,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 }
             }
 
-            if (clipStage && clipStageInTessEvalShader) 
+            if (clipStage && clipStageInTES) 
             {
                 for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
                 {
@@ -518,7 +510,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
             int space = SPACE_MODEL;
 
-            if ( viewStage && viewStageInTessEvalShader )
+            if ( viewStage && viewStageInTES )
             {
                 buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n";
                 space = SPACE_VIEW;
@@ -529,7 +521,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 }
             }
 
-            if ( clipStage && clipStageInTessEvalShader )
+            if ( clipStage && clipStageInTES )
             {
                 if ( space == SPACE_MODEL )
                     buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
@@ -554,7 +546,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
                 buf << INDENT << "vp_out." << i->second << " = " << i->second << "; \n";
 
-            buf // INDENT << "gl_Position = vp_Vertex; \n"
+            buf << INDENT << "gl_Position = vp_Vertex; \n"
                 << "} \n";
         }
 
@@ -579,7 +571,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             }
         }
 
-        buf << INDENT << "gl_Position = vp_Vertex; \n";
+        //buf << INDENT << "gl_Position = vp_Vertex; \n";
         buf << "} \n";
         
         std::string str = buf.str();
@@ -593,7 +585,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
 
     // Build the geometry shader.
-    if ( hasGeomShader )
+    if ( hasGS )
     {
         stages |= ShaderComp::STAGE_GEOMETRY;
 
@@ -602,33 +594,26 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         buf << "#version 330\n"
             << "#pragma name \"VP Geometry Shader Main\" \n";
 
-        if ( hasVertShader )
+        if ( hasVS || hasTCS || hasTES )
         {
-              buf << "\n// Geometry stage inputs:\n"
-                 << "in " << vertdata << " vp_in []; \n";
-        }
-        
-        buf << "\n// Geometry stage globals: \n";
+            buf << "\n// Geometry stage inputs:\n"
+                << "in " << vertdata << " vp_in []; \n";
+        }        
 
         // Declare stage globals.
+        buf << "\n// Geometry stage globals: \n";
         for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
             buf << i->first << " " << i->second << "; \n";
         
-        buf << "\n// Geometry stage outputs: \n";
-        if ( hasTessShader )
-            buf << "out " << vertdata << " vp_out; \n";
-        else
-            buf << "out " << fragdata << " vp_out; \n";
+        buf << "\n// Geometry stage outputs: \n"
+            << "out " << fragdata << " vp_out; \n";
 
-        if ( geomStage || (viewStage && viewStageInGeomShader) || (clipStage && clipStageInGeomShader) )
+        if ( geomStage )
         {
             buf << "\n// Function declarations:\n";
-            if ( geomStage )
+            for( OrderedFunctionMap::const_iterator i = geomStage->begin(); i != geomStage->end(); ++i )
             {
-                for( OrderedFunctionMap::const_iterator i = geomStage->begin(); i != geomStage->end(); ++i )
-                {
-                    buf << "void " << i->second._name << "(); \n";
-                }
+                buf << "void " << i->second._name << "(); \n";
             }
         }
 
@@ -664,20 +649,18 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         buf << "#version 330 compatibility\n"
             << "#pragma name \"VP Geometry Shader Helper Functions\"\n\n";
 
-        buf << "in " << vertdata << " vp_in []; \n\n";       
+        buf << "\n// Geometry stage inputs:\n"
+            << "in " << vertdata << " vp_in []; \n\n";       
         
-        if ( hasTessShader )
-            buf << "out " << vertdata << " vp_out; \n";
-        else
-            buf << "out " << fragdata << " vp_out; \n";
+        buf << "\n// Geometry stage outputs: \n"
+            << "out " << fragdata << " vp_out; \n";
         
         // Declare stage globals.
         buf << "\n// Geometry stage globals\n";        
         for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << i->first << " " << i->second << "; \n";
-        
+            buf << i->first << " " << i->second << "; \n";        
 
-        if ( viewStage && viewStageInGeomShader )
+        if ( viewStage && viewStageInGS )
         {
             for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
             {
@@ -685,7 +668,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             }
         }
 
-        if ( clipStage && clipStageInGeomShader )
+        if ( clipStage && clipStageInGS )
         {
             for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
             {
@@ -702,50 +685,50 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         buf << "} \n";
 
-        buf << "\nvoid VP_EmitVertex(in vec4 vertex) \n"
-            << "{ \n"
-            << "    vec4 v = vertex; \n";
+        buf << "\nvoid VP_EmitVertex() \n"
+            << "{ \n";
 
         int space = SPACE_MODEL;
 
-        if ( viewStage && viewStageInGeomShader )
+        if ( viewStage && viewStageInGS )
         {
-            buf << INDENT << "v = " << gl_ModelViewMatrix << " * v; \n";
+            buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * gl_Position; \n";
             space = SPACE_VIEW;
 
             for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
             {
-                buf << INDENT << i->second._name << "(v); \n";
+                buf << INDENT << i->second._name << "(vp_Vertex); \n";
             }
         }
 
-        if ( clipStage && clipStageInGeomShader )
+        if ( clipStage && clipStageInGS )
         {
             if ( space == SPACE_MODEL )
-                buf << INDENT << "v = " << gl_ModelViewProjectionMatrix << " * v; \n";
+                buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
             else if ( space == SPACE_VIEW )
-                buf << INDENT << "v = " << gl_ProjectionMatrix << " * v; \n";
+                buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
 
             space = SPACE_CLIP;
 
             for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
             {
-                buf << INDENT << i->second._name << "(v); \n";
+                buf << INDENT << i->second._name << "(vp_Vertex); \n";
             }
         }
-        
+
+        // resolve vertex to its next space:
+        if ( space == SPACE_MODEL )
+            buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
+        else if ( space == SPACE_VIEW )
+            buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+
+        buf << INDENT << "gl_Position = vp_Vertex; \n";
+                
         // Copy globals to output block:
         for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
             buf << INDENT << "vp_out." << i->second << " = " << i->second << "; \n";
 
-        // resolve vertex to its next space:
-        if ( space == SPACE_MODEL )
-            buf << INDENT << "v = " << gl_ModelViewProjectionMatrix << " * v; \n";
-        else if ( space == SPACE_VIEW )
-            buf << INDENT << "v = " << gl_ProjectionMatrix << " * v; \n";
-
-        buf << INDENT << "gl_Position = v; \n"
-            << INDENT << "EmitVertex(); \n"
+        buf << INDENT << "EmitVertex(); \n"
             << "} \n";
         
         str = buf.str();
@@ -759,7 +742,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
 
     // Build the Fragment shader.
-    if ( hasFragShader )
+    if ( hasFS )
     {
         stages |= ShaderComp::STAGE_FRAGMENT;
 

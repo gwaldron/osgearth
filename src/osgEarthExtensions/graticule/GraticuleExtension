@@ -21,6 +21,7 @@
 
 #include "GraticuleOptions"
 #include "GraticuleTerrainEffect"
+#include "GraticuleNode"
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/Controls>
@@ -37,7 +38,7 @@ namespace osgEarth { namespace Graticule
                                public ExtensionInterface<MapNode>
     {
     public:
-        META_Object(osgearth_ext_normalmap, GraticuleExtension);
+        META_Object(osgearth_ext_graticule, GraticuleExtension);
 
         // CTORs
         GraticuleExtension();
@@ -66,6 +67,7 @@ namespace osgEarth { namespace Graticule
         const GraticuleOptions                 _options;
         osg::ref_ptr<const osgDB::Options>     _dbOptions;
         osg::ref_ptr<GraticuleTerrainEffect>   _effect;
+        osg::ref_ptr<GraticuleNode>            _node;
     };
 
 } } // namespace osgEarth::Graticule

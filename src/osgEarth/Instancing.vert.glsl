@@ -26,7 +26,7 @@ void oe_di_setInstancePosition(inout vec4 VertexMODEL)
 
     // decode the ObjectID from the last column:
     
-    oe_index_objectid = uint(m3[0]) + (uint(m3[1]) << 8) + (uint(m3[2]) << 16) + (uint(m3[3]) << 24);
+    oe_index_objectid = uint(m3[0]) + (uint(m3[1]) << 8u) + (uint(m3[2]) << 16u) + (uint(m3[3]) << 24u);
     
     // rebuild positioning matrix and transform the vert. (Note, the matrix is actually
     // transposed so we have to reverse the multiplication order.)

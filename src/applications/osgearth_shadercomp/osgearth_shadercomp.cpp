@@ -399,7 +399,7 @@ namespace TEST_7
         "layout(max_vertices = 3) out; \n"
         
         "void VP_LoadVertex(in int); \n"
-        "void VP_EmitVertex(in vec4); \n"
+        "void VP_EmitVertex(); \n"
 
         "uniform float osg_FrameTime; \n"
 
@@ -410,9 +410,10 @@ namespace TEST_7
         "    for(int i=0; i < 3; ++i ) \n"
         "    { \n"
         "        VP_LoadVertex(i); \n"
-        "        vec4 vert = gl_in[i].gl_Position; \n"
-        "        vert = vert + vec4(normalize(cen.xyz-vert.xyz) * distance(cen, vert) * strength, 0.0); \n"
-        "        VP_EmitVertex(vert); \n"
+        "        vec4 pos = gl_in[i].gl_Position; \n"
+        "        pos += vec4(normalize(cen.xyz-pos.xyz) * distance(cen, pos) * strength, 0.0); \n"
+        "        gl_Position = pos; \n"
+        "        VP_EmitVertex(); \n"
         "    } \n"
         "    EndPrimitive(); \n"
         "} \n";

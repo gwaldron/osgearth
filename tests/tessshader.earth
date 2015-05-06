@@ -6,18 +6,17 @@ Tessellation Evaluation Shader (TES) into the terrain rendering
 pipeline. This is EXPERIMENTAL so please be advised of the 
 following caveats:
 
-* Terrain skirts will not render. Set "skirt_ratio" to zero or you
-  will get GL errors.
-* You must set gpu_tessellation="true" on the terrain options.
-* Tessellation inner and outer levels are in uniforms ("inner" and "outer")
-  so you can use the --uniform switch to control them like so:
+ * Terrain skirts will not render. Set "skirt_ratio" to zero or you
+   will get GL errors.
+ * Set gpu_tessellation="true" on the terrain options.
+ * EarthManipulator doesn't like GL_PATCHES (yet). Use the viewpoints.
   
-osgearth_viewer tessshader.earth --uniform inner 1 20 --uniform outer 1 20  
-
+Press 'w' for wireframe mode to see the tessellation!
 -->
+
 <map name="readymap.org" type="geocentric">
     
-    <options>
+    <options>        
         <terrain first_lod="1" skirt_ratio="0" tile_size="7" gpu_tessellation="true"/>
     </options>
     
@@ -36,15 +35,15 @@ osgearth_viewer tessshader.earth --uniform inner 1 20 --uniform outer 1 20
      |
      | Data is from NaturalEarth (www.naturalearthdata.com)
      -->
-    <image name="features" driver="agglite" shared="true" visible="false" max_data_level="8">
+    <image name="features" driver="agglite" shared="true" visible="true" max_data_level="7">
         <features driver="ogr">
             <url>../data/ne_10m_coastline.zip/ne_10m_coastline.shp</url>
         </features>
         <styles>
             <style type="text/css">
                 default {
-                    stroke: #9f9fff;
-                    stroke-width: 2km;
+                    stroke: #ffbf007f;
+                    stroke-width: 2.5km;
                 }
             </style>
         </styles>
@@ -60,7 +59,8 @@ osgearth_viewer tessshader.earth --uniform inner 1 20 --uniform outer 1 20
                 #pragma vp_entryPoint "configureTess"
                 #pragma vp_location   "tess_control"
                 
-                // Access to the rasterized mask layer:
+                // Access to the rasterized mask layer. In the future these
+                // will be programmable..
                 uniform sampler2D oe_layer_2_tex;
                 uniform mat4      oe_layer_2_texmat;
 

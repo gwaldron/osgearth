@@ -140,31 +140,70 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     bool clipStageInVS  = !clipStageInGS && !clipStageInTES;
 
     // search for pragma varyings and build up our interface block definitions.
-    typedef std::set<std::string> VaryingDefs;
-    VaryingDefs varyingDefs;
+    typedef std::set<std::string> VarDefs;
+    VarDefs varDefs;
 
     // built-ins:
-    varyingDefs.insert( "vec4 vp_Color" );
-    varyingDefs.insert( "vec3 vp_Normal" );
-    varyingDefs.insert( "vec4 vp_Vertex" );
+    varDefs.insert( "vec4 vp_Color" );
+    varDefs.insert( "vec3 vp_Normal" );
+    varDefs.insert( "vec4 vp_Vertex" );
 
+    // parse the vp_varyings (which were injected by the ShaderLoader)
     for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
     {
         osg::Shader* shader = s->second._shader->getNominalShader();
         if ( shader )
         {
-            ShaderLoader::getAllQuotedPragmaValues(shader->getShaderSource(), "vp_varying", varyingDefs);
+            ShaderLoader::getAllQuotedPragmaValues(shader->getShaderSource(), "vp_varying", varDefs);
         }
     }
 
-    typedef std::set< std::pair<std::string, std::string> > Varyings;
-    Varyings varyings;
-    for(VaryingDefs::iterator i = varyingDefs.begin(); i != varyingDefs.end(); ++i) 
+    struct Variable {
+        std::string interp;     // interpolation qualifer (flat, etc.)
+        std::string type;       // float, vec4, etc.
+        std::string name;       // name without any array specifiers, etc.
+        std::string declaration;   // name including array specifiers (for decl)
+    };
+
+    typedef std::vector<Variable> Variables;
+    Variables vars;
+    for(VarDefs::iterator i = varDefs.begin(); i != varDefs.end(); ++i) 
     {
         std::vector<std::string> tokens;        
-        StringTokenizer(*i, tokens, " \t", "", false, true);
-        if ( tokens.size() == 2 )
-            varyings.insert( std::make_pair(tokens[0], tokens[1]) );
+        StringTokenizer st;
+        st.addDelims( " \t", false );
+        st.addDelims( "[]", true );
+        st.tokenize( *i, tokens ); //(*i, tokens, " \t", "", false, true);
+        if ( tokens.size() >= 2 )
+        {
+            int p=0;
+            Variable v;
+            if ( tokens[p] == "flat" || tokens[p] == "nonperspective" || tokens[p] == "smooth" )
+            {
+                v.interp = tokens[p++];
+            }
+
+            if ( p+1 < tokens.size() )
+            {
+                v.type = tokens[p++];
+                v.name = tokens[p++];
+
+                // check for array
+                if ( p+2 < tokens.size() && tokens[p] == "[" && tokens[p+2] == "]" )
+                {
+                    v.declaration = Stringify() << v.type << " " << v.name << tokens[p] << tokens[p+1] << tokens[p+2];
+                }
+                else
+                {
+                    v.declaration = Stringify() << v.type << " " << v.name;
+                }
+            }
+
+            if ( !v.type.empty() && !v.name.empty() && !v.declaration.empty() )
+            {
+                vars.push_back( v );
+            }
+        }
     }
 
     std::string
@@ -190,10 +229,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     {
         std::stringstream buf;
         buf << "VP_PerVertex { \n";
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-        {
-            buf << INDENT << i->first << " " << i->second << "; \n";
-        }
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << i->interp << (i->interp.empty()?"":" ") << i->declaration << "; \n";
         buf << "}";
         vertdata = buf.str();
     }
@@ -218,8 +255,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             "#extension GL_ARB_gpu_shader5 : enable \n";
 
         buf << "\n// Vertex stage globals:\n";
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << i->first << " " << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << i->declaration << "; \n";
         
         buf << "\n// Vertex stage outputs:\n";
         if ( hasGS || hasTCS )
@@ -304,7 +341,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                             INDENT << "vp_Normal = " << gl_NormalMatrix              << " * vp_Normal; \n";
                     }
 
-                    for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+                    for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
                     {
                         buf << INDENT << i->second._name << "(vp_Vertex); \n";
                     }
@@ -334,8 +371,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         if ( hasTCS || hasGS || hasFS )
         {
             // Copy stage globals to output block:
-            for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-                buf << INDENT << "vp_out." << i->second << " = " << i->second << "; \n";
+            for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+                buf << INDENT << "vp_out." << i->name << " = " << i->name << "; \n";
         }
 
         buf << "} \n";
@@ -371,8 +408,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         // Stage globals.
         buf << "\n// TCS stage globals \n";
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << i->first << " " << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << i->declaration << "; \n";
 
         // Helper functions:
         // TODO: move this into its own osg::Shader so it can be shared.
@@ -380,8 +417,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             << "{ \n";
         
         // Copy input block to stage globals:
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << INDENT << i->second << " = vp_in[index]." << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << i->name << " = vp_in[index]." << i->name << "; \n";
 
         buf << "} \n";
         
@@ -399,8 +436,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             << INDENT "// copy default outputs: \n";
                 
         // Copy in to globals
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << INDENT << i->second << " = vp_in[gl_InvocationID]." << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << i->name << " = vp_in[gl_InvocationID]." << i->name << "; \n";
 
         // Invoke functions
         if ( tessControlStage )
@@ -410,8 +447,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         }
                 
         // Copy globals to out.
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << INDENT << "vp_out[gl_InvocationID]." << i->second << " = " << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << "vp_out[gl_InvocationID]." << i->name << " = " << i->name << "; \n";
 
         buf << "} \n";
         
@@ -439,8 +476,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         
         // Declare stage globals.
         buf << "\n// TES stage globals: \n";
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << i->first << " " << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << i->declaration << "; \n";
         
         buf << "\n// TES stage outputs: \n";
         if ( hasGS )
@@ -487,20 +524,20 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 << "{ \n";
         
             // Copy input block to stage globals:
-            for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-                buf << INDENT << i->second << " = vp_in[index]." << i->second << "; \n";
+            for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+                buf << INDENT << i->name << " = vp_in[index]." << i->name << "; \n";
 
             buf << "} \n";
 
             buf << "\nvoid VP_InterpolateVertex() \n"
                 << "{ \n";
             
-            for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
+            for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
             {
-                buf << INDENT << i->second << " = VP_Interpolate3"
-                    << "( vp_in[0]." << i->second
-                    << ", vp_in[1]." << i->second
-                    << ", vp_in[2]." << i->second << " ); \n";
+                buf << INDENT << i->name << " = VP_Interpolate3"
+                    << "( vp_in[0]." << i->name
+                    << ", vp_in[1]." << i->name
+                    << ", vp_in[2]." << i->name << " ); \n";
             }
 
             buf << "} \n";
@@ -543,8 +580,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
         
             // Copy globals to output block:
-            for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-                buf << INDENT << "vp_out." << i->second << " = " << i->second << "; \n";
+            for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+                buf << INDENT << "vp_out." << i->name << " = " << i->name << "; \n";
 
             buf << INDENT << "gl_Position = vp_Vertex; \n"
                 << "} \n";
@@ -559,8 +596,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         {
             // Copy default input block to output block (auto passthrough on first vert)
             // NOT SURE WE NEED THIS
-            for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-                buf << INDENT << "vp_out." << i->second << " = vp_in[0]." << i->second << "; \n";
+            for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+                buf << INDENT << "vp_out." << i->name << " = vp_in[0]." << i->name << "; \n";
         }
 
         if ( tessEvalStage )
@@ -602,8 +639,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         // Declare stage globals.
         buf << "\n// Geometry stage globals: \n";
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << i->first << " " << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << i->declaration << "; \n";
         
         buf << "\n// Geometry stage outputs: \n"
             << "out " << fragdata << " vp_out; \n";
@@ -624,8 +661,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         
         // Copy default input block to output block (auto passthrough on first vert)
         // NOT SURE WE NEED THIS
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << INDENT << "vp_out." << i->second << " = vp_in[0]." << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << "vp_out." << i->name << " = vp_in[0]." << i->name << "; \n";
 
         if ( geomStage )
         {
@@ -657,8 +694,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         
         // Declare stage globals.
         buf << "\n// Geometry stage globals\n";        
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << i->first << " " << i->second << "; \n";        
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << i->declaration << "; \n";        
 
         if ( viewStage && viewStageInGS )
         {
@@ -680,8 +717,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             << "{ \n";
         
         // Copy input block to stage globals:
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << INDENT << i->second << " = vp_in[index]." << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << i->name << " = vp_in[index]." << i->name << "; \n";
 
         buf << "} \n";
 
@@ -725,8 +762,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         buf << INDENT << "gl_Position = vp_Vertex; \n";
                 
         // Copy globals to output block:
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << INDENT << "vp_out." << i->second << " = " << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << "vp_out." << i->name << " = " << i->name << "; \n";
 
         buf << INDENT << "EmitVertex(); \n"
             << "} \n";
@@ -759,8 +796,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             "\n// Fragment stage globals:\n";
 
         // Declare stage globals.
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << i->first << " " << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << i->declaration << "; \n";
 
         if ( coloringStage || lightingStage || outputStage )
         {
@@ -796,8 +833,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             "{ \n";
         
         // Copy input block to stage globals:
-        for(Varyings::const_iterator i = varyings.begin(); i != varyings.end(); ++i)
-            buf << INDENT << i->second << " = vp_in." << i->second << "; \n";
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << i->name << " = vp_in." << i->name << "; \n";
 
         int coloringPass = _fragStageOrder == FRAGMENT_STAGE_ORDER_COLORING_LIGHTING ? 0 : 1;
         int lightingPass = 1-coloringPass;

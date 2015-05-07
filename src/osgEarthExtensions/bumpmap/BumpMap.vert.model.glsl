@@ -9,7 +9,7 @@ uniform vec4 oe_tile_key;
 uniform float oe_bumpmap_scale;
 
 varying vec4 oe_layer_tilec;
-varying vec3 oe_Normal;
+varying vec3 vp_Normal;
 
 varying vec2 oe_bumpmap_coords;
 varying float oe_bumpmap_range;
@@ -55,6 +55,6 @@ void oe_bumpmap_vertexModel(inout vec4 VertexMODEL)
     oe_bumpmap_normalCoords = oe_nmap_normalTexMatrix * oe_layer_tilec;
 #else
     // calcluate slope and augment it.
-    oe_bumpmap_slope = clamp(2.5*(1.0-oe_Normal.z), 0.0, 1.0);
+    oe_bumpmap_slope = clamp(2.5*(1.0-vp_Normal.z), 0.0, 1.0);
 #endif
 }

@@ -1078,11 +1078,11 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 
         case osg::TexGen::SPHERE_MAP:
             buf._vertHead
-                << "varying vec3 oe_Normal;\n";
+                << "varying vec3 vp_Normal;\n";
             buf._vertBody 
                 << INDENT "{\n" // scope it in case there are > 1
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w); \n"
-                << INDENT "vec3 r = reflect(view_vec, oe_Normal);\n"
+                << INDENT "vec3 r = reflect(view_vec, vp_Normal);\n"
                 << INDENT "r.z += 1.0; \n"
                 << INDENT "float m = 2.0 * sqrt(dot(r,r)); \n"
                 << INDENT TEX_COORD << unit << " = vec4(r.x/m + 0.5, r.y/m + 0.5, 0.0, 1.0); \n"
@@ -1091,20 +1091,20 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 
         case osg::TexGen::REFLECTION_MAP:
             buf._vertHead
-                << "varying vec3 oe_Normal;\n";
+                << "varying vec3 vp_Normal;\n";
             buf._vertBody
                 << INDENT "{\n"
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w);\n"
-                << INDENT TEX_COORD << unit << " = vec4(reflect(view_vec, oe_Normal), 1.0); \n"
+                << INDENT TEX_COORD << unit << " = vec4(reflect(view_vec, vp_Normal), 1.0); \n"
                 << INDENT "}\n";
             break;
 
         case osg::TexGen::NORMAL_MAP:
             buf._vertHead
-                << "varying vec3 oe_Normal;\n";
+                << "varying vec3 vp_Normal;\n";
             buf._vertBody
                 << INDENT "{\n"
-                << INDENT TEX_COORD << unit << " = vec4(oe_Normal, 1.0); \n"
+                << INDENT TEX_COORD << unit << " = vec4(vp_Normal, 1.0); \n"
                 << INDENT "}\n";
             break;
 

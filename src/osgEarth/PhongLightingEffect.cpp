@@ -36,13 +36,13 @@ namespace
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec4 oe_lighting_adjustment; \n"
         "varying vec4 oe_lighting_zero_vec; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
 
         "void oe_phong_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
         "    oe_lighting_adjustment = vec4(1.0); \n"
-        "    vec3 N = oe_Normal; \n"
+        "    vec3 N = vp_Normal; \n"
         "    float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
         "    NdotL = max( 0.0, NdotL ); \n"
 

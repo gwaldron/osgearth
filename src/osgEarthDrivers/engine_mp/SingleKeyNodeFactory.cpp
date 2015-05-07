@@ -26,11 +26,76 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Progress>
 #include <osgEarth/Containers>
+#include <osgEarth/Horizon>
+
+#include <osgUtil/CullVisitor>
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[SingleKeyNodeFactory] "
+
+namespace
+{
+    /**
+     * Culling callback for terrain tiles.
+     *
+     * It performs a horizon-visibility test against the highest four corners of
+     * the tile's bounding box.
+
+     * This is an alternative to the old cluster culling callback.
+     */
+    struct HorizonTileCuller : public osg::NodeCallback
+    {
+        Horizon    _horizonPrototype;
+        osg::Vec3d _points[4];
+
+        HorizonTileCuller(const SpatialReference* srs, const osg::BoundingBox& bbox, const osg::Matrix& m)
+        {
+            _horizonPrototype.setEllipsoid(*srs->getEllipsoid());
+
+            // Adjust the horizon ellipsoid based on the minimum Z value of the tile;
+            // necessary because a tile that's below the ellipsoid (ocean floor, e.g.)
+            // may be visible even if it doesn't pass the horizon-cone test. In such
+            // cases we need a more conservative ellipsoid.
+            double zMin = bbox.corner(0).z();
+            if ( zMin < 0.0 )
+            {
+                _horizonPrototype.setEllipsoid(osg::EllipsoidModel(
+                    srs->getEllipsoid()->getRadiusEquator() + zMin,
+                    srs->getEllipsoid()->getRadiusPolar()   + zMin));
+            }
+            
+
+            // consider the uppermost 4 points of the tile-aligned bounding box.
+            // (the last four corners of the bbox are the "zmax" corners.)
+            for(unsigned i=0; i<4; ++i)
+            {
+                _points[i] = bbox.corner(4+i) * m;
+            }
+        }
+
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            // Clone the horizon object to support multiple cull threads
+            // (since we call setEye with the current node visitor eye point)
+            Horizon horizon(_horizonPrototype);
+
+            // Since each terrain tile has an aboslute reference frame, 
+            // there is no need to transform the eyepoint:
+            horizon.setEye(nv->getViewPoint()); // * osg::computeLocalToWorld(nv->getNodePath()));
+            
+            for(unsigned i=0; i<4; ++i)
+            {                   
+                if ( !horizon.occludes(_points[i]) )
+                {
+                    traverse(node, nv);
+                    break;
+                }
+            }
+        }
+    };
+}
 
 
 SingleKeyNodeFactory::SingleKeyNodeFactory(const Map*                    map,
@@ -118,12 +183,32 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         {
             //Compute the min range based on the 2D size of the tile
             GeoExtent extent = model->_tileKey.getExtent();
-            GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
-            GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
-            osg::Vec3d ll, ur;
-            lowerLeft.toWorld( ll );
-            upperRight.toWorld( ur );
-            double radius = (ur - ll).length() / 2.0;
+            double radius = 0.0;
+            
+#if 0
+            // Test code to use the equitorial radius so that all of the tiles at the same level
+            // have the same range.  This will make the poles page in more appropriately.
+            if (_frame.getMapInfo().isGeocentric())
+            {
+                GeoExtent equatorialExtent(
+                extent.getSRS(),
+                extent.west(),
+                -extent.height()/2.0,
+                extent.east(),
+                extent.height()/2.0 );
+                radius = equatorialExtent.getBoundingGeoCircle().getRadius();
+            }
+            else
+#endif
+            {
+                GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+                GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
+                osg::Vec3d ll, ur;
+                lowerLeft.toWorld( ll );
+                upperRight.toWorld( ur );
+                radius = (ur - ll).length() / 2.0;
+            }
+          
             float minRange = (float)(radius * _options.minTileRangeFactor().value());
 
             plod->setRange( 0, minRange, FLT_MAX );
@@ -132,8 +217,10 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         }
         else
         {
-            plod->setRange( 0, 0.0f, _options.tilePixelSize().value() );
-            plod->setRange( 1, _options.tilePixelSize().value(), FLT_MAX );
+            // the *2 is because we page in 4-tile sets, not individual tiles.
+            float size = 2.0f * _options.tilePixelSize().value();
+            plod->setRange( 0, 0.0f, size );
+            plod->setRange( 1, size, FLT_MAX );
             plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
         }
         
@@ -159,6 +246,8 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         // this one rejects back-facing tiles:
         if ( _frame.getMapInfo().isGeocentric() && _options.clusterCulling() == true )
         {
+
+#if 1
             osg::HeightField* hf =
                 model->_elevationData.getHeightField();
 
@@ -166,6 +255,14 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
                 hf,
                 tileNode->getKey().getProfile()->getSRS()->getEllipsoid(),
                 *_options.verticalScale() ) );
+#else
+            // This works, but isn't quite as tight at the cluster culler.
+            // Re-evaluate down the road.
+            result->addCullCallback( new HorizonTileCuller(
+                _frame.getMapInfo().getSRS(),
+                tileNode->getTerrainBoundingBox(),
+                tileNode->getMatrix(), tileNode->getKey() ) );
+#endif
         }
     }
     else

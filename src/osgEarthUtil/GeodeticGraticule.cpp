@@ -292,7 +292,7 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
                 LabelNode* label = new LabelNode( 
                     _mapNode.get(),
                     GeoPoint(geoSRS, clon, clat),
-                    s_llf.format(clon),
+                    s_llf.format(clon, false),
                     textStyle );
                 labels->addChild( label );
             }
@@ -319,7 +319,7 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
                 LabelNode* label = new LabelNode( 
                     _mapNode.get(), 
                     GeoPoint(geoSRS, clon, clat),
-                    s_llf.format(clat),
+                    s_llf.format(clat, true),
                     textStyle );
                 labels->addChild( label );
             }

@@ -58,19 +58,16 @@ namespace osgEarth { namespace Features
     public:
         /**
          * Constructs a new tessellation operator.
-         * @param numPartitions
-         *      Each geometry segment should be subdivided into this many partitions
-         * @param referenceSRS
-         *      Feature geometry is assumed to be expressed in this SRS; if NULL, assume
-         *      geometry is geodetic (lat/long degrees).
-         * @param defaultInterp
-         *      If the feature does not specifiy an interpolation method, use this one
          */
-        TessellateOperator( 
-            unsigned                numPartitions =20,
-            GeoInterpolation        defaultInterp =GEOINTERP_GREAT_CIRCLE );
+        TessellateOperator();
 
         virtual ~TessellateOperator() { }
+
+        /**
+         * Sets the maximum size of each tessellated partition in the geometry.
+         * The "numPartitions" is calculated from this value.
+         */
+        void setMaxPartitionSize( const Distance& value ) { _maxDistance = value; }
 
         void setNumPartitions( unsigned value ) { _numPartitions = value; }
 
@@ -83,8 +80,9 @@ namespace osgEarth { namespace Features
         void operator()( Feature* feature, FilterContext& context ) const;
 
     protected:
-        unsigned                             _numPartitions;
-        GeoInterpolation                     _defaultInterp;
+        optional<Distance> _maxDistance;
+        unsigned           _numPartitions;
+        GeoInterpolation   _defaultInterp;
     };
 
 } } // namespace osgEarth::Features

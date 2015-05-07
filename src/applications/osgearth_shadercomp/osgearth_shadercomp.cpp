@@ -51,6 +51,7 @@ int usage( const std::string& msg )
         << "           [--test3]    : Run the shader LOD test \n"
         << "           [--test4]    : Run the memory test \n"
         << "           [--test5]    : Run the Program state set test \n"
+        << "           [--test6]    : Run the 2-camera test \n"
         << std::endl;
 
     return -1;
@@ -104,6 +105,7 @@ namespace TEST_1
         osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
         vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::ShaderComp::LOCATION_VERTEX_VIEW );
         vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_LIGHTING );
+        vp->setShaderLogging(true, "shaders.txt");
         return vp;
     }
 

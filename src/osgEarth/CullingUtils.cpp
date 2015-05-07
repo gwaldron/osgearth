@@ -485,126 +485,6 @@ ClusterCullingFactory::create(const osg::Vec3& controlPoint,
     return ccc;
 }
 
-
-//------------------------------------------------------------------------
-
-CullNodeByEllipsoid::CullNodeByEllipsoid( const osg::EllipsoidModel* model ) :
-_minRadius( std::min(model->getRadiusPolar(), model->getRadiusEquator()) )
-{
-    //nop
-}
-
-
-void
-CullNodeByEllipsoid::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-    if ( nv )
-    {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-
-        // camera location
-        osg::Vec3d vp, center, up;
-        cv->getCurrentCamera()->getViewMatrixAsLookAt(vp, center, up);
-        double vpLen2 = vp.length2();
-
-        // world bound of this model
-        osg::Matrix l2w = osg::computeLocalToWorld( nv->getNodePath() );
-        const osg::BoundingSphere& bs = node->getBound();
-        osg::BoundingSphere bsWorld( bs.center() * l2w, bs.radius() * l2w.getScale().x() );
-        double bswLen2 = bsWorld.center().length2();
-
-        double vpLen = vp.length();
-        osg::Vec3d vpToTarget = bsWorld.center() - vp;
-        
-        vp.normalize();
-        vpToTarget.normalize();
-        double theta = acos( vpToTarget * -vp );
-        double r = vpLen * sin(theta);
-        //double p = 
-
-        // "r" is the length of the shortest line between the center of the 
-        // ellipsoid and the line of light. If (r) is less than the ellipsoid's
-        // minumum radius, that means the ellipsoid is blocking the LOS.
-        // (We "tweak" r a bit: increase it by the target object's radius so we
-        // can account for the whole object, and subtract the lower point on 
-        // earth to account for the camera being underground)
-        if ( r + bsWorld.radius() > _minRadius - 11000.0 )
-        {
-            OE_NOTICE 
-                << "r=" << r << ", rad="<<bsWorld.radius()<<", min=" << _minRadius
-                << std::endl;
-            traverse(node, nv);
-        }
-    }
-}
-
-//------------------------------------------------------------------------
-
-CullNodeByHorizon::CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model ) :
-_world(world),
-_r    (model->getRadiusPolar()),
-_r2   (model->getRadiusPolar() * model->getRadiusPolar())
-{
-    //nop
-}
-CullNodeByHorizon::CullNodeByHorizon( osg::MatrixTransform* xform, const osg::EllipsoidModel* model ) :
-_xform(xform),
-_r    (model->getRadiusPolar()),
-_r2   (model->getRadiusPolar() * model->getRadiusPolar())
-{
-    //nop
-}
-
-void
-CullNodeByHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-    if ( nv )
-    {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-
-        // get the viewpoint. It will be relative to the current reference location (world).
-        osg::Matrix l2w = osg::computeLocalToWorld( nv->getNodePath(), true );
-        osg::Vec3d vp  = cv->getViewPoint() * l2w;
-
-        osg::Vec3d world = _xform.valid() ? _xform->getMatrix().getTrans() : _world;
-
-        // same quadrant:
-        if ( vp * world >= 0.0 )
-        {
-            double d2 = vp.length2();
-            double horiz2 = d2 - _r2;
-            double dist2 = (world-vp).length2();
-            if ( dist2 < horiz2 )
-            {
-                traverse(node, nv);
-            }
-        }
-
-        // different quadrants:
-        else
-        {
-            // there's a horizon between them; now see if the thing is visible.
-            // find the triangle formed by the viewpoint, the target point, and 
-            // the center of the earth.
-            double a = (world-vp).length();
-            double b = world.length();
-            double c = vp.length();
-
-            // Heron's formula for triangle area:
-            double s = 0.5*(a+b+c);
-            double area = 0.25*sqrt( s*(s-a)*(s-b)*(s-c) );
-
-            // Get the triangle's height:
-            double h = (2*area)/a;
-
-            if ( h >= _r )
-            {
-                traverse(node, nv);
-            }
-        }
-    }
-}
-
 //------------------------------------------------------------------------
 
 CullNodeByNormal::CullNodeByNormal( const osg::Vec3d& normal )
@@ -1127,9 +1007,10 @@ LODScaleGroup::traverse(osg::NodeVisitor& nv)
 ClipToGeocentricHorizon::ClipToGeocentricHorizon(const osgEarth::SpatialReference* srs,
                                                  osg::ClipPlane*                   clipPlane)
 {
-    _radius = std::min(
-        srs->getEllipsoid()->getRadiusPolar(),
-        srs->getEllipsoid()->getRadiusEquator() );
+    _radii.set(
+        srs->getEllipsoid()->getRadiusEquator(),
+        srs->getEllipsoid()->getRadiusEquator(),
+        srs->getEllipsoid()->getRadiusPolar() );
 
     _clipPlane = clipPlane;
 }
@@ -1140,12 +1021,26 @@ ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
     osg::ref_ptr<osg::ClipPlane> clipPlane;
     if ( _clipPlane.lock(clipPlane) )
     {
-        osg::Vec3 eye = nv->getEyePoint();
-        double d = eye.length();
-        double a = acos(_radius/d);
-        double horizonRadius = _radius*cos(a);
-        eye.normalize();
-        clipPlane->setClipPlane(osg::Plane(eye, eye*horizonRadius));
+        osg::Vec3d eye = nv->getEyePoint();
+
+        // viewer in ellipsoidal unit space:
+        osg::Vec3d unitEye( eye.x()/_radii.x(), eye.y()/_radii.y(), eye.z()/_radii.z());
+
+        // calculate scaled distance from center to viewer:
+        double unitEyeLen = unitEye.length();
+
+        // calculate scaled distance from center to horizon plane:
+        double unitHorizonPlaneLen = 1.0/unitEyeLen;
+
+        // convert back to real space:
+        double eyeLen = eye.length();
+        double horizonPlaneLen = eyeLen * unitHorizonPlaneLen/unitEyeLen;
+
+        // normalize the eye vector:
+        eye /= eyeLen;
+
+        // compute a new clip plane:
+        clipPlane->setClipPlane(osg::Plane(eye, eye*horizonPlaneLen));
     }
     traverse(node, nv);
 }

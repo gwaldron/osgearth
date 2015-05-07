@@ -168,9 +168,8 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions)
 }
 
 osg::Node*
-FeatureModelSource::createNodeImplementation(const Map*            map,
-                                             const osgDB::Options* dbOptions,
-                                             ProgressCallback*     progress )
+FeatureModelSource::createNodeImplementation(const Map*        map,
+                                             ProgressCallback* progress )
 {
     // user must provide a valid map.
     if ( !map )
@@ -195,7 +194,11 @@ FeatureModelSource::createNodeImplementation(const Map*            map,
     }
 
     // Session holds data that's shared across the life of the FMG
-    Session* session = new Session( map, _options.styles().get(), _features.get(), dbOptions );
+    Session* session = new Session( 
+        map, 
+        _options.styles().get(), 
+        _features.get(), 
+        _dbOptions.get() );
 
     // Graph that will render feature models. May included paged data.
     FeatureModelGraph* graph = new FeatureModelGraph( 
@@ -205,6 +208,8 @@ FeatureModelSource::createNodeImplementation(const Map*            map,
        this,
        _preMergeOps.get(),
        _postMergeOps.get() );
+
+    graph->setName( this->getName() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );
@@ -256,11 +261,13 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                 (render->backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
+#ifndef OSG_GLES2_AVAILABLE
         if ( render->clipPlane().isSet() )
         {
             GLenum mode = GL_CLIP_PLANE0 + (render->clipPlane().value());
             group->getOrCreateStateSet()->setMode(mode, 1);
         }
+#endif
 
         if ( render->minAlpha().isSet() )
         {

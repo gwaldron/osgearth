@@ -195,10 +195,20 @@ TerrainLayer::init()
 
     // Create an L2 mem cache that sits atop the main cache, if necessary.
     // For now: use the same L2 cache size at the driver.
-    int memCacheSize = _initOptions.driver()->L2CacheSize().get();
-    if ( memCacheSize > 0 )
+    int l2CacheSize = _initOptions.driver()->L2CacheSize().get();
+    
+    // See if it was overridden with an env var.
+    char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
+    if ( l2env )
     {
-        _memCache = new MemCache(memCacheSize);
+        l2CacheSize = as<int>( std::string(l2env), 0 );
+        OE_INFO << LC << "L2 cache size set from environment = " << l2CacheSize << "\n";
+    }
+
+    // Initialize the l2 cache if it's size is > 0
+    if ( l2CacheSize > 0 )
+    {
+        _memCache = new MemCache( l2CacheSize );
     }
 }
 
@@ -230,13 +240,12 @@ TerrainLayer::setCache( Cache* cache )
                 Config driverConf = _runtimeOptions->driver()->getConfig();
                 Config hashConf   = driverConf - layerConf;
 
-                OE_DEBUG << LC << "Hash JSON is: " << hashConf.toJSON(false) << std::endl;
-
                 // remove cache-control properties before hashing.
                 hashConf.remove( "cache_only" );
                 hashConf.remove( "cache_enabled" );
                 hashConf.remove( "cache_policy" );
                 hashConf.remove( "cacheid" );
+                hashConf.remove( "l2_cache_size" );
                 
                 // need this, b/c data is vdatum-transformed before caching.
                 if ( layerConf.hasValue("vdatum") )
@@ -261,12 +270,30 @@ TerrainLayer::setCachePolicy( const CachePolicy& cp )
 {
     _runtimeOptions->cachePolicy() = cp;
     _runtimeOptions->cachePolicy()->apply( _dbOptions.get() );
+
+    // if an effective policy was previously set, clear it out
+    _effectiveCachePolicy.unset();
 }
 
 const CachePolicy&
 TerrainLayer::getCachePolicy() const
 {
-    return _runtimeOptions->cachePolicy().value();
+    // An effective policy, if set, overrides the runtime policy.
+    return
+        _effectiveCachePolicy.isSet() ? _effectiveCachePolicy.get() :
+        _runtimeOptions->cachePolicy().get();
+}
+
+bool
+TerrainLayer::isCacheOnly() const
+{
+    return getCachePolicy().usage() == CachePolicy::USAGE_CACHE_ONLY;
+}
+
+bool
+TerrainLayer::isNoCache() const
+{
+    return getCachePolicy().usage() == CachePolicy::USAGE_NO_CACHE;
 }
 
 void
@@ -319,23 +346,29 @@ TerrainLayer::getTileSource() const
         if ((_tileSource.valid() && !_tileSourceInitAttempted) ||
             (!_tileSource.valid() && !isCacheOnly()))
         {
+            TerrainLayer* this_nc = const_cast<TerrainLayer*>(this);
+
             // Initialize the tile source once.
-            const_cast<TerrainLayer*>(this)->initTileSource();
+            this_nc->initTileSource();
 
             // read the cache policy hint from the tile source unless user expressly set 
             // a policy in the initialization options. In other words, the hint takes
             // ultimate priority (even over the Registry override) unless expressly
             // overridden in the layer options!
-            const_cast<TerrainLayer*>(this)->refreshTileSourceCachePolicyHint();
+            this_nc->refreshTileSourceCachePolicyHint();
 
             // Unless the user has already configured an expiration policy, use the "last modified"
             // timestamp of the TileSource to set a minimum valid cache entry timestamp.
             if ( _tileSource.valid() )
             {
                 CachePolicy& cp = _runtimeOptions->cachePolicy().mutable_value();
-                if ( !cp.minTime().isSet() && !cp.maxAge().isSet() )
+                if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && _tileSource->getLastModifiedTime() > 0)
                 {
-                    cp.minTime() = _tileSource->getLastModifiedTime();
+                    // The "effective" policy overrides the runtime policy, but it does not
+                    // get serialized.
+                    this_nc->_effectiveCachePolicy = cp;
+                    this_nc->_effectiveCachePolicy->minTime() = _tileSource->getLastModifiedTime();
+                    OE_INFO << LC << "cache min valid time reported by driver = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
                 }
                 OE_INFO << LC << "cache policy = " << getCachePolicy().usageString() << std::endl;
             }
@@ -444,9 +477,13 @@ TerrainLayer::getCacheBin(const Profile* profile, const std::string& binId)
                 {
                     //todo: check the profile too
                     if ( *meta._sourceDriver != tileSource->getOptions().getDriver() )
-                    {
-                        OE_WARN << LC << "Cache has an incompatible driver or profile... disabling"
-                            << std::endl;
+                    {                     
+                        OE_WARN << LC 
+                            << "Layer \"" << getName() << "\" is requesting a \""
+                            << tileSource->getOptions().getDriver() << " cache, but a \""
+                            << *meta._sourceDriver << "\" cache exists at the specified location. "
+                            << "The cache will ignored for this layer.\n";
+
                         setCachePolicy( CachePolicy::NO_CACHE );
                         return 0L;
                     }
@@ -619,6 +656,7 @@ TerrainLayer::initTileSource()
     {
         if ( !_profile.valid() && !_tileSourceInitFailed )
         {
+            OE_DEBUG << LC << "Get Profile from tile source" << std::endl;
             _profile = _tileSource->getProfile();
         }
 

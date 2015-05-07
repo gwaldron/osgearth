@@ -100,35 +100,11 @@ TerrainEngineNode::getResources() const
     return _texCompositor.get();
 }
 
-
-// this handler adjusts the uniform set when a terrain layer's "enabed" state changes
-void
-TerrainEngineNode::ImageLayerController::onVisibleChanged( TerrainLayer* layer )
-{
-    _engine->dirty();
-}
-
-
-// this handler adjusts the uniform set when a terrain layer's "opacity" value changes
-void
-TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
-{
-    _engine->dirty();
-}
-
-void
-TerrainEngineNode::ImageLayerController::onVisibleRangeChanged( ImageLayer* layer )
-{
-    _engine->dirty();
-}
-
 void
 TerrainEngineNode::ImageLayerController::onColorFiltersChanged( ImageLayer* layer )
 {
     _engine->updateTextureCombining();
-    _engine->dirty();
 }
-
 
 
 //------------------------------------------------------------------------
@@ -162,7 +138,29 @@ TerrainEngineNode::~TerrainEngineNode()
 
 
 void
-TerrainEngineNode::dirty()
+TerrainEngineNode::requireNormalTextures()
+{
+    _requireNormalTextures = true;
+    dirtyTerrain();
+}
+
+void
+TerrainEngineNode::requireElevationTextures()
+{
+    _requireElevationTextures = true;
+    dirtyTerrain();
+}
+
+void
+TerrainEngineNode::requireParentTextures()
+{
+    _requireParentTextures = true;
+    dirtyTerrain();
+}
+
+
+void
+TerrainEngineNode::requestRedraw()
 {
     if ( 0 == _dirtyCount++ )
     {
@@ -170,6 +168,12 @@ TerrainEngineNode::dirty()
         ViewVisitor<RequestRedraw> visitor;
         this->accept(visitor);
     }
+}
+
+void
+TerrainEngineNode::dirtyTerrain()
+{
+    requestRedraw();
 }
 
 
@@ -282,7 +286,7 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     }
 
     // notify that a redraw is required.
-    dirty();
+    requestRedraw();
 }
 
 namespace
@@ -333,6 +337,7 @@ TerrainEngineNode::addTileNodeCallback(TerrainTileNodeCallback* cb)
 {
     Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
     _tileNodeCallbacks.push_back( cb );
+    notifyExistingNodes( cb );
 }
 
 void

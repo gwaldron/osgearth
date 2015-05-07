@@ -16,15 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "SilverLiningContext"
 #include <SilverLining.h> // SilverLinking SDK
+#include "SilverLiningContext"
 #include <osg/Light>
 #include <osgEarth/SpatialReference>
 
 #define LC "[SilverLiningContext] "
 
-using namespace osgEarth;
-using namespace osgEarth::Drivers::SilverLining;
+using namespace osgEarth::SilverLining;
 
 
 SilverLiningContext::SilverLiningContext(const SilverLiningOptions& options) :
@@ -58,7 +57,7 @@ SilverLiningContext::setLight(osg::Light* light)
 }
 
 void
-SilverLiningContext::setSRS(const SpatialReference* srs)
+SilverLiningContext::setSRS(const osgEarth::SpatialReference* srs)
 {
     _srs = srs;
 }

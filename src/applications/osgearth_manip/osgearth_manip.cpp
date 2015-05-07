@@ -50,9 +50,25 @@ using namespace osgEarth::Annotation;
 namespace
 {
     /**
+     * Tether callback test.
+     */
+    struct TetherCB : public EarthManipulator::TetherCallback
+    {
+        void operator()(osg::Node* node)
+        {
+            if ( node ) {
+                OE_WARN << "Tether on\n";
+            }
+            else {
+                OE_WARN << "Tether off\n";
+            }
+        }
+    };
+
+    /**
      * Builds our help menu UI.
      */
-    Control* createHelp( osgViewer::View* view )
+    Container* createHelp( osgViewer::View* view )
     {
         const char* text[] =
         {
@@ -67,16 +83,18 @@ namespace
             "u :",                 "toggle azimuth lock",
             "c :",                 "toggle perspective/ortho",
             "t :",                 "toggle tethering",
+            "T :",                 "toggle tethering (with angles)",
             "a :",                 "toggle viewpoint arcing",
             "z :",                 "toggle throwing",
             "k :",                 "toggle collision"
         };
 
         Grid* g = new Grid();
-        for( unsigned i=0; i<sizeof(text)/sizeof(text[0]); ++i )
+        unsigned i, c, r;
+        for( i=0; i<sizeof(text)/sizeof(text[0]); ++i )
         {
-            unsigned c = i % 2;
-            unsigned r = i / 2;
+            c = i % 2;
+            r = i / 2;
             g->setControl( c, r, new LabelControl(text[i]) );
         }
 
@@ -268,8 +286,8 @@ namespace
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
-                bool collision = _manip->getSettings()->getDisableCollisionAvoidance();
-                _manip->getSettings()->setDisableCollisionAvoidance( !collision );
+                bool value = _manip->getSettings()->getTerrainAvoidanceEnabled();
+                _manip->getSettings()->setTerrainAvoidanceEnabled( !value );
                 aa.requestRedraw();
                 return true;
             }
@@ -279,7 +297,7 @@ namespace
         void getUsage(osg::ApplicationUsage& usage) const
         {
             using namespace std;
-            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle collision avoidance"));
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle terrain avoidance"));
         }
 
         char _key;
@@ -336,13 +354,26 @@ namespace
                 _pat->setAttitude(osg::Quat(bearing, osg::Vec3d(0,0,1)));
                 _label->setPosition( p );
             }
-            else if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 't' )
-            {                                
-                _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
-                _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get(), 2.0 );
-                Viewpoint vp = _manip->getViewpoint();
-                vp.setRange(5000);
-                _manip->setViewpoint(vp);
+            else if ( ea.getEventType() == ea.KEYDOWN )
+            {
+                if ( ea.getKey() == 't' )
+                {                                
+                    _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
+                    _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get(), 2.0 );
+                    Viewpoint vp = _manip->getViewpoint();
+                    vp.setRange(5000);
+                    _manip->setViewpoint(vp);
+                }
+                else if (ea.getKey() == 'T')
+                {                  
+                    _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
+                    _manip->setTetherNode(
+                        _manip->getTetherNode() ? 0L : _xform.get(),
+                        2.0,        // time to tether
+                        45.0,       // final heading
+                        -45.0,      // final pitch
+                        5000.0 );   // final range
+                }
                 return true;
             }
             return false;
@@ -378,7 +409,7 @@ int main(int argc, char** argv)
     viewer.setCameraManipulator( manip );
 
     // UI:
-    Control* help = createHelp(&viewer);
+    Container* help = createHelp(&viewer);
 
     osg::Node* earthNode = MapNodeHelper().load( arguments, &viewer, help );
     if (!earthNode)
@@ -415,7 +446,7 @@ int main(int argc, char** argv)
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 
    // Set the minimum distance to something larger than the default
-    manip->getSettings()->setMinMaxDistance(5.0, manip->getSettings()->getMaxDistance());
+    manip->getSettings()->setMinMaxDistance(10.0, manip->getSettings()->getMaxDistance());
 
 
     viewer.setSceneData( root );
@@ -426,6 +457,8 @@ int main(int argc, char** argv)
         osgGA::GUIEventAdapter::MODKEY_SHIFT );
 
     manip->getSettings()->setArcViewpointTransitions( true );    
+
+    manip->setTetherCallback( new TetherCB() );
     
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));

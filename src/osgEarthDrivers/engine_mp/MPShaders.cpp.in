@@ -6,12 +6,14 @@
 
 using namespace osgEarth::Drivers::MPTerrainEngine;
 
-const char* Shaders::MPVertFile     = "MPEngine.vert.glsl";
-const char* Shaders::MPVertSource   = MULTILINE(
-@MPEngine.vert.glsl@
-);
+Shaders::Shaders()
+{
+    VertexModel = "MPEngine.vert.model.glsl";
+    _sources[VertexModel] = OE_MULTILINE(@MPEngine.vert.model.glsl@);
 
-const char* Shaders::MPFragFile   = "MPEngine.frag.glsl";	
-const char* Shaders::MPFragSource = MULTILINE(
-@MPEngine.frag.glsl@
-);
+    VertexView = "MPEngine.vert.view.glsl";
+    _sources[VertexView] = OE_MULTILINE(@MPEngine.vert.view.glsl@);
+
+    Fragment = "MPEngine.frag.glsl";
+    _sources[Fragment] = OE_MULTILINE(@MPEngine.frag.glsl@);
+}

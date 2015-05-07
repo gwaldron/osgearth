@@ -141,6 +141,12 @@ namespace osgEarth
         /** whether the GPU supports a texture compression scheme */
         bool supportsTextureCompression(const osg::Texture::InternalFormatMode& mode) const;
 
+        /** whether texture buffers are supported */
+        bool supportsTextureBuffer() const { return _supportsTextureBuffer; }
+
+        /** Maximum size of a texture buffer, when supportsTextureBuffer() is true. */
+        int getMaxTextureBufferSize() const { return _maxTextureBufferSize; }
+
     protected:
         Capabilities();
 
@@ -183,6 +189,8 @@ namespace osgEarth
         bool _supportsETC;
         bool _supportsRGTC;
         bool _isGLES;
+        bool _supportsTextureBuffer;
+        int  _maxTextureBufferSize;
 
     public:
         friend class Registry;

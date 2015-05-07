@@ -174,8 +174,8 @@ PhongLightingEffect::attach(osg::StateSet* stateset)
         _statesets.push_back(stateset);
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setName( "osgEarth.PhongLightingEffect" );
-        vp->setFunction( "oe_phong_vertex", Phong_Vertex, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_phong_fragment", Phong_Fragment, ShaderComp::LOCATION_FRAGMENT_LIGHTING );
+        vp->setFunction( "oe_phong_vertex", Phong_Vertex, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
+        vp->setFunction( "oe_phong_fragment", Phong_Fragment, ShaderComp::LOCATION_FRAGMENT_LIGHTING, 0.5f);
         if ( _lightingUniform.valid() )
             stateset->addUniform( _lightingUniform.get() );
     }

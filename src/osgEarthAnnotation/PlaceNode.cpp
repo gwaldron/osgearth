@@ -84,6 +84,11 @@ PlaceNode::init()
     getAttachPoint()->removeChildren(0, getAttachPoint()->getNumChildren());
 
     _geode = new osg::Geode();
+
+    // ensure that (0,0,0) is the bounding sphere control/center point.
+    // useful for things like horizon culling.
+    _geode->setComputeBoundingSphereCallback(new ControlPointCallback());
+
     osg::Drawable* text = 0L;
 
     // If there's no explicit text, look to the text symbol for content.

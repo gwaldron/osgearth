@@ -19,8 +19,10 @@
 #include <osgEarth/DrapingTechnique>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderFactory>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
+#include <osgEarth/RTTPicker>
 
 #include <osg/BlendFunc>
 #include <osg/TexGen>
@@ -332,7 +334,7 @@ DrapingTechnique::reestablish(TerrainEngineNode* engine)
         else if ( !_textureUnit.isSet() )
         {
             int texUnit;
-            if ( engine->getResources()->reserveTextureImageUnit( texUnit ) )
+            if ( engine->getResources()->reserveTextureImageUnit(texUnit, "DrapingTechnique") )
             {
                 _textureUnit = texUnit;
                 OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
@@ -406,13 +408,11 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // set up a StateSet for the RTT camera.
     osg::StateSet* rttStateSet = params._rttCamera->getOrCreateStateSet();
 
-    // lighting is off. We don't want draped items to be lit.
-    rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    osg::StateAttribute::OverrideValue forceOff =
+        osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED | osg::StateAttribute::OVERRIDE;
 
-    // install a new default shader program that replaces anything from above.
-    VirtualProgram* rtt_vp = VirtualProgram::getOrCreate(rttStateSet);
-    rtt_vp->setName( "DrapingTechnique RTT" );
-    rtt_vp->setInheritShaders( false );
+    rttStateSet->addUniform( Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, forceOff) );
+    rttStateSet->setMode( GL_LIGHTING, forceOff );
     
     // activate blending within the RTT camera's FBO
     if ( _rttBlending )

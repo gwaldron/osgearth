@@ -107,7 +107,7 @@ main(int argc, char** argv)
 
         // We also need a shader that will activate clipping in GLSL.
         VirtualProgram* vp = VirtualProgram::getOrCreate(root->getOrCreateStateSet());
-        vp->setFunction("oe_clip_vert", clipvs, ShaderComp::LOCATION_VERTEX_VIEW);
+        vp->setFunction("oe_clip_vert", clipvs, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f);
 
         // Now everything is set up. The last thing to do is: anywhere in your
         // scene graph that you want to activate the clipping plane, set the 

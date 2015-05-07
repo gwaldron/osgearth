@@ -217,15 +217,21 @@ _mode   ( 0 )
 {
     this->setThreadSafeRefUnref( true );
 
-    int l2CacheSize = 0;
+
+    // Initialize the l2 cache size to the options.
+    int l2CacheSize = *options.L2CacheSize();
+
+    // See if it was overridden with an env var.
     char const* l2env = ::getenv( "OSGEARTH_L2_CACHE_SIZE" );
     if ( l2env )
     {
         l2CacheSize = as<int>( std::string(l2env), 0 );
     }
-    else if ( *options.L2CacheSize() > 0 )
+
+    // Initialize the l2 cache if it's size is > 0
+    if ( l2CacheSize > 0 )
     {
-        _memCache = new MemCache( *options.L2CacheSize() );
+        _memCache = new MemCache( l2CacheSize );
     }
 
     if (_options.blacklistFilename().isSet())
@@ -310,6 +316,33 @@ int
 TileSource::getPixelsPerTile() const
 {
     return _options.tileSize().value();
+}
+
+
+void TileSource::dirtyDataExtents()
+{
+    _dataExtentsUnion = GeoExtent::INVALID;
+}
+
+const GeoExtent& TileSource::getDataExtentsUnion() const
+{
+    if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0)
+    {
+        static Threading::Mutex s_mutex;
+        Threading::ScopedMutexLock lock(s_mutex);
+        {
+            if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0) // double-check
+            {
+                GeoExtent e(_dataExtents[0]);
+                for (unsigned int i = 1; i < _dataExtents.size(); i++)
+                {
+                    e.expandToInclude(_dataExtents[i]);
+                }
+                const_cast<TileSource*>(this)->_dataExtentsUnion = e;
+            }
+        }
+    }
+    return _dataExtentsUnion;
 }
 
 osg::Image*
@@ -481,15 +514,45 @@ TileSource::hasDataInExtent( const GeoExtent& extent ) const
     return intersects;
 }
 
+bool
+TileSource::hasDataAt( const GeoPoint& location, bool exact) const
+{
+    // If the location is invalid then return false
+    if (!location.isValid())
+        return false;
+
+    // If no data extents are provided, just return true
+    if (_dataExtents.size() == 0)
+        return true;
+
+    if (!exact)
+    {
+        return getDataExtentsUnion().contains(location);
+    }
+   
+
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+    {
+        if (itr->contains( location ) )
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 bool
 TileSource::hasData(const osgEarth::TileKey& key) const
 {
-    //sematics: might have data.
+    //sematics: "might have data"
 
-    //If no data extents are provided, just return true
-    if (_dataExtents.size() == 0) 
+    // If no data extents are provided, and there's no data level override,
+    // return true because there might be data but there's no way to tell.
+    if (_dataExtents.size() == 0 && !_options.maxDataLevel().isSet())
+    {
         return true;
+    }
 
     unsigned int lod = key.getLevelOfDetail();
 
@@ -499,10 +562,17 @@ TileSource::hasData(const osgEarth::TileKey& key) const
         lod = getProfile()->getEquivalentLOD( key.getProfile(), key.getLevelOfDetail() );        
     }
 
-    // Check the explicit max data override:
+    // If there's an explicit LOD override and we've exceeded it, no data.
     if (_options.maxDataLevel().isSet() && lod > _options.maxDataLevel().value())
+    {
         return false;
+    }
 
+    // If there are no extents to check, there might be data.
+    if (_dataExtents.size() == 0)
+    {
+        return true;
+    }
 
     bool intersectsData = false;
     const osgEarth::GeoExtent& keyExtent = key.getExtent();
@@ -519,6 +589,74 @@ TileSource::hasData(const osgEarth::TileKey& key) const
     }
 
     return intersectsData;
+}
+
+bool
+TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
+                                    osgEarth::TileKey&       output) const
+{
+    // trivial accept: no data extents = not enough info.
+    if (_dataExtents.size() == 0)
+    {
+        output = key;
+        return true;
+    }
+
+    // trivial reject: key doesn't intersect the union of data extents at all.
+    if ( !getDataExtentsUnion().intersects(key.getExtent()) )
+    {
+        return false;
+    }
+
+    bool     intersects = false;
+    unsigned highestLOD = 0;
+
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+    {
+        // check for 2D intersection:
+        if (key.getExtent().intersects( *itr ))
+        {
+            // check that the extent isn't higher-resolution than our key:
+            if ( !itr->minLevel().isSet() || key.getLOD() >= itr->minLevel().get() )
+            {
+                // Got an intersetion; now test the LODs:
+                intersects = true;
+                
+                // Is the high-LOD set? If not, there's not enough information
+                // so just assume our key might be good.
+                if ( itr->maxLevel().isSet() == false )
+                {
+                    output = key;
+                    return true;
+                }
+
+                // Is our key at a lower or equal LOD than the max key in this extent?
+                // If so, our key is good.
+                else if ( key.getLOD() <= itr->maxLevel().get() )
+                {
+                    output = key;
+                    return true;
+                }
+
+                // otherwise, record the highest encountered LOD that
+                // intersects our key.
+                else if ( itr->maxLevel().get() > highestLOD )
+                {
+                    highestLOD = itr->maxLevel().get();
+                }
+            }
+        }
+    }
+
+    if ( intersects )
+    {
+        output = key.createAncestorKey( highestLOD );
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 bool
@@ -587,6 +725,8 @@ TileSourceFactory::create(const TileSourceOptions& options)
     {
         OE_WARN << LC << "Failed to load TileSource driver \"" << driver << "\"" << std::endl;
     }
+
+    OE_DEBUG << LC << "Tile source Profile = " << (result->getProfile() ? result->getProfile()->toString() : "NULL") << std::endl;
 
     // apply an Override Profile if provided.
     if ( result && options.profile().isSet() )

@@ -92,22 +92,17 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
     {
         engine->requireNormalTextures();
 
-        engine->getResources()->reserveTextureImageUnit(_normalMapUnit);
-        OE_INFO << LC << "Normal unit = " << _normalMapUnit << "\n";
+        engine->getResources()->reserveTextureImageUnit(_normalMapUnit, "NormalMap");
         engine->addTileNodeCallback( new NormalTexInstaller(this, _normalMapUnit) );
-
-        // configure shaders
-        std::string vertShader = ShaderLoader::load(
-            Shaders::VertexShaderFile, Shaders::VertexShaderSource);
-
-        std::string fragShader = ShaderLoader::load(
-            Shaders::FragmentShaderFile, Shaders::FragmentShaderSource);
-
+        
         // shader components
         osg::StateSet* stateset = engine->getTerrainStateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setFunction( "oe_nmap_vertex",   vertShader, ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->setFunction( "oe_nmap_fragment", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, -2.0f);
+
+        // configure shaders
+        Shaders package;
+        package.loadFunction( vp, package.Vertex );
+        package.loadFunction( vp, package.Fragment );
         
         stateset->addUniform( new osg::Uniform(NORMAL_SAMPLER, _normalMapUnit) );
     }
@@ -123,8 +118,9 @@ NormalMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::get(stateset);
         if ( vp )
         {
-            vp->removeShader( "oe_nmap_vertex" );
-            vp->removeShader( "oe_nmap_fragment" );
+            Shaders package;
+            package.unloadFunction( vp, package.Vertex );
+            package.unloadFunction( vp, package.Fragment );
         }
         stateset->removeUniform( NORMAL_SAMPLER );
     }

@@ -30,14 +30,11 @@
 #undef  LC
 #define LC "[TritonDriver] "
 
-using namespace osgEarth;
-using namespace osgEarth::Util;
-
 //---------------------------------------------------------------------------
 
-namespace osgEarth { namespace Drivers { namespace Triton
+namespace osgEarth { namespace Triton
 {
-    class TritonDriver : public OceanDriver
+    class TritonDriver : public osgEarth::Util::OceanDriver
     {
     public:
         TritonDriver()
@@ -83,7 +80,7 @@ namespace osgEarth { namespace Drivers { namespace Triton
                 }
             }
 
-            MapNode* mapNode = getMapNode(options);
+            osgEarth::MapNode* mapNode = getMapNode(options);
             return new TritonNode( mapNode, tritonOptions );
         }
 
@@ -93,4 +90,4 @@ namespace osgEarth { namespace Drivers { namespace Triton
 
     REGISTER_OSGPLUGIN(osgearth_ocean_triton, TritonDriver)
 
-} } } // namespace osgEarth::Drivers::Triton
+} } // namespace osgEarth::Triton

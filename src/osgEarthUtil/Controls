@@ -224,6 +224,8 @@ namespace osgEarth { namespace Util { namespace Controls
         void setHorizAlign( const Alignment& value );
         const optional<Alignment>& horizAlign() const { return _halign; }
 
+        void setAlign(const Alignment& horiz, const Alignment& vert );
+
         void setHorizFill( bool value, float minWidth =0.0f );
         bool horizFill() const { return _hfill; }
 

@@ -31,7 +31,6 @@
 #include <osgEarthUtil/Controls>
 
 #include <osgEarthUtil/ContourMap>
-#include <osgEarthUtil/LODBlending>
 #include <osgEarthUtil/VerticalScale>
 
 #include <osgEarthSymbology/Color>
@@ -59,13 +58,11 @@ struct App
     TerrainEngineNode*           engine;
 
     osg::ref_ptr<ContourMap>     contourMap;
-    osg::ref_ptr<LODBlending>    lodBlending;
     osg::ref_ptr<VerticalScale>  verticalScale;
 
     App()
     {
         contourMap = new ContourMap();
-        lodBlending = new LODBlending();
         verticalScale = new VerticalScale();
     }
 };

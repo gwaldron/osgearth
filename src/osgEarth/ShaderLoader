@@ -49,14 +49,52 @@ namespace osgEarth
             const std::string&    filename,
             const osgDB::Options* dbOptions =0L ) const;
 
+        /**
+         * Adds all the functions in this package to the VirtualProgram.
+         */
+        bool loadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Removes all the functions in this package from the VirtualProgram.
+         */
+        bool unloadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Defs or undefs a GLSL #define proprocessor macro.
+         * Don't include the "#" in the defineName.
+         */
+        void define(
+            const std::string& defineName,
+            bool               defOrUndef);
+
+        /**
+         * Replaces the specified string with another string in the loaded
+         * shader source. Nested replacements are not supported.
+         */
+        void replace(
+            const std::string& pattern,
+            const std::string& value);
+
     public:
         typedef std::map<std::string, std::string> SourceMap;
+        typedef std::map<std::string, std::string> ReplaceMap;
+        typedef std::map<std::string, bool>        DefineMap;
+
         const SourceMap& context() const { return _sources; }
+
         void add(const std::string& filename, const std::string& inlineSource) {
             _sources[filename] = inlineSource; }
 
+
     protected:        
         SourceMap _sources;
+        DefineMap _defines;
+        ReplaceMap _replaces;
+        friend class ShaderLoader;
     };
 
     /**

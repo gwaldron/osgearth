@@ -220,6 +220,9 @@ In addition, the TFS package generated can be served by any standard web server,
 +----------------------------------+--------------------------------------------------------------------+
 | ``--max-features``               | The maximum number of features per tile                            |
 +----------------------------------+--------------------------------------------------------------------+
+| ``--grid``                       | Generate a single level grid with the specified resolution.        |
+|                                  | Default units are meters. (ex. 50, 100km, 200mi)                   |
++----------------------------------+--------------------------------------------------------------------+
 | ``--out``                        | The destination directory                                          |
 +----------------------------------+--------------------------------------------------------------------+
 | ``--layer``                      | The name of the layer to be written to the metadata document       |

@@ -442,6 +442,8 @@ GeometryValidator::apply(osg::Geometry& geom)
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,1,9)
 
+    std::set<osg::BufferObject*> _vbos;
+
     osg::Geometry::ArrayList arrays;
     geom.getArrayList(arrays);
     for(unsigned i=0; i<arrays.size(); ++i)
@@ -457,8 +459,15 @@ GeometryValidator::apply(osg::Geometry& geom)
         }
         else if ( a->getBinding() == a->BIND_PER_VERTEX && a->getNumElements() != numVerts )
         {
-            OE_WARN << LC << "Found BIND_PER_VERTEX with wrong number of elements\n";
+            OE_WARN << LC << "Found BIND_PER_VERTEX with wrong number of elements (expecting " << numVerts << "; found " << a->getNumElements() << ")\n";
         }
+
+        _vbos.insert( a->getVertexBufferObject() );
+    }
+
+    if ( _vbos.size() != 1 )
+    {
+        OE_WARN << LC << "Found a Geometry that uses more than one VBO (non-optimal sharing)\n";
     }
 
 #else // pre-3.1.9 ... phase out.
@@ -490,6 +499,8 @@ GeometryValidator::apply(osg::Geometry& geom)
 #endif
 
     const osg::Geometry::PrimitiveSetList& plist = geom.getPrimitiveSetList();
+    
+    std::set<osg::BufferObject*> _ebos;
 
     for( osg::Geometry::PrimitiveSetList::const_iterator p = plist.begin(); p != plist.end(); ++p )
     {
@@ -512,30 +523,27 @@ GeometryValidator::apply(osg::Geometry& geom)
             }
         }
 
+        bool isDe = pset->getDrawElements() != 0L;
+
         osg::DrawElementsUByte* de_byte = dynamic_cast<osg::DrawElementsUByte*>(pset);
         if ( de_byte )
         {
-            if ( numVerts > 0xFF )
-            {
-                OE_WARN << LC << "DrawElementsUByte used when numVerts > 255 (" << numVerts << ")" << std::endl;
-            }
             validateDE(de_byte, 0xFF, numVerts );
+            _ebos.insert( de_byte->getElementBufferObject() );
         }
 
         osg::DrawElementsUShort* de_short = dynamic_cast<osg::DrawElementsUShort*>(pset);
         if ( de_short )
         {
-            if ( numVerts > 0xFFFF )
-            {
-                OE_WARN << LC << "DrawElementsUShort used when numVerts > 65535 (" << numVerts << ")" << std::endl;
-            }
             validateDE(de_short, 0xFFFF, numVerts );
+            _ebos.insert( de_short->getElementBufferObject() );
         }
 
         osg::DrawElementsUInt* de_int = dynamic_cast<osg::DrawElementsUInt*>(pset);
         if ( de_int )
         {
             validateDE(de_int, 0xFFFFFFFF, numVerts );
+            _ebos.insert( de_int->getElementBufferObject() );
         }
 
         if ( pset->getNumIndices() == 0 )
@@ -550,10 +558,15 @@ GeometryValidator::apply(osg::Geometry& geom)
         {
             OE_WARN << LC << "Primset: not enough indicies for linear prim type\n";
         }
-        else if ( pset->getType() == GL_LINES && pset->getNumIndices() % 2 != 0 )
+        else if ( isDe && pset->getType() == GL_LINES && pset->getNumIndices() % 2 != 0 )
         {
             OE_WARN << LC << "Primset: non-even index count for GL_LINES\n";
         }
+    }
+
+    if ( _ebos.size() != 1 )
+    {
+        OE_WARN << LC << "Found a Geometry that uses more than one EBO (non-optimal sharing)\n";
     }
 }
 
@@ -564,13 +577,40 @@ GeometryValidator::apply(osg::Geode& geode)
     {
         osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
         if ( geom )
+        {
             apply( *geom );
 
-        if ( geom->getVertexArray() == 0L )
-        {
-            OE_WARN << "removing " << geom->getName() << " b/c of null vertex array\n";
-            geode.removeDrawable( geom );
-            --i;
+            if ( geom->getVertexArray() == 0L )
+            {
+                OE_WARN << "removing " << geom->getName() << " b/c of null vertex array\n";
+                geode.removeDrawable( geom );
+                --i;
+            }
         }
     }
+}
+//------------------------------------------------------------------------
+
+AllocateAndMergeBufferObjectsVisitor::AllocateAndMergeBufferObjectsVisitor()
+{
+    setVisitorType(NODE_VISITOR);
+    setTraversalMode(TRAVERSE_ALL_CHILDREN);
+    setNodeMaskOverride(~0);
+}
+
+void
+AllocateAndMergeBufferObjectsVisitor::apply(osg::Geode& geode)
+{
+    for(unsigned i=0; i<geode.getNumDrawables(); ++i)
+    {
+        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+        if ( geom )
+        {
+            // We disable vbo's and then re-enable them to enable sharing of all the arrays.
+            geom->setUseDisplayList( false );
+            geom->setUseVertexBufferObjects( false );
+            geom->setUseVertexBufferObjects( true );
+        }
+    }
+    traverse(geode);
 }

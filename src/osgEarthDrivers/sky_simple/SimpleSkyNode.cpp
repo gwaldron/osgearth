@@ -274,7 +274,7 @@ SimpleSkyNode::computeBound() const
 }
 
 void 
-    SimpleSkyNode::traverse( osg::NodeVisitor& nv ) 
+SimpleSkyNode::traverse( osg::NodeVisitor& nv ) 
 { 
     if ( nv.getVisitorType() == nv.CULL_VISITOR && _cullContainer.valid() ) 
     { 

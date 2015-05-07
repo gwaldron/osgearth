@@ -56,7 +56,7 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
     // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator() );
+    viewer.setCameraManipulator( new EarthManipulator() );    
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    

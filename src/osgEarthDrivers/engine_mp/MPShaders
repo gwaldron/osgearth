@@ -17,14 +17,20 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#include <osgEarth/ShaderLoader>
+
 namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 {
-    struct Shaders
+    class Shaders : public osgEarth::ShaderPackage
 	{
-		static const char* MPVertFile;
-		static const char* MPVertSource;
-		static const char* MPFragFile;
-		static const char* MPFragSource;
+    public:
+        Shaders();
+        
+    public:
+        std::string
+            VertexModel,
+            VertexView,
+            Fragment;
 	};
 	
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

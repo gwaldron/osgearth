@@ -27,6 +27,7 @@
 #include <osgEarth/ShaderGenerator>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
+#include <OpenThreads/Atomic>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -47,6 +48,7 @@ namespace osgEarth
     class URIReadCallback;
     class ColorFilterRegistry;
     class StateSetCache;
+    class ObjectIndex;
     
     typedef SharedSARepo<osg::Program> ProgramSharedRepo;
 
@@ -151,6 +153,12 @@ namespace osgEarth
         static ShaderGeneratorProxy shaderGenerator() { return instance()->getShaderGenerator(); }
 
         /**
+         * Global object index.
+         */
+        ObjectIndex* getObjectIndex() const;
+        static ObjectIndex* objectIndex() { return instance()->getObjectIndex(); }
+
+        /**
          * A default StateSetCache to use by any process that uses one.
          * A StateSetCache assist in stateset sharing across multiple nodes.
          * Note: A registry-wide SSC is only supported in OSG 3.1.4+. See
@@ -197,7 +205,7 @@ namespace osgEarth
          * Clones an options structure (fixing the archive caching), or creates
          * a new one.
          */
-        osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L ) const;
+        static osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L );
 
         /**
          * Registers a Units definition.
@@ -216,6 +224,7 @@ namespace osgEarth
          * For debugging - tracks activities in progress.
          */
         void startActivity(const std::string& name);
+        void startActivity(const std::string& name, const std::string& text);
         void endActivity(const std::string& name);
         void getActivities(std::set<std::string>& output);
 
@@ -289,12 +298,20 @@ namespace osgEarth
         std::string _terrainEngineDriver;
         std::string _cacheDriver;
 
-        std::set<std::string> _activities;
+        typedef std::pair<std::string,std::string> Activity;
+        struct ActivityLess {
+            bool operator()(const Activity& lhs, const Activity& rhs) const {
+                return lhs.first < rhs.first;
+            }
+        };
+        std::set<Activity,ActivityLess> _activities;
         mutable Threading::Mutex _activityMutex;
         
         ProgramSharedRepo _programRepo;
 
         optional<bool> _unRefImageDataAfterApply;
+
+        osg::ref_ptr<ObjectIndex> _objectIndex;
     };
 }
 

@@ -82,6 +82,13 @@ namespace osgEarth
         const std::string& rhs,
         const std::locale& local = std::locale() );
 
+    /**
+     * Case-insensitive STL comparator
+     */
+    struct OSGEARTH_EXPORT CIStringComp {
+        bool operator()(const std::string& lhs, const std::string& rhs) const;
+    };
+
 
     extern OSGEARTH_EXPORT std::string joinStrings( const StringVector& input, char delim );
 

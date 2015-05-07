@@ -104,8 +104,8 @@ ImageMosaic::createImage()
     image->allocateImage(pixelsWide, pixelsHigh, 1, _images[0]._image->getPixelFormat(), _images[0]._image->getDataType());
     image->setInternalTextureFormat(_images[0]._image->getInternalTextureFormat()); 
 
-    //Initialize the image to be completely transparent/black
-    //memset(image->data(), 0, image->getImageSizeInBytes());
+    //Initialize the image to be completely white!
+    memset(image->data(), 0xFF, image->getImageSizeInBytes());
 
     //Composite the incoming images into the master image
     for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)

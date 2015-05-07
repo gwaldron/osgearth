@@ -239,12 +239,14 @@ ShadowCaster::reinitialize()
     vp->setFunction(
         "oe_shadow_vertex", 
         vertex, 
-        ShaderComp::LOCATION_VERTEX_VIEW );
+        ShaderComp::LOCATION_VERTEX_VIEW,
+        0.9f );
 
     vp->setFunction(
         "oe_shadow_fragment",
         fragment,
-        ShaderComp::LOCATION_FRAGMENT_LIGHTING, 10.0f);
+        ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+        0.9f );
 
     // the texture coord generator matrix array (from the caster):
     _shadowMapTexGenUniform = _renderStateSet->getOrCreateUniform(

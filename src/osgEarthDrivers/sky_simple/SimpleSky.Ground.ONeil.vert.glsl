@@ -3,6 +3,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint "atmos_vertex_main"
 #pragma vp_location   "vertex_view"
+#pragma vp_order      "0.5"
 
 uniform bool oe_mode_GL_LIGHTING; 
 
@@ -152,8 +153,7 @@ void atmos_vertex_main(inout vec4 vertexVIEW)
     atmos_lightDir = normalize(gl_LightSource[0].position.xyz);  // view space
     atmos_vert = vertexVIEW.xyz; 
 
-    atmos_space = (atmos_fCameraHeight-atmos_fInnerRadius)/(atmos_fOuterRadius-atmos_fInnerRadius); 
-    atmos_space = clamp(atmos_space, 0.0, 1.0); 
+    atmos_space = max(0.0, (atmos_fCameraHeight-atmos_fInnerRadius)/(atmos_fOuterRadius-atmos_fInnerRadius));
 
     if(atmos_fCameraHeight >= atmos_fOuterRadius) 
     { 

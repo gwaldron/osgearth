@@ -19,7 +19,7 @@
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarthSymbology/Expression>
 #include <osgEarthUtil/Controls>
-#include <osgEarth/CullingUtils>
+#include <osgEarth/Horizon>
 #include <osgEarth/ECEF>
 #include <osg/ClusterCullingCallback>
 #include <osg/MatrixTransform>
@@ -167,10 +167,7 @@ public:
                 // for a geocentric map, do a simple dot product cull.
                 if ( ecef )
                 {
-                    xform->setCullCallback( new CullNodeByHorizon(
-                        centroid, 
-                        ecef->getEllipsoid() ) );
-                        //context.getSession()->getMapSRS()->getEllipsoid() ) ); //getMapInfo().getProfile()->getSRS()->getEllipsoid()) );
+                    xform->setCullCallback( new HorizonCullCallback(*ecef->getEllipsoid()) );
                     group->addChild( xform );
                 }
                 else

@@ -79,6 +79,13 @@ namespace osgEarth { namespace Features
         virtual ~FeatureDisplayLayout() { }
 
         /**
+         * The size (in one dimension) of each tile of features in the layout
+         * at the maximum range. Maximum range must be set for this to take effect.
+         */
+        optional<float>& tileSize() { return _tileSize; }
+        const optional<float>& tileSize() const { return _tileSize; }
+
+        /**
          * The ratio of visibility range to feature tile radius. Default is 15.
          * Increase this to produce more, smaller tiles at a given visibility
          * range; decrease this to produce fewer, larger tiles.
@@ -156,6 +163,7 @@ namespace osgEarth { namespace Features
         Config getConfig() const;
 
     protected:
+        optional<float> _tileSize;
         optional<float> _tileSizeFactor;
         optional<float> _minRange;
         optional<float> _maxRange;

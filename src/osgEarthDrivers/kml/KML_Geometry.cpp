@@ -28,17 +28,18 @@
 using namespace osgEarth_kml;
 
 void 
-KML_Geometry::build( xml_node<>* parent, KMLContext& cx, Style& style)
+KML_Geometry::build( xml_node<>* parent, KMLContext& cx, const Style& baseStyle)
 {
 	for (xml_node<>* node = parent->first_node(); node; node = node->next_sibling())
 	{
-		buildChild(node, cx, style);
+		buildChild(node, cx, baseStyle);
 	}
 }
 
 void
-KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, Style& style)
+KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, const Style& baseStyle)
 {
+    Style style = baseStyle;
 	std::string name = toLower(node->name());
     if ( name == "point" )
     {
@@ -98,21 +99,24 @@ void
 KML_Geometry::parseCoords( xml_node<>* node, KMLContext& cx )
 {
     xml_node<>* coords = node->first_node("coordinates", 0, false);
-    StringVector tuples;
-    StringTokenizer( coords->value(), tuples, " \n", "", false, true );
-    for( StringVector::const_iterator s=tuples.begin(); s != tuples.end(); ++s )
+    if ( coords )
     {
-        StringVector parts;
-        StringTokenizer( *s, parts, ",", "", false, true );
-        if ( parts.size() >= 2 )
+        StringVector tuples;
+        StringTokenizer( coords->value(), tuples, " \n", "", false, true );
+        for( StringVector::const_iterator s=tuples.begin(); s != tuples.end(); ++s )
         {
-            osg::Vec3d point;
-            point.x() = as<double>( parts[0], 0.0 );
-            point.y() = as<double>( parts[1], 0.0 );
-            if ( parts.size() >= 3 ) {
-                point.z() = as<double>( parts[2], 0.0 );
+            StringVector parts;
+            StringTokenizer( *s, parts, ",", "", false, true );
+            if ( parts.size() >= 2 )
+            {
+                osg::Vec3d point;
+                point.x() = as<double>( parts[0], 0.0 );
+                point.y() = as<double>( parts[1], 0.0 );
+                if ( parts.size() >= 3 ) {
+                    point.z() = as<double>( parts[2], 0.0 );
+                }
+                _geom->push_back(point);
             }
-            _geom->push_back(point);
         }
     }
 }
@@ -127,7 +131,7 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     if ( am.empty() )
         am = "clampToGround"; // default.
 
-    bool isPoly = _geom->getComponentType() == Geometry::TYPE_POLYGON;
+    bool isPoly = _geom.valid() && _geom->getComponentType() == Geometry::TYPE_POLYGON;
 
     // Resolve the correct altitude symbol. CLAMP_TO_TERRAIN is the default, but the
     // technique will depend on the geometry's type and setup.

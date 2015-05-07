@@ -19,12 +19,10 @@ SET(HEADERS_ROOT
     ContourMap
     ClampCallback
     DataScanner
-    DateTime
     EarthManipulator
 	Ephemeris
     ExampleResources
     Export
-    FeatureManipTool
     FeatureQueryTool
     Fog
     Formatter
@@ -100,15 +98,14 @@ SET(SOURCES_ROOT
     EarthManipulator.cpp
 	Ephemeris.cpp
     ExampleResources.cpp
-    FeatureManipTool.cpp
     FeatureQueryTool.cpp
     Fog.cpp
     GeodeticGraticule.cpp
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
-    LODBlending.cpp
 	LogarithmicDepthBuffer.cpp
+    LODBlending.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp

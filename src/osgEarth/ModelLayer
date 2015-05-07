@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/AlphaEffect>
 #include <osgEarth/Layer>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
 #include <osgEarth/MaskSource>
@@ -111,6 +112,12 @@ namespace osgEarth
         optional<bool>& terrainPatch() { return _terrainPatch; }
         const optional<bool>& terrainPatch() const { return _terrainPatch; }
 
+        /**
+         * Caching policy for the layer
+         */
+        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
+        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
+
 
     public:
         virtual Config getConfig() const;
@@ -129,6 +136,7 @@ namespace osgEarth
         optional<MaskSourceOptions>  _maskOptions;
         optional<unsigned>           _maskMinLevel;
         optional<bool>               _terrainPatch;
+        optional<CachePolicy>        _cachePolicy;
     };
 
     /**
@@ -224,16 +232,26 @@ namespace osgEarth
          * Creates the scene graph representing this model layer for the given Map,
          * or returns one that already exists.
          */
-        osg::Node* getOrCreateSceneGraph( 
-            const Map*            map, 
-            const osgDB::Options* dbOptions,
-            ProgressCallback*     progress );
+        osg::Node* getOrCreateSceneGraph(const Map* map, ProgressCallback* progress);
 
         /**
          * Gets a scene graph what was previously created with getOrCreateSceneGraph.
          */
         osg::Node* getSceneGraph(const UID& mapUID) const;
+        
+        /**
+         * This layer's caching policy
+         */
+        void setCachePolicy(const CachePolicy& cachePolicy);
+        const CachePolicy& getCachePolicy() const;
 
+    public: // deprecated
+        
+        /** @deprecated */
+        osg::Node* getOrCreateSceneGraph( 
+            const Map*            map, 
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress ) { return getOrCreateSceneGraph(map, progress); }
 
     public: // properties
 
@@ -272,6 +290,7 @@ namespace osgEarth
         ModelLayerCallbackList        _callbacks;
         osg::ref_ptr<AlphaEffect>     _alphaEffect;
         osg::ref_ptr<osg::Vec3dArray> _maskBoundary;
+        osg::ref_ptr<osgDB::Options>  _dbOptions;
 
         typedef fast_map<UID, osg::observer_ptr<osg::Node> > Graphs;
         Graphs _graphs;
@@ -283,6 +302,8 @@ namespace osgEarth
         void copyOptions();
 
         void setLightingEnabledNoLock(bool value);
+        
+        void initializeCachePolicy(const osgDB::Options* options);
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;

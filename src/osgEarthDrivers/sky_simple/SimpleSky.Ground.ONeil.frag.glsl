@@ -3,6 +3,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint "atmos_fragment_main"
 #pragma vp_location   "fragment_lighting"
+#pragma vp_order      "0.8"
 
 uniform bool oe_mode_GL_LIGHTING; 
 uniform float atmos_exposure;   // scene exposure (ground level)
@@ -23,39 +24,29 @@ void atmos_fragment_main(inout vec4 color)
     }
 
     vec3 ambient = gl_LightSource[0].ambient.rgb;
+    float minAmbient = ambient.r;
 
     vec3 N = normalize(oe_global_Normal); 
-    vec3 L = normalize(gl_LightSource[0].position.xyz); 
+    vec3 L = normalize(atmos_lightDir); //normalize(gl_LightSource[0].position.xyz); 
     vec3 U = normalize(atmos_up); 
 
-    float NdotL = max(dot(N,L), 0.0); 
-    float NdotLnormalized = (dot(N,L)+1.0)*0.5;
-    NdotL = mix(NdotL, NdotLnormalized, ambient.r); 
+    const float maxAmbient = 0.5;
+    float daytime = max(0.0, dot(U,L));
+    float brightness = clamp(daytime, minAmbient, maxAmbient);
 
-    // Calculate how much normal-based shading should be applied.
-    // Between low and high (which are NdotL's) we phase out the
-    // normal-based shading (since the atmospheric scattering will
-    // take over at that point). This provides a nice dawn or dusk
-    // shining effect on the sides of buildings or terrain.
-    // Adjust the low: Higher value will increase the effect of
-    // normal-based shading at shallower sun angles (i.e. it will
-    // become more prominent. Perhaps it makes sense in the future to
-    // make this a scattering effect uniform or something -gw)
-    const float low = 0.5; 
-    const float high = 0.9; 
-    float UdotL = clamp(dot(U,L), low, high); 
-    float shadeFactor = 1.0 - (UdotL-low)/(high-low); 
+    float NdotL = max(dot(N,L), 0.0);
 
-    // start applying normal-based shading when we're at twice the 
-    // altitude of the atmosphere's outer radius:
-    float normFactor = max(0.0, 1.0-(2.0*atmos_space)); 
+    const float lowAlt  = 1.0;
+    const float highAlt = 4.0;
+    float altitudeInfluence = 1.0 - clamp( (atmos_space-lowAlt)/(highAlt-lowAlt), 0.0, 1.0);
+    float useNormals = altitudeInfluence * (1.0-brightness);
 
     // try to brighten up surfaces the sun is shining on
-    float overExposure = 1.0;  //1.0+(max(NdotL-0.5, 0.0)*0.25);
+    float overExposure = 1.0;
 
     // calculate the base scene color. Skip ambience since we'll be
     // factoring that in later.
-    vec4 sceneColor = mix(color*overExposure, color*NdotL, normFactor*shadeFactor); 
+    vec4 sceneColor = mix(color*overExposure, color*NdotL, useNormals);
 
     if (NdotL > 0.0 ) { 
         vec3 V = normalize(atmos_vert); 

@@ -1,3 +1,4 @@
+/* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
@@ -82,12 +83,6 @@ namespace osgEarth
         const optional<osg::Vec4ub>& transparentColor() const { return _transparentColor; }
         
         /**
-         * Whether LOD blending is enabled for this layer
-         */
-        optional<bool>& lodBlending() { return _lodBlending; }
-        const optional<bool>& lodBlending() const { return _lodBlending; }
-
-        /**
          * Filters attached to this layer.
          */
         ColorFilterChain& colorFilters() { return _colorFilters; }
@@ -151,7 +146,6 @@ namespace osgEarth
         optional<float>       _maxRange;
         optional<osg::Vec4ub> _transparentColor;
         optional<URI>         _noDataImageFilename;
-        optional<bool>        _lodBlending;
         ColorFilterChain      _colorFilters;
         optional<bool>        _shared;
         optional<bool>        _coverage;
@@ -270,9 +264,6 @@ namespace osgEarth
         void setOpacity( float opacity );
 
         float getOpacity() const { return *_runtimeOptions.opacity(); }
-
-        void disableLODBlending();
-        bool isLODBlendingEnabled() const { return *_runtimeOptions.lodBlending(); }
 
         float getMinVisibleRange() const { return *_runtimeOptions.minVisibleRange();}
         void setMinVisibleRange( float minVisibleRange );

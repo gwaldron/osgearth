@@ -26,7 +26,7 @@ using namespace osgEarth::Features;
 FilterContext::FilterContext(Session*               session,
                              const FeatureProfile*  profile,
                              const GeoExtent&       workingExtent,
-                             FeatureSourceIndex*    index ) :
+                             FeatureIndexBuilder*   index ) :
 _session     ( session ),
 _profile     ( profile ),
 _extent      ( workingExtent, workingExtent ),

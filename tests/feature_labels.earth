@@ -14,6 +14,8 @@ This shows how to label point features with an attribute.
         <features name="cities" driver="ogr">
             <url>../data/ne_cities.shp</url>
         </features>
+        
+        <feature_indexing enabled="false"/>
 
         <styles>
 			<selector class="cities">

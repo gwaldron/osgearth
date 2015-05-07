@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <SilverLining.h>
 
 #include "SilverLiningNode"
 #include "SilverLiningContext"
@@ -25,15 +26,13 @@
 #include <osg/Light>
 #include <osg/LightSource>
 #include <osgEarth/CullingUtils>
-#include <SilverLining.h>
 
+#undef  LC
 #define LC "[SilverLiningNode] "
 
-using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Drivers::SilverLining;
+using namespace osgEarth::SilverLining;
 
-SilverLiningNode::SilverLiningNode(const Map*                 map,
+SilverLiningNode::SilverLiningNode(const osgEarth::Map*       map,
                                    const SilverLiningOptions& options) :
 _options     (options),
 _lastAltitude(DBL_MAX)
@@ -67,7 +66,7 @@ _lastAltitude(DBL_MAX)
 
     // Clouds draw after everything else
     _cloudsDrawable = new CloudsDrawable( _SL.get() );
-    _cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "RenderBin" );
+    _cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "DepthSortedBin" );
     _geode->addDrawable( _cloudsDrawable.get() );
 
     // scene lighting
@@ -77,8 +76,8 @@ _lastAltitude(DBL_MAX)
     _lighting->attach( stateset );
 
     // ensure it's depth sorted and draws after the terrain
-    stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-    getOrCreateStateSet()->setRenderBinDetails( 100, "RenderBin" );
+    //stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+    //getOrCreateStateSet()->setRenderBinDetails( 100, "DepthSortedBin" );
 
     // SL requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);

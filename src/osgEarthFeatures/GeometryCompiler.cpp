@@ -37,6 +37,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>
+#include <osgUtil/Optimizer>
 
 #define LC "[GeometryCompiler] "
 
@@ -45,43 +46,6 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 //#define PROFILING 1
-
-//-----------------------------------------------------------------------
-
-namespace
-{
-    /**
-     * Visitor that will exaggerate the bounding box of each Drawable
-     * in the scene graph to encompass a local high and low mark. We use this
-     * to support GPU-clamping, which will move vertex positions in the 
-     * GPU code. Since OSG is not aware of this movement, it may inadvertenly
-     * cull geometry which is actually visible.
-     */
-    struct OverlayGeometryAdjuster : public osg::NodeVisitor
-    {
-        float _low, _high;
-
-        OverlayGeometryAdjuster(float low, float high)
-            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _low(low), _high(high) { }
-
-        void apply(osg::Geode& geode)
-        {
-            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
-            {
-                osg::Drawable* d = geode.getDrawable(i);
-
-                osg::BoundingBox bbox = Utils::getBoundingBox(d);
-
-                if ( bbox.zMin() > _low )
-                    bbox.expandBy( osg::Vec3f(bbox.xMin(), bbox.yMin(), _low) );
-                if ( bbox.zMax() < _high )
-                    bbox.expandBy( osg::Vec3f(bbox.xMax(), bbox.yMax(), _high) );
-                d->setInitialBound( bbox );
-                d->dirtyBound();
-            }
-        }
-    };
-}
 
 //-----------------------------------------------------------------------
 
@@ -104,7 +68,8 @@ _useVertexBufferObjects( true ),
 _useTextureArrays      ( true ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
-_optimizeStateSharing  ( true )
+_optimizeStateSharing  ( true ),
+_optimize              ( false )
 {
    //nop
 }
@@ -122,7 +87,8 @@ _useVertexBufferObjects( s_defaults.useVertexBufferObjects().value() ),
 _useTextureArrays      ( s_defaults.useTextureArrays().value() ),
 _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
 _geoInterp             ( s_defaults.geoInterp().value() ),
-_optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() )
+_optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
+_optimize              ( s_defaults.optimize().value() )
 {
     fromConfig(_conf);
 }
@@ -141,6 +107,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.getIfSet   ( "use_texture_arrays", _useTextureArrays );
     conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
+    conf.getIfSet   ( "optimize", _optimize );
 
     conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -162,6 +129,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "use_vbo", _useVertexBufferObjects);
     conf.addIfSet   ( "use_texture_arrays", _useTextureArrays );
     conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
+    conf.addIfSet   ( "optimize", _optimize );
 
     conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -270,12 +238,21 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     const IconSymbol*      icon      = style.get<IconSymbol>();
     const ModelSymbol*     model     = style.get<ModelSymbol>();
 
-    // check whether we need tessellation:
-    if ( line && line->tessellation().isSet() )
+    // Perform tessellation first.
+    if ( line )
     {
-        TemplateFeatureFilter<TessellateOperator> filter;
-        filter.setNumPartitions( *line->tessellation() );
-        sharedCX = filter.push( workingSet, sharedCX );
+        if ( line->tessellation().isSet() )
+        {
+            TemplateFeatureFilter<TessellateOperator> filter;
+            filter.setNumPartitions( *line->tessellation() );
+            sharedCX = filter.push( workingSet, sharedCX );
+        }
+        else if ( line->tessellationSize().isSet() )
+        {
+            TemplateFeatureFilter<TessellateOperator> filter;
+            filter.setMaxPartitionSize( *line->tessellationSize() );
+            sharedCX = filter.push( workingSet, sharedCX );
+        }
     }
 
     // if the style was empty, use some defaults based on the geometry type of the
@@ -544,6 +521,27 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             sscache->optimize( resultGroup.get() );
         }
     }
+
+    if ( _options.optimize() == true )
+    {
+        OE_DEBUG << LC << "optimize begin" << std::endl;
+
+        // Run the optimizer on the resulting graph
+        int optimizations =
+            osgUtil::Optimizer::FLATTEN_STATIC_TRANSFORMS |
+            osgUtil::Optimizer::REMOVE_REDUNDANT_NODES |
+            osgUtil::Optimizer::COMBINE_ADJACENT_LODS |
+            osgUtil::Optimizer::SHARE_DUPLICATE_STATE |
+            osgUtil::Optimizer::MERGE_GEOMETRY |
+            osgUtil::Optimizer::CHECK_GEOMETRY |
+            osgUtil::Optimizer::MERGE_GEODES |
+            osgUtil::Optimizer::STATIC_OBJECT_DETECTION;
+
+        osgUtil::Optimizer opt;
+        opt.optimize(resultGroup.get(), optimizations);
+        OE_DEBUG << LC << "optimize complete" << std::endl;
+    }
+    
 
     //test: dump the tile to disk
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );

@@ -65,6 +65,9 @@ namespace osgEarth
          * for a given tile key. (Typically that will happen in a pager thread.)
          */
         virtual void notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node* node) =0;
+
+    public:
+        virtual ~TerrainTileNodeBroker() { }
     };
 
     /**

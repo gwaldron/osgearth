@@ -261,6 +261,23 @@ OgrUtils::createOgrGeometry(const osgEarth::Symbology::Geometry* geometry, OGRwk
 }
 
 Feature*
+OgrUtils::createFeature(OGRFeatureH handle, const FeatureProfile* profile)
+{
+    Feature* f = 0L;
+    if ( profile )
+    {
+        f = createFeature( handle, profile->getSRS() );
+        if ( f && profile->geoInterp().isSet() )
+            f->geoInterp() = profile->geoInterp().get();
+    }
+    else
+    {
+        f = createFeature( handle, (const SpatialReference*)0L );
+    }
+    return f;
+}            
+
+Feature*
 OgrUtils::createFeature( OGRFeatureH handle, const SpatialReference* srs )
 {
     long fid = OGR_F_GetFID( handle );

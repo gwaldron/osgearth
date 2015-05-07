@@ -542,6 +542,19 @@ Geometry::getOrientation() const
         Geometry::ORIENTATION_DEGENERATE;
 }
 
+double
+Geometry::getLength() const
+{
+    double length = 0;
+    for (unsigned int i = 0; i < size()-1; ++i)
+    {
+        osg::Vec3d current = (*this)[i];
+        osg::Vec3d next    = (*this)[i+1];
+        length += (next - current).length();
+    }
+    return length;
+}
+
 //----------------------------------------------------------------------------
 
 PointSet::PointSet( const PointSet& rhs ) :
@@ -570,19 +583,6 @@ Geometry( data )
 
 LineString::~LineString()
 {
-}
-
-double
-LineString::getLength() const
-{
-    double length = 0;
-    for (unsigned int i = 0; i < size()-1; ++i)
-    {
-        osg::Vec3d current = (*this)[i];
-        osg::Vec3d next    = (*this)[i+1];
-        length += (next - current).length();
-    }
-    return length;
 }
 
 bool
@@ -635,6 +635,17 @@ Ring::cloneAs( const Geometry::Type& newType ) const
     else return Geometry::cloneAs( newType );
 }
 
+double
+Ring::getLength() const
+{
+    double length = Geometry::getLength();
+    if ( isOpen() )
+    {
+        length += (front()-back()).length();
+    }
+    return length;
+}
+
 // ensures that the first and last points are not idential.
 void 
 Ring::open()
@@ -649,6 +660,13 @@ Ring::close()
 {
     if ( size() > 0 && front() != back() )
         push_back( front() );
+}
+
+// whether the ring is open.
+bool
+Ring::isOpen() const
+{
+    return size() > 1 && front() != back();
 }
 
 // gets the signed area.
@@ -796,6 +814,15 @@ MultiGeometry::getTotalPointCount() const
     int total = 0;
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
         total += i->get()->getTotalPointCount();
+    return total;
+}
+
+double
+MultiGeometry::getLength() const
+{
+    double total = 0.0;
+    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+        total += i->get()->getLength();
     return total;
 }
 

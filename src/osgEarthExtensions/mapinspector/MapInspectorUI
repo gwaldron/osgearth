@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
+ * Copyright 2008-2014 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,32 +16,34 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#ifndef OSGEARTH_MAPINSPECTOR_UI
+#define OSGEARTH_MAPINSPECTOR_UI 1
 
-#ifndef OSGEARTHSYMBOLOGY_MARKER_SYMBOLIZER_H
-#define OSGEARTHSYMBOLOGY_MARKER_SYMBOLIZER_H 1
+#include <osgEarth/MapCallback>
+#include <osgEarth/MapNode>
+#include <osgEarthUtil/Controls>
+#include <osg/View>
 
-#include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/Symbolizer>
+namespace osgEarth { namespace MapInspector
+{
+    using namespace osgEarth;
 
-namespace osgEarth { namespace Symbology
-{    
-    typedef State<GeometryContent> MarkerSymbolizerState;
-
-    class OSGEARTHSYMBOLOGY_EXPORT MarkerSymbolizer : public Symbolizer<MarkerSymbolizerState>
+    class MapInspectorUI : public osgEarth::Util::Controls::Grid
     {
     public:
-        MarkerSymbolizer();
+        /** create UI */
+        MapInspectorUI();
 
-    public: // Symbolizer
+        /** rebuild everything */
+        void reinit(MapNode* mapNode);
 
-        virtual bool compile(
-            MarkerSymbolizerState* state,
-            osg::Group* attachPoint);
+    private:
+        osg::ref_ptr<osg::Group>    _annos;
 
-    protected:
-        bool pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* polygon);
+        void addTerrainLayer(class TerrainLayer* layer, MapNode* mapNode);
+        void addModelLayer  (class ModelLayer*   layer, MapNode* mapNode);
     };
 
-} } // namespace osgEarth::Symbology
+} } // namespace
 
-#endif
+#endif // OSGEARTH_MAPINSPECTOR_UI

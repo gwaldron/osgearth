@@ -203,6 +203,17 @@ namespace osgEarth
         void apply(osg::Geode& geode);
         void apply(osg::Geometry& geom);
     };
+
+    /**
+     * Allocates and merges buffer objects for each Drawable in the scene graph.
+     */
+    class OSGEARTH_EXPORT AllocateAndMergeBufferObjectsVisitor : public osg::NodeVisitor
+    {
+    public:
+        AllocateAndMergeBufferObjectsVisitor();
+        virtual ~AllocateAndMergeBufferObjectsVisitor() { }
+        void apply(osg::Geode& geode);
+    };
 }
 
 #endif // OSGEARTH_UTILS_H

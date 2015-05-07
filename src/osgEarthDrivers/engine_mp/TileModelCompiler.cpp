@@ -1845,9 +1845,6 @@ namespace
         if ( d.renderTileCoords.valid() )
             d.surface->_tileCoords = d.renderTileCoords;
 
-        if ( d.stitchTileCoords.valid() )
-            d.surface->_tileCoords = d.stitchTileCoords.get();
-
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
@@ -1916,6 +1913,7 @@ namespace
             {
                 layer._texCoords = r->_stitchTexCoords.get();
                 mr->_geom->_layers[order] = layer;
+                mr->_geom->_tileCoords = d.stitchTileCoords.get();
             }
         }
 

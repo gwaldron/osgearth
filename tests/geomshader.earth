@@ -34,7 +34,7 @@ Rendering pipeline.
                 
                 // Internal helper functions:
                 void VP_LoadVertex(in int);
-                void VP_EmitVertex();
+                void VP_EmitModelVertex();
 
                 uniform float osg_FrameTime;
                 
@@ -55,7 +55,7 @@ Rendering pipeline.
                         gl_Position = pos;
                         
                         // Copies stage globals to output and calles EmitVertex():
-                        VP_EmitVertex();
+                        VP_EmitModelVertex();
                     }
                     EndPrimitive();
                 }

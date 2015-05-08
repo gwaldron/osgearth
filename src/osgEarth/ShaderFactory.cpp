@@ -628,7 +628,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version 330\n"
+        buf << "#version 330 compatibility\n"
             << "#pragma name \"VP Geometry Shader Main\" \n";
 
         if ( hasVS || hasTCS || hasTES )
@@ -645,74 +645,35 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         buf << "\n// Geometry stage outputs: \n"
             << "out " << fragdata << " vp_out; \n";
 
-        if ( geomStage )
+        if ( geomStage || (viewStage && viewStageInGS) || (clipStage && clipStageInGS) )
         {
-            buf << "\n// Function declarations:\n";
-            for( OrderedFunctionMap::const_iterator i = geomStage->begin(); i != geomStage->end(); ++i )
+            buf << "\n// Injected function declarations:\n";
+            if ( geomStage )
             {
-                buf << "void " << i->second._name << "(); \n";
+                for( OrderedFunctionMap::const_iterator i = geomStage->begin(); i != geomStage->end(); ++i )
+                {
+                    buf << "void " << i->second._name << "(); \n";
+                }
+            }       
+
+            if ( viewStage && viewStageInGS )
+            {
+                for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+                {
+                    buf << "void " << i->second._name << "(inout vec4); \n";
+                }
+            }
+
+            if ( clipStage && clipStageInGS )
+            {
+                for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+                {
+                    buf << "void " << i->second._name << "(inout vec4); \n";
+                }
             }
         }
-
-        buf << "\n"
-            << "void main(void) \n"
-            << "{ \n"
-            << INDENT "// copy default outputs: \n";
         
-        // Copy default input block to output block (auto passthrough on first vert)
-        // NOT SURE WE NEED THIS
-        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << INDENT << "vp_out." << i->name << " = vp_in[0]." << i->name << "; \n";
-
-        if ( geomStage )
-        {
-            for( OrderedFunctionMap::const_iterator i = geomStage->begin(); i != geomStage->end(); ++i )
-            {
-                buf << INDENT << i->second._name << "(); \n";
-            }
-        }
-
-        buf << "} \n";
-
-        std::string str;
-        str = buf.str();
-        osg::Shader* geomShader = new osg::Shader( osg::Shader::GEOMETRY, str );
-        geomShader->setName( "main(geometry)" );
-        out_shaders.push_back( geomShader );
-
-
-        // Construct the GS Helper Functions.
-        buf.str("");
-        buf << "#version 330 compatibility\n"
-            << "#pragma name \"VP Geometry Shader Helper Functions\"\n\n";
-
-        buf << "\n// Geometry stage inputs:\n"
-            << "in " << vertdata << " vp_in []; \n\n";       
-        
-        buf << "\n// Geometry stage outputs: \n"
-            << "out " << fragdata << " vp_out; \n";
-        
-        // Declare stage globals.
-        buf << "\n// Geometry stage globals\n";        
-        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << i->declaration << "; \n";        
-
-        if ( viewStage && viewStageInGS )
-        {
-            for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
-            {
-                buf << "void " << i->second._name << "(inout vec4); \n";
-            }
-        }
-
-        if ( clipStage && clipStageInGS )
-        {
-            for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
-            {
-                buf << "void " << i->second._name << "(inout vec4); \n";
-            }
-        }
-
+        // Build-in helper functions:
         buf << "\nvoid VP_LoadVertex(in int index) \n"
             << "{ \n";
         
@@ -722,14 +683,14 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         buf << "} \n";
 
-        buf << "\nvoid VP_EmitVertex() \n"
+        buf << "\nvoid VP_EmitModelVertex() \n"
             << "{ \n";
-
+        
+        buf << INDENT << "vp_Vertex = gl_Position; \n";
         int space = SPACE_MODEL;
-
         if ( viewStage && viewStageInGS )
         {
-            buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * gl_Position; \n";
+            buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n";
             space = SPACE_VIEW;
 
             for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
@@ -758,20 +719,78 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
         else if ( space == SPACE_VIEW )
             buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
-
-        buf << INDENT << "gl_Position = vp_Vertex; \n";
                 
         // Copy globals to output block:
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
             buf << INDENT << "vp_out." << i->name << " = " << i->name << "; \n";
 
+        buf << INDENT << "gl_Position = vp_Vertex; \n";
+
         buf << INDENT << "EmitVertex(); \n"
             << "} \n";
         
+
+        buf << "\nvoid VP_EmitViewVertex() \n"
+            << "{ \n";
+        
+        buf << INDENT << "vp_Vertex = gl_Position; \n";
+        space = SPACE_VIEW;
+        if ( viewStage && viewStageInGS )
+        {
+            for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+            {
+                buf << INDENT << i->second._name << "(vp_Vertex); \n";
+            }
+        }
+
+        if ( clipStage && clipStageInGS )
+        {
+            buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+            space = SPACE_CLIP;
+            for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+            {
+                buf << INDENT << i->second._name << "(vp_Vertex); \n";
+            }
+        }
+
+        // resolve vertex to its next space:
+        if ( space == SPACE_VIEW )
+            buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+                
+        // Copy globals to output block:
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << "vp_out." << i->name << " = " << i->name << "; \n";
+
+        buf << INDENT << "gl_Position = vp_Vertex; \n";
+
+        buf << INDENT << "EmitVertex(); \n"
+            << "} \n";
+
+        buf << "\n"
+            << "void main(void) \n"
+            << "{ \n"
+            << INDENT "// copy default outputs: \n";
+        
+        // Copy default input block to output block (auto passthrough on first vert)
+        // NOT SURE WE NEED THIS
+        for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            buf << INDENT << "vp_out." << i->name << " = vp_in[0]." << i->name << "; \n";
+
+        if ( geomStage )
+        {
+            for( OrderedFunctionMap::const_iterator i = geomStage->begin(); i != geomStage->end(); ++i )
+            {
+                buf << INDENT << i->second._name << "(); \n";
+            }
+        }
+
+        buf << "} \n";
+
+        std::string str;
         str = buf.str();
-        osg::Shader* helperShader = new osg::Shader(osg::Shader::GEOMETRY, str);
-        helperShader->setName("vp helpers(geometry)");
-        out_shaders.push_back( helperShader );
+        osg::Shader* geomShader = new osg::Shader( osg::Shader::GEOMETRY, str );
+        geomShader->setName( "main(geometry)" );
+        out_shaders.push_back( geomShader );
     }
     
 

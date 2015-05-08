@@ -28,6 +28,8 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Random>
+#include <osgEarth/ShaderLoader>
+
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ScatterFilter>
 
@@ -253,15 +255,13 @@ BillboardExtension::connect(MapNode* mapNode)
 
         //for now just using an osg::Program
         //TODO: need to add GeometryShader support to the shader comp setup
-        osg::Program* pgm = new osg::Program;
-        pgm->setName("billboard_program");
-        pgm->addShader( new osg::Shader( osg::Shader::VERTEX, billboardVertShader ) );
-        pgm->addShader( new osg::Shader( osg::Shader::GEOMETRY, billboardGeomShader ) );
-        pgm->addShader( new osg::Shader( osg::Shader::FRAGMENT, billboardFragmentShader ) );
-        pgm->setParameter( GL_GEOMETRY_VERTICES_OUT_EXT, 4 );
-        pgm->setParameter( GL_GEOMETRY_INPUT_TYPE_EXT, GL_POINTS );
-        pgm->setParameter( GL_GEOMETRY_OUTPUT_TYPE_EXT, GL_TRIANGLE_STRIP );
-        geode_ss->setAttribute(pgm);
+        VirtualProgram* vp = VirtualProgram::getOrCreate(geode_ss);
+        vp->setName( "osgEarth Billboard Extension" );
+
+        ShaderPackage shaders;
+        shaders.add( "Billboard geometry shader", billboardGeomShader );
+        shaders.add( "Billboard fragment shader", billboardFragShader );
+        shaders.loadAll( vp );
 
         geode_ss->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
         geode->setCullingActive(false);

@@ -41,7 +41,6 @@ namespace
         "uniform sampler2D ocean_data; \n"                 // heightfield encoded into 16 bit texture
         "uniform float ocean_seaLevel; \n"                 // sea level offset
 
-        "varying vec4 osg_FrontColor; \n"
         "varying vec4 ocean_surface_tex_coord; \n"
         "varying float ocean_v_msl; \n"                    // elevation (MSL) of camera
         "varying float ocean_v_range; \n"                  // distance from camera to current vertex
@@ -53,8 +52,6 @@ namespace
 
         "void oe_ocean_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
-        "   osg_FrontColor = gl_Color; \n"
-
         // adjust our vert for the sea level - extrude along the normal vector 
         // (this must be done in view space to preserve precision)
         "   vec4 mvVertex = VertexVIEW; \n"
@@ -169,7 +166,6 @@ namespace
         "uniform mat4 osg_ViewMatrixInverse; \n"
         "uniform float osg_FrameTime; \n"
         "uniform float ocean_seaLevel; \n"
-        "varying vec4 osg_FrontColor; \n"
         "varying vec4 ocean_mask_tex_coord; \n"
         "varying vec4 ocean_surface_tex_coord; \n"
         "varying float ocean_v_msl; \n"
@@ -177,8 +173,6 @@ namespace
 
         "void oe_ocean_vertex(inout vec4 VertexMODEL) \n"
         "{ \n"
-        "   osg_FrontColor = gl_Color; \n"
-
         // adjust our vert for the sea level - extrude along the normal vector 
         // (this must be done in modelview space to preserve precision)
         "   vec4 mvVertex = VertexMODEL; \n"

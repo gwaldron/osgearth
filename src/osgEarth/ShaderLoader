@@ -80,15 +80,21 @@ namespace osgEarth
             const std::string& pattern,
             const std::string& value);
 
+        /**
+         * Add a file/source to the package. If you only have inline source, just
+         * set the filename to a unique description string.
+         */
+        void add(const std::string& filename, const std::string& inlineSource)
+        {
+            _sources[filename] = inlineSource;
+        }
+
     public:
         typedef std::map<std::string, std::string> SourceMap;
         typedef std::map<std::string, std::string> ReplaceMap;
         typedef std::map<std::string, bool>        DefineMap;
 
         const SourceMap& context() const { return _sources; }
-
-        void add(const std::string& filename, const std::string& inlineSource) {
-            _sources[filename] = inlineSource; }
 
 
     protected:        

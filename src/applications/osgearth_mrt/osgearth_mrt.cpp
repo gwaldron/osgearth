@@ -54,19 +54,19 @@ createMRTPass(App& app, osg::Node* sceneGraph)
     rtt->attach(osg::Camera::BufferComponent(osg::Camera::COLOR_BUFFER2), app.gdepth);
 
     static const char* vertSource =
-        "varying float mrt_depth;\n"
+        "out float mrt_depth;\n"
         "void oe_mrt_vertex(inout vec4 vertexClip)\n"
         "{\n"
         "    mrt_depth = (vertexClip.z/vertexClip.w)*0.5+1.0;\n"
         "}\n";
 
     static const char* fragSource =
-        "varying float mrt_depth;\n"
-        "vec3 oe_global_Normal; \n"
+        "in float mrt_depth;\n"
+        "in vec3 vp_Normal; \n"
         "void oe_mrt_fragment(inout vec4 color)\n"
         "{\n"
         "    gl_FragData[0] = color; \n"
-        "    gl_FragData[1] = vec4((oe_global_Normal+1.0)/2.0,1.0);\n"
+        "    gl_FragData[1] = vec4((vp_Normal+1.0)/2.0,1.0);\n"
         "    gl_FragData[2] = vec4(mrt_depth,mrt_depth,mrt_depth,1.0); \n"
         "}\n";
 

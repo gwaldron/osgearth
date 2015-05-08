@@ -36,7 +36,7 @@ varying vec3 atmos_up;             // earth up vector at vertex location (not th
 varying float atmos_space;         // [0..1]: camera: 0=inner radius (ground); 1.0=outer radius
 varying vec3 atmos_vert; 
 
-vec3 oe_global_Normal;             // surface normal (from osgEarth)
+vec3 vp_Normal;             // surface normal (from osgEarth)
 
 float atmos_scale(float fCos) 	
 { 

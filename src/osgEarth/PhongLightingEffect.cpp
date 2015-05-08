@@ -101,14 +101,14 @@ namespace
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec3 oe_phong_vertexView3; \n"
 
-        "vec3 oe_global_Normal; \n"
+        "in vec3 vp_Normal; \n"
 
         "void oe_phong_fragment(inout vec4 color) \n"
         "{ \n"        
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
 
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 N = normalize(oe_global_Normal); \n"
+        "    vec3 N = normalize(vp_Normal); \n"
         
         "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
 

@@ -4,7 +4,7 @@
 #pragma vp_order      "0.2"
 
 // stage global:
-vec3 oe_global_Normal;
+vec3 vp_Normal;
 
 uniform vec4 oe_tile_key;
 uniform sampler2D oe_nmap_normalTex;
@@ -15,7 +15,7 @@ void oe_nmap_fragment(inout vec4 color)
 {
     vec4 encodedNormal = texture2D(oe_nmap_normalTex, oe_nmap_normalCoords.st);
     vec3 normalTangent = normalize(encodedNormal.xyz*2.0-1.0);
-    oe_global_Normal = normalize(oe_nmap_TBN * normalTangent);
+    vp_Normal = normalize(oe_nmap_TBN * normalTangent);
 
     // visualize curvature:
     //color.rgb = vec3(0,0,0);

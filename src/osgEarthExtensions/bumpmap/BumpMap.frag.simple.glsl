@@ -6,10 +6,11 @@
 
 #pragma include "BumpMap.frag.common.glsl"
 
-vec3 oe_global_Normal;
+vec3 vp_Normal;
 
 uniform sampler2D oe_bumpmap_tex;
-uniform float oe_bumpmap_intensity;
+uniform float    oe_bumpmap_intensity;
+
 in vec2 oe_bumpmap_coords;
 
 void oe_bumpmap_fragment(inout vec4 color)
@@ -19,5 +20,5 @@ void oe_bumpmap_fragment(inout vec4 color)
 
 	// permute the normal with the bump.
     float slope = oe_bumpmap_getSlope();
-	oe_global_Normal = normalize(oe_global_Normal + bump*oe_bumpmap_intensity*slope);
+	vp_Normal = normalize(vp_Normal + bump*oe_bumpmap_intensity*slope);
 }

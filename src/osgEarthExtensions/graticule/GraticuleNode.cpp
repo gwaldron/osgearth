@@ -87,7 +87,7 @@ void GraticuleNode::initLabelPool()
     text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     text->fill()->color() = _options.labelColor().get();
     AltitudeSymbol* alt = style.getOrCreateSymbol<AltitudeSymbol>();
-    alt->clamping() = AltitudeSymbol::Clamping::CLAMP_TO_TERRAIN;
+    alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     unsigned int labelPoolSize = 8 * _options.gridLines().get();
     for (unsigned int i = 0; i < labelPoolSize; i++)

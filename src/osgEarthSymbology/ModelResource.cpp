@@ -57,7 +57,7 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
     osg::ref_ptr< osgDB::Options > options = dbOptions ? new osgDB::Options( *dbOptions ) : 0;
 
     // Explicitly cache images so that models that share images will only load one copy.
-    options->setObjectCacheHint( osgDB::Options::CacheHintOptions::CACHE_IMAGES );
+    options->setObjectCacheHint( osgDB::Options::CACHE_IMAGES );
     osg::Node* node = 0L;
 
     ReadResult r = uri.readNode( options.get() );

@@ -23,7 +23,6 @@ SET(HEADERS_ROOT
 	Ephemeris
     ExampleResources
     Export
-    FeatureManipTool
     FeatureQueryTool
     Fog
     Formatter
@@ -99,7 +98,6 @@ SET(SOURCES_ROOT
     EarthManipulator.cpp
 	Ephemeris.cpp
     ExampleResources.cpp
-    FeatureManipTool.cpp
     FeatureQueryTool.cpp
     Fog.cpp
     GeodeticGraticule.cpp

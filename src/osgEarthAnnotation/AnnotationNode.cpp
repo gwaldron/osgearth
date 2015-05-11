@@ -78,6 +78,8 @@ _autoclamp  ( false ),
 _depthAdj   ( false ),
 _activeDs   ( 0L )
 {
+    this->setName( conf.value("name") );
+
     if ( conf.hasValue("lighting") )
     {
         bool lighting = conf.value<bool>("lighting", false);

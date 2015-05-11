@@ -16,15 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "TritonContext"
 #include <Triton.h>
+#include "TritonContext"
 #include <osg/GLExtensions>
 #include <osgEarth/SpatialReference>
 
 #define LC "[TritonContext] "
 
-using namespace osgEarth;
-using namespace osgEarth::Drivers::Triton;
+using namespace osgEarth::Triton;
 
 
 TritonContext::TritonContext(const TritonOptions& options) :
@@ -39,7 +38,7 @@ _ocean                ( 0L )
 }
 
 void
-TritonContext::setSRS(const SpatialReference* srs)
+TritonContext::setSRS(const osgEarth::SpatialReference* srs)
 {
     _srs = srs;
 }

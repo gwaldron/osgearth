@@ -14,7 +14,7 @@ varying vec3 atmos_up;          // earth up vector at fragment (in view coords)
 varying float atmos_space;      // camera altitude (0=ground, 1=atmos outer radius)
 varying vec3 atmos_vert; 
         
-vec3 oe_global_Normal;          // surface normal (from osgEarth)
+vec3 vp_Normal;          // surface normal (from osgEarth)
 
 void atmos_fragment_main(inout vec4 color) 
 { 
@@ -26,7 +26,7 @@ void atmos_fragment_main(inout vec4 color)
     vec3 ambient = gl_LightSource[0].ambient.rgb;
     float minAmbient = ambient.r;
 
-    vec3 N = normalize(oe_global_Normal); 
+    vec3 N = normalize(vp_Normal); 
     vec3 L = normalize(atmos_lightDir); //normalize(gl_LightSource[0].position.xyz); 
     vec3 U = normalize(atmos_up); 
 

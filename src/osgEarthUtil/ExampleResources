@@ -60,7 +60,7 @@ namespace osgEarth { namespace Util
         osg::Group* load(
             osg::ArgumentParser& args, 
             osgViewer::View*     view,
-            Control*             userControl =0L ) const;
+            Container*           userContainer =0L ) const;
 
         /**
          * Takes an existing map node and processes all the built-in example command
@@ -70,8 +70,15 @@ namespace osgEarth { namespace Util
             MapNode*             mapNode,
             osg::ArgumentParser& args,
             osgViewer::View*     view,
-            osg::Group*          parentGroup =0L,
-            Control*             userControl =0L) const;
+            osg::Group*          parentGroup,
+            Container*           userContainer) const;
+
+        void parse(
+            MapNode*             mapNode,
+            osg::ArgumentParser& args,
+            osgViewer::View*     view,
+            osg::Group*          parentGroup,
+            LabelControl*        userLabel) const;
 
         /**
          * Configures a view with a stock set of event handlers that are useful

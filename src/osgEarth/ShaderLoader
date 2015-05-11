@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgDB/Options>
 #include <map>
+#include <set>
 
 namespace osgEarth
 {
@@ -50,6 +51,20 @@ namespace osgEarth
             const osgDB::Options* dbOptions =0L ) const;
 
         /**
+         * Adds all the functions in this package to the VirtualProgram.
+         */
+        bool loadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Removes all the functions in this package from the VirtualProgram.
+         */
+        bool unloadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
          * Defs or undefs a GLSL #define proprocessor macro.
          * Don't include the "#" in the defineName.
          */
@@ -65,15 +80,21 @@ namespace osgEarth
             const std::string& pattern,
             const std::string& value);
 
+        /**
+         * Add a file/source to the package. If you only have inline source, just
+         * set the filename to a unique description string.
+         */
+        void add(const std::string& filename, const std::string& inlineSource)
+        {
+            _sources[filename] = inlineSource;
+        }
+
     public:
         typedef std::map<std::string, std::string> SourceMap;
         typedef std::map<std::string, std::string> ReplaceMap;
         typedef std::map<std::string, bool>        DefineMap;
 
         const SourceMap& context() const { return _sources; }
-
-        void add(const std::string& filename, const std::string& inlineSource) {
-            _sources[filename] = inlineSource; }
 
 
     protected:        
@@ -127,6 +148,20 @@ namespace osgEarth
             const std::string&    filename,
             const ShaderPackage&  package,
             const osgDB::Options* dbOptions =0L );
+
+        /**
+         * Utility function that returns the value of a quoted #pragma; e.g.,
+         * #pragma vp_something "You are here"
+         * returns the string inside the quotes (without the quotes).
+         */
+        static std::string getQuotedPragmaValue(
+            const std::string& source,
+            const std::string& key);
+
+        static void getAllQuotedPragmaValues(
+            const std::string&     source,
+            const std::string&     key,
+            std::set<std::string>& output);
     };
 
 } // namespace osgEarth

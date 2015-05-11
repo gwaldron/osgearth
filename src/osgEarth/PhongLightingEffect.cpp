@@ -36,13 +36,13 @@ namespace
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec4 oe_lighting_adjustment; \n"
         "varying vec4 oe_lighting_zero_vec; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
 
         "void oe_phong_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
         "    oe_lighting_adjustment = vec4(1.0); \n"
-        "    vec3 N = oe_Normal; \n"
+        "    vec3 N = vp_Normal; \n"
         "    float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
         "    NdotL = max( 0.0, NdotL ); \n"
 
@@ -101,14 +101,14 @@ namespace
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec3 oe_phong_vertexView3; \n"
 
-        "vec3 oe_global_Normal; \n"
+        "in vec3 vp_Normal; \n"
 
         "void oe_phong_fragment(inout vec4 color) \n"
         "{ \n"        
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
 
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 N = normalize(oe_global_Normal); \n"
+        "    vec3 N = normalize(vp_Normal); \n"
         
         "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
 

@@ -26,36 +26,63 @@
 
 using namespace osgEarth;
 
-namespace
-{
-    // find the value of a quoted pragma, e.g.:
-    //   #pragma oe_key "value"
-    // returns the string "value" (without the quotes).
-    std::string getQuotedPragmaValue(const std::string& source,
-                                     const std::string& key)
-    {
-        std::string::size_type includePos = source.find("#pragma " + key);
-        if ( includePos == std::string::npos )
-            return "";
-
-        std::string::size_type openQuotePos = source.find('\"', includePos);
-        if ( openQuotePos == std::string::npos )
-            return "";
-
-        std::string::size_type closeQuotePos = source.find('\"', openQuotePos+1);
-        if ( closeQuotePos == std::string::npos )
-            return "";
-
-        std::string statement = source.substr( includePos, (closeQuotePos-includePos)+1 );
-
-        std::string value = source.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
-
-        return value;
-    }
-}
 
 typedef std::map<std::string,std::string> StringMap;
 
+
+// find the value of a quoted pragma, e.g.:
+//   #pragma oe_key "value"
+// returns the string "value" (without the quotes).
+std::string
+ShaderLoader::getQuotedPragmaValue(const std::string& source, const std::string& key)
+{
+    std::string::size_type includePos = source.find("#pragma " + key);
+    if ( includePos == std::string::npos )
+        return "";
+
+    std::string::size_type openQuotePos = source.find('\"', includePos);
+    if ( openQuotePos == std::string::npos )
+        return "";
+
+    std::string::size_type closeQuotePos = source.find('\"', openQuotePos+1);
+    if ( closeQuotePos == std::string::npos )
+        return "";
+
+    std::string statement = source.substr( includePos, (closeQuotePos-includePos)+1 );
+
+    std::string value = source.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
+
+    return value;
+}
+
+void 
+ShaderLoader::getAllQuotedPragmaValues(const std::string&     source,
+                                       const std::string&     key,
+                                       std::set<std::string>& output)
+{
+    std::string::size_type includePos = 0;
+    while( includePos != std::string::npos )
+    {
+        includePos = source.find("#pragma " + key, includePos);
+        if ( includePos != std::string::npos )
+        {
+            std::string::size_type openQuotePos = source.find('\"', includePos);
+            if ( openQuotePos != std::string::npos )
+            {
+                std::string::size_type closeQuotePos = source.find('\"', openQuotePos+1);
+                if ( closeQuotePos != std::string::npos )
+                {
+                    std::string statement = source.substr( includePos, (closeQuotePos-includePos)+1 );
+                    std::string value = source.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
+                    if ( !value.empty() )
+                        output.insert( value );
+
+                    includePos = closeQuotePos;
+                }
+            }
+        }
+    }
+}
 
 std::string
 ShaderLoader::load(const std::string&    filename,
@@ -259,6 +286,12 @@ ShaderLoader::loadFunction(VirtualProgram*       vp,
         location = ShaderComp::LOCATION_VERTEX_VIEW;
     else if ( ciEquals(loc, "vertex_clip") )
         location = ShaderComp::LOCATION_VERTEX_CLIP;
+    else if ( ciEquals(loc, "tess_control") || ciEquals(loc, "tessellation_control") )
+        location = ShaderComp::LOCATION_TESS_CONTROL;
+    else if ( ciEquals(loc, "tess_eval") || ciEquals(loc, "tessellation_eval") || ciEquals(loc, "tessellation_evaluation") || ciEquals(loc, "tess_evaluation") )
+        location = ShaderComp::LOCATION_TESS_EVALUATION;
+    else if ( ciEquals(loc, "vertex_geometry") || ciEquals(loc, "geometry") )
+        location = ShaderComp::LOCATION_GEOMETRY;
     else if ( ciEquals(loc, "fragment" ) )
         location = ShaderComp::LOCATION_FRAGMENT_COLORING;
     else if ( ciEquals(loc, "fragment_coloring") )
@@ -348,4 +381,28 @@ ShaderPackage::unloadFunction(VirtualProgram*       vp,
                               const osgDB::Options* dbOptions) const
 {
     return ShaderLoader::unloadFunction(vp, filename, *this, dbOptions);
+}
+
+bool
+ShaderPackage::loadAll(VirtualProgram*       vp,
+                       const osgDB::Options* dbOptions) const
+{
+    int oks = 0;
+    for(SourceMap::const_iterator i = _sources.begin(); i != _sources.end(); ++i)
+    {
+        oks += loadFunction( vp, i->first ) ? 1 : 0;
+    }
+    return oks == _sources.size();
+}
+
+bool
+ShaderPackage::unloadAll(VirtualProgram*       vp,
+                          const osgDB::Options* dbOptions) const
+{
+    int oks = 0;
+    for(SourceMap::const_iterator i = _sources.begin(); i != _sources.end(); ++i)
+    {
+        oks += unloadFunction( vp, i->first ) ? 1 : 0;
+    }
+    return oks == _sources.size();
 }

@@ -1,0 +1,88 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_GRATICULE_NODE
+#define OSGEARTH_GRATICULE_NODE 1
+
+#include "GraticuleOptions"
+#include "GraticuleTerrainEffect"
+#include "Export"
+#include <osgEarthUtil/LatLongFormatter>
+#include <osgEarth/MapNode>
+#include <osgEarthAnnotation/LabelNode>
+
+
+namespace osgEarth { namespace Graticule
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+    using namespace osgEarth::Annotation;
+
+
+    /**
+    * Node that manges the graticule resolution and labels
+    */
+    class OSGEARTH_GRATICULE_EXPORT GraticuleNode : public osg::Group
+    {
+    public:
+
+        GraticuleNode(MapNode* mapNode, GraticuleTerrainEffect* terrainEffect, const GraticuleOptions& options);
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+        bool getVisible() const;
+        void setVisible(bool visible);
+
+    protected:
+        // DTOR
+        virtual ~GraticuleNode();
+
+        
+    private:
+
+        osgEarth::GeoExtent getViewExtent(osg::Camera* camera);
+
+        double getResolution() const;
+        void setResolution(double resolution);
+
+        void initLabelPool();
+
+        void updateLabels();
+
+        std::string getText(const GeoPoint& location, bool lat);
+
+
+        osg::observer_ptr< MapNode > _mapNode;
+        osg::ref_ptr< GraticuleTerrainEffect > _effect;
+        osg::ref_ptr< LatLongFormatter > _formatter;
+        osg::ref_ptr< osg::Uniform > _resolutionUniform;
+        float _resolution;
+        float _maxResolution;
+        double _lon;
+        double _lat;
+        GeoExtent _viewExtent;
+        osg::Vec3d _focalPoint;
+        std::vector< osg::ref_ptr< LabelNode > > _labelPool;
+        const GraticuleOptions _options;
+        bool _visible;
+
+    };
+
+} } // namespace osgEarth::Graticule
+
+#endif // OSGEARTH_GRATICULE_NODE

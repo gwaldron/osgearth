@@ -22,10 +22,10 @@
 #include <osgEarth/Common>
 #include <osgEarth/PrimitiveIntersector>
 #include <osgViewer/View>
+#include <osgEarthFeatures/Feature>
 
 namespace osgEarth
 {
-
     /**
      * Utility for picking objects from the scene.
      */

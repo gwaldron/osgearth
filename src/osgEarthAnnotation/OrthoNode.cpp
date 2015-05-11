@@ -120,12 +120,13 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
         // If decluttering is enabled, update the auto-transform but not its children.
         // This is necessary to support picking/selection. An optimization would be to
         // disable this pass when picking is not in use
-        if ( declutter )
-        {
-            static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform)->acceptCullNoTraverse( cv );
-        }
+        //if ( !declutter )
+        //{
+        //    static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform)->accept( nv, false );
+        //}
 
         // turn off small feature culling
+        // (note: pretty sure this does nothing here -gw)
         cv->setSmallFeatureCullingPixelSize(-1.0f);
 
         AnnotationNode::traverse( nv );

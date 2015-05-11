@@ -361,7 +361,7 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
 osg::Group*
 MapNodeHelper::load(osg::ArgumentParser& args,
                     osgViewer::View*     view,
-                    Control*             userControl ) const
+                    Container*           userContainer ) const
 {
     // do this first before scanning for an earth file
     std::string outEarth;
@@ -420,7 +420,7 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     // parses common cmdline arguments.
     if ( view )
     {
-        parse( mapNode.get(), args, view, root, userControl );
+        parse( mapNode.get(), args, view, root, userContainer );
     }
 
     // Dump out an earth file if so directed.
@@ -445,7 +445,24 @@ MapNodeHelper::parse(MapNode*             mapNode,
                      osg::ArgumentParser& args,
                      osgViewer::View*     view,
                      osg::Group*          root,
-                     Control*             userControl ) const
+                     LabelControl*        userLabel ) const
+{
+    VBox* vbox = new VBox();
+    vbox->setAbsorbEvents( true );
+    vbox->setBackColor( Color(Color::Black, 0.8) );
+    vbox->setHorizAlign( Control::ALIGN_LEFT );
+    vbox->setVertAlign( Control::ALIGN_BOTTOM );
+    vbox->addControl( userLabel );
+
+    parse(mapNode, args, view, root, vbox);
+}
+
+void
+MapNodeHelper::parse(MapNode*             mapNode,
+                     osg::ArgumentParser& args,
+                     osgViewer::View*     view,
+                     osg::Group*          root,
+                     Container*           userContainer ) const
 {
     if ( !root )
         root = mapNode;
@@ -498,15 +515,21 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install a new Canvas for our UI controls, or use one that already exists.
     ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
 
-    Container* mainContainer = canvas->addControl( new VBox() );
-    mainContainer->setAbsorbEvents( true );
-    mainContainer->setBackColor( Color(Color::Black, 0.8) );
-    mainContainer->setHorizAlign( Control::ALIGN_LEFT );
-    mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
+    Container* mainContainer;
+    if ( userContainer )
+    {
+        mainContainer = userContainer;
+    }
+    else
+    {
+        mainContainer = new VBox();
+        mainContainer->setAbsorbEvents( true );
+        mainContainer->setBackColor( Color(Color::Black, 0.8) );
+        mainContainer->setHorizAlign( Control::ALIGN_LEFT );
+        mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
+    }
+    canvas->addControl( mainContainer );
 
-    // install the user control:
-    if ( userControl )
-        mainContainer->addControl( userControl );
 
     // look for external data in the map node:
     const Config& externals = mapNode->externalConfig();
@@ -632,7 +655,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
         AnnotationRegistry::instance()->create( mapNode, annoConf, dbOptions.get(), annotations );
         if ( annotations )
         {
-            root->addChild( annotations );
+            mapNode->addChild( annotations );
+            //root->addChild( annotations );
         }
     }
 

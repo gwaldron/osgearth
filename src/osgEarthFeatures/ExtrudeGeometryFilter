@@ -108,6 +108,7 @@ namespace osgEarth { namespace Features
             float      wallTexHeightAdjusted;
             bool       isFromSource;
             float      cosAngle;
+            float      height;
         };
         typedef std::list<Corner> Corners; // use a list to prevent iterator invalidation
 
@@ -138,6 +139,7 @@ namespace osgEarth { namespace Features
             Elevations elevations;
             bool       isPolygon;
             osg::Vec3d baseCentroid;
+            float      verticalOffset;
 
             unsigned getNumPoints() const {
                 unsigned c = 0;
@@ -167,6 +169,7 @@ namespace osgEarth { namespace Features
         Style                          _style;
         bool                           _styleDirty;
         optional<bool>                 _useTextureArrays;
+        bool                           _gpuClamping;
 
         osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;
         osg::ref_ptr<const SkinSymbol>      _wallSkinSymbol;
@@ -180,11 +183,11 @@ namespace osgEarth { namespace Features
         void reset( const FilterContext& context );
         
         void addDrawable( 
-            osg::Drawable*      drawable, 
-            osg::StateSet*      stateSet, 
-            const std::string&  name,
-            Feature*            feature,
-            FeatureSourceIndex* index);
+            osg::Drawable*       drawable, 
+            osg::StateSet*       stateSet, 
+            const std::string&   name,
+            Feature*             feature,
+            FeatureIndexBuilder* index);
         
         bool process( 
             FeatureList&     input,
@@ -193,6 +196,7 @@ namespace osgEarth { namespace Features
         bool buildStructure(const Geometry*         input,
                             double                  height,
                             bool                    flatten,
+                            float                   verticalOffset,
                             const SkinResource*     wallSkin,
                             const SkinResource*     roofSkin,
                             Structure&              out_structure,

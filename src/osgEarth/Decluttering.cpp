@@ -18,6 +18,7 @@
 */
 #include <osgEarth/Decluttering>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Containers>
 #include <osgEarth/Utils>
 #include <osgEarth/VirtualProgram>
 #include <osgUtil/RenderBin>
@@ -165,7 +166,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
     DeclutterSortFunctor* _customSortFunctor;
     DeclutterContext*     _context;
 
-    Threading::PerObjectMap<osg::Camera*, PerCamInfo> _perCam;
+    PerObjectFastMap<osg::Camera*, PerCamInfo> _perCam;
 
     /**
      * Constructs the new sorter.
@@ -223,8 +224,25 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         local._failed.clear();          // drawables that fail occlusion test
         local._used.clear();            // list of occupied bounding boxes in screen space
 
-        // compute a window matrix so we can do window-space culling:
+        // compute a window matrix so we can do window-space culling. If this is an RTT camera
+        // with a reference camera attachment, we actually want to declutter in the window-space
+        // of the reference camera.
         const osg::Viewport* vp = cam->getViewport();
+
+        osg::Vec3f  refCamScale(1.0f, 1.0f, 1.0f);
+        osg::Matrix refCamScaleMat;
+
+        if ( cam->isRenderToTextureCamera() )
+        {
+            osg::Camera* refCam = dynamic_cast<osg::Camera*>(cam->getUserData());
+            if ( refCam )
+            {
+                const osg::Viewport* refVP = refCam->getViewport();
+                refCamScale.set( vp->width() / refVP->width(), vp->height() / refVP->height(), 1.0 );
+                refCamScaleMat.makeScale( refCamScale );
+            }
+        }
+
         osg::Matrix windowMatrix = vp->computeWindowMatrix();
 
         // Track the parent nodes of drawables that are obscured (and culled). Drawables
@@ -254,7 +272,13 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             osg::Vec4d clip = s_zero_w * (*leaf->_modelview.get()) * (*leaf->_projection.get());
             osg::Vec3d clip_ndc( clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w() );
             osg::Vec3f winPos = clip_ndc * windowMatrix;
+
+            // this accounts for the size difference when using a reference camera (RTT/picking)
+            box.xMax() *= refCamScale.x();
+            box.yMax() *= refCamScale.y();
+
             osg::Vec2f offset( -box.xMin(), -box.yMin() );
+
             box.set(
                 winPos.x() + box.xMin(),
                 winPos.y() + box.yMin(),
@@ -315,7 +339,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // projection when it's drawn later. We'll also preserve the scale.
             osg::Matrix newModelView;
             newModelView.makeTranslate( box.xMin() + offset.x(), box.yMin() + offset.y(), 0 );
-            newModelView.preMultScale( leaf->_modelview->getScale() );
+            newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
             
             // Leaf modelview matrixes are shared (by objects in the traversal stack) so we 
             // cannot just replace it unfortunately. Have to make a new one. Perhaps a nice
@@ -421,9 +445,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
  */
 struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
 {
-    DeclutterContext*                                    _context;
-    Threading::PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
-    osg::ref_ptr<osg::Uniform> _fade;
+    DeclutterContext*                         _context;
+    PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
+    osg::ref_ptr<osg::Uniform>                _fade;
 
     /**
      * Constructs the decluttering draw callback.

@@ -27,6 +27,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/ECEF>
+#include <osgEarth/ObjectIndex>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/MeshConsolidator>
 
@@ -71,32 +72,6 @@ CompilerCache::TexCoordArrayCache::get(const osg::Vec4d& mat,
     newKey._rows    = rows;
     this->push_back( std::make_pair(newKey, (osg::Vec2Array*)0L) );
     return this->back().second;
-}
-
-namespace
-{
-    struct AllocateBufferObjectsVisitor : public osg::NodeVisitor
-    {
-    public:
-        AllocateBufferObjectsVisitor():
-          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
-        {
-        }
-
-        void apply(osg::Geode& geode)
-        {
-            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-            {
-                osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-                if ( geom )
-                {
-                    // We disable vbo's and then re-enable them to enable sharing of all the arrays.
-                    geom->setUseVertexBufferObjects( false );
-                    geom->setUseVertexBufferObjects( true );
-                }
-            }
-        }
-    };
 }
 
 //------------------------------------------------------------------------
@@ -163,6 +138,7 @@ namespace
             ownsTileCoords   = false;
             stitchTileCoords = 0L;
             installParentData = false;
+            usePatches       = false;
         }
 
         osg::Matrixd local2world, world2local;
@@ -217,6 +193,8 @@ namespace
         // for masking/stitching:
         MaskRecordVector         maskRecords;
         //MPGeometry*              stitchGeom;
+
+        bool                     usePatches;
 
         bool useUInt;
         osg::DrawElements* newDrawElements(GLenum mode) {
@@ -1344,7 +1322,8 @@ namespace
 
         unsigned numSurfaceNormals = d.numRows * d.numCols;
 
-        osg::DrawElements* elements = d.newDrawElements(GL_TRIANGLES);
+        GLenum mode = d.usePatches ? GL_PATCHES : GL_TRIANGLES;
+        osg::DrawElements* elements = d.newDrawElements(mode);
         elements->reserveElements((d.numRows-1) * (d.numCols-1) * 6);
 
         if ( recalcNormals )
@@ -1866,9 +1845,6 @@ namespace
         if ( d.renderTileCoords.valid() )
             d.surface->_tileCoords = d.renderTileCoords;
 
-        if ( d.stitchTileCoords.valid() )
-            d.surface->_tileCoords = d.stitchTileCoords.get();
-
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
@@ -1937,6 +1913,7 @@ namespace
             {
                 layer._texCoords = r->_stitchTexCoords.get();
                 mr->_geom->_layers[order] = layer;
+                mr->_geom->_tileCoords = d.stitchTileCoords.get();
             }
         }
 
@@ -2087,6 +2064,7 @@ TileModelCompiler::compile(TileModel*        model,
     d.parentModel = model->getParentTileModel();
     d.heightScale = *_options.verticalScale();
     d.heightOffset = *_options.verticalOffset();
+    d.usePatches = *_options.gpuTessellation();
 
     // A Geode/Geometry for the surface:
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );

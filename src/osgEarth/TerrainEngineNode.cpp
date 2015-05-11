@@ -141,26 +141,26 @@ void
 TerrainEngineNode::requireNormalTextures()
 {
     _requireNormalTextures = true;
-    dirty();
+    dirtyTerrain();
 }
 
 void
 TerrainEngineNode::requireElevationTextures()
 {
     _requireElevationTextures = true;
-    dirty();
+    dirtyTerrain();
 }
 
 void
 TerrainEngineNode::requireParentTextures()
 {
     _requireParentTextures = true;
-    dirty();
+    dirtyTerrain();
 }
 
 
 void
-TerrainEngineNode::dirty()
+TerrainEngineNode::requestRedraw()
 {
     if ( 0 == _dirtyCount++ )
     {
@@ -168,6 +168,12 @@ TerrainEngineNode::dirty()
         ViewVisitor<RequestRedraw> visitor;
         this->accept(visitor);
     }
+}
+
+void
+TerrainEngineNode::dirtyTerrain()
+{
+    requestRedraw();
 }
 
 
@@ -284,7 +290,7 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     }
 
     // notify that a redraw is required.
-    dirty();
+    requestRedraw();
 }
 
 TerrainTileModel*

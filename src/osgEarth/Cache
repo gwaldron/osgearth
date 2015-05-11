@@ -24,7 +24,7 @@
 #include <osgEarth/CacheBin>
 #include <osgEarth/Config>
 #include <osgEarth/TileKey>
-#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Containers>
 #include <sys/types.h>
 
 // environment variables
@@ -70,7 +70,7 @@ namespace osgEarth
 
 //--------------------------------------------------------------------
 
-    typedef Threading::PerObjectRefMap<std::string, CacheBin> ThreadSafeCacheBinMap;
+    typedef PerObjectRefMap<std::string, CacheBin> ThreadSafeCacheBinMap;
 
 
     /**

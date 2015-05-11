@@ -21,9 +21,20 @@
 
 #include <osgEarth/Common>
 #include <osg/Node>
+#include <osg/Geometry>
 
 namespace osgEarth
 {
+    /**
+     * Support for GPU Clamping.
+     *
+     * GPU Clamping makes use of a custom vertex attribute. The contents of this 
+     * vec4 attribute are:
+     *   attr[0] : X coordinate of reference vertex
+     *   attr[1] : Y coordinate of reference vertex
+     *   attr[2] : Vertical offset to apply after clamping
+     *   attr[3] : 0 = clamp vertex directly; 1 = clamp indirectly using reference vertex
+     */
     class OSGEARTH_EXPORT Clamping
     {
     public:
@@ -32,12 +43,6 @@ namespace osgEarth
 
         // Name of the clamping anchor vertex attribute
         static const char* AnchorAttrName;
-
-        // Vertex attribute binding location for Offset attribute
-        //static const int OffsetAttrLocation;
-
-        // Name of the clamping offset vertex attribute
-        //static const char* OffsetAttrName;
 
         // Name of the boolean uniform that tells the shader whether the
         // geometry has clamping attributes.
@@ -52,7 +57,18 @@ namespace osgEarth
         static const float ClampToAnchor;
         static const float ClampToGround;
 
-        static void applyDefaultClampingAttrs(osg::Node* node);
+        // Installs a uniform on the stateset indicating that geometry has the
+        // clamping vertex attribute installed.
+        static void installHasAttrsUniform(
+            osg::StateSet* stateset );
+
+        static void applyDefaultClampingAttrs(
+            osg::Node* node,
+            float      verticalOffset =0.0f);
+
+        static void applyDefaultClampingAttrs(
+            osg::Geometry* geom,
+            float          verticalOffset =0.0f);
     };
 }
 

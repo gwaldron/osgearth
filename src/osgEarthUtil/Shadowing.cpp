@@ -164,7 +164,7 @@ ShadowCaster::reinitialize()
         "uniform sampler2DArray oe_shadow_map; \n"
         "uniform vec4 oe_shadow_color; \n"
         "uniform float oe_shadow_blur; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
         "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
 
         //TODO-run a generator and rplace
@@ -207,7 +207,7 @@ ShadowCaster::reinitialize()
         "    const float b0 = 0.001; \n"
         "    const float b1 = 0.01; \n"
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 N = normalize(vp_Normal); \n"
         "    float costheta = clamp(dot(L,N), 0.0, 1.0); \n"
         "    float bias = b0*tan(acos(costheta)); \n"
 

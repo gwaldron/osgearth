@@ -30,7 +30,7 @@ using namespace osgEarth::Features;
 
 #define OV(p) "("<<p.x()<<","<<p.y()<<")"
 
-#define ATTR_LOCATION osg::Drawable::SECONDARY_COLORS
+#define ATTR_LOCATION osg::Drawable::ATTRIBUTE_7
 
 namespace
 {
@@ -470,6 +470,7 @@ namespace
     {
         PixelSizeVectorCullCallback(osg::StateSet* stateset)
         {
+            _frameNumber = 0;
             _pixelSizeVectorUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_PixelSizeVector");
             stateset->addUniform( _pixelSizeVectorUniform.get() );
         }
@@ -477,11 +478,43 @@ namespace
         void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            _pixelSizeVectorUniform->set( cv->getCurrentCullingSet().getPixelSizeVector() );
+
+            // temporary patch to prevent uniform overwrite -gw
+            if ( nv->getFrameStamp() && nv->getFrameStamp()->getFrameNumber() > _frameNumber )
+            {
+                _pixelSizeVectorUniform->set( cv->getCurrentCullingSet().getPixelSizeVector() );    
+                _frameNumber = nv->getFrameStamp()->getFrameNumber();
+            }
+
             traverse(node, nv);
         }
 
         osg::ref_ptr<osg::Uniform> _pixelSizeVectorUniform;
+        int _frameNumber;        
+    };
+
+    class PixelScalingGeode : public osg::Geode
+    {
+    public:
+        void traverse(osg::NodeVisitor& nv)
+        {
+            osgUtil::CullVisitor* cv = 0L;
+            if (nv.getVisitorType() == nv.CULL_VISITOR &&
+                (cv = Culling::asCullVisitor(nv)) != 0L &&
+                cv->getCurrentCamera() )
+            {
+                osg::ref_ptr<osg::StateSet>& ss = _stateSets.get( cv->getCurrentCamera() );
+                if ( !ss.valid() )
+                    ss = new osg::StateSet();
+
+                ss->getOrCreateUniform("oe_PixelSizeVector", osg::Uniform::FLOAT_VEC4)->set(
+                    cv->getCurrentCullingSet().getPixelSizeVector() );
+            }
+
+            osg::Geode::traverse( nv );
+        }
+
+        PerObjectFastMap<osg::Camera*, osg::ref_ptr<osg::StateSet> > _stateSets;
     };
 }
 
@@ -588,7 +621,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
     PolygonizeLinesOperator polygonize( line ? (*line->stroke()) : Stroke() );
 
     // Geode to hold all the geometries.
-    osg::Geode* geode = new osg::Geode();
+    osg::Geode* geode = new PixelScalingGeode(); //osg::Geode();
 
     // iterate over all features.
     for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
@@ -620,7 +653,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
             // record the geometry's primitive set(s) in the index:
             if ( cx.featureIndex() )
-                cx.featureIndex()->tagPrimitiveSets( geom, f );
+                cx.featureIndex()->tagDrawable( geom, f );
         }
     }
 

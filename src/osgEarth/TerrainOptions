@@ -187,6 +187,12 @@ namespace osgEarth
         const optional<unsigned>& minNormalMapLOD() const { return _minNormalMapLOD; }
 
         /**
+         * Whether the terrain engine will be using GPU tessellation shaders.
+         */
+        optional<bool>& gpuTessellation() { return _gpuTessellation; }
+        const optional<bool>& gpuTessellation() const { return _gpuTessellation; }
+
+        /**
          * debugging mode
          */
         optional<bool>& debug() { return _debug; }
@@ -226,6 +232,7 @@ namespace osgEarth
         optional<unsigned> _primaryTraversalMask;
         optional<unsigned> _secondaryTraversalMask;
         optional<unsigned> _minNormalMapLOD;
+        optional<bool> _gpuTessellation;
         optional<bool> _debug;
     };
 }

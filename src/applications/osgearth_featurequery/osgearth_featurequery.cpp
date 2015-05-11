@@ -17,12 +17,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osg/Notify>
-#include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarth/ShaderLoader>
+#include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
+#include <osgEarth/ObjectIndex>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
@@ -33,18 +35,78 @@
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
-//------------------------------------------------------------------------
-// creaes a simple user interface for the manip demo
-Control*
-createUI()
+//-----------------------------------------------------------------------
+
+/**
+ * Creates a simple user interface for the demo.
+ */
+Container* createUI()
 {
     VBox* vbox = new VBox();
     vbox->setVertAlign( Control::ALIGN_TOP );
-    vbox->setHorizAlign( Control::ALIGN_LEFT );
+    vbox->setHorizAlign( Control::ALIGN_RIGHT );
     vbox->addControl( new LabelControl("Feature Query Demo", Color::Yellow) );
     vbox->addControl( new LabelControl("Click on a feature to see its attributes.") );
     return vbox;
-} 
+}
+
+//-----------------------------------------------------------------------
+
+/**
+ * Query Callback that displays the targeted feature's attributes in a
+ * user interface grid control.
+ */
+
+class ReadoutCallback : public FeatureQueryTool::Callback
+{
+public:
+    ReadoutCallback(ControlCanvas* container) : _lastFID( ~0 )
+    {
+        _grid = new Grid();
+        _grid->setBackColor( Color(Color::Black,0.7f) );
+        container->addControl( _grid );
+    }
+
+    void onHit(ObjectID id)
+    {
+        FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>( id );
+        Feature* feature = index ? index->getFeature( id ) : 0L;
+        if ( feature && feature->getFID() != _lastFID )
+        {
+            _grid->clearControls();
+            unsigned r=0;
+
+            _grid->setControl( 0, r, new LabelControl("FID", Color::Red) );
+            _grid->setControl( 1, r, new LabelControl(Stringify()<<feature->getFID(), Color::White) );
+            ++r;
+
+            const AttributeTable& attrs = feature->getAttrs();
+            for( AttributeTable::const_iterator i = attrs.begin(); i != attrs.end(); ++i, ++r )
+            {
+                _grid->setControl( 0, r, new LabelControl(i->first, 14.0f, Color::Yellow) );
+                _grid->setControl( 1, r, new LabelControl(i->second.getString(), 14.0f, Color::White) );
+            }
+            if ( !_grid->visible() )
+                _grid->setVisible( true );
+        
+            _lastFID = feature->getFID();
+        }
+    }
+
+    void onMiss()
+    {
+        _grid->setVisible(false);
+        _lastFID = 0u;
+    }
+
+    bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa) 
+    {
+        return ea.getEventType() == ea.RELEASE; // click
+    }
+
+    Grid*     _grid;
+    FeatureID _lastFID;
+};
 
 //------------------------------------------------------------------------
 
@@ -52,8 +114,6 @@ int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    if ( arguments.read("--stencil") )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     // a basic OSG viewer
     osgViewer::Viewer viewer(arguments);
@@ -68,27 +128,17 @@ main(int argc, char** argv)
     {
         viewer.setSceneData( root );
 
-        // configure the near/far so we don't clip things that are up close
-        viewer.getCamera()->setNearFarRatio(0.00002);
-
-        // add some stock OSG handlers:
-        viewer.addEventHandler(new osgViewer::StatsHandler());
-        viewer.addEventHandler(new osgViewer::WindowSizeHandler());
-        viewer.addEventHandler(new osgViewer::ThreadingHandler());
-        viewer.addEventHandler(new osgViewer::LODScaleHandler());
-        viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
         MapNode* mapNode = MapNode::findMapNode( root );
         if ( mapNode )
         {
-            FeatureQueryTool* tool = new FeatureQueryTool( mapNode );
+            // Install the query tool.
+            FeatureQueryTool* tool = new FeatureQueryTool();
             viewer.addEventHandler( tool );
+            tool->addChild( mapNode );
 
-            VBox* readout = ControlCanvas::getOrCreate(&viewer)->addControl( new VBox() );
-            readout->setHorizAlign( Control::ALIGN_RIGHT );
-            readout->setBackColor( Color(Color::Black,0.8) );
-            tool->addCallback( new FeatureReadoutCallback(readout) );
-            tool->addCallback( new FeatureHighlightCallback() );
+            // Install a readout for feature metadata.
+            ControlCanvas* canvas = ControlCanvas::getOrCreate(&viewer);
+            tool->setDefaultCallback( new ReadoutCallback(canvas) );
         }
 
         return viewer.run();

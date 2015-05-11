@@ -34,6 +34,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
+#include <osgEarth/ObjectIndex>
 
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -41,6 +42,7 @@
 #include <osg/Timer>
 #include <osg/Depth>
 #include <osg/BlendFunc>
+#include <osg/PatchParameter>
 #include <osgDB/DatabasePager>
 #include <osgUtil/RenderBin>
 #include <osgUtil/RenderLeaf>
@@ -374,7 +376,7 @@ MPTerrainEngineNode::refresh(bool forceDirty)
         }
         else
         {
-            createTerrain();
+            dirtyTerrain();
         }
 
         _refreshRequired = false;
@@ -386,7 +388,7 @@ MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     if ( _update_mapf != 0L )
     {
-        createTerrain();
+        dirtyTerrain();
     }
 }
 
@@ -437,7 +439,7 @@ MPTerrainEngineNode::getPayloadStateSet()
 }
 
 void
-MPTerrainEngineNode::createTerrain()
+MPTerrainEngineNode::dirtyTerrain()
 {
     // scrub the heightfield cache.
     if (_tileModelFactory)
@@ -499,6 +501,9 @@ MPTerrainEngineNode::createTerrain()
     _rootTilesRegistered = false;
 
     updateState();
+
+    // Call the base class
+    TerrainEngineNode::dirtyTerrain();
 }
 
 namespace
@@ -786,6 +791,7 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             if ( !texMatUniformName.isSet() )
             {
                 texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texmat";
+                OE_INFO << LC << "Layer \"" << layerAdded->getName() << "\" texmat uniform = \"" << texMatUniformName.get() << "\"\n";
             }
         }
     }
@@ -870,6 +876,12 @@ MPTerrainEngineNode::updateState()
         }
 
         osg::StateSet* terrainStateSet = getTerrainStateSet();
+
+        // install patch param if we are tessellation on the GPU.
+        if ( _terrainOptions.gpuTessellation() == true )
+        {
+            terrainStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
+        }
         
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(
@@ -879,6 +891,9 @@ MPTerrainEngineNode::updateState()
         terrainStateSet->setAttributeAndModes( 
             new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON );
+
+        // TESTING
+        terrainStateSet->addUniform( new osg::Uniform("sharedTexture", (int)2) );
 
         // install shaders, if we're using them.
         if ( Registry::capabilities().supportsGLSL() )
@@ -1018,6 +1033,22 @@ MPTerrainEngineNode::updateState()
             terrainStateSet->getOrCreateUniform(
                 "oe_min_tile_range_factor",
                 osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
+
+            // special object ID that denotes the terrain surface.
+            terrainStateSet->addUniform( new osg::Uniform(
+                Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
+
+            // bind the shared layer uniforms.
+            for(ImageLayerVector::const_iterator i = _update_mapf->imageLayers().begin(); i != _update_mapf->imageLayers().end(); ++i)
+            {
+                const ImageLayer* layer = i->get();
+                if ( layer->isShared() )
+                {
+                    std::string texName = Stringify() << "oe_layer_" << layer->getUID() << "_tex";
+                    terrainStateSet->addUniform( new osg::Uniform(texName.c_str(), layer->shareImageUnit().get()) );
+                    OE_INFO << LC << "Layer \"" << layer->getName() << "\" in uniform \"" << texName << "\"\n";
+                }
+            }
         }
 
         _stateUpdateRequired = false;

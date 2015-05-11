@@ -18,6 +18,8 @@
 */
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarth/Decluttering>
+#include <osgEarth/Registry>
+#include <osgEarth/ObjectIndex>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -145,6 +147,8 @@ AnnotationRegistry::createOne(MapNode*              mapNode,
             {
                 Decluttering::setEnabled( anno->getOrCreateStateSet(), true );
             }
+
+            Registry::objectIndex()->tagNode( anno, anno );
 
             return anno;
         }

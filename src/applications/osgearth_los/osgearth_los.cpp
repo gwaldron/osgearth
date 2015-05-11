@@ -30,6 +30,7 @@
 #include <osgEarthUtil/RadialLineOfSight>
 #include <osg/io_utils>
 #include <osg/MatrixTransform>
+#include <osg/Depth>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -126,7 +127,12 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( manip );
     
     root->addChild( earthNode );    
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
+    //viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
+
+    osg::Group* losGroup = new osg::Group();
+    losGroup->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+    losGroup->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::ALWAYS, 0, 1, false));
+    root->addChild(losGroup);
 
     // so we can speak lat/long:
     const SpatialReference* mapSRS = mapNode->getMapSRS();
@@ -138,9 +144,7 @@ main(int argc, char** argv)
         GeoPoint(geoSRS, -121.665, 46.0878, 1258.00, ALTMODE_ABSOLUTE),
         GeoPoint(geoSRS, -121.488, 46.2054, 3620.11, ALTMODE_ABSOLUTE) );
 
-    root->addChild( los );
-    los->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-
+    losGroup->addChild( los );
     
     //Create an editor for the point to point line of sight that allows you to drag the beginning and end points around.
     //This is just one way that you could manipulator the LineOfSightNode.
@@ -153,8 +157,7 @@ main(int argc, char** argv)
         GeoPoint(geoSRS, -121.2, 46.1, 10, ALTMODE_RELATIVE),
         GeoPoint(geoSRS, -121.488, 46.2054, 10, ALTMODE_RELATIVE) );
 
-    root->addChild( relativeLOS );
-    relativeLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+    losGroup->addChild( relativeLOS );
 
     LinearLineOfSightEditor* relEditor = new LinearLineOfSightEditor( relativeLOS );
     root->addChild( relEditor );
@@ -164,20 +167,18 @@ main(int argc, char** argv)
     radial->setCenter( GeoPoint(geoSRS, -121.515, 46.054, 847.604, ALTMODE_ABSOLUTE) );
     radial->setRadius( 2000 );
     radial->setNumSpokes( 100 );    
-    radial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    root->addChild( radial );
+    losGroup->addChild( radial );
     RadialLineOfSightEditor* radialEditor = new RadialLineOfSightEditor( radial );
-    root->addChild( radialEditor );
+    losGroup->addChild( radialEditor );
 
     //Create a relative RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
     RadialLineOfSightNode* radialRelative = new RadialLineOfSightNode( mapNode );
     radialRelative->setCenter( GeoPoint(geoSRS, -121.2, 46.054, 10, ALTMODE_RELATIVE) );
     radialRelative->setRadius( 3000 );
     radialRelative->setNumSpokes(60);    
-    radialRelative->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    root->addChild( radialRelative );
+    losGroup->addChild( radialRelative );
     RadialLineOfSightEditor* radialRelEditor = new RadialLineOfSightEditor( radialRelative );
-    root->addChild( radialRelEditor );
+    losGroup->addChild( radialRelEditor );
 
     //Load a plane model.  
     osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("../data/cessna.osg.5,5,5.scale");
@@ -191,15 +192,13 @@ main(int argc, char** argv)
     //Create a LineOfSightNode that will use a LineOfSightTether callback to monitor
     //the two plane's positions and recompute the LOS when they move
     LinearLineOfSightNode* tetheredLOS = new LinearLineOfSightNode( mapNode);
-    tetheredLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    root->addChild( tetheredLOS );
+    losGroup->addChild( tetheredLOS );
     tetheredLOS->setUpdateCallback( new LineOfSightTether( plane1, plane2 ) );
 
     //Create another plane and attach a RadialLineOfSightNode to it using the RadialLineOfSightTether
     osg::Node* plane3 = createPlane(plane, GeoPoint(geoSRS, -121.463, 46.3548, 1348.71, ALTMODE_ABSOLUTE), mapSRS, 10000, 5);
-    root->addChild( plane3 );
-    RadialLineOfSightNode* tetheredRadial = new RadialLineOfSightNode( mapNode );    
-    tetheredRadial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);    
+    losGroup->addChild( plane3 );
+    RadialLineOfSightNode* tetheredRadial = new RadialLineOfSightNode( mapNode );
     tetheredRadial->setRadius( 5000 );
 
     //This RadialLineOfSightNode is going to be filled, so set some alpha values for the colors so it's partially transparent
@@ -207,7 +206,7 @@ main(int argc, char** argv)
     tetheredRadial->setGoodColor( osg::Vec4(0,1,0,0.3) );
     tetheredRadial->setBadColor( osg::Vec4(1,0,0,0.3) );
     tetheredRadial->setNumSpokes( 100 );
-    root->addChild( tetheredRadial );
+    losGroup->addChild( tetheredRadial );
     tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );
 
     manip->setHomeViewpoint( Viewpoint( 

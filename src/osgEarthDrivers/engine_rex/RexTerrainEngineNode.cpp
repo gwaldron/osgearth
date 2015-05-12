@@ -33,6 +33,7 @@
 
 #include <osg/Depth>
 #include <osg/BlendFunc>
+#include <osg/PatchParameter>
 #include <osgUtil/RenderBin>
 
 #define LC "[RexTerrainEngineNode] "
@@ -864,6 +865,12 @@ RexTerrainEngineNode::updateState()
             new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON );
 
+        // install patch param if we are tessellation on the GPU.
+        if ( _terrainOptions.gpuTessellation() == true )
+        {
+            terrainStateSet->setAttributeAndModes( new osg::PatchParameter(16) );
+        }
+
         // install shaders, if we're using them.
         if ( Registry::capabilities().supportsGLSL() )
         {
@@ -872,13 +879,13 @@ RexTerrainEngineNode::updateState()
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
             // Vertex shader:
-            std::string vs = ShaderLoader::load(
-                Shaders::VertFile,
-                Shaders::VertSource );
+            Shaders package;
+            package.loadFunction(vp, package.VS);
+            package.loadFunction(vp, package.FS);
+            
+            bool useTerrainColor = _terrainOptions.color().isSet();
 
-            //osgEarth::replaceIn( vs, "$REX_PRIMARY_UNIT",   Stringify() << _renderBindings.color().unit() );
-            //osgEarth::replaceIn( vs, "$REX_SECONDARY_UNIT", Stringify() << _renderBindings.parentColor().unit() );
-
+#if 0
             bool lodBlending = _terrainOptions.enableLODBlending() == true;
             if ( !lodBlending )
             {
@@ -894,7 +901,6 @@ RexTerrainEngineNode::updateState()
                 Shaders::FragFile,
                 Shaders::FragSource );
             
-            bool useTerrainColor = _terrainOptions.color().isSet();
             if ( !useTerrainColor )
             {
                 osgEarth::replaceIn( fs,
@@ -918,7 +924,7 @@ RexTerrainEngineNode::updateState()
             }
 
             vp->setFunction( "oe_rexEngine_frag", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
-
+#endif
             
             // assemble color filter code snippets.
             bool haveColorFilters = false;

@@ -6,8 +6,11 @@
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
-const char* Shaders::VertFile   = "RexEngine.vert.glsl";
-const char* Shaders::VertSource = MULTILINE(@RexEngine.vert.glsl@);
+Shaders::Shaders()
+{
+    VS = "RexEngine.vert.glsl";
+    _sources[VS] = OE_MULTILINE(@RexEngine.vert.glsl@);
 
-const char* Shaders::FragFile   = "RexEngine.frag.glsl";	
-const char* Shaders::FragSource = MULTILINE(@RexEngine.frag.glsl@);
+    FS = "RexEngine.frag.glsl";
+    _sources[FS] = OE_MULTILINE(@RexEngine.frag.glsl@);
+}

@@ -3,6 +3,9 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
 set(TARGET_GLSL
     RexEngine.vert.glsl
+    RexEngine.tcs.glsl
+    RexEngine.tes.glsl
+    RexEngine.gs.glsl
     RexEngine.frag.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")

@@ -74,6 +74,19 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             MaskGenerator* maskSet ) const;
 
     protected:
+
+        osg::Geometry* createTriangleGeometry(
+            const TileKey& tileKey,
+            const MapInfo& mapInfo,
+            MaskGenerator* maskSet ) const;
+
+        osg::Geometry* createPatchGeometry(
+            const TileKey& tileKey,
+            const MapInfo& mapInfo,
+            MaskGenerator* maskSet ) const;
+
+
+    protected:
         virtual ~GeometryPool() { }
 
         mutable Threading::Mutex       _geometryMapMutex;

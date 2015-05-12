@@ -876,12 +876,6 @@ MPTerrainEngineNode::updateState()
         }
 
         osg::StateSet* terrainStateSet = getTerrainStateSet();
-
-        // install patch param if we are tessellation on the GPU.
-        if ( _terrainOptions.gpuTessellation() == true )
-        {
-            terrainStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
-        }
         
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(

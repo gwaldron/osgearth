@@ -23,6 +23,8 @@
 #include <osg/MatrixTransform>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 
 #undef  LC
 #define LC "[TritonDrawable] "

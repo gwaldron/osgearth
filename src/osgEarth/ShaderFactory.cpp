@@ -492,6 +492,13 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             "vec3  VP_Interpolate3(vec3,vec3,vec3); \n"
             "vec4  VP_Interpolate3(vec4,vec4,vec4); \n";
 
+        buf <<
+            "\n// TES user-supplied interpolators: \n"
+            "float VP_Interpolate16(float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float); \n"
+            "vec2  VP_Interpolate16(vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2); \n"
+            "vec3  VP_Interpolate16(vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3); \n"
+            "vec4  VP_Interpolate16(vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4); \n";
+
         if ( tessEvalStage || (viewStage && viewStageInTES) || (clipStage && clipStageInTES) )
         {
             buf << "\n// Function declarations:\n";
@@ -530,8 +537,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             buf << "} \n";
 
             buf << "\nvoid VP_InterpolateVertex() \n"
-                << "{ \n";
-            
+                << "{ \n";            
             for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
             {
                 buf << INDENT << i->name << " = VP_Interpolate3"
@@ -539,7 +545,31 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                     << ", vp_in[1]." << i->name
                     << ", vp_in[2]." << i->name << " ); \n";
             }
+            buf << "} \n";
 
+            // Bezier interpolator
+            buf << "\nvoid VP_Interpolate16() \n"
+                << "{ \n";
+            for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
+            {
+                buf << INDENT << i->name << " = VP_Interpolate16"
+                    << "( vp_in[0]." << i->name
+                    << ", vp_in[1]." << i->name
+                    << ", vp_in[2]." << i->name
+                    << ", vp_in[3]." << i->name
+                    << ", vp_in[4]." << i->name
+                    << ", vp_in[5]." << i->name
+                    << ", vp_in[6]." << i->name
+                    << ", vp_in[7]." << i->name
+                    << ", vp_in[8]." << i->name
+                    << ", vp_in[9]." << i->name
+                    << ", vp_in[10]." << i->name
+                    << ", vp_in[11]." << i->name
+                    << ", vp_in[12]." << i->name
+                    << ", vp_in[13]." << i->name
+                    << ", vp_in[14]." << i->name
+                    << ", vp_in[15]." << i->name << " ); \n";
+            }
             buf << "} \n";
 
             buf << "\nvoid VP_EmitVertex() \n"

@@ -18,8 +18,24 @@ osgEarth Sample - Graticule Extension.
     
     <extensions>
         <graticule>
-            <resolution>0.013888889</resolution>
+            <!-- The maximum resolution.  This is the resolution of the grid lines (0-1) across the whole globe at it's highest level.-->
+            <max_resolution>0.16666666</max_resolution>
+
+            <!-- The approximate number of grid lines that you would like to see in your view extent -->
+            <grid_lines>10</grid_lines>
+
+            <!-- The final grid resolution is computed by determining a "target resolution" for the view based on the view extent
+                 and the grid_lines value.  Then the max_resolution until we reach a resolution that is close to the target resolution.
+                 This gives the appearance of subdividing the graticules lines when in reality the resolution could be any arbitrary number
+            -->
+
+            <!-- The grid line color -->
             <color>#f7a73f70</color>
+            
+            <!-- The label color -->
+            <label_color>#ffff00ff</label_color>
+            
+            <!-- Specify the line width -->
             <line_width>2</line_width>
         </graticule>
     </extensions>

@@ -257,11 +257,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
             if ( progress == 0L ||
                  ( !progress->isCanceled() && !progress->needsRetry() ) )
             {
-                OE_NOTICE << "Blacklisting tile " << key.str() << std::endl;
-                osg::Timer_t startBlacklist = osg::Timer::instance()->tick();
                 source->getBlacklist()->add( key );
-                 osg::Timer_t endBlacklist = osg::Timer::instance()->tick();
-                 OE_NOTICE << "Blacklisting " << key.str() << " took " << osg::Timer::instance()->delta_m( startBlacklist, endBlacklist ) << " ms" << std::endl;
             }
         }
     }

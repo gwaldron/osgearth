@@ -264,7 +264,7 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
 
     switch(nv.getTraversalMode())
     {
-    case(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN):
+        case(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN):
             std::for_each(_children.begin(),_children.end(),osg::NodeAcceptOp(nv));
             break;
         case(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
@@ -369,8 +369,17 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
                         // modify the priority according to the child's priority offset and scale.
                         priority = _perRangeDataList[numChildren]._priorityOffset + priority * _perRangeDataList[numChildren]._priorityScale;
 
+#if 0
+                        osg::Node* child = osgDB::readNodeFile( _perRangeDataList[numChildren]._filename );
+                        if ( child )
+                        {
+                            this->addChild( child );
+                            _perRangeDataList[numChildren]._databaseRequest = 0L;
+                        }
+#else
                         if (_databasePath.empty())
                         {
+
                             nv.getDatabaseRequestHandler()->requestNodeFile(_perRangeDataList[numChildren]._filename,nv.getNodePath(),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
                         }
                         else
@@ -378,10 +387,11 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
                             // prepend the databasePath to the child's filename.
                             nv.getDatabaseRequestHandler()->requestNodeFile(_databasePath+_perRangeDataList[numChildren]._filename,nv.getNodePath(),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
                         }
+#endif
                     }
                 }
             }
-
+            
            break;
         }
         default:

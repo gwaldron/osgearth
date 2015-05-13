@@ -8,9 +8,12 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 Shaders::Shaders()
 {
-    VS = "RexEngine.vert.glsl";
-    _sources[VS] = OE_MULTILINE(@RexEngine.vert.glsl@);
+    VERT_MODEL = "RexEngine.vert.glsl";
+    _sources[VERT_MODEL] = OE_MULTILINE(@RexEngine.vert.glsl@);
 
-    FS = "RexEngine.frag.glsl";
-    _sources[FS] = OE_MULTILINE(@RexEngine.frag.glsl@);
+    VERT_VIEW = "RexEngine.vert.view.glsl";
+    _sources[VERT_VIEW] = OE_MULTILINE(@RexEngine.vert.view.glsl@);
+
+    FRAG = "RexEngine.frag.glsl";
+    _sources[FRAG] = OE_MULTILINE(@RexEngine.frag.glsl@);
 }

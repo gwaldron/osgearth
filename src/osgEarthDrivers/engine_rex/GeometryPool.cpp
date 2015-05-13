@@ -122,9 +122,9 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 }
 
 osg::Geometry*
-GeometryPool::createTriangleGeometry(const TileKey& tileKey,
-                                     const MapInfo& mapInfo,
-                                     MaskGenerator* maskSet) const
+GeometryPool::createPatchGeometry(const TileKey& tileKey,
+                                  const MapInfo& mapInfo,
+                                  MaskGenerator* maskSet) const
 {
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
 
@@ -213,9 +213,9 @@ GeometryPool::createTriangleGeometry(const TileKey& tileKey,
 }
 
 osg::Geometry*
-GeometryPool::createPatchGeometry(const TileKey& tileKey,
-                                  const MapInfo& mapInfo,
-                                  MaskGenerator* maskSet) const
+GeometryPool::createTriangleGeometry(const TileKey& tileKey,
+                                     const MapInfo& mapInfo,
+                                     MaskGenerator* maskSet) const
 {
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
     

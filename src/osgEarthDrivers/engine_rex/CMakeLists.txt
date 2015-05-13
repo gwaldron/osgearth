@@ -3,6 +3,7 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
 set(TARGET_GLSL
     RexEngine.vert.glsl
+    RexEngine.vert.view.glsl
     RexEngine.tcs.glsl
     RexEngine.tes.glsl
     RexEngine.gs.glsl

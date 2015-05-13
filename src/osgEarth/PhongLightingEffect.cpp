@@ -86,7 +86,8 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         
         "uniform bool oe_mode_GL_LIGHTING; \n"
-        "varying vec3 oe_phong_vertexView3; \n"
+
+        "out vec3 oe_phong_vertexView3; \n"
 
         "void oe_phong_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
@@ -99,8 +100,8 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "uniform bool oe_mode_GL_LIGHTING; \n"
-        "varying vec3 oe_phong_vertexView3; \n"
 
+        "in vec3 oe_phong_vertexView3; \n"
         "in vec3 vp_Normal; \n"
 
         "void oe_phong_fragment(inout vec4 color) \n"
@@ -108,7 +109,7 @@ namespace
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
 
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 N = normalize(vp_Normal); \n"
+        "    vec3 N = vp_Normal; \n"//normalize(vp_Normal); \n"
         
         "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
 

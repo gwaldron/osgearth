@@ -444,7 +444,7 @@ RexTerrainEngineNode::createTerrain()
         _renderBindings.elevation().samplerName() = "oe_tile_elevationTex";
         _renderBindings.elevation().matrixName()  = "oe_tile_elevationTexMatrix";
 
-        this->getTextureCompositor()->reserveTextureImageUnit(
+        this->getResources()->reserveTextureImageUnit(
             _renderBindings.elevation().unit(), "Rex Engine Elevation" );
     }
 
@@ -454,7 +454,7 @@ RexTerrainEngineNode::createTerrain()
         _renderBindings.parentElevation().samplerName() = "oe_tile_parentElevationTex";
         _renderBindings.parentElevation().matrixName()  = "oe_tile_parentElevationTexMatrix";
 
-        this->getTextureCompositor()->reserveTextureImageUnit(
+        this->getResources()->reserveTextureImageUnit(
             _renderBindings.parentElevation().unit(), "Rex Engine Parent Elevation" );
     }
 
@@ -466,7 +466,7 @@ RexTerrainEngineNode::createTerrain()
             _renderBindings.normal().samplerName() = "oe_tile_normalTex";
             _renderBindings.normal().matrixName()  = "oe_tile_normalTexMatrix";
 
-            this->getTextureCompositor()->reserveTextureImageUnit(
+            this->getResources()->reserveTextureImageUnit(
                 _renderBindings.normal().unit(), "Rex Engine Normals" );
         }
 
@@ -476,7 +476,7 @@ RexTerrainEngineNode::createTerrain()
             _renderBindings.parentNormal().samplerName() = "oe_tile_parentNormalTex";
             _renderBindings.parentNormal().matrixName()  = "oe_tile_parentNormalTexMatrix";
 
-            this->getTextureCompositor()->reserveTextureImageUnit(
+            this->getResources()->reserveTextureImageUnit(
                 _renderBindings.parentNormal().unit(), "Rex Engine Parent Normals" );
         }
     }
@@ -880,8 +880,9 @@ RexTerrainEngineNode::updateState()
 
             // Vertex shader:
             Shaders package;
-            package.loadFunction(vp, package.VS);
-            package.loadFunction(vp, package.FS);
+            package.loadFunction(vp, package.VERT_MODEL);
+            package.loadFunction(vp, package.VERT_VIEW);
+            package.loadFunction(vp, package.FRAG);
             
             bool useTerrainColor = _terrainOptions.color().isSet();
 

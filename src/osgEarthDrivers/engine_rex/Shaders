@@ -24,7 +24,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     struct Shaders : public ShaderPackage
 	{
         Shaders();
-        std::string VS, TCS, TES, GS, FS;
+        std::string VERT_MODEL, VERT_VIEW, FRAG;
 	};
 	
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

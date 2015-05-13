@@ -318,7 +318,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             {
                 buf <<
                     INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
-                    INDENT << "vp_Normal = " << gl_NormalMatrix    << " * vp_Normal; \n";
+                    INDENT << "vp_Normal = normalize(" << gl_NormalMatrix    << " * vp_Normal); \n";
 
                 for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
                 {
@@ -338,7 +338,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                     {
                         buf <<
                             INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
-                            INDENT << "vp_Normal = " << gl_NormalMatrix              << " * vp_Normal; \n";
+                            INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
                     }
 
                     for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
@@ -579,7 +579,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
             if ( viewStage && viewStageInTES )
             {
-                buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n";
+                buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
                 space = SPACE_VIEW;
 
                 for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
@@ -591,7 +592,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             if ( clipStage && clipStageInTES )
             {
                 if ( space == SPACE_MODEL )
-                    buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
+                    buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
                 else if ( space == SPACE_VIEW )
                     buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
 
@@ -605,7 +607,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
             // resolve vertex to its next space:
             if ( space == SPACE_MODEL )
-                buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
+                buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
             else if ( space == SPACE_VIEW )
                 buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
         
@@ -638,7 +641,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             }
         }
 
-        //buf << INDENT << "gl_Position = vp_Vertex; \n";
         buf << "} \n";
         
         std::string str = buf.str();
@@ -720,7 +722,9 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         int space = SPACE_MODEL;
         if ( viewStage && viewStageInGS )
         {
-            buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n";
+            buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex;\n"
+                << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+
             space = SPACE_VIEW;
 
             for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
@@ -732,9 +736,14 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         if ( clipStage && clipStageInGS )
         {
             if ( space == SPACE_MODEL )
-                buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
+            {
+                buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+            }
             else if ( space == SPACE_VIEW )
+            {
                 buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+            }            
 
             space = SPACE_CLIP;
 
@@ -746,9 +755,14 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         // resolve vertex to its next space:
         if ( space == SPACE_MODEL )
-            buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
+        {
+            buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+        }
         else if ( space == SPACE_VIEW )
+        {
             buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+        }
                 
         // Copy globals to output block:
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
@@ -846,7 +860,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         // Declare stage globals.
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            buf << i->declaration << "; \n";
+            buf << i->declaration << ";\n";
 
         if ( coloringStage || lightingStage || outputStage )
         {
@@ -884,6 +898,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         // Copy input block to stage globals:
         for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
             buf << INDENT << i->name << " = vp_in." << i->name << "; \n";
+
+        buf << INDENT << "vp_Normal = normalize(vp_Normal); \n";
 
         int coloringPass = _fragStageOrder == FRAGMENT_STAGE_ORDER_COLORING_LIGHTING ? 0 : 1;
         int lightingPass = 1-coloringPass;

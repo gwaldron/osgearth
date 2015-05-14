@@ -19,6 +19,7 @@
 #include "GeometryPool"
 #include <osgEarth/Locators>
 #include <osg/Point>
+#include <osg/PatchParameter>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;
@@ -31,9 +32,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 #define SHARE_TEX_COORDS 1
 
 
-GeometryPool::GeometryPool(unsigned                       tileSize,
-                           const RexTerrainEngineOptions& options) :
-_tileSize( tileSize ),
+GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :
 _options ( options ),
 _debug   ( false )
 {
@@ -41,6 +40,8 @@ _debug   ( false )
     {
         _debug = true;
     }
+
+    _tileSize = _options.tileSize().get();
 }
 
 void
@@ -88,7 +89,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                              const MapInfo& mapInfo,
                              MaskGenerator* maskSet) const
 {
-    if ( _options.gpuTessellation() == true )
+    if ( false ) // _options.gpuTessellation() == true )
     {
         return createPatchGeometry(tileKey, mapInfo, maskSet);
     }
@@ -237,10 +238,13 @@ GeometryPool::createTriangleGeometry(const TileKey& tileKey,
     unsigned numIndiciesInSurface = (_tileSize-1) * (_tileSize-1) * 6;
     unsigned numIncidesInSkirt    = createSkirt ? (_tileSize-1) * 4 * 6 : 0;
     
-    // Pre-allocate enought space for all triangles.
-    osg::DrawElements* primSet = numVerts > 0xFFFF ? 
-        (osg::DrawElements*)(new osg::DrawElementsUInt(GL_TRIANGLES)) :
-        (osg::DrawElements*)(new osg::DrawElementsUShort(GL_TRIANGLES));
+    GLenum mode = _options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
+
+    // Pre-allocate enough space for all triangles.
+    osg::DrawElements* primSet = 
+        numVerts > 0xFFFF ? (osg::DrawElements*)(new osg::DrawElementsUInt(mode)) :
+        numVerts > 0xFF   ? (osg::DrawElements*)(new osg::DrawElementsUShort(mode)) :
+                            (osg::DrawElements*)(new osg::DrawElementsUByte(mode));
 
     primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 

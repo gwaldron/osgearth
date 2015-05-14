@@ -262,8 +262,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // A shared geometry pool.
     if ( ::getenv("OSGEARTH_REX_NO_POOL") == 0L )
     {
-        const unsigned tileSize = 17;
-        _geometryPool = new GeometryPool( tileSize, _terrainOptions );
+        _geometryPool = new GeometryPool( _terrainOptions );
     }
     
     // handle an already-established map profile:
@@ -872,7 +871,7 @@ RexTerrainEngineNode::updateState()
         // install patch param if we are tessellation on the GPU.
         if ( _terrainOptions.gpuTessellation() == true )
         {
-            terrainStateSet->setAttributeAndModes( new osg::PatchParameter(16) );
+            terrainStateSet->setAttributeAndModes( new osg::PatchParameter(3)); //16) );
         }
 
         // install shaders, if we're using them.

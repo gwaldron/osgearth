@@ -492,12 +492,14 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             "vec3  VP_Interpolate3(vec3,vec3,vec3); \n"
             "vec4  VP_Interpolate3(vec4,vec4,vec4); \n";
 
+#if 0
         buf <<
             "\n// TES user-supplied interpolators: \n"
             "float VP_Interpolate16(float,float,float,float,float,float,float,float,float,float,float,float,float,float,float,float); \n"
             "vec2  VP_Interpolate16(vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2,vec2); \n"
             "vec3  VP_Interpolate16(vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3,vec3); \n"
             "vec4  VP_Interpolate16(vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4,vec4); \n";
+#endif
 
         if ( tessEvalStage || (viewStage && viewStageInTES) || (clipStage && clipStageInTES) )
         {
@@ -536,7 +538,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
             buf << "} \n";
 
-            buf << "\nvoid VP_InterpolateVertex() \n"
+            buf << "\nvoid VP_Interpolate3() \n"
                 << "{ \n";            
             for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
             {
@@ -547,6 +549,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             }
             buf << "} \n";
 
+#if 0
             // Bezier interpolator
             buf << "\nvoid VP_Interpolate16() \n"
                 << "{ \n";
@@ -571,6 +574,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                     << ", vp_in[15]." << i->name << " ); \n";
             }
             buf << "} \n";
+#endif
 
             buf << "\nvoid VP_EmitVertex() \n"
                 << "{ \n";

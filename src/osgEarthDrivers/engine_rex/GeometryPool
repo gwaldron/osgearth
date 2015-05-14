@@ -38,9 +38,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class GeometryPool : public osg::Referenced
     {
     public:
-        GeometryPool(
-            unsigned tileSize,
-            const RexTerrainEngineOptions& options);
+        GeometryPool(const RexTerrainEngineOptions& options);
 
     public:
         /**

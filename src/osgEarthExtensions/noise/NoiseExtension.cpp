@@ -18,6 +18,7 @@
  */
 #include "NoiseExtension"
 #include "NoiseTerrainEffect"
+#include <osgEarth/TerrainEngineNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Noise;

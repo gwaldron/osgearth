@@ -235,7 +235,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
 
         // Make it from the source:
         result = source->createHeightField( key, _preCacheOp.get(), progress );
-
+   
         // If the result is good, we how have a heightfield but it's vertical values
         // are still relative to the tile source's vertical datum. Convert them.
         if ( result )
@@ -570,7 +570,6 @@ namespace
     typedef std::vector<LayerAndKey>              LayerAndKeyVector;
 }
 
-
 bool
 ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                                           const TileKey&         key,
@@ -624,6 +623,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     useLayer = false;
                 }
                 
+
                 // Find the "best available" mapped key from the tile source:
                 else 
                 {
@@ -687,9 +687,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     unsigned int maxHeightFields = 50;
     unsigned numHeightFieldsInCache = 0;
 
+    //double fallBackTime = 0;
+
     const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
 
     bool realData = false;
+
+    //unsigned int numFallback = 0;
 
 
     unsigned int total = numColumns * numRows;
@@ -715,14 +719,42 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 GeoHeightField& layerHF = heightFields[i];
                 if ( !layerHF.valid() )
                 {
-                    //TileKey mappedKey = 
-                    //    keyToUse.mapResolution(hf->getNumColumns(), layer->getTileSize());
-
-                    layerHF = layer->createHeightField(contenders[i].second, progress); //contenders[i]->createHeightField(mappedKey, progress);
+                    layerHF = layer->createHeightField(contenders[i].second, progress);
+                    
                     if ( !layerHF.valid() )
                     {
-                        heightFailed[i] = true;
-                        continue;
+                        // This layer potentially has data or it wouldn't have ended up in the contendors list, so try falling back on the parent
+                        TileKey parentKey = contenders[i].second.createParentKey();
+                        while (!layerHF.valid() && parentKey.valid())
+                        {
+                            //numFallback++;
+                            //osg::Timer_t fbStartTime = osg::Timer::instance()->tick();
+                            GeoHeightField parentHF = layer->createHeightField(parentKey, progress);
+                            //osg::Timer_t fbEndTime = osg::Timer::instance()->tick();
+
+                            // Only penalize time wasted actually falling back.
+                            //if (!parentHF.valid())
+                            // {
+                            //    fallBackTime += osg::Timer::instance()->delta_m(fbStartTime, fbEndTime);
+                            //}
+
+                            if (parentHF.valid())
+                            {
+                                layerHF = parentHF;
+                                break;
+                            }
+                            else
+                            {
+                                parentKey = parentKey.createParentKey();
+                            }
+
+                        }
+
+                        if (!layerHF.valid())
+                        {
+                            heightFailed[i] = true;
+                            continue;
+                        }
                     }
                     else
                     {
@@ -764,9 +796,6 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 {
                     ElevationLayer* offset = offsets[i].first.get();
 
-                    //TileKey mappedKey = 
-                    //    keyToUse.mapResolution(hf->getNumColumns(), offset->getTileSize());
-
                     layerHF = offset->createHeightField(offsets[i].second, progress);
                     if ( !layerHF.valid() )
                     {
@@ -792,7 +821,16 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     }   
 
     //osg::Timer_t endTime = osg::Timer::instance()->tick();
-    //OE_NOTICE << "populateHeightField took " << osg::Timer::instance()->delta_s(startTime, endTime) << "s" << std::endl;
+    //double totalTime = osg::Timer::instance()->delta_m(startTime, endTime);
+   // double fallbackPercentage = fallBackTime / totalTime;
+    //if (fallBackTime > 0)
+    //{
+    //    OE_NOTICE << "populateHeightField took " << totalTime << "ms fallbacktime=" << fallBackTime << "ms count=" << numFallback << " percentage=" << fallbackPercentage << std::endl;
+    //}
+    //else
+    //{
+    //    OE_NOTICE << "populateHeightField took " << totalTime << "ms" << std::endl;
+    //}
 
     // Return whether or not we actually read any real data
     return realData;

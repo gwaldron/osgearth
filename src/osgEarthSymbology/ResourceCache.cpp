@@ -112,11 +112,14 @@ ResourceCache::cloneOrCreateInstanceNode(InstanceResource*        res,
     {
         Threading::ScopedMutexLock exclusive( _instanceMutex );
 
+        // Deep copy everything except for images.  Some models may share imagery so we only want one copy of it at a time.
+        osg::CopyOp copyOp = osg::CopyOp::DEEP_COPY_ALL & ~osg::CopyOp::DEEP_COPY_IMAGES;
+
         // double check to avoid race condition
         InstanceCache::Record rec;
         if ( _instanceCache.get(key, rec) && rec.value().valid() )
         {
-            output = osg::clone(rec.value().get(), osg::CopyOp::DEEP_COPY_ALL);
+            output = osg::clone(rec.value().get(), copyOp);
         }
         else
         {
@@ -125,7 +128,7 @@ ResourceCache::cloneOrCreateInstanceNode(InstanceResource*        res,
             if ( output.valid() )
             {
                 _instanceCache.insert( key, output.get() );
-                output = osg::clone(output.get(), osg::CopyOp::DEEP_COPY_ALL);
+                output = osg::clone(output.get(), copyOp);
             }
         }
     }

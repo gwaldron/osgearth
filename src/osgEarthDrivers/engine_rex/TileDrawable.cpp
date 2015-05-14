@@ -53,7 +53,7 @@ _geom        ( geometry )
 
     // establish uniform name IDs.
     _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
-    _birthTimeUniformNameID    = osg::Uniform::getNameID( "oe_tile_birthtime" );
+    //_birthTimeUniformNameID    = osg::Uniform::getNameID( "oe_tile_birthtime" );
     _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
     _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
@@ -119,7 +119,7 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
     GLint tileKeyLocation       = -1;
-    GLint birthTimeLocation     = -1;
+    //GLint birthTimeLocation     = -1;
     GLint opacityLocation       = -1;
     GLint uidLocation           = -1;
     GLint orderLocation         = -1;
@@ -130,7 +130,7 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
     if ( pcp )
     {
         tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniformNameID );
-        birthTimeLocation    = pcp->getUniformLocation( _birthTimeUniformNameID );
+        //birthTimeLocation    = pcp->getUniformLocation( _birthTimeUniformNameID );
         opacityLocation      = pcp->getUniformLocation( _opacityUniformNameID );
         uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
         orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
@@ -143,6 +143,7 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
         ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
     }
 
+#if 0
     // set the "birth time" - i.e. the time this tile last entered the scene in the current GC.
     if ( birthTimeLocation >= 0 )
     {
@@ -157,6 +158,8 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
         }
         ext->glUniform1f( birthTimeLocation, pcd.birthTime );
     }
+#endif
+
 
     float prevOpacity = -1.0f;
 

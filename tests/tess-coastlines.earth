@@ -16,9 +16,8 @@ Press 'w' for wireframe mode to see the tessellation!
 
 <map name="readymap.org" type="geocentric">
     
-    <options>      
-        <!-- NOTE: rex does not support triangle patches yet! -->    
-        <terrain driver="rex" first_lod="1" skirt_ratio="0" tile_size="3" gpu_tessellation="true"/>
+    <options>         
+        <terrain driver="rex" first_lod="1" skirt_ratio="0" tile_size="5" gpu_tessellation="true"/>
     </options>
     
     <image name="readymap_imagery" driver="tms">
@@ -43,7 +42,7 @@ Press 'w' for wireframe mode to see the tessellation!
         <styles>
             <style type="text/css">
                 default {
-                    stroke: #ffbf007f;
+                    stroke:       #ffbf007f;
                     stroke-width: 2.5km;
                 }
             </style>
@@ -52,14 +51,6 @@ Press 'w' for wireframe mode to see the tessellation!
     </image>
     
     <extensions>
-    
-        <!--
-        
-        
-        DOES NOT WORK in REX at the moment because this shader takes TRIs not QUADs!
-        
-        
-        -->
     
         <terrainshader>
             <code><![CDATA[
@@ -123,7 +114,7 @@ Press 'w' for wireframe mode to see the tessellation!
                 layout(triangles, equal_spacing, ccw) in;
 
                 // Internal helpers:
-                void VP_InterpolateVertex();
+                void VP_Interpolate3();
                 void VP_EmitVertex();
                 
                 // User must supply interpolators for all the base types:
@@ -153,7 +144,7 @@ Press 'w' for wireframe mode to see the tessellation!
                 // simplest possible pass-though:
                 void generateVertex()
                 {                    
-                    VP_InterpolateVertex();
+                    VP_Interpolate3();
                     VP_EmitVertex();
                 }
             ]]></code>

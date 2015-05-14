@@ -112,6 +112,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     protected:
         // override from TerrainEngineNode
         virtual void updateTextureCombining() { updateState(); }
+        
+        // override from TerrainEngineNode
+        virtual void dirtyTerrain();
 
     private:
         void init();
@@ -119,7 +122,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // Reloads all the tiles in the terrain due to a data model change
         void refresh(bool force =false);
-        void createTerrain();
 
         void addImageLayer( ImageLayer* layer );
         void addElevationLayer( ElevationLayer* layer );

@@ -1,5 +1,4 @@
-#version 130
-#extension GL_EXT_texture_array : enable
+#version 330
 
 #pragma vp_entryPoint "oe_splat_fragment"
 #pragma vp_location   "fragment_coloring"
@@ -21,13 +20,13 @@ oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);
 
 
 // from the terrain engine:
-varying vec4 oe_layer_tilec;
+in vec4 oe_layer_tilec;
 uniform vec4 oe_tile_key;
 
 // from the vertex shader:
-varying vec2 oe_splat_covtc;
-varying float oe_splat_range;
-varying float oe_splat_scaleOffsetInt;
+in vec2 oe_splat_covtc;
+in float oe_splat_range;
+in float oe_splat_scaleOffsetInt;
 
 // from SplatTerrainEffect:
 uniform float oe_splat_warp;
@@ -59,7 +58,7 @@ vec2 oe_splat_warpCoverageCoords(in vec2 splat_tc, in oe_SplatEnv env)
 
 vec4 oe_splat_getTexel(in float index, in vec2 tc)
 {
-    return texture2DArray(oe_splatTex, vec3(tc, index));
+    return texture(oe_splatTex, vec3(tc, index));
 }
 
 // Samples a detail texel using its render info parameters.
@@ -109,7 +108,7 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 {
     vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc, env);
-    float coverageValue = 255.0 * texture2D(oe_splat_coverageTex, warped_tc).r;
+    float coverageValue = 255.0 * texture(oe_splat_coverageTex, warped_tc).r;
     oe_SplatRenderInfo ri = oe_splat_getRenderInfo(coverageValue, env);
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);
     float detailToggle = ri.detailIndex >= 0 ? 1.0 : 0.0;
@@ -159,10 +158,10 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     nw_weight *= invTotalWeight;
 
     // Sample coverage values using quantized corner coords:
-    float value_sw = 255.0*texture2D(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
-    float value_se = 255.0*texture2D(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
-    float value_ne = 255.0*texture2D(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
-    float value_nw = 255.0*texture2D(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
+    float value_sw = 255.0*texture(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
+    float value_se = 255.0*texture(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
+    float value_ne = 255.0*texture(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
+    float value_nw = 255.0*texture(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
 
     // Build the render info data for each corner:
     oe_SplatRenderInfo ri_sw = oe_splat_getRenderInfo(value_sw, env);
@@ -215,7 +214,7 @@ vec4 oe_splat_getNoise(in vec2 tc)
 uniform sampler2D oe_splat_noiseTex;
 vec4 oe_splat_getNoise(in vec2 tc)
 {
-    return texture2D(oe_splat_noiseTex, tc.st);
+    return texture(oe_splat_noiseTex, tc.st);
 }
 
 #endif // SPLAT_GPU_NOISE

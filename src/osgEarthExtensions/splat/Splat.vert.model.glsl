@@ -3,8 +3,8 @@
 #pragma vp_location   "vertex_model"
 #pragma vp_order      "0.5"
 
-varying vec3 vp_Normal;
-varying float oe_splat_slope;
+out vec3 vp_Normal;
+out float oe_splat_slope;
 
 void oe_splat_vertex_model(inout vec4 VertexMODEL)
 {

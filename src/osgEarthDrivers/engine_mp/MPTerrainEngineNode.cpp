@@ -790,7 +790,7 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             optional<std::string>& texMatUniformName = layerAdded->shareMatrixName();
             if ( !texMatUniformName.isSet() )
             {
-                texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texmat";
+                texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texMatrix";
                 OE_INFO << LC << "Layer \"" << layerAdded->getName() << "\" texmat uniform = \"" << texMatUniformName.get() << "\"\n";
             }
         }

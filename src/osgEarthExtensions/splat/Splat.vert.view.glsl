@@ -1,17 +1,18 @@
 #version 120
+
 #pragma vp_entryPoint "oe_splat_vertex_view"
 #pragma vp_location   "vertex_view"
 #pragma vp_order      "0.5"
 
 // from the terrain engine
-varying vec4 oe_layer_tilec;
+in vec4 oe_layer_tilec;
+
+out float oe_splat_range;
+out vec2 oe_splat_covtc;
+out float oe_splat_scaleOffsetInt;
 
 uniform mat4 $COVERAGE_TEXMAT_UNIFORM;   // assigned at runtime
 uniform float oe_splat_scaleOffset;
-
-varying float oe_splat_range;
-varying vec2 oe_splat_covtc;
-varying float oe_splat_scaleOffsetInt;
 
 void oe_splat_vertex_view(inout vec4 VertexVIEW)
 {

@@ -352,8 +352,8 @@ namespace
             else
             {
                 struct SortByType {
-                    bool operator()(osg::Shader* lhs, osg::Shader* rhs) const {
-                        return lhs->getType() < rhs->getType();
+                    bool operator()(osg::Shader* lhs, osg::Shader* rhs) {
+                        return (int)lhs->getType() < (int)rhs->getType();
                     }
                 };
                 VirtualProgram::ShaderVector copy(shaders);
@@ -365,19 +365,8 @@ namespace
                 {
                     program->addShader( i->get() );
 
-                    osg::Shader::Type t = i->get()->getType();
-
-                    std::string typeName =
-                        t == osg::Shader::VERTEX         ? "vertex" :
-                        t == osg::Shader::GEOMETRY       ? "geometry" :
-                        t == osg::Shader::TESSCONTROL    ? "tesscontrol" :
-                        t == osg::Shader::TESSEVALUATION ? "tesseval" :
-                        t == osg::Shader::FRAGMENT       ? "fragment" :
-                        t == osg::Shader::COMPUTE        ? "compute" :
-                                                            "UNKNOWN!";
-
                     OE_NOTIFY(osg::NOTICE,"")
-                        << "--- [ " << (c++) << "/" << shaders.size() << " " << typeName << " ] ------------------\n\n"
+                        << "--- [ " << (c++) << "/" << shaders.size() << " " << i->get()->getTypename() << " ] ------------------\n\n"
                         << i->get()->getShaderSource() << std::endl;
                 }
             }

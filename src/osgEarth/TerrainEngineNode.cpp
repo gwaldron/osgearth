@@ -116,7 +116,7 @@ _verticalScale           ( 1.0f ),
 _initStage               ( INIT_NONE ),
 _dirtyCount              ( 0 ),
 _requireElevationTextures( false ),
-_requireNormalTextures   ( true ),
+_requireNormalTextures   ( false ),
 _requireParentTextures   ( false )
 {
     // register for event traversals so we can properly reset the dirtyCount

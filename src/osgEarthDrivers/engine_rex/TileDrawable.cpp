@@ -158,14 +158,6 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
         ext->glUniform1f( birthTimeLocation, pcd.birthTime );
     }
 
-//#ifndef OSG_GLES2_AVAILABLE
-//    if ( renderColor )
-//    {
-//        // emit a default terrain color since we're not binding a color array:
-//        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-//    }
-//#endif
-
     float prevOpacity = -1.0f;
 
     for(std::vector<Layer>::const_iterator i = _layers.begin(); i != _layers.end(); ++i)

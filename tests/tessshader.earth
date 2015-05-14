@@ -16,11 +16,12 @@ Press 'w' for wireframe mode to see the tessellation!
 
 <map name="readymap.org" type="geocentric">
     
-    <options>        
-        <terrain first_lod="1" skirt_ratio="0" tile_size="7" gpu_tessellation="true"/>
+    <options>      
+        <!-- NOTE: rex does not support triangle patches yet! -->    
+        <terrain driver="mp" first_lod="1" skirt_ratio="0" tile_size="7" gpu_tessellation="true"/>
     </options>
     
-    <image name="readymap_imagery" driver="tms" opacity="0.5">
+    <image name="readymap_imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
         
@@ -35,7 +36,7 @@ Press 'w' for wireframe mode to see the tessellation!
      |
      | Data is from NaturalEarth (www.naturalearthdata.com)
      -->
-    <image name="features" driver="agglite" shared="true" visible="true" max_data_level="7">
+    <image name="Coastlines" driver="agglite" shared="true" visible="true" max_data_level="7">
         <features driver="ogr">
             <url>../data/ne_10m_coastline.zip/ne_10m_coastline.shp</url>
         </features>
@@ -52,6 +53,14 @@ Press 'w' for wireframe mode to see the tessellation!
     
     <extensions>
     
+        <!--
+        
+        
+        DOES NOT WORK in REX at the moment because this shader takes TRIs not QUADs!
+        
+        
+        -->
+    
         <terrainshader>
             <code><![CDATA[
             
@@ -62,7 +71,7 @@ Press 'w' for wireframe mode to see the tessellation!
                 // Access to the rasterized mask layer. In the future these
                 // will be programmable..
                 uniform sampler2D oe_layer_2_tex;
-                uniform mat4      oe_layer_2_texmat;
+                uniform mat4      oe_layer_2_texMatrix;
 
                 // General tile coords [0..1]
                 in vec4 oe_layer_tilec;
@@ -84,7 +93,7 @@ Press 'w' for wireframe mode to see the tessellation!
                         for(int i=0; i<3; ++i)
                         {
                             VP_LoadVertex(i);
-                            v[i] = texture(oe_layer_2_tex, (oe_layer_2_texmat*oe_layer_tilec).st).a;
+                            v[i] = texture(oe_layer_2_tex, (oe_layer_2_texMatrix*oe_layer_tilec).st).a;
                         }
                         
                         // Average the weights for each edge level:
@@ -96,7 +105,7 @@ Press 'w' for wireframe mode to see the tessellation!
                         gl_TessLevelInner[0] = 1.0 + 4.0*(v.x+v.y+v.z)/3.0;
                         
                         // Reset the loaded vertex to the current invocation.
-                        VP_LoadVertex(id);
+                        VP_LoadVertex(0);
                     }
                 }
                 

@@ -30,6 +30,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
+#include <osgEarth/ObjectIndex>
 
 #include <osg/Depth>
 #include <osg/BlendFunc>
@@ -360,7 +361,8 @@ RexTerrainEngineNode::refresh(bool forceDirty)
     }
     else
     {
-        createTerrain();
+        dirtyTerrain();
+
         _refreshRequired = false;
     }
 }
@@ -368,7 +370,7 @@ RexTerrainEngineNode::refresh(bool forceDirty)
 void
 RexTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
-    createTerrain();
+    dirtyTerrain();
 }
 
 osg::StateSet*
@@ -389,7 +391,7 @@ RexTerrainEngineNode::getPayloadStateSet()
 }
 
 void
-RexTerrainEngineNode::createTerrain()
+RexTerrainEngineNode::dirtyTerrain()
 {
     //TODO: scrub the geometry pool?
 
@@ -515,6 +517,9 @@ RexTerrainEngineNode::createTerrain()
     }
 
     updateState();
+
+    // Call the base class
+    TerrainEngineNode::dirtyTerrain();
 }
 
 namespace
@@ -757,7 +762,7 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
         if ( layerAdded->isShared() )
         {
             optional<int>& unit = layerAdded->shareImageUnit();
-            if ( unit.isSet() )
+            if ( !unit.isSet() )
             {
                 int temp;
                 if ( getTextureCompositor()->reserveTextureImageUnit(temp) )
@@ -843,7 +848,6 @@ RexTerrainEngineNode::toggleElevationLayer( ElevationLayer* layer )
     refresh();
 }
 
-
 // Generates the main shader code for rendering the terrain.
 void
 RexTerrainEngineNode::updateState()
@@ -877,56 +881,24 @@ RexTerrainEngineNode::updateState()
             VirtualProgram* vp = new VirtualProgram();
             vp->setName( "osgEarth.RexTerrainEngineNode" );
             terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+            
+            Shaders package;
+            
+            bool useTerrainColor = _terrainOptions.color().isSet();
+            package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);
+            if ( useTerrainColor )
+            {
+                terrainStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
+            }
+
+            bool useBlending = _terrainOptions.enableBlending().get();
+            package.define("OE_REX_USE_BLENDING", useBlending);
 
             // Vertex shader:
-            Shaders package;
             package.loadFunction(vp, package.VERT_MODEL);
             package.loadFunction(vp, package.VERT_VIEW);
             package.loadFunction(vp, package.FRAG);
-            
-            bool useTerrainColor = _terrainOptions.color().isSet();
 
-#if 0
-            bool lodBlending = _terrainOptions.enableLODBlending() == true;
-            if ( !lodBlending )
-            {
-                osgEarth::replaceIn( vs,
-                    "#define REX_LOD_BLENDING",
-                    "#undef REX_LOD_BLENDING" );
-            }
-            
-            vp->setFunction( "oe_rexEngine_vert", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.0f );
-
-            // Fragment shader:
-            std::string fs = ShaderLoader::load(
-                Shaders::FragFile,
-                Shaders::FragSource );
-            
-            if ( !useTerrainColor )
-            {
-                osgEarth::replaceIn( fs,
-                    "#define REX_USE_TERRAIN_COLOR",
-                    "#undef REX_USE_TERRAIN_COLOR" );
-            }
-
-            bool useBlending = _terrainOptions.enableBlending() == true;
-            if ( !useBlending )
-            {
-                osgEarth::replaceIn( fs,
-                    "#define REX_USE_BLENDING",
-                    "#undef REX_USE_BLENDING" );
-            }
-
-            if ( !lodBlending )
-            {
-                osgEarth::replaceIn( fs,
-                    "#define REX_LOD_BLENDING",
-                    "#undef REX_LOD_BLENDING" );
-            }
-
-            vp->setFunction( "oe_rexEngine_frag", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
-#endif
-            
             // assemble color filter code snippets.
             bool haveColorFilters = false;
             {
@@ -1058,12 +1030,28 @@ RexTerrainEngineNode::updateState()
             // need to know which is the first layer in order to blend properly
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_order", (int)0) );
 
-            // base terrain color.
-            if ( useTerrainColor )
+            // default min/max range uniforms. (max < min means ranges are disabled)
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", -1.0f) );
+            
+            terrainStateSet->getOrCreateUniform(
+                "oe_min_tile_range_factor",
+                osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
+
+            // special object ID that denotes the terrain surface.
+            terrainStateSet->addUniform( new osg::Uniform(
+                Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
+
+            // bind the shared layer uniforms.
+            for(ImageLayerVector::const_iterator i = _update_mapf->imageLayers().begin(); i != _update_mapf->imageLayers().end(); ++i)
             {
-                terrainStateSet->addUniform( new osg::Uniform(
-                    "oe_terrain_color",
-                    _terrainOptions.color().get() ) );
+                const ImageLayer* layer = i->get();
+                if ( layer->isShared() )
+                {
+                    std::string texName = Stringify() << "oe_layer_" << layer->getUID() << "_tex";
+                    terrainStateSet->addUniform( new osg::Uniform(texName.c_str(), layer->shareImageUnit().get()) );
+                    OE_INFO << LC << "Layer \"" << layer->getName() << "\" in uniform \"" << texName << "\"\n";
+                }
             }
         }
 

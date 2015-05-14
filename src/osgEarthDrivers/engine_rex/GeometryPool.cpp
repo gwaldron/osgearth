@@ -84,21 +84,6 @@ GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
     out.yMin = mapInfo.isGeocentric()? tileKey.getExtent().yMin() : 0.0;
 }
 
-osg::Geometry*
-GeometryPool::createGeometry(const TileKey& tileKey,
-                             const MapInfo& mapInfo,
-                             MaskGenerator* maskSet) const
-{
-    if ( false ) // _options.gpuTessellation() == true )
-    {
-        return createPatchGeometry(tileKey, mapInfo, maskSet);
-    }
-    else
-    {
-        return createTriangleGeometry(tileKey, mapInfo, maskSet); 
-    }
-}
-
 #define addSkirtDataForIndex(INDEX, HEIGHT) \
 { \
     verts->push_back( (*verts)[INDEX] ); \
@@ -123,100 +108,9 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 }
 
 osg::Geometry*
-GeometryPool::createPatchGeometry(const TileKey& tileKey,
-                                  const MapInfo& mapInfo,
-                                  MaskGenerator* maskSet) const
-{
-    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
-
-    osg::BoundingSphere tileBound;
-    
-    // Establish a local reference frame for the tile:
-    osg::Vec3d centerWorld;
-    GeoPoint centroid;
-    tileKey.getExtent().getCentroid( centroid );
-    centroid.toWorld( centerWorld );
-
-    osg::Matrix world2local, local2world;
-    centroid.createWorldToLocal( world2local );
-    local2world.invert( world2local );
-
-    const unsigned numRows = 4;
-    const unsigned numCols = 4;
-    unsigned numVerts = numRows * numCols;
-    
-    // the geometry:
-    osg::Geometry* geom = new osg::Geometry();
-    geom->setUseVertexBufferObjects(true);
-    geom->setUseDisplayList(false);
-
-    // the vertex locations:
-    osg::Vec3Array* verts = new osg::Vec3Array();
-    verts->reserve( numVerts );
-    geom->setVertexArray( verts );
-
-    // the surface normals (i.e. extrusion vectors)
-    osg::Vec3Array* normals = new osg::Vec3Array();
-    normals->reserve( numVerts );
-    geom->setNormalArray( normals );
-    geom->setNormalBinding( geom->BIND_PER_VERTEX );
-
-#ifdef SHARE_TEX_COORDS
-    bool populateTexCoords = false;
-    if ( !_sharedTexCoords.valid() )
-    {
-        _sharedTexCoords = new osg::Vec3Array();
-        _sharedTexCoords->reserve( numVerts );
-        populateTexCoords = true;
-    }    
-    osg::Vec3Array* texCoords = _sharedTexCoords.get();
-#else
-    bool populateTexCoords = true;
-    osg::Vec3Array* texCoords = new osg::Vec3Array();
-    texCoords->reserve( numVerts );
-#endif
-
-    geom->setTexCoordArray( 0, texCoords );
-
-    for(unsigned row=0; row<numRows; ++row)
-    {
-        float ny = (float)row/(float)(numRows-1);
-
-        for(unsigned col=0; col<numCols; ++col)
-        {
-            float nx = (float)col/(float)(numCols-1);
-
-            osg::Vec3d model;
-            locator->unitToModel(osg::Vec3d(nx, ny, 0.0), model);
-            osg::Vec3d modelLTP = model*world2local;
-            verts->push_back( modelLTP );
-            tileBound.expandBy( verts->back() );
-
-            // no masking in the geometry pool, so always write a z=1.0 -gw
-            //bool masked = _maskSet.contains(nx, ny);     
-            if ( populateTexCoords )
-            {
-                texCoords->push_back( osg::Vec3f(nx, ny, 1.0f) );
-            }
-
-            osg::Vec3d modelPlusOne;
-            locator->unitToModel(osg::Vec3d(nx, ny, 1.0f), modelPlusOne);
-            osg::Vec3f normal = (modelPlusOne*world2local)-modelLTP;
-            normal.normalize();
-            normals->push_back( normal );
-        }
-    }
-    
-    osg::DrawArrays* patch = new osg::DrawArrays(GL_PATCHES, 0, numVerts);
-    geom->addPrimitiveSet( patch );
-
-    return geom;
-}
-
-osg::Geometry*
-GeometryPool::createTriangleGeometry(const TileKey& tileKey,
-                                     const MapInfo& mapInfo,
-                                     MaskGenerator* maskSet) const
+GeometryPool::createGeometry(const TileKey& tileKey,
+                             const MapInfo& mapInfo,
+                             MaskGenerator* maskSet) const
 {
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
     
@@ -232,9 +126,10 @@ GeometryPool::createTriangleGeometry(const TileKey& tileKey,
 
     // Attempt to calculate the number of verts in the surface geometry.
     bool createSkirt = _options.heightFieldSkirtRatio() > 0.0f;
-    unsigned numVertsInSurface = (_tileSize*_tileSize);
-    unsigned numVertsInSkirt = createSkirt ? _tileSize*4u - 4u : 0;
-    unsigned numVerts = numVertsInSurface + numVertsInSkirt;    
+
+    unsigned numVertsInSurface    = (_tileSize*_tileSize);
+    unsigned numVertsInSkirt      = createSkirt ? _tileSize*4u - 4u : 0;
+    unsigned numVerts             = numVertsInSurface + numVertsInSkirt;    
     unsigned numIndiciesInSurface = (_tileSize-1) * (_tileSize-1) * 6;
     unsigned numIncidesInSkirt    = createSkirt ? (_tileSize-1) * 4 * 6 : 0;
     
@@ -267,14 +162,6 @@ GeometryPool::createTriangleGeometry(const TileKey& tileKey,
     normals->reserve( numVerts );
     geom->setNormalArray( normals );
     geom->setNormalBinding( geom->BIND_PER_VERTEX );
-
-#if 0
-    // colors
-    osg::Vec4Array* colors = new osg::Vec4Array();
-    colors->push_back( osg::Vec4(1,1,1,1) );
-    geom->setColorArray( colors );
-    geom->setColorBinding( geom->BIND_OVERALL );
-#endif
 
     // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
     // vert is masked: 0=yes, 1=no
@@ -374,31 +261,34 @@ GeometryPool::createTriangleGeometry(const TileKey& tileKey,
         }
     }
 
-    // SKIRTS:
-    // calculate the skirt extrusion height
-    double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
+    if ( createSkirt )
+    {
+        // SKIRTS:
+        // calculate the skirt extrusion height
+        double height = tileBound.radius() * _options.heightFieldSkirtRatio().get();
         
-    unsigned skirtIndex = verts->size();
+        unsigned skirtIndex = verts->size();
 
-    // first, create all the skirt verts, normals, and texcoords.
-    for(int c=0; c<(int)_tileSize-1; ++c)
-        addSkirtDataForIndex( c, height ); //top
+        // first, create all the skirt verts, normals, and texcoords.
+        for(int c=0; c<(int)_tileSize-1; ++c)
+            addSkirtDataForIndex( c, height ); //top
 
-    for(int r=0; r<(int)_tileSize-1; ++r)
-        addSkirtDataForIndex( r*_tileSize+(_tileSize-1), height ); //right
+        for(int r=0; r<(int)_tileSize-1; ++r)
+            addSkirtDataForIndex( r*_tileSize+(_tileSize-1), height ); //right
     
-    for(int c=_tileSize-1; c>=0; --c)
-        addSkirtDataForIndex( (_tileSize-1)*_tileSize+c, height ); //bottom
+        for(int c=_tileSize-1; c>=0; --c)
+            addSkirtDataForIndex( (_tileSize-1)*_tileSize+c, height ); //bottom
 
-    for(int r=_tileSize-1; r>=0; --r)
-        addSkirtDataForIndex( r*_tileSize, height ); //left
+        for(int r=_tileSize-1; r>=0; --r)
+            addSkirtDataForIndex( r*_tileSize, height ); //left
     
-    // then create the elements indices:
-    int i;
-    for(i=skirtIndex; i<(int)verts->size()-2; i+=2)
-        addSkirtTriangles( i, i+2 );
+        // then create the elements indices:
+        int i;
+        for(i=skirtIndex; i<(int)verts->size()-2; i+=2)
+            addSkirtTriangles( i, i+2 );
 
-    addSkirtTriangles( i, skirtIndex );
+        addSkirtTriangles( i, skirtIndex );
+    }
 
     return geom;
 }

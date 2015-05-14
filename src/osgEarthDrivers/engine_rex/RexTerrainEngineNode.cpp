@@ -871,7 +871,7 @@ RexTerrainEngineNode::updateState()
         // install patch param if we are tessellation on the GPU.
         if ( _terrainOptions.gpuTessellation() == true )
         {
-            terrainStateSet->setAttributeAndModes( new osg::PatchParameter(3)); //16) );
+            terrainStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
         }
 
         // install shaders, if we're using them.

@@ -209,35 +209,6 @@ TilePagedLOD::addChild(osg::Node* node)
     return false;
 }
 
-#if 0
-void
-TilePagedLOD::traverse(osg::NodeVisitor& nv)
-{
-    if (nv.getVisitorType() == nv.CULL_VISITOR)
-    {
-        if (_progress.valid() && nv.getFrameStamp())
-        {
-            _progress->update( nv.getFrameStamp()->getFrameNumber() );
-        }
-
-        if (_childBBox.valid())
-        {
-            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            osg::Polytope p = cv->getCurrentCullingSet().getFrustum();
-            p.transform( _childBBoxMatrix );            
-            if ( !p.contains(_childBBox) )
-            {
-                getChild(0)->accept(nv);
-                return;
-            }                
-        }
-    }
-    
-    osg::PagedLOD::traverse(nv);
-}
-
-#endif
-
 
 // MOST of this is copied and pasted from OSG's osg::PagedLOD::traverse,
 // except where otherwise noted with an "osgEarth" comment.
@@ -370,6 +341,9 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
                         priority = _perRangeDataList[numChildren]._priorityOffset + priority * _perRangeDataList[numChildren]._priorityScale;
 
 #if 0
+                        // uncomment this to test immmediate loading of tiles
+                        // Note: needs additional work, atomic mutexing, etc for multithreaded use.
+
                         osg::Node* child = osgDB::readNodeFile( _perRangeDataList[numChildren]._filename );
                         if ( child )
                         {

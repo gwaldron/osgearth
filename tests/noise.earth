@@ -23,8 +23,7 @@ osgEarth Sample
             #pragma vp_location   "fragment_coloring"
             
             // Try modifying these for fun.
-            uniform float baseLOD = 12;
-            uniform float scale   = 1;
+            uniform float baseLOD = 1;
              
             uniform sampler2D oe_noise_tex;
             

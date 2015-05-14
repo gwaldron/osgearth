@@ -57,7 +57,7 @@ NoiseExtension::connect(MapNode* mapNode)
         return false;
     }
 
-    _effect = new NoiseTerrainEffect( _dbOptions.get() );
+    _effect = new NoiseTerrainEffect( _options );
 
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     

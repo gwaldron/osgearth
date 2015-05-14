@@ -9,9 +9,12 @@ osgEarth Sample
     </elevation>
     
     <external>
-        <noise/>
+        <noise size="1024" num_channels="1"/>
+        
         <contour_map/>
-        <normal_map/>
+        
+        <normalmap/>
+        
         <sky hours="20.0"/>
         
         <terrainshader>

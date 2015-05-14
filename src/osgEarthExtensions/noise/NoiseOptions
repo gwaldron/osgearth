@@ -32,12 +32,21 @@ namespace osgEarth { namespace Noise
     class NoiseOptions : public DriverConfigOptions // NO EXPORT; header only
     {
     public:
-        // No properties.
+        /** Size of the noise texture in the U and V dimensions. Default = 1024. */
+        optional<unsigned>& size() { return _size; }
+        const optional<unsigned>& size() const { return _size; }
+
+        /** Number of channels of noise to make (1-4) default = 1. */
+        optional<unsigned>& numChannels() { return _numChannels; }
+        const optional<unsigned>& numChannels() const { return _numChannels; }
+
 
     public:
         NoiseOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
         {
             setDriver( "noise" );
+            _size.init( 1024u );
+            _numChannels.init( 1u );
             fromConfig( _conf );
         }
 
@@ -46,7 +55,8 @@ namespace osgEarth { namespace Noise
     public:
         Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
-            // future props.
+            conf.addIfSet( "size", _size );
+            conf.addIfSet( "num_channels", _numChannels );
             return conf;
         }
 
@@ -58,8 +68,12 @@ namespace osgEarth { namespace Noise
 
     private:
         void fromConfig( const Config& conf ) {
-            //future props
+            conf.getIfSet( "size", _size );
+            conf.getIfSet( "num_channels", _numChannels );
         }
+
+        optional<unsigned> _size;
+        optional<unsigned> _numChannels;
     };
 
 } } // namespace osgEarth::Noise

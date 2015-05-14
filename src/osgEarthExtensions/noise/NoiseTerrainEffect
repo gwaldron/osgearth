@@ -19,6 +19,8 @@
 #ifndef OSGEARTH_NOISE_TERRAIN_EFFECT_H
 #define OSGEARTH_NOISE_TERRAIN_EFFECT_H
 
+#include "NoiseOptions"
+
 #include <osgEarth/TerrainEffect>
 #include <osg/Uniform>
 #include <osg/Texture2D>
@@ -34,7 +36,7 @@ namespace osgEarth { namespace Noise
     {
     public:
         /** construct a new terrain effect. */
-        NoiseTerrainEffect(const osgDB::Options* dbOptions);
+        NoiseTerrainEffect(const NoiseOptions& options);        
 
 
     public: // TerrainEffect interface
@@ -49,6 +51,7 @@ namespace osgEarth { namespace Noise
 
         osg::Texture* createNoiseTexture() const;
 
+        NoiseOptions                 _options;
         int                          _texImageUnit;
         osg::ref_ptr<osg::Texture>   _tex;
         osg::ref_ptr<osg::Uniform>   _samplerUniform;

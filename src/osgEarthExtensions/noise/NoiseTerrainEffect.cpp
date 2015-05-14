@@ -34,7 +34,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Noise;
 
-NoiseTerrainEffect::NoiseTerrainEffect(const osgDB::Options* dbOptions) :
+NoiseTerrainEffect::NoiseTerrainEffect(const NoiseOptions& options) :
+_options     ( options ),
 _texImageUnit( -1 )
 {
     _tex = createNoiseTexture();
@@ -82,10 +83,10 @@ NoiseTerrainEffect::onUninstall(TerrainEngineNode* engine)
 osg::Texture*
 NoiseTerrainEffect::createNoiseTexture() const
 {
-    const int size = 1024;
-    const int slices = 1;
+    const int size  = (int)osg::clampBetween(_options.size().get(), 1u, 16384u);
+    const int chans = (int)osg::clampBetween(_options.numChannels().get(), 1u, 4u);
 
-    GLenum type = slices > 2 ? GL_RGBA : GL_LUMINANCE;
+    GLenum type = chans > 2 ? GL_RGBA : GL_LUMINANCE;
     
     osg::Image* image = new osg::Image();
     image->allocateImage(size, size, 1, type, GL_UNSIGNED_BYTE);
@@ -96,7 +97,7 @@ NoiseTerrainEffect::createNoiseTexture() const
     const float P[4] = { 0.8f,  0.6f, 0.8f, 0.9f };
     const float L[4] = { 2.2f,  1.7f, 3.0f, 4.0f };
     
-    for(int k=0; k<slices; ++k)
+    for(int k=0; k<chans; ++k)
     {
         // Configure the noise function:
         osgEarth::Util::SimplexNoise noise;
@@ -144,7 +145,7 @@ NoiseTerrainEffect::createNoiseTexture() const
         //OE_INFO << LC << "Noise: MIN = " << nmin << "; MAX = " << nmax << "\n";
     }
 
-#if 1
+#if 0
     std::string filename("noise.png");
     osgDB::writeImageFile(*image, filename);
     OE_NOTICE << LC << "Wrote noise texture to " << filename << "\n";

@@ -649,7 +649,7 @@ namespace osgEarth { namespace Util
          * Gets the spatial reference system of the terrain map to which this
          * manipulator is currently attached.
          */
-        const osgEarth::SpatialReference* getSRS() const;
+        //const osgEarth::SpatialReference* getSRS() const;
 
         /**
          * Move the focal point of the camera using deltas (normalized screen coords).
@@ -917,16 +917,11 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
 
         osg::observer_ptr<osg::Node> _node;
-        osg::observer_ptr<osg::CoordinateSystemNode> _csn;
-        osg::observer_ptr<MapNode> _mapNode;
-#ifdef USE_OBSERVER_NODE_PATH
-        osg::ObserverNodePath _csnObserverPath;
-#endif
-        osg::NodePath _csnPath;
+        osg::observer_ptr<MapNode>   _mapNode;
 
-        osg::ref_ptr<const osgEarth::SpatialReference> _cached_srs;
+        osg::ref_ptr<const osgEarth::SpatialReference> _srs;
+
         bool _is_geocentric;
-        bool _srs_lookup_failed;
 
         osg::observer_ptr<osg::Node> _tether_node;     
         bool                         _tether_completed;
@@ -1009,8 +1004,12 @@ namespace osgEarth { namespace Util
         
         struct CameraPostUpdateCallback : public osg::NodeCallback {
             CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }
-            virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) { _m->postUpdate(); traverse(node,nv); }
-            EarthManipulator* _m;
+            virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) { 
+                osg::ref_ptr<EarthManipulator> m;
+                if ( _m.lock(m) ) m->postUpdate();
+                traverse(node,nv);
+            }
+            osg::observer_ptr<EarthManipulator> _m;
         };
         void postUpdate();
         friend struct CameraUpdateCallback;

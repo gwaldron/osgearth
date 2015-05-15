@@ -194,7 +194,8 @@ GeoMath::rhumbDistance(double lat1Rad, double lon1Rad,
     double dLon = osg::absolute(lon2Rad - lon1Rad);
 
     double dPhi = log(tan(lat2Rad/2.0+osg::PI/4.0)/tan(lat1Rad/2.0+osg::PI/4.0));
-    double q = (!osg::isNaN(dLat/dPhi)) ? dLat/dPhi : cos(lat1Rad);  // E-W line gives dPhi=0
+    bool eastWest = osg::equivalent(dPhi, 0.0);
+    double q = eastWest ? cos(lat1Rad) : dLat/dPhi;
     // if dLon over 180° take shorter rhumb across 180° meridian:
     if (dLon > osg::PI) dLon = 2.0*osg::PI - dLon;
     double dist = sqrt(dLat*dLat + q*q*dLon*dLon) * radius; 
@@ -243,7 +244,8 @@ GeoMath::rhumbDestination(double lat1Rad, double lon1Rad,
   double lat2Rad = lat1Rad + d*cos(bearing);
   double dLat = lat2Rad-lat1Rad;
   double dPhi = log(tan(lat2Rad/2.0+osg::PI/4.0)/tan(lat1Rad/2.0+osg::PI/4.0));
-  double q = (!osg::isNaN(dLat/dPhi)) ? dLat/dPhi : cos(lat1Rad);  // E-W line gives dPhi=0
+  bool eastWestLine = osg::equivalent(dPhi, 0.0);
+  double q = eastWestLine ? cos(lat1Rad) : dLat/dPhi;
   double dLon = d*sin(bearing)/q;
   // check for some daft bugger going past the pole
   if (osg::absolute(lat2Rad) > osg::PI/2.0) lat2Rad = lat2Rad > 0.0 ? osg::PI-lat2Rad : -(osg::PI-lat2Rad);

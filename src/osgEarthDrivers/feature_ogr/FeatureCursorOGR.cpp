@@ -91,12 +91,7 @@ _filters          ( filters )
         // Or quote any layers containing spaces for PostgreSQL
         if (driverName == "ESRI Shapefile" || from.find(" ") != std::string::npos)
         {                        
-            std::string delim = "'";  //Use single quotes by default
-            if (driverName.compare("PostgreSQL") == 0)
-            {
-                //PostgreSQL uses double quotes as identifier delimeters
-                delim = "\"";
-            }            
+            std::string delim = "\"";
             from = delim + from + delim;                    
         }
 
@@ -159,7 +154,7 @@ _filters          ( filters )
         }
 
 
-        OE_DEBUG << LC << "SQL: " << expr << std::endl;
+        OE_INFO << LC << "SQL: " << expr << std::endl;
         _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
 
         if ( _resultSetHandle )

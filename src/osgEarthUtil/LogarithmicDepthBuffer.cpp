@@ -98,10 +98,6 @@ namespace
                     double L, R, B, T, ignore;
                     proj.getOrtho(L, R, B, T, ignore, ignore);
                     camera->setProjectionMatrixAsOrtho(L, R, B, T, DEFAULT_NEAR_PLANE, farplane);
-
-                    // ortho is not supported, so tell the shader to do nothing:
-                    //OE_WARN << "ortho. nothing.\n";
-                    //u->set( -1.0f );
                 }
 
                 // and continue traversal of the camera's subgraph.

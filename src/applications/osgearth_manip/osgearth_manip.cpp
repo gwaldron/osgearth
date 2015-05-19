@@ -81,7 +81,7 @@ namespace
             "1-6 :",               "fly to preset viewpoints",
             "shift-right-mouse :", "locked panning",
             "u :",                 "toggle azimuth lock",
-            "c :",                 "toggle perspective/ortho",
+            "o :",                 "toggle perspective/ortho",
             "t :",                 "toggle tethering",
             "T :",                 "toggle tethering (with angles)",
             "a :",                 "toggle viewpoint arcing",
@@ -198,41 +198,6 @@ namespace
         {
             using namespace std;
             usage.addKeyboardMouseBinding(string(1, _key), string("Arc viewpoint transitions"));
-        }
-
-        char _key;
-        osg::ref_ptr<EarthManipulator> _manip;
-    };
-
-
-    /**
-     * Toggles the projection matrix between perspective and orthographic.
-     */
-    struct ToggleProjectionHandler : public osgGA::GUIEventHandler
-    {
-        ToggleProjectionHandler(char key, EarthManipulator* manip)
-            : _key(key), _manip(manip)
-        {
-        }
-
-        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
-        {
-            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
-            {
-                if ( _manip->getSettings()->getCameraProjection() == EarthManipulator::PROJ_PERSPECTIVE )
-                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
-                else
-                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_PERSPECTIVE );
-                aa.requestRedraw();
-                return true;
-            }
-            return false;
-        }
-
-        void getUsage(osg::ApplicationUsage& usage) const
-        {
-            using namespace std;
-            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle projection type"));
         }
 
         char _key;
@@ -495,7 +460,6 @@ int main(int argc, char** argv)
     
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
-    viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
     viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
     viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
     viewer.addEventHandler(new ToggleCollisionHandler('k', manip));

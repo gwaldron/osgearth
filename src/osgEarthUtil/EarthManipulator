@@ -495,13 +495,19 @@ namespace osgEarth { namespace Util
                 out_maxSeconds = _max_vp_duration_s;
             }
 
+#if 0 // removed. please set the matrix yourself.
             /** The camera projection matrix type */
             void setCameraProjection( const CameraProjection& value );
             const CameraProjection& getCameraProjection() const { return _camProjType; }
 
             /** Frustum offset (in pixels) */
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
-            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }            
+            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }     
+#endif       
+
+            /** Whether to automatically adjust an orthographic camera so that it "tracks" the last known FOV and Aspect Ratio. */
+            bool getOrthoTracksPerspective() const { return _orthoTracksPerspective; }
+            void setOrthoTracksPerspective(bool value) { _orthoTracksPerspective = value; }
 
             /** Whether or not to keep the camera from going through the terrain surface */
             bool getTerrainAvoidanceEnabled() const { return _terrainAvoidanceEnabled; }
@@ -551,8 +557,7 @@ namespace osgEarth { namespace Util
             bool _auto_vp_duration;
             double _min_vp_duration_s, _max_vp_duration_s;
 
-            CameraProjection _camProjType;
-            osg::Vec2s _camFrustOffsets;	
+            bool _orthoTracksPerspective;
 
             bool _terrainAvoidanceEnabled;
 

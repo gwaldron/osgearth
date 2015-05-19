@@ -1386,8 +1386,60 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
         if ( vp )
         {
             const osg::Matrixd& proj = _viewCamera->getProjectionMatrix();
-            bool isOrtho = ( proj(3,3) == 1. ) && ( proj(2,3) == 0. ) && ( proj(1,3) == 0. ) && ( proj(0,3) == 0.);
+            bool isOrtho = osg::equivalent(proj(3,3), 1.0);
+
+            // For a perspective camera, remember the last known VFOV. We will need it if we 
+            // detect a switch to orthographic.
+            if ( !isOrtho )
+            {
+                double vfov, ar, zn, zf;
+                if (_viewCamera->getProjectionMatrixAsPerspective(vfov, ar, zn, zf))
+                {
+                    _vfov = vfov;
+                }
+            }
+
+            // For an orthographic camera, convert the distance and remembered VFOV
+            // into proper x/y extents to simulate "zoom".
+            else
+            {
+                // need to update the ortho projection matrix to reflect the camera distance.
+                double ar = vp->width()/vp->height();
+                double y = _distance * tan(0.5*osg::DegreesToRadians(_vfov));
+                double x = y * ar;
+
+                // apply the offsets:
+                double px = 0.0, py = 0.0;
+                const osg::Vec2s& p = _settings->getCameraFrustumOffsets();
+                if ( p.x() != 0 || p.y() != 0 )
+                {
+                    px = (2.0*x*(double)-p.x()) / (double)vp->width();
+                    py = (2.0*y*(double)-p.y()) / (double)vp->height();
+                }
+
+                double ignore, N, F;
+                proj.getOrtho(ignore, ignore, ignore, ignore, N, F);
+                _viewCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, N, F);
+
+                //OE_WARN << "ORTHO: "
+                //    << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
+                //    << ", dist = " << _distance << ", vfov=" << _vfov
+                //    << ", left = " << px-x << ", right = " << px+x
+                //    << ", bottom = " << py-y << ", top = " << py+y
+                //    << std::endl;
+            }
+
+#if 0
+
+
+
+            //bool isOrtho = ( proj(3,3) == 1.) && ( proj(2,3) == 0. ) && ( proj(1,3) == 0. ) && ( proj(0,3) == 0.);
+
             CameraProjection type = _settings->getCameraProjection();
+
+            //OE_WARN << "---Frame ---------------------------\n"; //" << _viewCamera->getGraphicsContext()->getState()->getFrameStamp()->getFrameNumber() << " -----------------------\n";
+            //OE_WARN << "cam=" << (uintptr_t)_viewCamera.get() << ", proj(3,3) = " << proj(3,3) << "; ortho = " << (isOrtho?"true":"false") << ", type=" 
+            //    << (type==PROJ_PERSPECTIVE? "persp" : "ortho") << "\n";
 
             if ( type == PROJ_PERSPECTIVE )
             {
@@ -1429,11 +1481,31 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
                     // camera -- we'll need it in ortho mode to create a proper frustum.
                     OE_INFO << LC << "Switching to ORTHO" << std::endl;
 
-                    double ar, zn, zf; // not used
-                    _viewCamera->getProjectionMatrixAsPerspective(_vfov, ar, zn, zf);
-                    _tanHalfVFOV = tan(0.5*(double)osg::DegreesToRadians(_vfov));
-                    _savedCNFMode = _viewCamera->getComputeNearFarMode();
-                    _viewCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+                    double vfov, ar, zn, zf; // not used
+                    bool isPersp = _viewCamera->getProjectionMatrixAsPerspective(vfov, ar, zn, zf);
+
+                    if ( isPersp )
+                    {
+                        if ( !osg::isNaN(vfov) )
+                        {
+                            _vfov = vfov;
+                            _tanHalfVFOV = tan(0.5*(double)osg::DegreesToRadians(_vfov));
+                            _savedCNFMode = _viewCamera->getComputeNearFarMode();
+                            _viewCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+                        }
+                        else
+                        {
+                            OE_WARN << LC << "Internal: isOrtho=true; getProjAtPerp=true; vfov=NAN.\n";
+                            _vfov = 30.0;
+                            _tanHalfVFOV = tan(0.5*(double)osg::DegreesToRadians(_vfov));
+                            _savedCNFMode = _viewCamera->getComputeNearFarMode();
+                            _viewCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+                        }
+                    }
+                    else
+                    {
+                        OE_WARN << LC << "Internal: isOrtho=true, but getProjectionAsPerp returned false\n";
+                    }
                 }
                 
                 double pitch;
@@ -1441,14 +1513,11 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
 
                 // need to update the ortho projection matrix to reflect the camera distance.
                 double ar = vp->width()/vp->height();
-                double y = _distance * _tanHalfVFOV;
+                double y = _distance * tan(0.5*_vfov); //_tanHalfVFOV;
                 double x = y * ar;
                 double f = std::max(x,y);
                 double znear = -f * 5.0;
                 double zfar  =  f * (5.0 + 10.0 * sin(pitch+osg::PI_2));
-
-                // assemble the projection matrix:
-                osg::Matrixd orthoMatrix;
 
                 // apply the offsets:
                 double px = 0.0, py = 0.0;
@@ -1459,8 +1528,20 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
                     py = (2.0*y*(double)-p.y()) / (double)vp->height();
                 }
 
+                //OE_WARN << "ORTHO: "
+                //    << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
+                //    << "dist = " << _distance << ", halftanfov=" << _tanHalfVFOV
+                //    << "left = " << px-x << ", right = " << px+x
+                //    << ", bottom = " << py-y << ", top = " << py+y
+                //    << ", near = " << znear << ", far = " << zfar 
+                //    << std::endl;
+
                 _viewCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, znear, zfar );
             }
+#endif
+
+            //isOrtho = osg::equivalent(proj(3,3), 1.0);
+            //OE_WARN << LC << "Out: proj(3,3) is " << proj(3,3) << ", isOrtho=" << isOrtho << "\n";
         }
 
         _settings->sync( _viewCameraSettingsMonitor );

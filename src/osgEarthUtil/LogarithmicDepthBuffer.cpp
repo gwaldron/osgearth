@@ -76,19 +76,33 @@ namespace
 
                 // the uniform conveying the far clip plane:
                 osg::Uniform* u = stateset->getOrCreateUniform(FC_UNIFORM, osg::Uniform::FLOAT);
-
+                
                 // calculate the far plane based on the camera location:
                 osg::Vec3d E, A, U;
                 camera->getViewMatrixAsLookAt(E, A, U);                
                 double farplane = E.length() + 1e6;
-                
-                // set for culling purposes:
-                double L, R, B, T, N, F;
-                camera->getProjectionMatrixAsFrustum(L, R, B, T, N, F);                
-                camera->setProjectionMatrixAsFrustum(L, R, B, T, DEFAULT_NEAR_PLANE, farplane);
 
                 // communicate to the shader:
                 u->set( (float)(2.0/LOG2(farplane*NEAR_RES_COEFF + 1.0)) );
+
+                // set for culling purposes:
+                const osg::Matrix& proj = camera->getProjectionMatrix();
+                if ( osg::equivalent(proj(3,3), 0.0) ) // perspective
+                {
+                    double vfov, ar, n, f;
+                    proj.getPerspective(vfov, ar, n, f);
+                    camera->setProjectionMatrixAsPerspective(vfov, ar, DEFAULT_NEAR_PLANE, farplane);
+                }
+                else // ortho
+                {
+                    double L, R, B, T, ignore;
+                    proj.getOrtho(L, R, B, T, ignore, ignore);
+                    camera->setProjectionMatrixAsOrtho(L, R, B, T, DEFAULT_NEAR_PLANE, farplane);
+
+                    // ortho is not supported, so tell the shader to do nothing:
+                    //OE_WARN << "ortho. nothing.\n";
+                    //u->set( -1.0f );
+                }
 
                 // and continue traversal of the camera's subgraph.
                 cv->pushStateSet( stateset );
@@ -153,9 +167,9 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
 
         // configure the camera:
         camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
-        double fovy, ar, zn, zf;
-        camera->getProjectionMatrixAsPerspective(fovy, ar, zn ,zf);
-        camera->setProjectionMatrixAsPerspective(fovy, ar, DEFAULT_NEAR_PLANE, zf);
+        //double fovy, ar, zn, zf;
+        //camera->getProjectionMatrixAsPerspective(fovy, ar, zn ,zf);
+        //camera->setProjectionMatrixAsPerspective(fovy, ar, DEFAULT_NEAR_PLANE, zf);
 
         // install a cull callback to control the far plane:
         camera->addCullCallback( _cullCallback.get() );

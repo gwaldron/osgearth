@@ -1,0 +1,25 @@
+<!--
+osgEarth Sample - Annotations
+-->
+<map name="readymap.org" type="geocentric" version="2">
+
+    <image name="ReadyMap.org - Imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+    
+    <external>
+        <viewpoints>
+            <viewpoint name="Close" heading="37.50489469848382" height="999998.9700709898" lat="32.99996938438599" long="-120.0000196800161" pitch="-32.95719020696986" range="73.83747517482702"/>                       
+            <viewpoint name="Closer" heading="40.16063276715548" height="999988.5642189533" lat="32.99996691198395" long="-120.0000187472069" pitch="-38.5490024414767" range="23.46307977060268"/>
+        </viewpoints>
+        
+        <annotations>            
+            <model name="flag model">
+                <url>../data/cessna.osgb</url>
+                <position lat="33" long="-120" hat="1000000"/>
+            </model>            
+        </annotations>
+        
+        <sky driver="gl"/>
+    </external>
+</map>

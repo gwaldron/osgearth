@@ -689,11 +689,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Configure for an ortho camera:
     if ( useOrtho )
     {
-        EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
-        if ( manip )
-        {
-            manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
-        }
+        view->getCamera()->setProjectionMatrixAsOrtho(-1, 1, -1, 1, 0, 1);
+        //EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+        //if ( manip )
+        //{
+        //    manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
+        //}
     }
 
     // activity monitor (debugging)

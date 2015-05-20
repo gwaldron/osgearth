@@ -20,6 +20,7 @@
 #define OSGEARTH_PICKING_UTILS_H
 
 #include <osgEarth/Common>
+#include <osgEarth/ObjectIndex>
 #include <osgEarth/PrimitiveIntersector>
 #include <osgViewer/View>
 #include <osgEarthFeatures/Feature>
@@ -98,6 +99,11 @@ namespace osgEarth
             return 0L;
         }
 
+        /**
+         * Given a set of pick results, extract the object IDs within.
+         * Results true is the output connection is populated.
+         */
+        bool getObjectIDs(const Hits& results, std::set<ObjectID>& out_objectIDs) const;
 
     protected:
         osgViewer::View*              _view;

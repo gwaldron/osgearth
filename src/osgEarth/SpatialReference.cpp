@@ -260,6 +260,7 @@ SpatialReference::create( const Key& key, bool useCache )
             "WGS84" );
 
         srs->_is_plate_carre = true;
+        srs->_is_geographic  = false;
     }
 
     // custom srs for the unified cube
@@ -786,7 +787,11 @@ const SpatialReference*
 SpatialReference::createPlateCarreGeographicSRS() const
 {
     SpatialReference* pc = create( getKey(), false );
-    if ( pc ) pc->_is_plate_carre = true;
+    if ( pc ) 
+    {
+        pc->_is_plate_carre = true;
+        pc->_is_geographic  = false;
+    }
     return pc;
 }
 
@@ -1499,7 +1504,7 @@ SpatialReference::_init()
     _is_user_defined = false; 
     _is_contiguous = true;
     _is_cube = false;
-    if ( _is_ecef )
+    if ( _is_ecef || _is_plate_carre )
         _is_geographic = false;
     else
         _is_geographic = OSRIsGeographic( _handle ) != 0;

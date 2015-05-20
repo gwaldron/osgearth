@@ -245,12 +245,14 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         {
             TemplateFeatureFilter<TessellateOperator> filter;
             filter.setNumPartitions( *line->tessellation() );
+            filter.setDefaultGeoInterp( _options.geoInterp().get() );
             sharedCX = filter.push( workingSet, sharedCX );
         }
         else if ( line->tessellationSize().isSet() )
         {
             TemplateFeatureFilter<TessellateOperator> filter;
             filter.setMaxPartitionSize( *line->tessellationSize() );
+            filter.setDefaultGeoInterp( _options.geoInterp().get() );
             sharedCX = filter.push( workingSet, sharedCX );
         }
     }

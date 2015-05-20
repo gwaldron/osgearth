@@ -1,0 +1,73 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_NOISE_EXTENSION
+#define OSGEARTH_NOISE_EXTENSION 1
+
+#include "NoiseOptions"
+#include "NoiseTerrainEffect"
+#include <osgEarth/Extension>
+#include <osgEarth/MapNode>
+#include <osgEarthUtil/Controls>
+
+namespace osgEarth { namespace Noise
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util::Controls;
+
+    /**
+     * Extension for loading the normal mapping effect on demand.
+     */
+    class NoiseExtension : public Extension,
+                               public ExtensionInterface<MapNode>
+    {
+    public:
+        META_Object(osgearth_ext_normalmap, NoiseExtension);
+
+        // CTORs
+        NoiseExtension();
+        NoiseExtension(const NoiseOptions& options);
+
+        // DTOR
+        virtual ~NoiseExtension();
+
+
+    public: // Extension
+
+        void setDBOptions(const osgDB::Options* dbOptions);
+
+
+    public: // ExtensionInterface<MapNode>
+
+        bool connect(MapNode* mapNode);
+
+        bool disconnect(MapNode* mapNode);
+
+
+    protected: // Object
+        NoiseExtension(const NoiseExtension& rhs, const osg::CopyOp& op) { }
+
+    private:
+        const NoiseOptions                 _options;
+        osg::ref_ptr<const osgDB::Options>     _dbOptions;
+        osg::ref_ptr<NoiseTerrainEffect>   _effect;
+    };
+
+} } // namespace osgEarth::Noise
+
+#endif // OSGEARTH_NOISE_EXTENSION

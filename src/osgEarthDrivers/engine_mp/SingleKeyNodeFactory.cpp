@@ -115,7 +115,9 @@ _options         ( options ),
 _engineUID       ( engineUID ),
 _tileNodeBroker  ( tileNodeBroker )
 {
-    //nop
+    _debug =
+        _options.debug() == true || 
+        ::getenv("OSGEARTH_MP_DEBUG") != 0L;
 }
 
 unsigned
@@ -178,6 +180,7 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         plod->setCenter  ( bs.center() );
         plod->addChild   ( tileNode );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engineUID << ".osgearth_engine_mp_tile" );
+        plod->setDebug   ( _debug );
 
         if ( _options.rangeMode().value() == osg::LOD::DISTANCE_FROM_EYE_POINT )
         {

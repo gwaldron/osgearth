@@ -81,6 +81,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         const MPTerrainEngineOptions&       _options;
         UID                                 _engineUID;
         TerrainTileNodeBroker*              _tileNodeBroker;
+        bool                                _debug;
 
         unsigned getMinimumRequiredLevel();
     };

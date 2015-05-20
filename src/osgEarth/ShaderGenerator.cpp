@@ -36,6 +36,7 @@
 #include <osg/TextureRectangle>
 #include <osg/Texture2DMultisample>
 #include <osg/Texture2DArray>
+#include <osg/TextureBuffer>
 #include <osg/TextureCubeMap>
 #include <osg/TexEnv>
 #include <osg/TexGen>
@@ -240,8 +241,8 @@ namespace
                     const osg::State::AttributePair& pair = as.attributeVec.back();
                     osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
                     ActiveAttributeCollector collector(stateset, sa);
-                    bool modeless = !sa->getModeUsage(collector);
-                    if (modeless || isModeless(sa))
+                    bool modeless = isModeless(sa) || !sa->getModeUsage(collector);
+                    if (modeless)
                     {
                         // if getModeUsage returns false, there are no modes associated with
                         // this attr, so just add it (it can't be forcably disabled)
@@ -261,9 +262,9 @@ namespace
                         const osg::State::AttributePair& pair = as.attributeVec.back();
                         osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
                         ActiveAttributeCollector collector(stateset, sa, unit);
-                        bool modeless = !sa->getModeUsage(collector);
-                        if (modeless || isModeless(sa))
-                        {
+						bool modeless = isModeless(sa) || !sa->getModeUsage(collector);
+						if (modeless)
+						{
                             // if getModeUsage returns false, there are no modes associated with
                             // this attr, so just add it (it can't be forcably disabled)
                             stateset->setTextureAttribute(unit, sa, osg::StateAttribute::ON);
@@ -282,7 +283,8 @@ namespace
 #if OSG_VERSION_LESS_THAN(3,3,1)            
             return
                 dynamic_cast<osg::Texture2DArray*>(sa) ||
-                dynamic_cast<osg::Texture2DMultisample*>(sa);
+                dynamic_cast<osg::Texture2DMultisample*>(sa) ||
+				dynamic_cast<osg::TextureBuffer*>(sa);
 #else
             return false;
 #endif

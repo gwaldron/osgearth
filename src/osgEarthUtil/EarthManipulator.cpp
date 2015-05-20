@@ -1418,11 +1418,11 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
                 _viewCamera->setProjectionMatrixAsOrtho( -x, +x, -y, +y, N, F );
 #endif
 
-                OE_WARN << "ORTHO: "
-                    << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
-                    << ", dist = " << _distance << ", vfov=" << _vfov
-                    << ", X = " << x << ", Y = " << y
-                    << std::endl;
+                //OE_WARN << "ORTHO: "
+                //    << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
+                //    << ", dist = " << _distance << ", vfov=" << _vfov
+                //    << ", X = " << x << ", Y = " << y
+                //    << std::endl;
             }
         }
 

@@ -1,11 +1,9 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
+#version 110
 
 #pragma vp_entryPoint "oe_logDepth_vert"
 #pragma vp_location   "vertex_clip"
 #pragma vp_order      "0.99"
 
-//uniform float oe_logDepth_C;
 uniform float oe_logDepth_FC;
 
 void oe_logDepth_vert(inout vec4 clip)

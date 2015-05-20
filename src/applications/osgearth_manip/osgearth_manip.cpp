@@ -465,6 +465,9 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleCollisionHandler('k', manip));
     viewer.addEventHandler(new ToggleProjMatrix('o', manip));
 
+    manip->getSettings()->setMinMaxPitch(-90, 90);
+
+
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     while(!viewer.done())

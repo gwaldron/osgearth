@@ -1,5 +1,4 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
+#version 110
 
 #pragma vp_entryPoint "oe_logDepth_frag"
 #pragma vp_location   "fragment_lighting"

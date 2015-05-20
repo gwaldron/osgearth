@@ -30,12 +30,12 @@
 
 #define LC "[LogarithmicDepthBuffer] "
 
-//#define DEFAULT_NEAR_PLANE     0.1
-//#define NEAR_RES_COEFF      1.0 //0.0005  // a.k.a. "C"
 #define LOG2(X) (::log((double)(X))/::log(2.0))
-
-//#define C_UNIFORM  "oe_logDepth_C"
 #define FC_UNIFORM "oe_logDepth_FC"
+
+// This is only used in the "precise" variant.
+#define NEAR_RES_COEFF 0.001  // a.k.a. "C"
+#define C_UNIFORM "oe_logDepth_C"
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -49,36 +49,36 @@ namespace
     {
         osg::ref_ptr<osg::Uniform>              _uniform;
         osg::ref_ptr<osg::Camera::DrawCallback> _next;
+        float                                   _C;
 
         SetFarPlaneUniformCallback(osg::Uniform*              uniform,
-                                   osg::Camera::DrawCallback* next)
+                                   osg::Camera::DrawCallback* next,
+                                   float                      C )
         {
             _uniform = uniform;
             _next    = next;
+            _C       = C;
         }
 
         void operator () (osg::RenderInfo& renderInfo) const
         {
             const osg::Matrix& proj = renderInfo.getCurrentCamera()->getProjectionMatrix();
 
-            osg::GL2Extensions* ext = osg::GL2Extensions::Get(renderInfo.getContextID(), true);
-
             if ( osg::equivalent(proj(3,3), 0.0) ) // perspective
             {
                 float vfov, ar, n, f;
                 proj.getPerspective(vfov, ar, n, f);
-                float fc = (float)(2.0/LOG2(f+1.0));
+                float fc = (float)(2.0/LOG2(_C*f+1.0));
                 _uniform->set( fc );
-                //OE_NOTICE << "PERSP: n = " << n << ", f = " << f << "\n";
             }
             else // ortho
             {
-                float l, r, b, t, n, f;
-                proj.getOrtho(l, r, b, t, n, f);
-                float fc = (float)(2.0/LOG2(f+1.0));
-                fc = -1.0f;
-                _uniform->set( fc );
-                //OE_NOTICE << "ORTHO: n = " << n << ", f = " << f << "\n";
+                //float l, r, b, t, n, f;
+                //proj.getOrtho(l, r, b, t, n, f);
+                //float fc = (float)(2.0/LOG2(_C*f+1.0));
+
+                // Disable in ortho, because it just doesn't work.
+                _uniform->set( -1.0f );
             }
 
             if ( _next.valid() )
@@ -120,7 +120,10 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
         // install the shader component:
         osg::StateSet* stateset = camera->getOrCreateStateSet();
 
-        //stateset->addUniform( new osg::Uniform(C_UNIFORM, (float)NEAR_RES_COEFF) );
+        if ( _useFragDepth )
+        {
+            stateset->addUniform( new osg::Uniform(C_UNIFORM, (float)NEAR_RES_COEFF) );
+        }
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
         Shaders pkg;
@@ -140,7 +143,9 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
             next = static_cast<SetFarPlaneUniformCallback*>(next.get())->_next.get();
         
         stateset->addUniform( _FCUniform.get() );
-        camera->setPreDrawCallback( new SetFarPlaneUniformCallback(_FCUniform.get(), next.get()) );
+        float C = _useFragDepth ? (float)NEAR_RES_COEFF : 1.0f;
+
+        camera->setPreDrawCallback( new SetFarPlaneUniformCallback(_FCUniform.get(), next.get(), C) );
     }
 }
 
@@ -169,6 +174,7 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
             }
 
             stateset->removeUniform( FC_UNIFORM );
+            stateset->removeUniform( C_UNIFORM );
         }
     }
 }

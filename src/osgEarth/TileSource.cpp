@@ -619,7 +619,6 @@ TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
         // check for 2D intersection:
         if (key.getExtent().intersects( *itr ))
         {
-            // Transform the key into the layer's profile key.getProfile()->getEquivalentLOD( key.getLevelOfDetail() );
             // check that the extent isn't higher-resolution than our key:
             if ( !itr->minLevel().isSet() || layerLOD >= itr->minLevel().get() )
             {

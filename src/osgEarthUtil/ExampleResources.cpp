@@ -717,7 +717,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install logarithmic depth buffer on main camera
     if ( useLogDepth )
     {
-        OE_INFO << LC << "Activating logarithmic depth buffer on main camera" << std::endl;
+        OE_INFO << LC << "Activating logarithmic depth buffer (precise) on main camera" << std::endl;
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
         logDepth.setUseFragDepth( true );
         logDepth.install( view->getCamera() );

@@ -136,6 +136,7 @@ namespace osgEarth
         Revision                      _maskSourceRev;
         osg::ref_ptr<osg::Vec3dArray> _boundary;
         osg::ref_ptr<osgDB::Options>  _dbOptions;
+        OpenThreads::Mutex            _mutex;
 
         void copyOptions();
     };

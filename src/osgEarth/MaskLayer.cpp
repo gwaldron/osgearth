@@ -118,6 +118,7 @@ MaskLayer::initialize( const osgDB::Options* dbOptions, const Map* map )
 osg::Vec3dArray*
 MaskLayer::getOrCreateMaskBoundary( float heightScale, const SpatialReference *srs, ProgressCallback* progress )
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _mutex );
     if ( _maskSource.valid() )
     {
         // if the model source has changed, regenerate the node.

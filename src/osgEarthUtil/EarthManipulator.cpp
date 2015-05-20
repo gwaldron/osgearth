@@ -1157,9 +1157,12 @@ EarthManipulator::getTetherNode() const
 bool
 EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection, osg::Vec3d& normal) const
 {
-    osg::ref_ptr<osg::Node> safeNode = _node.get();
-    if ( safeNode.valid() )
+    osg::ref_ptr<MapNode> safeMapNode = _mapNode.get();
+    if ( safeMapNode.valid() )
     {
+    //osg::ref_ptr<osg::Node> safeNode = _node.get();
+    //if ( safeNode.valid() )
+    //{
 		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = NULL;
 
 		lsi = new osgEarth::DPLineSegmentIntersector(start,end);
@@ -1168,7 +1171,8 @@ EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg:
         osgUtil::IntersectionVisitor iv(lsi.get());
         iv.setTraversalMask(_intersectTraversalMask);
 
-        safeNode->accept(iv);
+        //safeNode->accept(iv);
+        safeMapNode->getTerrainEngine()->accept(iv);
 
         if (lsi->containsIntersections())
         {
@@ -1186,9 +1190,12 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
                                       osg::Vec3d& out_up ) const
 {
     bool success = false;
-
-    osg::ref_ptr<osg::Node> safeNode = _node.get();
-    if ( safeNode.valid() )
+    
+    osg::ref_ptr<MapNode> safeMapNode = _mapNode.get();
+    if ( safeMapNode.valid() )
+    //osg::ref_ptr<osg::Node> safeNode = _node.get();
+    //if ( safeNode.valid() )
+    //{
     {
         double R = _centerHeight; // = getSRS()->getEllipsoid()->getRadiusEquator();
 
@@ -1203,7 +1210,7 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
         osgUtil::IntersectionVisitor iv(lsi.get());        
         iv.setTraversalMask(_intersectTraversalMask);
 
-        safeNode->accept(iv);
+        safeMapNode->getTerrainEngine()->accept(iv);
 
         if (lsi->containsIntersections())
         {
@@ -1414,8 +1421,7 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
                 //OE_WARN << "ORTHO: "
                 //    << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
                 //    << ", dist = " << _distance << ", vfov=" << _vfov
-                //    << ", left = " << px-x << ", right = " << px+x
-                //    << ", bottom = " << py-y << ", top = " << py+y
+                //    << ", X = " << x << ", Y = " << y
                 //    << std::endl;
             }
         }

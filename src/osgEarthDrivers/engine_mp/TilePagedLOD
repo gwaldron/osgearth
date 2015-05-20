@@ -57,6 +57,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         osgDB::Options* getOrCreateDBOptions();
 
+        void setDebug(bool value) { _debug = value; }
+
     public: // osg::Group
 
         /** called by the OSG DatabasePager when a paging result is ready. */
@@ -88,7 +90,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             void update(unsigned frame);
         };
         osg::ref_ptr<MyProgressCallback> _progress;
-        optional<osg::BoundingBox> _bbox;
+        optional<osg::BoundingBox>       _bbox;
+        bool                             _debug;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

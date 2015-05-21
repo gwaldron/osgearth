@@ -57,13 +57,13 @@ namespace osgEarth { namespace Symbology
         osg::Node* build();
 
         typedef std::vector< osg::ref_ptr< osg::StateSet > > StateSetStack;
-        typedef std::vector< osg::ref_ptr< osg::Geode > > GeodeVector;
+        typedef std::vector< osg::ref_ptr< osg::Geometry > > GeometryVector;
 
         StateSetStack _ssStack;
 
-        typedef std::map< StateSetStack, GeodeVector > StateSetStackToGeodeMap;
+        typedef std::map< StateSetStack, GeometryVector > StateSetStackToGeometryMap;
 
-        StateSetStackToGeodeMap _geodes;
+        StateSetStackToGeometryMap _geometries;
     };
 
 

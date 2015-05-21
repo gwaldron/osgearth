@@ -433,6 +433,13 @@ MPGeometry:: COMPUTE_BOUND() const
         // update the uniform.
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
         _tileKeyValue.w() = bbox.radius();
+
+        // create the patch triangles index if necessary.
+        if ( getNumPrimitiveSets() > 0 && getPrimitiveSet(0)->getMode() == GL_PATCHES )
+        {
+            _patchTriangles = osg::clone( getPrimitiveSet(0), osg::CopyOp::SHALLOW_COPY );
+            _patchTriangles->setMode( GL_TRIANGLES );
+        }
         
 #if 0
         // make sure everyone's got a vbo.
@@ -649,4 +656,26 @@ MPGeometry::drawImplementation(osg::RenderInfo& renderInfo) const
     // unbind the VBO's if any are used.
     state.unbindVertexBufferObject();
     state.unbindElementBufferObject();
+}
+
+void
+MPGeometry::accept(osg::PrimitiveIndexFunctor& functor) const
+{
+    osg::Geometry::accept(functor);
+
+    if ( getPrimitiveSet(0)->getMode() == GL_PATCHES && _patchTriangles.valid() )
+    {
+        _patchTriangles->accept( functor );
+    }
+}
+
+void
+MPGeometry::accept(osg::PrimitiveFunctor& functor) const
+{
+    osg::Geometry::accept(functor);
+
+    if ( getPrimitiveSet(0)->getMode() == GL_PATCHES && _patchTriangles.valid() )
+    {
+        _patchTriangles->accept( functor );
+    }
 }

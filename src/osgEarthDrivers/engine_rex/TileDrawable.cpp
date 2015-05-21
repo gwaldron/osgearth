@@ -33,12 +33,10 @@ using namespace osgEarth;
 #define LC "[TileDrawable] "
 
 
-TileDrawable::TileDrawable(const TileKey&        key, 
-                           const MapFrame&       frame,
+TileDrawable::TileDrawable(const TileKey&        key,
                            const RenderBindings& bindings,
                            osg::Geometry*        geometry) :
 osg::Drawable( ),
-_frame       ( frame ),
 _bindings    ( bindings ),
 _geom        ( geometry )
 {
@@ -53,7 +51,6 @@ _geom        ( geometry )
 
     // establish uniform name IDs.
     _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
-    //_birthTimeUniformNameID    = osg::Uniform::getNameID( "oe_tile_birthtime" );
     _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
     _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
@@ -65,32 +62,6 @@ _geom        ( geometry )
 void
 TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 {
-#if 0
-    // check the map frame to see if it's up to date
-    if ( _frame.needsSync() )
-    {
-        // this lock protects a MapFrame sync when we have multiple DRAW threads.
-        Threading::ScopedMutexLock exclusive( _frameSyncMutex );
-
-        if ( _frame.needsSync() && _frame.sync() ) // always double check
-        {
-            // This should only happen is the layer ordering changes;
-            // If layers are added or removed, the Tile gets rebuilt and
-            // the point is moot.
-            std::vector<Layer> reordered;
-            const ImageLayerVector& layers = _frame.imageLayers();
-            reordered.reserve( layers.size() );
-            for( ImageLayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i )
-            {
-                std::vector<Layer>::iterator j = std::find( _layers.begin(), _layers.end(), i->get()->getUID() );
-                if ( j != _layers.end() )
-                    reordered.push_back( *j );
-            }
-            _layers.swap( reordered );
-        }
-    }
-#endif
-
     unsigned layersDrawn = 0;
 
     osg::State& state = *renderInfo.getState();

@@ -20,6 +20,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/GeoMath>
+#include <osgEarth/TerrainEngineNode>
 #include <osg/Quat>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
@@ -1157,8 +1158,8 @@ EarthManipulator::getTetherNode() const
 bool
 EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection, osg::Vec3d& normal) const
 {
-    osg::ref_ptr<MapNode> safeMapNode = _mapNode.get();
-    if ( safeMapNode.valid() )
+    osg::ref_ptr<MapNode> safeMapNode;
+    if ( _mapNode.lock(safeMapNode) )
     {
     //osg::ref_ptr<osg::Node> safeNode = _node.get();
     //if ( safeNode.valid() )

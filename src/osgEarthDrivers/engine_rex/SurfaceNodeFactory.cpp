@@ -51,7 +51,6 @@ SurfaceNodeFactory::createSurfaceNode()
 
         TileDrawable* drawable = new TileDrawable(
             _model->getKey(),
-            _frame,
             _bindings,
             geom.get() );
         

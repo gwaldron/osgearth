@@ -104,6 +104,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         osg::ref_ptr<osg::Texture> _elevTex;
 
+        mutable osg::ref_ptr<osg::PrimitiveSet> _patchTriangles;
+
     public:
         
         // construct a new MPGeometry.
@@ -131,6 +133,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         // all the code that handles non-fastPath (don't need it) and
         // called into our custom renderPrimitiveSets method.
         void drawImplementation(osg::RenderInfo& renderInfo) const;
+        
+        // override to correctly process GL_PATCHES if necessary
+        void accept(osg::PrimitiveFunctor& functor) const;
+        void accept(osg::PrimitiveIndexFunctor& functor) const;
 
         // recalculate the bound for the tile key uniform.
 #if OSG_VERSION_GREATER_THAN(3,3,1)

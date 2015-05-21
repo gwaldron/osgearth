@@ -187,7 +187,7 @@ Picker::getObjectIDs(const Hits& results, std::set<ObjectID>& out_objectIDs) con
             const osg::Geometry* geom = hit->drawable ? hit->drawable->asGeometry() : 0L;
             if ( geom )
             {
-                const osg::UIntArray* ids = dynamic_cast<const osg::UIntArray*>( geom->getVertexAttribArray(index->getObjectIDAttribLocation()) );
+                const ObjectIDArray* ids = dynamic_cast<const ObjectIDArray*>( geom->getVertexAttribArray(index->getObjectIDAttribLocation()) );
                 if ( ids )
                 {
                     for(unsigned i=0; i < hit->indexList.size(); ++i)

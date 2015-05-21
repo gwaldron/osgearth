@@ -115,9 +115,7 @@ _options         ( options ),
 _engineUID       ( engineUID ),
 _tileNodeBroker  ( tileNodeBroker )
 {
-    _debug =
-        _options.debug() == true || 
-        ::getenv("OSGEARTH_MP_DEBUG") != 0L;
+    _debug = _options.debug() == true;
 }
 
 unsigned

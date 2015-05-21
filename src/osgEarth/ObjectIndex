@@ -22,16 +22,25 @@
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/ShaderLoader>
+#include <osg/Version>
 #include <osg/Drawable>
+#include <osg/Array>
 #include <OpenThreads/Atomic>
 #include <algorithm>
 
-#define OSGEARTH_OBJECTID_EMPTY   (ObjectID)0u
-#define OSGEARTH_OBJECTID_TERRAIN (ObjectID)1u
+#define OSGEARTH_OBJECTID_EMPTY   (ObjectID)0
+#define OSGEARTH_OBJECTID_TERRAIN (ObjectID)1
 
 namespace osgEarth
 {
-    typedef unsigned ObjectID;
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
+    typedef unsigned       ObjectID;
+    typedef osg::UIntArray ObjectIDArray;
+#else
+    typedef int            ObjectID;
+    typedef osg::IntArray  ObjectIDArray;
+#endif
 
     /** 
      * Virutal interface class for building an object index.

@@ -70,6 +70,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         TerrainEngineRequirements*     _terrainReqs;
         osg::ref_ptr<HeightFieldCache> _meshHFCache;
         osg::ref_ptr<HeightFieldCache> _normalHFCache;
+        bool                           _debug;
         
         void buildElevation(
             const TileKey&    key,

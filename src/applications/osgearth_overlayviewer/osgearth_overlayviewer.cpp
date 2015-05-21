@@ -189,9 +189,8 @@ main(int argc, char** argv)
 
     osgViewer::View* overlayView = new osgViewer::View();
     overlayView->getCamera()->setNearFarRatio(0.00002);
-    EarthManipulator* overlayEM = new EarthManipulator();
-    overlayEM->getSettings()->setCameraProjection(overlayEM->PROJ_ORTHOGRAPHIC);
-    overlayView->setCameraManipulator( overlayEM );
+    //overlayView->getCamera()->setProjectionMatrixAsOrtho2D(-1,1,-1,1);
+    overlayView->setCameraManipulator( new EarthManipulator() );
     
     //overlayView->setUpViewInWindow( 700, 50, 600, 600 );
     overlayView->setUpViewInWindow( (width/2), b, (width/2)-b*2, (height-b*4) );

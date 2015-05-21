@@ -690,11 +690,12 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Configure for an ortho camera:
     if ( useOrtho )
     {
-        EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
-        if ( manip )
-        {
-            manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
-        }
+        view->getCamera()->setProjectionMatrixAsOrtho(-1, 1, -1, 1, 0, 1);
+        //EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+        //if ( manip )
+        //{
+        //    manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
+        //}
     }
 
     // activity monitor (debugging)
@@ -717,7 +718,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install logarithmic depth buffer on main camera
     if ( useLogDepth )
     {
-        OE_INFO << LC << "Activating logarithmic depth buffer on main camera" << std::endl;
+        OE_INFO << LC << "Activating logarithmic depth buffer (precise) on main camera" << std::endl;
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
         logDepth.setUseFragDepth( true );
         logDepth.install( view->getCamera() );

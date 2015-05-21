@@ -6,23 +6,20 @@
 #pragma vp_location   "vertex_model"
 #pragma vp_order      "0.0"
 
-uniform sampler2D oe_di_postex;
-uniform vec2      oe_di_postex_size;
+uniform samplerBuffer oe_di_postex_TBO;
+uniform int			  oe_di_postex_TBO_size;
 
 // Stage-global containing object ID
 uint oe_index_objectid;
 
 void oe_di_setInstancePosition(inout vec4 VertexMODEL)
 { 
-    float index = float(4 * gl_InstanceID) / oe_di_postex_size.x;
-    float s = fract(index);
-    float t = floor(index)/oe_di_postex_size.y; 
-    float step = 1.0 / oe_di_postex_size.x;  // step from one vec4 to the next 
+    int index = 4 * gl_InstanceID;
 
-    vec4 m0 = texture2D(oe_di_postex, vec2(           s, t));
-    vec4 m1 = texture2D(oe_di_postex, vec2(    step + s, t)); 
-    vec4 m2 = texture2D(oe_di_postex, vec2(2.0*step + s, t)); 
-    vec4 m3 = texture2D(oe_di_postex, vec2(3.0*step + s, t));
+    vec4 m0 = texelFetch(oe_di_postex_TBO, index);
+    vec4 m1 = texelFetch(oe_di_postex_TBO, index+1); 
+    vec4 m2 = texelFetch(oe_di_postex_TBO, index+2); 
+    vec4 m3 = texelFetch(oe_di_postex_TBO, index+3);
 
     // decode the ObjectID from the last column:
     

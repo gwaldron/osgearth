@@ -91,12 +91,7 @@ _filters          ( filters )
         // Or quote any layers containing spaces for PostgreSQL
         if (driverName == "ESRI Shapefile" || from.find(" ") != std::string::npos)
         {                        
-            std::string delim = "'";  //Use single quotes by default
-            if (driverName.compare("PostgreSQL") == 0)
-            {
-                //PostgreSQL uses double quotes as identifier delimeters
-                delim = "\"";
-            }            
+            std::string delim = "\"";
             from = delim + from + delim;                    
         }
 

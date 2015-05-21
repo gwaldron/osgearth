@@ -81,7 +81,7 @@ namespace
             "1-6 :",               "fly to preset viewpoints",
             "shift-right-mouse :", "locked panning",
             "u :",                 "toggle azimuth lock",
-            "c :",                 "toggle perspective/ortho",
+            "o :",                 "toggle perspective/ortho",
             "t :",                 "toggle tethering",
             "T :",                 "toggle tethering (with angles)",
             "a :",                 "toggle viewpoint arcing",
@@ -206,41 +206,6 @@ namespace
 
 
     /**
-     * Toggles the projection matrix between perspective and orthographic.
-     */
-    struct ToggleProjectionHandler : public osgGA::GUIEventHandler
-    {
-        ToggleProjectionHandler(char key, EarthManipulator* manip)
-            : _key(key), _manip(manip)
-        {
-        }
-
-        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
-        {
-            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
-            {
-                if ( _manip->getSettings()->getCameraProjection() == EarthManipulator::PROJ_PERSPECTIVE )
-                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
-                else
-                    _manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_PERSPECTIVE );
-                aa.requestRedraw();
-                return true;
-            }
-            return false;
-        }
-
-        void getUsage(osg::ApplicationUsage& usage) const
-        {
-            using namespace std;
-            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle projection type"));
-        }
-
-        char _key;
-        osg::ref_ptr<EarthManipulator> _manip;
-    };
-
-
-    /**
      * Toggles the throwing feature.
      */
     struct ToggleThrowingHandler : public osgGA::GUIEventHandler
@@ -303,7 +268,51 @@ namespace
         char _key;
         osg::ref_ptr<EarthManipulator> _manip;
     };
+    
 
+
+    /**
+     * Toggles perspective/ortho projection matrix.
+     */
+    struct ToggleProjMatrix : public osgGA::GUIEventHandler
+    {
+        ToggleProjMatrix(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip)
+        {
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                osg::Matrix proj = aa.asView()->getCamera()->getProjectionMatrix();
+                if ( proj(3,3) == 0 )
+                {
+                    OE_NOTICE << "Switching to orthographc.\n";
+                    proj.getPerspective(_vfov, _ar, _zn, _zf);
+                    aa.asView()->getCamera()->setProjectionMatrixAsOrtho(-1, 1, -1, 1, _zn, _zf);
+                }
+                else
+                {
+                    OE_NOTICE << "Switching to perspective.\n";
+                    aa.asView()->getCamera()->setProjectionMatrixAsPerspective(_vfov, _ar, _zn, _zf);
+                }
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle projection matrix type"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+        double _vfov, _ar, _zn, _zf;
+    };
 
     /**
      * A simple simulator that moves an object around the Earth. We use this to
@@ -422,17 +431,6 @@ int main(int argc, char** argv)
     root->addChild( earthNode );
 
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
-    if ( mapNode )
-    {
-        if ( mapNode )
-            manip->setNode( mapNode->getTerrainEngine() );
-
-        if ( mapNode->getMap()->isGeocentric() )
-        {
-            manip->setHomeViewpoint( 
-                Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
-        }
-    }
 
     // user model?
     osg::Node* model = 0L;
@@ -462,12 +460,14 @@ int main(int argc, char** argv)
     
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
-    viewer.addEventHandler(new ToggleProjectionHandler('c', manip));
     viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
     viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
     viewer.addEventHandler(new ToggleCollisionHandler('k', manip));
+    viewer.addEventHandler(new ToggleProjMatrix('o', manip));
 
-    viewer.getCamera()->setNearFarRatio(0.00002);
+    manip->getSettings()->setMinMaxPitch(-90, 90);
+
+
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     while(!viewer.done())

@@ -30,13 +30,12 @@
 
 #define LC "[LogarithmicDepthBuffer] "
 
-#define DEFAULT_NEAR_PLANE     0.1
-#define NEAR_RES_COEFF      0.0005  // a.k.a. "C"
-#define NEAR_RES_COEFF_STR "0.0005"
 #define LOG2(X) (::log((double)(X))/::log(2.0))
-
-#define C_UNIFORM  "oe_logDepth_C"
 #define FC_UNIFORM "oe_logDepth_FC"
+
+// This is only used in the "precise" variant.
+#define NEAR_RES_COEFF 0.001  // a.k.a. "C"
+#define C_UNIFORM "oe_logDepth_C"
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -45,76 +44,61 @@ using namespace osgEarth::Util;
 
 namespace
 {
-    struct LogDepthCullCallback : public osg::NodeCallback
+    // Callback to set the "far plane" uniform just before drawing.
+    struct SetFarPlaneUniformCallback : public osg::Camera::DrawCallback
     {
-        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        osg::ref_ptr<osg::Uniform>              _uniform;
+        osg::ref_ptr<osg::Camera::DrawCallback> _next;
+        float                                   _C;
+
+        SetFarPlaneUniformCallback(osg::Uniform*              uniform,
+                                   osg::Camera::DrawCallback* next,
+                                   float                      C )
         {
-            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            osg::Camera* camera = cv->getCurrentCamera();
-            if ( camera )
-            {
-                // find (or create) a stateset
-                osg::StateSet* stateset = 0L;
-                osg::ref_ptr<osg::StateSet> refStateSet;
-
-                osg::GraphicsContext* gc = camera->getGraphicsContext();
-                if ( gc )
-                {
-                    // faster method of re-using statesets when a GC is present
-                    unsigned id = gc->getState()->getContextID();
-                    refStateSet = _stateSets[id];
-                    if ( !refStateSet.valid() )
-                        refStateSet = new osg::StateSet();
-                    stateset = refStateSet.get();
-                }
-                else
-                {
-                    // no GC is present (e.g., RTT camera) so just make a fresh one
-                    refStateSet = new osg::StateSet();
-                    stateset = refStateSet.get();
-                }
-
-                // the uniform conveying the far clip plane:
-                osg::Uniform* u = stateset->getOrCreateUniform(FC_UNIFORM, osg::Uniform::FLOAT);
-
-                // calculate the far plane based on the camera location:
-                osg::Vec3d E, A, U;
-                camera->getViewMatrixAsLookAt(E, A, U);                
-                double farplane = E.length() + 1e6;
-                
-                // set for culling purposes:
-                double L, R, B, T, N, F;
-                camera->getProjectionMatrixAsFrustum(L, R, B, T, N, F);                
-                camera->setProjectionMatrixAsFrustum(L, R, B, T, DEFAULT_NEAR_PLANE, farplane);
-
-                // communicate to the shader:
-                u->set( (float)(2.0/LOG2(farplane*NEAR_RES_COEFF + 1.0)) );
-
-                // and continue traversal of the camera's subgraph.
-                cv->pushStateSet( stateset );
-                traverse(node, nv);
-                cv->popStateSet();
-            }
-            else
-            {                    
-                traverse(node, nv);
-            }
+            _uniform = uniform;
+            _next    = next;
+            _C       = C;
         }
 
-        // context-specific stateset collection
-        osg::buffered_value<osg::ref_ptr<osg::StateSet> > _stateSets;
+        void operator () (osg::RenderInfo& renderInfo) const
+        {
+            const osg::Matrix& proj = renderInfo.getCurrentCamera()->getProjectionMatrix();
+
+            if ( osg::equivalent(proj(3,3), 0.0) ) // perspective
+            {
+                float vfov, ar, n, f;
+                proj.getPerspective(vfov, ar, n, f);
+                float fc = (float)(2.0/LOG2(_C*f+1.0));
+                _uniform->set( fc );
+            }
+            else // ortho
+            {
+                //float l, r, b, t, n, f;
+                //proj.getOrtho(l, r, b, t, n, f);
+                //float fc = (float)(2.0/LOG2(_C*f+1.0));
+
+                // Disable in ortho, because it just doesn't work.
+                _uniform->set( -1.0f );
+            }
+
+            if ( _next.valid() )
+            {
+                _next->operator()( renderInfo );
+            }
+        }
     };
 }
 
 //------------------------------------------------------------------------
 
 LogarithmicDepthBuffer::LogarithmicDepthBuffer() :
-_useFragDepth(true)
+_useFragDepth(false)
 {
     _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
     {
-        _cullCallback = new LogDepthCullCallback();
+        //_cullCallback = new LogDepthCullCallback();
+        _FCUniform = new osg::Uniform(FC_UNIFORM, (float)0.0f);
     }
     else
     {
@@ -136,7 +120,10 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
         // install the shader component:
         osg::StateSet* stateset = camera->getOrCreateStateSet();
 
-        stateset->addUniform( new osg::Uniform(C_UNIFORM, (float)NEAR_RES_COEFF) );
+        if ( _useFragDepth )
+        {
+            stateset->addUniform( new osg::Uniform(C_UNIFORM, (float)NEAR_RES_COEFF) );
+        }
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
         Shaders pkg;
@@ -151,14 +138,14 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
             pkg.loadFunction( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
         }
 
-        // configure the camera:
-        camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
-        double fovy, ar, zn, zf;
-        camera->getProjectionMatrixAsPerspective(fovy, ar, zn ,zf);
-        camera->setProjectionMatrixAsPerspective(fovy, ar, DEFAULT_NEAR_PLANE, zf);
+        osg::ref_ptr<osg::Camera::DrawCallback> next = camera->getPreDrawCallback();
+        if ( dynamic_cast<SetFarPlaneUniformCallback*>(next.get()) )
+            next = static_cast<SetFarPlaneUniformCallback*>(next.get())->_next.get();
+        
+        stateset->addUniform( _FCUniform.get() );
+        float C = _useFragDepth ? (float)NEAR_RES_COEFF : 1.0f;
 
-        // install a cull callback to control the far plane:
-        camera->addCullCallback( _cullCallback.get() );
+        camera->setPreDrawCallback( new SetFarPlaneUniformCallback(_FCUniform.get(), next.get(), C) );
     }
 }
 
@@ -167,7 +154,12 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
 {
     if ( camera && _supported )
     {
-        camera->removeCullCallback( _cullCallback.get() );
+        SetFarPlaneUniformCallback* dc = dynamic_cast<SetFarPlaneUniformCallback*>(camera->getPreDrawCallback());
+        if ( dc )
+        {
+            osg::ref_ptr<osg::Camera::DrawCallback> next = dc->_next.get();
+            camera->setPreDrawCallback( next.get() );
+        }
 
         osg::StateSet* stateset = camera->getStateSet();
         if ( stateset )

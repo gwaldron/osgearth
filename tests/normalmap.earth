@@ -4,7 +4,7 @@ osgEarth Sample - Shows an elevation-derived normal map.
 <map name="readymap.org" type="geocentric">
     
     <options>
-        <terrain first_lod="1" normalize_edges="false"/>
+        <terrain first_lod="1"/>
     </options>
     
     <image name="readymap_imagery" driver="tms">

@@ -350,11 +350,11 @@ RTTPicker::checkForPickResult(Pick& pick)
     {
         osg::Vec4f value = read(iter.s(), iter.t());
 
-        unsigned id =
+        ObjectID id = (ObjectID)(
             ((unsigned)(value.r()*255.0) << 24) +
             ((unsigned)(value.g()*255.0) << 16) +
             ((unsigned)(value.b()*255.0) <<  8) +
-            ((unsigned)(value.a()*255.0));
+            ((unsigned)(value.a()*255.0)));
 
         if ( id > 0 )
         {
@@ -365,37 +365,6 @@ RTTPicker::checkForPickResult(Pick& pick)
 
     pick._callback->onMiss();
 }
-
-#if 0
-void
-RTTPicker::checkForPickResults()
-{
-    _rtt->setNodeMask( 0 );
-
-    // decode the results
-    ImageUtils::PixelReader read(_image.get());
-
-    SpiralIterator iter(_image->s(), _image->t(), std::max(_buffer,1), _pickU, _pickV);
-    while(iter.next())
-    {
-        osg::Vec4f value = read(iter.s(), iter.t());
-
-        unsigned id =
-            ((unsigned)(value.r()*255.0) << 24) +
-            ((unsigned)(value.g()*255.0) << 16) +
-            ((unsigned)(value.b()*255.0) <<  8) +
-            ((unsigned)(value.a()*255.0));
-
-        if ( id > 0 )
-        {
-            _callback->onHit( id );
-            return;
-        }
-    }
-
-    _callback->onMiss();
-}
-#endif
 
 bool
 RTTPicker::addChild(osg::Node* child)

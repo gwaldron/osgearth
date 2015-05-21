@@ -101,7 +101,8 @@ TilePagedLOD::TilePagedLOD(const UID&        engineUID,
 osg::PagedLOD(),
 _engineUID( engineUID ),
 _live     ( live ),
-_dead     ( dead )
+_dead     ( dead ),
+_debug    ( false )
 {
     if ( live )
     {
@@ -380,7 +381,20 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
             ExpirationCollector collector( _live.get(), _dead.get() );
             nodeToRemove->accept( collector );
 
-            OE_DEBUG << LC << "Expired " << collector._count << std::endl;
+            if ( _debug )
+            {
+                TileNode* tileNode = getTileNode();
+                std::string key = tileNode ? tileNode->getKey().str() : "unk";
+                OE_NOTICE 
+                    << LC << "Tile " << key << " : expiring " << collector._count << " children; "
+                    << "TS = " << _perRangeDataList[cindex]._timeStamp
+                    << ", MET = " << minExpiryTime
+                    << ", ET = " << expiryTime
+                    << "; FN = " << _perRangeDataList[cindex]._frameNumber
+                    << ", MEF = " << minExpiryFrames
+                    << ", EF = " << expiryFrame
+                    << "\n";
+            }
 
             return Group::removeChildren(cindex,1);
         }

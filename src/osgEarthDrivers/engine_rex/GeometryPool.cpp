@@ -31,6 +31,40 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 //// across all shared geometries.
 #define SHARE_TEX_COORDS 1
 
+namespace
+{
+    /**
+     * Geometry class that adds support for PrimitiveFunctors when using GL_PATCHES.
+     */
+    class SharedGeometry : public osg::Geometry
+    {
+    public:
+        SharedGeometry() : osg::Geometry() { }
+        virtual ~SharedGeometry() { }
+        
+        /** Set the proxy primitive set that will "sit in" for GL_PATCHES. */
+        void setPatchTriangles(osg::PrimitiveSet* primSet) { _patchTriangles = primSet; }
+
+    public: // osg::Geometry
+        
+        // override to correctly process GL_PATCHES (if necessary)
+        void accept(osg::PrimitiveFunctor& functor) const {
+            osg::Geometry::accept(functor);
+            if ( _patchTriangles.valid() )
+                _patchTriangles->accept( functor );
+        }
+
+        void accept(osg::PrimitiveIndexFunctor& functor) const {
+            osg::Geometry::accept(functor);
+            if ( _patchTriangles.valid() )
+                _patchTriangles->accept( functor );
+        }
+
+    private:
+        osg::ref_ptr<osg::PrimitiveSet> _patchTriangles;
+    };
+}
+
 
 GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :
 _options ( options ),
@@ -146,7 +180,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     osg::BoundingSphere tileBound;
 
     // the geometry:
-    osg::Geometry* geom = new osg::Geometry();
+    SharedGeometry* geom = new SharedGeometry();
     geom->setUseVertexBufferObjects(true);
     geom->setUseDisplayList(false);
 
@@ -288,6 +322,15 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             addSkirtTriangles( i, i+2 );
 
         addSkirtTriangles( i, skirtIndex );
+    }
+
+    // if we're using patches, we must create a "proxy" primitive set that supports
+    // PrimitiveFunctor et al (for intersections, bounds testing, etc.)
+    if ( mode == GL_PATCHES )
+    {
+        osg::PrimitiveSet* patchesAsTriangles = osg::clone( primSet, osg::CopyOp::SHALLOW_COPY );
+        patchesAsTriangles->setMode( GL_TRIANGLES );
+        geom->setPatchTriangles( patchesAsTriangles );
     }
 
     return geom;

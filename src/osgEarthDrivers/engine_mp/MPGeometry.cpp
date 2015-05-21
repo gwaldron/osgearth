@@ -440,22 +440,6 @@ MPGeometry:: COMPUTE_BOUND() const
             _patchTriangles = osg::clone( getPrimitiveSet(0), osg::CopyOp::SHALLOW_COPY );
             _patchTriangles->setMode( GL_TRIANGLES );
         }
-        
-#if 0
-        // make sure everyone's got a vbo.
-        MPGeometry* ncthis = const_cast<MPGeometry*>(this);
-
-        for(std::vector<Layer>::iterator i = _layers.begin(); i != _layers.end(); ++i)
-        {
-            if ( i->_texCoords.valid() && i->_texCoords->getVertexBufferObject() == 0L )
-                i->_texCoords->setVertexBufferObject( ncthis->getVertexArray()->getVertexBufferObject() );
-        }
-
-        if ( _tileCoords.valid() && _tileCoords->getVertexBufferObject() == 0L )
-        {
-            _tileCoords->setVertexBufferObject( ncthis->getVertexArray()->getVertexBufferObject() );
-        }
-#endif
     }
     return bbox;
 }

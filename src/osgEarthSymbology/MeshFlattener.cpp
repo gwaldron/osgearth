@@ -21,6 +21,7 @@
 #include <osgEarthSymbology/MeshFlattener>
 #include <osgEarth/StateSetCache>
 #include <osgUtil/Optimizer>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -76,9 +77,28 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
             pushStateSet(ss.get());
         }
 
-        // Figure out which stateset stack to apply this geode to
-        GeodeVector& geodes = _geodes[_ssStack];
-        geodes.push_back(&geode);
+        for (unsigned int i = 0; i < geode.getNumDrawables(); i++)
+        {
+            osg::Geometry* geometry = geode.getDrawable(i)->asGeometry();
+            if (geometry)
+            {
+                osg::ref_ptr< osg::StateSet > geomSS = geometry->getStateSet();
+                if (geomSS.get())
+                {
+                    pushStateSet( geomSS.get() );
+                }
+
+                GeometryVector& geometries = _geometries[_ssStack];
+                geometries.push_back(geometry);
+
+                if (geomSS.get())
+                {
+                    popStateSet();
+                }
+
+                
+            }
+        }
         
         if (ss)
         {
@@ -102,10 +122,12 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         // Build a group that contains one geode per group
         osg::Group* result = new osg::Group;
 
+        OE_DEBUG << "We have " << _geometries.size() << " stateset stacks" << std::endl;
+
         unsigned int i = 0;
-        for (StateSetStackToGeodeMap::iterator itr = _geodes.begin(); itr != _geodes.end(); ++itr)
+        for (StateSetStackToGeometryMap::iterator itr = _geometries.begin(); itr != _geometries.end(); ++itr)
         {
-            OE_DEBUG << LC << "StateSetStack " << i++ << " has " << itr->second.size() << std::endl;
+            OE_DEBUG << LC << "StateSetStack " << i++ << " has " << itr->second.size() << " geometries " << std::endl;
             
             // Merge all of the statesets
             osg::StateSet* ss = new osg::StateSet();
@@ -116,14 +138,11 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 
             osg::Geode* geode = new osg::Geode;
             geode->setStateSet(ss);
-            // Add all of the drawables in the geodes to the new one
-            for (GeodeVector::iterator gItr = itr->second.begin(); gItr != itr->second.end(); ++gItr)
+            // Add all of the drawables to the new Geode
+            for (GeometryVector::iterator gItr = itr->second.begin(); gItr != itr->second.end(); ++gItr)
             {
-                osg::Geode* g = gItr->get();
-                for (unsigned int i = 0; i < g->getNumDrawables(); i++)
-                {
-                    geode->addDrawable(g->getDrawable(i));
-                }
+                osg::Geometry* g = gItr->get();
+                geode->addDrawable( g );
             }
             result->addChild(geode);
             
@@ -136,6 +155,8 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         opt.optimize( result, 
             osgUtil::Optimizer::MERGE_GEOMETRY
             );
+       
+        //osgDB::writeNodeFile(*result, "clustered.osg");
 
         return result;
     }

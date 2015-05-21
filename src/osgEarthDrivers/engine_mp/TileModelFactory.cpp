@@ -218,6 +218,8 @@ _terrainReqs   ( terrainReqs )
 
     _normalHFCache = new HeightFieldCache(liveTiles, terrainOptions);
     _normalHFCache->setTileSize( 257 );
+
+    _debug = terrainOptions.debug() == true;
 }
 
 void
@@ -255,6 +257,10 @@ TileModelFactory::buildElevation(const TileKey&    key,
         if (_liveTiles->get(parentKey, parentNode))
         {
             parentHF = parentNode->getTileModel()->_elevationData.getHeightField();
+            if ( _debug && key.getLOD() > 0 && !parentHF.valid() )
+            {
+                OE_NOTICE << LC << "Could not find a parent tile HF for " << key.str() << "\n";
+            }
         }
     }
 

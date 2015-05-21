@@ -286,7 +286,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     xform->addChild( model.get() );
                     attachPoint->addChild( xform );
 
-                    if ( context.featureIndex() ) // && !_useDrawInstanced )
+                    // Only tag nodes if we aren't using clustering.
+                    if ( context.featureIndex() && !_cluster)
                     {
                         context.featureIndex()->tagNode( xform, input );
                     }

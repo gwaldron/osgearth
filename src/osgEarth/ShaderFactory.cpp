@@ -609,12 +609,15 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 }
             }
 
-            // resolve vertex to its next space:
-            if ( space == SPACE_MODEL )
-                buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
-                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
-            else if ( space == SPACE_VIEW )
-                buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+            // resolve vertex to its next space, but ONLY if this is the final Vertex Processing stage.
+            if ( !hasGS )
+            {
+                if ( space == SPACE_MODEL )
+                    buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                        << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                else if ( space == SPACE_VIEW )
+                    buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+            }
         
             // Copy globals to output block:
             for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)

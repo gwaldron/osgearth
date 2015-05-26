@@ -20,6 +20,7 @@
 #define OSGEARTH_EXT_TERRAIN_SHADER_OPTIONS 1
 
 #include <osgEarth/Config>
+#include <osgEarth/URI>
 #include <vector>
 
 namespace osgEarth { namespace TerrainShader
@@ -32,8 +33,14 @@ namespace osgEarth { namespace TerrainShader
     class TerrainShaderOptions : public DriverConfigOptions // NO EXPORT; header only
     {
     public:
-        std::vector<std::string>& code() { return _code; }
-        const std::vector<std::string>& code() const { return _code; }
+        struct Code
+        {
+            std::string   _source;
+            optional<URI> _uri;
+        };
+
+        std::vector<Code>& code() { return _code; }
+        const std::vector<Code>& code() const { return _code; }
 
     public:
         TerrainShaderOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
@@ -48,7 +55,9 @@ namespace osgEarth { namespace TerrainShader
         Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
             for(unsigned i=0; i<_code.size(); ++i) {
-                conf.add("code", _code[i]);
+                Config c("code", _code[i]._source);
+                c.addIfSet("url", _code[i]._uri);
+                conf.add( c );
             }
             return conf;
         }
@@ -63,11 +72,13 @@ namespace osgEarth { namespace TerrainShader
         void fromConfig( const Config& conf ) {
             ConfigSet s = conf.children("code");
             for(ConfigSet::const_iterator i = s.begin(); i != s.end(); ++i) {
-                _code.push_back( i->value() );
+                _code.push_back(Code());
+                _code.back()._source = i->value();
+                i->getIfSet("url", _code.back()._uri);
             }
         }
 
-        std::vector<std::string> _code;
+        std::vector<Code> _code;
     };
 
 } } // namespace osgEarth::TerrainShader

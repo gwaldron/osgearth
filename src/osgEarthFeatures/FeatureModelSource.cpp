@@ -226,7 +226,22 @@ osg::Group*
 FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                                           Session*     session)
 {
-    osg::Group* group = new osg::Group();
+    osg::Group* group = 0L;
+
+    // If we're draping, the style group will be a DrapeableNode.
+    const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+    if (alt &&
+        alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN &&
+        alt->technique() == AltitudeSymbol::TECHNIQUE_DRAPE )
+    {
+        group = new DrapeableNode();
+    }
+
+    // Otherwise, a normal group.
+    if ( !group )
+    {
+        group = new osg::Group();
+    }
 
     // apply necessary render styles.
     const RenderSymbol* render = style.get<RenderSymbol>();

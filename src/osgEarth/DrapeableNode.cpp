@@ -41,7 +41,7 @@ DrapeableNode::traverse(osg::NodeVisitor& nv)
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         // find the cull set for this thread:
-        DrapingCullSet& cullSet = Registry::drapingCullSet();
+        DrapingCullSet& cullSet = Registry::drapingCullSet(cv->getCurrentCamera());
         cullSet.push( this, cv->getNodePath() );
     }
     else

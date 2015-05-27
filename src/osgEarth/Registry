@@ -180,8 +180,8 @@ namespace osgEarth
         /**
          * Access to the per-thread Draping cull sets. Used internally by DrapeableNode.
          */
-        DrapingCullSet& getDrapingCullSet();
-        static DrapingCullSet& drapingCullSet() { return instance()->getDrapingCullSet(); }
+        DrapingCullSet& getDrapingCullSet(const osg::Camera*);
+        static DrapingCullSet& drapingCullSet(const osg::Camera* cam) { return instance()->getDrapingCullSet(cam); }
         
         /**
          * Gets a reference to the global task service manager.
@@ -321,7 +321,7 @@ namespace osgEarth
 
         osg::ref_ptr<ObjectIndex> _objectIndex;
 
-        PerThread<DrapingCullSet> _drapingCullSets;
+        PerObjectFastMap<const osg::Camera*, DrapingCullSet> _drapingCullSets;
     };
 }
 

@@ -23,6 +23,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 #include <osgEarth/RTTPicker>
+#include <osgEarth/CullingUtils>
 
 #include <osg/BlendFunc>
 #include <osg/TexGen>
@@ -56,7 +57,9 @@ namespace
 
         void traverse(osg::NodeVisitor& nv)
         {
-            DrapingCullSet& cullSet = Registry::drapingCullSet();
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+            const osg::Camera* camera = cv->getRenderStage()->getCamera();
+            DrapingCullSet& cullSet = Registry::drapingCullSet(camera);
             cullSet.accept( nv, true );
         }
 
@@ -593,7 +596,6 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
 {
     if ( !params._rttCamera.valid() && _textureUnit.isSet() )
     {
-        OE_WARN << LC << "Setting up draping camera\n";
         setUpCamera( params );
     }
     //else
@@ -605,7 +607,7 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
 const osg::BoundingSphere&
 DrapingTechnique::getBound(OverlayDecorator::TechRTTParams& params) const
 {
-    return Registry::drapingCullSet().getBound();
+    return Registry::drapingCullSet(params._mainCamera).getBound();
 }
 
 void

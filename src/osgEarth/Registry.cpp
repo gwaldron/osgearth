@@ -557,9 +557,9 @@ Registry::getObjectIndex() const
 }
 
 DrapingCullSet&
-Registry::getDrapingCullSet()
+Registry::getDrapingCullSet(const osg::Camera* cam)
 {
-    return _drapingCullSets.get();
+    return _drapingCullSets.get(cam);
 }
 
 void

@@ -243,7 +243,7 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
     // Draped (projected) geometry
     if ( ap.draping )
     {
-        DrapeableNode* drapable = new DrapeableNode( getMapNode() );
+        DrapeableNode* drapable = new DrapeableNode();
         drapable->addChild( node );
         node = drapable;
     }

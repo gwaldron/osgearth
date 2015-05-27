@@ -18,36 +18,34 @@
  */
 
 #include <osgEarth/DrapeableNode>
-#include <osgEarth/OverlayDecorator>
-#include <osgEarth/DrapingTechnique>
-#include <osgEarth/MapNode>
+#include <osgEarth/Registry>
+#include <osgEarth/CullingUtils>
 
 #define LC "[DrapeableNode] "
 
 using namespace osgEarth;
 
-//------------------------------------------------------------------------
 
-namespace
-{
-    static osg::Group* getTechniqueGroup(MapNode* m)
-    {
-        return m ? m->getOverlayDecorator()->getGroup<DrapingTechnique>() : 0L;
-    }
-}
-
-//------------------------------------------------------------------------
-
-DrapeableNode::DrapeableNode( MapNode* mapNode, bool draped ) :
-OverlayNode( mapNode, draped, &getTechniqueGroup )
+DrapeableNode::DrapeableNode() :
+_drapingEnabled( true )
 {
     //nop
 }
 
 void
-DrapeableNode::setRenderOrder(int order)
+DrapeableNode::traverse(osg::NodeVisitor& nv)
 {
-    _renderOrder = order;
-    osg::StateSet* s = _overlayProxyContainer->getOrCreateStateSet();
-    s->setRenderBinDetails(order, "RenderBin");
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        // access the cull visitor:
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+
+        // find the cull set for this thread:
+        DrapingCullSet& cullSet = Registry::drapingCullSet();
+        cullSet.push( this, cv->getNodePath() );
+    }
+    else
+    {
+        osg::Group::traverse( nv );
+    }
 }

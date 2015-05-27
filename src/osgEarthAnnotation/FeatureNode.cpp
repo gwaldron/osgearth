@@ -128,7 +128,7 @@ FeatureNode::init()
         // Draped (projected) geometry
         if ( ap.draping )
         {
-            DrapeableNode* d = new DrapeableNode( getMapNode() );
+            DrapeableNode* d = new DrapeableNode(); // getMapNode() );
             d->addChild( _attachPoint );
             this->addChild( d );
         }

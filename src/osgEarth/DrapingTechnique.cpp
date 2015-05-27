@@ -40,12 +40,119 @@ using namespace osgEarth;
 
 namespace
 {
+    /**
+     * A camera that will traverse the per-thread DrapingCullSet instead of
+     * its own children.
+     */
+    class DrapingCamera : public osg::Camera
+    {
+    public:
+        DrapingCamera() : osg::Camera()
+        {
+            setCullingActive( false );
+        }
+
+    public: // osg::Node
+
+        void traverse(osg::NodeVisitor& nv)
+        {
+            DrapingCullSet& cullSet = Registry::drapingCullSet();
+            cullSet.accept( nv, true );
+        }
+
+    protected:
+        virtual ~DrapingCamera() { }
+    };
+
+
     // Additional per-view data stored by the draping technique.
     struct LocalPerViewData : public osg::Referenced
     {
         osg::ref_ptr<osg::Uniform> _texGenUniform;
     };
 }
+
+//---------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[DrapingCullSet] "
+
+DrapingCullSet::DrapingCullSet()
+{
+    // nop
+}
+
+void
+DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path)
+{
+    _entries.push_back( Entry() );
+    Entry& entry = _entries.back();
+    entry._node = node;
+    entry._path = path;
+    entry._matrix = new osg::RefMatrix( osg::computeLocalToWorld(path) );
+    _bs.expandBy( node->getBound() );
+}
+
+void
+DrapingCullSet::accept(osg::NodeVisitor& nv, bool remove)
+{
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+
+        //for( std::deque<Entry>::iterator e = _entries.begin(); e != _entries.end(); ++e )
+        while( !_entries.empty() )
+        {
+            Entry& entry = _entries.front();
+        
+            // If there's an active (non-identity matrix), apply it
+            if ( entry._matrix.valid() )
+            {
+                entry._matrix->preMult( *cv->getModelViewMatrix() );
+                cv->pushModelViewMatrix( entry._matrix.get(), osg::Transform::RELATIVE_RF );
+            }
+
+            // assemble the stateset from the saved path:
+            osg::ref_ptr<osg::StateSet> stateSet = new osg::StateSet();
+            for(osg::NodePath::iterator n = entry._path.begin(); n != entry._path.end(); ++n)
+            {
+                osg::StateSet* ss = (*n)->getStateSet();
+                if ( ss )
+                {
+                    stateSet->merge( *ss );
+                }
+            }
+
+            cv->pushStateSet( stateSet.get() );
+
+            // cull the node's children (but not the DrapeableNode itself!)
+            // TODO: make sure we aren't skipping any cull callbacks, etc. by calling traverse 
+            // instead of accept. (Cannot call accept b/c that calls traverse)
+            for(unsigned i=0; i<entry._node->getNumChildren(); ++i)
+            {
+                entry._node->getChild(i)->accept( nv );
+            }
+
+            cv->popStateSet();
+
+            if ( entry._matrix.valid() )
+            {
+                cv->popModelViewMatrix();
+            }
+
+            _entries.pop_front();
+        }
+
+        _bs.init();
+    }
+    else
+    {
+        // todo...anything? support other traversal types here?
+        // or let the "natural" traversal of the node take care of those?
+    }
+}
+
+//---------------------------------------------------------------------------
 
 namespace
 {
@@ -292,6 +399,9 @@ namespace
 
 //---------------------------------------------------------------------------
 
+#undef  LC
+#define LC "[DrapingTechnique] "
+
 DrapingTechnique::DrapingTechnique() :
 _textureUnit     ( 1 ),
 _textureSize     ( 1024 ),
@@ -312,7 +422,8 @@ _maxFarNearRatio ( 5.0 )
 bool
 DrapingTechnique::hasData(OverlayDecorator::TechRTTParams& params) const
 {
-    return params._group->getNumChildren() > 0;
+    return true;
+    //return params._group->getNumChildren() > 0;
 }
 
 
@@ -365,7 +476,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
     // set up the RTT camera:
-    params._rttCamera = new osg::Camera();
+    params._rttCamera = new DrapingCamera(); //new osg::Camera();
     params._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
     // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
     // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
@@ -480,12 +591,22 @@ void
 DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
                                  osgUtil::CullVisitor*             cv )
 {
-    if ( !params._rttCamera.valid() && params._group->getNumChildren() > 0 && _textureUnit.isSet() )
+    if ( !params._rttCamera.valid() && _textureUnit.isSet() )
     {
+        OE_WARN << LC << "Setting up draping camera\n";
         setUpCamera( params );
     }
+    //else
+    //{
+    //    OE_WARN << LC << "WTF\n";
+    //}
 }
-
+       
+const osg::BoundingSphere&
+DrapingTechnique::getBound(OverlayDecorator::TechRTTParams& params) const
+{
+    return Registry::drapingCullSet().getBound();
+}
 
 void
 DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,

@@ -183,6 +183,9 @@ namespace osgEarth
         virtual bool hasData(
             OverlayDecorator::TechRTTParams& params) const { return true; }
 
+        virtual const osg::BoundingSphere& getBound(
+            OverlayDecorator::TechRTTParams& params) const { return params._group->getBound(); }
+
         virtual void onInstall( TerrainEngineNode* engine ) { }
 
         virtual void onUninstall( TerrainEngineNode* engine ) { }

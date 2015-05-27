@@ -24,7 +24,9 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/SharedSARepo>
 #include <osgEarth/Units>
+#include <osgEarth/Containers>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/DrapingTechnique>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <OpenThreads/Atomic>
@@ -49,7 +51,7 @@ namespace osgEarth
     class ColorFilterRegistry;
     class StateSetCache;
     class ObjectIndex;
-    
+
     typedef SharedSARepo<osg::Program> ProgramSharedRepo;
 
     /**
@@ -174,6 +176,12 @@ namespace osgEarth
          */
         ProgramSharedRepo* getProgramSharedRepo();
         static ProgramSharedRepo* programSharedRepo() { return instance()->getProgramSharedRepo(); }
+
+        /**
+         * Access to the per-thread Draping cull sets. Used internally by DrapeableNode.
+         */
+        DrapingCullSet& getDrapingCullSet();
+        static DrapingCullSet& drapingCullSet() { return instance()->getDrapingCullSet(); }
         
         /**
          * Gets a reference to the global task service manager.
@@ -312,6 +320,8 @@ namespace osgEarth
         optional<bool> _unRefImageDataAfterApply;
 
         osg::ref_ptr<ObjectIndex> _objectIndex;
+
+        PerThread<DrapingCullSet> _drapingCullSets;
     };
 }
 

@@ -21,12 +21,46 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/DrapeableNode>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
+#include <deque>
 
 namespace osgEarth
 {
     class TerrainEngineNode;
+
+    /**
+     * Culling set for tracking DrapeableNodes
+     */
+    class OSGEARTH_EXPORT DrapingCullSet
+    {
+    public:
+        struct Entry
+        {            
+            osg::ref_ptr<DrapeableNode>  _node;
+            osg::ref_ptr<osg::RefMatrix> _matrix;
+            osg::NodePath                _path;
+        };
+
+    public:
+        DrapingCullSet();
+        ~DrapingCullSet() { } // not virtual
+
+        /** Pushes a node and its matrix into the cull set */
+        void push(DrapeableNode* node, const osg::NodePath& path);
+
+        /** Runs a node visitor on the cull set, optionally popping as it goes along. */
+        void accept(osg::NodeVisitor& nv, bool remove);
+
+        /** Bounds of this set */
+        const osg::BoundingSphere& getBound() const { return _bs; }
+
+    private:
+        std::deque<Entry>   _entries;
+        osg::BoundingSphere _bs;
+    };
+
 
     /**
      * Projects an overlay scene graph onto the main model.
@@ -109,7 +143,9 @@ namespace osgEarth
         void onInstall( TerrainEngineNode* engine );
 
         void onUninstall( TerrainEngineNode* engine );
-
+        
+        const osg::BoundingSphere& getBound(
+            OverlayDecorator::TechRTTParams& params) const;
 
     protected:
         virtual ~DrapingTechnique() { }

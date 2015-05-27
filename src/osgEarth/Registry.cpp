@@ -556,6 +556,12 @@ Registry::getObjectIndex() const
     return _objectIndex.get();
 }
 
+DrapingCullSet&
+Registry::getDrapingCullSet()
+{
+    return _drapingCullSets.get();
+}
+
 void
 Registry::startActivity(const std::string& activity)
 {

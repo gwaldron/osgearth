@@ -1270,7 +1270,7 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
 
             else if ( alt->technique() == AltitudeSymbol::TECHNIQUE_DRAPE && !_drapeable )
             {
-                _drapeable = new DrapeableNode( 0L );
+                _drapeable = new DrapeableNode();
                 _overlayChange = OVERLAY_INSTALL_DRAPEABLE;
             }
         }
@@ -1309,7 +1309,8 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
         // apply render order when draping:
         if ( _drapeable && render && render->order().isSet() )
         {
-            _drapeable->setRenderOrder( render->order()->eval() );
+            //_drapeable->setRenderOrder( render->order()->eval() );
+            OE_WARN << LC << "DrapableNode::setRenderOrder is temporarily unimplemented\n";
         }
 
         if ( render && render->renderBin().isSet() )

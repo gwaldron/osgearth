@@ -103,9 +103,24 @@ public:
         const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
         FeatureProfile* result = new FeatureProfile(profile->getExtent());
         result->setTiled(true);
-        // TODO:  Get from database.
-        result->setFirstLevel(13);
-        result->setMaxLevel(13);
+        std::string minLevelStr, maxLevelStr;
+        if (getMetaData("minzoom", minLevelStr) && getMetaData("maxzoom", maxLevelStr))
+        {
+            _minLevel = as<int>(minLevelStr, 0);
+            _maxLevel = as<int>(maxLevelStr, 0);
+            OE_INFO << LC << "Got levels from metadata " << _minLevel << ", " << _maxLevel << std::endl;
+        }
+        else
+        {
+            computeLevels();
+            OE_INFO << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
+        }
+
+
+        // We use the max level for the first level as well since we don't really support
+        // non-additive feature sources yet.  Use the proper min level in the future.
+        result->setFirstLevel(_maxLevel);
+        result->setMaxLevel(_maxLevel);
         result->setProfile(profile);
         result->geoInterp() = osgEarth::GeoInterpolation::GEOINTERP_RHUMB_LINE;
         return result;
@@ -327,6 +342,71 @@ public:
         return Geometry::TYPE_UNKNOWN;
     }
 
+    bool getMetaData(const std::string& key, std::string& value)
+    {
+        //get the metadata
+        sqlite3_stmt* select = NULL;
+        std::string query = "SELECT value from metadata where name = ?";
+        int rc = sqlite3_prepare_v2( _database, query.c_str(), -1, &select, 0L );
+        if ( rc != SQLITE_OK )
+        {
+            OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(_database) << std::endl;
+            return false;
+        }
+
+
+        bool valid = true;
+        std::string keyStr = std::string( key );
+        rc = sqlite3_bind_text( select, 1, keyStr.c_str(), keyStr.length(), SQLITE_STATIC );
+        if (rc != SQLITE_OK )
+        {
+            OE_WARN << LC << "Failed to bind text: " << query << "; " << sqlite3_errmsg(_database) << std::endl;
+            return false;
+        }
+
+        rc = sqlite3_step( select );
+        if ( rc == SQLITE_ROW)
+        {                     
+            value = (char*)sqlite3_column_text( select, 0 );
+        }
+        else
+        {
+            OE_DEBUG << LC << "SQL QUERY failed for " << query << ": " << std::endl;
+            valid = false;
+        }
+
+        sqlite3_finalize( select );
+        return valid;
+    }
+
+    void computeLevels()
+    {        
+
+        osg::Timer_t startTime = osg::Timer::instance()->tick();
+        sqlite3_stmt* select = NULL;
+        std::string query = "SELECT min(zoom_level), max(zoom_level) from tiles";
+        int rc = sqlite3_prepare_v2( _database, query.c_str(), -1, &select, 0L );
+        if ( rc != SQLITE_OK )
+        {
+            OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(_database) << std::endl;
+        }
+
+        rc = sqlite3_step( select );
+        if ( rc == SQLITE_ROW)
+        {                     
+            _minLevel = sqlite3_column_int( select, 0 );
+            _maxLevel = sqlite3_column_int( select, 1 );
+            OE_DEBUG << LC << "Min=" << _minLevel << " Max=" << _maxLevel << std::endl;
+        }
+        else
+        {
+            OE_DEBUG << LC << "SQL QUERY failed for " << query << ": " << std::endl;
+        }        
+        sqlite3_finalize( select );        
+        osg::Timer_t endTime = osg::Timer::instance()->tick();
+        OE_DEBUG << LC << "Computing levels took " << osg::Timer::instance()->delta_s(startTime, endTime ) << " s" << std::endl;
+    }
+
 
 
 private:
@@ -335,6 +415,8 @@ private:
     osg::ref_ptr<osgDB::Options>    _dbOptions;    
     osg::ref_ptr<osgDB::BaseCompressor> _compressor;
     sqlite3* _database;
+    unsigned int _minLevel;
+    unsigned int _maxLevel;
 };
 
 

@@ -111,9 +111,11 @@ SET(LIB_PUBLIC_HEADERS
     MemCache
     ModelLayer
     ModelSource
+    NativeProgramAdapter
     NodeUtils
     Notify
     optional
+    ObjectIndex
     OverlayDecorator
     OverlayNode
 	PhongLightingEffect
@@ -125,6 +127,7 @@ SET(LIB_PUBLIC_HEADERS
     Random
     Registry
     Revisioning
+    RTTPicker
     Shaders
     ShaderFactory
     ShaderGenerator
@@ -258,6 +261,7 @@ set(TARGET_SRC
     ModelSource.cpp
     NodeUtils.cpp
     Notify.cpp
+    ObjectIndex.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
 	PhongLightingEffect.cpp
@@ -269,6 +273,7 @@ set(TARGET_SRC
     Random.cpp
     Registry.cpp
     Revisioning.cpp
+    RTTPicker.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
     ShaderLoader.cpp

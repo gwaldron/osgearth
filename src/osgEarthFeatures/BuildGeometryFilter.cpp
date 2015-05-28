@@ -101,7 +101,7 @@ _geoInterp    ( GEOINTERP_RHUMB_LINE )
 }
 
 osg::Geode*
-BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext& context)
+BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 
@@ -151,8 +151,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
             osg::Vec4f primaryColor = poly->fill()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            osgGeom->setUseVertexBufferObjects( true );
-            osgGeom->setUseDisplayList( false );
+            //osgGeom->setUseVertexBufferObjects( true );
+            //osgGeom->setUseDisplayList( false );
 
             // are we embedding a feature name?
             if ( _featureNameExpr.isSet() )
@@ -222,7 +222,14 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
                 // record the geometry's primitive set(s) in the index:
                 if ( context.featureIndex() )
-                    context.featureIndex()->tagPrimitiveSets( osgGeom, input );
+                    context.featureIndex()->tagDrawable( osgGeom, input );
+        
+                // install clamping attributes if necessary
+                if (_style.has<AltitudeSymbol>() &&
+                    _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+                {            
+                    Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+                }
             }
         }
     }
@@ -232,9 +239,9 @@ BuildGeometryFilter::processPolygons(FeatureList& features, const FilterContext&
 
 
 osg::Geode*
-BuildGeometryFilter::processPolygonizedLines(FeatureList&         features, 
-                                             bool                 twosided,
-                                             const FilterContext& context)
+BuildGeometryFilter::processPolygonizedLines(FeatureList&   features, 
+                                             bool           twosided,
+                                             FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 
@@ -254,7 +261,6 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&         features,
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* input = i->get();
-
         // extract the required line symbol; bail out if not found.
         const LineSymbol* line =
             input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
@@ -305,7 +311,14 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&         features,
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagPrimitiveSets( geom, input );
+                context.featureIndex()->tagDrawable( geom, input );
+        
+            // install clamping attributes if necessary
+            if (_style.has<AltitudeSymbol>() &&
+                _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+            {
+                Clamping::applyDefaultClampingAttrs( geom, input->getDouble("__oe_verticalOffset", 0.0) );
+            }
         }
 
         polygonizer.installShaders( geode );
@@ -315,7 +328,7 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&         features,
 
 
 osg::Geode*
-BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& context)
+BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 
@@ -367,8 +380,8 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
             osg::Vec4f primaryColor = line->stroke()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            osgGeom->setUseVertexBufferObjects( true );
-            osgGeom->setUseDisplayList( false );
+            //osgGeom->setUseVertexBufferObjects( true );
+            //osgGeom->setUseDisplayList( false );
 
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
@@ -415,7 +428,14 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagPrimitiveSets( osgGeom, input );
+                context.featureIndex()->tagDrawable( osgGeom, input );
+        
+            // install clamping attributes if necessary
+            if (_style.has<AltitudeSymbol>() &&
+                _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+            {
+                Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+            }
         }
     }
     
@@ -424,7 +444,7 @@ BuildGeometryFilter::processLines(FeatureList& features, const FilterContext& co
 
 
 osg::Geode*
-BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& context)
+BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context)
 {
     osg::Geode* geode = new osg::Geode();
 
@@ -461,8 +481,8 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
             osg::Vec4f primaryColor = point->fill()->color();
             
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
-            osgGeom->setUseVertexBufferObjects( true );
-            osgGeom->setUseDisplayList( false );
+            //osgGeom->setUseVertexBufferObjects( true );
+            //osgGeom->setUseDisplayList( false );
 
             // embed the feature name if requested. Warning: blocks geometry merge optimization!
             if ( _featureNameExpr.isSet() )
@@ -495,7 +515,14 @@ BuildGeometryFilter::processPoints(FeatureList& features, const FilterContext& c
 
             // record the geometry's primitive set(s) in the index:
             if ( context.featureIndex() )
-                context.featureIndex()->tagPrimitiveSets( osgGeom, input );
+                context.featureIndex()->tagDrawable( osgGeom, input );
+        
+            // install clamping attributes if necessary
+            if (_style.has<AltitudeSymbol>() &&
+                _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+            {            
+                Clamping::applyDefaultClampingAttrs( osgGeom, input->getDouble("__oe_verticalOffset", 0.0) );
+            }
         }
     }
     
@@ -530,6 +557,13 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 
         OE_DEBUG << "Found " << count << " points; cropping to " << tx << " x " << ty << std::endl;
 
+        // Get the average Z, since GEOS will set teh Z of new verts to that of the cropping polygon,
+        // which is stupid but that's how it is.
+        double z = 0.0;
+        for(unsigned i=0; i<ring->size(); ++i)
+            z += ring->at(i).z();
+        z /= ring->size();
+
         osg::ref_ptr<Polygon> poly = new Polygon;
         poly->resize( 4 );
 
@@ -538,10 +572,10 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         {
             for(int y=0; y<(int)ty; ++y)
             {
-                (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     0.0 );
-                (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     0.0 );
-                (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), 0.0 );
-                (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), 0.0 );
+                (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     z );
+                (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     z );
+                (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), z );
+                (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), z );
                 
                 osg::ref_ptr<Geometry> ringTile;
                 if ( ring->crop(poly.get(), ringTile) )
@@ -598,7 +632,9 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
             tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
             tess.retessellatePolygons( *osgGeom );
         }
-    }
+    }    
+    
+    osgUtil::SmoothingVisitor::smooth( *osgGeom );
 
 #else
 
@@ -896,15 +932,13 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPolygons(polygons, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            if ( !context.featureIndex() )
-            {
-                osgUtil::Optimizer o;
-                o.optimize( geode.get(), 
-                    osgUtil::Optimizer::MERGE_GEOMETRY |
-                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                    osgUtil::Optimizer::INDEX_MESH |
-                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-            }
+            osgUtil::Optimizer o;
+            o.optimize( geode.get(), 
+                osgUtil::Optimizer::MERGE_GEOMETRY |
+                osgUtil::Optimizer::INDEX_MESH |
+                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
             result->addChild( geode.get() );
         }
     }
@@ -916,15 +950,13 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPolygonizedLines(polygonizedLines, twosided, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            if ( !context.featureIndex() )
-            {
-                osgUtil::Optimizer o;
-                o.optimize( geode.get(), 
-                    osgUtil::Optimizer::MERGE_GEOMETRY |
-                    osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-                    osgUtil::Optimizer::INDEX_MESH |
-                    osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-            }
+            osgUtil::Optimizer o;
+            o.optimize( geode.get(), 
+                osgUtil::Optimizer::MERGE_GEOMETRY |
+                osgUtil::Optimizer::INDEX_MESH |
+                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
             result->addChild( geode.get() );
         }
     }
@@ -935,12 +967,10 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processLines(lines, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            if ( !context.featureIndex() )
-            {
-                osgUtil::Optimizer o;
-                o.optimize( geode.get(), 
-                    osgUtil::Optimizer::MERGE_GEOMETRY );
-            }
+            osgUtil::Optimizer o;
+            o.optimize( geode.get(), 
+                osgUtil::Optimizer::MERGE_GEOMETRY );
+
             applyLineSymbology( geode->getOrCreateStateSet(), line );
             result->addChild( geode.get() );
         }
@@ -952,22 +982,26 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Geode> geode = processPoints(points, context);
         if ( geode->getNumDrawables() > 0 )
         {
-            if ( !context.featureIndex() )
-            {
-                osgUtil::Optimizer o;
-                o.optimize( geode.get(), 
-                    osgUtil::Optimizer::MERGE_GEOMETRY );
-            }
+            osgUtil::Optimizer o;
+            o.optimize( geode.get(), 
+                osgUtil::Optimizer::MERGE_GEOMETRY );
+
             applyPointSymbology( geode->getOrCreateStateSet(), point );
             result->addChild( geode.get() );
         }
     }
 
+    // indicate that geometry contains clamping attributes
     if (_style.has<AltitudeSymbol>() &&
         _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
     {
-        Clamping::applyDefaultClampingAttrs(result.get());
-    }
+        Clamping::installHasAttrsUniform( result->getOrCreateStateSet() );
+    }    
+
+    // Prepare buffer objects.
+    AllocateAndMergeBufferObjectsVisitor allocAndMerge;
+    result->accept( allocAndMerge );
+
 
     if ( result->getNumChildren() > 0 )
     {

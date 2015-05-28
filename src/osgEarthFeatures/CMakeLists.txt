@@ -26,6 +26,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureCursor
     FeatureDisplayLayout
     FeatureDrawSet
+    FeatureIndex
     FeatureListSource
     FeatureModelGraph
     FeatureModelSource

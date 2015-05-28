@@ -402,13 +402,14 @@ public:
         return result;
     }
 
-    /**
-    * Gets the Feature with the given FID
-    * @returns
-    *     The Feature with the given FID or NULL if not found.
-    */
+    virtual bool supportsGetFeature() const
+    {
+        return false;
+    }
+
     virtual Feature* getFeature( FeatureID fid )
     {
+        // not supported for WFS
         return 0;
     }
 

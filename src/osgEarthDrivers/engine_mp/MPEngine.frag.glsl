@@ -6,6 +6,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_order      "0.5"
 #pragma vp_define     "MP_USE_BLENDING"
 
+uniform bool oe_isPickCamera;
 uniform vec4 oe_terrain_color;
 uniform sampler2D oe_layer_tex;
 uniform int oe_layer_uid;
@@ -29,4 +30,8 @@ void oe_mp_apply_coloring(inout vec4 color)
 #else
     color = texel;
 #endif
+
+    // disable primary coloring for pick cameras.
+    float pick = oe_isPickCamera ? 1.0 : 0.0;
+    color = mix(color, vec4(0), pick);
 }

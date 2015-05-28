@@ -135,7 +135,9 @@ _supportsS3TC           ( false ),
 _supportsPVRTC          ( false ),
 _supportsARBTC          ( false ),
 _supportsETC            ( false ),
-_supportsRGTC           ( false )
+_supportsRGTC           ( false ),
+_supportsTextureBuffer  ( false ),
+_maxTextureBufferSize   ( 0 )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -292,6 +294,23 @@ _supportsRGTC           ( false )
         _supportsNonPowerOfTwoTextures =
             osg::isGLExtensionSupported( id, "GL_ARB_texture_non_power_of_two" );
         OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3, 1, 7)
+        _supportsTextureBuffer = 
+            osg::isGLExtensionOrVersionSupported( id, "GL_ARB_texture_buffer_object", 3.0 ) ||
+            osg::isGLExtensionOrVersionSupported( id, "GL_EXT_texture_buffer_object", 3.0 );
+
+        if ( _supportsTextureBuffer )
+        {
+            glGetIntegerv( GL_MAX_TEXTURE_BUFFER_SIZE, &_maxTextureBufferSize );
+        }
+#endif
+
+        OE_INFO << LC << "  Texture buffers = " << SAYBOOL(_supportsTextureBuffer) << std::endl;
+        if ( _supportsTextureBuffer )
+        {
+            OE_INFO << LC << "  Texture buffer max size = " << _maxTextureBufferSize << std::endl;
+        }            
 
 
         // Writing to gl_FragDepth is not supported under GLES:

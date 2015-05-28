@@ -352,6 +352,12 @@ Control::setVertAlign( const Alignment& value ) {
 }
 
 void
+Control::setAlign(const Alignment& h, const Alignment& v) {
+    setHorizAlign( h );
+    setVertAlign ( v );
+}
+
+void
 Control::setHorizFill( bool hfill, float minWidth ) {
     if ( hfill != _hfill || !_width.isSetTo(minWidth) ) { //minWidth != _width.value() ) {
         _hfill = hfill;

@@ -19,6 +19,11 @@
 #include "MapInspectorExtension"
 #include "MapInspectorUI"
 
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarthAnnotation/FeatureNode>
+#include <osgEarthSymbology/Style>
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -67,6 +72,7 @@ MapInspectorExtension::connect(MapNode* mapNode)
         _mapNode->getMap()->addMapCallback(this);
         static_cast<MapInspectorUI*>(_ui.get())->reinit(mapNode);
     }
+    
     return true;
 }
 
@@ -90,6 +96,7 @@ MapInspectorExtension::connect(Control* control)
     {
         container->addControl( _ui.get() );
     }
+
     return true;
 }
 

@@ -27,6 +27,7 @@
 #include <osg/Drawable>
 #include <osg/Geometry>
 #include <osgText/TextBase>
+#include <osgUtil/CullVisitor>
 
 namespace osgEarth { namespace Annotation
 {
@@ -101,7 +102,8 @@ namespace osgEarth { namespace Annotation
          */
         struct OrthoNodeAutoTransform : public osg::AutoTransform
         {
-            void acceptCullNoTraverse( osg::CullStack* cs );
+            /** override */
+            virtual void accept(osg::NodeVisitor& nv);
 
             bool okToIntersect() const { return !_firstTimeToInitEyePoint; }
         };

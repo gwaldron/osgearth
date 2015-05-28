@@ -115,7 +115,7 @@ _options         ( options ),
 _engineUID       ( engineUID ),
 _tileNodeBroker  ( tileNodeBroker )
 {
-    //nop
+    _debug = _options.debug() == true;
 }
 
 unsigned
@@ -178,17 +178,38 @@ SingleKeyNodeFactory::createTile(TileModel*        model,
         plod->setCenter  ( bs.center() );
         plod->addChild   ( tileNode );
         plod->setFileName( 1, Stringify() << tileNode->getKey().str() << "." << _engineUID << ".osgearth_engine_mp_tile" );
+        plod->setDebug   ( _debug );
 
         if ( _options.rangeMode().value() == osg::LOD::DISTANCE_FROM_EYE_POINT )
         {
             //Compute the min range based on the 2D size of the tile
             GeoExtent extent = model->_tileKey.getExtent();
-            GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
-            GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
-            osg::Vec3d ll, ur;
-            lowerLeft.toWorld( ll );
-            upperRight.toWorld( ur );
-            double radius = (ur - ll).length() / 2.0;
+            double radius = 0.0;
+            
+#if 0
+            // Test code to use the equitorial radius so that all of the tiles at the same level
+            // have the same range.  This will make the poles page in more appropriately.
+            if (_frame.getMapInfo().isGeocentric())
+            {
+                GeoExtent equatorialExtent(
+                extent.getSRS(),
+                extent.west(),
+                -extent.height()/2.0,
+                extent.east(),
+                extent.height()/2.0 );
+                radius = equatorialExtent.getBoundingGeoCircle().getRadius();
+            }
+            else
+#endif
+            {
+                GeoPoint lowerLeft(extent.getSRS(), extent.xMin(), extent.yMin(), 0.0, ALTMODE_ABSOLUTE);
+                GeoPoint upperRight(extent.getSRS(), extent.xMax(), extent.yMax(), 0.0, ALTMODE_ABSOLUTE);
+                osg::Vec3d ll, ur;
+                lowerLeft.toWorld( ll );
+                upperRight.toWorld( ur );
+                radius = (ur - ll).length() / 2.0;
+            }
+          
             float minRange = (float)(radius * _options.minTileRangeFactor().value());
 
             plod->setRange( 0, minRange, FLT_MAX );

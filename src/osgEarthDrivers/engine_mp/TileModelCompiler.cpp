@@ -27,6 +27,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/ECEF>
+#include <osgEarth/ObjectIndex>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/MeshConsolidator>
 
@@ -71,32 +72,6 @@ CompilerCache::TexCoordArrayCache::get(const osg::Vec4d& mat,
     newKey._rows    = rows;
     this->push_back( std::make_pair(newKey, (osg::Vec2Array*)0L) );
     return this->back().second;
-}
-
-namespace
-{
-    struct AllocateBufferObjectsVisitor : public osg::NodeVisitor
-    {
-    public:
-        AllocateBufferObjectsVisitor():
-          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
-        {
-        }
-
-        void apply(osg::Geode& geode)
-        {
-            for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-            {
-                osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-                if ( geom )
-                {
-                    // We disable vbo's and then re-enable them to enable sharing of all the arrays.
-                    geom->setUseVertexBufferObjects( false );
-                    geom->setUseVertexBufferObjects( true );
-                }
-            }
-        }
-    };
 }
 
 //------------------------------------------------------------------------
@@ -1866,9 +1841,6 @@ namespace
         if ( d.renderTileCoords.valid() )
             d.surface->_tileCoords = d.renderTileCoords;
 
-        if ( d.stitchTileCoords.valid() )
-            d.surface->_tileCoords = d.stitchTileCoords.get();
-
         // install the render data for each layer:
         for( RenderLayerVector::const_iterator r = d.renderLayers.begin(); r != d.renderLayers.end(); ++r )
         {
@@ -1937,6 +1909,7 @@ namespace
             {
                 layer._texCoords = r->_stitchTexCoords.get();
                 mr->_geom->_layers[order] = layer;
+                mr->_geom->_tileCoords = d.stitchTileCoords.get();
             }
         }
 

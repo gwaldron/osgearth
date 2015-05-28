@@ -29,6 +29,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ObjectIndex>
 #include <osg/Notify>
 #include <osg/Version>
 #include <osgDB/Registry>
@@ -85,6 +86,9 @@ _cacheDriver        ( "filesystem" )
 
     // Default unref-after apply policy:
     _unRefImageDataAfterApply = true;
+
+    // Default object index for tracking scene object by UID.
+    _objectIndex = new ObjectIndex();
 
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );
@@ -544,6 +548,12 @@ ProgramSharedRepo*
 Registry::getProgramSharedRepo()
 {
     return &_programRepo;
+}
+
+ObjectIndex*
+Registry::getObjectIndex() const
+{
+    return _objectIndex.get();
 }
 
 void

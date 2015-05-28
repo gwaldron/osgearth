@@ -18,10 +18,12 @@
  */
 #include <osgEarth/Pickers>
 #include <osgEarth/PrimitiveIntersector>
+#include <osgEarth/Registry>
 
 #define LC "[Picker] "
 
 using namespace osgEarth;
+
 
 Picker::Picker( osgViewer::View* view, osg::Node* root, unsigned travMask, float buffer, Limit limit ) :
 _view    ( view ),
@@ -117,8 +119,10 @@ Picker::pick( float x, float y, Hits& results ) const
         picker = new osgEarth::PrimitiveIntersector(camera->getViewport() ? osgUtil::Intersector::WINDOW : osgUtil::Intersector::PROJECTION, local_x, local_y, _buffer);
     }
 
-    //picker->setIntersectionLimit( (osgUtil::Intersector::IntersectionLimit)_limit );
+    picker->setIntersectionLimit( (osgUtil::Intersector::IntersectionLimit)_limit );
     osgUtil::IntersectionVisitor iv(picker.get());
+
+    //picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_ONE_PER_DRAWABLE );
 
     // in MODEL mode, we need to window and proj matrixes in order to support some of the 
     // features in osgEarth (like Annotation::OrthoNode).
@@ -146,4 +150,59 @@ Picker::pick( float x, float y, Hits& results ) const
         results.clear();
         return false;
     }
+}
+
+bool
+Picker::getObjectIDs(const Hits& results, std::set<ObjectID>& out_objectIDs) const
+{
+    ObjectIndex* index = Registry::objectIndex();
+
+    for(Hits::const_iterator hit = results.begin(); hit != results.end(); ++hit)
+    {
+        bool found = false;
+
+        // check for the uniform.
+        const osg::NodePath& path = hit->nodePath;
+        for(osg::NodePath::const_reverse_iterator n = path.rbegin(); n != path.rend(); ++n )
+        {
+            osg::Node* node = *n;
+            if ( node && node->getStateSet() )
+            {
+                osg::Uniform* u = node->getStateSet()->getUniform( index->getObjectIDUniformName() );
+                if ( u )
+                {
+                    ObjectID oid;
+                    if ( u->get(oid) )
+                    {
+                        out_objectIDs.insert( oid );
+                        found = true;
+                    }
+                }
+            }
+        }
+
+        if ( !found )
+        {
+            // check the geometry.
+            const osg::Geometry* geom = hit->drawable ? hit->drawable->asGeometry() : 0L;
+            if ( geom )
+            {
+                const ObjectIDArray* ids = dynamic_cast<const ObjectIDArray*>( geom->getVertexAttribArray(index->getObjectIDAttribLocation()) );
+                if ( ids )
+                {
+                    for(unsigned i=0; i < hit->indexList.size(); ++i)
+                    {
+                        unsigned index = hit->indexList[i];
+                        if ( index < ids->size() )
+                        {
+                            ObjectID oid = (*ids)[index];
+                            out_objectIDs.insert( oid );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return !out_objectIDs.empty();
 }

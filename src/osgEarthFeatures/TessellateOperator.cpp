@@ -69,7 +69,7 @@ TessellateOperator::tessellateGeo( const osg::Vec3d& p0, const osg::Vec3d& p1, u
             double bearing  = GeoMath::rhumbBearing( lat1, lon1, lat2, lon2 );
 
             double interpDistance = t * totalDistance;
-           
+
             double lat3, lon3;
             GeoMath::rhumbDestination(lat1, lon1, bearing, interpDistance, lat3, lon3);
 
@@ -105,6 +105,8 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
     GeoInterpolation interp = feature->geoInterp().isSet() ? *feature->geoInterp() : _defaultInterp;
 
     double sliceSize = 0.0;
+    int    numPartitions = _numPartitions;
+
     if ( _maxDistance.isSet() )
     {
         // copmpute the slice size in feature units.

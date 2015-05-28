@@ -145,6 +145,12 @@ namespace osgEarth { namespace Features
         virtual int getFeatureCount() const { return -1; }
 
         /**
+         * Whether the source can look up a Feature by its ID.
+         * @return True or False
+         */
+        virtual bool supportsGetFeature() const { return false; }
+
+        /**
          * Gets the Feature with the given FID
          * @return
          *     The Feature with the given FID or NULL if not found.

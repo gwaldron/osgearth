@@ -47,6 +47,8 @@ using namespace osgEarth::ShaderComp;
 
 #define USE_STACK_MEMORY 1
 
+#define MAX_PROGRAM_CACHE_SIZE 128
+
 //------------------------------------------------------------------------
 
 namespace
@@ -1276,7 +1278,7 @@ VirtualProgram::apply( osg::State& state ) const
 void
 VirtualProgram::removeExpiredProgramsFromCache(osg::State& state, unsigned frameNumber)
 {
-    if ( frameNumber > 0 )
+    if ( frameNumber > 0 && _programCache.size() > MAX_PROGRAM_CACHE_SIZE )
     {
         // ASSUME a mutex lock on the cache.
         for(ProgramMap::iterator k=_programCache.begin(); k!=_programCache.end(); )
@@ -1303,20 +1305,9 @@ VirtualProgram::readProgramCache(const ShaderVector& vec, unsigned frameNumber, 
     ProgramMap::iterator p = _programCache.find( vec );
     if ( p != _programCache.end() )
     {
-        //OE_NOTICE << "found. fn=" << frameNumber << ", flu=" << p->second._frameLastUsed << std::endl;
-
-        // check for expiry..
-        if ( frameNumber == 0 || (frameNumber - p->second._frameLastUsed <= 2) )
-        {
-            // update as current..
-            p->second._frameLastUsed = frameNumber;
-            program = p->second._program.get();
-        }
-        else
-        {
-            // remove it; it's too old.
-            _programCache.erase( p );
-        }
+        // update as current..
+        p->second._frameLastUsed = frameNumber;
+        program = p->second._program.get();
     }
     return program.valid();
 }

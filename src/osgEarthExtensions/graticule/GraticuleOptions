@@ -35,16 +35,24 @@ namespace osgEarth { namespace Graticule
     {
     public:
         /** Grid cell resolution (0..1 across the profile) */
-        optional<float>& resolution() { return _resolution; }
-        const optional<float>& resolution() const { return _resolution; }
+        optional<float>& maxResolution() { return _maxResolution; }
+        const optional<float>& maxResolution() const { return _maxResolution; }
 
         /** Grid line color */
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
 
+        /** Label color */
+        optional<Color>& labelColor() { return _labelColor; }
+        const optional<Color>& labelColor() const { return _labelColor; }
+
         /** Grid line width in pixels */
         optional<float>& lineWidth() { return _lineWidth; }
         const optional<float>& lineWidth() const { return _lineWidth; }
+
+        /** A target number of grid lines to view on screen at once. */
+        optional<int>& gridLines() { return _gridLines; }
+        const optional<int>& gridLines() const { return _gridLines; }
 
     public: // uniform names
         static const char* resolutionUniformName() { return "oe_graticule_resolution"; }
@@ -56,8 +64,10 @@ namespace osgEarth { namespace Graticule
         {
             setDriver( "graticule" );
             _lineWidth.init ( 1.0f );
-            _resolution.init( 10.0f/360.0f );
+            _maxResolution.init( 30.0/180.0 );
             _color.init     ( Color(Color::Yellow, 0.5f) );
+            _labelColor.init ( Color::White );
+            _gridLines.init(10);
             fromConfig( _conf );
         }
 
@@ -68,7 +78,9 @@ namespace osgEarth { namespace Graticule
             Config conf = DriverConfigOptions::getConfig();
             conf.addIfSet("line_width", _lineWidth);
             conf.addIfSet("color",      _color);
-            conf.addIfSet("resolution", _resolution);
+            conf.addIfSet("label_color", _labelColor );
+            conf.addIfSet("max_resolution", _maxResolution);
+            conf.addIfSet("grid_lines", _gridLines);
             return conf;
         }
 
@@ -82,12 +94,16 @@ namespace osgEarth { namespace Graticule
         void fromConfig( const Config& conf ) {
             conf.getIfSet("line_width", _lineWidth);
             conf.getIfSet("color",      _color);
-            conf.getIfSet("resolution", _resolution);
+            conf.getIfSet("label_color", _labelColor);
+            conf.getIfSet("max_resolution", _maxResolution);
+            conf.getIfSet("grid_lines", _gridLines);
         }
 
         optional<float> _lineWidth;
-        optional<float> _resolution;
+        optional<float> _maxResolution;
         optional<Color> _color;
+        optional<Color> _labelColor;
+        optional<int>   _gridLines;
     };
 
 } } // namespace osgEarth::Graticule

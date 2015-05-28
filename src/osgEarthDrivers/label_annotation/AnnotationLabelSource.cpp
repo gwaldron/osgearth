@@ -46,7 +46,7 @@ public:
     osg::Node* createNode(
         const FeatureList&   input,
         const Style&         style,
-        const FilterContext& context )
+        FilterContext&       context )
     {
         if ( style.get<TextSymbol>() == 0L && style.get<IconSymbol>() == 0L )
             return 0L;
@@ -67,7 +67,7 @@ public:
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
-            const Feature* feature = i->get();
+            Feature* feature = i->get();
             if ( !feature )
                 continue;
             
@@ -126,24 +126,25 @@ public:
             {
                 if ( context.featureIndex() )
                 {
-                    context.featureIndex()->tagNode(node, const_cast<Feature*>(feature));
+                    context.featureIndex()->tagNode(node, feature);
                 }
 
                 group->addChild( node );
             }
         }
 
-        VirtualProgram* vp = VirtualProgram::getOrCreate(group->getOrCreateStateSet());
-        vp->setInheritShaders( false );
+        // Note to self: need to change this to support picking later. -gw
+        //VirtualProgram* vp = VirtualProgram::getOrCreate(group->getOrCreateStateSet());
+        //vp->setInheritShaders( false );
 
         return group;
     }
 
 
-    osg::Node* makePlaceNode(const FilterContext& context,
-                             const Feature*       feature, 
-                             const Style&         style, 
-                             NumericExpression&   priorityExpr )
+    osg::Node* makePlaceNode(FilterContext&     context,
+                             Feature*           feature, 
+                             const Style&       style, 
+                             NumericExpression& priorityExpr )
     {
         osg::Vec3d center = feature->getGeometry()->getBounds().center();
         GeoPoint point(feature->getSRS(), center.x(), center.y());

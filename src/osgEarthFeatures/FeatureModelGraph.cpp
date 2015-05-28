@@ -107,7 +107,8 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        p->setRadius( bs.radius() );
+        p->setRadius( maxRange + bs.radius() );
+        //p->setRadius(-1);
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange + bs.radius() );
         p->setPriorityOffset( 0, priOffset );
@@ -337,7 +338,7 @@ FeatureModelGraph::ctor()
 
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords( _usableMapExtent, 0L );
-
+    
     // whether to request tiles from the source (if available). if the source is tiled, but the
     // user manually specified schema levels, don't use the tiles.
     _useTiledSource = featureProfile->getTiled();
@@ -469,11 +470,21 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     if ( _session->getMapInfo().isGeocentric() )
     {
-        const SpatialReference* ecefSRS = workingExtent.getSRS()->getECEF();
-        workingExtent.getSRS()->transform( center, ecefSRS, center );
-        workingExtent.getSRS()->transform( corner, ecefSRS, corner );
-        //workingExtent.getSRS()->transformToECEF( center, center );
-        //workingExtent.getSRS()->transformToECEF( corner, corner );
+        // Convert the extent to lat/long and center it on the equator; this will ensure
+        // that all tiles in the same LOD have the same bounding radius.
+        GeoExtent eq = workingExtent.transform( workingExtent.getSRS()->getGeographicSRS() );
+
+        GeoExtent equatorialExtent(
+            eq.getSRS(),
+            eq.west(),
+            -eq.height()/2.0,
+            eq.east(),
+            eq.height()/2.0 );
+
+        GeoPoint centerPoint( workingExtent.getSRS(), center, ALTMODE_ABSOLUTE );
+        centerPoint.toWorld( center );
+
+        return osg::BoundingSphered( center, equatorialExtent.getBoundingGeoCircle().getRadius() );
     }
 
     if (workingExtent.getSRS()->isGeographic() &&
@@ -786,12 +797,20 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     osg::ref_ptr<osg::Group> group;
     FeatureSourceIndexNode* index = 0L;
 
-    if ( _session->getFeatureSource() && _options.featureIndexing().isSet() )
+    FeatureSource* featureSource = _session->getFeatureSource();
+
+    if (featureSource)
     {
-        index = new FeatureSourceIndexNode( _session->getFeatureSource(), *_options.featureIndexing() );
-        group = index;
+        const FeatureProfile* fp = featureSource->getFeatureProfile();
+
+        if ( _featureIndex.valid() )
+        {
+            index = new FeatureSourceIndexNode( _featureIndex.get() );
+            group = index;
+        }
     }
-    else
+
+    if ( !group.valid() )
     {
         group = new osg::Group();
     }
@@ -882,10 +901,6 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
             }
         }
 
-        // if indexing is enabled, build the index now.
-        if ( index )
-            index->reindex();
-
         return group.release();
     }
 
@@ -897,10 +912,10 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
 
 
 osg::Group*
-FeatureModelGraph::build(const Style&        defaultStyle, 
-                         const Query&        baseQuery, 
-                         const GeoExtent&    workingExtent,
-                         FeatureSourceIndex* index)
+FeatureModelGraph::build(const Style&         defaultStyle, 
+                         const Query&         baseQuery, 
+                         const GeoExtent&     workingExtent,
+                         FeatureIndexBuilder* index)
 {
     osg::ref_ptr<osg::Group> group = new osg::Group();
 
@@ -1033,7 +1048,7 @@ FeatureModelGraph::build(const Style&        defaultStyle,
 void
 FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
                                     const Query&         baseQuery,
-                                    FeatureSourceIndex*  index,
+                                    FeatureIndexBuilder* index,
                                     osg::Group*          parent)
 {
     OE_TEST << LC << "buildStyleGroups: " << selector->name() << std::endl;
@@ -1079,7 +1094,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
 void
 FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
                                                const StringExpression& styleExpr,
-                                               FeatureSourceIndex*     index,
+                                               FeatureIndexBuilder*    index,
                                                osg::Group*             parent)
 {
     // the profile of the features
@@ -1208,9 +1223,9 @@ FeatureModelGraph::createStyleGroup(const Style&         style,
 
 
 osg::Group*
-FeatureModelGraph::createStyleGroup(const Style&        style, 
-                                    const Query&        query, 
-                                    FeatureSourceIndex* index)
+FeatureModelGraph::createStyleGroup(const Style&         style, 
+                                    const Query&         query, 
+                                    FeatureIndexBuilder* index)
 {
     osg::Group* styleGroup = 0L;
 
@@ -1442,6 +1457,15 @@ FeatureModelGraph::redraw()
 {
     // clear it out
     removeChildren( 0, getNumChildren() );
+
+    // initialize the index if necessary.
+    if ( _options.featureIndexing()->enabled() == true )
+    {
+        _featureIndex = new FeatureSourceIndex(
+            _session->getFeatureSource(),
+            Registry::objectIndex(),
+            _options.featureIndexing().get() );
+    }
 
     // zero out any decorators
     _clampable          = 0L;

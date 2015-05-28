@@ -611,13 +611,16 @@ TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
     bool     intersects = false;
     unsigned highestLOD = 0;
 
+    // We must use the equivalent lod b/c the key can be in any profile.
+    int layerLOD = getProfile()->getEquivalentLOD( key.getProfile(), key.getLOD() );
+    
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
         // check for 2D intersection:
         if (key.getExtent().intersects( *itr ))
         {
             // check that the extent isn't higher-resolution than our key:
-            if ( !itr->minLevel().isSet() || key.getLOD() >= itr->minLevel().get() )
+            if ( !itr->minLevel().isSet() || layerLOD >= itr->minLevel().get() )
             {
                 // Got an intersetion; now test the LODs:
                 intersects = true;
@@ -632,7 +635,7 @@ TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
 
                 // Is our key at a lower or equal LOD than the max key in this extent?
                 // If so, our key is good.
-                else if ( key.getLOD() <= itr->maxLevel().get() )
+                else if ( layerLOD <= itr->maxLevel().get() )
                 {
                     output = key;
                     return true;

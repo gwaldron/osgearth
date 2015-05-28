@@ -374,6 +374,11 @@ public:
         return _featureCount;
     }
 
+    bool supportsGetFeature() const
+    {
+        return true;
+    }
+
     virtual Feature* getFeature( FeatureID fid )
     {
         Feature* result = NULL;

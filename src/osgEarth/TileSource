@@ -91,6 +91,15 @@ namespace osgEarth
         optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
         const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
 
+        /**
+         * Sets the policy for calling osg::Texture::setUnRefImageDataAfterApply
+         * in the osgEarth terrain engine. This can also be controlled
+         * globally via Registry, the option at TileSource level takes
+         * precedence, if set.
+         */
+        optional<bool>& unRefImageDataAfterApply() { return _unRefImageDataAfterApply; }
+        const optional<bool>& unRefImageDataAfterApply() const { return _unRefImageDataAfterApply; }
+
     public:
         /** For backwards-compatibility; use minValidValue() instead 
          *  @deprecated */
@@ -124,6 +133,7 @@ namespace osgEarth
         optional<int>            _L2CacheSize;
         optional<bool>           _bilinearReprojection;
         optional<unsigned>       _maxDataLevel;
+        optional<bool>           _unRefImageDataAfterApply;
     };
 
 

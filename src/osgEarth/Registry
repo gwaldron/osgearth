@@ -240,7 +240,9 @@ namespace osgEarth
 
         /**
          * Sets the policy for calling osg::Texture::setUnRefImageDataAfterApply
-         * in the osgEarth terrain engine.
+         * in the osgEarth terrain engine. This can also be controlled
+         * individually at for each TileSource via TileSourceOptions. The
+         * options at TileSource level take precedence, if set.
          */
         optional<bool>& unRefImageDataAfterApply() { return _unRefImageDataAfterApply; }
         const optional<bool>& unRefImageDataAfterApply() const { return _unRefImageDataAfterApply; }

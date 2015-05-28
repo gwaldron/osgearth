@@ -1,3 +1,4 @@
+IF(TRITON_FOUND)
 
 SET(TARGET_SRC TritonDriver.cpp
                TritonNode.cpp
@@ -28,3 +29,5 @@ SET(LIB_NAME ocean_triton)
 SET(LIB_PUBLIC_HEADERS TritonOptions)
 
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
+
+ENDIF(TRITON_FOUND)

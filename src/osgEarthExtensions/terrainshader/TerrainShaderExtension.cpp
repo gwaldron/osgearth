@@ -33,24 +33,22 @@ namespace
     class GLSLEffect : public osgEarth::TerrainEffect
     {
     public:
-        GLSLEffect(const std::vector<std::string>& code) : _code(code)
+        GLSLEffect(const std::vector<TerrainShaderOptions::Code>& code,
+                   const osgDB::Options*                          dbOptions ) : _code(code), _dbOptions(dbOptions)
         {
             for(unsigned i=0; i<code.size(); ++i)
             {
-                _package.add( "$code."+i, code[i] );
+                std::string fn = code[i]._uri.isSet() ? code[i]._uri->full() : "$code." + i;
+                _package.add( fn, code[i]._source );
             }
         }
 
         void onInstall(TerrainEngineNode* engine)
         {
-            for(unsigned i=0; i<_code.size(); ++i)
-            {
-                if ( !_code[i].empty() )
-                {
-                    VirtualProgram* vp = VirtualProgram::getOrCreate(engine->getOrCreateStateSet());
-                    ShaderLoader::loadFunction(vp, "$code."+i, _package);
-                }
-            }
+            if ( !engine ) return;
+
+            VirtualProgram* vp = VirtualProgram::getOrCreate(engine->getOrCreateStateSet());
+            _package.loadAll( vp, _dbOptions.get() );
         }
 
         void onUninstall(TerrainEngineNode* engine)
@@ -60,19 +58,14 @@ namespace
                 VirtualProgram* vp = VirtualProgram::get(engine->getStateSet());
                 if ( vp )
                 {
-                    for(unsigned i=0; i<_code.size(); ++i)
-                    {
-                        if ( !_code[i].empty() )
-                        {
-                            ShaderLoader::unloadFunction(vp, "$code."+i, _package);
-                        }
-                    }
+                    _package.unloadAll( vp, _dbOptions.get() );
                 }
             }
         }
 
-        std::vector<std::string> _code;
-        ShaderPackage            _package;
+        std::vector<TerrainShaderOptions::Code> _code;
+        ShaderPackage                           _package;
+        osg::ref_ptr<const osgDB::Options>      _dbOptions;
     };
 }
 
@@ -107,7 +100,7 @@ TerrainShaderExtension::connect(MapNode* mapNode)
         OE_WARN << LC << "Illegal: MapNode cannot be null." << std::endl;
         return false;
     }
-    _effect = new GLSLEffect( _options.code() );
+    _effect = new GLSLEffect( _options.code(), _dbOptions.get() );
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     
     OE_INFO << LC << "Installed.\n";

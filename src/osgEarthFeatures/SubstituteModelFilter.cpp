@@ -37,6 +37,7 @@
 #include <osg/NodeVisitor>
 #include <osg/ShapeDrawable>
 #include <osg/AlphaFunc>
+#include <osg/Billboard>
 
 #include <osgSim/LightPointNode>
 
@@ -286,7 +287,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     xform->addChild( model.get() );
                     attachPoint->addChild( xform );
 
-                    if ( context.featureIndex() ) // && !_useDrawInstanced )
+                    // Only tag nodes if we aren't using clustering.
+                    if ( context.featureIndex() && !_cluster)
                     {
                         context.featureIndex()->tagNode( xform, input );
                     }
@@ -334,246 +336,32 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
 
 
-struct ClusterVisitor : public osg::NodeVisitor
-{
-    ClusterVisitor( const FeatureList& features, const InstanceSymbol* symbol, FeaturesToNodeFilter* f2n, FilterContext& cx )
-        : _features   ( features ),
-          _symbol     ( symbol ),
-          _f2n        ( f2n ),
-          _cx         ( cx ),
-          osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
-    {
-        _modelSymbol = dynamic_cast<const ModelSymbol*>( symbol );
-        if ( _modelSymbol )
-            _headingExpr = *_modelSymbol->heading();
-
-        _scaleExpr = *_symbol->scale();
-
-        _makeECEF  = _cx.getSession()->getMapInfo().isGeocentric();
-        _srs       = _cx.profile()->getSRS();
-        _targetSRS = _cx.getSession()->getMapInfo().getSRS();
-    }
-
-    void apply( osg::Geode& geode )
-    {
-        // save the geode's drawables..
-        typedef std::vector<osg::ref_ptr<osg::Drawable> > Drawables;        
-        Drawables old_drawables;
-        old_drawables.reserve( geode.getNumDrawables() );
-        for(unsigned i=0; i<geode.getNumDrawables(); ++i)
-            old_drawables.push_back( geode.getDrawable(i) );
-
-        //OE_DEBUG << "ClusterVisitor geode " << &geode << " featureNode=" << _featureNode << " drawables=" << old_drawables.size() << std::endl;
-
-        // ..and clear out the drawables list.
-        geode.removeDrawables( 0, geode.getNumDrawables() );
-
-        // foreach each drawable that was originally in the geode...
-        for( Drawables::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
-        {
-            osg::Geometry* originalDrawable = dynamic_cast<osg::Geometry*>( i->get() );
-            if ( !originalDrawable )
-                continue;
-
-            // go through the list of input features...
-            for( FeatureList::const_iterator j = _features.begin(); j != _features.end(); j++ )
-            {
-                Feature* feature = j->get();
-
-                osg::Matrixd scaleMatrix;
-
-                if ( _symbol->scale().isSet() )
-                {
-                    double scale = feature->eval( _scaleExpr, &_cx );
-                    scaleMatrix.makeScale( scale, scale, scale );
-                }
-
-                osg::Matrixd rotationMatrix;
-                if ( _modelSymbol && _modelSymbol->heading().isSet() )
-                {
-                    float heading = feature->eval( _headingExpr, &_cx );
-                    rotationMatrix.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
-                }
-
-                GeometryIterator gi( feature->getGeometry(), false );
-                while( gi.hasMore() )
-                {
-                    Geometry* geom = gi.next();
-
-                    // if necessary, transform the points to the target SRS:
-                    if ( !_makeECEF && !_targetSRS->isEquivalentTo(_srs) )
-                    {
-                        _srs->transform( geom->asVector(), _targetSRS );
-                    }
-
-                    for( Geometry::const_iterator k = geom->begin(); k != geom->end(); ++k )
-                    {
-                        osg::Vec3d   point = *k;
-                        osg::Matrixd mat;
-
-                        if ( _makeECEF )
-                        {
-                            osg::Matrixd rotation;
-                            ECEF::transformAndGetRotationMatrix( point, _srs, point, _targetSRS, rotation );
-                            mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
-                        }
-                        else
-                        {
-                            mat = rotationMatrix * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
-                        }
-
-                        // clone the source drawable once for each input feature.
-                        osg::ref_ptr<osg::Geometry> newDrawable = osg::clone( 
-                            originalDrawable, 
-                            osg::CopyOp::DEEP_COPY_ARRAYS | osg::CopyOp::DEEP_COPY_PRIMITIVES );
-
-                        osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>( newDrawable->getVertexArray() );
-                        if ( verts )
-                        {
-                            for( osg::Vec3Array::iterator v = verts->begin(); v != verts->end(); ++v )
-                            {
-                                (*v).set( (*v) * mat );
-                            }
-
-                            // add the new cloned, translated drawable back to the geode.
-                            geode.addDrawable( newDrawable.get() );
-
-                            if ( _cx.featureIndex() )
-                                _cx.featureIndex()->tagDrawable( newDrawable.get(), feature );
-                        }
-                    }
-
-                }
-            }
-        }
-
-        geode.dirtyBound();
-
-        MeshConsolidator::run( geode );
-
-        osg::NodeVisitor::apply( geode );
-    }
-
-private:
-    const FeatureList&      _features;
-    FilterContext&          _cx;
-    const InstanceSymbol*   _symbol;
-    const ModelSymbol*      _modelSymbol;
-    FeaturesToNodeFilter*   _f2n;
-    NumericExpression       _scaleExpr;
-    NumericExpression       _headingExpr;
-    bool                    _makeECEF;
-    const SpatialReference* _srs;
-    const SpatialReference* _targetSRS;
-};
-
-
-//typedef std::map< osg::Node*, FeatureList > MarkerToFeatures;
-typedef std::map< osg::ref_ptr<osg::Node>, FeatureList > ModelBins;
-
-
-//clustering:
-//  troll the external model for geodes. for each geode, create a geode in the target
-//  model. then, for each geometry in that geode, replicate it once for each instance of
-//  the model in the feature batch and transform the actual verts to a local offset
-//  relative to the tile centroid. Finally, reassemble all the geodes and optimize. 
-//  hopefully stateset sharing etc will work out. we may need to strip out LODs too.
-bool
-SubstituteModelFilter::cluster(const FeatureList&           features,
-                               const InstanceSymbol*        symbol, 
-                               Session*                     session,
-                               osg::Group*                  attachPoint,
-                               FilterContext&               context )
-{
-    ModelBins modelBins;
-
-    std::set<URI> missing;
-
-    // first, sort the features into buckets, each bucket corresponding to a
-    // unique marker.
-    for (FeatureList::const_iterator i = features.begin(); i != features.end(); ++i)
-    {
-        Feature* f = i->get();
-
-        // resolve the URI for the marker:
-        StringExpression uriEx( *symbol->url() );
-        URI instanceURI( f->eval( uriEx, &context ), uriEx.uriContext() );
-
-        // find and load the corresponding marker model. We're using the session-level
-        // object store to cache models. This is thread-safe sine we are always going
-        // to CLONE the model before using it.
-        osg::ref_ptr<osg::Node> model = context.getSession()->getObject<osg::Node>( instanceURI.full() );
-        if ( !model.valid() )
-        {
-            osg::ref_ptr<InstanceResource> instance;
-            if ( !findResource( instanceURI, symbol, context, missing, instance) )
-                continue;
-
-            model = instance->createNode( context.getSession()->getDBOptions() );
-            if ( model.valid() )
-            {
-                model = context.getSession()->putObject( instanceURI.full(), model.get(), false );
-            }
-        }
-
-        if ( model.valid() )
-        {
-            ModelBins::iterator itr = modelBins.find( model.get() );
-            if (itr == modelBins.end())
-                modelBins[ model.get() ].push_back( f );
-            else
-                itr->second.push_back( f );
-        }
-    }
-
-    // For each model, cluster the features that use that marker
-    for (ModelBins::iterator i = modelBins.begin(); i != modelBins.end(); ++i)
-    {
-        osg::Node* prototype = i->first.get();
-
-        // we're using the Session cache since we know we'll be cloning.
-        if ( prototype )
-        {
-            osg::Node* clone = osg::clone( prototype, osg::CopyOp::DEEP_COPY_ALL );
-
-            // ..and apply the clustering to the copy.
-            ClusterVisitor cv( i->second, symbol, this, context );
-            clone->accept( cv );
-
-            attachPoint->addChild( clone );
-        }
-    }
-
-    return true;
-}
-
 namespace
 {
     /**
-     * Extracts lightpoints from the given scene graph and copies them into a cloned scene graph
+     * Extracts unclusterable things like lightpoints and billboards from the given scene graph and copies them into a cloned scene graph
      * This actually just removes all geodes from the scene graph, so this could be applied to any other type of node that you want to keep
      * The geodes will be clustered together in the flattened graph.
      */
-    osg::Node* extractLightPoints(osg::Node* node)
+    osg::Node* extractUnclusterables(osg::Node* node)
     {
-        // First, check to see if we have any lightpoints.
-        FindNodesVisitor<osgSim::LightPointNode> findLightPoints;
-        node->accept(findLightPoints);
-    
-        if (findLightPoints._results.empty())
-        {
-            return 0;
-        }
-
         // Clone the scene graph
         osg::ref_ptr< osg::Node > clone = (osg::Node*)node->clone(osg::CopyOp::DEEP_COPY_NODES);
+       
         // Now remove any geodes
         FindNodesVisitor<osg::Geode> findGeodes;
         clone->accept(findGeodes);
         for (unsigned int i = 0; i < findGeodes._results.size(); i++)
         {
             osg::ref_ptr< osg::Geode > geode = findGeodes._results[i];
-            if (geode->getNumParents() > 0)
+            
+
+            // Special check for billboards.  Me want to keep them in this special graph of 
+            // unclusterable stuff.
+            osg::Billboard* billboard = dynamic_cast< osg::Billboard* >( geode.get() );
+            
+
+            if (geode->getNumParents() > 0 && !billboard)
             {
                 // Get all the parents for the geode and remove it from them.
                 std::vector< osg::ref_ptr< osg::Group > > parents;
@@ -587,6 +375,7 @@ namespace
                     parents[j]->removeChild(geode);
                 }
             }
+            
         }
 
         return clone.release();
@@ -658,16 +447,16 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     process( features, symbol, context.getSession(), attachPoint.get(), newContext );
     if (_cluster)
     {
-        // Extract the lightpoints
-        osg::ref_ptr< osg::Node > lightPoints = extractLightPoints(attachPoint);
+        // Extract the unclusterable things
+        osg::ref_ptr< osg::Node > unclusterables = extractUnclusterables(attachPoint);
 
         // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
         MeshFlattener::run(attachPoint);
 
-        // Add the lightpoints back to the attach point after the rest of the graph was flattened.
-        if (lightPoints.valid())
+        // Add the unclusterables back to the attach point after the rest of the graph was flattened.
+        if (unclusterables.valid())
         {
-            attachPoint->addChild(lightPoints);
+            attachPoint->addChild(unclusterables);
         }
     }
 
@@ -689,6 +478,8 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         }
     }
 #endif
+
+    //osgDB::writeNodeFile(*group, "c:/temp/clustered.osg");
 
     return group;
 }

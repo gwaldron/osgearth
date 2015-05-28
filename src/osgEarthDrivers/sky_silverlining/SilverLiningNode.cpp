@@ -45,10 +45,9 @@ _lastAltitude(DBL_MAX)
     _light->setPosition( osg::Vec4(1, 0, 0, 0) ); // w=0 means infinity
     _light->setDirection( osg::Vec3(-1,0,0) );
 
-    osg::LightSource* source = new osg::LightSource();
-    source->setLight( _light.get() );
-    source->setReferenceFrame(osg::LightSource::RELATIVE_RF);
-    this->addChild( source );
+    _lightSource = new osg::LightSource();
+    _lightSource->setLight( _light.get() );
+    _lightSource->setReferenceFrame(osg::LightSource::RELATIVE_RF);
 
     // The main silver lining data:
     _SL = new SilverLiningContext( options );
@@ -131,7 +130,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 
             if( _cloudsDrawable )
             {
-                if (_lastAltitude <= *_options.cloudsMaxAltitude() )
+                if (true) //_lastAltitude <= *_options.cloudsMaxAltitude() )
                 {
                     if ( _cloudsDrawable->getNumParents() == 0 )
                         _geode->addDrawable( _cloudsDrawable.get() );
@@ -145,6 +144,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
                 }
             }
         }
+
         else if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
             // TODO: make this multi-camera safe
@@ -169,5 +169,10 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
     if ( _geode.valid() )
     {
         _geode->accept(nv);
+    }
+
+    if ( _lightSource.valid() )
+    {
+        _lightSource->accept(nv);
     }
 }

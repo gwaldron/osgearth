@@ -36,6 +36,6 @@ SET(OSGEARTH_PLUGINS_FOLDER Plugins)
 SUBDIRLIST(PLUGIN_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 
 FOREACH(subdir ${PLUGIN_DIRS})
-    MESSAGE("Adding driver ${subdir}")
+    # MESSAGE("Adding driver ${subdir}")
     ADD_SUBDIRECTORY(${subdir})
 ENDFOREACH()

@@ -24,6 +24,6 @@ SET(OSGEARTH_EXTENSIONS_FOLDER Extensions)
 SUBDIRLIST(EXTENSION_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 
 FOREACH(subdir ${EXTENSION_DIRS})
-    MESSAGE("Adding extension ${subdir}")
+    # MESSAGE("Adding extension ${subdir}")
     ADD_SUBDIRECTORY(${subdir})
 ENDFOREACH()

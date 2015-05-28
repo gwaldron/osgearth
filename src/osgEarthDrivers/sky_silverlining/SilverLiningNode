@@ -22,6 +22,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
+#include <osg/LightSource>
 
 namespace osgEarth { namespace SilverLining
 {
@@ -56,6 +57,7 @@ namespace osgEarth { namespace SilverLining
 
         osg::ref_ptr<SilverLiningContext> _SL;
 		osg::ref_ptr<osg::Geode> _geode;
+        osg::ref_ptr<osg::LightSource> _lightSource;
         osg::Drawable* _skyDrawable;
 		osg::ref_ptr<osg::Drawable> _cloudsDrawable;
         osg::ref_ptr<osg::Light> _light;

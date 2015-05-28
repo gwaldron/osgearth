@@ -557,6 +557,13 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 
         OE_DEBUG << "Found " << count << " points; cropping to " << tx << " x " << ty << std::endl;
 
+        // Get the average Z, since GEOS will set teh Z of new verts to that of the cropping polygon,
+        // which is stupid but that's how it is.
+        double z = 0.0;
+        for(unsigned i=0; i<ring->size(); ++i)
+            z += ring->at(i).z();
+        z /= ring->size();
+
         osg::ref_ptr<Polygon> poly = new Polygon;
         poly->resize( 4 );
 
@@ -565,10 +572,10 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
         {
             for(int y=0; y<(int)ty; ++y)
             {
-                (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     0.0 );
-                (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     0.0 );
-                (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), 0.0 );
-                (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), 0.0 );
+                (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     z );
+                (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     z );
+                (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), z );
+                (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), z );
                 
                 osg::ref_ptr<Geometry> ringTile;
                 if ( ring->crop(poly.get(), ringTile) )
@@ -625,7 +632,9 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
             tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
             tess.retessellatePolygons( *osgGeom );
         }
-    }
+    }    
+    
+    osgUtil::SmoothingVisitor::smooth( *osgGeom );
 
 #else
 

@@ -142,6 +142,8 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
             for (GeometryVector::iterator gItr = itr->second.begin(); gItr != itr->second.end(); ++gItr)
             {
                 osg::Geometry* g = gItr->get();
+                // Remove any stateset that might be on the Geometry
+                g->setStateSet(0);
                 geode->addDrawable( g );
             }
             result->addChild(geode);

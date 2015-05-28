@@ -1,3 +1,5 @@
+IF(SILVERLINING_FOUND)
+
 SET(TARGET_SRC 
     SilverLiningDriver.cpp
     SilverLiningNode.cpp
@@ -30,3 +32,5 @@ SET(LIB_NAME sky_silverlining)
 SET(LIB_PUBLIC_HEADERS SilverLiningOptions)
 
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
+
+ENDIF(SILVERLINING_FOUND)

@@ -1,3 +1,4 @@
+IF(LEVELDB_FOUND)
 
 INCLUDE_DIRECTORIES( ${LEVELDB_INCLUDE_DIR} )
 
@@ -22,4 +23,6 @@ SETUP_PLUGIN(osgearth_cache_leveldb)
 SET(LIB_NAME cache_leveldb)
 SET(LIB_PUBLIC_HEADERS LevelDBCacheOptions)
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
+
+ENDIF(LEVELDB_FOUND)
 

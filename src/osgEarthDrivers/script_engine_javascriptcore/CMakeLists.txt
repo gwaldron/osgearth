@@ -1,3 +1,4 @@
+IF(JAVASCRIPTCORE_FOUND)
 
 INCLUDE_DIRECTORIES( ${JAVASCRIPTCORE_INCLUDE_DIR} )
 
@@ -20,4 +21,6 @@ SETUP_PLUGIN(osgearth_scriptengine_javascriptcore)
 SET(LIB_NAME scriptengine_javascriptcore)
 SET(LIB_PUBLIC_HEADERS ${TARGET_H} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
+
+ENDIF(JAVASCRIPTCORE_FOUND)
 

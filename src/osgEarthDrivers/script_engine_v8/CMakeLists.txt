@@ -1,3 +1,4 @@
+IF(V8_FOUND AND USE_V8)
 
 INCLUDE_DIRECTORIES( ${V8_INCLUDE_DIR} )
 
@@ -23,4 +24,6 @@ SETUP_PLUGIN(osgearth_scriptengine_javascript)
 SET(LIB_NAME scriptengine_javascript)
 SET(LIB_PUBLIC_HEADERS ${TARGET_H} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
+
+ENDIF(V8_FOUND AND USE_V8)
 

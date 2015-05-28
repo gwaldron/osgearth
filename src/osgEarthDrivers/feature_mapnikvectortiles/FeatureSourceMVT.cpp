@@ -70,13 +70,9 @@ public:
       _options     ( options )
     {
         _compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
-        if (_compressor.valid())
+        if (!_compressor.valid())
         {
-            OE_NOTICE << "Got compressor" << std::endl;
-        }
-        else
-        {
-            OE_NOTICE << "No zlib for you" << std::endl;
+           OE_WARN << LC << "Failed to get zlib compressor" << std::endl;
         }
     }
 
@@ -95,11 +91,7 @@ public:
         int rc = sqlite3_open_v2( fullFilename.c_str(), &_database, SQLITE_OPEN_READONLY, 0L );
         if ( rc != 0 )
         {          
-            OE_WARN << "Failed to open database " << sqlite3_errmsg(_database);
-        }
-        else
-        {
-            OE_NOTICE << "Opened database " << fullFilename << std::endl;
+            OE_WARN << LC << "Failed to open database " << sqlite3_errmsg(_database);
         }
     }
 
@@ -111,6 +103,7 @@ public:
         const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
         FeatureProfile* result = new FeatureProfile(profile->getExtent());
         result->setTiled(true);
+        // TODO:  Get from database.
         result->setFirstLevel(13);
         result->setMaxLevel(13);
         result->setProfile(profile);
@@ -135,7 +128,7 @@ public:
 
         GeoPoint ll(key.getProfile()->getSRS(), key.getExtent().xMin(), key.getExtent().yMin(), 0, ALTMODE_ABSOLUTE);
         ll = ll.transform(SpatialReference::create("epsg:4326"));
-        OE_NOTICE << "Requesting key with ll " << ll.x() << ", " << ll.y() << std::endl;
+        //OE_NOTICE << "Requesting key with ll " << ll.x() << ", " << ll.y() << std::endl;
 
 
         unsigned int numRows, numCols;

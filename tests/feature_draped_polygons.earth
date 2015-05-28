@@ -31,25 +31,29 @@ the feature data.
         <styles>        
             <style type="text/css">
                 p1 {
-                   fill:               #ffff80ff;
+                   fill:               #ffff807f;
                    render-depth-test:  false;
                    altitude-clamping:  terrain-drape;
                 }       
                 p2 {
-                   fill:               #80ffff66;
+                   fill:               #80ffff7f;
                    render-depth-test:  false;
+                   altitude-clamping:  terrain-drape;
                 }   
                 p3 {
-                   fill:               #ff80ff66;
+                   fill:               #ff80ff7f;
                    render-depth-test:  false;
+                   altitude-clamping:  terrain-drape;
                 }       
                 p4 {
-                   fill:               #ff808066;
+                   fill:               #ff80807f;
                    render-depth-test:  false;
+                   altitude-clamping:  terrain-drape;
                 }     
                 p5 {
-                   fill:               #80ff8066;
+                   fill:               #80ff807f;
                    render-depth-test:  false;
+                   altitude-clamping:  terrain-drape;
                 }                                      
             </style>
         

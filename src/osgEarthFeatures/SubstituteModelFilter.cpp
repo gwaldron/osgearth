@@ -479,7 +479,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     }
 #endif
 
-    osgDB::writeNodeFile(*group, "c:/temp/clustered.osg");
+    //osgDB::writeNodeFile(*group, "c:/temp/clustered.osg");
 
     return group;
 }

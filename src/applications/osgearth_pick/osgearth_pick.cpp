@@ -193,6 +193,7 @@ void
 setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
 {
     view->setCameraManipulator(0L);
+    view->getCamera()->setName( "osgearth_pick RTT view" );
     view->getCamera()->setViewport(0,0,256,256);
     view->getCamera()->setClearColor(osg::Vec4(1,1,1,1));
     view->getCamera()->setProjectionMatrixAsOrtho2D(-.5,.5,-.5,.5);
@@ -305,6 +306,8 @@ main(int argc, char** argv)
         installHighlighter(
             MapNode::get(node)->getOrCreateStateSet(),
             Registry::objectIndex()->getObjectIDAttribLocation() );
+
+        mainView->getCamera()->setName( "Main view" );
 
         return viewer.run();
     }

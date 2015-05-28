@@ -156,6 +156,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     
     // make an RTT camera and bind it to our imag:
     c._pickCamera = new osg::Camera();
+    c._pickCamera->setName( "osgEarth::RTTPicker" );
     c._pickCamera->addChild( _group.get() );
     c._pickCamera->setClearColor( osg::Vec4(0,0,0,0) );
     c._pickCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -164,6 +165,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     c._pickCamera->setRenderOrder( osg::Camera::PRE_RENDER, 1 );
     c._pickCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
     c._pickCamera->attach( osg::Camera::COLOR_BUFFER0, c._image.get() );
+    c._pickCamera->setSmallFeatureCullingPixelSize( -1.0f );
     
     osg::StateSet* rttSS = c._pickCamera->getOrCreateStateSet();
 
@@ -172,7 +174,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
 
     rttSS->setMode(GL_BLEND,     disable );    
     rttSS->setMode(GL_LIGHTING,  disable );
-    rttSS->setMode(GL_CULL_FACE, disable );
+    //rttSS->setMode(GL_CULL_FACE, disable );
 
     // install the picking shaders:
     VirtualProgram* vp = createRTTProgram();
@@ -188,6 +190,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     view->getCamera()->addChild( c._pickCamera.get() );
 
     // associate the RTT camara with the view's camera.
+    // (e.g., decluttering uses this to find the "true" viewport)
     c._pickCamera->setUserData( view->getCamera() );
 
     return c;

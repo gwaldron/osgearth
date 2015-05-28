@@ -24,7 +24,7 @@
 #include <osgEarth/DrapeableNode>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
-#include <deque>
+#include <vector>
 
 namespace osgEarth
 {
@@ -56,8 +56,11 @@ namespace osgEarth
         /** Bounds of this set */
         const osg::BoundingSphere& getBound() const { return _bs; }
 
+        /** Number of elements in the set */
+        unsigned size() const { return _entries.size(); }
+
     private:
-        std::deque<Entry>   _entries;
+        std::vector<Entry>  _entries;
         osg::BoundingSphere _bs;
     };
 
@@ -128,9 +131,6 @@ namespace osgEarth
 
         virtual bool hasData(
             OverlayDecorator::TechRTTParams& params) const;
-
-        void reestablish(
-            TerrainEngineNode* engine );
 
         void preCullTerrain(
             OverlayDecorator::TechRTTParams& params,

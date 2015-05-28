@@ -29,18 +29,33 @@ using namespace osgEarth;
 DrapeableNode::DrapeableNode() :
 _drapingEnabled( true )
 {
-    //nop
+    // Unfortunetly, there's no way to return a correct bounding sphere for
+    // the node since the draping will move it to the ground. The bounds
+    // check has to be done by the Draping Camera at cull time. Therefore we
+    // have to ensure that this node makes it into the draping cull set so it
+    // can be frustum-culled at the proper time.
+    setCullingActive( !_drapingEnabled );
+}
+
+void
+DrapeableNode::setDrapingEnabled(bool value)
+{
+    if ( value != _drapingEnabled )
+    {
+        _drapingEnabled = value;
+        setCullingActive( !_drapingEnabled );
+    }
 }
 
 void
 DrapeableNode::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
+    if ( _drapingEnabled && nv.getVisitorType() == nv.CULL_VISITOR )
     {
         // access the cull visitor:
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
-        // find the cull set for this thread:
+        // find the cull set for this camera:
         DrapingCullSet& cullSet = Registry::drapingCullSet(cv->getCurrentCamera());
         cullSet.push( this, cv->getNodePath() );
     }

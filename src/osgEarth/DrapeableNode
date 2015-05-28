@@ -46,7 +46,7 @@ namespace osgEarth
         /**
          * Whether draping is enabled.
          */
-        void setDrapingEnabled(bool value) { _drapingEnabled = value; }
+        void setDrapingEnabled(bool value);
         bool getDrapingEnabled() const     { return _drapingEnabled; }
 
     public: // osg::Group/Node

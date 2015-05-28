@@ -39,6 +39,9 @@ using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
+#undef  LC
+#define LC "[DrapingCamera] "
+
 namespace
 {
     /**
@@ -55,16 +58,25 @@ namespace
 
     public: // osg::Node
 
+        void accept(osg::NodeVisitor& nv, const osg::Camera* camera)
+        {
+            _camera = camera;
+            osg::Camera::accept( nv );
+        }
+
         void traverse(osg::NodeVisitor& nv)
         {
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            const osg::Camera* camera = cv->getRenderStage()->getCamera();
-            DrapingCullSet& cullSet = Registry::drapingCullSet(camera);
+            if ( cv->getCurrentCamera() == _camera ) {
+                OE_NOTICE << "THey are the same, dummy\n";
+            }
+            DrapingCullSet& cullSet = Registry::drapingCullSet(_camera);
             cullSet.accept( nv, true );
         }
 
     protected:
         virtual ~DrapingCamera() { }
+        const osg::Camera* _camera;
     };
 
 
@@ -103,55 +115,64 @@ DrapingCullSet::accept(osg::NodeVisitor& nv, bool remove)
     {
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
-        //for( std::deque<Entry>::iterator e = _entries.begin(); e != _entries.end(); ++e )
-        while( !_entries.empty() )
+        // We will use the visitor's path to prevent doubely-applying the statesets
+        // of common ancestors
+        const osg::NodePath& nvPath = nv.getNodePath();
+
+        for( std::vector<Entry>::iterator entry = _entries.begin(); entry != _entries.end(); ++entry )
         {
-            Entry& entry = _entries.front();
-        
             // If there's an active (non-identity matrix), apply it
-            if ( entry._matrix.valid() )
+            if ( entry->_matrix.valid() )
             {
-                entry._matrix->preMult( *cv->getModelViewMatrix() );
-                cv->pushModelViewMatrix( entry._matrix.get(), osg::Transform::RELATIVE_RF );
+                entry->_matrix->preMult( *cv->getModelViewMatrix() );
+                cv->pushModelViewMatrix( entry->_matrix.get(), osg::Transform::RELATIVE_RF );
             }
 
-            // assemble the stateset from the saved path:
-            osg::ref_ptr<osg::StateSet> stateSet = new osg::StateSet();
-            for(osg::NodePath::iterator n = entry._path.begin(); n != entry._path.end(); ++n)
+            // After pushing the matrix, we can perform the culling bounds test.
+            if ( !cv->isCulled( entry->_node->getBound() ) )
             {
-                osg::StateSet* ss = (*n)->getStateSet();
-                if ( ss )
+                // Apply the statesets in the entry's node path, but skip over the ones that are
+                // shared with the current visitor's path since they are already in effect.
+                // Count them so we can pop them later.
+                int numStateSets = 0;
+                for(unsigned i=0; i<entry->_path.size(); ++i)
                 {
-                    stateSet->merge( *ss );
+                    if (i >= nvPath.size() || nvPath[i] != entry->_path[i])
+                    {
+                        osg::StateSet* stateSet = entry->_path[i]->getStateSet();
+                        if ( stateSet )
+                        {
+                            cv->pushStateSet( stateSet );
+                            ++numStateSets;
+                        }
+                    }
+                }
+
+                // Cull the DrapeableNode's children (but not the DrapeableNode itself!)
+                // TODO: make sure we aren't skipping any cull callbacks, etc. by calling traverse 
+                // instead of accept. (Cannot call accept b/c that calls traverse)
+                for(unsigned i=0; i<entry->_node->getNumChildren(); ++i)
+                {
+                    entry->_node->getChild(i)->accept( nv );
+                }
+            
+                // pop the same number we pushed
+                for(int i=0; i<numStateSets; ++i)
+                {
+                    cv->popStateSet();
                 }
             }
 
-            cv->pushStateSet( stateSet.get() );
-
-            // cull the node's children (but not the DrapeableNode itself!)
-            // TODO: make sure we aren't skipping any cull callbacks, etc. by calling traverse 
-            // instead of accept. (Cannot call accept b/c that calls traverse)
-            for(unsigned i=0; i<entry._node->getNumChildren(); ++i)
-            {
-                entry._node->getChild(i)->accept( nv );
-            }
-
-            cv->popStateSet();
-
-            if ( entry._matrix.valid() )
+            // pop the model view:
+            if ( entry->_matrix.valid() )
             {
                 cv->popModelViewMatrix();
             }
-
-            _entries.pop_front();
         }
 
+        // reset the cull set for the next frame.
+        _entries.clear();
         _bs.init();
-    }
-    else
-    {
-        // todo...anything? support other traversal types here?
-        // or let the "natural" traversal of the node take care of those?
     }
 }
 
@@ -425,40 +446,7 @@ _maxFarNearRatio ( 5.0 )
 bool
 DrapingTechnique::hasData(OverlayDecorator::TechRTTParams& params) const
 {
-    return true;
-    //return params._group->getNumChildren() > 0;
-}
-
-
-void
-DrapingTechnique::reestablish(TerrainEngineNode* engine)
-{
-    if ( !_textureUnit.isSet() )
-    {
-        // apply the user-request texture unit, if applicable:
-        if ( _explicitTextureUnit.isSet() )
-        {
-            if ( !_textureUnit.isSet() || *_textureUnit != *_explicitTextureUnit )
-            {
-                _textureUnit = *_explicitTextureUnit;
-            }
-        }
-
-        // otherwise, automatically allocate a texture unit if necessary:
-        else if ( !_textureUnit.isSet() )
-        {
-            int texUnit;
-            if ( engine->getResources()->reserveTextureImageUnit(texUnit, "DrapingTechnique") )
-            {
-                _textureUnit = texUnit;
-                OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
-            }
-            else
-            {
-                OE_WARN << LC << "Uh oh, no texture image units available." << std::endl;
-            }
-        }
-    }
+    return getBound(params).valid();
 }
 
 
@@ -512,11 +500,11 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         }
 
         params._rttCamera->setClearStencil( 0 );
-        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT ); //GL_DEPTH_BUFFER_BIT |  );
+        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
     }
     else
     {
-        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT ); //| GL_DEPTH_BUFFER_BIT );
+        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT );
     }
 
     // set up a StateSet for the RTT camera.
@@ -573,7 +561,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // Assemble the terrain shaders that will apply projective texturing.
     VirtualProgram* terrain_vp = VirtualProgram::getOrCreate(params._terrainStateSet);
-    terrain_vp->setName( "DrapingTechnique terrain shaders");
+    terrain_vp->setName( "Draping terrain shaders");
 
     // sampler for projected texture:
     params._terrainStateSet->getOrCreateUniform(
@@ -594,14 +582,44 @@ void
 DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
                                  osgUtil::CullVisitor*             cv )
 {
+    // allocate a texture image unit the first time through.
+    if ( !_textureUnit.isSet() )
+    {
+        static Threading::Mutex m;
+        m.lock();
+        if ( !_textureUnit.isSet() )
+        {
+            // apply the user-request texture unit, if applicable:
+            if ( _explicitTextureUnit.isSet() )
+            {
+                if ( !_textureUnit.isSet() || *_textureUnit != *_explicitTextureUnit )
+                {
+                    _textureUnit = *_explicitTextureUnit;
+                }
+            }
+
+            // otherwise, automatically allocate a texture unit if necessary:
+            else if ( !_textureUnit.isSet() )
+            {
+                int texUnit;
+                if ( params._terrainResources->reserveTextureImageUnit(texUnit, "Draping") )
+                {
+                    _textureUnit = texUnit;
+                    OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
+                }
+                else
+                {
+                    OE_WARN << LC << "No texture image units available." << std::endl;
+                }
+            }
+        }
+        m.unlock();
+    }
+
     if ( !params._rttCamera.valid() && _textureUnit.isSet() )
     {
         setUpCamera( params );
     }
-    //else
-    //{
-    //    OE_WARN << LC << "WTF\n";
-    //}
 }
        
 const osg::BoundingSphere&
@@ -654,7 +672,8 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         }
 
         // traverse the overlay group (via the RTT camera).
-        params._rttCamera->accept( *cv );
+        static_cast<DrapingCamera*>(params._rttCamera.get())->accept( *cv, cv->getCurrentCamera() );
+        //params._rttCamera->accept( *cv );
     }
 }
 

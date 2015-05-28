@@ -22,6 +22,7 @@
 #include <osgEarth/StateSetCache>
 #include <osgUtil/Optimizer>
 #include <osgDB/WriteFile>
+#include <osg/Billboard>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -35,6 +36,7 @@ using namespace osgEarth;
 PrepareForOptimizationVisitor::PrepareForOptimizationVisitor():
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 {
+    setNodeMaskOverride(~0);
 }
 
 void PrepareForOptimizationVisitor::apply(osg::Node& node)
@@ -53,6 +55,7 @@ void PrepareForOptimizationVisitor::apply(osg::Node& node)
     FlattenSceneGraphVisitor::FlattenSceneGraphVisitor():
 osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 {
+    setNodeMaskOverride(~0);
 }
 
     void FlattenSceneGraphVisitor::apply(osg::Node& node)
@@ -71,6 +74,13 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
 
      void FlattenSceneGraphVisitor::apply(osg::Geode& geode)
     {
+        osg::Billboard* billboard = dynamic_cast< osg::Billboard* >(&geode);
+        // Special case, skip billboards since we can't cluster them.
+        if (billboard)
+        {
+            return;
+        }
+
         osg::ref_ptr< osg::StateSet > ss = geode.getStateSet();
         if (ss)
         {

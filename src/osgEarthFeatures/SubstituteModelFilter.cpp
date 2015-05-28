@@ -37,6 +37,7 @@
 #include <osg/NodeVisitor>
 #include <osg/ShapeDrawable>
 #include <osg/AlphaFunc>
+#include <osg/Billboard>
 
 #include <osgSim/LightPointNode>
 
@@ -338,30 +339,29 @@ SubstituteModelFilter::process(const FeatureList&           features,
 namespace
 {
     /**
-     * Extracts lightpoints from the given scene graph and copies them into a cloned scene graph
+     * Extracts unclusterable things like lightpoints and billboards from the given scene graph and copies them into a cloned scene graph
      * This actually just removes all geodes from the scene graph, so this could be applied to any other type of node that you want to keep
      * The geodes will be clustered together in the flattened graph.
      */
-    osg::Node* extractLightPoints(osg::Node* node)
+    osg::Node* extractUnclusterables(osg::Node* node)
     {
-        // First, check to see if we have any lightpoints.
-        FindNodesVisitor<osgSim::LightPointNode> findLightPoints;
-        node->accept(findLightPoints);
-    
-        if (findLightPoints._results.empty())
-        {
-            return 0;
-        }
-
         // Clone the scene graph
         osg::ref_ptr< osg::Node > clone = (osg::Node*)node->clone(osg::CopyOp::DEEP_COPY_NODES);
+       
         // Now remove any geodes
         FindNodesVisitor<osg::Geode> findGeodes;
         clone->accept(findGeodes);
         for (unsigned int i = 0; i < findGeodes._results.size(); i++)
         {
             osg::ref_ptr< osg::Geode > geode = findGeodes._results[i];
-            if (geode->getNumParents() > 0)
+            
+
+            // Special check for billboards.  Me want to keep them in this special graph of 
+            // unclusterable stuff.
+            osg::Billboard* billboard = dynamic_cast< osg::Billboard* >( geode.get() );
+            
+
+            if (geode->getNumParents() > 0 && !billboard)
             {
                 // Get all the parents for the geode and remove it from them.
                 std::vector< osg::ref_ptr< osg::Group > > parents;
@@ -375,6 +375,7 @@ namespace
                     parents[j]->removeChild(geode);
                 }
             }
+            
         }
 
         return clone.release();
@@ -446,16 +447,16 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     process( features, symbol, context.getSession(), attachPoint.get(), newContext );
     if (_cluster)
     {
-        // Extract the lightpoints
-        osg::ref_ptr< osg::Node > lightPoints = extractLightPoints(attachPoint);
+        // Extract the unclusterable things
+        osg::ref_ptr< osg::Node > unclusterables = extractUnclusterables(attachPoint);
 
         // We run on the attachPoint instead of the main group so that we don't lose the double precision declocalizer transform.
         MeshFlattener::run(attachPoint);
 
-        // Add the lightpoints back to the attach point after the rest of the graph was flattened.
-        if (lightPoints.valid())
+        // Add the unclusterables back to the attach point after the rest of the graph was flattened.
+        if (unclusterables.valid())
         {
-            attachPoint->addChild(lightPoints);
+            attachPoint->addChild(unclusterables);
         }
     }
 
@@ -477,6 +478,8 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
         }
     }
 #endif
+
+    osgDB::writeNodeFile(*group, "c:/temp/clustered.osg");
 
     return group;
 }

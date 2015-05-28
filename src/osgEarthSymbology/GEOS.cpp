@@ -54,7 +54,7 @@ namespace
         coords->reserve( input->size() + (needToClose ? 1 : 0) );
         for( osg::Vec3dArray::const_iterator i = input->begin(); i != input->end(); ++i )
         {
-            coords->push_back( geom::Coordinate( i->x(), i->y(), i->z() ) ); //, i->z() ));
+            coords->push_back( geom::Coordinate( i->x(), i->y(), i->z() ));
         }
         if ( needToClose )
         {
@@ -175,7 +175,6 @@ namespace
         const geom::LineString* outerRing = input->getExteriorRing();
         if ( outerRing )
         {
-            // leaks here:
             const geom::CoordinateSequence* s = outerRing->getCoordinatesRO();
 
             output = new Symbology::Polygon( s->getSize() );
@@ -183,7 +182,8 @@ namespace
             for( unsigned int j=0; j<s->getSize(); j++ ) 
             {
                 const geom::Coordinate& c = s->getAt( j );
-                output->push_back( osg::Vec3d( c.x, c.y, c.z ) ); //0 ) ); 
+                output->push_back( osg::Vec3d( c.x, c.y, !osg::isNaN(c.z)? c.z : 0.0) );
+                //OE_NOTICE << "c.z = " << c.z << "\n";
             }
             output->rewind( Symbology::Ring::ORIENTATION_CCW );
 
@@ -195,7 +195,7 @@ namespace
                 for( unsigned int m = 0; m<s->getSize(); m++ )
                 {
                     const geom::Coordinate& c = s->getAt( m );
-                    hole->push_back( osg::Vec3d( c.x, c.y, c.z ) ); // 0 ) );
+                    hole->push_back( osg::Vec3d( c.x, c.y, !osg::isNaN(c.z)? c.z : 0.0) );
                 }
                 hole->rewind( Symbology::Ring::ORIENTATION_CW );
                 output->getHoles().push_back( hole );

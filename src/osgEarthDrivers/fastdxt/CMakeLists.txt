@@ -1,3 +1,6 @@
+OPTION(ENABLE_FASTDXT "Set to ON to build optional FastDXT image compressor." OFF)
+IF(ENABLE_FASTDXT)
+
 OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
 MARK_AS_ADVANCED(CURL_IS_STATIC)
 
@@ -32,3 +35,5 @@ IF( CMAKE_RELEASE_POSTFIX )
 ENDIF()
 
 SETUP_PLUGIN(fastdxt)
+
+ENDIF(ENABLE_FASTDXT)

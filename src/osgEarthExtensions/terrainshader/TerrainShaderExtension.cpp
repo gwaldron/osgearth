@@ -33,9 +33,12 @@ namespace
     class GLSLEffect : public osgEarth::TerrainEffect
     {
     public:
-        GLSLEffect(const std::vector<TerrainShaderOptions::Code>& code,
-                   const osgDB::Options*                          dbOptions ) : _code(code), _dbOptions(dbOptions)
+        GLSLEffect(const TerrainShaderOptions& options,
+                   const osgDB::Options*       dbOptions ) :
+            _options(options), _dbOptions(dbOptions)
         {
+            const std::vector<TerrainShaderOptions::Code>& code = _options.code();
+
             for(unsigned i=0; i<code.size(); ++i)
             {
                 std::string fn = code[i]._uri.isSet() ? code[i]._uri->full() : "$code." + i;
@@ -49,6 +52,34 @@ namespace
 
             VirtualProgram* vp = VirtualProgram::getOrCreate(engine->getOrCreateStateSet());
             _package.loadAll( vp, _dbOptions.get() );
+
+            const std::vector<TerrainShaderOptions::Sampler>& samplers = _options.samplers();
+            for(int i=0; i<samplers.size(); ++i)
+            {
+                if ( !samplers[i]._name.empty() && samplers[i]._uri.isSet() )
+                {
+                    int unit;    
+                    engine->getResources()->reserveTextureImageUnit(unit, "TerrainShader sampler");
+                    if ( unit >= 0 )
+                    {
+                        osg::Image* image = samplers[i]._uri->getImage(_dbOptions.get());
+                        if ( image )
+                        {
+                            osg::Texture2D* tex = new osg::Texture2D(image);
+                            tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
+                            tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+                            tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
+                            tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
+                            tex->setUnRefImageDataAfterApply( true );
+                            tex->setMaxAnisotropy( 4.0 );
+                            tex->setResizeNonPowerOfTwoHint( false );
+
+                            engine->getOrCreateStateSet()->setTextureAttribute(unit, tex);
+                            engine->getOrCreateStateSet()->addUniform(new osg::Uniform(samplers[i]._name.c_str(), unit));
+                        }
+                    }
+                }
+            }
         }
 
         void onUninstall(TerrainEngineNode* engine)
@@ -60,10 +91,12 @@ namespace
                 {
                     _package.unloadAll( vp, _dbOptions.get() );
                 }
+
+                // TODO : remove samplers.
             }
         }
 
-        std::vector<TerrainShaderOptions::Code> _code;
+        const TerrainShaderOptions              _options;
         ShaderPackage                           _package;
         osg::ref_ptr<const osgDB::Options>      _dbOptions;
     };
@@ -100,7 +133,7 @@ TerrainShaderExtension::connect(MapNode* mapNode)
         OE_WARN << LC << "Illegal: MapNode cannot be null." << std::endl;
         return false;
     }
-    _effect = new GLSLEffect( _options.code(), _dbOptions.get() );
+    _effect = new GLSLEffect( _options, _dbOptions.get() );
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     
     OE_INFO << LC << "Installed.\n";

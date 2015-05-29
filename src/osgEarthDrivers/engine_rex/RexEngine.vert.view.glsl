@@ -8,7 +8,7 @@
 // Stage globals
 out vec4 oe_layer_tilec;
 out vec4 vp_Vertex;
-out vec3 vp_Normal;
+out vec3 vp_UpVector;
 
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
@@ -20,5 +20,5 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
     float elev = texture(oe_tile_elevationTex, elevc.st).r;
 
     // assumption: vp_Normal is normalized
-    vertexView.xyz += vp_Normal*elev;
+    vertexView.xyz += vp_UpVector*elev;
 }

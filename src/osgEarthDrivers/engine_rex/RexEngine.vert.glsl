@@ -14,6 +14,8 @@ uniform vec4 oe_terrain_color;
 out vec4 oe_layer_texc;
 out vec4 oe_layer_tilec;
 out vec4 vp_Color;
+out vec3 vp_UpVector;
+out vec3 vp_Normal;
 
 void oe_rexEngine_vert(inout vec4 vertexModel)
 {
@@ -26,4 +28,6 @@ void oe_rexEngine_vert(inout vec4 vertexModel)
 #ifdef OE_REX_USE_TERRAIN_COLOR
     vp_Color = oe_terrain_color;
 #endif
+	
+	vp_UpVector = gl_NormalMatrix*vp_Normal;
 }

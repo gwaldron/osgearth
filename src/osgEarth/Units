@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <ostream>
 
 namespace osgEarth
 {
@@ -255,6 +256,7 @@ namespace osgEarth
             return _units.convertTo( convertTo, _value );
         }
 
+        double       getValue() const { return _value; }
         const Units& getUnits() const { return _units; }
 
         Config getConfig() const {
@@ -263,6 +265,12 @@ namespace osgEarth
             conf.set("units", _units.getAbbr());
             return conf;
         }
+
+        std::string asParseableString() const {
+            return Stringify() << _value << _units.getAbbr();
+        }
+        
+        //operator std::string() const { return Stringify << _value << _units.getAbbr(); }
 
     private:
         double _value;
@@ -273,7 +281,7 @@ namespace osgEarth
         Linear() : qualified_double<Linear>(0, Units::METERS) { }
         Linear(double value ) : qualified_double<Linear>(value, Units::METERS) { }
         Linear(double value, const Units& units) : qualified_double<Linear>(value, units) { }
-        Linear(const Config& conf) : qualified_double<Linear>(conf, Units::METERS) { }
+        Linear(const Config& conf) : qualified_double<Linear>(conf, Units::METERS) { }        
     };
     typedef Linear Distance;
 
@@ -306,7 +314,131 @@ namespace osgEarth
         ScreenSize(double value, const Units& units) : qualified_double<ScreenSize>(value, units) { }
         ScreenSize(const Config& conf) : qualified_double<ScreenSize>(conf, Units::PIXELS) { }
     };
+    
 
+    // Config specializations:
+
+    template <> inline
+    void Config::addIfSet<Distance>( const std::string& key, const optional<Distance>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+    template<> inline
+    void Config::updateIfSet<Distance>( const std::string& key, const optional<Distance>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+    template<> inline
+    bool Config::getIfSet<Distance>( const std::string& key, optional<Distance>& output ) const {
+        if ( hasValue(key) ) { output = Distance(*this); return true; }
+        else return false;
+    }
+    template<> inline
+    Distance as( const std::string& str, const Distance& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::METERS) )
+            return Distance(val, units);
+        else
+            return default_value;
+    }
+    
+
+    template <> inline
+    void Config::addIfSet<Angle>( const std::string& key, const optional<Angle>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+    template<> inline
+    void Config::updateIfSet<Angle>( const std::string& key, const optional<Angle>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+    template<> inline
+    bool Config::getIfSet<Angle>( const std::string& key, optional<Angle>& output ) const {
+        if ( hasValue(key) ) { output = Angle(*this); return true; }
+        else return false;
+    }
+    template<> inline
+    Angle as( const std::string& str, const Angle& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::DEGREES) )
+            return Angle(val, units);
+        else
+            return default_value;
+    }
+
+    template <> inline
+    void Config::addIfSet<Duration>( const std::string& key, const optional<Duration>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    void Config::updateIfSet<Duration>( const std::string& key, const optional<Duration>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    bool Config::getIfSet<Duration>( const std::string& key, optional<Duration>& output ) const {
+        if ( hasValue(key) ) { output = Duration(*this); return true; }
+        else return false;
+    }
+    template<> inline
+    Duration as( const std::string& str, const Duration& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::SECONDS) )
+            return Duration(val, units);
+        else
+            return default_value;
+    }
+
+    template <> inline
+    void Config::addIfSet<Speed>( const std::string& key, const optional<Speed>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    void Config::updateIfSet<Speed>( const std::string& key, const optional<Speed>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    bool Config::getIfSet<Speed>( const std::string& key, optional<Speed>& output ) const {
+        if ( hasValue(key) ) { output = Speed(*this); return true; }
+        else return false;
+    }
+    template<> inline
+    Speed as( const std::string& str, const Speed& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::METERS_PER_SECOND) )
+            return Speed(val, units);
+        else
+            return default_value;
+    }
+
+    template <> inline
+    void Config::addIfSet<ScreenSize>( const std::string& key, const optional<ScreenSize>& opt ) {
+        if ( opt.isSet() ) { add(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    void Config::updateIfSet<ScreenSize>( const std::string& key, const optional<ScreenSize>& opt ) {
+        if ( opt.isSet() ) { update(key, opt->asParseableString()); }
+    }
+
+    template<> inline
+    bool Config::getIfSet<ScreenSize>( const std::string& key, optional<ScreenSize>& output ) const {
+        if ( hasValue(key) ) { output = ScreenSize(*this); return true; }
+        else return false;
+    }
+    template<> inline
+    ScreenSize as( const std::string& str, const ScreenSize& default_value ) {
+        double val;
+        Units units;
+        if ( Units::parse(str, val, units, Units::PIXELS) )
+            return ScreenSize(val, units);
+        else
+            return default_value;
+    }
 }
 
 #endif // OSGEARTH_UNITS_H

@@ -540,7 +540,8 @@ EarthManipulator::applySettings( Settings* settings )
     if ( new_pitch != old_pitch )
     {
         Viewpoint vp = getViewpoint();
-        setViewpoint( Viewpoint(vp.getFocalPoint(), vp.getHeading(), new_pitch, vp.getRange(), vp.getSRS()) );
+        vp.pitch() = new_pitch;
+        setViewpoint( vp );
     }
 }
 
@@ -614,16 +615,26 @@ EarthManipulator::established()
 
         else if ( _srs->isGeographic() )
         {
-            setHomeViewpoint( 
-                Viewpoint(osg::Vec3d(-90,0,0), 0, -89,
-                _srs->getEllipsoid()->getRadiusEquator()*3.0 ) );
+            Viewpoint vp;
+            vp.focalPoint() = GeoPoint(_srs.get(), -90.0, 0, 0, ALTMODE_ABSOLUTE);
+            vp.pitch()->set( -89.0, Units::DEGREES );
+            vp.range()->set( _srs->getEllipsoid()->getRadiusEquator() * 3.0, Units::METERS );
+            setHomeViewpoint( vp );
+            //setHomeViewpoint( 
+            //    Viewpoint(osg::Vec3d(-90,0,0), 0, -89,
+            //    _srs->getEllipsoid()->getRadiusEquator()*3.0 ) );
         }
         else 
         {
-            setHomeViewpoint( Viewpoint(
-                safeNode->getBound().center(),
-                0, -89.9, 
-                safeNode->getBound().radius()*2.0) );
+            Viewpoint vp;
+            vp.focalPoint() = GeoPoint(_srs.get(), safeNode->getBound().center(), ALTMODE_ABSOLUTE);
+            vp.pitch()->set( -89.0, Units::DEGREES );
+            vp.range()->set( safeNode->getBound().radius()*2.0, Units::METERS );
+            setHomeViewpoint( vp );
+            //setHomeViewpoint( Viewpoint(
+            //    safeNode->getBound().center(),
+            //    0, -89.9, 
+            //    safeNode->getBound().radius()*2.0) );
         }
     }
 
@@ -776,6 +787,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
     else if ( duration_s > 0.0 )
     {
         // xform viewpoint into map SRS
+
         osg::Vec3d vpFocalPoint = vp.getFocalPoint();
         if ( _srs.valid() && vp.getSRS() && !_srs->isEquivalentTo( vp.getSRS() ) )
         {
@@ -1000,12 +1012,18 @@ EarthManipulator::updateSetViewpoint()
         tp = smoothStepInterp( tp );
     }
 
-    Viewpoint new_vp(
-        _start_viewpoint.getFocalPoint() + _delta_focal_point * tp,
-        _start_viewpoint.getHeading() + _delta_heading * tp,
-        _start_viewpoint.getPitch() + _delta_pitch * tp,
-        _start_viewpoint.getRange() + _delta_range * tp + (sin(osg::PI*tp)*_arc_height),
-        _start_viewpoint.getSRS() );
+    Viewpoint newVP(_start_viewpoint);
+    newVP.focalPoint()->vec3d() += _delta_focal_point * tp;
+    newVP.heading() = newVP.heading().get() + (_delta_heading * tp);
+    newVP.pitch() = newVP.pitch().get() + (_delta_pitch * tp);
+    newVP.range() = newVP.range().get() + (_delta_range * tp);
+
+    //Viewpoint new_vp(
+    //    _start_viewpoint.getFocalPoint() + _delta_focal_point * tp,
+    //    _start_viewpoint.getHeading() + _delta_heading * tp,
+    //    _start_viewpoint.getPitch() + _delta_pitch * tp,
+    //    _start_viewpoint.getRange() + _delta_range * tp + (sin(osg::PI*tp)*_arc_height),
+    //    _start_viewpoint.getSRS() );
 
 #if 0
     OE_INFO
@@ -1018,7 +1036,7 @@ EarthManipulator::updateSetViewpoint()
         << std::endl;
 #endif
 
-    setViewpoint( new_vp );
+    setViewpoint( newVP );
 }
 
 
@@ -1041,12 +1059,19 @@ EarthManipulator::getViewpoint() const
     double localAzim, localPitch;
     getLocalEulerAngles( &localAzim, &localPitch );
 
-    return Viewpoint(
-        focal_point,
-        osg::RadiansToDegrees( localAzim ),
-        osg::RadiansToDegrees( localPitch ),
-        _distance,
-        _srs.get() );
+    Viewpoint vp;
+    vp.focalPoint() = GeoPoint(_srs.get(), focal_point);
+    vp.heading()->set(localAzim, Units::DEGREES);
+    vp.pitch()->set(localPitch, Units::DEGREES);
+    vp.range() = _distance;
+
+    return vp;
+    //return Viewpoint(
+    //    focal_point,
+    //    osg::RadiansToDegrees( localAzim ),
+    //    osg::RadiansToDegrees( localPitch ),
+    //    _distance,
+    //    _srs.get() );
 }
 
 void
@@ -1874,7 +1899,9 @@ Viewpoint EarthManipulator::getTetherNodeViewpoint() const
         GeoPoint centerMap;
         centerMap.fromWorld( _srs.get(), centerWorld );
         Viewpoint vp = getViewpoint();
-        return Viewpoint( centerMap.vec3d(), vp.getHeading(), vp.getPitch(), vp.getRange(), vp.getSRS() );        
+        vp.focalPoint() = centerMap;
+        return vp;
+        //return Viewpoint( centerMap.vec3d(), vp.getHeading(), vp.getPitch(), vp.getRange(), vp.getSRS() );        
     }    
     return Viewpoint();
 }
@@ -2549,22 +2576,21 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
         {
             case ACTION_GOTO:
             {
-                Viewpoint here = getViewpoint();
+                Viewpoint here = getViewpoint();                
+                here.focalPoint()->fromWorld(_srs.get(), point);
 
-                if ( !here.getSRS() )
-                    return false;
-
-                osg::Vec3d pointVP;
-                here.getSRS()->transformFromWorld(point, pointVP);
+                //osg::Vec3d pointVP;
+                //here.getSRS()->transformFromWorld(point, pointVP);
 
                 //OE_NOTICE << "X=" << pointVP.x() << ", Y=" << pointVP.y() << std::endl;
 
-                here.setFocalPoint( pointVP );
+//                here.setFocalPoint( pointVP );
 
                 double duration_s = action.getDoubleOption(OPTION_DURATION, 1.0);
                 double range_factor = action.getDoubleOption(OPTION_GOTO_RANGE_FACTOR, 1.0);
 
-                here.setRange( here.getRange() * range_factor );
+                here.range() = here.range().get() * range_factor;
+                //here.setRange( here.getRange() * range_factor );
 
                 setViewpoint( here, duration_s );
             }

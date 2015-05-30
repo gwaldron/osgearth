@@ -46,6 +46,7 @@ namespace osgEarth { namespace Drivers
         optional<double>& gamma() { return _gamma; }
         const optional<double>& gamma() const { return _gamma; }
 
+        /** Whether to rasterize into coverage data */
         optional<bool>& coverage() { return _coverage; }
         const optional<bool>& coverage() const { return _coverage; }
 

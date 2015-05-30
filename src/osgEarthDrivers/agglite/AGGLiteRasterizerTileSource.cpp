@@ -63,12 +63,23 @@ namespace
             unsigned char* p = ptr + (x << 2);
             do
             {
-                int cover = *covers++;
-                int alpha = (cover > 127 ? 255 : 0.0);
-                *p++ = alpha;
-                *p++ = c.b;
-                *p++ = c.g;
-                *p++ = c.r;
+                unsigned char cover = *covers++;
+                int hasData = cover > 127;
+                if ( hasData )
+                {
+                    *p++ = c.a;
+                    *p++ = c.b;
+                    *p++ = c.g;
+                    *p++ = c.r;
+                }
+                else
+                {
+                    // 0xffffffff = nodata for coverages.
+                    *p++ = 0xff;
+                    *p++ = 0xff;
+                    *p++ = 0xff;
+                    *p++ = 0xff;
+                }
             }
             while(--count);
         }
@@ -95,6 +106,26 @@ namespace
             return c;
         }
     };
+
+    osg::Vec4f encodeCoverageValue(float value)
+    {
+        const float minValue = -8192.0f;
+        const float maxValue =  8192.0f;
+        const float tofixed   = 255.0/256.0;
+
+        // normalize the input:
+        double v = (value-minValue)/(maxValue-minValue); // [0..1)
+
+        // encode as rgba. (http://goo.gl/6sGmZj)
+        osg::Vec4f color;
+        float temp;
+        color.r() = modf(v * tofixed, &temp);
+        color.g() = modf(v * tofixed * 255.0f, &temp);
+        color.b() = modf(v * tofixed * 255.0f * 255.0f, &temp);
+        color.a() = modf(v * tofixed * 255.0f * 255.0f * 255.0f, &temp);
+
+        return color;
+    }
 }
 
 /********************************************************************/
@@ -119,12 +150,23 @@ public:
     {
         agg::rendering_buffer rbuf( image->data(), image->s(), image->t(), image->s()*4 );
         agg::renderer<agg::span_abgr32> ren(rbuf);
-        ren.clear(agg::rgba8(0,0,0,0));
+
+        // clear the buffer.
+        if ( _options.coverage() == true )
+        {
+            // For coverage data, ~0 = no data.
+            ren.clear(agg::rgba8(255,255,255,255));
+        }
+        else
+        {
+            ren.clear(agg::rgba8(0,0,0,0));
+        }
         return true;
     }
 
     //override
     bool renderFeaturesForStyle(
+        Session*           session,
         const Style&       style,
         const FeatureList& features,
         osg::Referenced*   buildData,
@@ -132,11 +174,12 @@ public:
         osg::Image*        image )
     {
         // A processing context to use with the filters:
-        FilterContext context;
+        FilterContext context( session );
         context.setProfile( getFeatureSource()->getFeatureProfile() );
 
         const LineSymbol*    masterLine = style.getSymbol<LineSymbol>();
         const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
+        const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
 
         // sort into bins, making a copy for lines that require buffering.
         FeatureList polygons;
@@ -146,9 +189,13 @@ public:
         {
             if ( f->get()->getGeometry() )
             {
+                bool hasPoly = false;
+                bool hasLine = false;
+
                 if ( masterPoly || f->get()->style()->has<PolygonSymbol>() )
                 {
                     polygons.push_back( f->get() );
+                    hasPoly = true;
                 }
 
                 if ( masterLine || f->get()->style()->has<LineSymbol>() )
@@ -159,6 +206,16 @@ public:
                         newFeature->setGeometry( newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING) );
                     }
                     lines.push_back( newFeature );
+                    hasLine = true;
+                }
+
+                // if there are no geometry symbols but there is a coverage symbol, default to polygons.
+                if ( !hasLine && !hasPoly )
+                {
+                    if ( masterCov || f->get()->style()->has<CoverageSymbol>() )
+                    {
+                        polygons.push_back( f->get() );
+                    }
                 }
             }
         }
@@ -265,7 +322,11 @@ public:
         agg::rasterizer ras;
 
         // Setup the rasterizer
-        ras.gamma(_options.gamma().get());
+        if ( _options.coverage() == true )
+            ras.gamma(1.0);
+        else
+            ras.gamma(_options.gamma().get());
+
         ras.filling_rule(agg::fill_even_odd);
 
         // construct an extent for cropping the geometry to our tile.
@@ -278,6 +339,12 @@ public:
         cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMin(), 0 ));
         cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMax(), 0 ));
         cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMax(), 0 ));
+
+        // If there's a coverage symbol, make a copy of the expressions so we can evaluate them
+        optional<NumericExpression> covValue;
+        const CoverageSymbol* covsym = style.get<CoverageSymbol>();
+        if (covsym && covsym->valueExpression().isSet())
+            covValue = covsym->valueExpression().get();
 
         // render the polygons
         for(FeatureList::iterator i = polygons.begin(); i != polygons.end(); i++)
@@ -292,7 +359,19 @@ public:
                     feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
                     masterPoly;
                 
-                const osg::Vec4 color = poly ? static_cast<osg::Vec4>(poly->fill()->color()) : osg::Vec4(1,1,1,1);
+                osg::Vec4f color;
+
+                if ( _options.coverage() == true && covValue.isSet() )
+                {
+                    float value = (float)feature->eval(covValue.mutable_value(), &context);
+                    color = encodeCoverageValue( value );
+                }
+                else
+                {
+                    color = poly->fill()->color();
+                }
+                
+                //const osg::Vec4 color = poly ? static_cast<osg::Vec4>(poly->fill()->color()) : osg::Vec4(1,1,1,1);
                 rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
             }
         }
@@ -309,8 +388,19 @@ public:
                 const LineSymbol* line =
                     feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
                     masterLine;
-                
-                const osg::Vec4 color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
+
+                osg::Vec4f color;
+
+                if ( _options.coverage() == true && covValue.isSet() )
+                {
+                    float value = (float)feature->eval(covValue.mutable_value(), &context);
+                    color = encodeCoverageValue( value );
+                }
+                else
+                {
+                    color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
+                }
+
                 rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
             }
         }
@@ -337,8 +427,17 @@ public:
                    agg::rasterizer& ras, agg::rendering_buffer& buffer)
     {
         osg::Vec4 c = color;
-        unsigned int a = (unsigned int)(127.0f+(c.a()*255.0f)/2.0f); // scale alpha up
-        agg::rgba8 fgColor( (unsigned int)(c.r()*255.0f), (unsigned int)(c.g()*255.0f), (unsigned int)(c.b()*255.0f), a );
+        agg::rgba8 fgColor;
+
+        if ( _options.coverage() == true )
+        {
+            fgColor = agg::rgba8( (unsigned)(c.r()*255.0f), (unsigned)(c.g()*255.0f), (unsigned)(c.b()*255.0f), (unsigned)(c.a()*255.0f) );
+        }
+        else
+        {
+            unsigned a = (unsigned)(127.0f+(c.a()*255.0f)/2.0f); // scale alpha up
+            fgColor = agg::rgba8( (unsigned)(c.r()*255.0f), (unsigned)(c.g()*255.0f), (unsigned)(c.b()*255.0f), a );
+        }
 
         ConstGeometryIterator gi( geometry );
         while( gi.hasMore() )

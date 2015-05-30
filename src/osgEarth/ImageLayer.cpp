@@ -117,6 +117,10 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet("texture_compression", "auto", _texcomp, (osg::Texture::InternalFormatMode)~0);
     conf.getIfSet("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
+
+    // uniform names
+    conf.getIfSet("shared_sampler_name", _shareTexUniformName);
+    conf.getIfSet("shared_matrix_name",  _shareTexMatUniformName);
 }
 
 Config
@@ -162,6 +166,10 @@ ImageLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet("texture_compression", "on",   _texcomp, (osg::Texture::InternalFormatMode)~0);
     conf.updateIfSet("texture_compression", "fastdxt", _texcomp, (osg::Texture::InternalFormatMode)(~0 - 1));
     //TODO add all the enums
+
+    // uniform names
+    conf.updateIfSet("shared_sampler_name", _shareTexUniformName);
+    conf.updateIfSet("shared_matrix_name",  _shareTexMatUniformName);
 
     return conf;
 }
@@ -299,6 +307,12 @@ ImageLayer::init()
 
     _emptyImage = ImageUtils::createEmptyImage();
     //*((unsigned*)_emptyImage->data()) = 0x7F0000FF;
+
+    if ( _runtimeOptions.shareTexUniformName().isSet() )
+        _shareTexUniformName = _runtimeOptions.shareTexUniformName().get();
+
+    if ( _runtimeOptions.shareTexMatUniformName().isSet() )
+        _shareTexMatUniformName = _runtimeOptions.shareTexMatUniformName().get();
 }
 
 void

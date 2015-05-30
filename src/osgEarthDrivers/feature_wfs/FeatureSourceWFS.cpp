@@ -324,9 +324,19 @@ public:
 
         if (query.tileKey().isSet())
         {
-            buf << "&Z=" << query.tileKey().get().getLevelOfDetail() << 
-                   "&X=" << query.tileKey().get().getTileX() <<
-                   "&Y=" << query.tileKey().get().getTileY();
+
+            unsigned int tileX = query.tileKey().get().getTileX();
+            unsigned int tileY = query.tileKey().get().getTileY();
+            unsigned int level = query.tileKey().get().getLevelOfDetail();
+#if 1
+            unsigned int numRows, numCols;
+            query.tileKey().get().getProfile()->getNumTiles(level, numCols, numRows);
+            tileY  = numRows - tileY - 1;
+#endif
+
+            buf << "&Z=" << level << 
+                   "&X=" << tileX <<
+                   "&Y=" << tileY;
         }
         else if (query.bounds().isSet())
         {            

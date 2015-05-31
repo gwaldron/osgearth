@@ -117,12 +117,15 @@ namespace
         double v = (value-minValue)/(maxValue-minValue); // [0..1)
 
         // encode as rgba. (http://goo.gl/6sGmZj)
+        // this algorithm is incremental - use as many bytes as you need (starting
+        // with r) for the precision you need. For example, we could use just RGB
+        // and save the 'a' for another value like alpha/intensity.
         osg::Vec4f color;
         float temp;
         color.r() = modf(v * tofixed, &temp);
-        color.g() = modf(v * tofixed * 255.0f, &temp);
-        color.b() = modf(v * tofixed * 255.0f * 255.0f, &temp);
-        color.a() = modf(v * tofixed * 255.0f * 255.0f * 255.0f, &temp);
+        color.g() = modf(v * tofixed * 255.0f,      &temp);
+        color.b() = modf(v * tofixed * 65025.0f,    &temp);
+        color.a() = modf(v * tofixed * 16581375.0f, &temp);
 
         return color;
     }
@@ -431,6 +434,7 @@ public:
 
         if ( _options.coverage() == true )
         {
+            // for a coverage value, copy the value exactly.
             fgColor = agg::rgba8( (unsigned)(c.r()*255.0f), (unsigned)(c.g()*255.0f), (unsigned)(c.b()*255.0f), (unsigned)(c.a()*255.0f) );
         }
         else

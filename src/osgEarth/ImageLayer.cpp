@@ -119,8 +119,8 @@ ImageLayerOptions::fromConfig( const Config& conf )
     //TODO add all the enums
 
     // uniform names
-    conf.getIfSet("shared_sampler_name", _shareTexUniformName);
-    conf.getIfSet("shared_matrix_name",  _shareTexMatUniformName);
+    conf.getIfSet("shared_sampler", _shareTexUniformName);
+    conf.getIfSet("shared_matrix",  _shareTexMatUniformName);
 }
 
 Config
@@ -168,8 +168,8 @@ ImageLayerOptions::getConfig( bool isolate ) const
     //TODO add all the enums
 
     // uniform names
-    conf.updateIfSet("shared_sampler_name", _shareTexUniformName);
-    conf.updateIfSet("shared_matrix_name",  _shareTexMatUniformName);
+    conf.updateIfSet("shared_sampler", _shareTexUniformName);
+    conf.updateIfSet("shared_matrix",  _shareTexMatUniformName);
 
     return conf;
 }

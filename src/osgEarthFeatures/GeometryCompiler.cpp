@@ -39,6 +39,7 @@
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
 
+
 #define LC "[GeometryCompiler] "
 
 using namespace osgEarth;
@@ -69,7 +70,8 @@ _useTextureArrays      ( true ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
 _geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _optimizeStateSharing  ( true ),
-_optimize              ( false )
+_optimize              ( false ),
+_validate              ( false )
 {
    //nop
 }
@@ -88,7 +90,8 @@ _useTextureArrays      ( s_defaults.useTextureArrays().value() ),
 _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
 _geoInterp             ( s_defaults.geoInterp().value() ),
 _optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
-_optimize              ( s_defaults.optimize().value() )
+_optimize              ( s_defaults.optimize().value() ),
+_validate              ( s_defaults.validate().value() )
 {
     fromConfig(_conf);
 }
@@ -108,6 +111,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "use_texture_arrays", _useTextureArrays );
     conf.getIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
     conf.getIfSet   ( "optimize", _optimize );
+    conf.getIfSet   ( "validate", _validate );
 
     conf.getIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.getIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -130,6 +134,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "use_texture_arrays", _useTextureArrays );
     conf.addIfSet   ( "optimize_state_sharing", _optimizeStateSharing );
     conf.addIfSet   ( "optimize", _optimize );
+    conf.addIfSet   ( "validate", _validate );
 
     conf.addIfSet( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
     conf.addIfSet( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
@@ -213,10 +218,15 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     unsigned p_features = workingSet.size();
 #endif
 
+    // for debugging/validation.
+    std::vector<std::string> history;
+    bool trackHistory = (_options.validate() == true);
+
     osg::ref_ptr<osg::Group> resultGroup = new osg::Group();
 
     // create a filter context that will track feature data through the process
     FilterContext sharedCX = context;
+
     if ( !sharedCX.extent().isSet() && sharedCX.profile() )
     {
         sharedCX.extent() = sharedCX.profile()->getExtent();
@@ -247,6 +257,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.setNumPartitions( *line->tessellation() );
             filter.setDefaultGeoInterp( _options.geoInterp().get() );
             sharedCX = filter.push( workingSet, sharedCX );
+            if ( trackHistory ) history.push_back( "tessellation" );
         }
         else if ( line->tessellationSize().isSet() )
         {
@@ -254,6 +265,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.setMaxPartitionSize( *line->tessellationSize() );
             filter.setDefaultGeoInterp( _options.geoInterp().get() );
             sharedCX = filter.push( workingSet, sharedCX );
+            if ( trackHistory ) history.push_back( "tessellationSize" );
         }
     }
 
@@ -296,7 +308,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         {
             resample.maxLength() = *_options.resampleMaxLength();
         }                   
-        sharedCX = resample.push( workingSet, sharedCX );        
+        sharedCX = resample.push( workingSet, sharedCX ); 
+        if ( trackHistory ) history.push_back( "resample" );
     }    
     
     // check whether we need to do elevation clamping:
@@ -311,6 +324,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // marker substitution -- to be deprecated in favor of model/icon
     if ( marker )
     {
+        if ( trackHistory ) history.push_back( "marker" );
+
         // use a separate filter context since we'll be munging the data
         FilterContext markerCX = sharedCX;
 
@@ -322,11 +337,13 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             scatter.setRandom( marker->placement() == MarkerSymbol::PLACEMENT_RANDOM );
             scatter.setRandomSeed( *marker->randomSeed() );
             markerCX = scatter.push( workingSet, markerCX );
+            if ( trackHistory ) history.push_back( "scatter" );
         }
         else if ( marker->placement() == MarkerSymbol::PLACEMENT_CENTROID )
         {
             CentroidFilter centroid;
-            centroid.push( workingSet, markerCX );
+            markerCX = centroid.push( workingSet, markerCX );  
+            if ( trackHistory ) history.push_back( "centroid" );
         }
 
         if ( altRequired )
@@ -334,6 +351,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             markerCX = clamp.push( workingSet, markerCX );
+            if ( trackHistory ) history.push_back( "altitude" );
 
             // don't set this; we changed the input data.
             //altRequired = false;
@@ -351,6 +369,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         osg::Node* node = sub.push( workingSet, markerCX );
         if ( node )
         {
+            if ( trackHistory ) history.push_back( "substitute" );
             resultGroup->addChild( node );
         }
     }
@@ -362,6 +381,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         // use a separate filter context since we'll be munging the data
         FilterContext localCX = sharedCX;
+        
+        if ( trackHistory ) history.push_back( "model");
 
         if ( instance->placement() == InstanceSymbol::PLACEMENT_RANDOM   ||
              instance->placement() == InstanceSymbol::PLACEMENT_INTERVAL )
@@ -371,11 +392,13 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             scatter.setRandom( instance->placement() == InstanceSymbol::PLACEMENT_RANDOM );
             scatter.setRandomSeed( *instance->randomSeed() );
             localCX = scatter.push( workingSet, localCX );
+            if ( trackHistory ) history.push_back( "scatter" );
         }
         else if ( instance->placement() == InstanceSymbol::PLACEMENT_CENTROID )
         {
             CentroidFilter centroid;
-            centroid.push( workingSet, localCX );
+            localCX = centroid.push( workingSet, localCX );
+            if ( trackHistory ) history.push_back( "centroid" );
         }
 
         if ( altRequired )
@@ -383,6 +406,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             localCX = clamp.push( workingSet, localCX );
+            if ( trackHistory ) history.push_back( "altitude" );
         }
 
         SubstituteModelFilter sub( style );
@@ -396,10 +420,13 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         // activate feature naming
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
+        
 
         osg::Node* node = sub.push( workingSet, localCX );
         if ( node )
         {
+            if ( trackHistory ) history.push_back( "substitute" );
+
             resultGroup->addChild( node );
 
             // enable auto scaling on the group?
@@ -418,6 +445,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
+            if ( trackHistory ) history.push_back( "altitude" );
             altRequired = false;
         }
 
@@ -439,6 +467,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )
         {
+            if ( trackHistory ) history.push_back( "extrude" );
             resultGroup->addChild( node );
         }
         
@@ -452,6 +481,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
+            if ( trackHistory ) history.push_back( "altitude" );
             altRequired = false;
         }
 
@@ -465,6 +495,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
         {
+            if ( trackHistory ) history.push_back( "geometry" );
             resultGroup->addChild( node );
         }
     }
@@ -476,6 +507,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
+            if ( trackHistory ) history.push_back( "altitude" );
             altRequired = false;
         }
 
@@ -483,6 +515,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
         {
+            if ( trackHistory ) history.push_back( "text" );
             resultGroup->addChild( node );
         }
     }
@@ -501,6 +534,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             resultGroup->getOrCreateStateSet()->setAttributeAndModes(
                 new osg::Program(),
                 osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+        
+            if ( trackHistory ) history.push_back( "no shaders" );
         }
     }
 
@@ -522,6 +557,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             sscache = new StateSetCache();
             sscache->optimize( resultGroup.get() );
         }
+        
+        if ( trackHistory ) history.push_back( "share state" );
     }
 
     if ( _options.optimize() == true )
@@ -542,6 +579,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         osgUtil::Optimizer opt;
         opt.optimize(resultGroup.get(), optimizations);
         OE_DEBUG << LC << "optimize complete" << std::endl;
+
+        if ( trackHistory ) history.push_back( "optimize" );
     }
     
 
@@ -563,11 +602,19 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         << std::endl;
 #endif
 
-#if 0
-    //test: run the geometry validator to make sure geometry it legal
-    osgEarth::GeometryValidator validator;
-    resultGroup->accept(validator);
-#endif
+
+    if ( _options.validate() == true )
+    {
+        OE_NOTICE << LC << "-- Start Debugging --\n";
+        std::stringstream buf;
+        buf << "HISTORY ";
+        for(std::vector<std::string>::iterator h = history.begin(); h != history.end(); ++h)
+            buf << ".. " << *h;
+        OE_NOTICE << LC << buf.str() << "\n";
+        osgEarth::GeometryValidator validator;
+        resultGroup->accept(validator);
+        OE_NOTICE << LC << "-- End Debugging --\n";
+    }
 
     return resultGroup.release();
 }

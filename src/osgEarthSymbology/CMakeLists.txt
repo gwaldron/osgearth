@@ -17,6 +17,7 @@ SET(LIB_PUBLIC_HEADERS
     AltitudeSymbol
     Common
     Color
+    CoverageSymbol
     CssUtils
     Expression
     ExtrusionSymbol
@@ -60,6 +61,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
 #  .cpp files go here
     AltitudeSymbol.cpp
     Color.cpp
+    CoverageSymbol.cpp
     CssUtils.cpp
     Expression.cpp
     ExtrusionSymbol.cpp

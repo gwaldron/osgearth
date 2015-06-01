@@ -133,6 +133,9 @@ FeatureTileSource::initialize(const osgDB::Options* dbOptions)
         return Status::Error("No FeatureSource provided; nothing will be rendered");
     }
 
+    // Create a session for feature processing. No map.
+    _session = new Session( 0L, _options.styles().get(), _features.get(), dbOptions );
+
     _initialized = true;
     return STATUS_OK;
 }
@@ -180,9 +183,14 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
             {
                 FeatureList list;
                 list.push_back( feature );
-                renderFeaturesForStyle( 
-                    *feature->style(), list, buildData.get(),
-                    key.getExtent(), image.get() );
+
+                renderFeaturesForStyle(
+                    _session.get(),
+                    *feature->style(),
+                    list,
+                    buildData.get(),
+                    key.getExtent(),
+                    image.get() );
             }
         }
     }
@@ -273,7 +281,7 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
         //    << queryExtent.toString() << ")"
         //    << std::endl;
 
-        return renderFeaturesForStyle( style, cellFeatures, data, imageExtent, out_image );
+        return renderFeaturesForStyle( _session.get(), style, cellFeatures, data, imageExtent, out_image );
     }
     else
     {

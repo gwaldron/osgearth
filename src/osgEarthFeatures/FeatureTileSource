@@ -112,6 +112,8 @@ namespace osgEarth { namespace Features
         /**
          * Creates OSG graph(s) representing the specified feature list.
          *
+         * @param session
+         *      Feature processing session (shared)
          * @param style
          *      Styling information for the feature geometry
          * @param features
@@ -124,11 +126,20 @@ namespace osgEarth { namespace Features
          * @return true if the rendering succeeded, false if the out_image did not change.
          */
         virtual bool renderFeaturesForStyle(
+            Session*           session,
             const Style&       style,
             const FeatureList& features,
             osg::Referenced*   buildData,
             const GeoExtent&   imageExtent,
-            osg::Image*        out_image ) { return false; }            
+            osg::Image*        out_image ) { return renderFeaturesForStyle(style, features, buildData, imageExtent, out_image); }
+
+        /** Backwards compatibility */
+        virtual bool renderFeaturesForStyle(
+            const Style&       style,
+            const FeatureList& features,
+            osg::Referenced*   buildData,
+            const GeoExtent&   imageExtent,
+            osg::Image*        out_image ) { return false; }
             
         /**
          * Optional implementation hook to pre-process an image tile before any calls to 
@@ -165,6 +176,7 @@ namespace osgEarth { namespace Features
         //osg::ref_ptr<const FeatureTileSourceOptions> _options;
         osg::ref_ptr<const osgEarth::Map> _map;
         bool _initialized;
+        osg::ref_ptr<Session> _session;
         
         bool queryAndRenderFeaturesForStyle(
             const Style&     style,

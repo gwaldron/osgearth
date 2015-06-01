@@ -1,15 +1,19 @@
+FIND_PACKAGE(Protobuf)
+
 IF(SQLITE3_FOUND AND PROTOBUF_FOUND)
 
-INCLUDE_DIRECTORIES( ${SQLITE3_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} )
+INCLUDE_DIRECTORIES( ${SQLITE3_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+
+PROTOBUF_GENERATE_CPP(PROTO_CPP PROTO_H vector_tile.proto)
 
 SET(TARGET_SRC
-    FeatureSourceMVT.cpp    
-    vector_tile.pb.cc
+    FeatureSourceMVT.cpp
+    ${PROTO_CPP}
 )
 
 SET(TARGET_H   	
     MVTFeatureOptions
-    vector_tile.pb.h
+    ${PROTO_H}
 )
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthSymbology osgEarthUtil)

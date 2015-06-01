@@ -44,7 +44,14 @@ namespace osgEarth { namespace Util
 
         virtual void traverse(osg::NodeVisitor& nv);
 
+        /**
+         * Gets whether the graticule is visible.
+         */
         bool getVisible() const;
+
+        /**
+         * Sets whether the graticule is visible or not.
+         */
         void setVisible(bool visible);
 
     protected:

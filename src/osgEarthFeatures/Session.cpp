@@ -56,6 +56,8 @@ _dbOptions     ( dbOptions )
     // geometry created under this session takes advantage of it. That's reasonable since
     // tiles in a particular "layer" will tend to share state.
     _stateSetCache = new StateSetCache();
+
+    _name = "Session (unnamed)";
 }
 
 Session::~Session()

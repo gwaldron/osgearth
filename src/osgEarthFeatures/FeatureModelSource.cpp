@@ -200,6 +200,9 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
         _features.get(), 
         _dbOptions.get() );
 
+    // Name the session (for debugging purposes)
+    session->setName( this->getName() );
+
     // Graph that will render feature models. May included paged data.
     FeatureModelGraph* graph = new FeatureModelGraph( 
        session,
@@ -209,7 +212,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
        _preMergeOps.get(),
        _postMergeOps.get() );
 
-    graph->setName( this->getName() );
+    graph->setName( session->getName() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

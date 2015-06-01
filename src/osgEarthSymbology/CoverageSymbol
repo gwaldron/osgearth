@@ -40,7 +40,7 @@ namespace osgEarth { namespace Symbology
         CoverageSymbol(const Config& conf =Config());
         CoverageSymbol(const CoverageSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
 
-        /** coverage value expression */
+        /** coverage value expression; resolves to a 32-bit floating point number. */
         optional<NumericExpression>& valueExpression() { return _valueExpr; }
         const optional<NumericExpression>& valueExpression() const { return _valueExpr; }
 

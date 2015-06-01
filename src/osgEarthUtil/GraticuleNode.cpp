@@ -19,7 +19,7 @@
 #include "GraticuleNode"
 
 using namespace osgEarth;
-using namespace osgEarth::Graticule;
+using namespace osgEarth::Util;
 
 #define LC "[GraticuleNode] "
 

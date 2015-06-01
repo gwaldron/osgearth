@@ -27,17 +27,16 @@
 #include <osgEarthAnnotation/LabelNode>
 
 
-namespace osgEarth { namespace Graticule
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Util;
     using namespace osgEarth::Annotation;
 
 
     /**
     * Node that manges the graticule resolution and labels
     */
-    class OSGEARTH_GRATICULE_EXPORT GraticuleNode : public osg::Group
+    class OSGEARTHUTIL_EXPORT GraticuleNode : public osg::Group
     {
     public:
 
@@ -83,6 +82,6 @@ namespace osgEarth { namespace Graticule
 
     };
 
-} } // namespace osgEarth::Graticule
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTH_GRATICULE_NODE

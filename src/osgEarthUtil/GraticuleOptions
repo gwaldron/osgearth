@@ -23,7 +23,7 @@
 #include <osgEarth/URI>
 #include <osgEarthSymbology/Color>
 
-namespace osgEarth { namespace Graticule
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
@@ -106,7 +106,7 @@ namespace osgEarth { namespace Graticule
         optional<int>   _gridLines;
     };
 
-} } // namespace osgEarth::Graticule
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTH_DRIVER_GRATICULE_OPTIONS
 

@@ -27,6 +27,10 @@ SET(HEADERS_ROOT
     Fog
     Formatter
     GeodeticGraticule
+    GraticuleExtension
+    GraticuleNode
+    GraticuleOptions
+    GraticuleTerrainEffect
     HTM
     LatLongFormatter
     LineOfSight
@@ -72,6 +76,8 @@ set(TARGET_GLSL
     ContourMap.frag.glsl
     Fog.vert.glsl
     Fog.frag.glsl
+    Graticule.vert.glsl
+    Graticule.frag.glsl
     LogDepthBuffer.vert.glsl
     LogDepthBuffer.VertOnly.vert.glsl    
     LogDepthBuffer.frag.glsl )
@@ -101,6 +107,9 @@ SET(SOURCES_ROOT
     FeatureQueryTool.cpp
     Fog.cpp
     GeodeticGraticule.cpp
+    GraticuleExtension.cpp
+    GraticuleTerrainEffect.cpp
+    GraticuleNode.cpp
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp

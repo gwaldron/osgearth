@@ -35,6 +35,9 @@ namespace osgEarth { namespace Util
             Fog_Vertex,
             Fog_Fragment,
 
+            Graticule_Fragment,
+            Graticule_Vertex,
+
             LogDepthBuffer_VertFile,
             LogDepthBuffer_FragFile,
             LogDepthBuffer_VertOnly_VertFile;

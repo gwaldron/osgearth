@@ -114,18 +114,19 @@ namespace
         const float tofixed   = 255.0/256.0;
 
         // normalize the input:
-        double v = (value-minValue)/(maxValue-minValue); // [0..1)
+        float v = (value-minValue)/(maxValue-minValue); // [0..1)
 
         // encode as rgba. (http://goo.gl/6sGmZj)
         // this algorithm is incremental - use as many bytes as you need (starting
         // with r) for the precision you need. For example, we could use just RGB
         // and save the 'a' for another value like alpha/intensity.
         osg::Vec4f color;
-        float temp;
-        color.r() = modf(v * tofixed, &temp);
-        color.g() = modf(v * tofixed * 255.0f,      &temp);
-        color.b() = modf(v * tofixed * 65025.0f,    &temp);
-        color.a() = modf(v * tofixed * 16581375.0f, &temp);
+        float integerPart;
+
+        color.r() = modff(v * tofixed,               &integerPart);
+        color.g() = modff(v * tofixed * 255.0f,      &integerPart);
+        color.b() = modff(v * tofixed * 65025.0f,    &integerPart);
+        color.a() = modff(v * tofixed * 16581375.0f, &integerPart);
 
         return color;
     }

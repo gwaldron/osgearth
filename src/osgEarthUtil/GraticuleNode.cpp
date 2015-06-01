@@ -24,9 +24,8 @@ using namespace osgEarth::Util;
 #define LC "[GraticuleNode] "
 
 
-GraticuleNode::GraticuleNode(MapNode* mapNode, GraticuleTerrainEffect* effect, const GraticuleOptions& options):
+GraticuleNode::GraticuleNode(MapNode* mapNode, const GraticuleOptions& options):
 _mapNode(mapNode),
-    _effect(effect),
     _resolution(options.maxResolution().get()),
     _maxResolution(options.maxResolution().get()),
     _options(options),
@@ -36,6 +35,10 @@ _mapNode(mapNode),
     _visible(true)
 {
     setNumChildrenRequiringUpdateTraversal(1);
+
+    // Create the effect and add it to the MapNode.
+    _effect = new GraticuleTerrainEffect( options, 0 );
+    _mapNode->getTerrainEngine()->addEffect( _effect );
 
     // Initialize the formatter
     _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE, LatLongFormatter::USE_SYMBOLS |LatLongFormatter::USE_PREFIXES);
@@ -49,7 +52,10 @@ _mapNode(mapNode),
 
 GraticuleNode::~GraticuleNode()
 {
-    //nop
+    if ( _mapNode.valid() )
+    {
+        _mapNode->getTerrainEngine()->removeEffect( _effect );
+    }
 }
 
 bool GraticuleNode::getVisible() const

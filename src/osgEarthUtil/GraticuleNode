@@ -40,7 +40,7 @@ namespace osgEarth { namespace Util
     {
     public:
 
-        GraticuleNode(MapNode* mapNode, GraticuleTerrainEffect* terrainEffect, const GraticuleOptions& options);
+        GraticuleNode(MapNode* mapNode, const GraticuleOptions& options = GraticuleOptions() );
 
         virtual void traverse(osg::NodeVisitor& nv);
 

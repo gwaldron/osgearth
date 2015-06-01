@@ -31,6 +31,7 @@
 #include <osgEarthUtil/GeodeticGraticule>
 #include <osgEarthUtil/MGRSGraticule>
 #include <osgEarthUtil/UTMGraticule>
+#include <osgEarthUtil/GraticuleNode>
 
 using namespace osgEarth::Util;
 
@@ -42,11 +43,24 @@ usage( const std::string& msg )
         << "USAGE: osgearth_graticule [options] file.earth" << std::endl
         << "   --geodetic            : display a geodetic (lat/long) graticule" << std::endl
         << "   --utm                 : display a UTM graticule" << std::endl
-        << "   --mgrs                : display an MGRS graticule" << std::endl;        
+        << "   --mgrs                : display an MGRS graticule" << std::endl
+        << "   --shader              : display a geodetic graticule using the glsl shaders" << std::endl;
     return -1;
 }
 
 //------------------------------------------------------------------------
+
+struct ToggleGraticuleHandler : public ControlEventHandler
+{
+    ToggleGraticuleHandler( GraticuleNode* graticule ) : _graticule( graticule ) { }
+
+    void onValueChanged( Control* control, bool value )
+    {
+        _graticule->setVisible( value );
+    }
+
+    GraticuleNode* _graticule;
+};
 
 int
 main(int argc, char** argv)
@@ -57,7 +71,9 @@ main(int argc, char** argv)
     // parse command line:
     bool isUTM = arguments.read("--utm");
     bool isMGRS = arguments.read("--mgrs");
-    bool isGeodetic = !isUTM && !isMGRS;
+    bool isGeodetic = arguments.read("--geodetic");
+
+    bool isShader = !isUTM && !isMGRS && !isGeodetic;
 
     // load the .earth file from the command line.
     MapNode* mapNode = MapNode::load( arguments );
@@ -70,6 +86,8 @@ main(int argc, char** argv)
     // root scene graph:
     osg::Group* root = new osg::Group();
     root->addChild( mapNode );
+
+    GraticuleNode* graticuleNode = 0;
 
     Formatter* formatter = 0L;
     if ( isUTM )
@@ -84,7 +102,7 @@ main(int argc, char** argv)
         root->addChild( gr );
         formatter = new MGRSFormatter();
     }
-    else // if ( isGeodetic )
+    else if ( isGeodetic )
     {
         GeodeticGraticule* gr = new GeodeticGraticule( mapNode );
         GeodeticGraticuleOptions o = gr->getOptions();
@@ -93,13 +111,34 @@ main(int argc, char** argv)
         root->addChild( gr );
         formatter = new LatLongFormatter();
     }
+    else
+    {
+        graticuleNode = new GraticuleNode( mapNode );
+        root->addChild( graticuleNode );
+    }
 
+   
     // mouse coordinate readout:
     ControlCanvas* canvas = new ControlCanvas();
     root->addChild( canvas );
+    VBox* vbox = new VBox();
+    canvas->addControl( vbox );
+
 
     LabelControl* readout = new LabelControl();
-    canvas->addControl( readout );
+    vbox->addControl( readout );
+
+    if (graticuleNode)
+    {
+        HBox* box = vbox->addControl( new HBox() );
+        box->setChildSpacing( 5 );
+        CheckBoxControl* toggleCheckBox = new CheckBoxControl( true );
+        toggleCheckBox->addEventHandler( new ToggleGraticuleHandler( graticuleNode ) );
+        box->addControl( toggleCheckBox );
+        LabelControl* labelControl = new LabelControl( "Show Graticule" );
+        labelControl->setFontSize( 24.0f );
+        box->addControl( labelControl  );
+    }
 
     MouseCoordsTool* tool = new MouseCoordsTool( mapNode );
     tool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );

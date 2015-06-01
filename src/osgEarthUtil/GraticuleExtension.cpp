@@ -60,10 +60,7 @@ GraticuleExtension::connect(MapNode* mapNode)
         return false;
     }
 
-    _effect = new GraticuleTerrainEffect( _options, _dbOptions.get() );
-    mapNode->getTerrainEngine()->addEffect( _effect.get() );
-
-    _node = new GraticuleNode(mapNode, _effect.get(), _options);
+   _node = new GraticuleNode(mapNode, _options);
     mapNode->addChild(_node.get());
     
     OE_INFO << LC << "Installed!\n";
@@ -76,10 +73,8 @@ GraticuleExtension::disconnect(MapNode* mapNode)
 {
     if ( mapNode )
     {
-        mapNode->getTerrainEngine()->removeEffect( _effect.get() );
         mapNode->removeChild(_node.get());
     }
-    _effect = 0L;
     _node = 0L;
     return true;
 }

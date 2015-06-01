@@ -52,9 +52,10 @@ _mapNode(mapNode),
 
 GraticuleNode::~GraticuleNode()
 {
-    if ( _mapNode.valid() )
+    osg::ref_ptr< MapNode > mapNode = _mapNode.get();
+    if ( mapNode.valid() )
     {
-        _mapNode->getTerrainEngine()->removeEffect( _effect );
+        mapNode->getTerrainEngine()->removeEffect( _effect );
     }
 }
 

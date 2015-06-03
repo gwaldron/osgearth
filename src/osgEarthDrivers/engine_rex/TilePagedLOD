@@ -41,6 +41,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             TileNodeRegistry* liveTiles,
             TileNodeRegistry* deadTiles);
 
+        /** The tile key that this LOD will load when it comes into view. */
+        void setKey(const TileKey& key) { _key = key; }
+        const TileKey& getKey() const { return _key; }
+
         /**
          * Sets a bounding box and localization matrix that will allow
          * the PagedLOD to perform pre-emptive tight culling before loading 
@@ -73,6 +77,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual ~TilePagedLOD();
 
     private:
+        TileKey                        _key;
         osg::ref_ptr<TileNodeRegistry> _live;
         osg::ref_ptr<TileNodeRegistry> _dead;
         UID                            _engineUID;
@@ -88,7 +93,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             void update(unsigned frame);
         };
         osg::ref_ptr<MyProgressCallback> _progress;
-        optional<osg::BoundingBox> _bbox;
+        optional<osg::BoundingBox>       _bbox;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

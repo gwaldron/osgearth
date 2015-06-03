@@ -136,29 +136,6 @@ TileNode::setLastTraversalFrame(unsigned frame)
     _lastTraversalFrame = frame;
 }
 
-osg::Group*
-TileNode::getPayloadGroup() const
-{
-    return _payload.get();
-}
-
-osg::Group*
-TileNode::getOrCreatePayloadGroup()
-{
-    if ( !_payload.valid() )
-    {
-        osg::StateSet* stateSet = new osg::StateSet();
-        std::string binName = Stringify() << "oe.PayloadBin." << _engineUID;
-        stateSet->setRenderBinDetails(1, binName);
-        stateSet->setNestRenderBins( false );
-
-        _payload = new osg::Group();
-        _payload->setStateSet( stateSet );
-        this->addChild( _payload.get() );
-    }
-    return _payload.get();
-}
-
 void
 TileNode::traverse( osg::NodeVisitor& nv )
 {

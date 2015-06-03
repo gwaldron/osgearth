@@ -149,7 +149,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             package.define( "SPLAT_GPU_NOISE",   _gpuNoise );
             package.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
 
-            package.replace( "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareMatrixName().get() );
+            package.replace( "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
             package.loadFunction( vp, package.VertModel );

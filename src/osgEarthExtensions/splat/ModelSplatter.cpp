@@ -157,6 +157,7 @@ ModelSplatter::establish()
 void
 ModelSplatter::operator()(const TileKey& key, osg::Node* node)
 {
+#if 0
     TerrainTileNode* tile = osgEarth::findTopMostNodeOfType<TerrainTileNode>(node);
     if ( !tile )
         return;
@@ -201,4 +202,5 @@ ModelSplatter::operator()(const TileKey& key, osg::Node* node)
         //ss->addUniform(new osg::Uniform("oe_terrain_tex", 2));
         //ss->addUniform(new osg::Uniform("oe_terrain_tex_matrix", osg::Matrixf(*elevationTexMat)) );        
     }
+#endif
 }

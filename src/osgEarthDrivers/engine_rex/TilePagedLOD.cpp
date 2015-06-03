@@ -340,6 +340,12 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
                         // modify the priority according to the child's priority offset and scale.
                         priority = _perRangeDataList[numChildren]._priorityOffset + priority * _perRangeDataList[numChildren]._priorityScale;
 
+
+                        // Immediately create the child group.
+                        //TileGroup* childGroup = new TileGroup( this->_key );
+                        
+
+
 #if 0
                         // uncomment this to test immmediate loading of tiles
                         // Note: needs additional work, atomic mutexing, etc for multithreaded use.

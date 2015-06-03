@@ -775,12 +775,20 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 }
             }
 
-            //TODO: need this or not??
-            optional<std::string>& texMatUniformName = layerAdded->shareMatrixName();
+#if 0 // no longer necessary.
+            optional<std::string>& texUniformName = layerAdded->shareTexUniformName();
+            if ( !texUniformName.isSet() )
+            {
+                texUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_tex";
+            }
+
+            optional<std::string>& texMatUniformName = layerAdded->shareTexMatUniformName();
             if ( !texMatUniformName.isSet() )
             {
                 texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texMatrix";
+                OE_INFO << LC << "Layer \"" << layerAdded->getName() << "\" texmat uniform = \"" << texMatUniformName.get() << "\"\n";
             }
+#endif
         }
     }
 
@@ -801,6 +809,8 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
                 getTextureCompositor()->releaseTextureImageUnit( *layerRemoved->shareImageUnit() );
                 layerRemoved->shareImageUnit().unset();
             }
+
+            //TODO: remove the sampler/matrix uniforms
         }
     }
 
@@ -1047,7 +1057,7 @@ RexTerrainEngineNode::updateState()
                 const ImageLayer* layer = i->get();
                 if ( layer->isShared() )
                 {
-                    std::string texName = Stringify() << "oe_layer_" << layer->getUID() << "_tex";
+                    std::string texName = layer->shareTexUniformName().get();
                     terrainStateSet->addUniform( new osg::Uniform(texName.c_str(), layer->shareImageUnit().get()) );
                     OE_INFO << LC << "Layer \"" << layer->getName() << "\" in uniform \"" << texName << "\"\n";
                 }

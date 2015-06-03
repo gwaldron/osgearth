@@ -65,6 +65,13 @@ SurfaceNodeFactory::createSurfaceNode()
                 r._texMatrix = i->get()->getMatrix();
                 r._imageLayer = i->get()->getImageLayer();
                 r._layerID = r._imageLayer ? r._imageLayer->getUID() : -1;
+                
+                // a shared layer needs access to a static uniform name.
+                if ( r._imageLayer->isShared() )
+                {
+                    r._texMatrixUniformID = osg::Uniform::getNameID( r._imageLayer->shareTexMatUniformName().get() );
+                }
+
                 drawable->_layers.push_back(r);
             }
         }

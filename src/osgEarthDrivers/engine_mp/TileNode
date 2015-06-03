@@ -45,10 +45,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         osg::RefMatrixf* getNormalTextureMatrix() const;
 
-        osg::Group* getPayloadGroup() const;
-
-        osg::Group* getOrCreatePayloadGroup();
-
 
     public:
         /**
@@ -135,7 +131,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         osg::ref_ptr<osg::RefMatrixf>      _elevTexMat;
         osg::ref_ptr<osg::RefMatrixf>      _normalTexMat;
         osg::BoundingBox                   _terrainBBox;
-        osg::ref_ptr<osg::Group>           _payload;
     };
 
 

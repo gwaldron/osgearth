@@ -215,7 +215,7 @@ TileGroupFactory::createTileNode(TerrainTileModel* model,
                 //TODO: don't really need this if we set it up in the Engine 
                 //  once at the top level when adding the layer.
                 stateSet->addUniform( new osg::Uniform(
-                    imageLayer->shareSamplerName()->c_str(),
+                    imageLayer->shareTexUniformName()->c_str(),
                     imageLayer->shareImageUnit().get() ));
             }
 
@@ -224,7 +224,7 @@ TileGroupFactory::createTileNode(TerrainTileModel* model,
                 osg::StateSet* stateSet = tileNode->getOrCreateStateSet();
 
                 stateSet->addUniform( new osg::Uniform(
-                    imageLayer->shareMatrixName()->c_str(),
+                    imageLayer->shareTexMatUniformName()->c_str(),
                     *(layerModel->getMatrix())) );
             }
         }
@@ -332,6 +332,7 @@ TileGroupFactory::createTileNodeGraph(TerrainTileModel* model,
     {
         osg::BoundingSphere bs = surfaceNode->getBound();
         TilePagedLOD* plod = new TilePagedLOD( _terrainEngine->getUID(), _liveTiles, _deadTiles );
+        plod->setKey     ( model->getKey() );
         plod->setCenter  ( bs.center() );
         plod->addChild   ( surfaceNode );
         plod->setFileName( 1, Stringify() 

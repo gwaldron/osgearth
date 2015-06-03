@@ -40,10 +40,6 @@ namespace osgEarth
 
         const TileKey& getKey() const { return _model->getKey(); }
 
-        virtual osg::Group* getPayloadGroup() const =0;
-
-        virtual osg::Group* getOrCreatePayloadGroup() =0;
-
     protected:
         virtual ~TerrainTileNode() { }
 

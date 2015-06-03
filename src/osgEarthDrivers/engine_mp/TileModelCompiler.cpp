@@ -1881,7 +1881,7 @@ namespace
                 // a shared layer needs access to a static uniform name.
                 if ( layer._imageLayer->isShared() )
                 {
-                    layer._texMatUniformID = osg::Uniform::getNameID( layer._imageLayer->shareMatrixName().get() );
+                    layer._texMatUniformID = osg::Uniform::getNameID( layer._imageLayer->shareTexMatUniformName().get() );
                 }
             }
 

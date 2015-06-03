@@ -33,6 +33,7 @@
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/Skins>
 #include <osgEarthSymbology/RenderSymbol>
+#include <osgEarthSymbology/CoverageSymbol>
 
 #include <osgEarth/Config>
 #include <osg/Object>

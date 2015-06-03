@@ -37,10 +37,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const TileKey& getKey() const { return _model->getKey(); }
 
-        osg::Group* getPayloadGroup() const;
-
-        osg::Group* getOrCreatePayloadGroup();
-
     public:
 
         void notifyOfArrival(TileNode* that);
@@ -113,7 +109,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool                                 _outOfDate;
         bool                                 _dirty;
         osg::BoundingBox                     _terrainBBox;
-        osg::ref_ptr<osg::Group>             _payload;
 
         osg::ref_ptr<osg::Texture>           _elevationTexture;
         osg::ref_ptr<osg::RefMatrixf>        _elevationTextureMatrix;

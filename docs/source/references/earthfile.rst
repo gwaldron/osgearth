@@ -179,6 +179,8 @@ An *image layer* is a raster image overlaid on the map's geometry.
                enabled        = "true"
                visible        = "true"
                shared         = "false"
+               shared_sampler = "string"
+               shared_matrix  = "string"
                coverage       = "false"
                feather_pixels = "false"
                min_filter     = "LINEAR"
@@ -235,6 +237,13 @@ An *image layer* is a raster image overlaid on the map's geometry.
 +-----------------------+--------------------------------------------------------------------+
 | shared                | Generates a secondary, dedicated sampler for this layer so that it |
 |                       | may be accessed globally by custom shaders.                        |
++-----------------------+--------------------------------------------------------------------+
+| shared_sampler        | For a shared layer, the uniform name of the sampler that will be   |
+|                       | available in GLSL code.                                            |
++-----------------------+--------------------------------------------------------------------+
+| shared_matrix         | For a shared layer, the uniform name of the texture matrix that    |
+|                       | will be available in GLSL code that you can use to access          |
+|                       | the proper texture coordinate for the ``shared_sampler`` above.    |
 +-----------------------+--------------------------------------------------------------------+
 | coverage              | Indicates that this is a coverage layer, i.e. a layer that conveys |
 |                       | discrete values with particular semantics. An example would be a   |

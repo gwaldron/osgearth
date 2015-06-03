@@ -787,7 +787,13 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 }
             }
 
-            optional<std::string>& texMatUniformName = layerAdded->shareMatrixName();
+            optional<std::string>& texUniformName = layerAdded->shareTexUniformName();
+            if ( !texUniformName.isSet() )
+            {
+                texUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_tex";
+            }
+
+            optional<std::string>& texMatUniformName = layerAdded->shareTexMatUniformName();
             if ( !texMatUniformName.isSet() )
             {
                 texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texMatrix";
@@ -1032,15 +1038,17 @@ MPTerrainEngineNode::updateState()
             terrainStateSet->addUniform( new osg::Uniform(
                 Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
 
-            // bind the shared layer uniforms.
-            for(ImageLayerVector::const_iterator i = _update_mapf->imageLayers().begin(); i != _update_mapf->imageLayers().end(); ++i)
+            // assign the uniforms for each shared layer.
+            int numImageLayers = _update_mapf->imageLayers().size();
+            for( int i=0; i<numImageLayers; ++i )
             {
-                const ImageLayer* layer = i->get();
-                if ( layer->isShared() )
+                ImageLayer* layer = _update_mapf->getImageLayerAt(i);
+                if ( layer->getEnabled() && layer->isShared() )
                 {
-                    std::string texName = Stringify() << "oe_layer_" << layer->getUID() << "_tex";
-                    terrainStateSet->addUniform( new osg::Uniform(texName.c_str(), layer->shareImageUnit().get()) );
-                    OE_INFO << LC << "Layer \"" << layer->getName() << "\" in uniform \"" << texName << "\"\n";
+                    terrainStateSet->addUniform( new osg::Uniform(
+                        layer->shareTexUniformName()->c_str(),
+                        layer->shareImageUnit().get() ) );
+                        
                 }
             }
         }

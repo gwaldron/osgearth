@@ -1,15 +1,7 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+osgEarth Sample
 
-ReadyMap.ORG provides free global base map data for osgEarth developers!
-This tiled, worldwide dataset of imagery, elevation, and street map data
-is a great base map that provides global context for your own local datasets.
-It works "out of the box" with osgEarth applications.
-
-**** NOTICE ****
-YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
-
+Demonstrates the use of the night color filter, which only shows a layer in nighttime.  You need to have the sky activated for this shader to work.
 -->
 <map name="readymap.org" type="geocentric">
     

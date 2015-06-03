@@ -153,6 +153,7 @@ SET(HEADERS_COLORFILTER
     HSLColorFilter
     RGBColorFilter
     ChromaKeyColorFilter
+    NightColorFilter
 )
 SOURCE_GROUP( Headers\\ColorFilters FILES ${HEADERS_COLORFILTER} )
 
@@ -165,6 +166,7 @@ SET(SOURCES_COLORFILTER
     HSLColorFilter.cpp
     RGBColorFilter.cpp
     ChromaKeyColorFilter.cpp
+    NightColorFilter.cpp
 )
 SOURCE_GROUP( Sources\\ColorFilters FILES ${SOURCES_COLORFILTER} )
 

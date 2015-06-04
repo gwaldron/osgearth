@@ -1100,6 +1100,7 @@ namespace
         // surface normals will double as our skirt extrusion vectors
         osg::Vec3Array* skirtVectors = d.normals;
 
+
         // find the skirt height
         double skirtHeight = d.surfaceBound.radius() * skirtRatio;
 
@@ -1109,22 +1110,23 @@ namespace
         osg::Vec4Array* skirtAttribs = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_6)); //new osg::Vec4Array();
         osg::Vec4Array* skirtAttribs2 = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_7)); //new osg::Vec4Array();
 
-        osg::ref_ptr<osg::DrawElements> elements = d.newDrawElements(GL_TRIANGLES);
-
+        // Use the existing DrawElements on the surface so we merge the skirts and the surface together.
+        osg::ref_ptr<osg::DrawElements> elements = dynamic_cast< osg::DrawElements* >(d.surface->getPrimitiveSet(0));
+        if (!elements)
+        {
+            OE_WARN << LC << "Couldn't find existing DrawElements" << std::endl;
+            return;
+        }
+       
         int skirtIndex = 0;
         // bottom:
         for( unsigned int c=0; c < d.numCols; ++c )
         {
             int orig_i = d.indices[c];
-
+          
             if (orig_i < 0)
             {
-                if ( elements->getNumIndices() > 0 )
-                {
-                    d.surface->addPrimitiveSet( elements.get() );
-                    elements = d.newDrawElements(GL_TRIANGLES);
-                    skirtIndex = 0;
-                }
+                skirtIndex = 0;
             }
             else
             {
@@ -1178,12 +1180,7 @@ namespace
             int orig_i = d.indices[r*d.numCols+(d.numCols-1)];
             if (orig_i < 0)
             {
-                if ( elements->getNumIndices() > 0 )
-                {
-                    d.surface->addPrimitiveSet( elements.get() );
-                    elements = d.newDrawElements(GL_TRIANGLES);
-                    skirtIndex = 0;
-                }
+                skirtIndex = 0;
             }
             else
             {
@@ -1236,12 +1233,7 @@ namespace
             int orig_i = d.indices[(d.numRows-1)*d.numCols+c];
             if (orig_i < 0)
             {
-                if ( elements->getNumIndices() > 0 )
-                {
-                    d.surface->addPrimitiveSet( elements.get() );
-                    elements = d.newDrawElements(GL_TRIANGLES);
-                    skirtIndex = 0;
-                }
+                skirtIndex = 0;
             }
             else
             {
@@ -1294,12 +1286,7 @@ namespace
             int orig_i = d.indices[r*d.numCols];
             if (orig_i < 0)
             {
-                if ( elements->getNumIndices() > 0 )
-                {
-                    d.surface->addPrimitiveSet( elements.get() );
-                    elements = d.newDrawElements(GL_TRIANGLES);
-                    skirtIndex = 0;
-                }
+                skirtIndex = 0;
             }
             else
             {
@@ -1343,12 +1330,6 @@ namespace
                     elements->addElement(skirtVerts->size() - 2);
                 }
             }
-        }
-
-        // add the final prim set.
-        if ( elements->getNumIndices() > 0 )
-        {
-            d.surface->addPrimitiveSet( elements.get() );
         }
     }
 
@@ -1973,17 +1954,6 @@ namespace
         d.surface->_elevTex = d.model->_elevationTexture.get();
     }
 
-    struct CullByTraversalMask : public osg::Drawable::CullCallback
-    {
-        CullByTraversalMask( unsigned mask ) : _mask(mask) { }
-        unsigned _mask;
-
-        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const 
-        {
-            return ((unsigned)nv->getTraversalMask() & ((unsigned)nv->getNodeMaskOverride() | _mask)) == 0;
-        }
-    };
-
     osg::Geode* makeBBox(const Data& d)
     {        
         osg::Geode* geode = new osg::Geode();
@@ -2062,7 +2032,6 @@ _optimizeTriOrientation( optimizeTriOrientation ),
 _options               ( options ),
 _textureImageUnit      ( texImageUnit )
 {
-    _cullByTraversalMask = new CullByTraversalMask(*options.secondaryTraversalMask());
     _debug =
         _options.debug() == true || 
         ::getenv("OSGEARTH_MP_DEBUG") != 0L;
@@ -2096,13 +2065,10 @@ TileModelCompiler::compile(TileModel*        model,
     d.surface = new MPGeometry( d.model->_tileKey, d.frame, _textureImageUnit );
     d.surface->setName( "surface" );
     d.surfaceGeode = new osg::Geode();
-    d.surfaceGeode->setNodeMask( *_options.primaryTraversalMask() );
-
+   
     tile->addChild( d.surfaceGeode );
 
-    // A Geode/Geometry for the skirt. This is good for traversal masking (e.g. shadows)
-    // but bad since we're not combining the entire tile into a single geometry.
-    // TODO: make this optional?
+    // Create the skirt if the heightfield skirt ratio is > 0.0
     d.createSkirt = (_options.heightFieldSkirtRatio().value() > 0.0);
 
     // adjust the tile locator for geocentric mode:
@@ -2127,9 +2093,7 @@ TileModelCompiler::compile(TileModel*        model,
     if ( d.maskRecords.size() > 0 )
         createMaskGeometry( d );
 
-    // build the skirts.
-    if ( d.createSkirt )
-        createSkirtGeometry( d, *_options.heightFieldSkirtRatio() );
+    
 
     // at this point, make sure we actually built any surface geometry.
     if (d.surface->getVertexArray() &&
@@ -2139,6 +2103,11 @@ TileModelCompiler::compile(TileModel*        model,
 
         // tesselate the surface verts into triangles.
         tessellateSurfaceGeometry( d, _optimizeTriOrientation, *_options.normalizeEdges() );
+
+        // build the skirts.
+        if ( d.createSkirt )
+            createSkirtGeometry( d, *_options.heightFieldSkirtRatio() );
+
     }
 
     // installs the per-layer rendering data into the Geometry objects.

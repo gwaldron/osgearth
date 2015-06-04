@@ -1109,10 +1109,11 @@ namespace
         osg::Vec4Array* skirtAttribs = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_6)); //new osg::Vec4Array();
         osg::Vec4Array* skirtAttribs2 = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_7)); //new osg::Vec4Array();
 
-        osg::ref_ptr<osg::DrawElements> elements = d.newDrawElements(GL_TRIANGLE_STRIP);
+        osg::ref_ptr<osg::DrawElements> elements = d.newDrawElements(GL_TRIANGLES);
 
+        int skirtIndex = 0;
         // bottom:
-        for( unsigned int c=0; c<d.numCols-1; ++c )
+        for( unsigned int c=0; c < d.numCols; ++c )
         {
             int orig_i = d.indices[c];
 
@@ -1121,7 +1122,8 @@ namespace
                 if ( elements->getNumIndices() > 0 )
                 {
                     d.surface->addPrimitiveSet( elements.get() );
-                    elements = d.newDrawElements(GL_TRIANGLE_STRIP);
+                    elements = d.newDrawElements(GL_TRIANGLES);
+                    skirtIndex = 0;
                 }
             }
             else
@@ -1153,13 +1155,25 @@ namespace
                 const osg::Vec2& tilec = (*d.renderTileCoords.get())[orig_i];
                 d.renderTileCoords->push_back( tilec );
 
-                elements->addElement(orig_i);
-                elements->addElement(skirtVerts->size()-1);
+                skirtIndex++;
+                if (skirtIndex > 1)
+                {
+                    int prev_i = d.indices[c-1];
+                    elements->addElement(prev_i);
+                    elements->addElement(skirtVerts->size() - 2);
+                    elements->addElement(orig_i);
+
+                    elements->addElement(skirtVerts->size() - 1);
+                    elements->addElement(orig_i);
+                    elements->addElement(skirtVerts->size() - 2);
+                }
             }
+            
         }
 
         // right:
-        for( unsigned int r=0; r<d.numRows-1; ++r )
+        skirtIndex = 0;
+        for( unsigned int r=0; r < d.numRows; ++r )
         {
             int orig_i = d.indices[r*d.numCols+(d.numCols-1)];
             if (orig_i < 0)
@@ -1167,7 +1181,8 @@ namespace
                 if ( elements->getNumIndices() > 0 )
                 {
                     d.surface->addPrimitiveSet( elements.get() );
-                    elements = d.newDrawElements(GL_TRIANGLE_STRIP);
+                    elements = d.newDrawElements(GL_TRIANGLES);
+                    skirtIndex = 0;
                 }
             }
             else
@@ -1199,13 +1214,24 @@ namespace
                 const osg::Vec2& tilec = (*d.renderTileCoords.get())[orig_i];
                 d.renderTileCoords->push_back( tilec );
 
-                elements->addElement(orig_i);
-                elements->addElement(skirtVerts->size()-1);
+                skirtIndex++;
+                if (skirtIndex > 1)
+                {
+                    int prev_i = d.indices[(r-1)*d.numCols+(d.numCols-1)];
+                    elements->addElement(prev_i);
+                    elements->addElement(skirtVerts->size() - 2);
+                    elements->addElement(orig_i);
+
+                    elements->addElement(skirtVerts->size() - 1);
+                    elements->addElement(orig_i);
+                    elements->addElement(skirtVerts->size() - 2);
+                }
             }
         }
 
         // top:
-        for( int c=d.numCols-1; c>0; --c )
+        skirtIndex = 0;
+        for( int c=d.numCols-1; c >= 0; --c )
         {
             int orig_i = d.indices[(d.numRows-1)*d.numCols+c];
             if (orig_i < 0)
@@ -1213,7 +1239,8 @@ namespace
                 if ( elements->getNumIndices() > 0 )
                 {
                     d.surface->addPrimitiveSet( elements.get() );
-                    elements = d.newDrawElements(GL_TRIANGLE_STRIP);
+                    elements = d.newDrawElements(GL_TRIANGLES);
+                    skirtIndex = 0;
                 }
             }
             else
@@ -1245,12 +1272,23 @@ namespace
                 const osg::Vec2& tilec = (*d.renderTileCoords.get())[orig_i];
                 d.renderTileCoords->push_back( tilec );
 
-                elements->addElement(orig_i);
-                elements->addElement(skirtVerts->size()-1);
+                skirtIndex++;
+                if (skirtIndex > 1)
+                {
+                    int prev_i = d.indices[(d.numRows - 1)*d.numCols + c + 1];
+                    elements->addElement(prev_i);
+                    elements->addElement(skirtVerts->size() - 2);
+                    elements->addElement(orig_i);
+
+                    elements->addElement(skirtVerts->size() - 1);
+                    elements->addElement(orig_i);
+                    elements->addElement(skirtVerts->size() - 2);
+                }
             }
         }
 
         // left:
+        skirtIndex = 0;
         for( int r=d.numRows-1; r>=0; --r )
         {
             int orig_i = d.indices[r*d.numCols];
@@ -1259,7 +1297,8 @@ namespace
                 if ( elements->getNumIndices() > 0 )
                 {
                     d.surface->addPrimitiveSet( elements.get() );
-                    elements = d.newDrawElements(GL_TRIANGLE_STRIP);
+                    elements = d.newDrawElements(GL_TRIANGLES);
+                    skirtIndex = 0;
                 }
             }
             else
@@ -1291,8 +1330,18 @@ namespace
                 const osg::Vec2& tilec = (*d.renderTileCoords.get())[orig_i];
                 d.renderTileCoords->push_back( tilec );
 
-                elements->addElement(orig_i);
-                elements->addElement(skirtVerts->size()-1);
+                skirtIndex++;
+                if (skirtIndex > 1)
+                {
+                    int prev_i = d.indices[(r + 1)*d.numCols];
+                    elements->addElement(prev_i);
+                    elements->addElement(skirtVerts->size() - 2);
+                    elements->addElement(orig_i);
+
+                    elements->addElement(skirtVerts->size() - 1);
+                    elements->addElement(orig_i);
+                    elements->addElement(skirtVerts->size() - 2);
+                }
             }
         }
 
@@ -1924,24 +1973,6 @@ namespace
         d.surface->_elevTex = d.model->_elevationTexture.get();
     }
 
-
-    // Optimize the data. Convert all modes to GL_TRIANGLES and run the
-    // critical vertex cache optimizations.
-    void optimize( Data& d, bool runMeshOptimizers, ProgressCallback* progress )
-    {
-        // Run the index mesh optimizer.
-        if (runMeshOptimizers && d.maskRecords.size() < 1)
-        {
-            OE_START_TIMER(index_mesh_time);
-            osgUtil::Optimizer o;
-            o.optimize( d.surfaceGeode, osgUtil::Optimizer::INDEX_MESH );
-
-            if (progress)
-                progress->stats()["index_mesh_time"] += OE_STOP_TIMER(index_mesh_time);
-
-        }
-    }
-
     struct CullByTraversalMask : public osg::Drawable::CullCallback
     {
         CullByTraversalMask( unsigned mask ) : _mask(mask) { }
@@ -2113,9 +2144,6 @@ TileModelCompiler::compile(TileModel*        model,
     // installs the per-layer rendering data into the Geometry objects.
     installRenderData( d );
 
-    // performance optimizations.
-    optimize( d, _options.optimizeTiles() == true, progress );
-    
     // install a KdTree index if necessary
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())

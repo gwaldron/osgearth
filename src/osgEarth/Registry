@@ -23,20 +23,19 @@
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/SharedSARepo>
-#include <osgEarth/Units>
 #include <osgEarth/ShaderGenerator>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
-#include <OpenThreads/Atomic>
 #include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
-#include <osgDB/ReaderWriter>
-#include <osgText/Font>
 #include <set>
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
 
+namespace osgText {
+    class Font;
+}
 
 namespace osgEarth
 {    
@@ -49,6 +48,7 @@ namespace osgEarth
     class ColorFilterRegistry;
     class StateSetCache;
     class ObjectIndex;
+    class Units;
     
     typedef SharedSARepo<osg::Program> ProgramSharedRepo;
 
@@ -199,7 +199,7 @@ namespace osgEarth
         /**
          * Gets the default set of osgDB::Options to use.
          */
-        const osgDB::Options* getDefaultOptions() const { return _defaultOptions.get(); }
+        const osgDB::Options* getDefaultOptions() const;
 
         /**
          * Clones an options structure (fixing the archive caching), or creates

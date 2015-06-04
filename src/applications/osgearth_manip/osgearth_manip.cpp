@@ -72,7 +72,7 @@ namespace
     {
         const char* text[] =
         {
-            "left mouse :",        "pan",
+            "left mouse :",        "pan (or clear tethering)",
             "middle mouse :",      "rotate",
             "right mouse :",       "continuous zoom",
             "double-click :",      "zoom to point",
@@ -82,8 +82,8 @@ namespace
             "shift-right-mouse :", "locked panning",
             "u :",                 "toggle azimuth lock",
             "o :",                 "toggle perspective/ortho",
-            "t :",                 "toggle tethering",
-            "T :",                 "toggle tethering (with angles)",
+            "t :",                 "Tether",
+            "T :",                 "Tether (with angles)",
             "a :",                 "toggle viewpoint arcing",
             "z :",                 "toggle throwing",
             "k :",                 "toggle collision"
@@ -109,12 +109,12 @@ namespace
      * Some preset viewpoints to show off the setViewpoint function.
      */
     static Viewpoint VPs[] = {
-        Viewpoint( "Africa",        osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
-        Viewpoint( "California",    osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
-        Viewpoint( "Europe",        osg::Vec3d(    0.0,  45.0, 0.0 ), 0.0, -90.0, 4e6 ),
-        Viewpoint( "Washington DC", osg::Vec3d(  -77.0,  38.0, 0.0 ), 0.0, -90.0, 1e6 ),
-        Viewpoint( "Australia",     osg::Vec3d(  135.0, -20.0, 0.0 ), 0.0, -90.0, 2e6 ),
-        Viewpoint( "Boston",        osg::Vec3d( -71.096936, 42.332771, 0 ), 0.0, -90, 1e5 )
+        Viewpoint( "Africa",            0.0,   0.0, 0.0, 0.0, -90.0, 10e6 ),
+        Viewpoint( "California",     -121.0,  34.0, 0.0, 0.0, -90.0, 6e6 ),
+        Viewpoint( "Europe",            0.0,  45.0, 0.0, 0.0, -90.0, 4e6 ),
+        Viewpoint( "Washington DC",   -77.0,  38.0, 0.0, 0.0, -90.0, 1e6 ),
+        Viewpoint( "Australia",       135.0, -20.0, 0.0, 0.0, -90.0, 2e6 ),
+        Viewpoint( "Boston",         -71.096936, 42.332771, 0, 0.0, -90, 1e5 )
     };
 
 
@@ -368,20 +368,22 @@ namespace
                 if ( ea.getKey() == 't' )
                 {                                
                     _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
-                    _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get(), 2.0 );
+
                     Viewpoint vp = _manip->getViewpoint();
-                    vp.setRange(5000);
-                    _manip->setViewpoint(vp);
+                    vp.setNode( _xform.get() );
+                    vp.range() = 5000.0;
+                    _manip->setViewpoint(vp, 4.0 );
                 }
                 else if (ea.getKey() == 'T')
                 {                  
                     _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
-                    _manip->setTetherNode(
-                        _manip->getTetherNode() ? 0L : _xform.get(),
-                        2.0,        // time to tether
-                        45.0,       // final heading
-                        -45.0,      // final pitch
-                        5000.0 );   // final range
+
+                    Viewpoint vp;
+                    vp.setNode( _xform.get() );
+                    vp.heading() = 45.0;
+                    vp.pitch()   = -45.0;
+                    vp.range()   = 10000.0;
+                    _manip->setViewpoint( vp, 4.0 );
                 }
                 return true;
             }

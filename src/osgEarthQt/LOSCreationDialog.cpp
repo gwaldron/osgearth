@@ -760,7 +760,8 @@ void LOSCreationDialog::centerMapOnNode(osg::Node* node)
       output.fromWorld( _map->getSRS(), center );
       //_map->worldPointToMapPoint(center, output);
 
-      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), *_views));
+      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(
+          "center", output.x(), output.y(), output.z(), 0.0, -90.0, 1e5), *_views));
     }
   }
 }

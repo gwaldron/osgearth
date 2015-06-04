@@ -41,6 +41,15 @@ _node   ( rhs._node.get() )
     //NOP
 }
 
+Viewpoint::Viewpoint(const char* name, double lon, double lat, double z, double h, double p, double range)
+{
+    if (name) _name = name;
+    _point->set( SpatialReference::get("wgs84"), lon, lat, z, ALTMODE_ABSOLUTE );
+    _heading->set( h, Units::DEGREES );
+    _pitch->set( p, Units::DEGREES );
+    _range->set( range, Units::METERS );
+}
+
 Viewpoint::Viewpoint(const Config& conf)
 {
     conf.getIfSet( "name",    _name );
@@ -132,16 +141,16 @@ Viewpoint::toString() const
             << "x="   << _point->x()
             << ", y=" << _point->y()
             << ", z=" << _point->z()
-            << ", h=" << _heading->asParseableString()
-            << ", p=" << _pitch->asParseableString()
+            << ", h=" << _heading->to(Units::DEGREES).asParseableString()
+            << ", p=" << _pitch->to(Units::DEGREES).asParseableString()
             << ", d=" << _range->asParseableString();
     }
     else
     {
         return Stringify()
             << "attached to node; "
-            << ", h=" << _heading->asParseableString()
-            << ", p=" << _pitch->asParseableString()
+            << ", h=" << _heading->to(Units::DEGREES).asParseableString()
+            << ", p=" << _pitch->to(Units::DEGREES).asParseableString()
             << ", d=" << _range->asParseableString();
     }
 }

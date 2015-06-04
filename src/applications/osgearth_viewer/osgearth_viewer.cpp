@@ -22,6 +22,9 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
+#include <osgEarth/Units>
+#include <osgEarth/Viewpoint>
+
 #define LC "[viewer] "
 
 using namespace osgEarth;
@@ -40,6 +43,37 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
+#if 0
+    Distance range(100.0, Units::CENTIMETERS);
+    Config c = range.getConfig();
+    c.key() = "distance";
+    OE_WARN << c.toJSON() << "\n";
+    Distance rangeIn(c);
+    std::string parseable = rangeIn.asParseableString();
+    
+    optional<Distance> range3;
+    c.getIfSet("distance", range3);
+    OE_WARN << range3->asParseableString() << "\n";
+
+    Viewpoint vp;
+    vp.range()->set( 12324.0, Units::KILOMETERS );
+
+    c = vp.getConfig();
+
+    optional<Distance> d;
+    c.getIfSet("range", d);
+    OE_WARN << "D.iset = " << d.isSet() << "\n";
+    OE_WARN << "D.value = " << d->asParseableString() << "\n";
+
+    Viewpoint vp2(c);
+
+    OE_WARN << "VP COnfig = " << c.toJSON() << "\n";
+    OE_WARN << "VP2 Config = " << vp2.getConfig().toJSON() << "\n";
+
+    return 0;
+#endif
+
+
     osg::ArgumentParser arguments(&argc,argv);
 
     // help?

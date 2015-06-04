@@ -32,8 +32,6 @@
 #include <list>
 #include <utility>
 
-#define USE_OBSERVER_NODE_PATH 1
-
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
@@ -467,15 +465,9 @@ namespace osgEarth { namespace Util
             */
             void setMaxOffset(double max_x_offset, double max_y_offset);
 
-            /**
-            * Gets the TetherMode
-            */
+            /** Mode used for tethering to a node. */
+            void setTetherMode( TetherMode value ) { _tether_mode = value; }
             TetherMode getTetherMode() const { return _tether_mode; }
-
-            /**
-            * Sets the TetherMode
-            */
-            void setTetherMode( TetherMode tether_mode ) { _tether_mode = tether_mode; }
 
             /** Access to the list of Actions that will automatically break a tether */
             ActionTypeVector& getBreakTetherActions() { return _breakTetherActions; }
@@ -590,9 +582,17 @@ namespace osgEarth { namespace Util
         virtual void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
         
         /**
+         * @deprecated Please use clearViewpoint() instead.
+         *
          * Cancels a viewpoint transition if one is in progress
          */
-        void cancelViewpointTransition() { _setting_viewpoint = false; }        
+        void cancelViewpointTransition();
+
+        /**
+         * Cancels a call to setViewpoint that resulted in an ongoing transition OR
+         * attachment to a node.
+         */
+        void clearViewpoint();
 
         /**
          * Sets the viewpoint to activate when performing the ACTION_HOME action.
@@ -600,11 +600,18 @@ namespace osgEarth { namespace Util
         void setHomeViewpoint( const Viewpoint& vp, double duration_s = 0.0 );
 
         /**
-         * Whether the manipulator is performing a viewpoint transition
+         * Whether the manipulator is performing a viewpoint transition.
          */
-        bool isSettingViewpoint() const { return _setting_viewpoint; }
+        bool isSettingViewpoint() const;
 
         /**
+         * Whether the view is tethered to a node.
+         */
+        bool isTethering() const;
+
+        /**
+         * @deprecated Please use setViewpoint() instead.
+         *
          * Locks the camera's focal point on the center of a node's bounding sphere.
          * While tethered, you can still call navigate or call setViewpoint() to move the
          * camera relative to the tether object. Pass NULL to deactivate the tether.
@@ -617,6 +624,8 @@ namespace osgEarth { namespace Util
         void setTetherNode(osg::Node* node, double duration_s =0.0);
         
         /**
+         * @deprecated Please use setViewpoint() instead.
+         *
          * Same as setTether(node, duration) but you also specify the final 
          * heading, pitch, and range offset from the tethered node.
          */
@@ -628,6 +637,8 @@ namespace osgEarth { namespace Util
             double     newRange_meters);
 
         /**
+         * @deprecated Please call clearViewpoint() instead.
+         *
          * Same as calling setTetherNode(NULL).
          */
         void breakTether();
@@ -635,7 +646,8 @@ namespace osgEarth { namespace Util
         /**
          * Sets a callback to be invoked upon a tether or tether break
          */
-        class TetherCallback : public osg::Referenced {
+        class TetherCallback : public osg::Referenced
+        {
         public:
             virtual void operator()(osg::Node* tetherNode) { }
         protected:
@@ -643,18 +655,6 @@ namespace osgEarth { namespace Util
         };
         void setTetherCallback(TetherCallback* cb) { _tetherCallback = cb; }
         TetherCallback* getTetherCallback() { return _tetherCallback.get(); }
-
-        /**
-         * Gets the node to which the camera is tethered, or NULL if tethering is
-         * disabled.
-         */
-        osg::Node* getTetherNode() const;
-
-        /**
-         * Gets the spatial reference system of the terrain map to which this
-         * manipulator is currently attached.
-         */
-        //const osgEarth::SpatialReference* getSRS() const;
 
         /**
          * Move the focal point of the camera using deltas (normalized screen coords).
@@ -928,8 +928,8 @@ namespace osgEarth { namespace Util
 
         bool _is_geocentric;
 
-        osg::observer_ptr<osg::Node> _tether_node;     
-        bool                         _tether_completed;
+        //osg::observer_ptr<osg::Node> _tetherNode;     
+        //bool                         _tether_completed;
 
         double                  _time_s_last_frame;
         double                  _time_s_now;        
@@ -973,17 +973,23 @@ namespace osgEarth { namespace Util
 
         // the "pending" viewpoint is only used to enable setting the
         // viewpoint before the frame loop starts
-        bool                    _has_pending_viewpoint;
-        Viewpoint               _pending_viewpoint;
-        double                  _pending_viewpoint_duration_s;
+        optional<Viewpoint>     _pendingViewpoint;
+        Duration                _pendingViewpointDuration;
 
-        bool                    _setting_viewpoint;
-        //bool                    _set_viewpoint_started_while_tethered;
-        Viewpoint               _start_viewpoint;
-        double                  _delta_heading, _delta_pitch, _delta_range, _arc_height;
-        osg::Vec3d              _delta_focal_point;
+        optional<Viewpoint>     _setVP0;                    // Starting viewpoint
+        optional<Viewpoint>     _setVP1;                    // Final viewpoint
+        optional<Duration>      _setVPStartTime;            // Time of call to setViewpoint
+        Duration                _setVPDuration;             // Transition time for setViewpoint
+        double                  _setVPAccel, _setVPAccel2;  // Acceleration factors for setViewpoint
+        double                  _setVPArcHeight;            // Altitude arcing height for setViewpoint
+
+        bool setViewpointFrame(double time_s);
+        void setLookAt(const osg::Vec3d& center, double azim, double pitch, double range);
+        void resetLookAt();
+
+        double                  _deltaHeading, _deltaPitch, _deltaRange, _arcHeight;
+        osg::Vec3d              _deltaFocalPoint;
         double                  _time_s_set_viewpoint;
-        double                  _set_viewpoint_duration_s;
         double                  _set_viewpoint_accel;
         double                  _set_viewpoint_accel_2;
 

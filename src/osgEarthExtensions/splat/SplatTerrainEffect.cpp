@@ -28,6 +28,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarthUtil/SimplexNoise>
 
+#include <osg/Texture2D>
 #include <osgDB/WriteFile>
 
 #include "SplatShaders"

@@ -29,8 +29,8 @@
 namespace osgEarth
 {
     /**
-     * Viewpoint data object. Stores a view configuration as a focal point
-     * and the camera's position relative to that focal point.
+     * Viewpoint stores a focal point (or a focal node) and camrea parameters
+     * relative to that point.
      */
     class OSGEARTH_EXPORT Viewpoint
     {
@@ -49,6 +49,12 @@ namespace osgEarth
          * Deserialize a Config into this viewpoint object.
          */
         Viewpoint(const Config& conf);
+
+        /**
+         * Backwards-compatible constructor. SRS is WGS84, angles are in degrees,
+         * range is in meters.
+         */
+        Viewpoint(const char* name, double lon, double lat, double z, double heading, double pitch, double range);
 
     public:
 
@@ -81,6 +87,7 @@ namespace osgEarth
          */
         void setNode(osg::Node* value)                    { _node = value; }
         bool getNode(osg::ref_ptr<osg::Node>& safe) const { return _node.lock(safe); }
+        bool hasNode() const                              { return _node.valid(); }
 
         /**
          * Heading (in degrees) of the camera relative to the focal point.

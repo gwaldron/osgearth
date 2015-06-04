@@ -172,6 +172,7 @@ ViewpointsExtension::ViewpointsExtension(const ConfigOptions& options)
     {
         for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
         {
+
             viewpoints.push_back( Viewpoint(*i) );
         }
     }

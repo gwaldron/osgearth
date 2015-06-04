@@ -98,7 +98,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         int                                       _textureImageUnit;
         bool                                      _optimizeTriOrientation;
         const MPTerrainEngineOptions&             _options;
-        osg::ref_ptr<osg::Drawable::CullCallback> _cullByTraversalMask;
         CompilerCache                             _cache;
         bool                                      _debug;
     };

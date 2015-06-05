@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2012 Pelican Mapping
+* Copyright 2008-2014 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -15,33 +15,38 @@
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
+*
 */
-#ifndef OSGEARTH_SHADERS
-#define OSGEARTH_SHADERS 1
+#ifndef OSGEARTHUTIL_NIGHT_COLOR_FILTER
+#define OSGEARTHUTIL_NIGHT_COLOR_FILTER
 
-#include <osgEarthUtil/Export>
-#include <osgEarth/ShaderLoader>
+#include <osgEarthUtil/Common>
+#include <osgEarth/ColorFilter>
+#include <osg/Uniform>
 
 namespace osgEarth { namespace Util
 {
-    struct OSGEARTHUTIL_EXPORT Shaders : public osgEarth::ShaderPackage
-	{
-        Shaders();
+    /**
+    * Color filter that only renders a layer in night
+    */
+    class OSGEARTHUTIL_EXPORT NightColorFilter : public osgEarth::ColorFilter
+    {
+    public:
+        NightColorFilter();
+        NightColorFilter(const Config& conf);
+        virtual ~NightColorFilter() { }
 
-		std::string
-            ContourMap_Vertex,
-            ContourMap_Fragment,
+    public: // ColorFilter
+        virtual std::string getEntryPointFunctionName(void) const;
+        virtual void install(osg::StateSet* stateSet) const;
+        virtual Config getConfig() const;
 
-            Fog_Vertex,
-            Fog_Fragment,
+    protected:
+        unsigned m_instanceId;
+    
+        void init();
+    };
 
-            Graticule_Fragment,
-            Graticule_Vertex,
-
-            LogDepthBuffer_VertFile,
-            LogDepthBuffer_FragFile,
-            LogDepthBuffer_VertOnly_VertFile;
-	};	
 } } // namespace osgEarth::Util
 
-#endif // OSGEARTH_SHADERS
+#endif // OSGEARTHUTIL_NIGHT_COLOR_FILTER

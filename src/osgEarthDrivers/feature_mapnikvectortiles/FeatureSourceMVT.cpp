@@ -122,7 +122,7 @@ public:
         result->setFirstLevel(_maxLevel);
         result->setMaxLevel(_maxLevel);
         result->setProfile(profile);
-        result->geoInterp() = osgEarth::GeoInterpolation::GEOINTERP_RHUMB_LINE;
+        result->geoInterp() = osgEarth::GEOINTERP_RHUMB_LINE;
         return result;
     }
 
@@ -212,17 +212,17 @@ public:
                         osg::ref_ptr< osgEarth::Symbology::Geometry > geometry; 
 
                         eGeomType geomType = static_cast<eGeomType>(feature.type());
-                        if (geomType == eGeomType::Polygon)
+                        if (geomType == ::Polygon)
                         {
                             //OE_NOTICE << "Polygon " << std::endl;
                             geometry = new osgEarth::Symbology::Polygon();
                         }
-                        else if (geomType == eGeomType::LineString)
+                        else if (geomType == ::LineString)
                         {
                             //OE_NOTICE << "LineString" << std::endl;
                             geometry = new osgEarth::Symbology::LineString();
                         }
-                        else if (geomType == eGeomType::Point)
+                        else if (geomType == ::Point)
                         {
                             //OE_NOTICE << "Point" << std::endl;
                             geometry = new osgEarth::Symbology::PointSet();

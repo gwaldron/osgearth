@@ -741,6 +741,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                             if (parentHF.valid())
                             {
                                 layerHF = parentHF;
+                                numHeightFieldsInCache++;
                                 break;
                             }
                             else

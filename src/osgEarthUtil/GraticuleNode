@@ -27,26 +27,37 @@
 #include <osgEarthAnnotation/LabelNode>
 
 
-namespace osgEarth { namespace Graticule
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Util;
     using namespace osgEarth::Annotation;
 
 
     /**
     * Node that manges the graticule resolution and labels
     */
-    class OSGEARTH_GRATICULE_EXPORT GraticuleNode : public osg::Group
+    class OSGEARTHUTIL_EXPORT GraticuleNode : public osg::Group
     {
     public:
 
-        GraticuleNode(MapNode* mapNode, GraticuleTerrainEffect* terrainEffect, const GraticuleOptions& options);
+        GraticuleNode(MapNode* mapNode, const GraticuleOptions& options = GraticuleOptions() );
 
         virtual void traverse(osg::NodeVisitor& nv);
 
+        /**
+         * Gets whether the graticule is visible.
+         */
         bool getVisible() const;
+
+        /**
+         * Sets whether the graticule is visible or not.
+         */
         void setVisible(bool visible);
+
+        /**
+         * Gets the list of resolutions to display in the graticule
+         */
+        std::vector< double >& getResolutions();
 
     protected:
         // DTOR
@@ -72,7 +83,6 @@ namespace osgEarth { namespace Graticule
         osg::ref_ptr< LatLongFormatter > _formatter;
         osg::ref_ptr< osg::Uniform > _resolutionUniform;
         float _resolution;
-        float _maxResolution;
         double _lon;
         double _lat;
         GeoExtent _viewExtent;
@@ -81,8 +91,10 @@ namespace osgEarth { namespace Graticule
         const GraticuleOptions _options;
         bool _visible;
 
+        std::vector< double > _resolutions;
+
     };
 
-} } // namespace osgEarth::Graticule
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTH_GRATICULE_NODE

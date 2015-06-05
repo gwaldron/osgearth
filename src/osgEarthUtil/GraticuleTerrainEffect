@@ -20,21 +20,19 @@
 #define OSGEARTH_GRATICULE_TERRAIN_EFFECT_H
 
 #include "GraticuleOptions"
+#include "Export"
 
 #include <osgEarth/TerrainEffect>
-#include <osgEarth/ImageLayer>
-#include <osg/Image>
 #include <osg/Uniform>
-#include <osg/Texture2D>
 
-using namespace osgEarth;
-
-namespace osgEarth { namespace Graticule
+namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     /**
-     * Effect that applies normal mapping to the terrain.
+     * Effect that applies a graticule effect to the terrain.
      */
-    class GraticuleTerrainEffect : public TerrainEffect
+    class OSGEARTHUTIL_EXPORT GraticuleTerrainEffect : public TerrainEffect
     {
     public:
         /** construct a new terrain effect. */
@@ -55,6 +53,6 @@ namespace osgEarth { namespace Graticule
         virtual ~GraticuleTerrainEffect() { }
     };
 
-} } // namespace osgEarth::Graticule
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTH_GRATICULE_TERRAIN_EFFECT_H

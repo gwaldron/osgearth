@@ -38,6 +38,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/PointSprite>
 #include <osg/PolygonMode>
+#include <osg/Texture2D>
 #include <osg/BlendFunc>
 #include <osg/FrontFace>
 #include <osg/CullFace>

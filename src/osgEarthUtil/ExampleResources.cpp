@@ -71,9 +71,7 @@ namespace
     void flyToViewpoint(EarthManipulator* manip, const Viewpoint& vp)
     {
         Viewpoint currentVP = manip->getViewpoint();
-        GeoPoint vp0(currentVP.getSRS(), currentVP.getFocalPoint(), ALTMODE_ABSOLUTE);
-        GeoPoint vp1(vp.getSRS(), vp.getFocalPoint(), ALTMODE_ABSOLUTE);
-        double distance = vp0.distanceTo(vp1);
+        double distance = currentVP.focalPoint()->distanceTo(currentVP.focalPoint().get());
         double duration = osg::clampBetween(distance / VP_METERS_PER_SECOND, VP_MIN_DURATION, VP_MAX_DURATION);
         manip->setViewpoint( vp, duration );
     }

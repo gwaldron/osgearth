@@ -209,11 +209,13 @@ main(int argc, char** argv)
     losGroup->addChild( tetheredRadial );
     tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );
 
-    manip->setHomeViewpoint( Viewpoint( 
-        "Mt Rainier",        
-        osg::Vec3d( -121.488, 46.2054, 0 ), 
-        0.0, -50, 100000,
-        geoSRS) );
+    osgEarth::Viewpoint vp;
+    vp.name() = "Mt Ranier";
+    vp.focalPoint()->set(geoSRS, -121.488, 46.2054, 0, ALTMODE_ABSOLUTE);
+    vp.pitch() = -50.0;
+    vp.range() = 100000;
+
+    manip->setHomeViewpoint( vp );
 
     viewer.setSceneData( root );    
 

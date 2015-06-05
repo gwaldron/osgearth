@@ -253,7 +253,8 @@ void AnnotationListWidget::onItemDoubleClicked(QListWidgetItem* item)
       output.fromWorld( _manager->map()->getSRS(), center );
       //_manager->map()->worldPointToMapPoint(center, output);
 
-      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), _views));
+      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(
+          "doubleclick", output.x(), output.y(), output.z(), 0.0, -90.0, 1e5), _views));
     }
   }
 }

@@ -216,6 +216,11 @@ void GraticuleNode::updateLabels()
         for (unsigned int i = minLatIndex; i <= maxLatIndex; i++)
         {
             GeoPoint point(srs, _lon, -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
+            // Skip drawing labels at the poles
+            if (osg::equivalent(osg::absolute( point.y()), 90.0, 0.1))
+            {
+                continue;
+            }
             LabelNode* label = _labelPool[labelIndex++];
             label->setNodeMask(~0u);
             label->setPosition(point);

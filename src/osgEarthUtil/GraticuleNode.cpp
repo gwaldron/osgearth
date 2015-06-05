@@ -360,6 +360,10 @@ osgEarth::GeoExtent GraticuleNode::getViewExtent(osg::Camera* camera)
     center.fromWorld(srs, bs.center());
 
     double radiusDegrees = bs.radius() /= 111000.0;
+    
+    // Try to clamp the maximum radius so far out views don't go wacky.
+    radiusDegrees = osg::minimum(radiusDegrees, 90.0);
+
     double minLon = center.x() - radiusDegrees;
     double minLat = osg::clampAbove(center.y() - radiusDegrees, -90.0);
     double maxLon = center.x() + radiusDegrees;

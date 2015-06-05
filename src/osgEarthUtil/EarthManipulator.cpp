@@ -1041,7 +1041,7 @@ EarthManipulator::setViewpointFrame(double time_s)
 
             // the more smoothsteps you do, the more pronounced the fade-in/out effect        
             tp = smoothStepInterp( tp );
-            tp = smoothStepInterp( tp );
+            //tp = smoothStepInterp( tp );
         }
         else if ( t > 0.0 )
         {
@@ -1179,6 +1179,7 @@ EarthManipulator::isTethering() const
 void
 EarthManipulator::setTetherNode(osg::Node* node, double duration_s)
 {
+    // @deprecated function - please don't add new code here.
     if ( node )
     {
         Viewpoint vp;
@@ -1209,6 +1210,17 @@ EarthManipulator::setTetherNode(osg::Node* node,
     setViewpoint( newVP, duration_s );
 
     OE_WARN << LC << "TODO: call the tether callback\n";
+}
+
+osg::Node*
+EarthManipulator::getTetherNode() const
+{
+    if ( !isTethering() )
+        return 0L;
+
+    osg::ref_ptr<osg::Node> node;
+    _setVP1->getNode(node);
+    return node.release();
 }
 
 

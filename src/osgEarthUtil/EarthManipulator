@@ -637,6 +637,11 @@ namespace osgEarth { namespace Util
             double     newRange_meters);
 
         /**
+         * @deprecated - Please use getViewpoint().getNode() instead.
+         */
+        osg::Node* getTetherNode() const;
+
+        /**
          * @deprecated Please call clearViewpoint() instead.
          *
          * Same as calling setTetherNode(NULL).

@@ -276,11 +276,15 @@ namespace osgEarth
             return conf;
         }
 
-        std::string asParseableString() const {
+        std::string asString() const {
             return Stringify() << _value << _units.getAbbr();
         }
 
-    private:
+        virtual std::string asParseableString() const {
+            return asString();
+        }
+
+    protected:
         double _value;
         Units  _units;
     };
@@ -300,6 +304,10 @@ namespace osgEarth
         Angle(double value, const Units& units) : qualified_double<Angle>(value, units) { }
         Angle(const Config& conf) : qualified_double<Angle>(conf, Units::DEGREES) { }
         Angle(const std::string& str) : qualified_double<Angle>(str, Units::DEGREES) { }
+        std::string asParseableString() const {
+            if ( _units == Units::DEGREES ) return Stringify() << _value;
+            else return asString();
+        }
     };
     typedef Angle Angular; // backwards compat
 

@@ -1029,13 +1029,13 @@ EarthManipulator::setViewpointFrame(double time_s)
             if ( tp <= 0.5 )
             {
                 double t2 = 2.0*tp;
-                t2 = accelerationInterp( t2, _setVPAccel );
+                //t2 = accelerationInterp( t2, _setVPAccel );
                 tp = 0.5*t2;
             }
             else
             {
                 double t2 = 2.0*(tp-0.5);
-                t2 = accelerationInterp( t2, _setVPAccel2 );
+                //t2 = accelerationInterp( t2, _setVPAccel2 );
                 tp = 0.5+(0.5*t2);
             }
 
@@ -1045,7 +1045,7 @@ EarthManipulator::setViewpointFrame(double time_s)
         }
         else if ( t > 0.0 )
         {
-            tp = accelerationInterp( tp, _setVPAccel );
+            //tp = accelerationInterp( tp, _setVPAccel );
             tp = smoothStepInterp( tp );
         }
 

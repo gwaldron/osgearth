@@ -82,8 +82,8 @@ namespace
             "shift-right-mouse :", "locked panning",
             "u :",                 "toggle azimuth lock",
             "o :",                 "toggle perspective/ortho",
-            "t :",                 "Tether",
-            "T :",                 "Tether (with angles)",
+            "8 :",                 "Tether to thing 1",
+            "9 :",                 "Tether to thing 2",
             "a :",                 "toggle viewpoint arcing",
             "z :",                 "toggle throwing",
             "k :",                 "toggle collision"
@@ -320,8 +320,8 @@ namespace
      */
     struct Simulator : public osgGA::GUIEventHandler
     {
-        Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode, osg::Node* model)
-            : _manip(manip), _mapnode(mapnode), _model(model), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
+        Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode, osg::Node* model, const char* name, char key)
+            : _manip(manip), _mapnode(mapnode), _model(model), _name(name), _key(key)
         {
             if ( !model )
             { 
@@ -343,7 +343,7 @@ namespace
             Style style;
             style.getOrCreate<TextSymbol>()->size() = 32.0f;
             style.getOrCreate<TextSymbol>()->declutter() = false;
-            _label = new LabelNode(_mapnode, GeoPoint(), "Hello World", style);
+            _label = new LabelNode(_mapnode, GeoPoint(), _name, style);
             _label->setDynamic( true );
             _cam->addChild( _label );
 
@@ -365,31 +365,22 @@ namespace
             }
             else if ( ea.getEventType() == ea.KEYDOWN )
             {
-                if ( ea.getKey() == 't' )
+                if ( ea.getKey() == _key )
                 {                                
                     _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
 
                     Viewpoint vp = _manip->getViewpoint();
                     vp.setNode( _xform.get() );
-                    vp.range() = 5000.0;
-                    _manip->setViewpoint(vp, 4.0 );
-                }
-                else if (ea.getKey() == 'T')
-                {                  
-                    _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
-
-                    Viewpoint vp;
-                    vp.setNode( _xform.get() );
-                    vp.heading() = 45.0;
-                    vp.pitch()   = -45.0;
-                    vp.range()   = 10000.0;
-                    _manip->setViewpoint( vp, 4.0 );
+                    vp.range() = 15000.0;
+                    _manip->setViewpoint(vp, 2.0);
                 }
                 return true;
             }
             return false;
         }
 
+        std::string                        _name;
+        char                               _key;
         MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
         osg::ref_ptr<osg::Camera>          _cam;
@@ -441,7 +432,22 @@ int main(int argc, char** argv)
         model = osgDB::readNodeFile(modelFile);
 
     // Simulator for tethering:
-    viewer.addEventHandler( new Simulator(root, manip, mapNode, model) );
+    Simulator* sim1 = new Simulator(root, manip, mapNode, model, "Thing 1", '8');
+    sim1->_lat0 = 55.0;
+    sim1->_lon0 = 45.0;
+    sim1->_lat1 = -55.0;
+    sim1->_lon1 = -45.0;
+    viewer.addEventHandler(sim1);
+
+    Simulator* sim2 = new Simulator(root, manip, mapNode, model, "Thing 2", '9');
+    sim2->_name = "Thing 2";
+    sim2->_lat0 = 54.0;
+    sim2->_lon0 = 45.0;
+    sim2->_lat1 = -54.0;
+    sim2->_lon1 = -44.0;
+    viewer.addEventHandler(sim2);
+
+    //viewer.addEventHandler( new Simulator(root, manip, mapNode, model) );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 

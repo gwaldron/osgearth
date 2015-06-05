@@ -26,8 +26,7 @@ using namespace osgEarth::Util;
 
 GraticuleNode::GraticuleNode(MapNode* mapNode, const GraticuleOptions& options):
 _mapNode(mapNode),
-    _resolution(options.maxResolution().get()),
-    _maxResolution(options.maxResolution().get()),
+    _resolution(10.0/180.0),
     _options(options),
     _lat(0.0),
     _lon(0.0),
@@ -35,6 +34,43 @@ _mapNode(mapNode),
     _visible(true)
 {
     setNumChildrenRequiringUpdateTraversal(1);
+
+    // Read the resolutions from the config.
+    if (options.resolutions().isSet())
+    {
+        StringTokenizer tok(" ");
+        StringVector tokens;
+        tok.tokenize(*options.resolutions(), tokens);
+        for (unsigned int i = 0; i < tokens.size(); i++)
+        {
+            double r = as<double>(tokens[i], -1.0);
+            if (r > 0) 
+            {
+                _resolutions.push_back( r );
+            }
+        }
+    }
+
+    if (_resolutions.empty())
+    {
+        // Initialize the resolutions
+        _resolutions.push_back( 10.0 );
+        _resolutions.push_back( 5.0 );
+        _resolutions.push_back( 2.5 );
+        _resolutions.push_back( 1.0 );
+        _resolutions.push_back( 0.5 );
+        _resolutions.push_back( 0.25 );
+        _resolutions.push_back( 0.125 );
+        _resolutions.push_back( 0.0625 );
+        _resolutions.push_back( 0.03125 );
+
+    }
+
+    // Divide all the resolutions by 180 so they match up with the terrain effects concept of resolutions
+    for (unsigned int i = 0; i < _resolutions.size(); i++)
+    {
+        _resolutions[i] /= 180.0;
+    }
 
     // Create the effect and add it to the MapNode.
     _effect = new GraticuleTerrainEffect( options, 0 );
@@ -106,6 +142,11 @@ void GraticuleNode::initLabelPool()
         _labelPool.push_back(label);
         addChild(label);
     }
+}
+
+std::vector< double >& GraticuleNode::getResolutions()
+{
+    return _resolutions;
 }
 
 void GraticuleNode::updateLabels()
@@ -222,12 +263,15 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
     
         double targetResolution = (_viewExtent.height() / 180.0) / _options.gridLines().get();
 
-        double resolution = _maxResolution;
-        while (resolution  > targetResolution)
+        double resolution = _resolutions[0];
+        for (unsigned int i = 0; i < _resolutions.size(); i++)
         {
-            resolution /= 2.0;
+            resolution = _resolutions[i];
+            if (resolution <= targetResolution)
+            {
+                break;
+            }
         }
-        
 
         // Trippy
         //resolution = targetResolution;

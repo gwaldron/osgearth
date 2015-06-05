@@ -54,6 +54,11 @@ namespace osgEarth { namespace Util
          */
         void setVisible(bool visible);
 
+        /**
+         * Gets the list of resolutions to display in the graticule
+         */
+        std::vector< double >& getResolutions();
+
     protected:
         // DTOR
         virtual ~GraticuleNode();
@@ -78,7 +83,6 @@ namespace osgEarth { namespace Util
         osg::ref_ptr< LatLongFormatter > _formatter;
         osg::ref_ptr< osg::Uniform > _resolutionUniform;
         float _resolution;
-        float _maxResolution;
         double _lon;
         double _lat;
         GeoExtent _viewExtent;
@@ -86,6 +90,8 @@ namespace osgEarth { namespace Util
         std::vector< osg::ref_ptr< LabelNode > > _labelPool;
         const GraticuleOptions _options;
         bool _visible;
+
+        std::vector< double > _resolutions;
 
     };
 

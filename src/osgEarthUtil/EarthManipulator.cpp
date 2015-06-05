@@ -72,6 +72,36 @@ namespace
     osg::Vec3d lerp(const osg::Vec3d& a, const osg::Vec3d& b, double t) {
         return a*(1.0-t) + b*t;
     }
+
+    osg::Matrix computeLocalToWorld(osg::Node* node) {
+        osg::Matrix m;
+        if ( node ) {
+            osg::NodePathList nodePaths = node->getParentalNodePaths();
+            if ( nodePaths.size() > 0 ) {
+                m = osg::computeLocalToWorld( nodePaths[0] );
+            }
+            else {
+                osg::Transform* t = dynamic_cast<osg::Transform*>(node);
+                if ( t ) {
+                    t->computeLocalToWorldMatrix( m, 0L );
+                }
+            }
+        }
+        return m;
+    }
+
+    osg::Vec3d computeWorld(osg::Node* node) {
+        return node ? osg::Vec3d(0,0,0) * computeLocalToWorld(node) : osg::Vec3d(0,0,0);
+    }
+
+    double normalizeAzimRad( double input )
+    {
+        if(fabs(input) > 2*osg::PI)
+            input = fmod(input,2*osg::PI);
+        if( input < -osg::PI ) input += osg::PI*2.0;
+        if( input > osg::PI ) input -= osg::PI*2.0;
+        return input;
+    }
 }
 
 
@@ -443,8 +473,8 @@ EarthManipulator::EarthManipulator() :
 osgGA::CameraManipulator(),
 _last_action           ( ACTION_NULL ),
 _last_event            ( EVENT_MOUSE_DOUBLE_CLICK ),
-_time_s_last_event     (0.0),
-_frame_count           ( 0 ),
+_time_s_last_event     ( 0.0 ),
+_frameCount            ( 0 ),
 _findNodeTraversalMask ( 0x01 )
 {
     reinitialize();
@@ -456,7 +486,7 @@ osgGA::CameraManipulator( rhs ),
 _last_action            ( ACTION_NULL ),
 _last_event             ( EVENT_MOUSE_DOUBLE_CLICK ),
 _time_s_last_event      (0.0),
-_frame_count            ( 0 ),
+_frameCount             ( 0 ),
 _settings               ( new Settings(*rhs.getSettings()) ),
 _findNodeTraversalMask  ( rhs._findNodeTraversalMask )
 {
@@ -618,7 +648,6 @@ EarthManipulator::established()
 
     // Cache the SRS.
     _srs = _mapNode->getMapSRS();
-    _is_geocentric = _srs->isGeographic();
 
     // Set the home viewpoint if necessary.
     if ( !_homeViewpoint.isSet() )
@@ -705,7 +734,7 @@ EarthManipulator::setCenter( const osg::Vec3d& worldPos )
 
     // cache the "last known" focal point height so we can use it as a
     // backup if necessary.
-    _centerHeight = _is_geocentric ? _center.length() : _center.z();
+    _centerHeight = _srs->isGeographic() ? _center.length() : _center.z();
 }
 
 
@@ -740,16 +769,6 @@ EarthManipulator::getNode()
     return _node.get();
 }
 
-
-static double
-normalizeAzimRad( double input ) {
-    if(fabs(input) > 2*osg::PI)
-        input = fmod(input,2*osg::PI);
-    if( input < -osg::PI ) input += osg::PI*2.0;
-    if( input > osg::PI ) input -= osg::PI*2.0;
-    return input;
-}
-
 osg::Matrixd
 EarthManipulator::getRotation(const osg::Vec3d& point) const
 {
@@ -770,7 +789,6 @@ EarthManipulator::getRotation(const osg::Vec3d& point) const
     {
         //We are looking nearly straight down the up vector, so use the Y vector for world up instead
         worldUp = osg::Vec3d(0, 1, 0);
-        //OE_NOTICE << "using y vector victor" << std::endl;
     }
 
     side = lookVector ^ worldUp;
@@ -783,247 +801,22 @@ EarthManipulator::getRotation(const osg::Vec3d& point) const
     return osg::Matrixd::lookAt( point - (lookVector * offset), point, up);
 }
 
-#if 0
-void
-EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_s)
-{
-    if ( !established() ) 
-    {
-        _pending_viewpoint = vp;
-        _pending_viewpoint_duration_s = duration_s;
-        _has_pending_viewpoint = true;
-    }
-
-    else if ( duration_s > 0.0 )
-    {
-        // xform the target viewpoint into map coordinates.
-        GeoPoint vpFocalPoint = vp.focalPoint().get();
-        if ( _srs.valid() && vpFocalPoint.isValid() && !_srs->isEquivalentTo(vpFocalPoint.getSRS()) )
-        {
-            vpFocalPoint.transform( _srs.get(), vpFocalPoint );
-        }
-
-        // The current viewpoint:
-        _startVP = getViewpoint();
-        
-        _deltaHeading = (vp.heading().get() - _startVP.heading().get()).as(Units::DEGREES);
-        _deltaPitch   = (vp.pitch().get()   - _startVP.pitch().get()).as(Units::DEGREES);
-        _deltaRange   = (vp.range().get()   - _startVP.range().get()).as(Units::METERS);
-
-        _deltaFocalPoint = vpFocalPoint. - _startVP.getFocalPoint(); // TODO: adjust for lon=180 crossing
-
-        while( _delta_heading > 180.0 ) _delta_heading -= 360.0;
-        while( _delta_heading < -180.0 ) _delta_heading += 360.0;
-
-        // adjust for geocentric date-line crossing
-        if ( _is_geocentric )
-        {
-            while( _delta_focal_point.x() > 180.0 ) _delta_focal_point.x() -= 360.0;
-            while( _delta_focal_point.x() < -180.0 ) _delta_focal_point.x() += 360.0;
-        }
-
-        // calculate an acceleration factor based on the Z differential
-        double h0 = _start_viewpoint.getRange() * sin( osg::DegreesToRadians(-_start_viewpoint.getPitch()) );
-        double h1 = vp.getRange() * sin( osg::DegreesToRadians( -vp.getPitch() ) );
-        double dh = (h1 - h0);
-
-        // calculate the total distance the focal point will travel and derive an arc height:
-        double de;
-        if ( _is_geocentric && (vp.getSRS() == 0L || vp.getSRS()->isGeographic()) )
-        {
-            osg::Vec3d startFP = _start_viewpoint.getFocalPoint();
-            double x0,y0,z0, x1,y1,z1;
-            _srs->getEllipsoid()->convertLatLongHeightToXYZ(
-                osg::DegreesToRadians( _start_viewpoint.y() ), osg::DegreesToRadians( _start_viewpoint.x() ), 0.0, x0, y0, z0 );
-            _srs->getEllipsoid()->convertLatLongHeightToXYZ(
-                osg::DegreesToRadians( vpFocalPoint.y() ), osg::DegreesToRadians( vpFocalPoint.x() ), 0.0, x1, y1, z1 );
-            de = (osg::Vec3d(x0,y0,z0) - osg::Vec3d(x1,y1,z1)).length();
-        }
-        else
-        {
-            de = _delta_focal_point.length();
-        }
-
-        _arc_height = 0.0;
-        if ( _settings->getArcViewpointTransitions() )
-        {         
-            _arc_height = osg::maximum( de - fabs(dh), 0.0 );
-        }
-
-        // calculate acceleration coefficients
-        if ( _arc_height > 0.0 )
-        {
-            // if we're arcing, we need seperate coefficients for the up and down stages
-            double h_apex = 2.0*(h0+h1) + _arc_height;
-            double dh2_up = fabs(h_apex - h0)/100000.0;
-            _set_viewpoint_accel = log10( dh2_up );
-            double dh2_down = fabs(h_apex - h1)/100000.0;
-            _set_viewpoint_accel_2 = -log10( dh2_down );
-        }
-        else
-        {
-            // on arc => simple unidirectional acceleration:
-            double dh2 = (h1 - h0)/100000.0;
-            _set_viewpoint_accel = fabs(dh2) <= 1.0? 0.0 : dh2 > 0.0? log10( dh2 ) : -log10( -dh2 );
-            if ( fabs( _set_viewpoint_accel ) < 1.0 ) _set_viewpoint_accel = 0.0;
-        }
-        
-        if ( _settings->getAutoViewpointDurationEnabled() )
-        {
-            double maxDistance = _srs->getEllipsoid()->getRadiusEquator();
-            double ratio = osg::clampBetween( de/maxDistance, 0.0, 1.0 );
-            ratio = accelerationInterp( ratio, -4.5 );
-            double minDur, maxDur;
-            _settings->getAutoViewpointDurationLimits( minDur, maxDur );
-            duration_s = minDur + ratio*(maxDur-minDur);
-        }
-        
-        // don't use _time_s_now; that's the time of the last event
-        _time_s_set_viewpoint = osg::Timer::instance()->time_s();
-        _set_viewpoint_duration_s = duration_s;
-
-        _setting_viewpoint = true;
-        
-        _thrown = false;
-        _task->_type = TASK_NONE;
-    }
-    else
-    {
-        osg::Vec3d new_center = vp.getFocalPoint();
-
-        // start by transforming the requested focal point into world coordinates:
-        if ( _srs.valid() )
-        {
-            // resolve the VP's srs. If the VP's SRS is not specified, assume that it
-            // is either lat/long (if the map is geocentric) or X/Y (otherwise).
-            osg::ref_ptr<const SpatialReference> vp_srs = vp.getSRS()? vp.getSRS() :
-                _is_geocentric? _srs->getGeographicSRS() :
-                _srs.get();
-
-            if ( !_srs->isEquivalentTo( vp_srs.get() ) )
-            {
-                osg::Vec3d local = new_center;
-                // reproject the focal point if necessary:
-                vp_srs->transform2D( new_center.x(), new_center.y(), _srs.get(), local.x(), local.y() );
-                new_center = local;
-            }
-
-            // convert to geocentric coords if necessary:
-            if ( _is_geocentric )
-            {
-                osg::Vec3d geocentric;
-
-                _srs->getEllipsoid()->convertLatLongHeightToXYZ(
-                    osg::DegreesToRadians( new_center.y() ),
-                    osg::DegreesToRadians( new_center.x() ),
-                    new_center.z(),
-                    geocentric.x(), geocentric.y(), geocentric.z() );
-
-                new_center = geocentric;
-            }
-        }
-
-        // now calculate the new rotation matrix based on the angles:
-
-
-        double new_pitch = osg::DegreesToRadians(
-            osg::clampBetween( vp.getPitch(), _settings->getMinPitch(), _settings->getMaxPitch() ) );
-
-        double new_azim = normalizeAzimRad( osg::DegreesToRadians( vp.getHeading() ) );
-
-        setCenter( new_center );
-        setDistance( vp.getRange() );
-
-        _previousUp = getUpVector( _centerLocalToWorld );
-
-        _centerRotation = getRotation( new_center ).getRotate().inverse();
-
-        osg::Quat azim_q( new_azim, osg::Vec3d(0,0,1) );
-        osg::Quat pitch_q( -new_pitch -osg::PI_2, osg::Vec3d(1,0,0) );
-
-        osg::Matrix new_rot = osg::Matrixd( azim_q * pitch_q );
-
-        _rotation = osg::Matrixd::inverse(new_rot).getRotate();
-    } 
-
-    collisionDetect();
-}
-
-void
-EarthManipulator::updateSetViewpoint()
-{
-    double t = ( _time_s_now - _time_s_set_viewpoint ) / _set_viewpoint_duration_s;
-    double tp = t;
-
-    if ( t >= 1.0 )
-    {
-        t = tp = 1.0;        
-        _setting_viewpoint = false;
-        _tether_completed = true;
-    }
-    else if ( _arc_height > 0.0 )
-    {
-        if ( tp <= 0.5 )
-        {
-            double t2 = 2.0*tp;
-            t2 = accelerationInterp( t2, _set_viewpoint_accel );
-            tp = 0.5*t2;
-        }
-        else
-        {
-            double t2 = 2.0*(tp-0.5);
-            t2 = accelerationInterp( t2, _set_viewpoint_accel_2 );
-            tp = 0.5+(0.5*t2);
-        }
-
-        // the more smoothsteps you do, the more pronounced the fade-in/out effect        
-        tp = smoothStepInterp( tp );
-        tp = smoothStepInterp( tp );
-    }
-    else if ( t > 0.0 )
-    {
-        tp = accelerationInterp( tp, _set_viewpoint_accel );
-        tp = smoothStepInterp( tp );
-    }
-
-    Viewpoint newVP(_start_viewpoint);
-    newVP.focalPoint()->vec3d() += _delta_focal_point * tp;
-    newVP.heading() = newVP.heading().get() + (_delta_heading * tp);
-    newVP.pitch() = newVP.pitch().get() + (_delta_pitch * tp);
-    newVP.range() = newVP.range().get() + (_delta_range * tp);
-
-    //Viewpoint new_vp(
-    //    _start_viewpoint.getFocalPoint() + _delta_focal_point * tp,
-    //    _start_viewpoint.getHeading() + _delta_heading * tp,
-    //    _start_viewpoint.getPitch() + _delta_pitch * tp,
-    //    _start_viewpoint.getRange() + _delta_range * tp + (sin(osg::PI*tp)*_arc_height),
-    //    _start_viewpoint.getSRS() );
-
-#if 0
-    OE_INFO
-        << "t=" << t 
-        << ", tp=" << tp
-        << ", tsv=" << _time_s_set_viewpoint
-        << ", now=" << _time_s_now
-        << ", accel=" << _set_viewpoint_accel
-        << ", accel2=" << _set_viewpoint_accel_2
-        << std::endl;
-#endif
-
-    setViewpoint( newVP );
-}
-#endif
-
 
 Viewpoint
 EarthManipulator::getViewpoint() const
 {
     Viewpoint vp;
 
-    // If we are either tethering or transitioning:
-    if ( _setVP1.isSet() )
+    // Tethering? Use the tether viewpoint.
+    if ( isTethering() && _setVP1.isSet() )
     {
         vp = _setVP1.get();
+    }
+
+    // Transitioning? Capture the last calculated intermediate position.
+    else if ( isSettingViewpoint() )
+    {
+        vp.focalPoint()->fromWorld( _srs.get(), _center );
     }
     
     // If we are stationary:
@@ -1032,7 +825,7 @@ EarthManipulator::getViewpoint() const
         vp.focalPoint()->fromWorld( _srs.get(), _center );
     }
 
-    // always update the local offsets.
+    // Always update the local offsets.
     double localAzim, localPitch;
     getLocalEulerAngles( &localAzim, &localPitch );
 
@@ -1062,7 +855,15 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
 
     else
     {
+        // Save any existing tether node so we can properly invoke the callback.
+        osg::ref_ptr<osg::Node> oldEndNode;
+        if ( isTethering() && _tetherCallback.valid() )
+            _setVP1->getNode(oldEndNode);
+
+        // starting viewpoint; all fields will be set:
         _setVP0 = getViewpoint();
+
+        // ending viewpoint
         _setVP1 = vp;
 
         // Fill in any missing end-point data with defaults matching the current camera setup.
@@ -1071,13 +872,13 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
         getLocalEulerAngles( &defAzim, &defPitch );
 
         if ( !_setVP1->heading().isSet() )
-            _setVP1->heading().init( Angle(defAzim, Units::RADIANS) );
+            _setVP1->heading() = Angle(defAzim, Units::RADIANS);
 
         if ( !_setVP1->pitch().isSet() )
-            _setVP1->pitch().init( Angle(defPitch, Units::RADIANS) );
+            _setVP1->pitch() = Angle(defPitch, Units::RADIANS);
 
         if ( !_setVP1->range().isSet() )
-            _setVP1->range().init( Distance(_distance, Units::METERS) );
+            _setVP1->range() = Distance(_distance, Units::METERS);
 
         if ( !_setVP1->hasNode() && !_setVP1->focalPoint().isSet() )
         {
@@ -1085,34 +886,35 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
             if ( _setVP0->getNode( safeNode ) )
                 _setVP1->setNode( safeNode.get() );
             else
-                _setVP1->focalPoint().init( _setVP0->focalPoint().get() );
+                _setVP1->focalPoint() = _setVP0->focalPoint().get();
         }
 
         _setVPDuration.set( std::max(duration_seconds, 0.0), Units::SECONDS );
 
-        OE_DEBUG << LC << "SetViewpoint:\n"
-            << "from " << _setVP0->toString() << "\n"
-            << "to   " << _setVP1->toString() << "\n";
+        OE_DEBUG << LC << "setViewpoint:\n"
+            << "    from " << _setVP0->toString() << "\n"
+            << "    to   " << _setVP1->toString() << "\n";
+        
+        // access the new tether node if it exists:
+        osg::ref_ptr<osg::Node> endNode;
+        _setVP1->getNode(endNode);
 
         // Timed transition, we need to calculate some things:
         if ( duration_seconds > 0.0 )
         {
             // Start point is the current manipulator center:
-            osg::Vec3d startWorld = _center;
+            osg::Vec3d startWorld;
+            osg::ref_ptr<osg::Node> startNode;
+            startWorld = _setVP0->getNode(startNode) ? computeWorld(startNode.get()) : _center;
 
             _setVPStartTime.unset();
 
             // End point is the world coordinates of the target viewpoint:
             osg::Vec3d endWorld;
-            osg::ref_ptr<osg::Node> endNode;
-            if ( _setVP1->getNode(endNode) )
-            {
-                endWorld = osg::Vec3d(0,0,0) * osg::computeLocalToWorld(endNode->getParentalNodePaths()[0]);
-            }
+            if ( endNode.valid() )
+                endWorld = computeWorld(endNode.get());
             else
-            {
                 _setVP1->focalPoint()->transform( _srs.get() ).toWorld(endWorld);
-            }
 
             // calculate an acceleration factor based on the Z differential.
             _setVPArcHeight = 0.0;
@@ -1129,8 +931,7 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
             // calculate the total distance the focal point will travel and derive an arc height:
             double de = (endWorld - startWorld).length();
 
-            // maximum height during viewpoint transition (calc just once?)
-            double arcHeight = 0.0;
+            // maximum height during viewpoint transition
             if ( _settings->getArcViewpointTransitions() )
             {         
                 _setVPArcHeight = osg::maximum( de - fabs(dh), 0.0 );
@@ -1172,12 +973,23 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
             _setVPStartTime->set( _time_s_now, Units::SECONDS );
             setViewpointFrame( _time_s_now );
         }
-   }
-    
 
-    // set global state....
-    _thrown            = false;
-    _task->_type       = TASK_NONE;
+        // Fire a tether callback if required.
+        if ( _tetherCallback.valid() )
+        {
+            // starting a tether to a NEW node:
+            if ( isTethering() && oldEndNode.get() != endNode.get() )
+                (*_tetherCallback)( endNode.get() );
+
+            // breaking a tether:
+            else if ( !isTethering() && oldEndNode.valid() )
+                (*_tetherCallback)( 0L );
+        }
+    }
+
+    // reset other global state flags.
+    _thrown      = false;
+    _task->_type = TASK_NONE;
 }
 
 bool
@@ -1194,25 +1006,17 @@ EarthManipulator::setViewpointFrame(double time_s)
         osg::Vec3d startWorld;
         osg::ref_ptr<osg::Node> startNode;
         if ( _setVP0->getNode(startNode) )
-        {
-            startWorld = osg::Vec3d(0,0,0) * osg::computeLocalToWorld(startNode->getParentalNodePaths()[0]);
-        }
+            startWorld = computeWorld(startNode);
         else
-        {
             _setVP0->focalPoint()->transform( _srs.get() ).toWorld(startWorld);
-        }        
 
         // End point is the world coordinates of the target viewpoint:
         osg::Vec3d endWorld;
         osg::ref_ptr<osg::Node> endNode;
         if ( _setVP1->getNode(endNode) )
-        {
-            endWorld = osg::Vec3d(0,0,0) * osg::computeLocalToWorld(endNode->getParentalNodePaths()[0]);
-        }
-        else if ( _setVP1->focalPoint().isSet() )
-        {
+            endWorld = computeWorld(endNode);
+        else
             _setVP1->focalPoint()->transform( _srs.get() ).toWorld(endWorld);
-        }
 
         // Remaining time is the full duration minus the time since initiation:
         double elapsed = time_s - _setVPStartTime->as(Units::SECONDS);
@@ -1269,14 +1073,6 @@ EarthManipulator::setViewpointFrame(double time_s)
         // Activate.
         setLookAt( newCenter, newAzim, newPitch, newRange );
 
-        //OE_NOTICE 
-        //    << "dpitch = " << d_pitch.as(Units::DEGREES)
-        //    << ", dazim = " << d_azim.as(Units::DEGREES) << "\n";
-
-        //OE_DEBUG
-        //    << "start (" << startWorld.x() << ", " << startWorld.y() << ", " << startWorld.z() << "); "
-        //    << "end (" << endWorld.x() << ", " << endWorld.y() << ", " << endWorld.z() << ") \n";
-
         // At t=1 the transition is complete.
         if ( t >= 1.0 )
         {            
@@ -1324,7 +1120,7 @@ EarthManipulator::setLookAt(const osg::Vec3d& center,
 void
 EarthManipulator::resetLookAt()
 {
-    // rekajigger the distance, center, and pitch to legal values.
+    // reset the distance, center, and pitch to legal values.
     double pitch;
     getLocalEulerAngles(0L, &pitch);
 
@@ -1352,24 +1148,31 @@ EarthManipulator::isSettingViewpoint() const
 void
 EarthManipulator::cancelViewpointTransition()
 {
+    // @deprecated function - please add new code to clearViewpoint() instead
     clearViewpoint();
 }
 
 void
 EarthManipulator::clearViewpoint()
 {
+    bool breakingTether = isTethering();
+
     // Cancel any ongoing transition or tethering:
     _setVP0.unset();
     _setVP1.unset();
 
     // Restore the matrix values in a neutral state.
     resetLookAt();
+
+    // Fire the callback to indicate a tethering break.
+    if ( _tetherCallback.valid() && breakingTether )
+        (*_tetherCallback)( 0L );
 }
 
 bool
 EarthManipulator::isTethering() const
 {
-    // True if setViewpoint() was called and it has a tether-node.
+    // True if setViewpoint() was called and the viewpoint has a node.
     return _setVP1.isSet() && _setVP1->hasNode();
 }
 
@@ -1389,30 +1192,6 @@ EarthManipulator::setTetherNode(osg::Node* node, double duration_s)
     }
 }
 
-#if 0
-    _tether_completed = true;
-
-    if (_tetherNode != node)
-    {
-        breakTether();
-    }   
-
-    _tetherNode = node;
-
-    if (_tetherNode.valid() && duration_s > 0.0)
-    {                
-        _tether_completed = false;
-        Viewpoint destVP = getTetherNodeViewpoint();
-        setViewpoint( destVP, duration_s );
-
-        if ( _tetherCallback.valid() )
-        {
-            (*_tetherCallback.get())( _tetherNode.get() );
-        }
-    }
-}
-#endif
-
 void
 EarthManipulator::setTetherNode(osg::Node* node,
                                 double     duration_s,
@@ -1420,6 +1199,7 @@ EarthManipulator::setTetherNode(osg::Node* node,
                                 double     newPitchDeg,
                                 double     newRangeM)
 {
+    // @deprecated function - please don't add new code here.
     Viewpoint newVP;
     newVP.setNode( node );
     newVP.heading()->set( newHeadingDeg, Units::DEGREES );
@@ -1429,33 +1209,6 @@ EarthManipulator::setTetherNode(osg::Node* node,
     setViewpoint( newVP, duration_s );
 
     OE_WARN << LC << "TODO: call the tether callback\n";
-#if 0
-    _tether_completed = true;
-
-    if (_tetherNode != node)
-    {
-        breakTether();
-    }   
-
-    _tetherNode = node;
-
-    if (_tetherNode.valid() && duration_s > 0.0)
-    { 
-        _tether_completed = false;
-        Viewpoint destVP = getTetherNodeViewpoint();
-
-        destVP.setHeading( newHeadingDeg );
-        destVP.setPitch  ( newPitchDeg );
-        destVP.setRange  ( newRangeM );
-
-        setViewpoint( destVP, duration_s );
-
-        if ( _tetherCallback.valid() )
-        {
-            (*_tetherCallback.get())( _tetherNode.get() );
-        }
-    }
-#endif
 }
 
 
@@ -1500,22 +1253,18 @@ void EarthManipulator::collisionDetect()
 bool
 EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection, osg::Vec3d& normal) const
 {
-    osg::ref_ptr<MapNode> safeMapNode = _mapNode.get();
-    if ( safeMapNode.valid() )
+    osg::ref_ptr<MapNode> mapNode;
+    if ( _mapNode.lock(mapNode) )
     {
-    //osg::ref_ptr<osg::Node> safeNode = _node.get();
-    //if ( safeNode.valid() )
-    //{
 		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = NULL;
 
 		lsi = new osgEarth::DPLineSegmentIntersector(start,end);
-		//lsi = new osgUtil::LineSegmentIntersector(start,end);		
 
         osgUtil::IntersectionVisitor iv(lsi.get());
         iv.setTraversalMask(_intersectTraversalMask);
 
         //safeNode->accept(iv);
-        safeMapNode->getTerrainEngine()->accept(iv);
+        mapNode->getTerrainEngine()->accept(iv);
 
         if (lsi->containsIntersections())
         {
@@ -1534,13 +1283,10 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
 {
     bool success = false;
     
-    osg::ref_ptr<MapNode> safeMapNode = _mapNode.get();
-    if ( safeMapNode.valid() )
-    //osg::ref_ptr<osg::Node> safeNode = _node.get();
-    //if ( safeNode.valid() )
-    //{
+    osg::ref_ptr<MapNode> mapNode;
+    if ( _mapNode.lock(mapNode) )
     {
-        double R = _centerHeight; // = getSRS()->getEllipsoid()->getRadiusEquator();
+        double R = _centerHeight;
 
         getInverseMatrix().getLookAt(out_eye, out_target, out_up, 1.0);
         osg::Vec3d look = out_target-out_eye;
@@ -1553,12 +1299,12 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
         osgUtil::IntersectionVisitor iv(lsi.get());        
         iv.setTraversalMask(_intersectTraversalMask);
 
-        safeMapNode->getTerrainEngine()->accept(iv);
+        mapNode->getTerrainEngine()->accept(iv);
 
         if (lsi->containsIntersections())
         {
             out_target = lsi->getIntersections().begin()->getWorldIntersectPoint();
-            if ( !_is_geocentric || GeoMath::isPointVisible(out_eye, out_target, R) )
+            if ( !_srs->isGeographic() || GeoMath::isPointVisible(out_eye, out_target, R) )
             {
                 success = true;
             }
@@ -1567,7 +1313,7 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
         if ( !success )
         {
             // backup plan: intersect spheroid (if geocentric) or base plane (if projected)
-            if ( _is_geocentric )
+            if ( _srs->isGeographic() )
             {
                 osg::Vec3d i0, i1;
                 unsigned hits = GeoMath::interesectLineWithSphere(out_eye, out_eye+look*1e8, R, i0, i1);
@@ -1596,7 +1342,7 @@ EarthManipulator::intersectLookVector(osg::Vec3d& out_eye,
                 }
             }
 
-            else // !_is_geocentric
+            else // !_srs->isGeographic()
             {
                 osg::Vec3d i0;
                 osg::Plane zup(0, 0, 1, 0);
@@ -1806,28 +1552,13 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
             else if ( isSettingViewpoint() && !isTethering() )
             {
-                if ( _frame_count < 2 )
-                    _time_s_set_viewpoint = _time_s_now;
+                if ( _frameCount < 2 )
+                    _setVPStartTime->set(_time_s_now, Units::SECONDS);
             
                 setViewpointFrame( time_s_now );
             }
 
             aa.requestContinuousUpdate( isSettingViewpoint() );
-
-#if 0
-            // if we're not tethered, OR if we are tethered and the tethering process
-            // is complete, we can update the camera now. Otherwise we have to update
-            // it in the post-update phase to maintain frame synchronization between
-            // the camera and the tether target.
-            if ((!_tetherNode.valid()) ||
-                (_tetherNode.valid() && !_tether_completed))
-            {
-                //updateSetViewpoint();
-                setViewpointFrame(time_s_now);
-            }
-
-            aa.requestContinuousUpdate( isSettingViewpoint() );
-#endif
         }
 
         else if (_thrown)
@@ -1870,7 +1601,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             }
         }
 
-        _frame_count++;
+        _frameCount++;
 
         return false;
     }
@@ -1885,7 +1616,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
    
     // form the current Action based on the event type:
     Action action = ACTION_NULL;
-    //_time_s_now = osg::Timer::instance()->time_s();
 
     // if tethering is active, check to see whether the incoming event 
     // will break the tether.
@@ -1898,7 +1628,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             if ( std::find(atv.begin(), atv.end(), action._type) != atv.end() )
             {
                 clearViewpoint();
-                //setTetherNode( 0L );
             }
         }
     }
@@ -2192,36 +1921,12 @@ EarthManipulator::updateTether()
             }
         }
     }
-#if 0
-    else
-    {
-        setViewpointFrame( _time_s_now );
-
-        // Update the deltas since this is a moving node.
-        Viewpoint vp = getTetherNodeViewpoint();        
-        osg::Vec3d vpFocalPoint = vp.getFocalPoint();
-        if ( _srs.valid() && vp.getSRS() && !_srs->isEquivalentTo( vp.getSRS() ) )
-        {
-            vp.getSRS()->transform( vp.getFocalPoint(), _srs.get(), vpFocalPoint );
-        }
-
-        if ( _tether_completed )
-        {
-            _start_viewpoint.setFocalPoint( vpFocalPoint );
-            _delta_focal_point.set(0,0,0);
-            setViewpointFrame(time_s_now);
-        }
-        else
-        {
-            _delta_focal_point = vpFocalPoint - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
-        }
-    }
-#endif
 }
 
 Viewpoint
 EarthManipulator::getTetherNodeViewpoint() const
 {
+    // @deprecated; please do not add new code here.
     if ( isTethering() )
     {
         return _setVP1.get();
@@ -2230,31 +1935,6 @@ EarthManipulator::getTetherNodeViewpoint() const
     {
         return Viewpoint();
     }
-#if 0
-    osg::ref_ptr<osg::Node> tether_node;
-    if ( _srs.valid() && _tetherNode.lock(tether_node) )
-    {
-        osg::Matrix localToWorld;
-
-        osg::NodePathList nodePaths = tether_node->getParentalNodePaths();
-        if ( nodePaths.empty() )
-            return Viewpoint();
-
-        localToWorld = osg::computeLocalToWorld( nodePaths[0] );
-        if ( !localToWorld.valid() )
-            return Viewpoint();
-
-        // For now we just care about the center point of the tethered node.
-        osg::Vec3d centerWorld = osg::Vec3d(0,0,0) * localToWorld;
-        GeoPoint centerMap;
-        centerMap.fromWorld( _srs.get(), centerWorld );
-        Viewpoint vp = getViewpoint();
-        vp.focalPoint() = centerMap;
-        return vp;
-        //return Viewpoint( centerMap.vec3d(), vp.getHeading(), vp.getPitch(), vp.getRange(), vp.getSRS() );        
-    }    
-    return Viewpoint();
-#endif
 }
 
 bool
@@ -2309,7 +1989,6 @@ EarthManipulator::isMouseMoving()
     float dx = _ga_t0->getXnormalized()-_ga_t1->getXnormalized();
     float dy = _ga_t0->getYnormalized()-_ga_t1->getYnormalized();
     float len = sqrtf(dx*dx+dy*dy);
-    //float dt = _ga_t0->getTime()-_ga_t1->getTime();
 
     return len > _delta_t * velocity;
 }
@@ -3380,7 +3059,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         else
             worldStartDrag = _lastPointOnEarth;
     }
-    else if (_is_geocentric)
+    else if (_srs->isGeographic())
     {
         if (_lastPointOnEarth != zero)
         {
@@ -3416,7 +3095,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         //OE_INFO << "tangent: " << worldEndDrag << "\n";
     }
 
-    if (_is_geocentric)
+    if (_srs->isGeographic())
     {
         worldRot.makeRotate(worldStartDrag, worldEndDrag);
         // Move the camera by the inverse rotation

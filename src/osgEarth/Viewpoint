@@ -88,6 +88,7 @@ namespace osgEarth
         void setNode(osg::Node* value)                    { _node = value; }
         bool getNode(osg::ref_ptr<osg::Node>& safe) const { return _node.lock(safe); }
         bool hasNode() const                              { return _node.valid(); }
+        bool hasNode(const osg::Node* node) const         { return _node.get() == node; }
 
         /**
          * Heading (in degrees) of the camera relative to the focal point.

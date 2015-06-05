@@ -256,7 +256,12 @@ void AddMarkerDialog::accept()
     osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
     annoData->setName(_altName.length() > 0 ? _altName : getName());
     annoData->setDescription(getDescription());
-    annoData->setViewpoint(osgEarth::Viewpoint(_placeNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _placeNode->getPosition().getSRS()));
+    Viewpoint vp;
+    vp.focalPoint() = _placeNode->getPosition();
+    vp.pitch()->set(-90.0, Units::DEGREES);
+    vp.range()->set(1e5, Units::METERS);
+    annoData->setViewpoint( vp );
+    //annoData->setViewpoint(osgEarth::Viewpoint(_placeNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _placeNode->getPosition().getSRS()));
     _placeNode->setAnnotationData(annoData);
   }
 
@@ -1043,7 +1048,12 @@ void AddEllipseDialog::accept()
     osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
     annoData->setName(getName());
     annoData->setDescription(getDescription());
-    annoData->setViewpoint(osgEarth::Viewpoint(_ellipseNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _ellipseNode->getPosition().getSRS()));
+    Viewpoint vp;
+    vp.focalPoint() = _ellipseNode->getPosition();
+    vp.pitch()->set( -90.0, Units::DEGREES );
+    vp.range()->set( 1e5, Units::METERS );
+    annoData->setViewpoint( vp );
+    //annoData->setViewpoint(osgEarth::Viewpoint(_ellipseNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _ellipseNode->getPosition().getSRS()));
 
     _ellipseNode->setAnnotationData(annoData);
   }

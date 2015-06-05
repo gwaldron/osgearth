@@ -26,13 +26,12 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/Controls>
 
-namespace osgEarth { namespace Graticule
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Util::Controls;
-
+  
     /**
-     * Extension for loading the normal mapping effect on demand.
+     * Extension for loading the graticule node on demand.
      */
     class GraticuleExtension : public Extension,
                                public ExtensionInterface<MapNode>
@@ -70,6 +69,6 @@ namespace osgEarth { namespace Graticule
         osg::ref_ptr<GraticuleNode>            _node;
     };
 
-} } // namespace osgEarth::Graticule
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTH_GRATICULE_EXTENSION

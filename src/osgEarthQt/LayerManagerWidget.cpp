@@ -410,7 +410,7 @@ Action* ElevationLayerControlWidget::getDoubleClickAction(const ViewVector& view
 	  if (range == 0.0)
 		  range = 20000000.0;
 
-    _doubleClick = new SetViewpointAction(osgEarth::Viewpoint(focalPoint, 0.0, -90.0, range), views);
+    _doubleClick = new SetViewpointAction(osgEarth::Viewpoint("ClickAction", focalPoint.x(), focalPoint.y(), focalPoint.z(), 0.0, -90.0, range), views);
   }
 
   return _doubleClick.get();
@@ -533,7 +533,7 @@ Action* ImageLayerControlWidget::getDoubleClickAction(const ViewVector& views)
 	  if (range == 0.0)
 		  range = 20000000.0;
 
-    _doubleClick = new SetViewpointAction(osgEarth::Viewpoint(focalPoint, 0.0, -90.0, range), views);
+    _doubleClick = new SetViewpointAction(osgEarth::Viewpoint("DoubleClick", focalPoint.x(), focalPoint.y(), focalPoint.z(), 0.0, -90.0, range), views);
   }
 
   return _doubleClick.get();
@@ -639,7 +639,7 @@ Action* ModelLayerControlWidget::getDoubleClickAction(const ViewVector& views)
         //_map->worldPointToMapPoint(center, output);
 
         //TODO: make a better range calculation
-        return new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, bs.radius() * 4.0), views);
+        return new SetViewpointAction(osgEarth::Viewpoint("DoubleClick", output.x(), output.y(), output.z(), 0.0, -90.0, bs.radius() * 4.0), views);
       }
     }
   }

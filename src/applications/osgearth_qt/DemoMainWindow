@@ -111,7 +111,7 @@ public:
 
         osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
         annoData->setName("New York");
-        annoData->setViewpoint(osgEarth::Viewpoint(osg::Vec3d(-74, 40.714, 0), 0.0, -90.0, 1e5));
+        annoData->setViewpoint(osgEarth::Viewpoint("New Tork", -74, 40.714, 0, 0.0, -90.0, 1e5));
         annotation->setAnnotationData(annoData);
 
         annotation->installDecoration("selected", new osgEarth::Annotation::ScaleDecoration(2.0f));

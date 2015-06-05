@@ -27,4 +27,11 @@ Shaders::Shaders()
 
     LogDepthBuffer_VertOnly_VertFile = "LogDepthBuffer.VertOnly.vert.glsl";
     _sources[LogDepthBuffer_VertOnly_VertFile] = OE_MULTILINE(@LogDepthBuffer.VertOnly.vert.glsl@);
+
+    Graticule_Fragment = "Graticule.frag.glsl";
+    _sources[Graticule_Fragment] = OE_MULTILINE(@Graticule.frag.glsl@);
+
+    Graticule_Vertex = "Graticule.vert.glsl";
+    _sources[Graticule_Vertex] = OE_MULTILINE(@Graticule.vert.glsl@);
+
 }

@@ -160,7 +160,7 @@ main(int argc, char** argv)
         mapNode->getTerrain()->addTerrainCallback( new ClampObjectLocatorCallback(locator) );        
     }    
     
-    manip->setHomeViewpoint(Viewpoint( "Mt Rainier",        osg::Vec3d(    centerLon,   centerLat, 0.0 ), 0.0, -90, 45000 ));
+    manip->setHomeViewpoint(Viewpoint("Home", centerLon, centerLat, 0.0, 0.0, -90, 45000 ));
 
     viewer.setSceneData( root );    
 

@@ -22,6 +22,9 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 
+#include <osgEarth/Units>
+#include <osgEarth/Viewpoint>
+
 #define LC "[viewer] "
 
 using namespace osgEarth;

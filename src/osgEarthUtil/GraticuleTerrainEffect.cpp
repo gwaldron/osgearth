@@ -22,12 +22,12 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ShaderLoader>
 
-#include "GraticuleShaders"
+#include "Shaders"
 
 #define LC "[Graticule] "
 
 using namespace osgEarth;
-using namespace osgEarth::Graticule;
+using namespace osgEarth::Util;
 
 
 GraticuleTerrainEffect::GraticuleTerrainEffect(const GraticuleOptions& options,
@@ -48,11 +48,11 @@ GraticuleTerrainEffect::onInstall(TerrainEngineNode* engine)
 
         // configure shaders
         Shaders package;
-        package.loadFunction( vp, package.Vertex );
-        package.loadFunction( vp, package.Fragment );
+        package.loadFunction( vp, package.Graticule_Vertex );
+        package.loadFunction( vp, package.Graticule_Fragment);
 
         stateset->addUniform( new osg::Uniform(
-            GraticuleOptions::resolutionUniformName(), _options.maxResolution().get()) );
+            GraticuleOptions::resolutionUniformName(), 10.0/180.0) );
 
         stateset->addUniform( new osg::Uniform(
             GraticuleOptions::colorUniformName(), _options.color().get()) );
@@ -73,8 +73,8 @@ GraticuleTerrainEffect::onUninstall(TerrainEngineNode* engine)
         if ( vp )
         {
             Shaders package;
-            package.unloadFunction( vp, package.Vertex );
-            package.unloadFunction( vp, package.Fragment );
+            package.unloadFunction( vp, package.Graticule_Vertex );
+            package.unloadFunction( vp, package.Graticule_Fragment );
 
             stateset->removeUniform( GraticuleOptions::resolutionUniformName() );
             stateset->removeUniform( GraticuleOptions::colorUniformName() );

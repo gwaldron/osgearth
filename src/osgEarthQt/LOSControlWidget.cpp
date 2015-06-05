@@ -238,7 +238,8 @@ void LOSControlWidget::onItemDoubleClicked(QListWidgetItem* item)
 
     double range = losItem->los()->getBound().radius() / 0.267949849;
 
-    _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, range), _views));
+    _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(
+        "doubleclick", output.x(), output.y(), output.z(), 0.0, -90.0, range), _views));
   }
 }
 

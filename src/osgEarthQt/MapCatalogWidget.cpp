@@ -102,7 +102,8 @@ namespace
           if (range == 0.0)
               range = 20000000.0;
 
-          _doubleClick = new SetViewpointAction(osgEarth::Viewpoint(focalPoint, 0.0, -90.0, range), views);
+          _doubleClick = new SetViewpointAction(osgEarth::Viewpoint(
+              "doubleclick", focalPoint.x(), focalPoint.y(), focalPoint.z(), 0.0, -90.0, range), views);
         }
         else
         {
@@ -132,7 +133,8 @@ namespace
                 //_map->worldPointToMapPoint(center, output);
 
                 //TODO: make a better range calculation
-                return new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, bs.radius() * 4.0), views);
+                return new SetViewpointAction(osgEarth::Viewpoint(
+                    "doubleclick", output.x(), output.y(), output.z(), 0.0, -90.0, bs.radius() * 4.0), views);
               }
             }
           }
@@ -190,7 +192,13 @@ namespace
           output.fromWorld( _map->getSRS(), center );
           //_map->worldPointToMapPoint(center, output);
 
-          return new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), views);
+          osgEarth::Viewpoint vp;
+          vp.focalPoint() = output;
+          vp.range() = 1e5;
+          vp.heading() = 0.0;
+          vp.pitch() = -90.0;
+
+          return new SetViewpointAction(vp, views);
         }
       }
 
@@ -595,7 +603,7 @@ void MapCatalogWidget::refreshViewpoints()
     for (std::vector<osgEarth::Viewpoint>::const_iterator it = viewpoints.begin(); it != viewpoints.end(); ++it)
     {
       ViewpointTreeItem* vpItem = new ViewpointTreeItem(*it);
-      vpItem->setText(0, QString((*it).getName().c_str()));
+      vpItem->setText(0, QString((*it).name()->c_str()));
 			_viewpointsItem->addChild(vpItem);
     }
 

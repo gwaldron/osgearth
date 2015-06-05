@@ -245,9 +245,9 @@ MBTilesTileSource::initialize(const osgDB::Options* dbOptions)
     // make an empty image.
     int size = 256;
     _emptyImage = new osg::Image();
-    _emptyImage->allocateImage(size, size, 1, _forceRGB? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE);
+    _emptyImage->allocateImage(size, size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
     unsigned char *data = _emptyImage->data(0,0);
-    memset(data, 0, (_forceRGB?3:4) * size * size);
+    memset(data, 0, 4 * size * size);
 
     return STATUS_OK;
 }    

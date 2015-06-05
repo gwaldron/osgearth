@@ -95,9 +95,10 @@ main(int argc, char** argv)
 
     // zoom to a good startup position
     manip->setViewpoint( Viewpoint(
+        "Home",
         -71.0763, 42.34425, 0,   // longitude, latitude, altitude
          24.261, -21.6, 3450.0), // heading, pitch, range
-       5.0 );                    // duration
+         5.0 );                    // duration
 
     // This will mitigate near clip plane issues if you zoom in close to the ground:
     LogarithmicDepthBuffer buf;

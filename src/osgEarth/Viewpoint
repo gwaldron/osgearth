@@ -50,12 +50,6 @@ namespace osgEarth
          */
         Viewpoint(const Config& conf);
 
-        /**
-         * Backwards-compatible constructor. SRS is WGS84, angles are in degrees,
-         * range is in meters.
-         */
-        Viewpoint(const char* name, double lon, double lat, double z, double heading, double pitch, double range);
-
     public:
 
         /**
@@ -87,8 +81,7 @@ namespace osgEarth
          */
         void setNode(osg::Node* value)                    { _node = value; }
         bool getNode(osg::ref_ptr<osg::Node>& safe) const { return _node.lock(safe); }
-        bool hasNode() const                              { return _node.valid(); }
-        bool hasNode(const osg::Node* node) const         { return _node.get() == node; }
+        bool nodeIsSet() const                            { return _node.valid(); }
 
         /**
          * Heading (in degrees) of the camera relative to the focal point.
@@ -117,6 +110,35 @@ namespace osgEarth
          * Serialize this viewpoint to a config object.
          */
         Config getConfig() const;
+
+
+    public: // Backwards compatibility functions. Please don't use these in view code.
+
+        /** SRS is WGS84, angles are in degrees, range is in meters. */
+
+        /** @deprecated */
+        Viewpoint(double lon, double lat, double heading, double pitch, double range);
+
+        /** @deprecated */
+        Viewpoint(const char* name, double lon, double lat, double z, double heading, double pitch, double range);
+        
+        /** @deprecated */
+        void setHeading(double value) { _heading->set(value, Units::DEGREES); }
+
+        /** @deprecated */
+        void setPitch  (double value) { _pitch->set(value, Units::DEGREES); }
+
+        /** @deprecated */
+        void setRange  (double value) { _range->set(value, Units::METERS); }
+        
+        /** @deprecated */
+        double getHeading() const { return _heading->as(Units::DEGREES); }
+
+        /** @deprecated */
+        double getPitch()   const { return _pitch->as(Units::DEGREES); }
+
+        /** @deprecated */
+        double getRange()   const { return _range->as(Units::METERS); }
 
     public:
 

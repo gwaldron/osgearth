@@ -880,7 +880,7 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
         if ( !_setVP1->range().isSet() )
             _setVP1->range() = Distance(_distance, Units::METERS);
 
-        if ( !_setVP1->hasNode() && !_setVP1->focalPoint().isSet() )
+        if ( !_setVP1->nodeIsSet() && !_setVP1->focalPoint().isSet() )
         {
             osg::ref_ptr<osg::Node> safeNode;
             if ( _setVP0->getNode( safeNode ) )
@@ -1173,7 +1173,7 @@ bool
 EarthManipulator::isTethering() const
 {
     // True if setViewpoint() was called and the viewpoint has a node.
-    return _setVP1.isSet() && _setVP1->hasNode();
+    return _setVP1.isSet() && _setVP1->nodeIsSet();
 }
 
 void
@@ -1181,7 +1181,7 @@ EarthManipulator::setTetherNode(osg::Node* node, double duration_s)
 {
     if ( node )
     {
-        Viewpoint vp = getViewpoint();
+        Viewpoint vp;
         vp.setNode( node );
         setViewpoint( vp, duration_s );
     }

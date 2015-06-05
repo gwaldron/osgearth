@@ -24,7 +24,7 @@ void oe_graticule_fragment(inout vec4 color)
         // Fade out the lines as you get closer to the ground.
         vec3 eye = osg_ViewMatrixInverse[3].xyz;
         float hae = length(eye) - 6378137.0;
-        float maxHAE = 2000;
+        float maxHAE = 2000.0;
         float alpha = clamp(hae / maxHAE, 0.0, 1.0);
         color.rgb = mix(color.rgb, oe_graticule_color.rgb, oe_graticule_color.a * alpha);
     }

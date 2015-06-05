@@ -55,6 +55,16 @@ namespace osgEarth { namespace Util
         void setVisible(bool visible);
 
         /**
+         * Gets the center offset for the labels in pixels.
+         */
+        const osg::Vec2f& getCenterOffset() const;
+
+        /**
+         * Sets the center offset for the labels in pixels.  Use this to attempt to offset the label placement so it's not at the center of the screen.
+         */
+        void setCenterOffset(const osg::Vec2f& offset);
+
+        /**
          * Gets the list of resolutions to display in the graticule
          */
         std::vector< double >& getResolutions();
@@ -85,6 +95,9 @@ namespace osgEarth { namespace Util
         float _resolution;
         double _lon;
         double _lat;
+        
+        osg::Vec2f _centerOffset;
+
         GeoExtent _viewExtent;
         osg::Vec3d _focalPoint;
         std::vector< osg::ref_ptr< LabelNode > > _labelPool;

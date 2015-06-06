@@ -21,6 +21,8 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 
+#include <osg/Texture2D>
+
 #define LC "[TerrainTileModelFactory] "
 
 using namespace osgEarth;

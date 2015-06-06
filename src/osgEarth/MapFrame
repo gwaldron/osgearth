@@ -27,6 +27,8 @@
 
 namespace osgEarth
 {
+    class Profile;
+
     /**
      * A "snapshot in time" of a Map model revision. Use this class to get a safe "copy" of
      * the map model lists that you can use without worrying about the model changing underneath

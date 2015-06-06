@@ -21,11 +21,8 @@
 #include "GraticuleNode"
 
 #include <osgEarth/MapNode>
-<<<<<<< HEAD:src/osgEarthExtensions/graticule/GraticuleExtension.cpp
 #include <osgEarth/TerrainEngineNode>
-=======
 #include <osgDB/FileNameUtils>
->>>>>>> master:src/osgEarthUtil/GraticuleExtension.cpp
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

@@ -1266,13 +1266,8 @@ void EarthManipulator::collisionDetect()
 bool
 EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection, osg::Vec3d& normal) const
 {
-<<<<<<< HEAD
-    osg::ref_ptr<MapNode> safeMapNode;
-    if ( _mapNode.lock(safeMapNode) )
-=======
     osg::ref_ptr<MapNode> mapNode;
     if ( _mapNode.lock(mapNode) )
->>>>>>> master
     {
 		osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = NULL;
 
@@ -1281,7 +1276,6 @@ EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg:
         osgUtil::IntersectionVisitor iv(lsi.get());
         iv.setTraversalMask(_intersectTraversalMask);
 
-        //safeNode->accept(iv);
         mapNode->getTerrainEngine()->accept(iv);
 
         if (lsi->containsIntersections())

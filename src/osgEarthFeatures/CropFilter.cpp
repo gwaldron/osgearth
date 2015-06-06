@@ -62,6 +62,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                     {
                         keepFeature = true;
                         newExtent.expandToInclude( bounds.xMin(), bounds.yMin() );
+                        newExtent.expandToInclude( bounds.xMax(), bounds.yMax() );
                     }
                 }
             }

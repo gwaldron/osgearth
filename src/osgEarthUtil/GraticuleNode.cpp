@@ -150,6 +150,21 @@ std::vector< double >& GraticuleNode::getResolutions()
     return _resolutions;
 }
 
+const osg::Vec2f& GraticuleNode::getCenterOffset() const
+{
+    return _centerOffset;
+}
+
+
+void GraticuleNode::setCenterOffset(const osg::Vec2f& offset)
+{
+    if (_centerOffset != offset)
+    {
+        _centerOffset = offset;
+        updateLabels();
+    }
+}
+
 void GraticuleNode::updateLabels()
 {
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
@@ -258,14 +273,30 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         float centerX = viewport->x() + viewport->width() / 2.0;
         float centerY = viewport->y() + viewport->height() / 2.0;
 
-        if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), centerX, centerY, _focalPoint))
+        float offsetCenterX = centerX + _centerOffset.x();
+        float offsetCenterY = centerY + _centerOffset.y();
+
+        bool hitValid = false;
+
+        // Try the offset position
+        if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), offsetCenterX, offsetCenterY, _focalPoint))
+        {
+            hitValid = true;
+        }
+        // Try the center of the screen if we get no hits.
+        else if(_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), centerX, centerY, _focalPoint))
+        {
+            hitValid = true;
+        }
+
+        if (hitValid)
         {
             GeoPoint focalGeo;
             focalGeo.fromWorld( _mapNode->getMapSRS(), _focalPoint );
             _lon = focalGeo.x();
             _lat = focalGeo.y();
         }
-
+       
     
         double targetResolution = (_viewExtent.height() / 180.0) / _options.gridLines().get();
 

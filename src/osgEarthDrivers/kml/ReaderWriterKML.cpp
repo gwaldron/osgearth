@@ -22,6 +22,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileUtils>
 #include <osgDB/Archive>
+#include <osgEarth/Containers>
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 
@@ -113,7 +114,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
 private:
 
-    Threading::PerThread< osg::ref_ptr<KMZArchive> > _archive;
+    PerThread< osg::ref_ptr<KMZArchive> > _archive;
 
 #endif // SUPPORT_KMZ
 };

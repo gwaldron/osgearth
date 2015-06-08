@@ -103,6 +103,7 @@ namespace osgEarth { namespace Util
         std::vector< osg::ref_ptr< LabelNode > > _labelPool;
         const GraticuleOptions _options;
         bool _visible;
+        double _metersPerPixel;
 
         std::vector< double > _resolutions;
 

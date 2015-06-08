@@ -31,7 +31,8 @@ _mapNode(mapNode),
     _lat(0.0),
     _lon(0.0),
     _viewExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90),
-    _visible(true)
+    _visible(true),
+    _metersPerPixel(0.0)
 {
     setNumChildrenRequiringUpdateTraversal(1);
 
@@ -192,10 +193,9 @@ void GraticuleNode::updateLabels()
         _labelPool[i]->setNodeMask(0);
     }
 
-
-
-
-    
+    // Approximate offset in degrees
+    double degOffset = _metersPerPixel / 111000.0;
+     
     unsigned int labelIndex = 0;
 
 
@@ -212,7 +212,7 @@ void GraticuleNode::updateLabels()
         // Generate horizontal labels
         for (unsigned int i = minLonIndex; i <= maxLonIndex; i++)
         {
-            GeoPoint point(srs, -180.0 + (double)i * resDegrees, _lat, 0, ALTMODE_ABSOLUTE);
+            GeoPoint point(srs, -180.0 + (double)i * resDegrees, _lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
             LabelNode* label = _labelPool[labelIndex++];
 
             label->setNodeMask(~0u);
@@ -230,7 +230,7 @@ void GraticuleNode::updateLabels()
         // Generate the vertical labels
         for (unsigned int i = minLatIndex; i <= maxLatIndex; i++)
         {
-            GeoPoint point(srs, _lon, -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
+            GeoPoint point(srs, _lon + (_centerOffset.x() * degOffset), -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
             // Skip drawing labels at the poles
             if (osg::equivalent(osg::absolute( point.y()), 90.0, 0.1))
             {
@@ -272,18 +272,13 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         float centerX = viewport->x() + viewport->width() / 2.0;
         float centerY = viewport->y() + viewport->height() / 2.0;
 
-        float offsetCenterX = centerX + _centerOffset.x();
-        float offsetCenterY = centerY + _centerOffset.y();
+        float offsetCenterX = centerX;
+        float offsetCenterY = centerY;
 
         bool hitValid = false;
 
-        // Try the offset position
-        if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), offsetCenterX, offsetCenterY, _focalPoint))
-        {
-            hitValid = true;
-        }
-        // Try the center of the screen if we get no hits.
-        else if(_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), centerX, centerY, _focalPoint))
+        // Try the center of the screen.
+        if(_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), centerX, centerY, _focalPoint))
         {
             hitValid = true;
         }
@@ -313,6 +308,13 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         //resolution = targetResolution;
 
         _viewExtent = getViewExtent( cv->getCurrentCamera() );
+
+        // Try to compute an approximate meters to pixel value at this view.
+        double fovy, aspectRatio, zNear, zFar;
+        cv->getProjectionMatrix()->getPerspective(fovy, aspectRatio, zNear, zFar);
+        double dist = osg::clampAbove(eyeGeo.z(), 1.0);
+        double halfWidth = osg::absolute( tan(osg::DegreesToRadians(fovy/2.0)) * dist );
+        _metersPerPixel = (2.0 * halfWidth) / (double)viewport->height();
 
         if (_resolution != resolution)
         {

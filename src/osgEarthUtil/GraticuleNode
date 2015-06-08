@@ -76,7 +76,7 @@ namespace osgEarth { namespace Util
         
     private:
 
-        osgEarth::GeoExtent getViewExtent(osg::Camera* camera);
+        osgEarth::GeoExtent getViewExtent(osgUtil::CullVisitor* cullVisitor);
 
         double getResolution() const;
         void setResolution(double resolution);

@@ -267,7 +267,7 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         _lon = eyeGeo.x();
         _lat = eyeGeo.y();
 
-        osg::Viewport* viewport = cv->getCurrentCamera()->getViewport();
+        osg::Viewport* viewport = cv->getViewport();
 
         float centerX = viewport->x() + viewport->width() / 2.0;
         float centerY = viewport->y() + viewport->height() / 2.0;
@@ -307,7 +307,7 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         // Trippy
         //resolution = targetResolution;
 
-        _viewExtent = getViewExtent( cv->getCurrentCamera() );
+        _viewExtent = getViewExtent( cv );
 
         // Try to compute an approximate meters to pixel value at this view.
         double fovy, aspectRatio, zNear, zFar;
@@ -344,11 +344,11 @@ std::string GraticuleNode::getText(const GeoPoint& location, bool lat)
     return _formatter->format(value, lat);
 }
 
-osgEarth::GeoExtent GraticuleNode::getViewExtent(osg::Camera* camera)
+osgEarth::GeoExtent GraticuleNode::getViewExtent(osgUtil::CullVisitor* cullVisitor)
 {
     // Get the corners of all points on the view frustum.  Mostly modified from osgthirdpersonview
-    osg::Matrixd proj = camera->getProjectionMatrix();
-    osg::Matrixd mv = camera->getViewMatrix();
+    osg::Matrixd proj = *cullVisitor->getProjectionMatrix();
+    osg::Matrixd mv = *cullVisitor->getModelViewMatrix();
     osg::Matrixd invmv = osg::Matrixd::inverse( mv );
 
     double nearPlane = proj(3,2) / (proj(2,2)-1.0);

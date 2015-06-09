@@ -23,14 +23,14 @@
 #include "Loader"
 #include "RenderBindings"
 #include "TileNode"
-#include "TileGroupFactory"
+#include "EngineContext"
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {    
     class LoadTileData : public Loader::Request
     {
     public:
-        LoadTileData(TileNode* tilenode, TileGroupFactory* factory);
+        LoadTileData(TileNode* tilenode, EngineContext* factory);
 
     public: // Loader::Request
 
@@ -42,7 +42,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     protected:
         osg::observer_ptr<TileNode>    _tilenode;
-        TileGroupFactory*              _context;
+        EngineContext*              _context;
         osg::ref_ptr<TerrainTileModel> _model;
     };
 

@@ -59,7 +59,7 @@ namespace
 //............................................................................
 
 
-LoadTileData::LoadTileData(TileNode* tilenode, TileGroupFactory* context) :
+LoadTileData::LoadTileData(TileNode* tilenode, EngineContext* context) :
 _tilenode(tilenode),
 _context(context)
 {

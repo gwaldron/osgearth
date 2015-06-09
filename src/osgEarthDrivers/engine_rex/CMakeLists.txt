@@ -26,8 +26,7 @@ SET(TARGET_SRC
     SurfaceNode.cpp
     SurfaceNodeFactory.cpp
 	TileDrawable.cpp
-    TileGroup.cpp
-    TileGroupFactory.cpp
+    EngineContext.cpp
     TileNode.cpp
     TileNodeRegistry.cpp
     Loader.cpp
@@ -48,8 +47,7 @@ SET(TARGET_H
     RenderBindings
     SurfaceNode
 	TileDrawable
-    TileGroup
-    TileGroupFactory
+    EngineContext
     TileNode
     SurfaceNodeFactory
     TileNodeRegistry

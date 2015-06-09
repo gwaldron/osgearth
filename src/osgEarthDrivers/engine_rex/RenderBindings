@@ -20,6 +20,9 @@
 #define OSGEARTH_DRIVERS_REX_RENDER_BINDINGS_H 1
 
 #include "Common"
+#include <osgEarth/Common>
+#include <osgEarth/optional>
+#include <vector>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
@@ -38,8 +41,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         SamplerBinding() : _unit(-1) { }
 
         /** Optional UID of the source (usually a layer) to which this binding applies */
-        optional<UID>& sourceUID()             { return _sourceUID; }
-        const optional<UID>& sourceUID() const { return _sourceUID; }
+        optional<osgEarth::UID>& sourceUID()             { return _sourceUID; }
+        const optional<osgEarth::UID>& sourceUID() const { return _sourceUID; }
 
         /** Optional usage hint */
         optional<Usage>& usage()             { return _usage; }
@@ -70,37 +73,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     typedef std::vector<SamplerBinding> RenderBindings;
 
-#if 0
-    class RenderBindings
-    {
-    public:
-        SamplerBinding& color() { return _colorBinding; }
-        const SamplerBinding& color() const { return _colorBinding; }
-
-        SamplerBinding& parentColor() { return _parentColorBinding; }
-        const SamplerBinding& parentColor() const { return _parentColorBinding; }
-
-        SamplerBinding& elevation() { return _elevationBinding; }
-        const SamplerBinding& elevation() const { return _elevationBinding; }
-
-        SamplerBinding& parentElevation() { return _parentElevationBinding; }
-        const SamplerBinding& parentElevation() const { return _parentElevationBinding; }
-
-        SamplerBinding& normal() { return _normalBinding; }
-        const SamplerBinding& normal() const { return _normalBinding; }
-
-        SamplerBinding& parentNormal() { return _parentNormalBinding; }
-        const SamplerBinding& parentNormal() const { return _parentNormalBinding; }
-
-    private:
-        SamplerBinding _colorBinding;
-        SamplerBinding _parentColorBinding;
-        SamplerBinding _elevationBinding;
-        SamplerBinding _parentElevationBinding;
-        SamplerBinding _normalBinding;
-        SamplerBinding _parentNormalBinding;
-    };
-#endif
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine
 

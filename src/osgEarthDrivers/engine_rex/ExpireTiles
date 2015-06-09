@@ -22,7 +22,7 @@
 #include "Common"
 #include "Loader"
 #include "TileNode"
-#include "TileGroupFactory"
+#include "EngineContext"
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {    
@@ -30,7 +30,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class ExpireTiles : public Loader::Request
     {
     public:
-        ExpireTiles(TileNode* tilenode, TileGroupFactory* context);
+        ExpireTiles(TileNode* tilenode, EngineContext* context);
 
     public: // Loader::Request
 
@@ -39,7 +39,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     protected:
         osg::observer_ptr<TileNode>    _tilenode;
-        TileGroupFactory*              _context;
+        EngineContext*              _context;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

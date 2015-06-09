@@ -456,7 +456,7 @@ RexTerrainEngineNode::dirtyTerrain()
     }
 
     // Factory to create the root keys:
-    TileGroupFactory* context = getTileGroupFactory();
+    EngineContext* context = getEngineContext();
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
@@ -555,7 +555,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     {
         // Pass the tile creation context to the traversal.
         osg::ref_ptr<osg::Referenced> data = nv.getUserData();    
-        nv.setUserData( this->getTileGroupFactory() );
+        nv.setUserData( this->getEngineContext() );
 
         TerrainEngineNode::traverse( nv );
 
@@ -570,10 +570,10 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 }
 
 
-TileGroupFactory*
-RexTerrainEngineNode::getTileGroupFactory()
+EngineContext*
+RexTerrainEngineNode::getEngineContext()
 {
-    osg::ref_ptr<TileGroupFactory>& factory = _perThreadTileGroupFactories.get(); // thread-safe get
+    osg::ref_ptr<EngineContext>& factory = _perThreadTileGroupFactories.get(); // thread-safe get
     if ( !factory.valid() )
     {
         // create a compiler for compiling tile models into geometry
@@ -582,7 +582,7 @@ RexTerrainEngineNode::getTileGroupFactory()
             getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
         // initialize a key node factory.
-        factory = new TileGroupFactory(
+        factory = new EngineContext(
             getMap(),
             this, // engine
             _geometryPool.get(),

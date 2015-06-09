@@ -27,7 +27,7 @@
 #include <osgEarth/Containers>
 
 #include "RexTerrainEngineOptions"
-#include "TileGroupFactory"
+#include "EngineContext"
 #include "TileNodeRegistry"
 #include "RenderBindings"
 #include "GeometryPool"
@@ -151,8 +151,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
         osg::ref_ptr<TileNodeRegistry> _deadTiles;      // tiles that used to be in the scene graph.
 
-        PerThread< osg::ref_ptr<TileGroupFactory> > _perThreadTileGroupFactories;
-        TileGroupFactory* getTileGroupFactory();
+        PerThread< osg::ref_ptr<EngineContext> > _perThreadTileGroupFactories;
+        EngineContext* getEngineContext();
 
         osg::Timer _timer;
         unsigned   _tileCount;

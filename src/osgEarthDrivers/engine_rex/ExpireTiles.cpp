@@ -58,7 +58,7 @@ namespace
 //............................................................................
 
 
-ExpireTiles::ExpireTiles(TileNode* tilenode, TileGroupFactory* context) :
+ExpireTiles::ExpireTiles(TileNode* tilenode, EngineContext* context) :
 _tilenode(tilenode),
 _context(context)
 {

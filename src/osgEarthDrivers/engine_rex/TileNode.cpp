@@ -18,7 +18,7 @@
 */
 #include "TileNode"
 #include "SurfaceNode"
-#include "TileGroupFactory"
+#include "EngineContext"
 #include "Loader"
 #include "LoadTileData"
 #include "ExpireTiles"
@@ -63,7 +63,7 @@ _dirty( false )
 }
 
 void
-TileNode::create(const TileKey& key, TileGroupFactory* context)
+TileNode::create(const TileKey& key, EngineContext* context)
 {
     _key = key;
 
@@ -246,7 +246,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
 void
 TileNode::createChildren(osg::NodeVisitor& nv)
 {
-    TileGroupFactory* context = static_cast<TileGroupFactory*>( nv.getUserData() );
+    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
 
     // Create the four child nodes.
     for(unsigned quadrant=0; quadrant<4; ++quadrant)
@@ -301,7 +301,7 @@ void
 TileNode::load(osg::NodeVisitor& nv)
 {
     // Pull the factory from the traversal data.
-    TileGroupFactory* context = static_cast<TileGroupFactory*>( nv.getUserData() );
+    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
 
     if ( !_loadRequest.valid() )
     {
@@ -320,7 +320,7 @@ TileNode::load(osg::NodeVisitor& nv)
 void
 TileNode::expireChildren(osg::NodeVisitor& nv)
 {
-    TileGroupFactory* context = static_cast<TileGroupFactory*>( nv.getUserData() );
+    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     if ( !_expireRequest.valid() )
     {
         Threading::ScopedMutexLock lock(_mutex);

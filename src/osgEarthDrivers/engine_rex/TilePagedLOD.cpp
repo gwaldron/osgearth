@@ -16,6 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#if 0
 #include "TilePagedLOD"
 #include "TileNodeRegistry"
 #include "TileGroup"
@@ -419,3 +420,4 @@ TilePagedLOD::removeExpiredChildren(double         expiryTime,
     }
     return false;
 }
+#endif

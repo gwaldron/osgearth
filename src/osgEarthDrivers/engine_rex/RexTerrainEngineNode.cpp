@@ -264,6 +264,11 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     {
         _geometryPool = new GeometryPool( _terrainOptions );
     }
+
+    // Make a tile loader
+    _loader = new PagerLoader( getUID() );
+    //_loader = new SimpleLoader();
+    this->addChild( _loader.get() );
     
     // handle an already-established map profile:
     MapInfo mapInfo( map );
@@ -390,6 +395,31 @@ RexTerrainEngineNode::getPayloadStateSet()
 }
 
 void
+RexTerrainEngineNode::setupRenderBindings()
+{
+    _renderBindings.push_back( SamplerBinding() );
+    SamplerBinding& color = _renderBindings.back();
+    color.usage()       = SamplerBinding::COLOR;
+    color.samplerName() = "oe_layer_tex";
+    color.matrixName()  = "oe_layer_texMatrix";
+    this->getResources()->reserveTextureImageUnit( color.unit(), "Terrain Color" );
+
+    _renderBindings.push_back( SamplerBinding() );
+    SamplerBinding& elevation = _renderBindings.back();
+    elevation.usage()       = SamplerBinding::ELEVATION;
+    elevation.samplerName() = "oe_tile_elevationTex";
+    elevation.matrixName()  = "oe_tile_elevationTexMatrix";
+    this->getResources()->reserveTextureImageUnit( elevation.unit(), "Terrain Elevation" );
+
+    _renderBindings.push_back( SamplerBinding() );
+    SamplerBinding& normal = _renderBindings.back();
+    normal.usage()       = SamplerBinding::NORMAL;
+    normal.samplerName() = "oe_tile_normalTex";
+    normal.matrixName()  = "oe_tile_normalTexMatrix";
+    this->getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
+}
+
+void
 RexTerrainEngineNode::dirtyTerrain()
 {
     //TODO: scrub the geometry pool?
@@ -420,99 +450,48 @@ RexTerrainEngineNode::dirtyTerrain()
     this->addChild( _terrain );
     
     // reserve GPU unit for the main color texture:
-    if ( _renderBindings.color().unit() < 0 )
+    if ( _renderBindings.empty() )
     {
-        _renderBindings.color().samplerName() = "oe_layer_tex";
-        _renderBindings.color().matrixName()  = "oe_layer_texMatrix";
-
-        this->getTextureCompositor()->reserveTextureImageUnit(
-            _renderBindings.color().unit(), "Rex Engine Color" );
-    }
-
-    // reserve GPU unit for the secondary (parent blending) texture:
-    if ( _renderBindings.parentColor().unit() < 0 && setupParentData )
-    {
-        _renderBindings.parentColor().samplerName() = "oe_layer_parentTex";
-        _renderBindings.parentColor().matrixName()  = "oe_layer_parentTexMatrix";
-
-        this->getTextureCompositor()->reserveTextureImageUnit(
-            _renderBindings.parentColor().unit(), "Rex Engine Parent Color" );
-    }
-
-    // reserve a GPU unit for the primary elevation texture:
-    if ( _renderBindings.elevation().unit() < 0 )
-    {
-        _renderBindings.elevation().samplerName() = "oe_tile_elevationTex";
-        _renderBindings.elevation().matrixName()  = "oe_tile_elevationTexMatrix";
-
-        this->getResources()->reserveTextureImageUnit(
-            _renderBindings.elevation().unit(), "Rex Engine Elevation" );
-    }
-
-    // reserve a GPU unit for the secondary (parent blending) elevation texture:
-    if ( _renderBindings.parentElevation().unit() < 0 && setupParentData )
-    {
-        _renderBindings.parentElevation().samplerName() = "oe_tile_parentElevationTex";
-        _renderBindings.parentElevation().matrixName()  = "oe_tile_parentElevationTexMatrix";
-
-        this->getResources()->reserveTextureImageUnit(
-            _renderBindings.parentElevation().unit(), "Rex Engine Parent Elevation" );
-    }
-
-    // reserve a GPU unit for the normal texture:
-    if ( this->normalTexturesRequired() )
-    {
-        if ( _renderBindings.normal().unit() < 0 )
-        {
-            _renderBindings.normal().samplerName() = "oe_tile_normalTex";
-            _renderBindings.normal().matrixName()  = "oe_tile_normalTexMatrix";
-
-            this->getResources()->reserveTextureImageUnit(
-                _renderBindings.normal().unit(), "Rex Engine Normals" );
-        }
-
-        // reserve a GPU unit for the secondary (parent blending) elevation texture:
-        if ( _renderBindings.parentNormal().unit() < 0 && setupParentData )
-        {
-            _renderBindings.parentNormal().samplerName() = "oe_tile_parentNormalTex";
-            _renderBindings.parentNormal().matrixName()  = "oe_tile_parentNormalTexMatrix";
-
-            this->getResources()->reserveTextureImageUnit(
-                _renderBindings.parentNormal().unit(), "Rex Engine Parent Normals" );
-        }
+        setupRenderBindings();
     }
 
     // Factory to create the root keys:
-    TileGroupFactory* factory = getTileGroupFactory();
+    TileGroupFactory* context = getTileGroupFactory();
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
-    std::vector< TileKey > keys;
+    std::vector<TileKey> keys;
     _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
     // create a root node for each root tile key.
     OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
-    TilePagedLOD* root = new TilePagedLOD( _uid, _liveTiles, _deadTiles );
-    _terrain->addChild( root );
+    //TilePagedLOD* root = new TilePagedLOD( _uid, _liveTiles, _deadTiles );
+    //_terrain->addChild( root );
 
     osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        osg::ref_ptr<osg::Node> node = factory->createTileGroup( keys[i], true, true, 0L );
-        if ( node.valid() )
-        {
-            root->addChild( node.get() );
-            root->setRange( child++, 0.0f, FLT_MAX );
-            root->setCenter( node->getBound().center() );
-            root->setNumChildrenThatCannotBeExpired( child );
-        }
-        else
-        {
-            OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
-        }
+        TileNode* tileNode = new TileNode();
+                
+        // Next, build the surface geometry for the node.
+        tileNode->create( keys[i], context );
+
+        _terrain->addChild( tileNode );
+        //osg::ref_ptr<osg::Node> node = factory->createTileGroup( keys[i], true, true, 0L );
+        //if ( node.valid() )
+        //{
+        //    root->addChild( node.get() );
+        //    root->setRange( child++, 0.0f, FLT_MAX );
+        //    root->setCenter( node->getBound().center() );
+        //    root->setNumChildrenThatCannotBeExpired( child );
+        //}
+        //else
+        //{
+        //    OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
+        //}
     }
 
     updateState();
@@ -560,8 +539,23 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         _liveTiles->run( CheckForOrphans() );
     }
 #endif
+    
+    if ( _loader.valid() ) // ensures that postInitialize has run
+    {
+        // Pass the tile creation context to the traversal.
+        osg::ref_ptr<osg::Referenced> data = nv.getUserData();    
+        nv.setUserData( this->getTileGroupFactory() );
 
-    TerrainEngineNode::traverse( nv );
+        TerrainEngineNode::traverse( nv );
+
+        if ( data.valid() )
+            nv.setUserData( data.get() );
+    }
+
+    else
+    {
+        TerrainEngineNode::traverse( nv );
+    }
 }
 
 
@@ -581,6 +575,7 @@ RexTerrainEngineNode::getTileGroupFactory()
             getMap(),
             this, // engine
             _geometryPool.get(),
+            _loader.get(),
             _liveTiles.get(),
             _deadTiles.get(),
             _renderBindings,
@@ -590,10 +585,13 @@ RexTerrainEngineNode::getTileGroupFactory()
     return factory.get();
 }
 
+// no longer used.
 osg::Node*
 RexTerrainEngineNode::createNode(const TileKey&    key,
                                 ProgressCallback* progress)
 {
+    return 0L;
+#if 0
     // if the engine has been disconnected from the scene graph, bail out and don't
     // create any more tiles
     if ( getNumParents() == 0 )
@@ -606,12 +604,17 @@ RexTerrainEngineNode::createNode(const TileKey&    key,
     
     // release the reference and return it.
     return node.release();
+#endif
 }
 
+
+// no longer used.
 osg::Node*
 RexTerrainEngineNode::createStandaloneNode(const TileKey&    key,
                                           ProgressCallback* progress)
 {
+    return 0L;
+#if 0
     // if the engine has been disconnected from the scene graph, bail out and don't
     // create any more tiles
     if ( getNumParents() == 0 )
@@ -620,8 +623,11 @@ RexTerrainEngineNode::createStandaloneNode(const TileKey&    key,
     OE_DEBUG << LC << "Create standalone node for \"" << key.str() << "\"" << std::endl;
 
     return getTileGroupFactory()->createTileGroup( key, true, false, progress );
+#endif
 }
 
+
+// no longer used.
 osg::Node*
 RexTerrainEngineNode::createTile( const TileKey& key )
 {
@@ -764,9 +770,9 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             if ( !unit.isSet() )
             {
                 int temp;
-                if ( getTextureCompositor()->reserveTextureImageUnit(temp) )
+                if ( getResources()->reserveTextureImageUnit(temp) )
                 {
-                    unit = temp;
+                    layerAdded->shareImageUnit() = temp;
                     OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << layerAdded->getName() << std::endl;
                 }
                 else
@@ -775,20 +781,25 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 }
             }
 
-#if 0 // no longer necessary.
-            optional<std::string>& texUniformName = layerAdded->shareTexUniformName();
-            if ( !texUniformName.isSet() )
+            // Build a sampler binding for the layer.
+            if ( unit.isSet() )
             {
-                texUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_tex";
-            }
+                _renderBindings.push_back( SamplerBinding() );
+                SamplerBinding& binding = _renderBindings.back();
 
-            optional<std::string>& texMatUniformName = layerAdded->shareTexMatUniformName();
-            if ( !texMatUniformName.isSet() )
-            {
-                texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texMatrix";
-                OE_INFO << LC << "Layer \"" << layerAdded->getName() << "\" texmat uniform = \"" << texMatUniformName.get() << "\"\n";
+                binding.sourceUID() = layerAdded->getUID();
+                binding.unit()      = unit.get();
+
+                if ( layerAdded->shareTexUniformName().isSet() )
+                    binding.samplerName() = layerAdded->shareTexUniformName().get();
+                else
+                    binding.samplerName() = Stringify() << "oe_layer_" << layerAdded->getUID() << "_tex";
+
+                if ( layerAdded->shareTexMatUniformName().isSet() )
+                    binding.matrixName() = layerAdded->shareTexMatUniformName().get();
+                else
+                    binding.matrixName() = Stringify() << "oe_layer_ " << layerAdded->getUID() << "_texMatrix";
             }
-#endif
         }
     }
 
@@ -806,7 +817,7 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
         {
             if ( layerRemoved->shareImageUnit().isSet() )
             {
-                getTextureCompositor()->releaseTextureImageUnit( *layerRemoved->shareImageUnit() );
+                getResources()->releaseTextureImageUnit( *layerRemoved->shareImageUnit() );
                 layerRemoved->shareImageUnit().unset();
             }
 
@@ -972,59 +983,13 @@ RexTerrainEngineNode::updateState()
                 }
             }
 
-            // binding for the terrain texture
-            if ( _renderBindings.color().isActive() )
+            // Apply uniforms for sampler bindings:
+            for(RenderBindings::const_iterator b = _renderBindings.begin(); b != _renderBindings.end(); ++b)
             {
-                terrainStateSet->addUniform( new osg::Uniform(
-                    _renderBindings.color().samplerName().c_str(),
-                    _renderBindings.color().unit() ));
-            }
-
-            // binding for the secondary texture (for LOD blending)
-            if ( _renderBindings.parentColor().isActive() )
-            {
-                terrainStateSet->addUniform( new osg::Uniform(
-                    _renderBindings.parentColor().samplerName().c_str(),
-                    _renderBindings.parentColor().unit() ));
-
-                // binding for the default secondary texture matrix
-                osg::Matrixf emptyMat;
-                emptyMat(0,0) = 0.0f;
-                terrainStateSet->addUniform( new osg::Uniform(
-                    _renderBindings.parentColor().matrixName().c_str(),
-                    emptyMat ));
-            }
-            
-            // uniform for the elevation texture sampler.
-            if ( _renderBindings.elevation().isActive() )
-            {
-                terrainStateSet->addUniform( new osg::Uniform(
-                    _renderBindings.elevation().samplerName().c_str(),
-                    _renderBindings.elevation().unit() ));
-            }
-
-            // uniform for the parent elevation texture sampler.
-            if ( _renderBindings.parentElevation().isActive() )
-            {
-                terrainStateSet->addUniform( new osg::Uniform(
-                    _renderBindings.parentElevation().samplerName().c_str(),
-                    _renderBindings.parentElevation().unit() ));
-            }
-            
-            // uniform for the normal texture sampler.
-            if ( _renderBindings.normal().isActive() )
-            {
-                terrainStateSet->addUniform( new osg::Uniform(
-                    _renderBindings.normal().samplerName().c_str(),
-                    _renderBindings.normal().unit() ));
-            }
-
-            // uniform for the parent normal texture sampler.
-            if ( _renderBindings.parentNormal().isActive() )
-            {
-                terrainStateSet->addUniform( new osg::Uniform(
-                    _renderBindings.parentNormal().samplerName().c_str(),
-                    _renderBindings.parentNormal().unit() ));
+                if ( b->isActive() )
+                {
+                    terrainStateSet->addUniform( new osg::Uniform(b->samplerName().c_str(), b->unit()) );
+                }
             }
 
             // uniform that controls per-layer opacity
@@ -1051,6 +1016,7 @@ RexTerrainEngineNode::updateState()
             terrainStateSet->addUniform( new osg::Uniform(
                 Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
 
+#if 0 // obe, done above in the render bindings.
             // bind the shared layer uniforms.
             for(ImageLayerVector::const_iterator i = _update_mapf->imageLayers().begin(); i != _update_mapf->imageLayers().end(); ++i)
             {
@@ -1062,6 +1028,7 @@ RexTerrainEngineNode::updateState()
                     OE_INFO << LC << "Layer \"" << layer->getName() << "\" in uniform \"" << texName << "\"\n";
                 }
             }
+#endif
         }
 
         _stateUpdateRequired = false;

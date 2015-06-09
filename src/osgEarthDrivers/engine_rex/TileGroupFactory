@@ -37,7 +37,7 @@ namespace osgEarth {
 }
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
-{    
+{
     class TileGroupFactory : public osg::Referenced
     {
     public:
@@ -45,12 +45,25 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const Map*                          map,
             TerrainEngine*                      engine,
             GeometryPool*                       geometryPool,
+            Loader*                             loader,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
             const RenderBindings&               renderBindings,
-            const RexTerrainEngineOptions&       options);
+            const RexTerrainEngineOptions&      options);
+        
+        Loader* getLoader() const { return _loader; }
 
+        const RenderBindings& getRenderBindings() const { return _renderBindings; }
 
+        GeometryPool* getGeometryPool() const { return _geometryPool; }
+
+        const MapFrame& getMapFrame() const { return _frame; }
+
+        TerrainEngine* getEngine() const { return _terrainEngine; }
+
+        TileNodeRegistry* getLiveTiles() const { return _liveTiles.get(); }
+
+#if 0
         /**
          * Creates a TileGroup corresponding to the TileKey.
          *
@@ -66,11 +79,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             bool              accumulate,
             bool              setupChildren,
             ProgressCallback* progress );
-
+#endif
     protected:
 
         virtual ~TileGroupFactory() { }
 
+#if 0
         /** Creates the graph representing a single tile within the group. */
         TileNode* createTileNodeGraph(
             TerrainTileModel* model,
@@ -81,16 +95,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileNode* createTileNode(
             TerrainTileModel* model,
             ProgressCallback* progress);
+#endif
 
-    protected:
+    public:
 
         MapFrame                              _frame;
         osg::ref_ptr<TileNodeRegistry>        _liveTiles;
         osg::ref_ptr<TileNodeRegistry>        _deadTiles;
-        const RexTerrainEngineOptions&         _options;
+        const RexTerrainEngineOptions&        _options;
         const RenderBindings&                 _renderBindings;
         TerrainEngine*                        _terrainEngine;
         GeometryPool*                         _geometryPool;
+        Loader*                               _loader;
 
         unsigned getMinimumRequiredLevel();
     };

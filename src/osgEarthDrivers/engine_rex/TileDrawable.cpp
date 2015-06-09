@@ -64,7 +64,7 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 {
     unsigned layersDrawn = 0;
 
-    osg::State& state = *renderInfo.getState();
+    osg::State& state = *renderInfo.getState();    
 
     // access the GL extensions interface for the current GC:
     const osg::Program::PerContextProgram* pcp = 0L;
@@ -131,7 +131,6 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
     }
 #endif
 
-
     float prevOpacity = -1.0f;
 
     for(std::vector<Layer>::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
@@ -139,8 +138,8 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
         const ImageLayer* imageLayer = i->_imageLayer.get();
         if ( imageLayer->getVisible() && imageLayer->getOpacity() > 0.0f )
         {
-            // bind the proper unit:
-            state.setActiveTextureUnit( _bindings.color().unit() );
+            // bind the color unit, which is always in the first render binding.
+            state.setActiveTextureUnit( _bindings.front().unit() ); //.color().unit() );
 
             // bind the color texture:
             if ( i->_tex.valid() )
@@ -205,7 +204,8 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
         if ( opacityLocation >= 0 )
             ext->glUniform1f( opacityLocation, (GLfloat)1.0f );
         if ( uidLocation >= 0 )
-            ext->glUniform1i( uidLocation, (GLint)-1 );
+            ext->glUniform1i( uidLocation, (GLint)0 ); // TEMPORARY! -gw //TODO
+            //ext->glUniform1i( uidLocation, (GLint)-1 );
         if ( orderLocation >= 0 )
             ext->glUniform1i( orderLocation, (GLint)0 );
         

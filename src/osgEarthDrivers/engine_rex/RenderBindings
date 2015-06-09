@@ -26,14 +26,34 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class SamplerBinding
     {
     public:
+        enum Usage
+        {
+            COLOR,
+            ELEVATION,
+            NORMAL,
+            MATERIAL
+        };
+
+    public:
         SamplerBinding() : _unit(-1) { }
 
+        /** Optional UID of the source (usually a layer) to which this binding applies */
+        optional<UID>& sourceUID()             { return _sourceUID; }
+        const optional<UID>& sourceUID() const { return _sourceUID; }
+
+        /** Optional usage hint */
+        optional<Usage>& usage()             { return _usage; }
+        const optional<Usage>& usage() const { return _usage; }
+
+        /** Texture image unit of the sampler */
         int& unit() { return _unit; }
         const int& unit() const { return _unit; }
 
+        /** Uniform name of the sampler */
         std::string& samplerName() { return _samplerName; }
         const std::string& samplerName() const { return _samplerName; }
 
+        /** Uniform name of the sampler matrix */
         std::string& matrixName() { return _matrixName; }
         const std::string& matrixName() const { return _matrixName; }
 
@@ -41,11 +61,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool isActive() const { return _unit >= 0; }
 
     private:
-        int         _unit;
-        std::string _samplerName;
-        std::string _matrixName;
+        optional<UID>   _sourceUID;
+        optional<Usage> _usage;
+        int             _unit;
+        std::string     _samplerName;
+        std::string     _matrixName;
     };
 
+    typedef std::vector<SamplerBinding> RenderBindings;
+
+#if 0
     class RenderBindings
     {
     public:
@@ -75,6 +100,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         SamplerBinding _normalBinding;
         SamplerBinding _parentNormalBinding;
     };
+#endif
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine
 

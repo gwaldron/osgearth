@@ -20,6 +20,10 @@
 #define OSGEARTH_DRIVERS_REX_SURFACE_NODE 1
 
 #include "Common"
+#include "GeometryPool"
+#include "RenderBindings"
+
+#include <osgEarth/MapInfo>
 #include <osg/MatrixTransform>
 #include <osg/BoundingBox>
 
@@ -33,7 +37,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class SurfaceNode : public osg::MatrixTransform
     {
     public:
-        SurfaceNode() { }
+        SurfaceNode(
+            const TileKey& tilekey,
+            const MapInfo& mapinfo,
+            const RenderBindings& bindings,
+            GeometryPool*  pool);
 
         void setEngineUID(const UID& uid) { _engineUID = uid; }
         const UID& getEngineUID() const { return _engineUID; }

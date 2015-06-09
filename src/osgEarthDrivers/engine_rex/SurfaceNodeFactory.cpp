@@ -23,7 +23,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 
 #define LC "[SurfaceNodeFactory] "
 
-
+#if 0
 SurfaceNodeFactory::SurfaceNodeFactory(const TerrainTileModel* model,
                                        const MapFrame&         frame,
                                        const RenderBindings&   bindings,
@@ -123,3 +123,4 @@ SurfaceNodeFactory::computeBoundingBox() const
 
     return cbv.getBoundingBox();
 }
+#endif

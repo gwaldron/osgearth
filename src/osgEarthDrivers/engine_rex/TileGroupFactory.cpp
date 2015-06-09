@@ -85,6 +85,7 @@ namespace
 TileGroupFactory::TileGroupFactory(const Map*                     map,
                                    TerrainEngine*                 terrainEngine,
                                    GeometryPool*                  geometryPool,
+                                   Loader*                        loader,
                                    TileNodeRegistry*              liveTiles,
                                    TileNodeRegistry*              deadTiles,
                                    const RenderBindings&          renderBindings,
@@ -92,6 +93,7 @@ TileGroupFactory::TileGroupFactory(const Map*                     map,
 _frame         ( map ),
 _terrainEngine ( terrainEngine ),
 _geometryPool  ( geometryPool ),
+_loader        ( loader ),
 _liveTiles     ( liveTiles ),
 _deadTiles     ( deadTiles ),
 _renderBindings( renderBindings ),
@@ -111,6 +113,7 @@ TileGroupFactory::getMinimumRequiredLevel()
         minLevel;
 }
 
+#if 0
 TileNode*
 TileGroupFactory::createTileNode(TerrainTileModel* model,
                                  ProgressCallback* progress)
@@ -511,3 +514,4 @@ TileGroupFactory::createTileGroup(const TileKey&    parentKey,
 
     return tileGroup.release();
 }
+#endif

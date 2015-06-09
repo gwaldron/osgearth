@@ -31,6 +31,7 @@
 #include "TileNodeRegistry"
 #include "RenderBindings"
 #include "GeometryPool"
+#include "Loader"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -73,6 +74,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Access the stateset used to render payload data. */
         osg::StateSet* getPayloadStateSet();
+
+        /** Access to the asychronous data loader */
+        Loader* getLoader() { return _loader.get(); }
 
     public: // internal TerrainEngineNode
 
@@ -135,6 +139,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         void updateState(); 
 
+        void setupRenderBindings();
+
     private:
         RexTerrainEngineOptions _terrainOptions;
 
@@ -160,6 +166,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         double     _tileCreationTime;
         RenderBindings _renderBindings;
         osg::ref_ptr<GeometryPool> _geometryPool;
+        osg::ref_ptr<LoaderGroup>  _loader;
 
         osg::Uniform* _verticalScaleUniform;
 

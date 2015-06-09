@@ -21,6 +21,7 @@ SET(TARGET_SRC
     RexTerrainEngineNode.cpp
     RexTerrainEngineDriver.cpp
     MaskGenerator.cpp
+    SurfaceNode.cpp
     SurfaceNodeFactory.cpp
 	TileDrawable.cpp
     TileGroup.cpp
@@ -28,6 +29,7 @@ SET(TARGET_SRC
     TileNode.cpp
     TileNodeRegistry.cpp
     TilePagedLOD.cpp
+    Loader.cpp
     ${SHADERS_CPP}
 )
 
@@ -49,6 +51,7 @@ SET(TARGET_H
     SurfaceNodeFactory
     TileNodeRegistry
     TilePagedLOD
+    Loader
 )
 
 setup_plugin(osgearth_engine_rex)

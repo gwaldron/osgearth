@@ -94,6 +94,34 @@ namespace
         const RenderBindings& _bindings;
     };
 
+    // traverses a node graph and moves any TileNodes from the LIVE
+    // registry to the DEAD registry.
+    struct ExpirationCollector : public osg::NodeVisitor
+    {
+        TileNodeRegistry* _live;
+        TileNodeRegistry* _dead;
+        unsigned          _count;
+
+        ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
+            : _live(live), _dead(dead), _count(0)
+        {
+            // set up to traverse the entire subgraph, ignoring node masks.
+            setTraversalMode( TRAVERSE_ALL_CHILDREN );
+            setNodeMaskOverride( ~0 );
+        }
+
+        void apply(osg::Node& node)
+        {
+            TileNode* tn = dynamic_cast<TileNode*>( &node );
+            if ( tn && _live )
+            {
+                _live->move( tn, _dead );
+                _count++;
+            }
+            traverse(node);
+        }
+    };
+
 
     class LoadTileData : public Loader::Request
     {
@@ -169,8 +197,8 @@ namespace
     class ExpireChildren : public Loader::Request
     {
     public:
-        ExpireChildren(TileNode* tilenode)
-            : _tilenode(tilenode) { }
+        ExpireChildren(TileNode* tilenode, TileGroupFactory* context)
+            : _tilenode(tilenode), _context(context) { }
 
         void invoke()
         {
@@ -182,13 +210,27 @@ namespace
             osg::ref_ptr<TileNode> tilenode;
             if ( _tilenode.lock(tilenode) )
             {
+                // Collect and report all the expired tiles:
+                unsigned count = 0;
+                ExpirationCollector collector( _context->liveTiles(), _context->deadTiles() );
+                for(unsigned i=0; i<tilenode->getNumChildren(); ++i)
+                {
+                    tilenode->getChild(i)->accept( collector );
+                    count += collector._count;
+                }
+
+                // Remove them from the node.
                 tilenode->removeChildren( 0, tilenode->getNumChildren() );
-                //OE_INFO << LC << "Expired children of " << tilenode->getTileKey().str() << "\n";
+
+                OE_DEBUG << LC << "Expired " << count << " children; live = "
+                    << _context->liveTiles()->size()
+                    << "\n";
             }
         }
 
     protected:
         osg::observer_ptr<TileNode> _tilenode;
+        TileGroupFactory*           _context;
     };
 }
 
@@ -227,7 +269,7 @@ TileNode::create(const TileKey& key, TileGroupFactory* context)
     setDirty( true );
 
     // register me.
-    context->getLiveTiles()->add( this );
+    context->liveTiles()->add( this );
 }
 
 osg::BoundingSphere
@@ -265,16 +307,27 @@ TileNode::setDirty(bool value)
 }
 
 void
+TileNode::releaseGLObjects(osg::State* state) const
+{
+    if ( getStateSet() )
+        getStateSet()->releaseGLObjects(state);
+    if ( _payload.valid() )
+        _payload->releaseGLObjects(state);
+
+    osg::Group::releaseGLObjects(state);
+}
+
+void
 TileNode::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getFrameStamp() )
-    {
-        _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
-    }
-
     // Cull
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
+        if ( nv.getFrameStamp() )
+        {
+            _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
+        }
+
         const osg::Vec3& center = getBound().center();
 
         float cameraRange = nv.getDistanceToViewPoint( center, true );
@@ -307,10 +360,20 @@ TileNode::traverse(osg::NodeVisitor& nv)
             // If all are ready, traverse them now.
             if ( numChildrenReady == 4 )
             {
-                _children[0]->accept( nv );
-                _children[1]->accept( nv );
-                _children[2]->accept( nv );
-                _children[3]->accept( nv );
+                osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
+
+                for(unsigned i=0; i<4; ++i)
+                {
+                    TileNode* child = getSubTile(i);
+                    if (cull->isCulled( *child ) && child->isDormant( nv ) && child->getNumChildren() > 0)
+                    {
+                        child->expireChildren( nv );
+                    }
+                    else
+                    {
+                        child->accept( nv );
+                    }
+                }
             }
 
             // Not all children are ready, so cull the current payload.
@@ -441,7 +504,7 @@ TileNode::expireChildren(osg::NodeVisitor& nv)
         Threading::ScopedMutexLock lock(_mutex);
         if ( !_expireRequest.valid() )
         {
-            _expireRequest = new ExpireChildren(this); 
+            _expireRequest = new ExpireChildren(this, context);
         }
     }
         

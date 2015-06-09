@@ -99,6 +99,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void traverse(osg::NodeVisitor& nv);
 
+        void releaseGLObjects(osg::State* state) const;
+
     protected:
         TileKey                            _key;
         osg::ref_ptr<osg::Node>            _payload;

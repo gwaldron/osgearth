@@ -19,6 +19,7 @@
 #include "RexTerrainEngineNode"
 #include "TilePagedLOD"
 #include "Shaders"
+#include "QuickReleaseGLObjects"
 
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
@@ -258,6 +259,13 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // themselves if necessary.
     _liveTiles = new TileNodeRegistry("live");
     _liveTiles->setMapRevision( _update_mapf->getRevision() );
+
+    if ( _terrainOptions.quickReleaseGLObjects() == true )
+    {
+        _deadTiles = new TileNodeRegistry("dead");
+        _quickReleaseInstalled = false;
+        ADJUST_UPDATE_TRAV_COUNT( this, +1 );
+    }
 
     // A shared geometry pool.
     if ( ::getenv("OSGEARTH_REX_NO_POOL") == 0L )
@@ -521,6 +529,29 @@ namespace
 void
 RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR && _quickReleaseInstalled == false )
+    {
+        osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
+        if ( cam )
+        {
+            // get the installed PDC so we can nest them:
+            osg::Camera::DrawCallback* cbToNest = cam->getPostDrawCallback();
+
+            // if it's another QR callback, we'll just replace it.
+            QuickReleaseGLObjects* previousQR = dynamic_cast<QuickReleaseGLObjects*>(cbToNest);
+            if ( previousQR )
+                cbToNest = previousQR->_next.get();
+
+            cam->setPostDrawCallback( new QuickReleaseGLObjects(_deadTiles.get(), cbToNest) );
+
+            _quickReleaseInstalled = true;
+            OE_INFO << LC << "Quick release enabled" << std::endl;
+
+            // knock down the trav count set in the constructor.
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        }
+    }
+
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
         // Inform the registry of the current frame so that Tiles have access

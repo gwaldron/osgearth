@@ -43,7 +43,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _color             ( Color::White ),
             _enableLODBlending ( false ),
             _lodBlendDelay     ( 0.0f ),
-            _lodBlendDuration  ( 0.25f )
+            _lodBlendDuration  ( 0.25f ),
+            _quickRelease      ( true )
         {
             setDriver( "rex" );
             fromConfig( _conf );
@@ -87,6 +88,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<float>& lodBlendDuration() { return _lodBlendDuration; }
         const optional<float>& lodBlendDuration() const { return _lodBlendDuration; }
 
+        /** Whether to run a post-render process that releases GL objects as quickly as
+          * possible, freeing up memory faster */
+        optional<bool>& quickReleaseGLObjects() { return _quickRelease; }
+        const optional<bool>& quickReleaseGLObjects() const { return _quickRelease; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
@@ -99,6 +105,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.updateIfSet( "lod_blending", _enableLODBlending );
             conf.updateIfSet( "lod_blending_delay", _lodBlendDelay );
             conf.updateIfSet( "lod_blending_duration", _lodBlendDuration );
+            conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
 
             return conf;
         }
@@ -119,6 +126,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.getIfSet( "lod_blending", _enableLODBlending );
             conf.getIfSet( "lod_blending_delay", _lodBlendDelay );
             conf.getIfSet( "lod_blending_duration", _lodBlendDuration );
+            conf.getIfSet( "quick_release_gl_objects", _quickRelease );
         }
 
         optional<float>               _skirtRatio;
@@ -129,6 +137,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>                _enableLODBlending;
         optional<float>               _lodBlendDelay;
         optional<float>               _lodBlendDuration;
+        optional<bool>                _quickRelease;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

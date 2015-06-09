@@ -61,7 +61,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         TerrainEngine* getEngine() const { return _terrainEngine; }
 
-        TileNodeRegistry* getLiveTiles() const { return _liveTiles.get(); }
+        TileNodeRegistry* liveTiles() const { return _liveTiles.get(); }
+
+        TileNodeRegistry* deadTiles() const { return _deadTiles.get(); }
 
 #if 0
         /**

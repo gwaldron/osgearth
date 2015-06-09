@@ -37,9 +37,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         RexTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
             _skirtRatio        ( 0.05 ),
-            _normalizeEdges    ( false ),
-            _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
-            _tilePixelSize     ( 256 ),
             _color             ( Color::White ),
             _enableLODBlending ( false ),
             _lodBlendDelay     ( 0.0f ),
@@ -57,18 +54,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Ratio of terrain tile skirt height to tile radius */
         optional<float>& heightFieldSkirtRatio() { return _skirtRatio; }
         const optional<float>& heightFieldSkirtRatio() const { return _skirtRatio; }
-
-        /** Whether to average normal vectors on tile boundaries */
-        optional<bool>& normalizeEdges() { return _normalizeEdges; }
-        const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
-
-        /** Mode to use when calculating LOD switching distances */
-        optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
-        const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
-
-        /** The size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN */
-        optional<float>& tilePixelSize() { return _tilePixelSize; }
-        const optional<float>& tilePixelSize() const { return _tilePixelSize; }
 
         /** The color of the globe surface where no images are applied */
         optional<Color>& color() { return _color; }
@@ -97,10 +82,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.updateIfSet( "skirt_ratio", _skirtRatio );
-            conf.updateIfSet( "normalize_edges", _normalizeEdges);
-            conf.updateIfSet( "tile_pixel_size", _tilePixelSize );
-            conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
-            conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.updateIfSet( "color", _color );
             conf.updateIfSet( "lod_blending", _enableLODBlending );
             conf.updateIfSet( "lod_blending_delay", _lodBlendDelay );
@@ -118,10 +99,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "skirt_ratio", _skirtRatio );
-            conf.getIfSet( "normalize_edges", _normalizeEdges );
-            conf.getIfSet( "tile_pixel_size", _tilePixelSize );
-            conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
-            conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.getIfSet( "color", _color );
             conf.getIfSet( "lod_blending", _enableLODBlending );
             conf.getIfSet( "lod_blending_delay", _lodBlendDelay );
@@ -130,9 +107,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         }
 
         optional<float>               _skirtRatio;
-        optional<bool>                _normalizeEdges;
-        optional<osg::LOD::RangeMode> _rangeMode;
-        optional<float>               _tilePixelSize;
         optional<Color>               _color;
         optional<bool>                _enableLODBlending;
         optional<float>               _lodBlendDelay;

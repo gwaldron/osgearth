@@ -45,7 +45,7 @@ SimpleLoader::SimpleLoader()
 }
 
 bool
-SimpleLoader::load(Loader::Request* request, osg::NodeVisitor& nv)
+SimpleLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
 {
     if ( request )
     {
@@ -90,7 +90,7 @@ _engineUID( engineUID )
 
 
 bool
-PagerLoader::load(Loader::Request* request, osg::NodeVisitor& nv)
+PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
 {
     if ( request && nv.getDatabaseRequestHandler() )
     {
@@ -103,7 +103,7 @@ PagerLoader::load(Loader::Request* request, osg::NodeVisitor& nv)
         nv.getDatabaseRequestHandler()->requestNodeFile(
             filename,
             _myNodePath,
-            1.0f,
+            priority,
             nv.getFrameStamp(),
             request->_internalHandle,
             dboptions );

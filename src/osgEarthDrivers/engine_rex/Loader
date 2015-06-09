@@ -65,7 +65,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             virtual void operator()(Request* request) =0;
         };
 
-        virtual bool load(Loader::Request* req, osg::NodeVisitor& nv) =0;
+        virtual bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv) =0;
     };
 
 
@@ -81,7 +81,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         SimpleLoader();
 
     public: // Loader
-        bool load(Loader::Request* req, osg::NodeVisitor& nv);
+        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
     };
 
 
@@ -95,7 +95,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Asks the loader to begin or continue loading something.
             Returns true if a NEW request was scheduled; false if an existing request was updated. */
-        bool load(Loader::Request* req, osg::NodeVisitor& nv);
+        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
 
         /** Internal method to invoke a request that was previously queued with load(). */
         Request* invokeAndRelease(UID requestUID);

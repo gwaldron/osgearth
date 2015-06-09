@@ -18,33 +18,19 @@
 */
 #include "TileNode"
 #include "SurfaceNode"
-#include "SurfaceNodeFactory"
 #include "TileGroupFactory"
 #include "Loader"
+#include "LoadTileData"
+#include "ExpireTiles"
 
-#include <osg/ClusterCullingCallback>
-#include <osg/NodeCallback>
-#include <osg/NodeVisitor>
-#include <osg/Uniform>
-#include <osg/TexMat>
-
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/ShaderGenerator>
-#include <osgEarth/DrawInstanced>
-#include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
-#include <osgEarth/ImageUtils>
-#include <osgEarth/TerrainTileModel>
-#include <osgEarth/TerrainEngineNode>
-#include <osgUtil/Optimizer>
+#include <osg/Uniform>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
-using namespace OpenThreads;
 
 #define LC "[TileNode] "
 
-#if 1
 
 namespace
 {
@@ -66,172 +52,6 @@ namespace
     {
         m.preMult( scaleBias[quadrant] );
     }
-
-    struct RecalculateMatrices : public osg::NodeVisitor
-    {
-        RecalculateMatrices(const RenderBindings& bindings)
-            : _bindings(bindings)
-        {
-            setTraversalMode( TRAVERSE_ALL_CHILDREN );
-        }
-
-        void apply(osg::Group& node)
-        {
-            bool changed = true;
-
-            TileNode* tilenode = dynamic_cast<TileNode*>(&node);
-            if ( tilenode )
-            {
-                changed = tilenode->inheritState( tilenode->getParentTile(), _bindings );
-            }
-
-            if ( changed )
-            {
-                traverse(node);
-            }
-        }
-
-        const RenderBindings& _bindings;
-    };
-
-    // traverses a node graph and moves any TileNodes from the LIVE
-    // registry to the DEAD registry.
-    struct ExpirationCollector : public osg::NodeVisitor
-    {
-        TileNodeRegistry* _live;
-        TileNodeRegistry* _dead;
-        unsigned          _count;
-
-        ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
-            : _live(live), _dead(dead), _count(0)
-        {
-            // set up to traverse the entire subgraph, ignoring node masks.
-            setTraversalMode( TRAVERSE_ALL_CHILDREN );
-            setNodeMaskOverride( ~0 );
-        }
-
-        void apply(osg::Node& node)
-        {
-            TileNode* tn = dynamic_cast<TileNode*>( &node );
-            if ( tn && _live )
-            {
-                _live->move( tn, _dead );
-                _count++;
-            }
-            traverse(node);
-        }
-    };
-
-
-    class LoadTileData : public Loader::Request
-    {
-    public:
-        LoadTileData(TileNode* tilenode, TileGroupFactory* factory)
-            : _tilenode(tilenode), _factory(factory) { }
-
-        void invoke()
-        {
-            osg::ref_ptr<TileNode> tilenode;
-            if ( _tilenode.lock(tilenode) )
-            {
-                _model = _factory->getEngine()->createTileModel(
-                    _factory->getMapFrame(),
-                    tilenode->getTileKey(),
-                    0L, //_factory->getLiveTiles(),
-                    0L ); // progress
-            }
-        }
-
-        void apply()
-        {
-            if ( _model.valid() && _model->containsNewData() )
-            {
-                osg::ref_ptr<TileNode> tilenode;
-                if ( _tilenode.lock(tilenode) )
-                {
-                    const RenderBindings& bindings = _factory->getRenderBindings();
-
-                    osg::StateSet* stateSet = tilenode->getOrCreateStateSet();
-
-                    for(TerrainTileImageLayerModelVector::iterator i = _model->colorLayers().begin();
-                        i != _model->colorLayers().end();
-                        ++i)
-                    {
-                        TerrainTileImageLayerModel* layerModel = i->get();
-                        if ( layerModel && layerModel->getTexture() )
-                        {
-                            const SamplerBinding& colorBinding = bindings.front(); // TODO
-
-                            stateSet->setTextureAttribute(
-                                colorBinding.unit(),
-                                layerModel->getTexture() );
-
-                            stateSet->addUniform(
-                                new osg::Uniform(colorBinding.matrixName().c_str(),
-                                                 osg::Matrixf::identity()));
-                            
-                            // TODO.
-                            break;                            
-                        }
-                    }
-
-                    // Update existing inheritance matrices as necessary.
-                    RecalculateMatrices recalc( bindings );
-                    tilenode->accept( recalc );
-
-                    // TODO: elevation, normal map, etc....
-
-                    // Mark as complete. TODO: per-data requests will do something different.
-                    tilenode->setDirty( false );
-                }
-            }
-        }
-
-    protected:
-        osg::observer_ptr<TileNode>    _tilenode;
-        osg::ref_ptr<TerrainTileModel> _model;
-        TileGroupFactory*              _factory;
-    };
-
-
-    class ExpireChildren : public Loader::Request
-    {
-    public:
-        ExpireChildren(TileNode* tilenode, TileGroupFactory* context)
-            : _tilenode(tilenode), _context(context) { }
-
-        void invoke()
-        {
-            //nop
-        }
-
-        void apply()
-        {
-            osg::ref_ptr<TileNode> tilenode;
-            if ( _tilenode.lock(tilenode) )
-            {
-                // Collect and report all the expired tiles:
-                unsigned count = 0;
-                ExpirationCollector collector( _context->liveTiles(), _context->deadTiles() );
-                for(unsigned i=0; i<tilenode->getNumChildren(); ++i)
-                {
-                    tilenode->getChild(i)->accept( collector );
-                    count += collector._count;
-                }
-
-                // Remove them from the node.
-                tilenode->removeChildren( 0, tilenode->getNumChildren() );
-
-                OE_DEBUG << LC << "Expired " << count << " children; live = "
-                    << _context->liveTiles()->size()
-                    << "\n";
-            }
-        }
-
-    protected:
-        osg::observer_ptr<TileNode> _tilenode;
-        TileGroupFactory*           _context;
-    };
 }
 
 
@@ -492,7 +312,9 @@ TileNode::load(osg::NodeVisitor& nv)
         }
     }
         
-    context->getLoader()->load( _loadRequest.get(), nv );
+    // Prioritize by LOD.
+    float priority = (float)getTileKey().getLOD();
+    context->getLoader()->load( _loadRequest.get(), priority, nv );
 }
 
 void
@@ -504,58 +326,18 @@ TileNode::expireChildren(osg::NodeVisitor& nv)
         Threading::ScopedMutexLock lock(_mutex);
         if ( !_expireRequest.valid() )
         {
-            _expireRequest = new ExpireChildren(this, context);
+            _expireRequest = new ExpireTiles(this, context);
         }
     }
-        
-    context->getLoader()->load( _expireRequest.get(), nv );
+       
+    // Low priority for expiry requests.
+    const float lowPriority = 0.0f;
+    context->getLoader()->load( _expireRequest.get(), lowPriority, nv );
 }
 
 
-#else
+#if 0
 
-
-TileNode::TileNode() :
-_model( 0L )
-{
-    //NOP
-}
-
-TileNode::TileNode(const TerrainTileModel* model) :
-_model             ( model ),
-_lastTraversalFrame( 0 ),
-_dirty             ( false ),
-_outOfDate         ( false )
-{
-    // model required.
-    if ( !model )
-    {
-        OE_WARN << LC << "Illegal: Created a tile node with no model\n";
-        return;
-    }
-
-    this->setName( _model->getKey().str() );
-
-    // revisions are initially in sync:
-    if ( model )
-    {
-        _mapRevision = model->getRevision();
-
-        if ( model->requiresUpdateTraverse() )
-        {
-            this->setNumChildrenRequiringUpdateTraversal(1);
-        }
-    }
-}
-
-
-void
-TileNode::setLastTraversalFrame(unsigned frame)
-{
-    _lastTraversalFrame = frame;
-}
-
-#define OE_TEST OE_DEBUG
 void
 TileNode::notifyOfArrival(TileNode* that)
 {

@@ -18,7 +18,6 @@
 */
 #include "TileGroupFactory"
 #include "FileLocationCallback"
-#include "TilePagedLOD"
 #include "TileGroup"
 #include "SurfaceNodeFactory"
 

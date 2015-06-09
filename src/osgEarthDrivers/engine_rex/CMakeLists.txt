@@ -20,6 +20,8 @@ SET(TARGET_SRC
     GeometryPool.cpp
     RexTerrainEngineNode.cpp
     RexTerrainEngineDriver.cpp
+    LoadTileData.cpp
+    ExpireTiles.cpp
     MaskGenerator.cpp
     SurfaceNode.cpp
     SurfaceNodeFactory.cpp
@@ -28,7 +30,6 @@ SET(TARGET_SRC
     TileGroupFactory.cpp
     TileNode.cpp
     TileNodeRegistry.cpp
-    TilePagedLOD.cpp
     Loader.cpp
     ${SHADERS_CPP}
 )
@@ -40,6 +41,8 @@ SET(TARGET_H
     Shaders
     RexTerrainEngineNode
     RexTerrainEngineOptions
+    LoadTileData
+    ExpireTiles
     MaskGenerator
     QuickReleaseGLObjects
     RenderBindings
@@ -50,7 +53,6 @@ SET(TARGET_H
     TileNode
     SurfaceNodeFactory
     TileNodeRegistry
-    TilePagedLOD
     Loader
 )
 

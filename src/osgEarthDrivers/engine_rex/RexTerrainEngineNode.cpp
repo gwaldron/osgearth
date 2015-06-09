@@ -17,7 +17,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "RexTerrainEngineNode"
-#include "TilePagedLOD"
 #include "Shaders"
 #include "QuickReleaseGLObjects"
 
@@ -325,8 +324,6 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
-
-    OE_INFO << LC << "Edge normalization is " << (_terrainOptions.normalizeEdges() == true? "ON" : "OFF") << std::endl;
 }
 
 
@@ -348,9 +345,6 @@ RexTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
                                        unsigned         minLevel,
                                        unsigned         maxLevel)
 {
-    OE_WARN << LC << "invalidateRegion() is not implemented\n";
-    return;
-
     if ( _liveTiles.valid() )
     {
         GeoExtent extentLocal = extent;
@@ -432,8 +426,6 @@ RexTerrainEngineNode::dirtyTerrain()
 {
     //TODO: scrub the geometry pool?
 
-    //TODO: scrub any heightfield caches in the factory objects?
-
     // remove existing:
     if ( _terrain )
     {
@@ -488,18 +480,6 @@ RexTerrainEngineNode::dirtyTerrain()
         tileNode->create( keys[i], context );
 
         _terrain->addChild( tileNode );
-        //osg::ref_ptr<osg::Node> node = factory->createTileGroup( keys[i], true, true, 0L );
-        //if ( node.valid() )
-        //{
-        //    root->addChild( node.get() );
-        //    root->setRange( child++, 0.0f, FLT_MAX );
-        //    root->setCenter( node->getBound().center() );
-        //    root->setNumChildrenThatCannotBeExpired( child );
-        //}
-        //else
-        //{
-        //    OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
-        //}
     }
 
     updateState();
@@ -616,111 +596,14 @@ RexTerrainEngineNode::getTileGroupFactory()
     return factory.get();
 }
 
-// no longer used.
-osg::Node*
-RexTerrainEngineNode::createNode(const TileKey&    key,
-                                ProgressCallback* progress)
-{
-    return 0L;
-#if 0
-    // if the engine has been disconnected from the scene graph, bail out and don't
-    // create any more tiles
-    if ( getNumParents() == 0 )
-        return 0L;
-
-    OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
-
-    // create the node:
-    osg::ref_ptr<osg::Node> node = getTileGroupFactory()->createTileGroup( key, true, true, progress );
-    
-    // release the reference and return it.
-    return node.release();
-#endif
-}
-
-
-// no longer used.
-osg::Node*
-RexTerrainEngineNode::createStandaloneNode(const TileKey&    key,
-                                          ProgressCallback* progress)
-{
-    return 0L;
-#if 0
-    // if the engine has been disconnected from the scene graph, bail out and don't
-    // create any more tiles
-    if ( getNumParents() == 0 )
-        return 0L;
-
-    OE_DEBUG << LC << "Create standalone node for \"" << key.str() << "\"" << std::endl;
-
-    return getTileGroupFactory()->createTileGroup( key, true, false, progress );
-#endif
-}
-
 
 // no longer used.
 osg::Node*
 RexTerrainEngineNode::createTile( const TileKey& key )
 {
     // TODO: implement again.
+    OE_WARN << LC << "createTile is not implemented.\n";
     return 0L;
-
-#if 0
-    osg::ref_ptr<TileModel> model = new TileModel( _update_mapf->getRevision(), _update_mapf->getMapInfo() );
-    model->_tileKey = key;
-    model->_tileLocator = GeoLocator::createForKey(key, _update_mapf->getMapInfo());
-
-    // Build the heightfield
-
-    const MapInfo& mapInfo = _update_mapf->getMapInfo();
-
-    const osgEarth::ElevationInterpolation& interp = _update_mapf->getMapOptions().elevationInterpolation().get();
-
-    // Request a heightfield from the map, falling back on lower resolution tiles
-    osg::ref_ptr<osg::HeightField> hf;    
-
-    TileKey sampleKey = key;
-    bool populated = false;
-    if (_update_mapf->elevationLayers().size() > 0)
-    {
-        while (!populated)
-        {
-            populated = _update_mapf->populateHeightField(hf, sampleKey, true, SARexLE_FIRST_VALID);
-            if (!populated)
-            {
-                // Fallback on the parent
-                sampleKey = sampleKey.createParentKey();
-                if (!sampleKey.valid())
-                {
-                    return 0;
-                }
-            }
-        }       
-    }
-
-    if (!populated)
-    {
-        // We have no heightfield so just create a reference heightfield.
-        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
-        sampleKey = key;
-    }
-
-    model->_elevationData = TileModel::ElevationData(
-            hf,
-            GeoLocator::createForKey( sampleKey, mapInfo ),
-            false );        
-
-    bool optimizeTriangleOrientation = getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
-
-    osg::ref_ptr<TileModelCompiler> compiler = new TileModelCompiler(
-            _update_mapf->terrainMaskLayers(),
-            _update_mapf->modelLayers(),
-            _primaryUnit,
-            optimizeTriangleOrientation,
-            _terrainOptions );
-
-    return compiler->compile(model.get(), *_update_mapf, 0L);
-#endif
 }
 
 

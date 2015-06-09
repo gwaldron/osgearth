@@ -50,13 +50,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         META_Node(osgEarth,RexTerrainEngineNode);
         virtual ~RexTerrainEngineNode();
 
-    public:
-        /** Creates a tile node that is set up to page in subtiles. */
-        osg::Node* createNode(const TileKey& key, ProgressCallback* progress =0L);
-
-        /** Creates a tile node with no support for paging in subtiles. */
-        osg::Node* createStandaloneNode(const TileKey& key, ProgressCallback* progress =0L);
-
     public: // TerrainEngineNode
 
         // for standalone tile creation outside of a terrain

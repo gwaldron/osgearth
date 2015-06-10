@@ -47,7 +47,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleOcean
 
     public: // ImageLayer
 
-        virtual void initTileSource();
+        virtual TileSource* createTileSource();
 
         virtual bool isKeyInRange( const TileKey& key ) const;
 

@@ -337,7 +337,6 @@ namespace osgEarth
 
         CacheBin* getCacheBin( const Profile* profile );
 
-
     protected:
 
         // Creates an image that's in the same profile as the provided key.
@@ -353,11 +352,10 @@ namespace osgEarth
         GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
 
 
-        virtual void initTileSource();
-
     protected:
         ImageLayerOptions                        _runtimeOptions;
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
+        Threading::Mutex                         _mutex;
         osg::ref_ptr<osg::Image>                 _emptyImage;
         ImageLayerCallbackList                   _callbacks;
         optional<int>                            _shareImageUnit;
@@ -368,7 +366,8 @@ namespace osgEarth
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );
 
         void init();
-        void initPreCacheOp();
+
+        TileSource::ImageOperation* getOrCreatePreCacheOp();
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

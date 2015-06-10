@@ -32,11 +32,10 @@ _mapf     ( sourceMap )
     _runtimeOptions.cachePolicy() = CachePolicy::NO_CACHE;
 }
 
-void
-ElevationProxyImageLayer::initTileSource()
+TileSource*
+ElevationProxyImageLayer::createTileSource()
 {
-    _tileSourceInitAttempted = true;
-    _tileSourceInitFailed    = false;
+    return 0L;
 }
 
 bool

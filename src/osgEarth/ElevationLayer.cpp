@@ -192,16 +192,18 @@ ElevationLayer::fireCallback( ElevationLayerCallbackMethodPtr method )
     }
 }
 
-void
-ElevationLayer::initTileSource()
+TileSource::HeightFieldOperation*
+ElevationLayer::getOrCreatePreCacheOp()
 {
-    // call superclass first.
-    TerrainLayer::initTileSource();
-
-    if ( _tileSource.valid() )
+    if ( !_preCacheOp.valid() )
     {
-        _preCacheOp = new ElevationLayerPreCacheOperation( _tileSource.get() );        
+        Threading::ScopedMutexLock lock(_mutex);
+        if ( !_preCacheOp.valid() )
+        {
+            _preCacheOp = new ElevationLayerPreCacheOperation( getTileSource() );
+        }
     }
+    return _preCacheOp.get();
 }
 
 
@@ -234,7 +236,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         }
 
         // Make it from the source:
-        result = source->createHeightField( key, _preCacheOp.get(), progress );
+        result = source->createHeightField( key, getOrCreatePreCacheOp(), progress );
    
         // If the result is good, we how have a heightfield but it's vertical values
         // are still relative to the tile source's vertical datum. Convert them.

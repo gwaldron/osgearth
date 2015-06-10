@@ -52,12 +52,11 @@ namespace
         float                                   _C;
 
         SetFarPlaneUniformCallback(osg::Uniform*              uniform,
-                                   osg::Camera::DrawCallback* next,
-                                   float                      C )
+                                   osg::Camera::DrawCallback* next )
         {
             _uniform = uniform;
             _next    = next;
-            _C       = C;
+            _C       = 1.0f;
         }
 
         void operator () (osg::RenderInfo& renderInfo) const
@@ -73,10 +72,6 @@ namespace
             }
             else // ortho
             {
-                //float l, r, b, t, n, f;
-                //proj.getOrtho(l, r, b, t, n, f);
-                //float fc = (float)(2.0/LOG2(_C*f+1.0));
-
                 // Disable in ortho, because it just doesn't work.
                 _uniform->set( -1.0f );
             }
@@ -143,9 +138,8 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
             next = static_cast<SetFarPlaneUniformCallback*>(next.get())->_next.get();
         
         stateset->addUniform( _FCUniform.get() );
-        float C = _useFragDepth ? (float)NEAR_RES_COEFF : 1.0f;
 
-        camera->setPreDrawCallback( new SetFarPlaneUniformCallback(_FCUniform.get(), next.get(), C) );
+        camera->setPreDrawCallback( new SetFarPlaneUniformCallback(_FCUniform.get(), next.get()) );
     }
 }
 

@@ -715,17 +715,17 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install logarithmic depth buffer on main camera
     if ( useLogDepth )
     {
-        OE_INFO << LC << "Activating logarithmic depth buffer (precise) on main camera" << std::endl;
+        OE_INFO << LC << "Activating logarithmic depth buffer (vertex-only) on main camera" << std::endl;
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
-        logDepth.setUseFragDepth( true );
+        logDepth.setUseFragDepth( false );
         logDepth.install( view->getCamera() );
     }
 
     else if ( useLogDepth2 )
     {
-        OE_INFO << LC << "Activating logarithmic depth buffer (vertex-only) on main camera" << std::endl;
+        OE_INFO << LC << "Activating logarithmic depth buffer (precise) on main camera" << std::endl;
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
-        logDepth.setUseFragDepth( false );
+        logDepth.setUseFragDepth( true );
         logDepth.install( view->getCamera() );
     }
 

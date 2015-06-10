@@ -102,6 +102,14 @@ namespace osgEarth
         const optional<Distance>& range() const { return _range; }
 
         /**
+         * Local offsets from the focal point, in meters. For example if the Viewpoint
+         * is looking at a Node, this will shift the focal point so it is offset from
+         * the node in a cartesian coordinate system where X=east, Y=north, Z=up.
+         */
+        optional<osg::Vec3d>& positionOffset()             { return _posOffset; }
+        const optional<osg::Vec3d>& positionOffset() const { return _posOffset; }
+
+        /**
          * Returns a printable string with the viewpoint data
          */
         std::string toString() const;
@@ -151,6 +159,7 @@ namespace osgEarth
         optional<Angle>       _heading;
         optional<Angle>       _pitch;
         optional<Distance>    _range;
+        optional<osg::Vec3d>  _posOffset;
 
         osg::observer_ptr<osg::Node> _node;
     };

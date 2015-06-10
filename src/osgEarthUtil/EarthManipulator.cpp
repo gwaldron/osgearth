@@ -664,6 +664,7 @@ EarthManipulator::established()
             vp.heading()->set( 0.0, Units::DEGREES );
             vp.pitch()->set( -89.0, Units::DEGREES );
             vp.range()->set( _srs->getEllipsoid()->getRadiusEquator() * 3.0, Units::METERS );
+            vp.positionOffset()->set(0,0,0);
             setHomeViewpoint( vp );
         }
         else 
@@ -673,6 +674,7 @@ EarthManipulator::established()
             vp.heading()->set( 0.0, Units::DEGREES );
             vp.pitch()->set( -89.0, Units::DEGREES );
             vp.range()->set( safeNode->getBound().radius()*2.0, Units::METERS );
+            vp.positionOffset()->set(0,0,0);
             setHomeViewpoint( vp );
         }
     }
@@ -1072,8 +1074,13 @@ EarthManipulator::setViewpointFrame(double time_s)
             _setVP0->range()->as(Units::METERS) +
             d_range.as(Units::METERS)*tp + sin(osg::PI*tp)*_setVPArcHeight;
 
+        // Calculate the offsets
+        osg::Vec3d offset0 = _setVP0->positionOffset().getOrUse(osg::Vec3d(0,0,0));
+        osg::Vec3d offset1 = _setVP1->positionOffset().getOrUse(osg::Vec3d(0,0,0));
+        osg::Vec3d newOffset = offset0 + (offset1-offset0)*tp;
+
         // Activate.
-        setLookAt( newCenter, newAzim, newPitch, newRange );
+        setLookAt( newCenter, newAzim, newPitch, newRange, newOffset );
 
         // At t=1 the transition is complete.
         if ( t >= 1.0 )
@@ -1096,10 +1103,14 @@ void
 EarthManipulator::setLookAt(const osg::Vec3d& center,
                             double            azim,
                             double            pitch,
-                            double            range)
+                            double            range,
+                            const osg::Vec3d& posOffset)
 {
     setCenter( center );
     setDistance( range );
+
+    _offset_x = osg::clampBetween(posOffset.x(), -_settings->getMaxXOffset(), _settings->getMaxXOffset());
+    _offset_y = osg::clampBetween(posOffset.y(), -_settings->getMaxYOffset(), _settings->getMaxYOffset());
 
     _previousUp = getUpVector( _centerLocalToWorld );
     _centerRotation = getRotation( center ).getRotate().inverse();

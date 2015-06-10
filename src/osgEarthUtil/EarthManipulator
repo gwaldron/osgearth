@@ -978,7 +978,7 @@ namespace osgEarth { namespace Util
         double                  _setVPArcHeight;            // Altitude arcing height for setViewpoint
 
         bool setViewpointFrame(double time_s);
-        void setLookAt(const osg::Vec3d& center, double azim, double pitch, double range);
+        void setLookAt(const osg::Vec3d& center, double azim, double pitch, double range, const osg::Vec3d& posoffset);
         void resetLookAt();
 
         unsigned _frameCount;

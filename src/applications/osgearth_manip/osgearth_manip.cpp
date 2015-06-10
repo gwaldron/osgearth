@@ -72,7 +72,7 @@ namespace
     {
         const char* text[] =
         {
-            "left mouse :",        "pan (or clear tethering)",
+            "left mouse :",        "pan",
             "middle mouse :",      "rotate",
             "right mouse :",       "continuous zoom",
             "double-click :",      "zoom to point",
@@ -84,6 +84,7 @@ namespace
             "o :",                 "toggle perspective/ortho",
             "8 :",                 "Tether to thing 1",
             "9 :",                 "Tether to thing 2",
+            "b :",                 "break tether",
             "a :",                 "toggle viewpoint arcing",
             "z :",                 "toggle throwing",
             "k :",                 "toggle collision"
@@ -268,6 +269,35 @@ namespace
         char _key;
         osg::ref_ptr<EarthManipulator> _manip;
     };
+
+    /**
+     * Breaks a tether.
+     */
+    struct BreakTetherHandler : public osgGA::GUIEventHandler
+    {
+        BreakTetherHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                _manip->clearViewpoint();
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Break a tether"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
     
 
 
@@ -447,8 +477,6 @@ int main(int argc, char** argv)
     sim2->_lon1 = -44.0;
     viewer.addEventHandler(sim2);
 
-    //viewer.addEventHandler( new Simulator(root, manip, mapNode, model) );
-    manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 
     // Set the minimum distance to something larger than the default
@@ -456,6 +484,9 @@ int main(int argc, char** argv)
 
     // Sets the maximum focal point offsets (usually for tethering)
     manip->getSettings()->setMaxOffset(5000.0, 5000.0);
+    
+    // Pitch limits.
+    manip->getSettings()->setMinMaxPitch(-90, 90);
 
 
     viewer.setSceneData( root );
@@ -475,8 +506,8 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
     viewer.addEventHandler(new ToggleCollisionHandler('k', manip));
     viewer.addEventHandler(new ToggleProjMatrix('o', manip));
+    viewer.addEventHandler(new BreakTetherHandler('b', manip));
 
-    manip->getSettings()->setMinMaxPitch(-90, 90);
 
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);

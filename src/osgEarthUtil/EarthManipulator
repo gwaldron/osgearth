@@ -950,9 +950,19 @@ namespace osgEarth { namespace Util
         // point on the earth. This is equivalent to a rotation by
         // latitude, longitude.
         osg::Quat               _centerRotation;
+
+        // distance from camera to center of rotation.
         double                  _distance;
-        double                  _offset_x;
-        double                  _offset_y;
+
+        // XYZ offsets of the focal point in the local tangent plane coordinate system
+        // of the focal point.
+        osg::Vec3d              _posOffset;
+
+        // XY offsets (left/right, down/up) of the focal point in the plane normal to
+        // the view heading.
+        osg::Vec2d              _viewOffset;
+
+
         osg::Vec3d              _previousUp;
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;

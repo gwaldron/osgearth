@@ -115,6 +115,32 @@ LoadTileData::apply()
                 }
             }
 
+            if ( _model->elevationModel().valid() && _model->elevationModel()->getTexture())
+            {
+                const SamplerBinding& binding = *(bindings.begin() + 1);
+                
+                stateSet->setTextureAttribute(
+                    binding.unit(),
+                    _model->elevationModel()->getTexture() );
+                
+                 stateSet->addUniform(
+                    new osg::Uniform(binding.matrixName().c_str(),
+                    osg::Matrixf::identity()));
+            }
+
+            if ( _model->normalModel().valid() && _model->normalModel()->getTexture() )
+            {
+                const SamplerBinding& binding = *(bindings.begin() + 2);
+                
+                stateSet->setTextureAttribute(
+                    binding.unit(),
+                    _model->normalModel()->getTexture() );
+                
+                 stateSet->addUniform(
+                    new osg::Uniform(binding.matrixName().c_str(),
+                    osg::Matrixf::identity()));
+            }
+
             // Update existing inheritance matrices as necessary.
             RecalculateMatrices recalc( bindings );
             tilenode->accept( recalc );

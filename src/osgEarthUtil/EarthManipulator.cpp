@@ -661,6 +661,7 @@ EarthManipulator::established()
         {
             Viewpoint vp;
             vp.focalPoint() = GeoPoint(_srs.get(), -90.0, 0, 0, ALTMODE_ABSOLUTE);
+            vp.heading()->set( 0.0, Units::DEGREES );
             vp.pitch()->set( -89.0, Units::DEGREES );
             vp.range()->set( _srs->getEllipsoid()->getRadiusEquator() * 3.0, Units::METERS );
             setHomeViewpoint( vp );
@@ -669,6 +670,7 @@ EarthManipulator::established()
         {
             Viewpoint vp;
             vp.focalPoint() = GeoPoint(_srs.get(), safeNode->getBound().center(), ALTMODE_ABSOLUTE);
+            vp.heading()->set( 0.0, Units::DEGREES );
             vp.pitch()->set( -89.0, Units::DEGREES );
             vp.range()->set( safeNode->getBound().radius()*2.0, Units::METERS );
             setHomeViewpoint( vp );

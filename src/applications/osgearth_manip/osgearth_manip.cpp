@@ -451,8 +451,11 @@ int main(int argc, char** argv)
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 
-   // Set the minimum distance to something larger than the default
+    // Set the minimum distance to something larger than the default
     manip->getSettings()->setMinMaxDistance(10.0, manip->getSettings()->getMaxDistance());
+
+    // Sets the maximum focal point offsets (usually for tethering)
+    manip->getSettings()->setMaxOffset(5000.0, 5000.0);
 
 
     viewer.setSceneData( root );

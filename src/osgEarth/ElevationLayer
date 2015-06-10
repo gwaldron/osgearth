@@ -147,8 +147,6 @@ namespace osgEarth
         
         virtual std::string suggestCacheFormat() const;
 
-        virtual void initTileSource();
-
     private:
         ElevationLayerOptions _runtimeOptions;
 
@@ -156,7 +154,10 @@ namespace osgEarth
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ElevationLayerCallbackMethodPtr method );
 
-        osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
+        mutable osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
+
+        TileSource::HeightFieldOperation* getOrCreatePreCacheOp();
+        Threading::Mutex _mutex;
 
         void init();
     };

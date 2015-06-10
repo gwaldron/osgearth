@@ -183,63 +183,35 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                 }
             }
             
-            TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-            layerModel->setImageLayer( layer );
-            layerModel->setMatrix( s_identityMatrix.get() );
-
             if ( geoImage.valid() )
             {
-                // made an image. Store as a texture with an identity matrix.
-                osg::Texture* texture = createImageTexture(geoImage.getImage(), layer);
-                layerModel->setTexture( texture );
-            }
-            else if ( modelStore )
-            {
-                // no image; use the parent texture with a scale/bias matrix.
-                osg::ref_ptr<const TerrainTileModel> parentModel;
-                TileKey parentKey = key.createParentKey();
-                if ( modelStore->get(parentKey, parentModel) )
-                {
-                    const TerrainTileLayerModel* parentLayerModel = layer->isShared() ?
-                        parentModel->findSharedLayerByUID(layer->getUID()) :                        
-                        parentModel->findColorLayerByUID(layer->getUID());
+                TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
+                layerModel->setImageLayer( layer );
+                layerModel->setMatrix( s_identityMatrix.get() );
 
-                    if ( parentLayerModel )
-                    {
-                        layerModel->setTexture( parentLayerModel->getTexture() );
-                        layerModel->setMatrix( osg::clone(parentLayerModel->getMatrix()) );
-                        applyScaleBias( layerModel->getMatrix(), key.getQuadrant() );
-                    }
-                    else
-                    {
-                        OE_WARN << LC << "Could not find parent layer for " << key.str() << std::endl;
-                    }
-                }
-                else
+                if ( geoImage.valid() )
                 {
-                    // There is no parent model.
-                    OE_DEBUG << LC << "no parent model\n";
+                    // made an image. Store as a texture with an identity matrix.
+                    osg::Texture* texture = createImageTexture(geoImage.getImage(), layer);
+                    layerModel->setTexture( texture );
                 }
-            }
 
 #if 0 // TODO: figure this out in the engine
-            if ( geoImage.valid() )
-            {
-                // TODO: the engine derive the Locator; it shouldn't be in the model.
-                if ( useMercatorFastPath )
-                    layerModel->setLocator( new MercatorLocator(geoImage.getExtent()) );
-                else
-                    layerModel->setLocator( GeoLocator::createForExtent(geoImage.getExtent(), frame.getMapInfo()) );
-            }
+                if ( geoImage.valid() )
+                {
+                    // TODO: the engine derive the Locator; it shouldn't be in the model.
+                    if ( useMercatorFastPath )
+                        layerModel->setLocator( new MercatorLocator(geoImage.getExtent()) );
+                    else
+                        layerModel->setLocator( GeoLocator::createForExtent(geoImage.getExtent(), frame.getMapInfo()) );
+                }
 #endif
 
-            if ( layer->isShared() )
-                model->sharedLayers().push_back( layerModel );
-            else
-                model->colorLayers().push_back( layerModel );
-
-            if ( layerModel->getMatrix() == 0L )
-                OE_WARN << LC << "NO MATRIX!\n";
+                if ( layer->isShared() )
+                    model->sharedLayers().push_back( layerModel );
+                else
+                    model->colorLayers().push_back( layerModel );
+            }
         }
     }
 
@@ -266,13 +238,9 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
     // Request a heightfield from the map.
     osg::ref_ptr<osg::HeightField> mainHF;
 
-    TerrainTileElevationModel* layerModel = new TerrainTileElevationModel();
-    layerModel->setMatrix( s_identityMatrix.get() );
-
-    // Make a new heightfield. Use the cache as necessary.
-    osg::Image* image = 0L;
     if (getOrCreateHeightField(frame, key, SAMPLE_FIRST_VALID, interp, mainHF, progress))
     {
+        osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
         layerModel->setHeightField( mainHF.get() );
 
         // pre-calculate the min/max heights:
@@ -286,80 +254,23 @@ TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                 if ( h < layerModel->getMinHeight() )
                     layerModel->setMinHeight( h );
             }
-        }
+        }        
 
+        // needed for normal map generation
         model->heightFields().setNeighbor(0, 0, mainHF.get());
 
         // convert the heightfield to a 1-channel 32-bit fp image:
         ImageToHeightFieldConverter conv;
-        image = conv.convert( mainHF.get(), 32 ); // 32 = GL_FLOAT
+        osg::Image* image = conv.convert( mainHF.get(), 32 ); // 32 = GL_FLOAT
+
         if ( image )
         {
-            // if we have access to the model store, use the parent's data to
-            // fill in any missing values:
-            if ( modelStore )
-            {
-                osg::ref_ptr<const TerrainTileModel> parentModel;
-                TileKey parentKey = key.createParentKey();
-                if ( modelStore->get(parentKey, parentModel) )
-                {
-                    const TerrainTileLayerModel* parentElevLayer = parentModel->elevationModel().get();
-
-                    if (parentElevLayer && parentElevLayer->getTexture())
-                    {
-                        ImageUtils::replaceNoDataValues(
-                            image,
-                            key.getExtent().bounds(),
-                            parentElevLayer->getTexture()->getImage(0),
-                            parentKey.getExtent().bounds() );
-                    }
-                }
-            }
+            // Made an image, so store this as a texture with no matrix.
+            osg::Texture* texture = createElevationTexture( image );
+            layerModel->setTexture( texture );
+            model->elevationModel() = layerModel.get();
         }
     }
-
-    if ( image )
-    {
-        // Made an image, so store this as a texture with no matrix.
-        osg::Texture* texture = createElevationTexture( image );
-        layerModel->setTexture( texture );
-    }
-    else if ( modelStore )
-    {
-        //TODO: check whether we actually expect a parent model to exist; 
-        // i.e. we are not at the root (or first) level.
-
-        // no image; use the parent texture with a scale/bias matrix.
-        osg::ref_ptr<const TerrainTileModel> parentModel;
-        TileKey parentKey = key.createParentKey();
-        if ( modelStore->get(parentKey, parentModel) )
-        {
-            const TerrainTileElevationModel* parentLayerModel = parentModel->elevationModel().get();
-            if ( parentLayerModel )
-            {
-                // use the parent texture with an adjusted matrix:
-                layerModel->setTexture( parentLayerModel->getTexture() );
-                layerModel->setMatrix( osg::clone(parentLayerModel->getMatrix()) );
-                applyScaleBias( layerModel->getMatrix(), key.getQuadrant() );
-
-                // copy over the height info.. not quite correct..
-                layerModel->setHeightField(parentLayerModel->getHeightField());
-                layerModel->setMinHeight(parentLayerModel->getMinHeight());
-                layerModel->setMaxHeight(parentLayerModel->getMaxHeight());
-            }
-            else
-            {
-                OE_WARN << LC << "addElevation: no parent elevation model for " << key.str() << "\n";
-            }
-        }
-        else
-        {
-            // No parent model exists.
-            OE_DEBUG << LC << "addElevation: no parent model for " << key.str() << "\n";
-        }
-    }
-
-    model->elevationModel() = layerModel;
 
     if (progress)
         progress->stats()["fetch_elevation_time"] += OE_STOP_TIMER(fetch_elevation);
@@ -382,32 +293,9 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
     layerModel->setMatrix( s_identityMatrix.get() );
 
     // Can only generate the normal map if the center heightfield was built:
-    osg::Image* image = 0L;
-
-    if ( model->heightFields().getNeighbor(0, 0) != 0L )
-    {
-#if 0
-        // assemble the neighboring heightfields so we can get the edges correct:
-        for(int x=-1; x<=1; x+=2)
-        {
-            for(int y=-1; y<=1; y+=2)
-            {
-                osg::ref_ptr<osg::HeightField> neighborHF;
-                bool isFallback = false;
-                TileKey neighborKey = key.createNeighborKey(x, y);
-                if (getOrCreateHeightField(frame, neighborKey, SAMPLE_FIRST_VALID, interp, neighborHF, progress))
-                {
-                    model->heightFields().setNeighbor(x, y, neighborHF.get());
-                }
-            }
-        }
-#endif
-
-        // Create an image encoding normals and curvature:
-        image = HeightFieldUtils::convertToNormalMap(
-            model->heightFields(),
-            key.getProfile()->getSRS() );
-    }
+    osg::Image* image = HeightFieldUtils::convertToNormalMap(
+        model->heightFields(),
+        key.getProfile()->getSRS() );
 
     if ( image )
     {
@@ -416,27 +304,7 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
         layerModel->setTexture( texture );
     }
 
-    else if ( modelStore )
-    {
-        // no image; use the parent texture with a scale/bias matrix.
-        osg::ref_ptr<const TerrainTileModel> parentModel;
-        TileKey parentKey = key.createParentKey();
-        if ( modelStore->get(parentKey, parentModel) )
-        {
-            const TerrainTileLayerModel* parentLayerModel = parentModel->normalModel().get();
-                //findSharedLayerByName( "oe_normal_map" );
-
-            if ( parentLayerModel )
-            {
-                layerModel->setTexture( parentLayerModel->getTexture() );
-                layerModel->setMatrix( osg::clone(parentLayerModel->getMatrix()) );
-                applyScaleBias( layerModel->getMatrix(), key.getQuadrant() );
-            }
-        }
-    }
-
     model->normalModel() = layerModel;
-    //model->sharedLayers().push_back( layerModel );
 
     if (progress)
         progress->stats()["fetch_normalmap_time"] += OE_STOP_TIMER(fetch_normalmap);

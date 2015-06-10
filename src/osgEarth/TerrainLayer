@@ -396,7 +396,8 @@ namespace osgEarth
 
     protected:
 
-        virtual void initTileSource();
+        /** Creates the driver the supplies the actual data. Internal function. */
+        virtual TileSource* createTileSource();
 
         void applyProfileOverrides();
 
@@ -404,10 +405,9 @@ namespace osgEarth
 
     protected:
 
-        osg::ref_ptr<TileSource>       _tileSource;
         osg::ref_ptr<const Profile>    _targetProfileHint;
-        bool                           _tileSourceInitAttempted;
-        bool                           _tileSourceInitFailed;
+        mutable bool                   _tileSourceInitAttempted;
+        //bool                           _tileSourceInitFailed;
         unsigned                       _tileSize;  
         osg::ref_ptr<osgDB::Options>   _dbOptions;
         osg::ref_ptr<MemCache>         _memCache;
@@ -426,7 +426,9 @@ namespace osgEarth
         std::string                    _referenceURI;
         TerrainLayerOptions            _initOptions;
         TerrainLayerOptions*           _runtimeOptions;
+
         mutable Threading::Mutex       _initTileSourceMutex;
+        osg::ref_ptr<TileSource>       _tileSource;
 
         osg::ref_ptr<Cache>            _cache;
         
@@ -462,7 +464,7 @@ namespace osgEarth
         void setCache( Cache* cache );
 
         // read the tile source's cache policy hint and apply as necessary
-        void refreshTileSourceCachePolicyHint();
+        void refreshTileSourceCachePolicyHint(TileSource*);
     };
 
     typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;

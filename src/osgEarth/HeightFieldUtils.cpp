@@ -26,6 +26,36 @@
 
 using namespace osgEarth;
 
+
+bool
+HeightFieldUtils::validateSamples(float &a, float &b, float &c, float &d)
+{
+    // If ALL the sample points are NO_DATA_VALUE then we can't do anything.
+    if (a == NO_DATA_VALUE && b == NO_DATA_VALUE && c == NO_DATA_VALUE && d == NO_DATA_VALUE)
+    {
+        return false;
+    }
+
+    // If any of the samples are valid but some are NO_DATA_VALUE we can replace the nodata with valid values.
+    if (a == NO_DATA_VALUE ||
+        b == NO_DATA_VALUE || 
+        c == NO_DATA_VALUE ||
+        d == NO_DATA_VALUE)
+    {
+        float validValue = a;
+        if (validValue == NO_DATA_VALUE) validValue = b;
+        if (validValue == NO_DATA_VALUE) validValue = c;
+        if (validValue == NO_DATA_VALUE) validValue = d;
+
+        if (a == NO_DATA_VALUE) a = validValue;
+        if (b == NO_DATA_VALUE) b = validValue;
+        if (c == NO_DATA_VALUE) c = validValue;
+        if (d == NO_DATA_VALUE) d = validValue;
+    }
+
+    return true;
+}
+
 float
 HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double r, ElevationInterpolation interpolation)
 {
@@ -76,7 +106,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         float lrHeight = hf->getHeight(colMax, rowMin);
 
         //Make sure not to use NoData in the interpolation
-        if (urHeight == NO_DATA_VALUE || llHeight == NO_DATA_VALUE || ulHeight == NO_DATA_VALUE || lrHeight == NO_DATA_VALUE)
+        if (!validateSamples(urHeight, llHeight, ulHeight, lrHeight))
         {
             return NO_DATA_VALUE;
         }
@@ -129,7 +159,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         float lrHeight = hf->getHeight(colMax, rowMin);
 
         //Make sure not to use NoData in the interpolation
-        if (urHeight == NO_DATA_VALUE || llHeight == NO_DATA_VALUE || ulHeight == NO_DATA_VALUE || lrHeight == NO_DATA_VALUE)
+        if (!validateSamples(urHeight, llHeight, ulHeight, lrHeight))
         {
             return NO_DATA_VALUE;
         }

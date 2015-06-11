@@ -37,6 +37,8 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
     // default
     out_isFallback = false;
 
+    /*
+
     // check the quick cache.
     HFKey cachekey;
     cachekey._key          = key;
@@ -83,6 +85,8 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         }
     }
 
+    */
+
     if ( !out_hf.valid() )
     {
         //TODO.
@@ -106,11 +110,13 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
     }
 
+    /*
     // cache it.
     HFValue cacheval;
     cacheval._hf = out_hf.get();
     cacheval._isFallback = !populated;
     _cache.insert( cachekey, cacheval );
+    */
 
     out_isFallback = !populated;
     return true;

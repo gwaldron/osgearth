@@ -99,6 +99,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // underlying geometry, possible shared between this tile and other.
         osg::ref_ptr<osg::Geometry> _geom;
+        osg::Vec2f _minmax;
 
     public:
         
@@ -114,6 +115,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // validate the geometry is OK.
         void validate();
+
+        // Sets the min and max elevation for verts in this tile. Necessary since the elevation
+        void setElevationExtrema(const osg::Vec2f& minmax);
+
+        osg::BoundingBox computeBox() const;
+        const osg::BoundingBox& getBox() const;
 
     public: // osg::Geometry overrides
 

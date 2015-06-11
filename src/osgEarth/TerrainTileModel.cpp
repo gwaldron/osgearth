@@ -28,24 +28,10 @@ using namespace osgEarth;
 #undef  LC
 #define LC "[TerrainTileModel] "
 
-namespace
-{
-    bool layerContainsNewData(const TerrainTileLayerModel* layer) 
-    {
-        return
-            layer != 0L && (
-                layer->getMatrix() == 0L ||
-                layer->getMatrix()->isIdentity() );
-    }
-
-    static osg::ref_ptr<osg::RefMatrixf> s_identityMatrix;
-}
-
 //...................................................................
 
 TerrainTileLayerModel::TerrainTileLayerModel()
 {
-    _matrix = s_identityMatrix.get();
 }
 
 //...................................................................
@@ -66,23 +52,6 @@ _revision              ( revision ),
 _requiresUpdateTraverse( false )
 {
     //NOP
-}
-
-bool
-TerrainTileModel::containsNewData() const
-{
-    for(TerrainTileImageLayerModelVector::const_iterator i = _colorLayers.begin(); i != _colorLayers.end(); ++i)
-        if ( layerContainsNewData(i->get()) )
-            return true;
-    
-    for(TerrainTileImageLayerModelVector::const_iterator i = _sharedLayers.begin(); i != _sharedLayers.end(); ++i)
-        if ( layerContainsNewData(i->get()) )
-            return true;
-
-    if ( layerContainsNewData(_elevationLayer.get()) )
-        return true;
-
-    return false;
 }
 
 const TerrainTileImageLayerModel*

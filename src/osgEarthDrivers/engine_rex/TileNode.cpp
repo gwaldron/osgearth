@@ -24,7 +24,10 @@
 #include "ExpireTiles"
 
 #include <osgEarth/CullingUtils>
+#include <osgEarth/ImageUtils>
+
 #include <osg/Uniform>
+#include <osg/ComputeBoundsVisitor>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
@@ -43,11 +46,6 @@ namespace
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
     };
 
-    void applyScaleBias(osg::Matrixf* m, unsigned quadrant)
-    {
-        m->preMult( scaleBias[quadrant] );
-    }
-
     void applyScaleBias(osg::Matrix& m, unsigned quadrant)
     {
         m.preMult( scaleBias[quadrant] );
@@ -57,9 +55,13 @@ namespace
 
 
 TileNode::TileNode() :
-_dirty( false )
+_dirty      ( false )
 {
-    //nop
+    // The StateSet must have a dynamic data variance since we plan to alter it
+    // as new data becomes available.
+    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+
+    _count = 0;
 }
 
 void
@@ -101,8 +103,12 @@ TileNode::computeBound() const
 float
 TileNode::getSubdivideRange(osg::NodeVisitor& nv) const
 {
-    // TODO. This is just a placeholder.
-    return getBound().radius() * 6.0;
+    // TODO - placeholder for now
+    const float factor = 6.0f;
+
+    //return getBound().radius() * factor;
+    const osg::BoundingBox& box = _payload->getAlignedBoundingBox();
+    return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
 
 bool
@@ -111,6 +117,15 @@ TileNode::isDormant(osg::NodeVisitor& nv) const
     return
         nv.getFrameStamp() &&
         nv.getFrameStamp()->getFrameNumber() - _lastTraversalFrame > 2u;
+}
+
+void
+TileNode::setElevationExtrema(const osg::Vec2f& value)
+{
+    if ( _payload.valid() )
+    {
+        _payload->setElevationExtrema(value);
+    }
 }
 
 bool
@@ -152,8 +167,10 @@ TileNode::traverse(osg::NodeVisitor& nv)
 
         float cameraRange = nv.getDistanceToViewPoint( center, true );
 
-        // If we're in range of the children, try to cull them:
-        if ( cameraRange < getSubdivideRange(nv) && getTileKey().getLOD() < 25 )
+        osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
+
+        // If the children are visible, subdivide.
+        if (cameraRange < getSubdivideRange(nv) && getTileKey().getLOD() < 23)
         {
             // We are in range of the child nodes. Either draw them or load them.
             unsigned numChildrenReady = 0;
@@ -180,8 +197,15 @@ TileNode::traverse(osg::NodeVisitor& nv)
             // If all are ready, traverse them now.
             if ( numChildrenReady == 4 )
             {
-                osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
+                // TODO:
+                // If we do thing, we need to quite sure that all 4 children will be accepted into
+                // the draw set. Perhaps isReadyToTraverse() needs to check that.
+                _children[0]->accept( nv );
+                _children[1]->accept( nv );
+                _children[2]->accept( nv );
+                _children[3]->accept( nv );
 
+#if 0           // TODO: revisit this -- see whether child tiles are properly getting expired.
                 for(unsigned i=0; i<4; ++i)
                 {
                     TileNode* child = getSubTile(i);
@@ -194,6 +218,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
                         child->accept( nv );
                     }
                 }
+#endif
             }
 
             // Not all children are ready, so cull the current payload.
@@ -203,7 +228,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
             }
         }
 
-        // If children are outside camera range, cull the payload.
+        // If children are outside camera range, draw the payload and expire the children.
         else if ( _payload.valid() )
         {
             _payload->accept( nv );
@@ -230,12 +255,14 @@ TileNode::traverse(osg::NodeVisitor& nv)
     // Update, Intersection, ComputeBounds, CompileGLObjects, etc.
     else
     {
-        for(unsigned i=0; i<getNumChildren(); ++i)
+        if ( getNumChildren() > 0 )
         {
-            _children[i]->accept( nv );
+            for(unsigned i=0; i<getNumChildren(); ++i)
+            {
+                _children[i]->accept( nv );
+            }
         }
-
-        if ( _payload.valid() )
+        else if ( _payload.valid() )
         {
             _payload->accept( nv );
         }
@@ -256,12 +283,14 @@ TileNode::createChildren(osg::NodeVisitor& nv)
         // Build the surface geometry:
         node->create( getTileKey().createChildKey(quadrant), context );
 
-        // Inherit the samplers with new scale/bias matrices:
+        // Inherit the samplers with new scale/bias information.
         node->inheritState( this, context->getRenderBindings() );
 
         // Add to the scene graph.
         addChild( node );
     }
+    
+    OE_DEBUG << LC << "Creating children of: " << getTileKey().str() << "; count = " << (++_count) << "\n";
 }
 
 bool
@@ -275,22 +304,56 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
     // This will inherit textures and use the proper sub-quadrant until new data arrives (later).
     for( RenderBindings::const_iterator binding = bindings.begin(); binding != bindings.end(); ++binding )
     {
-        osg::Matrixf matrix;
-        if ( parent && parent->getStateSet() )
-        {
-            osg::Uniform* matrixUniform = parent->getStateSet()->getUniform( binding->matrixName() );
-            if ( matrixUniform )
-            {
-                matrixUniform->get( matrix );
-                matrix.preMult( scaleBias[quadrant] );
-            }
-        }
+        osg::StateAttribute* sa = getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE);
 
         // If this node doesn't have a texture for this binding, that means it's inheriting one:
-        if ( getStateSet() == 0L || getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE) == 0L )
+        osg::Matrixf matrix;
+        if ( sa == 0L )
         {
+            // Find the parent's matrix and scale/bias it to this quadrant:
+            if ( parent && parent->getStateSet() )
+            {
+                osg::Uniform* matrixUniform = parent->getStateSet()->getUniform( binding->matrixName() );
+                if ( matrixUniform )
+                {
+                    matrixUniform->get( matrix );
+                    matrix.preMult( scaleBias[quadrant] );
+                }
+            }
+
+            // Add a new uniform with the scale/bias'd matrix:
             getOrCreateStateSet()->addUniform( new osg::Uniform(binding->matrixName().c_str(), matrix) );
             changesMade = true;
+        }
+
+        if ( binding->usage() == binding->ELEVATION )
+        {
+            // Find the elevation texture and calculate the min/max elevations.
+            bool found = false;
+            TileNode* nextParent = 0L;
+            for(TileNode* node = this; node != 0L && !found; node = nextParent)
+            {
+                osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE));
+                if ( elevTex )
+                {
+                    osg::Vec2f extrema;
+                    found = findExtrema(elevTex, matrix, extrema);
+                    if ( found )
+                    {
+                        setElevationExtrema( extrema );
+                        OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
+                        break;
+                    }
+                }
+                nextParent = nextParent ? dynamic_cast<TileNode*>(node->getParent(0)) : parent;
+            }
+
+            if ( !found )
+            {
+                // This will happen sometimes, like when the initial levels are loading and there
+                // is no elevation texture in the graph yet. It's normal.
+                OE_DEBUG << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
+            }
         }
     }
 
@@ -300,9 +363,10 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
 void
 TileNode::load(osg::NodeVisitor& nv)
 {
-    // Pull the factory from the traversal data.
+    // Access the context:
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
 
+    // Create a new load request on demand:
     if ( !_loadRequest.valid() )
     {
         Threading::ScopedMutexLock lock(_mutex);
@@ -313,13 +377,18 @@ TileNode::load(osg::NodeVisitor& nv)
     }
         
     // Prioritize by LOD.
-    float priority = (float)getTileKey().getLOD();
+    float priority = -(float)getTileKey().getLOD();
+
+    // Submit to the loader.
+    //OE_INFO << LC << getTileKey().str() << "load\n";
     context->getLoader()->load( _loadRequest.get(), priority, nv );
 }
 
 void
 TileNode::expireChildren(osg::NodeVisitor& nv)
 {
+    OE_DEBUG << "Expiring children of " << getTileKey().str() << "\n";
+
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     if ( !_expireRequest.valid() )
     {
@@ -331,7 +400,8 @@ TileNode::expireChildren(osg::NodeVisitor& nv)
     }
        
     // Low priority for expiry requests.
-    const float lowPriority = 0.0f;
+    //OE_INFO << LC << getTileKey().str() << "expire\n";
+    const float lowPriority = -100.0f;
     context->getLoader()->load( _expireRequest.get(), lowPriority, nv );
 }
 
@@ -428,3 +498,51 @@ TileNode::notifyOfArrival(TileNode* that)
 }
 
 #endif
+
+bool
+TileNode::findExtrema(osg::Texture* tex, const osg::Matrix& m, osg::Vec2f& extrema) const
+{
+    // Searches a texture image (using a texture matrix) for the min and max elevation values.
+    extrema.set( FLT_MAX, -FLT_MAX );
+
+    osg::Image* image = tex->getImage(0);
+    if ( image )
+    {
+        ImageUtils::PixelReader read(image);
+
+        double s_offset = m(3,0) * (double)image->s();
+        double t_offset = m(3,1) * (double)image->t();
+        double s_span   = m(0,0) * (double)image->s();
+        double t_span   = m(1,1) * (double)image->t();
+
+        // starting column and row:
+        int c0 = osg::clampAbove( ((int)s_offset)-1, 0 );
+        int r0 = osg::clampAbove( ((int)t_offset)-1, 0 );
+
+        int c1 = osg::clampBelow( c0 + ((int)s_span) + 1, image->s()-1 );
+        int r1 = osg::clampBelow( r0 + ((int)t_span) + 1, image->t()-1 );
+
+        //OE_INFO << LC << "find: key=" << getTileKey().str() << "; c0=" << c0 << ", r0=" << r0 << "; numc=" << numcols << ", numr=" << numrows << "\n";
+        
+        for(int c=c0; c <= c1; ++c)
+        {
+            for(int r=r0; r <= r1; ++r)
+            {
+                float e = read(c, r).r();
+                if ( e < extrema[0] ) extrema[0] = e;
+                if ( e > extrema[1] ) extrema[1] = e;
+            }
+        }
+
+        if ( extrema[0] > extrema[1] )
+        {
+            OE_WARN << LC << "findExtrema ERROR (" << getTileKey().str() << ") c0=" << c0 << ", r0=" << r0 << "; c1=" << c1 << ", r1=" << r1 << ", s=" << image->s() << ", t=" << image->t() << "\n";
+        }
+    }
+    else
+    {
+        OE_WARN << LC << "findExtrema ERROR (" << getTileKey().str() << ") no tex image available\n";
+    }
+
+    return extrema[0] <= extrema[1];
+}

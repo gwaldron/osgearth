@@ -19,35 +19,105 @@
 #include "SurfaceNode"
 #include "GeometryPool"
 #include "TileDrawable"
+
 #include <osgEarth/TileKey>
+
+#include <osg/CullStack>
 #include <osg/Geode>
+
+#include <osg/Geometry>
+#include <osgText/Text>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[SurfaceNode] "
 
+//..............................................................
+
+namespace
+{
+    osg::Geode* makeBBox(const osg::BoundingBox& bbox)
+    {        
+        osg::Geode* geode = new osg::Geode();
+        std::string sizeStr = "(empty)";
+        float zpos = 0.0f;
+
+        if ( bbox.valid() )
+        {
+            osg::Geometry* geom = new osg::Geometry();
+            geom->setName("bbox");
+        
+            osg::Vec3Array* v = new osg::Vec3Array();
+            for(int i=0; i<8; ++i)
+                v->push_back(bbox.corner(i));
+            geom->setVertexArray(v);
+
+            osg::DrawElementsUByte* de = new osg::DrawElementsUByte(GL_LINES);
+            de->push_back(0); de->push_back(1);
+            de->push_back(1); de->push_back(3);
+            de->push_back(3); de->push_back(2);
+            de->push_back(2); de->push_back(0);
+            de->push_back(4); de->push_back(5);
+            de->push_back(5); de->push_back(7);
+            de->push_back(7); de->push_back(6);
+            de->push_back(6); de->push_back(4);
+            de->push_back(0); de->push_back(4);
+            de->push_back(1); de->push_back(5);
+            de->push_back(3); de->push_back(7);
+            de->push_back(2); de->push_back(6);
+            geom->addPrimitiveSet(de);
+
+            osg::Vec4Array* c= new osg::Vec4Array();
+            c->push_back(osg::Vec4(0,1,1,1));
+            geom->setColorArray(c);
+            geom->setColorBinding(geom->BIND_OVERALL);
+
+            geode->addDrawable(geom);
+
+            sizeStr = Stringify() << bbox.xMax()-bbox.xMin();
+            sizeStr = Stringify() << "min="<<bbox.zMin()<<"\nmax="<<bbox.zMax();
+            zpos = bbox.zMax();
+        }
+
+#if 1
+        osgText::Text* t = new osgText::Text();
+        t->setText( sizeStr );
+        //t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
+        t->setCharacterSizeMode(t->SCREEN_COORDS);
+        t->setCharacterSize(36.0f);
+        t->setAlignment(t->CENTER_CENTER);
+        t->setColor(osg::Vec4(1,1,1,1));
+        t->setBackdropColor(osg::Vec4(0,0,0,1));
+        t->setBackdropType(t->OUTLINE);
+        t->setPosition(osg::Vec3(0,0,zpos));
+        geode->addDrawable(t);
+#endif
+
+        geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
+        geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+
+        return geode;
+    }
+}
+
+//..............................................................
+
 SurfaceNode::SurfaceNode(const TileKey& tilekey,
                          const MapInfo& mapinfo,
                          const RenderBindings& bindings,
                          GeometryPool*  pool)
 {
-    osg::Geode* geode = new osg::Geode();
-
-    osg::BoundingBox bbox;
+    _geode = new osg::Geode();
 
     if ( pool )
     {
         osg::ref_ptr<osg::Geometry> geom;
         pool->getPooledGeometry( tilekey, mapinfo, geom );
 
-        TileDrawable* drawable = new TileDrawable(tilekey, bindings, geom.get());
+        _drawable = new TileDrawable(tilekey, bindings, geom.get());
 
-        geode->addDrawable( drawable );
-    
-        //TODO: create a proper bounding box.
-        //bbox = computeBoundingBox();
-        //drawable->setInitialBound( bbox );
+        _geode->addDrawable( _drawable.get() );
     }
     else
     {
@@ -55,11 +125,8 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
     }
     
     // Create the final node.
-    addChild( geode );
-
-    // TODO: reinstate this 
-    //node->setBoundingBox( bbox );
-    
+    addChild( _geode.get() );
+        
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
     GeoPoint centroid;
@@ -68,27 +135,38 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
     osg::Matrix local2world;
     centroid.createLocalToWorld( local2world );
     setMatrix( local2world );
+
+    // Initialize the cached bounding box.
+    setElevationExtrema(osg::Vec2f(0, 0));
 }
+
+void
+SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
+{
+    _drawable->setElevationExtrema(minmax);
+
+    // compute, not get.
+    osg::BoundingBox box = _drawable->computeBox();
+
+    osg::Matrix local2world;
+    this->computeLocalToWorldMatrix(local2world, 0L);
+    
+    _bbox.init();
+    for(int i=0; i<8; ++i)
+    {
+        _bbox.expandBy( box.corner(i) * local2world );
+    }
 
 #if 0
-osg::BoundingBox
-SurfaceNodeFactory::calculateBoundingBox(osg::Node* node) const
-{
-    osg::ComputeBoundsVisitor cbv;
-    _geode->accept( cbv );
-
-    if ( _model->elevationModel().valid() )
-    {
-        if ( _model->elevationModel()->getMaxHeight() > cbv.getBoundingBox().zMax() )
-        {
-            cbv.getBoundingBox().zMax() = _model->elevationModel()->getMaxHeight();
-        }
-        if ( _model->elevationModel()->getMinHeight() < cbv.getBoundingBox().zMin() )
-        {
-            cbv.getBoundingBox().zMin() = _model->elevationModel()->getMinHeight();
-        }
-    } 
-
-    return cbv.getBoundingBox();
-}
+    if ( _debugGeode.valid() )
+        removeChild( _debugGeode.get() );
+    _debugGeode = makeBBox(box);
+    addChild( _debugGeode.get() );
 #endif
+}
+
+const osg::BoundingBox&
+SurfaceNode::getAlignedBoundingBox() const
+{
+    return _drawable->getBox();
+}

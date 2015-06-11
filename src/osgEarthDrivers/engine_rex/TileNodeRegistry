@@ -33,7 +33,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     /**
      * Holds a reference to each tile created by the driver.
      */
-    class TileNodeRegistry : public osg::Referenced //, public TerrainTileModelStore
+    class TileNodeRegistry : public osg::Referenced
     {
     public:
         typedef std::map< TileKey, osg::ref_ptr<TileNode> > TileNodeMap;

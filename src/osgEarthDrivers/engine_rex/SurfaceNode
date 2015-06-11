@@ -22,10 +22,13 @@
 #include "Common"
 #include "GeometryPool"
 #include "RenderBindings"
+#include "TileDrawable"
 
 #include <osgEarth/MapInfo>
 #include <osg/MatrixTransform>
 #include <osg/BoundingBox>
+#include <osg/Drawable>
+#include <osg/Geode>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
@@ -38,22 +41,24 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         SurfaceNode(
-            const TileKey& tilekey,
-            const MapInfo& mapinfo,
+            const TileKey&        tilekey,
+            const MapInfo&        mapinfo,
             const RenderBindings& bindings,
-            GeometryPool*  pool);
+            GeometryPool*         pool);
 
-        void setEngineUID(const UID& uid) { _engineUID = uid; }
-        const UID& getEngineUID() const { return _engineUID; }
+        void setElevationExtrema(const osg::Vec2f& minmax);
 
-        void setBoundingBox(const osg::BoundingBox& bbox) { _bbox = bbox; }
-        const osg::BoundingBox& getBoundingBox() const { return _bbox; }
+        const osg::BoundingBox& getWorldBoundingBox() const { return _bbox; }
+
+        const osg::BoundingBox& getAlignedBoundingBox() const;
 
     protected:
         virtual ~SurfaceNode() { }
 
-        osg::BoundingBox _bbox;
-        UID              _engineUID;
+        osg::BoundingBox           _bbox;
+        osg::ref_ptr<TileDrawable> _drawable;
+        osg::ref_ptr<osg::Geode>   _geode;
+        osg::ref_ptr<osg::Geode>   _debugGeode;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

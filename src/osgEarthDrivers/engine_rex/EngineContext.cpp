@@ -20,36 +20,10 @@
 #include "FileLocationCallback"
 #include "SurfaceNodeFactory"
 
-#include <osgEarth/GeoData>
-#include <osgEarth/Registry>
-#include <osgEarth/HeightFieldUtils>
-#include <osgEarth/Progress>
-#include <osgEarth/Containers>
-#include <osgEarth/CullingUtils>
-#include <osgEarth/TerrainEngineNode>
-
-#include <osgUtil/CullVisitor>
-
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[EngineContext] "
-
-//..............................................................
-
-namespace
-{
-    // Cull callback that uses a tight bounding box around the surface node.
-    struct SurfaceNodeCullCallback : public osg::NodeCallback
-    {
-        void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
-            if ( !cv->isCulled(static_cast<SurfaceNode*>(node)->getBoundingBox()) )
-                traverse(node, nv);
-        }
-    };
-}
 
 //..............................................................
 

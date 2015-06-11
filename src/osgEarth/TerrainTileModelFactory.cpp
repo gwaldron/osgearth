@@ -29,42 +29,9 @@ using namespace osgEarth;
 
 //.........................................................................
 
-namespace
-{
-    // Scale and bias matrices, one for each TileKey quadrant.
-    const osg::Matrixf scaleBias[4] =
-    {
-        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.5f,0,1.0f),
-        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.5f,0,1.0f),
-        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.0f,0,1.0f),
-        osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
-    };
-
-    void applyScaleBias(osg::RefMatrixf* m, unsigned quadrant)
-    {
-#if 1
-        m->preMult( scaleBias[quadrant] );
-#else
-        osg::Matrixf scaleBias;
-        scaleBias(0,0) = 0.5f;
-        scaleBias(1,1) = 0.5f;
-        if ( quadrant == 1 || quadrant == 3 )
-            scaleBias(3,0) = 0.5f;
-        if ( quadrant == 0 || quadrant == 1 )
-            scaleBias(3,1) = 0.5f;
-
-        m->preMult( scaleBias );
-#endif
-    }
-
-    static osg::ref_ptr<osg::RefMatrixf> s_identityMatrix = new osg::RefMatrixf();
-}
-
-//.........................................................................
-
 TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) :
-_options( options ),
-_heightFieldCache(true, 128)
+_options         ( options ),
+_heightFieldCache( true, 128 )
 {
     // NOP
 }
@@ -72,7 +39,6 @@ _heightFieldCache(true, 128)
 TerrainTileModel*
 TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
                                          const TileKey&                   key,
-                                         const TerrainTileModelStore*     modelStore,
                                          const TerrainEngineRequirements* requirements,
                                          ProgressCallback*                progress)
 {
@@ -82,16 +48,16 @@ TerrainTileModelFactory::createTileModel(const MapFrame&                  frame,
         frame.getRevision() );
 
     // assemble all the components:
-    addImageLayers( model.get(), frame, key, modelStore, progress );
+    addImageLayers( model.get(), frame, key, progress );
 
     if ( requirements == 0L || requirements->elevationTexturesRequired() )
     {
-        addElevation( model.get(), frame, key, modelStore, progress );
+        addElevation( model.get(), frame, key, progress );
     }
 
     if ( requirements == 0L || requirements->normalTexturesRequired() )
     {
-        addNormalMap( model.get(), frame, key, modelStore, progress );
+        addNormalMap( model.get(), frame, key, progress );
     }
 
     // done.
@@ -102,7 +68,6 @@ void
 TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                                         const MapFrame&              frame,
                                         const TileKey&               key,
-                                        const TerrainTileModelStore* modelStore,
                                         ProgressCallback*            progress)
 {
     OE_START_TIMER(fetch_image_layers);
@@ -187,7 +152,6 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
             {
                 TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
                 layerModel->setImageLayer( layer );
-                layerModel->setMatrix( s_identityMatrix.get() );
 
                 if ( geoImage.valid() )
                 {
@@ -224,7 +188,6 @@ void
 TerrainTileModelFactory::addElevation(TerrainTileModel*            model,
                                       const MapFrame&              frame,
                                       const TileKey&               key,
-                                      const TerrainTileModelStore* modelStore,
                                       ProgressCallback*            progress)
 {    
     // make an elevation layer.
@@ -280,7 +243,6 @@ void
 TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
                                       const MapFrame&              frame,
                                       const TileKey&               key,
-                                      const TerrainTileModelStore* modelStore,
                                       ProgressCallback*            progress)
 {
     OE_START_TIMER(fetch_normalmap);
@@ -290,7 +252,6 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
 
     TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
     layerModel->setName( "oe_normal_map" );
-    layerModel->setMatrix( s_identityMatrix.get() );
 
     // Can only generate the normal map if the center heightfield was built:
     osg::Image* image = HeightFieldUtils::convertToNormalMap(

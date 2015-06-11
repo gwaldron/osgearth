@@ -38,7 +38,8 @@ TileDrawable::TileDrawable(const TileKey&        key,
                            osg::Geometry*        geometry) :
 osg::Drawable( ),
 _bindings    ( bindings ),
-_geom        ( geometry )
+_geom        ( geometry ),
+_minmax      ( 0, 0 )
 {
     setUseVertexBufferObjects( true );
     setUseDisplayList( false );
@@ -224,11 +225,12 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
     }
 }
 
-
 #if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
 #    define COMPUTE_BOUND computeBoundingBox
+#    define GET_BOUNDING_BOX getBoundingBox
 #else
 #    define COMPUTE_BOUND computeBound
+#    define GET_BOUNDING_BOX getBound
 #endif
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
@@ -240,8 +242,15 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 osg::BoundingBox
 TileDrawable:: COMPUTE_BOUND() const
 {
-    //osg::BoundingBox bbox = osg::Drawable:: CORexUTE_BOUND ();
     osg::BoundingBox bbox = _geom->COMPUTE_BOUND();
+
+    // Replace the min/max Z with our computes extrema.
+    // Offset the zmin to account for cuvature.
+    bbox.zMin() = bbox.zMin() + _minmax[0];
+    bbox.zMax() = _minmax[1];
+
+    OE_DEBUG << LC << "zmin/max = " << bbox.zMin() << "/" << bbox.zMax() << "; minmax = " << _minmax[0] << "/" << _minmax[1] << "\n";
+
     {
         // update the uniform.
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
@@ -250,6 +259,24 @@ TileDrawable:: COMPUTE_BOUND() const
     return bbox;
 }
 
+void    
+TileDrawable::setElevationExtrema(const osg::Vec2f& minmax)
+{
+    _minmax = minmax;
+    dirtyBound();
+}
+
+const osg::BoundingBox&
+TileDrawable::getBox() const
+{
+    return GET_BOUNDING_BOX();
+}
+
+osg::BoundingBox
+TileDrawable::computeBox() const
+{
+    return COMPUTE_BOUND();
+}
 
 void 
 TileDrawable::releaseGLObjects(osg::State* state) const

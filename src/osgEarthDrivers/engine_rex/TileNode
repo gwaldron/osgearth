@@ -29,6 +29,7 @@
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     class EngineContext;
+    class SurfaceNode;
 
     /**
      * TileNode represents a single tile. TileNode has 5 children:
@@ -43,12 +44,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** TileKey of the key representing the data in this node. */
         const TileKey& getTileKey() const { return _key; }
 
+        /** Sets the map revision that this tile should be using. */
         void setMapRevision(Revision rev) { } // nyi - check for need
 
+        /** Tells this tile that it needs to request data. */
         void setDirty(bool value);
-
-        /** Renderable geometry for this tile node. */
-        osg::Node* getPayload() const { return _payload.get(); }
 
         /** Creates the geometry and state for this tilenode. */
         void create(const TileKey& key, EngineContext* context);
@@ -74,6 +74,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
 
+        /** Sets the min and max elevation values for culling purposes */
+        void setElevationExtrema(const osg::Vec2f& minmax);
+
     public: // osg::Node
 
         osg::BoundingSphere computeBound() const;
@@ -84,18 +87,21 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     protected:
         TileKey                            _key;
-        osg::ref_ptr<osg::Node>            _payload;
-        osg::observer_ptr<Loader::Request> _loadRequest;
-        osg::observer_ptr<Loader::Request> _expireRequest;
+        osg::ref_ptr<SurfaceNode>          _payload;
+        osg::ref_ptr<Loader::Request>      _loadRequest;
+        osg::ref_ptr<Loader::Request>      _expireRequest;
         Threading::Mutex                   _mutex;
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
+        unsigned                           _count;
 
         TileNode* getSubTile(unsigned i) { return dynamic_cast<TileNode*>(getChild(i)); }
 
         void createChildren(osg::NodeVisitor& nv);
 
         void expireChildren(osg::NodeVisitor& nv);
+
+        bool findExtrema(osg::Texture* elevationTex, const osg::Matrix& scaleBias, osg::Vec2f& output) const;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

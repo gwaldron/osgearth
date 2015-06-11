@@ -294,10 +294,9 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 }
 
 TerrainTileModel*
-TerrainEngineNode::createTileModel(const MapFrame&              frame,
-                                   const TileKey&               key,
-                                   const TerrainTileModelStore* modelStore,
-                                   ProgressCallback*            progress)
+TerrainEngineNode::createTileModel(const MapFrame&   frame,
+                                   const TileKey&    key,
+                                   ProgressCallback* progress)
 {
     TerrainEngineRequirements* requirements = this;
 
@@ -305,7 +304,6 @@ TerrainEngineNode::createTileModel(const MapFrame&              frame,
     osg::ref_ptr<TerrainTileModel> model = _tileModelFactory->createTileModel(
         frame, 
         key, 
-        modelStore,
         requirements, 
         progress);
 

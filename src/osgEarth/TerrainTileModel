@@ -170,9 +170,6 @@ namespace osgEarth
         /** TileKey corresponding to this model */
         const TileKey& getKey() const { return _key; }
 
-        /** Whether this model contains new texture data (versus inherited data only) */
-        bool containsNewData() const;
-
         /** Color layers (rendered one at a time in order) */
         TerrainTileImageLayerModelVector& colorLayers() { return _colorLayers; }
         const TerrainTileImageLayerModelVector& colorLayers() const { return _colorLayers; }

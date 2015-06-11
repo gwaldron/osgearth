@@ -28,9 +28,9 @@ using namespace osgEarth;
 namespace
 {
     // Visitor that recalculates the sampler inheritance matrices in a graph.
-    struct RecalculateMatrices : public osg::NodeVisitor
+    struct UpdateInheritance : public osg::NodeVisitor
     {
-        RecalculateMatrices(const RenderBindings& bindings)
+        UpdateInheritance(const RenderBindings& bindings)
             : _bindings(bindings)
         {
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
@@ -43,7 +43,7 @@ namespace
             TileNode* tilenode = dynamic_cast<TileNode*>(&node);
             if ( tilenode )
             {
-                changed = tilenode->inheritState( tilenode->getParentTile(), _bindings );
+                changed = tilenode->inheritState( tilenode->getParentTile(), _bindings );        
             }
 
             if ( changed )
@@ -76,7 +76,6 @@ LoadTileData::invoke()
         _model = _context->getEngine()->createTileModel(
             _context->getMapFrame(),
             tilenode->getTileKey(),
-            0L,   //_factory->getLiveTiles(),
             0L ); // progress
     }
 }
@@ -84,7 +83,7 @@ LoadTileData::invoke()
 void
 LoadTileData::apply()
 {
-    if ( _model.valid() && _model->containsNewData() )
+    if ( _model.valid() )
     {
         osg::ref_ptr<TileNode> tilenode;
         if ( _tilenode.lock(tilenode) )
@@ -100,16 +99,17 @@ LoadTileData::apply()
                 TerrainTileImageLayerModel* layerModel = i->get();
                 if ( layerModel && layerModel->getTexture() )
                 {
-                    const SamplerBinding& colorBinding = bindings.front(); // TODO
+                    const SamplerBinding* colorBinding = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR); // TODO
+                    if ( colorBinding )
+                    {
+                        stateSet->setTextureAttribute(
+                            colorBinding->unit(),
+                            layerModel->getTexture() );
 
-                    stateSet->setTextureAttribute(
-                        colorBinding.unit(),
-                        layerModel->getTexture() );
-
-                    stateSet->addUniform(
-                        new osg::Uniform(colorBinding.matrixName().c_str(),
-                        osg::Matrixf::identity()));
-                    
+                        stateSet->addUniform(
+                            new osg::Uniform(colorBinding->matrixName().c_str(),
+                            osg::Matrixf::identity()));
+                    }                    
                     // TODO.... multipass textures.
                     break;                            
                 }
@@ -117,41 +117,47 @@ LoadTileData::apply()
 
             if ( _model->elevationModel().valid() && _model->elevationModel()->getTexture())
             {
-                const SamplerBinding& binding = *(bindings.begin() + 1);
+                const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
+                if ( binding )
+                {                
+                    stateSet->setTextureAttribute(
+                        binding->unit(),
+                        _model->elevationModel()->getTexture() );
                 
-                stateSet->setTextureAttribute(
-                    binding.unit(),
-                    _model->elevationModel()->getTexture() );
-                
-                 stateSet->addUniform(
-                    new osg::Uniform(binding.matrixName().c_str(),
-                    osg::Matrixf::identity()));
+                    stateSet->addUniform(
+                        new osg::Uniform(binding->matrixName().c_str(),
+                        osg::Matrixf::identity()));
+                }
             }
 
             if ( _model->normalModel().valid() && _model->normalModel()->getTexture() )
             {
-                const SamplerBinding& binding = *(bindings.begin() + 2);
+                const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::NORMAL);
+                if ( binding )
+                {
+                    stateSet->setTextureAttribute(
+                        binding->unit(),
+                        _model->normalModel()->getTexture() );
                 
-                stateSet->setTextureAttribute(
-                    binding.unit(),
-                    _model->normalModel()->getTexture() );
-                
-                 stateSet->addUniform(
-                    new osg::Uniform(binding.matrixName().c_str(),
-                    osg::Matrixf::identity()));
+                    stateSet->addUniform(
+                        new osg::Uniform(binding->matrixName().c_str(),
+                        osg::Matrixf::identity()));
+                }
             }
 
             // Update existing inheritance matrices as necessary.
-            RecalculateMatrices recalc( bindings );
-            tilenode->accept( recalc );
-
-            // TODO: elevation, normal map, etc....
+            UpdateInheritance update( bindings );
+            tilenode->accept( update );
 
             // Mark as complete. TODO: per-data requests will do something different.
             tilenode->setDirty( false );
 
             // Delete the model immediately
             _model = 0L;
+        }
+        else
+        {
+            OE_WARN << LC << "LoadTileData failed; TileNode disappeared\n";
         }
     }
 }

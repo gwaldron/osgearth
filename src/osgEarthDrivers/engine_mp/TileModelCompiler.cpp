@@ -520,7 +520,7 @@ namespace
      * Iterate over the sampling grid and calculate the vertex positions and normals
      * for each sampling point.
      */
-    void createSurfaceGeometry( Data& d )
+    void createSurfaceGeometry( Data& d, bool debug )
     {
         d.surfaceBound.init();
 
@@ -529,27 +529,29 @@ namespace
         osg::HeightField* hf            = d.model->_elevationData.getHeightField();
         GeoLocator*       hfLocator     = d.model->_elevationData.getLocator();
 
-        // Debugging code to help identify all zero heightfields.
-        bool allZero = true;
-        // Check for an all 0 heightfield
-        for (unsigned int c = 0; c < hf->getNumColumns(); ++c)
+        if ( debug )
         {
-            for (unsigned int r = 0; r < hf->getNumRows(); ++r)
+            // Debugging code to help identify all zero heightfields.
+            bool allZero = true;
+            // Check for an all 0 heightfield
+            for (unsigned int c = 0; c < hf->getNumColumns(); ++c)
             {
-                float h = hf->getHeight(c, r);
-                if (h != 0)
+                for (unsigned int r = 0; r < hf->getNumRows(); ++r)
                 {
-                    allZero = false;
-                    break;
+                    float h = hf->getHeight(c, r);
+                    if (h != 0)
+                    {
+                        allZero = false;
+                        break;
+                    }
                 }
             }
-        }
 
-        if (allZero)
-        {
-            OE_INFO << "ALL ZERO HEIGHTFIELD " << d.model->_tileKey.str() << std::endl;
+            if (allZero)
+            {
+                OE_NOTICE << "ALL ZERO HEIGHTFIELD " << d.model->_tileKey.str() << std::endl;
+            }
         }
-
 
 
         // populate vertex and tex coord arrays    
@@ -2110,7 +2112,7 @@ TileModelCompiler::compile(TileModel*        model,
     setupTextureAttributes( d, _cache );
 
     // calculate the vertex and normals for the surface geometry.
-    createSurfaceGeometry( d );
+    createSurfaceGeometry( d, _debug );
 
     // build geometry for the masked areas, if applicable
     if ( d.maskRecords.size() > 0 )

@@ -1135,6 +1135,12 @@ namespace
         osg::Vec4Array* skirtAttribs = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_6)); //new osg::Vec4Array();
         osg::Vec4Array* skirtAttribs2 = static_cast<osg::Vec4Array*>(d.surface->getVertexAttribArray(osg::Drawable::ATTRIBUTE_7)); //new osg::Vec4Array();
 
+        // If we don't have any primitive sets on the surface then bail.  This might happen if a tile falls completely in a mask.
+        if (d.surface->getNumPrimitiveSets() == 0)
+        {
+            return;
+        }
+
         // Use the existing DrawElements on the surface so we merge the skirts and the surface together.
         osg::ref_ptr<osg::DrawElements> elements = dynamic_cast< osg::DrawElements* >(d.surface->getPrimitiveSet(0));
         if (!elements)

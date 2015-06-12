@@ -2159,7 +2159,6 @@ TileModelCompiler::compile(TileModel*        model,
     // debugging tools.
     if (_debug)
     {
-        OSG_NOTICE << "Debug" << std::endl;
         //test: run the geometry validator to make sure geometry it legal
         osgEarth::GeometryValidator validator;
         tile->accept(validator);

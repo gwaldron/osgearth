@@ -77,17 +77,8 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         {
             // This most likely means that a parent tile expired while we were building the child.
             // No harm done in that case as this tile will soo be discarded as well.
-            OE_WARN << LC << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry"
-                << std::endl;
+            // OE_WARN << LC << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry" << std::endl;
             return false;
-        }
-    }
-
-    else
-    {
-        if ( ((int)key.getLOD())-1 > _firstLOD )
-        {
-            OE_WARN << LC << "No parent HF for " << key.str() << "\n";
         }
     }
     

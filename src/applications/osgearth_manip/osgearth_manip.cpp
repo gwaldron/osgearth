@@ -398,7 +398,7 @@ namespace
         {
             if ( !model )
             { 
-                _model = AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
+                _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1)); //, 90.0f); //AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
             }
             
             _xform = new GeoTransform();
@@ -427,24 +427,31 @@ namespace
         {
             if ( ea.getEventType() == ea.FRAME )
             {
-                double t = fmod( osg::Timer::instance()->time_s(), 600.0 ) / 600.0;
+                double t0 = osg::Timer::instance()->time_s();
+                double t = fmod( t0, 600.0 ) / 600.0;
                 double lat, lon;
                 GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
                 GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
                 double bearing = GeoMath::bearing(D2R*_lat1, D2R*_lon1, lat, lon);
+
+                float a = sin(t0);
+                bearing += a * 0.5 * osg::PI;
+                float pitch = a * 0.5 * osg::PI;
+
                 _xform->setPosition( p );
-                _pat->setAttitude(osg::Quat(bearing, osg::Vec3d(0,0,1)));
+                _pat->setAttitude(
+                    osg::Quat(pitch, osg::Vec3d(1,0,0)) *
+                    osg::Quat(bearing, osg::Vec3d(0,0,1)));
                 _label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN )
             {
                 if ( ea.getKey() == _key )
                 {                                
-                    _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
-
                     Viewpoint vp = _manip->getViewpoint();
-                    vp.setNode( _xform.get() );
+                    vp.setNode( _pat.get() );
                     vp.range() = 15000.0;
+                    vp.positionOffset()->set( 2000, 2000, 0 );
                     _manip->setViewpoint(vp, 2.0);
                 }
                 return true;
@@ -462,6 +469,8 @@ namespace
         double                             _lat0, _lon0, _lat1, _lon1;
         LabelNode*                         _label;
         osg::Node*                         _model;
+        float                              _heading;
+        float                              _pitch;
     };
 }
 

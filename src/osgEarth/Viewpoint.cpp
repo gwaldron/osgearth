@@ -31,12 +31,13 @@ _range  ( Distance(10000.0, Units::METERS)  )
 }
 
 Viewpoint::Viewpoint( const Viewpoint& rhs ) :
-_name   ( rhs._name ),
-_point  ( rhs._point ),
-_heading( rhs._heading ),
-_pitch  ( rhs._pitch ),
-_range  ( rhs._range ),
-_node   ( rhs._node.get() )
+_name     ( rhs._name ),
+_point    ( rhs._point ),
+_heading  ( rhs._heading ),
+_pitch    ( rhs._pitch ),
+_range    ( rhs._range ),
+_posOffset( rhs._posOffset),
+_node     ( rhs._node.get() )
 {
     //NOP
 }

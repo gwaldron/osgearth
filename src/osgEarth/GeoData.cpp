@@ -64,7 +64,7 @@ namespace
     {
         double result = x;
         while( result < minLon ) result += 360.;
-        while( result >  maxLon ) result -= 360.;
+        while( result > maxLon ) result -= 360.;
         return result;
     }
 
@@ -86,7 +86,7 @@ namespace
     void s_getLongitudeFrame( double longitude, double &minLongitude, double &maxLongitude)
     {
         minLongitude = -180.0;
-        maxLongitude = 180.0;
+        maxLongitude =  180.0;
 
         while ( longitude < minLongitude || longitude > maxLongitude)
         {
@@ -636,7 +636,7 @@ _east   ( DBL_MAX ),
 _south  ( DBL_MAX ),
 _north  ( DBL_MAX )
 {
-    //nop
+    //NOP - invalid
 }
 
 GeoExtent::GeoExtent(const SpatialReference* srs,
@@ -646,8 +646,9 @@ _west   ( west ),
 _east   ( east ),
 _south  ( south ),
 _north  ( north )
-{    
-    recomputeCircle();
+{
+    if ( isValid() )
+        recomputeCircle();
 }
 
 
@@ -658,7 +659,8 @@ _east   ( bounds.xMax() ),
 _south  ( bounds.yMin() ),
 _north  ( bounds.yMax() )
 {    
-    recomputeCircle();
+    if ( isValid() )
+        recomputeCircle();
 }
 
 GeoExtent::GeoExtent( const GeoExtent& rhs ) :
@@ -707,10 +709,10 @@ GeoExtent::isValid() const
 {
     return 
         _srs.valid()       && 
-        _east  != DBL_MAX  &&
-        _west  != DBL_MAX  &&
-        _north != DBL_MAX  &&
-        _south != DBL_MAX;
+        _east  != DBL_MAX  && _east  != -DBL_MAX &&
+        _west  != DBL_MAX  && _west  != -DBL_MAX &&
+        _north != DBL_MAX  && _north != -DBL_MAX &&
+        _south != DBL_MAX  && _south != -DBL_MAX;
 }
 
 double

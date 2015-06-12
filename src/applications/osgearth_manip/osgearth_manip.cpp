@@ -84,6 +84,7 @@ namespace
             "o :",                 "toggle perspective/ortho",
             "8 :",                 "Tether to thing 1",
             "9 :",                 "Tether to thing 2",
+            "t :",                 "cycle tethermode",
             "b :",                 "break tether",
             "a :",                 "toggle viewpoint arcing",
             "z :",                 "toggle throwing",
@@ -264,6 +265,48 @@ namespace
         {
             using namespace std;
             usage.addKeyboardMouseBinding(string(1, _key), string("Toggle terrain avoidance"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
+
+    /**
+     * Breaks a tether.
+     */
+    struct CycleTetherMode : public osgGA::GUIEventHandler
+    {
+        CycleTetherMode(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                EarthManipulator::TetherMode mode = _manip->getSettings()->getTetherMode();
+                if ( mode == _manip->TETHER_CENTER ) {
+                    _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER_AND_ROTATION );
+                    OE_NOTICE << "Tether mode = CENTER_AND_ROTATION\n";
+                }
+                else if ( mode == _manip->TETHER_CENTER_AND_ROTATION ) {
+                    _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER_AND_HEADING );
+                    OE_NOTICE << "Tether mode = CENTER_AND_HEADING\n";
+                }
+                else {
+                    _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER );
+                    OE_NOTICE << "Tether mode = CENTER\n";
+                }
+
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Cycle Tether Mode"));
         }
 
         char _key;
@@ -507,7 +550,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleCollisionHandler('k', manip));
     viewer.addEventHandler(new ToggleProjMatrix('o', manip));
     viewer.addEventHandler(new BreakTetherHandler('b', manip));
-
+    viewer.addEventHandler(new CycleTetherMode('t', manip));
 
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);

@@ -837,6 +837,11 @@ EarthManipulator::getViewpoint() const
     vp.pitch()->set( localPitch, Units::RADIANS );
     vp.range()->set( _distance, Units::METERS );
 
+    if ( _posOffset.x() != 0.0 || _posOffset.y() != 0.0 || _posOffset.z() != 0.0 )
+    {
+        vp.positionOffset()->set(_posOffset);
+    }
+
     return vp;
 }
 

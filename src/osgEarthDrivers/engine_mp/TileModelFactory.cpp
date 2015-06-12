@@ -262,6 +262,11 @@ TileModelFactory::buildElevation(const TileKey&    key,
                 OE_NOTICE << LC << "Could not find a parent tile HF for " << key.str() << "\n";
             }
         }
+        else
+        {
+            // Should ONLY happen at firstLOD
+            //OE_WARN << LC << "buildElevation: failed to locate (" << parentKey.str() << "), parent of (" << key.str() << ") in the live tiles registry.\n";
+        }
     }
 
     // Make a new heightfield:

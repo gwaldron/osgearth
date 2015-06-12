@@ -85,9 +85,11 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
 
     else
     {
+        // This can happen if the parent tile was expired while this task was in the middle of
+        // trying to build a tile.
         if ( ((int)key.getLOD())-1 > _firstLOD )
         {
-            OE_WARN << LC << "No parent HF for " << key.str() << "\n";
+            OE_DEBUG << LC << "No parent HF for " << key.str() << "\n";
         }
     }
     

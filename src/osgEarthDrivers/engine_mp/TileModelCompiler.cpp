@@ -529,6 +529,29 @@ namespace
         osg::HeightField* hf            = d.model->_elevationData.getHeightField();
         GeoLocator*       hfLocator     = d.model->_elevationData.getLocator();
 
+        // Debugging code to help identify all zero heightfields.
+        bool allZero = true;
+        // Check for an all 0 heightfield
+        for (unsigned int c = 0; c < hf->getNumColumns(); ++c)
+        {
+            for (unsigned int r = 0; r < hf->getNumRows(); ++r)
+            {
+                float h = hf->getHeight(c, r);
+                if (h != 0)
+                {
+                    allZero = false;
+                    break;
+                }
+            }
+        }
+
+        if (allZero)
+        {
+            OE_INFO << "ALL ZERO HEIGHTFIELD " << d.model->_tileKey.str() << std::endl;
+        }
+
+
+
         // populate vertex and tex coord arrays    
         for(unsigned j=0; j < d.numRows; ++j)
         {
@@ -2136,6 +2159,7 @@ TileModelCompiler::compile(TileModel*        model,
     // debugging tools.
     if (_debug)
     {
+        OSG_NOTICE << "Debug" << std::endl;
         //test: run the geometry validator to make sure geometry it legal
         osgEarth::GeometryValidator validator;
         tile->accept(validator);

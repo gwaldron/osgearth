@@ -264,8 +264,7 @@ TileModelFactory::buildElevation(const TileKey&    key,
         }
         else
         {
-            // Should ONLY happen at firstLOD
-            //OE_WARN << LC << "buildElevation: failed to locate (" << parentKey.str() << "), parent of (" << key.str() << ") in the live tiles registry.\n";
+            // Happens if the parent key expired after this task dispatched.
         }
     }
 

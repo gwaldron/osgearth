@@ -65,8 +65,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Access the stateset used to render the terrain. */
         osg::StateSet* getTerrainStateSet();
 
-        /** Access the stateset used to render payload data. */
-        osg::StateSet* getPayloadStateSet();
+        osg::StateSet* getControlStateSet();
 
         /** Access to the asychronous data loader */
         Loader* getLoader() { return _loader.get(); }
@@ -164,8 +163,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Uniform* _verticalScaleUniform;
 
         Threading::Mutex _renderBinMutex;
-        osg::ref_ptr<osgUtil::RenderBin> _terrainRenderBinPrototype;
-        osg::ref_ptr<osgUtil::RenderBin> _payloadRenderBinPrototype;
+        osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;
+        osg::ref_ptr<osgUtil::RenderBin> _controlRenderBinPrototype;
 
         bool _quickReleaseInstalled;
 

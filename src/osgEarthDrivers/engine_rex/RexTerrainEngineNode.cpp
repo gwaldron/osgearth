@@ -44,7 +44,7 @@ using namespace osgEarth;
 
 
 // TODO: bins don't work with SSDK. No idea why. Disable until further notice.
-//#define USE_RENDER_BINS 1
+#define USE_RENDER_BINS 1
 
 //------------------------------------------------------------------------
 
@@ -71,10 +71,10 @@ namespace
 
 
     // Render bin for terrain surface geometry
-    class TerrainBin : public osgUtil::RenderBin
+    class SurfaceBin : public osgUtil::RenderBin
     {
     public:
-        TerrainBin()
+        SurfaceBin()
         {
             this->setStateSet( new osg::StateSet() );
             this->setSortMode(SORT_FRONT_TO_BACK);
@@ -82,31 +82,31 @@ namespace
 
         osg::Object* clone(const osg::CopyOp& copyop) const
         {
-            return new TerrainBin(*this, copyop);
+            return new SurfaceBin(*this, copyop);
         }
 
-        TerrainBin(const TerrainBin& rhs, const osg::CopyOp& copy) :
+        SurfaceBin(const SurfaceBin& rhs, const osg::CopyOp& copy) :
             osgUtil::RenderBin(rhs, copy)
         {
         }
     };
 
 
-    // Render bin for terrain payload geometry
-    class PayloadBin : public osgUtil::RenderBin
+    // Render bin for terrain control surface
+    class FeatureBin : public osgUtil::RenderBin
     {
     public:
-        PayloadBin()
+        FeatureBin()
         {
             this->setStateSet( new osg::StateSet() );
         }
 
         osg::Object* clone(const osg::CopyOp& copyop) const
         {
-            return new PayloadBin(*this, copyop);
+            return new FeatureBin(*this, copyop);
         }
 
-        PayloadBin(const PayloadBin& rhs, const osg::CopyOp& copy) :
+        FeatureBin(const FeatureBin& rhs, const osg::CopyOp& copy) :
             osgUtil::RenderBin(rhs, copy)
         {
         }
@@ -203,13 +203,13 @@ _stateUpdateRequired  ( false )
         Threading::ScopedMutexLock lock(_renderBinMutex);
 
         // generate uniquely named render bin prototypes for this engine:
-        _terrainRenderBinPrototype = new TerrainBin();
-        _terrainRenderBinPrototype->setName( Stringify() << "oe.TerrainBin." << _uid );
-        osgUtil::RenderBin::addRenderBinPrototype( _terrainRenderBinPrototype->getName(), _terrainRenderBinPrototype.get() );
+        _surfaceRenderBinPrototype = new SurfaceBin();
+        _surfaceRenderBinPrototype->setName( Stringify() << "oe.SurfaceBin" ); //." << _uid );
+        osgUtil::RenderBin::addRenderBinPrototype( _surfaceRenderBinPrototype->getName(), _surfaceRenderBinPrototype.get() );
 
-        _payloadRenderBinPrototype = new PayloadBin();
-        _payloadRenderBinPrototype->setName( Stringify() << "oe.PayloadBin." << _uid );
-        osgUtil::RenderBin::addRenderBinPrototype( _payloadRenderBinPrototype->getName(), _payloadRenderBinPrototype.get() );
+        _controlRenderBinPrototype = new FeatureBin();
+        _controlRenderBinPrototype->setName( Stringify() << "oe.ControlBin" ); //." << _uid );
+        osgUtil::RenderBin::addRenderBinPrototype( _controlRenderBinPrototype->getName(), _controlRenderBinPrototype.get() );
     }
 
     // install an elevation callback so we can update elevation data
@@ -220,8 +220,8 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
 {
     unregisterEngine( _uid );
 
-    osgUtil::RenderBin::removeRenderBinPrototype( _terrainRenderBinPrototype.get() );
-    osgUtil::RenderBin::removeRenderBinPrototype( _payloadRenderBinPrototype.get() );
+    osgUtil::RenderBin::removeRenderBinPrototype( _surfaceRenderBinPrototype.get() );
+    osgUtil::RenderBin::removeRenderBinPrototype( _controlRenderBinPrototype.get() );
 
     if ( _update_mapf )
     {
@@ -383,18 +383,22 @@ osg::StateSet*
 RexTerrainEngineNode::getTerrainStateSet()
 {
 #ifdef USE_RENDER_BINS
-    return _terrainRenderBinPrototype->getStateSet();
+    return _surfaceRenderBinPrototype->getStateSet();
 #else
     return _terrain ? _terrain->getOrCreateStateSet() : 0L;
 #endif
 }
 
-
 osg::StateSet*
-RexTerrainEngineNode::getPayloadStateSet()
+RexTerrainEngineNode::getControlStateSet()
 {
-    return _payloadRenderBinPrototype->getStateSet();
+#ifdef USE_RENDER_BINS
+    return _controlRenderBinPrototype->getStateSet();
+#else
+    return _terrain ? _terrain->getOrCreateStateSet() : 0L;
+#endif
 }
+
 
 void
 RexTerrainEngineNode::setupRenderBindings()
@@ -436,7 +440,7 @@ RexTerrainEngineNode::dirtyTerrain()
     _terrain = new osg::Group();
 
 #ifdef USE_RENDER_BINS
-    _terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _terrainRenderBinPrototype->getName() );
+    _terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _surfaceRenderBinPrototype->getName() );
     _terrain->getOrCreateStateSet()->setNestRenderBins(false);
 #else
     _terrain->getOrCreateStateSet()->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
@@ -792,7 +796,9 @@ RexTerrainEngineNode::updateState()
     }
     else
     {
-        osg::StateSet* terrainStateSet = getTerrainStateSet();
+        osg::StateSet* terrainStateSet = getTerrainStateSet(); //this->getOrCreateStateSet();
+        osg::StateSet* surfaceStateSet = getTerrainStateSet(); // rename?
+        osg::StateSet* controlStateSet = getControlStateSet();
         
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(
@@ -822,16 +828,21 @@ RexTerrainEngineNode::updateState()
             package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);
             if ( useTerrainColor )
             {
-                terrainStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
+                surfaceStateSet->addUniform(new osg::Uniform("oe_terrain_color", _terrainOptions.color().get()));
             }
 
             bool useBlending = _terrainOptions.enableBlending().get();
             package.define("OE_REX_USE_BLENDING", useBlending);
 
-            // Vertex shader:
-            package.loadFunction(vp, package.VERT_MODEL);
-            package.loadFunction(vp, package.VERT_VIEW);
-            package.loadFunction(vp, package.FRAG);
+            // Shared functions:
+            VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
+            package.loadFunction(surfaceVP, package.VERT_MODEL);
+            package.loadFunction(surfaceVP, package.VERT_VIEW);
+            package.loadFunction(surfaceVP, package.FRAG);
+
+            VirtualProgram* controlVP = VirtualProgram::getOrCreate(controlStateSet);
+            package.loadFunction(controlVP, package.VERT_MODEL);
+            package.loadFunction(controlVP, package.VERT_VIEW);
 
             // assemble color filter code snippets.
             bool haveColorFilters = false;
@@ -872,7 +883,7 @@ RexTerrainEngineNode::updateState()
                                 const ColorFilter* filter = j->get();
                                 cf_head << "void " << filter->getEntryPointFunctionName() << "(inout vec4 color);\n";
                                 cf_body << I << I << filter->getEntryPointFunctionName() << "(color);\n";
-                                filter->install( terrainStateSet );
+                                filter->install( surfaceStateSet );
                             }
                             cf_body << I << "}\n";
                             ifStarted = true;
@@ -889,7 +900,7 @@ RexTerrainEngineNode::updateState()
                     replaceIn( fs_colorfilters, "$COLOR_FILTER_HEAD", cf_head_str );
                     replaceIn( fs_colorfilters, "$COLOR_FILTER_BODY", cf_body_str );
 
-                    vp->setFunction(
+                    surfaceVP->setFunction(
                         "oe_rexEngine_applyFilters",
                         fs_colorfilters,
                         ShaderComp::LOCATION_FRAGMENT_COLORING,

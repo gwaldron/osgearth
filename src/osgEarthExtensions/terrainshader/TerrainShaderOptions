@@ -51,6 +51,9 @@ namespace osgEarth { namespace TerrainShader
         std::vector<Sampler>& samplers() { return _samplers; }
         const std::vector<Sampler>& samplers() const { return _samplers; }
 
+        optional<bool>& controlSurface() { return _control; }
+        const optional<bool>& controlSurface() const { return _control; }
+
     public:
         TerrainShaderOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt )
         {
@@ -77,6 +80,8 @@ namespace osgEarth { namespace TerrainShader
                 c.addIfSet("url", _samplers[i]._uri);
                 conf.add( c );
             }
+
+            conf.addIfSet("control", _control);
             return conf;
         }
 
@@ -102,10 +107,13 @@ namespace osgEarth { namespace TerrainShader
                 _samplers.back()._name = i->value("name");
                 i->getIfSet("url", _samplers.back()._uri);
             }
+            
+            conf.getIfSet("control", _control);
         }
 
-        std::vector<Code> _code;
+        std::vector<Code>    _code;
         std::vector<Sampler> _samplers;
+        optional<bool>       _control;
     };
 
 } } // namespace osgEarth::TerrainShader

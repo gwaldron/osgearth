@@ -50,7 +50,11 @@ namespace
         {
             if ( !engine ) return;
 
-            VirtualProgram* vp = VirtualProgram::getOrCreate(engine->getOrCreateStateSet());
+            osg::StateSet* stateSet = _options.controlSurface() == true ?
+                engine->getControlStateSet() :
+                engine->getTerrainStateSet();
+
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             _package.loadAll( vp, _dbOptions.get() );
 
             const std::vector<TerrainShaderOptions::Sampler>& samplers = _options.samplers();
@@ -74,8 +78,8 @@ namespace
                             tex->setMaxAnisotropy( 4.0 );
                             tex->setResizeNonPowerOfTwoHint( false );
 
-                            engine->getOrCreateStateSet()->setTextureAttribute(unit, tex);
-                            engine->getOrCreateStateSet()->addUniform(new osg::Uniform(samplers[i]._name.c_str(), unit));
+                            stateSet->setTextureAttribute(unit, tex);
+                            stateSet->addUniform(new osg::Uniform(samplers[i]._name.c_str(), unit));
                         }
                     }
                 }
@@ -84,15 +88,22 @@ namespace
 
         void onUninstall(TerrainEngineNode* engine)
         {
-            if ( engine && engine->getStateSet() )
+            if ( engine )
             {
-                VirtualProgram* vp = VirtualProgram::get(engine->getStateSet());
-                if ( vp )
-                {
-                    _package.unloadAll( vp, _dbOptions.get() );
-                }
+                osg::StateSet* stateSet = _options.controlSurface() == true ?
+                    engine->getControlStateSet() :
+                    engine->getTerrainStateSet();
 
-                // TODO : remove samplers.
+                if ( stateSet )
+                {
+                    VirtualProgram* vp = VirtualProgram::get(stateSet);
+                    if ( vp )
+                    {
+                        _package.unloadAll( vp, _dbOptions.get() );
+                    }
+
+                    // TODO : remove samplers.
+                }
             }
         }
 

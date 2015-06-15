@@ -52,12 +52,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const osg::BoundingBox& getAlignedBoundingBox() const;
 
+        void traverse(osg::NodeVisitor& nv);
+
     protected:
         virtual ~SurfaceNode() { }
 
+        TileKey                    _tileKey;
         osg::BoundingBox           _bbox;
         osg::ref_ptr<TileDrawable> _drawable;
-        osg::ref_ptr<osg::Geode>   _geode;
+        osg::ref_ptr<osg::Geode>   _surfaceGeode;
+        osg::ref_ptr<osg::Geode>   _controlGeode;
         osg::ref_ptr<osg::Geode>   _debugGeode;
     };
 

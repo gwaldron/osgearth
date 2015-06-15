@@ -108,7 +108,12 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
                          const RenderBindings& bindings,
                          GeometryPool*  pool)
 {
-    _geode = new osg::Geode();
+    _tileKey = tilekey;
+    _surfaceGeode = new osg::Geode();
+
+    // holds the control surface.
+    _controlGeode = new osg::Geode();
+    _controlGeode->getOrCreateStateSet()->setRenderBinDetails(0, "oe.ControlBin");
 
     if ( pool )
     {
@@ -117,7 +122,8 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
 
         _drawable = new TileDrawable(tilekey, bindings, geom.get());
 
-        _geode->addDrawable( _drawable.get() );
+        _surfaceGeode->addDrawable( _drawable.get() );
+        _controlGeode->addDrawable( _drawable.get() );
     }
     else
     {
@@ -125,7 +131,8 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
     }
     
     // Create the final node.
-    addChild( _geode.get() );
+    addChild( _surfaceGeode.get() );
+    addChild( _controlGeode.get() );
         
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
@@ -138,6 +145,14 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
 
     // Initialize the cached bounding box.
     setElevationExtrema(osg::Vec2f(0, 0));
+}
+
+void
+SurfaceNode::traverse(osg::NodeVisitor& nv)
+{
+    _surfaceGeode->accept(nv);
+    if ( _tileKey.getLOD() >= 10 )
+        _controlGeode->accept(nv);
 }
 
 void

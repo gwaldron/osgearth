@@ -58,7 +58,7 @@ TileNode::TileNode() :
 _dirty      ( false )
 {
     // The StateSet must have a dynamic data variance since we plan to alter it
-    // as new data becomes available.
+    // as new data becomes available.^
     getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
 
     _count = 0;

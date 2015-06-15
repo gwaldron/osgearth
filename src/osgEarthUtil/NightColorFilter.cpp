@@ -49,7 +49,7 @@ namespace
         "    vec3 N = normalize(atmos_up);\n"
         "    float NdotL = dot(N,L);\n"
         "    float day = remap( NdotL, -0.25, 0.0, 0.0, 1.0);\n"
-        "    color.a = 1.0 - day;\n"
+        "    color.a *= (1.0 - day);\n"
         "} \n";
 }
 

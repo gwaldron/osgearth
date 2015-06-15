@@ -209,9 +209,15 @@ public:
                                 if ( OGR_L_GetExtent( _layerHandle, &env, 1 ) == OGRERR_NONE )
                                 {
                                     GeoExtent extent( srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY );
-                                    
-                                    // got enough info to make the profile!
-                                    result = new FeatureProfile( extent );
+                                    if ( extent.isValid() )
+                                    {                                    
+                                        // got enough info to make the profile!
+                                        result = new FeatureProfile( extent );
+                                    }
+                                    else
+                                    {
+                                        OE_WARN << LC << "Extent returned from OGR was invalid.\n";
+                                    }
                                 }
                             }
                         }

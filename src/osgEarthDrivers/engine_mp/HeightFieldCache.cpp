@@ -36,7 +36,7 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
 {                
     // default
     out_isFallback = false;
-
+    
     // check the quick cache.
     HFKey cachekey;
     cachekey._key          = key;
@@ -77,11 +77,11 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         {
             // This most likely means that a parent tile expired while we were building the child.
             // No harm done in that case as this tile will soo be discarded as well.
-            OE_DEBUG << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry"
-                << std::endl;
+            // OE_WARN << LC << "MP HFC: Unable to find tile " << key.str() << " in the live tile registry" << std::endl;
             return false;
         }
     }
+    
 
     if ( !out_hf.valid() )
     {
@@ -106,11 +106,19 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         HeightFieldUtils::scaleHeightFieldToDegrees( out_hf.get() );
     }
 
-    // cache it.
-    HFValue cacheval;
-    cacheval._hf = out_hf.get();
-    cacheval._isFallback = !populated;
-    _cache.insert( cachekey, cacheval );
+    // ONLY cache the new heightfield if a parent HF existed. Otherwise the new HF
+    // may contain invalid data. This can happen if this task runs to completion
+    // while the tile's parent expires from the scene graph. In that case the result
+    // of this task will be discarded. Therefore we should not cache the result here.
+    // This was causing intermittent rare "flat tiles" to appear in the terrain.
+    if ( parent_hf )
+    {
+        // cache it.
+        HFValue cacheval;
+        cacheval._hf = out_hf.get();
+        cacheval._isFallback = !populated;
+        _cache.insert( cachekey, cacheval );
+    }
 
     out_isFallback = !populated;
     return true;

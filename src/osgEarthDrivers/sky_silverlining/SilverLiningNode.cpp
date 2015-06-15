@@ -123,14 +123,11 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
         if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
         {
 			int frameNumber = nv.getFrameStamp()->getFrameNumber();
-            _SL->updateLocation();
-            _SL->updateLight();
-            _SL->getAtmosphere()->UpdateSkyAndClouds();
             _skyDrawable->dirtyBound();
 
             if( _cloudsDrawable )
             {
-                if (true) //_lastAltitude <= *_options.cloudsMaxAltitude() )
+                if ( _lastAltitude <= *_options.cloudsMaxAltitude() )
                 {
                     if ( _cloudsDrawable->getNumParents() == 0 )
                         _geode->addDrawable( _cloudsDrawable.get() );
@@ -147,6 +144,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 
         else if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
+
             // TODO: make this multi-camera safe
             _SL->setCameraPosition( nv.getEyePoint() );
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
@@ -157,8 +155,11 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 				cv->getEyePoint().length() - _SL->getSRS()->getEllipsoid()->getRadiusEquator() :
 				cv->getEyePoint().z();
 
-			if (_lastAltitude <= *_options.cloudsMaxAltitude() )
+			//if (_lastAltitude <= *_options.cloudsMaxAltitude() )
 			{
+                _SL->updateLocation();
+                _SL->updateLight();
+                _SL->getAtmosphere()->UpdateSkyAndClouds();
 				_SL->getAtmosphere()->CullObjects();
 			}
         }

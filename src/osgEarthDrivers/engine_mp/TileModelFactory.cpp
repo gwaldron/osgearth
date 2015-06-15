@@ -262,6 +262,10 @@ TileModelFactory::buildElevation(const TileKey&    key,
                 OE_NOTICE << LC << "Could not find a parent tile HF for " << key.str() << "\n";
             }
         }
+        else
+        {
+            // Happens if the parent key expired after this task dispatched.
+        }
     }
 
     // Make a new heightfield:

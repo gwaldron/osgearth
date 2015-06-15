@@ -225,6 +225,7 @@ SilverLiningContext::updateLocation()
 
         _atmosphere->GetConditions()->SetLocation( loc );
 
+#if 0
         if ( _clouds )
         {
 #if 1 //TODO: figure out why we need to call this a couple times before
@@ -235,6 +236,7 @@ SilverLiningContext::updateLocation()
                 _clouds->SetLayerPosition(0, 0);
             }
         }
+#endif
 #endif
     }
 }

@@ -31,12 +31,13 @@ _range  ( Distance(10000.0, Units::METERS)  )
 }
 
 Viewpoint::Viewpoint( const Viewpoint& rhs ) :
-_name   ( rhs._name ),
-_point  ( rhs._point ),
-_heading( rhs._heading ),
-_pitch  ( rhs._pitch ),
-_range  ( rhs._range ),
-_node   ( rhs._node.get() )
+_name     ( rhs._name ),
+_point    ( rhs._point ),
+_heading  ( rhs._heading ),
+_pitch    ( rhs._pitch ),
+_range    ( rhs._range ),
+_posOffset( rhs._posOffset),
+_node     ( rhs._node.get() )
 {
     //NOP
 }
@@ -86,6 +87,14 @@ Viewpoint::Viewpoint(const Config& conf)
             conf.value<double>("height", 0.0),
             ALTMODE_ABSOLUTE );
     }
+
+    double xOffset = conf.value("x_offset", 0.0);
+    double yOffset = conf.value("y_offset", 0.0);
+    double zOffset = conf.value("z_offset", 0.0);
+    if ( xOffset != 0.0 || yOffset != 0.0 || zOffset != 0.0 )
+    {
+        _posOffset->set(xOffset, yOffset, zOffset);
+    }
 }
 
 #define CONF_STR Stringify() << std::fixed << std::setprecision(4)
@@ -121,6 +130,13 @@ Viewpoint::getConfig() const
             conf.set("vdatum", _point->getSRS()->getVertInitString());
     }
 
+    if ( _posOffset.isSet() )
+    {
+        conf.set("x_offset", _posOffset->x());
+        conf.set("y_offset", _posOffset->y());
+        conf.set("z_offset", _posOffset->z());
+    }
+
     return conf;
 }
 
@@ -143,7 +159,10 @@ Viewpoint::toString() const
             << ", z=" << _point->z()
             << ", h=" << _heading->to(Units::DEGREES).asParseableString()
             << ", p=" << _pitch->to(Units::DEGREES).asParseableString()
-            << ", d=" << _range->asParseableString();
+            << ", d=" << _range->asParseableString()
+            << ", xo=" << _posOffset->x()
+            << ", yo=" << _posOffset->y()
+            << ", zo=" << _posOffset->z();
     }
     else
     {
@@ -151,6 +170,9 @@ Viewpoint::toString() const
             << "attached to node; "
             << ", h=" << _heading->to(Units::DEGREES).asParseableString()
             << ", p=" << _pitch->to(Units::DEGREES).asParseableString()
-            << ", d=" << _range->asParseableString();
+            << ", d=" << _range->asParseableString()
+            << ", xo=" << _posOffset->x()
+            << ", yo=" << _posOffset->y()
+            << ", zo=" << _posOffset->z();
     }
 }

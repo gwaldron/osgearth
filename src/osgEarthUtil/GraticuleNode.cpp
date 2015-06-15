@@ -32,7 +32,8 @@ _mapNode(mapNode),
     _lat(0.0),
     _lon(0.0),
     _viewExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90),
-    _visible(true)
+    _visible(true),
+    _metersPerPixel(0.0)
 {
     setNumChildrenRequiringUpdateTraversal(1);
 
@@ -193,10 +194,9 @@ void GraticuleNode::updateLabels()
         _labelPool[i]->setNodeMask(0);
     }
 
-
-
-
-    
+    // Approximate offset in degrees
+    double degOffset = _metersPerPixel / 111000.0;
+     
     unsigned int labelIndex = 0;
 
 
@@ -213,7 +213,7 @@ void GraticuleNode::updateLabels()
         // Generate horizontal labels
         for (unsigned int i = minLonIndex; i <= maxLonIndex; i++)
         {
-            GeoPoint point(srs, -180.0 + (double)i * resDegrees, _lat, 0, ALTMODE_ABSOLUTE);
+            GeoPoint point(srs, -180.0 + (double)i * resDegrees, _lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
             LabelNode* label = _labelPool[labelIndex++];
 
             label->setNodeMask(~0u);
@@ -231,7 +231,7 @@ void GraticuleNode::updateLabels()
         // Generate the vertical labels
         for (unsigned int i = minLatIndex; i <= maxLatIndex; i++)
         {
-            GeoPoint point(srs, _lon, -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
+            GeoPoint point(srs, _lon + (_centerOffset.x() * degOffset), -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
             // Skip drawing labels at the poles
             if (osg::equivalent(osg::absolute( point.y()), 90.0, 0.1))
             {
@@ -268,23 +268,18 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         _lon = eyeGeo.x();
         _lat = eyeGeo.y();
 
-        osg::Viewport* viewport = cv->getCurrentCamera()->getViewport();
+        osg::Viewport* viewport = cv->getViewport();
 
         float centerX = viewport->x() + viewport->width() / 2.0;
         float centerY = viewport->y() + viewport->height() / 2.0;
 
-        float offsetCenterX = centerX + _centerOffset.x();
-        float offsetCenterY = centerY + _centerOffset.y();
+        float offsetCenterX = centerX;
+        float offsetCenterY = centerY;
 
         bool hitValid = false;
 
-        // Try the offset position
-        if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), offsetCenterX, offsetCenterY, _focalPoint))
-        {
-            hitValid = true;
-        }
-        // Try the center of the screen if we get no hits.
-        else if(_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), centerX, centerY, _focalPoint))
+        // Try the center of the screen.
+        if(_mapNode->getTerrain()->getWorldCoordsUnderMouse(cv->getCurrentCamera()->getView(), centerX, centerY, _focalPoint))
         {
             hitValid = true;
         }
@@ -313,7 +308,14 @@ void GraticuleNode::traverse(osg::NodeVisitor& nv)
         // Trippy
         //resolution = targetResolution;
 
-        _viewExtent = getViewExtent( cv->getCurrentCamera() );
+        _viewExtent = getViewExtent( cv );
+
+        // Try to compute an approximate meters to pixel value at this view.
+        double fovy, aspectRatio, zNear, zFar;
+        cv->getProjectionMatrix()->getPerspective(fovy, aspectRatio, zNear, zFar);
+        double dist = osg::clampAbove(eyeGeo.z(), 1.0);
+        double halfWidth = osg::absolute( tan(osg::DegreesToRadians(fovy/2.0)) * dist );
+        _metersPerPixel = (2.0 * halfWidth) / (double)viewport->height();
 
         if (_resolution != resolution)
         {
@@ -343,11 +345,11 @@ std::string GraticuleNode::getText(const GeoPoint& location, bool lat)
     return _formatter->format(value, lat);
 }
 
-osgEarth::GeoExtent GraticuleNode::getViewExtent(osg::Camera* camera)
+osgEarth::GeoExtent GraticuleNode::getViewExtent(osgUtil::CullVisitor* cullVisitor)
 {
     // Get the corners of all points on the view frustum.  Mostly modified from osgthirdpersonview
-    osg::Matrixd proj = camera->getProjectionMatrix();
-    osg::Matrixd mv = camera->getViewMatrix();
+    osg::Matrixd proj = *cullVisitor->getProjectionMatrix();
+    osg::Matrixd mv = *cullVisitor->getModelViewMatrix();
     osg::Matrixd invmv = osg::Matrixd::inverse( mv );
 
     double nearPlane = proj(3,2) / (proj(2,2)-1.0);

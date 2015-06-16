@@ -42,13 +42,75 @@ namespace osgEarth
         SHADERPOLICY_INHERIT
     };
 
-    class OSGEARTH_EXPORT ShaderLex
+    /** Parses GLSL code into chunks that may be processed or replaced. */
+    class OSGEARTH_EXPORT ShaderEditor
     {
+    public: // types.
+        
+        // each output pair is "qualifier", "declaration".
+        struct Variable
+        {
+            std::string original;
+            std::string invariant_qualifier;         // invariant
+            std::string auxiliary_storage_qualifier; // centroid, sample, patch
+            std::string storage_qualifier;           // in, out, varying
+            std::string interpolation_qualifier;     // smooth, flat, nonperspective
+            std::string definition;                  // type and name, etc; e.g. mat4 my_matrix
+            //std::string qualifier;
+            //std::string definition;
+
+            Variable(int chunkIndex); //, const std::string& a, const std::string& b, const std::string& c) : original(a), qualifier(b), definition(c) { }
+
+            std::string toString() const;
+
+        private:
+            int _index;
+            friend class ShaderEditor;
+        };
+
+
     public:
-        ShaderLex(const std::string& source);
+        /** Construct a shader editor from a string of GLSL code. */
+        ShaderEditor(const std::string& source);
+        ShaderEditor(std::istream& in);
+
+        void getVaryings(osg::Shader::Type type, std::vector<Variable>& result) const;
+
+        void save(const Variable& var);
+
+        void remove(const Variable& var);
+
+        void insert(const std::string& text);
+
+        /** Write out the GLSL code to a string. */
+        std::string toString();
+
+    public: // typed
 
     protected:
-        std::vector<std::string> _tokens;
+        void read(std::istream& in);
+
+        struct glslChunk_type
+        {
+            glslChunk_type() : _deleted(false) { }
+            std::string glsl_chunk_text;
+            enum GLSL_STATEMENT_TYPE { STATEMENT, DIRECTIVE, FUNCTION, COMMENT, UNKNOWN };
+            GLSL_STATEMENT_TYPE glsl_statement;
+            bool _deleted;
+        };
+        typedef glslChunk_type Chunk;
+        typedef std::vector<Chunk> Chunks;
+        Chunks _chunks;
+
+        struct Lexer
+        {
+            Lexer(const std::string& str);
+            bool eat(const std::string& pattern, std::string* destination =0L);
+            void eatUntil(char c, std::string* destination);
+            void remainder(std::string* destination);
+            std::string::iterator _pos;
+            std::string _str;
+        };
     };
 
     /**

@@ -132,8 +132,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     bool viewStageInGS  = hasGS;
     bool viewStageInTES = !viewStageInGS && hasTES;
     bool viewStageInVS  = !viewStageInTES && !viewStageInGS;
-
-    //OE_WARN << "viewStageInVS = " << viewStageInVS << "; viewStageInTES = " << viewStageInTES << "; viewStageInGS = " << viewStageInGS << "\n";
     
     bool clipStageInGS  = hasGS;
     bool clipStageInTES = hasTES && !hasGS;

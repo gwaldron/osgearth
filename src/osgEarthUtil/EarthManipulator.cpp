@@ -834,8 +834,8 @@ EarthManipulator::getViewpoint() const
     double localAzim, localPitch;
     getEulerAngles( _rotation, &localAzim, &localPitch );
 
-    vp.heading()->set( localAzim, Units::RADIANS );
-    vp.pitch()->set( localPitch, Units::RADIANS );
+    vp.heading() = Angle(localAzim,  Units::RADIANS).to(Units::DEGREES);
+    vp.pitch()   = Angle(localPitch, Units::RADIANS).to(Units::DEGREES);
     vp.range()->set( _distance, Units::METERS );
 
     if ( _posOffset.x() != 0.0 || _posOffset.y() != 0.0 || _posOffset.z() != 0.0 )

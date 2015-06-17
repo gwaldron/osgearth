@@ -912,15 +912,3 @@ DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
         }
     }
 }
-
-//------------------------------------------------------------------------
-
-ShaderLex::ShaderLex(const std::string& source)
-{
-    StringTokenizer tokenizer;
-    tokenizer.addDelims(" \t\r", false);
-    tokenizer.addDelim ('\n', true);
-    tokenizer.addDelim (';', true);
-    tokenizer.addQuote ('\"', true);
-    tokenizer.tokenize(source, _tokens);
-}

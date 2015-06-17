@@ -207,9 +207,9 @@ _stateUpdateRequired  ( false )
         _surfaceRenderBinPrototype->setName( Stringify() << "oe.SurfaceBin" ); //." << _uid );
         osgUtil::RenderBin::addRenderBinPrototype( _surfaceRenderBinPrototype->getName(), _surfaceRenderBinPrototype.get() );
 
-        _controlRenderBinPrototype = new FeatureBin();
-        _controlRenderBinPrototype->setName( Stringify() << "oe.ControlBin" ); //." << _uid );
-        osgUtil::RenderBin::addRenderBinPrototype( _controlRenderBinPrototype->getName(), _controlRenderBinPrototype.get() );
+        _landCoverRenderBinPrototype = new FeatureBin();
+        _landCoverRenderBinPrototype->setName( Stringify() << "oe.ControlBin" ); //." << _uid );
+        osgUtil::RenderBin::addRenderBinPrototype( _landCoverRenderBinPrototype->getName(), _landCoverRenderBinPrototype.get() );
     }
 
     // install an elevation callback so we can update elevation data
@@ -221,7 +221,7 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
     unregisterEngine( _uid );
 
     osgUtil::RenderBin::removeRenderBinPrototype( _surfaceRenderBinPrototype.get() );
-    osgUtil::RenderBin::removeRenderBinPrototype( _controlRenderBinPrototype.get() );
+    osgUtil::RenderBin::removeRenderBinPrototype( _landCoverRenderBinPrototype.get() );
 
     if ( _update_mapf )
     {
@@ -380,7 +380,7 @@ RexTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 }
 
 osg::StateSet*
-RexTerrainEngineNode::getTerrainStateSet()
+RexTerrainEngineNode::getSurfaceStateSet()
 {
 #ifdef USE_RENDER_BINS
     return _surfaceRenderBinPrototype->getStateSet();
@@ -390,10 +390,10 @@ RexTerrainEngineNode::getTerrainStateSet()
 }
 
 osg::StateSet*
-RexTerrainEngineNode::getControlStateSet()
+RexTerrainEngineNode::getLandCoverStateSet()
 {
 #ifdef USE_RENDER_BINS
-    return _controlRenderBinPrototype->getStateSet();
+    return _landCoverRenderBinPrototype->getStateSet();
 #else
     return _terrain ? _terrain->getOrCreateStateSet() : 0L;
 #endif
@@ -796,9 +796,9 @@ RexTerrainEngineNode::updateState()
     }
     else
     {
-        osg::StateSet* terrainStateSet = getTerrainStateSet(); //this->getOrCreateStateSet();
-        osg::StateSet* surfaceStateSet = getTerrainStateSet(); // rename?
-        osg::StateSet* controlStateSet = getControlStateSet();
+        osg::StateSet* terrainStateSet   = getOrCreateStateSet();   // everything
+        osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
+        osg::StateSet* landCoverStateSet = getLandCoverStateSet();  // just the land cover
         
         // required for multipass tile rendering to work
         terrainStateSet->setAttributeAndModes(
@@ -840,9 +840,9 @@ RexTerrainEngineNode::updateState()
             package.loadFunction(surfaceVP, package.VERT_VIEW);
             package.loadFunction(surfaceVP, package.FRAG);
 
-            VirtualProgram* controlVP = VirtualProgram::getOrCreate(controlStateSet);
-            package.loadFunction(controlVP, package.VERT_MODEL);
-            package.loadFunction(controlVP, package.VERT_VIEW);
+            VirtualProgram* landCoverVP = VirtualProgram::getOrCreate(landCoverStateSet);
+            package.loadFunction(landCoverVP, package.VERT_MODEL);
+            package.loadFunction(landCoverVP, package.VERT_VIEW);
 
             // assemble color filter code snippets.
             bool haveColorFilters = false;

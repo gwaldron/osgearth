@@ -42,15 +42,6 @@ namespace osgEarth
         SHADERPOLICY_INHERIT
     };
 
-    class OSGEARTH_EXPORT ShaderLex
-    {
-    public:
-        ShaderLex(const std::string& source);
-
-    protected:
-        std::vector<std::string> _tokens;
-    };
-
     /**
     * Container for light uniforms
     */

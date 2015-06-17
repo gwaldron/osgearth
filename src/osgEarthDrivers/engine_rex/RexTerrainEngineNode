@@ -62,10 +62,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             unsigned         minLevel,
             unsigned         maxLevel);
 
-        /** Access the stateset used to render the terrain. */
-        osg::StateSet* getTerrainStateSet();
+        /** Get the stateset used to render the terrain surface. */
+        osg::StateSet* getSurfaceStateSet();
 
-        osg::StateSet* getControlStateSet();
+        /** Get the stateset used to render land cover control patches. */
+        osg::StateSet* getLandCoverStateSet();
 
         /** Access to the asychronous data loader */
         Loader* getLoader() { return _loader.get(); }
@@ -164,7 +165,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         Threading::Mutex _renderBinMutex;
         osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;
-        osg::ref_ptr<osgUtil::RenderBin> _controlRenderBinPrototype;
+        osg::ref_ptr<osgUtil::RenderBin> _landCoverRenderBinPrototype;
 
         bool _quickReleaseInstalled;
 

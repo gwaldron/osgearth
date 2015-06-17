@@ -50,9 +50,9 @@ namespace
         {
             if ( !engine ) return;
 
-            osg::StateSet* stateSet = _options.controlSurface() == true ?
-                engine->getControlStateSet() :
-                engine->getTerrainStateSet();
+            osg::StateSet* stateSet = _options.landCover() == true ?
+                engine->getLandCoverStateSet() :
+                engine->getSurfaceStateSet();
 
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             _package.loadAll( vp, _dbOptions.get() );
@@ -90,9 +90,9 @@ namespace
         {
             if ( engine )
             {
-                osg::StateSet* stateSet = _options.controlSurface() == true ?
-                    engine->getControlStateSet() :
-                    engine->getTerrainStateSet();
+                osg::StateSet* stateSet = _options.landCover() == true ?
+                    engine->getLandCoverStateSet() :
+                    engine->getSurfaceStateSet();
 
                 if ( stateSet )
                 {

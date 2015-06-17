@@ -148,10 +148,10 @@ namespace osgEarth
         void requireParentTextures();
 
         /** Access the stateset used to render the terrain. */
-        virtual osg::StateSet* getTerrainStateSet() { return getOrCreateStateSet(); }
+        virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
 
         /** Access the stateset used to render the control surface (if implemented). */
-        virtual osg::StateSet* getControlStateSet() { return getOrCreateStateSet(); }
+        virtual osg::StateSet* getLandCoverStateSet() { return getOrCreateStateSet(); }
 
     public: // TerrainEngine
 

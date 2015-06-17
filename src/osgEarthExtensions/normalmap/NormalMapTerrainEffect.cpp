@@ -97,7 +97,7 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
         //engine->addTileNodeCallback( new NormalTexInstaller(this, _normalMapUnit) );
         
         // shader components
-        osg::StateSet* stateset = engine->getTerrainStateSet();
+        osg::StateSet* stateset = engine->getSurfaceStateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
         // configure shaders
@@ -113,7 +113,7 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 void
 NormalMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
 {
-    osg::StateSet* stateset = engine->getStateSet();
+    osg::StateSet* stateset = engine->getSurfaceStateSet();
     if ( stateset )
     {
         VirtualProgram* vp = VirtualProgram::get(stateset);

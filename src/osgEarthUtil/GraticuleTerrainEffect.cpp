@@ -43,7 +43,7 @@ GraticuleTerrainEffect::onInstall(TerrainEngineNode* engine)
     if ( engine )
     {
         // shader components
-        osg::StateSet* stateset = engine->getTerrainStateSet();
+        osg::StateSet* stateset = engine->getSurfaceStateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
         // configure shaders
@@ -66,7 +66,7 @@ GraticuleTerrainEffect::onInstall(TerrainEngineNode* engine)
 void
 GraticuleTerrainEffect::onUninstall(TerrainEngineNode* engine)
 {
-    osg::StateSet* stateset = engine->getTerrainStateSet();
+    osg::StateSet* stateset = engine->getSurfaceStateSet();
     if ( stateset )
     {
         VirtualProgram* vp = VirtualProgram::get(stateset);

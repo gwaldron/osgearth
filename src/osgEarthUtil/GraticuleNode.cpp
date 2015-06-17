@@ -82,7 +82,7 @@ _mapNode(mapNode),
     _formatter = new LatLongFormatter(osgEarth::Util::LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS_TERSE, LatLongFormatter::USE_SYMBOLS |LatLongFormatter::USE_PREFIXES);
 
     // Initialize the resolution uniform
-    _resolutionUniform = mapNode->getTerrainEngine()->getTerrainStateSet()->getOrCreateUniform(GraticuleOptions::resolutionUniformName(), osg::Uniform::FLOAT);
+    _resolutionUniform = mapNode->getTerrainEngine()->getSurfaceStateSet()->getOrCreateUniform(GraticuleOptions::resolutionUniformName(), osg::Uniform::FLOAT);
     _resolutionUniform->set((float)_resolution);
 
     initLabelPool();
@@ -112,7 +112,7 @@ void GraticuleNode::setVisible(bool visible)
             setNodeMask(~0u);
             _mapNode->getTerrainEngine()->addEffect(_effect.get());
             // We need to re-initilize the uniform b/c the uniform may have been removed when the effect was removed.
-            _resolutionUniform = _mapNode->getTerrainEngine()->getTerrainStateSet()->getOrCreateUniform(GraticuleOptions::resolutionUniformName(), osg::Uniform::FLOAT);
+            _resolutionUniform = _mapNode->getTerrainEngine()->getSurfaceStateSet()->getOrCreateUniform(GraticuleOptions::resolutionUniformName(), osg::Uniform::FLOAT);
             _resolutionUniform->set((float)_resolution);
         }
         else

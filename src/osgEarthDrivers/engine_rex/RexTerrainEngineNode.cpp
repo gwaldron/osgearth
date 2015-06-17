@@ -35,6 +35,7 @@
 #include <osg/Depth>
 #include <osg/BlendFunc>
 #include <osg/PatchParameter>
+#include <osg/Multisample>
 #include <osgUtil/RenderBin>
 
 #define LC "[RexTerrainEngineNode] "
@@ -76,8 +77,10 @@ namespace
     public:
         SurfaceBin()
         {
+            this->setName( "oe.SurfaceBin" );
             this->setStateSet( new osg::StateSet() );
             this->setSortMode(SORT_FRONT_TO_BACK);
+            OE_NOTICE << getName() << "ctor\n";
         }
 
         osg::Object* clone(const osg::CopyOp& copyop) const
@@ -93,20 +96,22 @@ namespace
 
 
     // Render bin for terrain control surface
-    class FeatureBin : public osgUtil::RenderBin
+    class LandCoverBin : public osgUtil::RenderBin
     {
     public:
-        FeatureBin()
+        LandCoverBin()
         {
+            this->setName( "oe.LandCoverBin" );
             this->setStateSet( new osg::StateSet() );
+            this->setSortMode(SORT_BACK_TO_FRONT);
         }
 
         osg::Object* clone(const osg::CopyOp& copyop) const
         {
-            return new FeatureBin(*this, copyop);
+            return new LandCoverBin(*this, copyop);
         }
 
-        FeatureBin(const FeatureBin& rhs, const osg::CopyOp& copy) :
+        LandCoverBin(const LandCoverBin& rhs, const osg::CopyOp& copy) :
             osgUtil::RenderBin(rhs, copy)
         {
         }
@@ -204,11 +209,11 @@ _stateUpdateRequired  ( false )
 
         // generate uniquely named render bin prototypes for this engine:
         _surfaceRenderBinPrototype = new SurfaceBin();
-        _surfaceRenderBinPrototype->setName( Stringify() << "oe.SurfaceBin" ); //." << _uid );
+        //_surfaceRenderBinPrototype->setName( "oe.SurfaceBin" ); //." << _uid );
         osgUtil::RenderBin::addRenderBinPrototype( _surfaceRenderBinPrototype->getName(), _surfaceRenderBinPrototype.get() );
 
-        _landCoverRenderBinPrototype = new FeatureBin();
-        _landCoverRenderBinPrototype->setName( Stringify() << "oe.ControlBin" ); //." << _uid );
+        _landCoverRenderBinPrototype = new LandCoverBin();
+        //_landCoverRenderBinPrototype->setName( "oe.LandCoverBin" ); //." << _uid );
         osgUtil::RenderBin::addRenderBinPrototype( _landCoverRenderBinPrototype->getName(), _landCoverRenderBinPrototype.get() );
     }
 
@@ -430,7 +435,31 @@ RexTerrainEngineNode::dirtyTerrain()
 {
     //TODO: scrub the geometry pool?
 
-    // remove existing:
+#if 0
+    if ( !_surfaceGroup.valid() )
+    {
+        _surfaceGroup = new osg::Group();
+        this->addChild( _surfaceGroup.get() );
+    }
+
+    if ( !_landCoverGroup.valid() )
+    {
+        _landCoverGroup = new osg::Group();
+        this->addChild( _landCoverGroup.get() );
+    }
+
+    if ( _terrain.valid() )
+    {
+        _surfaceGroup->removeChild( _terrain.get() );
+        _landCoverGroup->removeChild( _terrain.get() );
+        _terrain = 0L;
+    }
+
+    _terrain = new osg::Group();
+
+    _surfaceGroup->addChild( _terrain.get() );
+    _landCoverGroup->addChild( _terrain.get() );
+#else
     if ( _terrain )
     {
         this->removeChild( _terrain );
@@ -438,10 +467,13 @@ RexTerrainEngineNode::dirtyTerrain()
 
     // New terrain
     _terrain = new osg::Group();
+    this->addChild( _terrain );
+#endif
+
 
 #ifdef USE_RENDER_BINS
-    _terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _surfaceRenderBinPrototype->getName() );
-    _terrain->getOrCreateStateSet()->setNestRenderBins(false);
+    //_terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _surfaceRenderBinPrototype->getName() );
+    //_terrain->getOrCreateStateSet()->setNestRenderBins(false);
 #else
     _terrain->getOrCreateStateSet()->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
 #endif
@@ -450,8 +482,6 @@ RexTerrainEngineNode::dirtyTerrain()
     bool setupParentData = 
         _terrainOptions.enableLODBlending() == true ||
         this->parentTexturesRequired();
-
-    this->addChild( _terrain );
     
     // reserve GPU unit for the main color texture:
     if ( _renderBindings.empty() )
@@ -796,12 +826,17 @@ RexTerrainEngineNode::updateState()
     }
     else
     {
-        osg::StateSet* terrainStateSet   = getOrCreateStateSet();   // everything
+        osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
         osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
         osg::StateSet* landCoverStateSet = getLandCoverStateSet();  // just the land cover
+
+        OE_NOTICE << "TSS = " << std::hex << terrainStateSet
+            << ", SSS = " << surfaceStateSet
+            << ", LCSS = " << landCoverStateSet
+            << "\n";
         
         // required for multipass tile rendering to work
-        terrainStateSet->setAttributeAndModes(
+        surfaceStateSet->setAttributeAndModes(
             new osg::Depth(osg::Depth::LEQUAL, 0, 1, true) );
 
         // activate standard mix blending.
@@ -818,9 +853,8 @@ RexTerrainEngineNode::updateState()
         // install shaders, if we're using them.
         if ( Registry::capabilities().supportsGLSL() )
         {
-            VirtualProgram* vp = new VirtualProgram();
-            vp->setName( "osgEarth.RexTerrainEngineNode" );
-            terrainStateSet->setAttributeAndModes( vp, osg::StateAttribute::ON );
+            VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
+            terrainVP->setName( "Rex Terrain" );
             
             Shaders package;
             
@@ -834,15 +868,29 @@ RexTerrainEngineNode::updateState()
             bool useBlending = _terrainOptions.enableBlending().get();
             package.define("OE_REX_USE_BLENDING", useBlending);
 
-            // Shared functions:
+            // Funtions that affect only the terrain surface:
             VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
+            surfaceVP->setName("Rex Surface");
+
+            // Functions that affect the entire terrain:         
             package.loadFunction(surfaceVP, package.VERT_MODEL);
             package.loadFunction(surfaceVP, package.VERT_VIEW);
             package.loadFunction(surfaceVP, package.FRAG);
 
-            VirtualProgram* landCoverVP = VirtualProgram::getOrCreate(landCoverStateSet);
-            package.loadFunction(landCoverVP, package.VERT_MODEL);
-            package.loadFunction(landCoverVP, package.VERT_VIEW);
+            if ( landCoverStateSet )
+            {
+                VirtualProgram* landCoverVP = VirtualProgram::getOrCreate(landCoverStateSet);
+                package.loadFunction(landCoverVP, package.VERT_MODEL);
+                package.loadFunction(landCoverVP, package.VERT_VIEW);
+
+                // enable alpha-to-coverage multisampling for vegetation.
+                landCoverStateSet->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+
+                // uniform that communicates the availability of multisampling
+                landCoverStateSet->addUniform( new osg::Uniform(
+                    "oe_terrain_hasMultiSamples",
+                    osg::DisplaySettings::instance()->getMultiSamples()) );
+            }
 
             // assemble color filter code snippets.
             bool haveColorFilters = false;
@@ -941,19 +989,6 @@ RexTerrainEngineNode::updateState()
             terrainStateSet->addUniform( new osg::Uniform(
                 Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
 
-#if 0 // obe, done above in the render bindings.
-            // bind the shared layer uniforms.
-            for(ImageLayerVector::const_iterator i = _update_mapf->imageLayers().begin(); i != _update_mapf->imageLayers().end(); ++i)
-            {
-                const ImageLayer* layer = i->get();
-                if ( layer->isShared() )
-                {
-                    std::string texName = layer->shareTexUniformName().get();
-                    terrainStateSet->addUniform( new osg::Uniform(texName.c_str(), layer->shareImageUnit().get()) );
-                    OE_INFO << LC << "Layer \"" << layer->getName() << "\" in uniform \"" << texName << "\"\n";
-                }
-            }
-#endif
         }
 
         _stateUpdateRequired = false;

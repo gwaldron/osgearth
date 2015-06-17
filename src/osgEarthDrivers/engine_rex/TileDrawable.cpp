@@ -254,7 +254,8 @@ TileDrawable:: COMPUTE_BOUND() const
     {
         // update the uniform.
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
-        _tileKeyValue.w() = bbox.radius();
+        _tileKeyValue.w() = bbox.radius(); //std::min( bbox.xMax()-bbox.xMin(), bbox.yMax()-bbox.yMin() ); //bbox.radius();
+        //OE_NOTICE << "tile key radius = " << _tileKeyValue.w() << "\n";
     }
     return bbox;
 }

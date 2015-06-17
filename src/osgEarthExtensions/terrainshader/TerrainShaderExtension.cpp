@@ -54,6 +54,8 @@ namespace
                 engine->getLandCoverStateSet() :
                 engine->getSurfaceStateSet();
 
+            OE_NOTICE << LC << "Installing terrain shader on SS = " << std::hex << stateSet << "\n";
+
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             _package.loadAll( vp, _dbOptions.get() );
 

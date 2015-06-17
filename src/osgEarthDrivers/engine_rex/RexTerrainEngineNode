@@ -137,7 +137,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     private:
         RexTerrainEngineOptions _terrainOptions;
 
-        osg::Group*        _terrain;
         UID                _uid;
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
@@ -160,6 +159,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         RenderBindings _renderBindings;
         osg::ref_ptr<GeometryPool> _geometryPool;
         osg::ref_ptr<LoaderGroup>  _loader;
+        
+        osg::ref_ptr<osg::Group> _surfaceGroup;
+        osg::ref_ptr<osg::Group> _landCoverGroup;
+        osg::ref_ptr<osg::Group> _terrain;
 
         osg::Uniform* _verticalScaleUniform;
 

@@ -170,7 +170,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
         osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
 
         // If the children are visible, subdivide.
-        if (cameraRange < getSubdivideRange(nv) && getTileKey().getLOD() < 23)
+        if (cameraRange < getSubdivideRange(nv) && getTileKey().getLOD() < 22)
         {
             // We are in range of the child nodes. Either draw them or load them.
             unsigned numChildrenReady = 0;
@@ -204,21 +204,6 @@ TileNode::traverse(osg::NodeVisitor& nv)
                 _children[1]->accept( nv );
                 _children[2]->accept( nv );
                 _children[3]->accept( nv );
-
-#if 0           // TODO: revisit this -- see whether child tiles are properly getting expired.
-                for(unsigned i=0; i<4; ++i)
-                {
-                    TileNode* child = getSubTile(i);
-                    if (cull->isCulled( *child ) && child->isDormant( nv ) && child->getNumChildren() > 0)
-                    {
-                        child->expireChildren( nv );
-                    }
-                    else
-                    {
-                        child->accept( nv );
-                    }
-                }
-#endif
             }
 
             // Not all children are ready, so cull the current payload.

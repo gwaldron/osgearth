@@ -109,11 +109,17 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
                          GeometryPool*  pool)
 {
     _tileKey = tilekey;
+
     _surfaceGeode = new osg::Geode();
+    osg::StateSet* surfaceSS = _surfaceGeode->getOrCreateStateSet();
+    surfaceSS->setRenderBinDetails(0, "oe.SurfaceBin");
+    surfaceSS->setNestRenderBins(false);
 
     // holds the control surface.
-    _controlGeode = new osg::Geode();
-    _controlGeode->getOrCreateStateSet()->setRenderBinDetails(0, "oe.ControlBin");
+    _landCoverGeode = new osg::Geode();
+    osg::StateSet* landCoverSS = _landCoverGeode->getOrCreateStateSet();
+    landCoverSS->setRenderBinDetails(1, "oe.LandCoverBin");
+    landCoverSS->setNestRenderBins(false);
 
     if ( pool )
     {
@@ -123,7 +129,7 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
         _drawable = new TileDrawable(tilekey, bindings, geom.get());
 
         _surfaceGeode->addDrawable( _drawable.get() );
-        _controlGeode->addDrawable( _drawable.get() );
+        _landCoverGeode->addDrawable( _drawable.get() );
     }
     else
     {
@@ -132,7 +138,7 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
     
     // Create the final node.
     addChild( _surfaceGeode.get() );
-    addChild( _controlGeode.get() );
+    addChild( _landCoverGeode.get() );
         
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
@@ -151,8 +157,9 @@ void
 SurfaceNode::traverse(osg::NodeVisitor& nv)
 {
     _surfaceGeode->accept(nv);
-    if ( _tileKey.getLOD() >= 10 )
-        _controlGeode->accept(nv);
+
+    //if ( _tileKey.getLOD() >= 20 )
+        _landCoverGeode->accept(nv);
 }
 
 void

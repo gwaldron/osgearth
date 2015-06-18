@@ -43,7 +43,8 @@ namespace
             TileNode* tilenode = dynamic_cast<TileNode*>(&node);
             if ( tilenode )
             {
-                changed = tilenode->inheritState( tilenode->getParentTile(), _bindings );        
+                changed = tilenode->inheritState( tilenode->getParentTile(), _bindings );
+                tilenode->recalculateExtrema( _bindings );
             }
 
             if ( changed )

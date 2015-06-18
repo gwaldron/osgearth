@@ -29,5 +29,5 @@ void oe_rexEngine_vert(inout vec4 vertexModel)
     vp_Color = oe_terrain_color;
 #endif
 	
-	vp_UpVector = gl_NormalMatrix*vp_Normal;
+	vp_UpVector = vp_Normal;
 }

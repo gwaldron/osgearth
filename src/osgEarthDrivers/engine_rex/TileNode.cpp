@@ -126,6 +126,7 @@ TileNode::setElevationExtrema(const osg::Vec2f& value)
     {
         _payload->setElevationExtrema(value);
     }
+    _extrema = value;
 }
 
 bool
@@ -310,39 +311,102 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
             getOrCreateStateSet()->addUniform( new osg::Uniform(binding->matrixName().c_str(), matrix) );
             changesMade = true;
         }
+    }
 
+    if ( parent )
+    {
+        setElevationExtrema( parent->getElevationExtrema() );
+    }
+
+#if 0
         if ( binding->usage() == binding->ELEVATION )
         {
             // Find the elevation texture and calculate the min/max elevations.
-            bool found = false;
-            TileNode* nextParent = 0L;
-            for(TileNode* node = this; node != 0L && !found; node = nextParent)
+            // TODO: this is not completely thread-safe, querying the parent node path during the CULL traversal. Do this later.
+            if (recalculateExterma)
             {
-                osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE));
-                if ( elevTex )
+                bool found = false;
+                TileNode* nextParent = 0L;
+                for(TileNode* node = this; node != 0L && !found; node = nextParent)
                 {
-                    osg::Vec2f extrema;
-                    found = findExtrema(elevTex, matrix, extrema);
-                    if ( found )
+                    osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE));
+                    if ( elevTex )
                     {
-                        setElevationExtrema( extrema );
-                        OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
-                        break;
+                        osg::Vec2f extrema;
+                        found = findExtrema(elevTex, matrix, extrema);
+                        if ( found )
+                        {
+                            setElevationExtrema( extrema );
+                            OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
+                            break;
+                        }
+                        else
+                        {
+                            setElevationExtrema( parent->getElevationExtrema() );
+                        }
                     }
+                    nextParent = nextParent ? dynamic_cast<TileNode*>(node->getParent(0)) : parent;
                 }
-                nextParent = nextParent ? dynamic_cast<TileNode*>(node->getParent(0)) : parent;
-            }
 
-            if ( !found )
+                if ( !found )
+                {
+                    // This will happen sometimes, like when the initial levels are loading and there
+                    // is no elevation texture in the graph yet. It's normal.
+                    OE_DEBUG << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
+                }
+            }
+            else
             {
-                // This will happen sometimes, like when the initial levels are loading and there
-                // is no elevation texture in the graph yet. It's normal.
-                OE_DEBUG << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
+                setElevationExtrema( parent->getElevationExtrema() );
             }
         }
-    }
+#endif
 
     return changesMade;
+}
+
+void
+TileNode::recalculateExtrema(const RenderBindings& bindings)
+{
+    const SamplerBinding* elevBinding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
+    if ( !elevBinding )
+        return;
+
+    osg::Matrixf matrix;
+    const osg::Uniform* u = getStateSet()->getUniform(elevBinding->matrixName());
+    if ( !u )
+    {
+        OE_WARN << LC << getTileKey().str() << " : recalculateExtrema: illegal state\n";
+        return;
+    }
+
+    u->get(matrix);
+
+    bool found = false;
+    TileNode* parent = 0L;
+    for(TileNode* node = this; node != 0L && !found; node = parent)
+    {
+        osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(elevBinding->unit(), osg::StateAttribute::TEXTURE));
+        if ( elevTex )
+        {
+            osg::Vec2f extrema;
+            found = findExtrema(elevTex, matrix, extrema);
+            if ( found )
+            {
+                setElevationExtrema( extrema );
+                OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
+                break;
+            }
+        }
+        parent = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
+    }
+
+    if ( !found )
+    {
+        // This will happen sometimes, like when the initial levels are loading and there
+        // is no elevation texture in the graph yet. It's normal.
+        OE_DEBUG << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
+    }
 }
 
 void
@@ -493,12 +557,15 @@ TileNode::findExtrema(osg::Texture* tex, const osg::Matrix& m, osg::Vec2f& extre
     osg::Image* image = tex->getImage(0);
     if ( image )
     {
-        ImageUtils::PixelReader read(image);
-
         double s_offset = m(3,0) * (double)image->s();
         double t_offset = m(3,1) * (double)image->t();
         double s_span   = m(0,0) * (double)image->s();
         double t_span   = m(1,1) * (double)image->t();
+
+        if ( s_span < 1.0 || t_span < 1.0 )
+            return false;
+
+        ImageUtils::PixelReader read(image);
 
         // starting column and row:
         int c0 = osg::clampAbove( ((int)s_offset)-1, 0 );
@@ -507,7 +574,10 @@ TileNode::findExtrema(osg::Texture* tex, const osg::Matrix& m, osg::Vec2f& extre
         int c1 = osg::clampBelow( c0 + ((int)s_span) + 1, image->s()-1 );
         int r1 = osg::clampBelow( r0 + ((int)t_span) + 1, image->t()-1 );
 
-        //OE_INFO << LC << "find: key=" << getTileKey().str() << "; c0=" << c0 << ", r0=" << r0 << "; numc=" << numcols << ", numr=" << numrows << "\n";
+        OE_DEBUG << LC << "find: key=" << getTileKey().str() << std::dec << 
+            "scale=" << s_offset << ", " << t_offset
+            << "; span = " << s_span << ", " << t_span
+            << "; c0=" << c0 << ", r0=" << r0 << "; c1=" << c1 << ", r1=" << r1 << "\n";
         
         for(int c=c0; c <= c1; ++c)
         {

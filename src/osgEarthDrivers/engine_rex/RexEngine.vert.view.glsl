@@ -3,7 +3,7 @@
 #pragma vp_name       "REX Engine - Vertex/View"
 #pragma vp_entryPoint "oe_rexEngine_applyElevation"
 #pragma vp_location   "vertex_view"
-#pragma vp_order      "0.5"
+#pragma vp_order      "0.1"
 
 // Stage globals
 out vec4 oe_layer_tilec;
@@ -20,5 +20,6 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
     float elev = texture(oe_tile_elevationTex, elevc.st).r;
 
     // assumption: vp_Normal is normalized
-    vertexView.xyz += vp_UpVector*elev;
+
+    vertexView.xyz += (gl_NormalMatrix*vp_UpVector)*elev;
 }

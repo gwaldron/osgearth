@@ -156,10 +156,9 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
 void
 SurfaceNode::traverse(osg::NodeVisitor& nv)
 {
-    _surfaceGeode->accept(nv);
-
-    //if ( _tileKey.getLOD() >= 20 )
-        _landCoverGeode->accept(nv);
+    //_surfaceGeode->accept(nv);
+    //_landCoverGeode->accept(nv);
+    osg::MatrixTransform::traverse(nv);
 }
 
 void

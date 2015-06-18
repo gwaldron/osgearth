@@ -103,7 +103,7 @@ namespace
         {
             this->setName( "oe.LandCoverBin" );
             this->setStateSet( new osg::StateSet() );
-            this->setSortMode(SORT_BACK_TO_FRONT);
+            //this->setSortMode(SORT_BACK_TO_FRONT);
         }
 
         osg::Object* clone(const osg::CopyOp& copyop) const
@@ -115,6 +115,15 @@ namespace
             osgUtil::RenderBin(rhs, copy)
         {
         }
+
+        //void sort()
+        //{
+        //    osgUtil::RenderBin::sort();
+        //    if ( getRenderLeafList().size() > 0 )
+        //    {
+        //        OE_NOTICE << LC << "LC Drawables = " << getRenderLeafList().size() << "\n";
+        //    }
+        //}
     };
 }
 
@@ -829,11 +838,6 @@ RexTerrainEngineNode::updateState()
         osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
         osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
         osg::StateSet* landCoverStateSet = getLandCoverStateSet();  // just the land cover
-
-        OE_NOTICE << "TSS = " << std::hex << terrainStateSet
-            << ", SSS = " << surfaceStateSet
-            << ", LCSS = " << landCoverStateSet
-            << "\n";
         
         // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
@@ -881,12 +885,11 @@ RexTerrainEngineNode::updateState()
             {
                 VirtualProgram* landCoverVP = VirtualProgram::getOrCreate(landCoverStateSet);
                 package.loadFunction(landCoverVP, package.VERT_MODEL);
-                package.loadFunction(landCoverVP, package.VERT_VIEW);
 
                 // enable alpha-to-coverage multisampling for vegetation.
                 landCoverStateSet->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
 
-                // uniform that communicates the availability of multisampling
+                // uniform that communicates the availability of multisampling.
                 landCoverStateSet->addUniform( new osg::Uniform(
                     "oe_terrain_hasMultiSamples",
                     osg::DisplaySettings::instance()->getMultiSamples()) );

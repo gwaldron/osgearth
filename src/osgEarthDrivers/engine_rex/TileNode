@@ -69,13 +69,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void notifyOfArrival(TileNode* that) { } // nyi - todo
 
         /** Set inheritance matrices as necessary. Return true is changed were made. */
-        bool inheritState(TileNode* parent, const RenderBindings& bindings);
+        bool inheritState(TileNode* parent, const RenderBindings& bindings );
+
+        /** Compute the local min/max elevation based on this tile's inherited elevation raster and matrix. */
+        void recalculateExtrema(const RenderBindings& bindings);
 
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
 
         /** Sets the min and max elevation values for culling purposes */
         void setElevationExtrema(const osg::Vec2f& minmax);
+
+        const osg::Vec2f& getElevationExtrema() const { return _extrema; }
 
     public: // osg::Node
 
@@ -94,6 +99,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
         unsigned                           _count;
+        osg::Vec2f                         _extrema;
 
         TileNode* getSubTile(unsigned i) { return dynamic_cast<TileNode*>(getChild(i)); }
 

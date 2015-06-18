@@ -20,7 +20,7 @@ void oe_grass_fragment(inout vec4 color)
     color = texture(oe_grass_tex, oe_grass_texCoord) * vp_Color;
     
     // if multisampling is off, use alpha-discard.
-    if ( !oe_terrain_hasMultiSamples && color.a < 0.2 )
+    if ( !oe_terrain_hasMultiSamples && color.a < 0.15 )
         discard;
         
     // sample and mix in the green channel of the main color texture

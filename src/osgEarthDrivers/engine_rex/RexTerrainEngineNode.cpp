@@ -893,6 +893,10 @@ RexTerrainEngineNode::updateState()
                 landCoverStateSet->addUniform( new osg::Uniform(
                     "oe_terrain_hasMultiSamples",
                     osg::DisplaySettings::instance()->getMultiSamples()) );
+
+                landCoverStateSet->setAttributeAndModes(
+                    new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
+                    osg::StateAttribute::OVERRIDE );
             }
 
             // assemble color filter code snippets.

@@ -328,7 +328,7 @@ public:
             unsigned int tileX = query.tileKey().get().getTileX();
             unsigned int tileY = query.tileKey().get().getTileY();
             unsigned int level = query.tileKey().get().getLevelOfDetail();
-#if 1
+#if 0
             unsigned int numRows, numCols;
             query.tileKey().get().getProfile()->getNumTiles(level, numCols, numRows);
             tileY  = numRows - tileY - 1;

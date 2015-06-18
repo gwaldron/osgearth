@@ -88,7 +88,7 @@ namespace
             "b :",                 "break tether",
             "a :",                 "toggle viewpoint arcing",
             "z :",                 "toggle throwing",
-            "k :",                 "toggle collision"
+            "k :",                 "toggle collision"            
         };
 
         Grid* g = new Grid();
@@ -285,12 +285,12 @@ namespace
             {
                 EarthManipulator::TetherMode mode = _manip->getSettings()->getTetherMode();
                 if ( mode == _manip->TETHER_CENTER ) {
-                    _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER_AND_ROTATION );
-                    OE_NOTICE << "Tether mode = CENTER_AND_ROTATION\n";
-                }
-                else if ( mode == _manip->TETHER_CENTER_AND_ROTATION ) {
                     _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER_AND_HEADING );
-                    OE_NOTICE << "Tether mode = CENTER_AND_HEADING\n";
+                    OE_NOTICE << "Tether mode = TETHER_CENTER_AND_HEADING\n";
+                }
+                else if ( mode == _manip->TETHER_CENTER_AND_HEADING ) {
+                    _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER_AND_ROTATION );
+                    OE_NOTICE << "Tether mode = TETHER_CENTER_AND_ROTATION\n";
                 }
                 else {
                     _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER );
@@ -342,6 +342,55 @@ namespace
         osg::ref_ptr<EarthManipulator> _manip;
     };
     
+
+    /**
+     * Adjusts the position offset.
+     */
+    struct SetPositionOffset : public osgGA::GUIEventHandler
+    {
+        SetPositionOffset(EarthManipulator* manip)
+            : _manip(manip) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && (ea.getModKeyMask() & ea.MODKEY_SHIFT) )
+            {
+                Viewpoint oldvp = _manip->getViewpoint();
+
+                double seconds = 0.5;
+
+                if ( ea.getKey() == ea.KEY_Left )
+                {
+                    Viewpoint vp;
+                    vp.positionOffset() = oldvp.positionOffset().get() + osg::Vec3f(-1000,0,0);
+                    _manip->setViewpoint( vp, seconds );
+                }
+                else if ( ea.getKey() == ea.KEY_Right )
+                {
+                    Viewpoint vp;
+                    vp.positionOffset() = oldvp.positionOffset().get() + osg::Vec3f(1000,0,0);
+                    _manip->setViewpoint( vp, seconds );
+                }
+                else if ( ea.getKey() == ea.KEY_Up )
+                {
+                    Viewpoint vp;
+                    vp.positionOffset() = oldvp.positionOffset().get() + osg::Vec3f(0,0,1000);
+                    _manip->setViewpoint( vp, seconds );
+                }
+                else if ( ea.getKey() == ea.KEY_Down )
+                {
+                    Viewpoint vp;
+                    vp.positionOffset() = oldvp.positionOffset().get() + osg::Vec3f(0,0,-1000);
+                    _manip->setViewpoint( vp, seconds );
+                }
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
 
 
     /**
@@ -434,9 +483,9 @@ namespace
                 GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
                 double bearing = GeoMath::bearing(D2R*_lat1, D2R*_lon1, lat, lon);
 
-                float a = sin(t0);
+                float a = sin(t0*0.2);
                 bearing += a * 0.5 * osg::PI;
-                float pitch = a * 0.5 * osg::PI;
+                float pitch = a * 0.1 * osg::PI;
 
                 _xform->setPosition( p );
                 _pat->setAttitude(
@@ -450,8 +499,8 @@ namespace
                 {                                
                     Viewpoint vp = _manip->getViewpoint();
                     vp.setNode( _pat.get() );
-                    vp.range() = 15000.0;
-                    vp.positionOffset()->set( 2000, 2000, 0 );
+                    vp.range() = 25000.0;
+                    vp.pitch() = -45.0;
                     _manip->setViewpoint(vp, 2.0);
                 }
                 return true;
@@ -560,6 +609,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleProjMatrix('o', manip));
     viewer.addEventHandler(new BreakTetherHandler('b', manip));
     viewer.addEventHandler(new CycleTetherMode('t', manip));
+    viewer.addEventHandler(new SetPositionOffset(manip));
 
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);

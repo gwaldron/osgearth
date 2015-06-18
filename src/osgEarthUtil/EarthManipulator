@@ -830,8 +830,14 @@ namespace osgEarth { namespace Util
         // movements.
         bool serviceTask();
 
-        //void recalculateLocalPitchAndAzimuth();
-        void getLocalEulerAngles( double* out_azim, double* out_pitch =0L ) const;
+        // returns the Euler Angles baked into _rotation, the local frame's rotation quaternion.
+        void getEulerAngles(const osg::Quat& quat, double* azim, double* pitch) const;
+
+        // returns the Euler angles composited from _rotation and _tetherRotation.
+        void getCompositeEulerAngles( double* out_azim, double* out_pitch =0L ) const;
+
+        // Makes a quaternion from an azimuth and pitch.
+        osg::Quat getQuaternion(double azim, double pitch) const;
 
         /**
          * Fire a ray from the current eyepoint along the current look vector,
@@ -942,8 +948,15 @@ namespace osgEarth { namespace Util
         // local2world matrix for the center point.
         osg::CoordinateFrame    _centerLocalToWorld;
 
+        // Rotation offset to _rotation when tethering.
+        osg::Quat               _tetherRotation;
+
+        // The initial offset applied to the tether rotation when orientation-tethering begins.
+        // This is usually just the inverse of the first-calculated _tetherRotation.
+        optional<osg::Quat>     _tetherRotationOffset;
+
         // The rotation (heading and pitch) of the camera in the
-        // earth-local frame.
+        // earth-local frame defined by _centerRotation.
         osg::Quat               _rotation;
 
         // The rotation that makes the camera look down on the focal
@@ -987,9 +1000,14 @@ namespace osgEarth { namespace Util
         double                  _setVPAccel, _setVPAccel2;  // Acceleration factors for setViewpoint
         double                  _setVPArcHeight;            // Altitude arcing height for setViewpoint
 
-        bool setViewpointFrame(double time_s);
+        TetherMode              _lastTetherMode;
+
+        // returns "t", the parametric coefficient of a timed transition. 1=finished.
+        double setViewpointFrame(double time_s);
+
         void setLookAt(const osg::Vec3d& center, double azim, double pitch, double range, const osg::Vec3d& posoffset);
         void resetLookAt();
+        void collapseTetherRotationIntoRotation();
 
         unsigned _frameCount;
 

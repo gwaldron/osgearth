@@ -69,8 +69,8 @@ Press 'w' for wireframe mode to see the tessellation!
           <code url="GrassGS.glsl" />
           <code url="GrassFS.glsl" />
           <sampler name="oe_grass_tex" url="cypress.png"/>
-          <uniform name="oe_grass_width"       value="11.0"/>
-          <uniform name="oe_grass_height"      value="12.0"/>
+          <uniform name="oe_grass_width"       value="15.0"/>
+          <uniform name="oe_grass_height"      value="13.0"/>
           <uniform name="oe_grass_maxDistance" value="7000.0"/>
           <uniform name="oe_grass_windFactor"  value="0.0"/>
           <uniform name="oe_grass_noise"       value="1.5"/>

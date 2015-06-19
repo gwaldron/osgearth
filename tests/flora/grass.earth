@@ -57,7 +57,7 @@ Press 'w' for wireframe mode to see the tessellation!
       <terrainshader land_cover="true">
         <code url="GrassGS.glsl" />
         <code url="GrassFS.glsl" />
-        <sampler name="oe_grass_tex" url="grass2.png"/>
+        <sampler name="oe_grass_tex" url="grass1.png"/>
       </terrainshader>
         
         <viewpoints>

@@ -48,6 +48,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             Loader*                             loader,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
+            const LandCoverBins*                landCoverBins,
             const RenderBindings&               renderBindings,
             const RexTerrainEngineOptions&      options);
         
@@ -65,6 +66,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         TileNodeRegistry* deadTiles() const { return _deadTiles.get(); }
 
+        const LandCoverBins* landCoverBins() const { return _landCoverBins; }
+
     protected:
 
         virtual ~EngineContext() { }
@@ -79,6 +82,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TerrainEngine*                        _terrainEngine;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
+        const LandCoverBins*                  _landCoverBins;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

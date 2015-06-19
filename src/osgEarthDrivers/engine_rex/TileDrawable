@@ -99,6 +99,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         // underlying geometry, possible shared between this tile and other.
         osg::ref_ptr<osg::Geometry> _geom;
+
+        // proxy geometry used for intersections, bounds, etc.
+        osg::ref_ptr<osg::Geometry> _proxyGeom;
+
+        // local elevation extrema
         osg::Vec2f _minmax;
 
     public:

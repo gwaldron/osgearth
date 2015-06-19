@@ -61,7 +61,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::BoundingBox           _bbox;
         osg::ref_ptr<TileDrawable> _drawable;
         osg::ref_ptr<osg::Geode>   _surfaceGeode;
-        osg::ref_ptr<osg::Geode>   _landCoverGeode;
+        //osg::ref_ptr<osg::Geode>   _landCoverGeode;
         osg::ref_ptr<osg::Geode>   _debugGeode;
     };
 

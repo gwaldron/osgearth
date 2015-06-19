@@ -34,6 +34,7 @@ EngineContext::EngineContext(const Map*                     map,
                              Loader*                        loader,
                              TileNodeRegistry*              liveTiles,
                              TileNodeRegistry*              deadTiles,
+                             const LandCoverBins*           landCoverBins,
                              const RenderBindings&          renderBindings,
                              const RexTerrainEngineOptions& options) :
 _frame         ( map ),
@@ -42,6 +43,7 @@ _geometryPool  ( geometryPool ),
 _loader        ( loader ),
 _liveTiles     ( liveTiles ),
 _deadTiles     ( deadTiles ),
+_landCoverBins ( landCoverBins ),
 _renderBindings( renderBindings ),
 _options       ( options )
 {

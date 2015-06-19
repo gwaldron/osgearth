@@ -70,13 +70,21 @@ TileNode::create(const TileKey& key, EngineContext* context)
     _key = key;
 
     // Next, build the surface geometry for the node.
-    SurfaceNode* surface = new SurfaceNode(
+    _surface = new SurfaceNode(
         key,
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         context->getGeometryPool() );
+    
+    osg::StateSet* surfaceSS = _surface->getOrCreateStateSet();
+    surfaceSS->setRenderBinDetails(0, "oe.SurfaceBin");
+    surfaceSS->setNestRenderBins(false);
 
-    _payload = surface;
+    _landCover = new SurfaceNode(
+        key,
+        context->getMapFrame().getMapInfo(),
+        context->getRenderBindings(),
+        context->getGeometryPool() );
 
     // add a cluster-culling callback:                
     if ( context->getMapFrame().getMapInfo().isGeocentric() )
@@ -97,7 +105,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
 osg::BoundingSphere
 TileNode::computeBound() const
 {
-    return _payload.valid() ? _payload->computeBound() : osg::BoundingSphere();
+    return _surface.valid() ? _surface->computeBound() : osg::BoundingSphere();
 }
 
 float
@@ -107,7 +115,7 @@ TileNode::getSubdivideRange(osg::NodeVisitor& nv) const
     const float factor = 6.0f;
 
     //return getBound().radius() * factor;
-    const osg::BoundingBox& box = _payload->getAlignedBoundingBox();
+    const osg::BoundingBox& box = _surface->getAlignedBoundingBox();
     return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
 
@@ -122,10 +130,12 @@ TileNode::isDormant(osg::NodeVisitor& nv) const
 void
 TileNode::setElevationExtrema(const osg::Vec2f& value)
 {
-    if ( _payload.valid() )
-    {
-        _payload->setElevationExtrema(value);
-    }
+    if ( _surface.valid() )
+        _surface->setElevationExtrema(value);
+
+    if ( _landCover.valid() )
+        _landCover->setElevationExtrema(value);
+
     _extrema = value;
 }
 
@@ -147,8 +157,8 @@ TileNode::releaseGLObjects(osg::State* state) const
 {
     if ( getStateSet() )
         getStateSet()->releaseGLObjects(state);
-    if ( _payload.valid() )
-        _payload->releaseGLObjects(state);
+    if ( _surface.valid() )
+        _surface->releaseGLObjects(state);
 
     osg::Group::releaseGLObjects(state);
 }
@@ -167,11 +177,11 @@ TileNode::traverse(osg::NodeVisitor& nv)
         const osg::Vec3& center = getBound().center();
 
         float cameraRange = nv.getDistanceToViewPoint( center, true );
-
-        osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
+        
+        osgUtil::CullVisitor* cull = dynamic_cast<osgUtil::CullVisitor*>( &nv );
 
         // If the children are visible, subdivide.
-        if (cameraRange < getSubdivideRange(nv) && getTileKey().getLOD() < 22)
+        if ( cameraRange < getSubdivideRange(nv) && _key.getLOD() < 23 )
         {
             // We are in range of the child nodes. Either draw them or load them.
             unsigned numChildrenReady = 0;
@@ -208,16 +218,16 @@ TileNode::traverse(osg::NodeVisitor& nv)
             }
 
             // Not all children are ready, so cull the current payload.
-            else if ( _payload.valid() )
+            else if ( _surface.valid() )
             {
-                _payload->accept( nv );
+                _surface->accept( nv );
             }
         }
 
         // If children are outside camera range, draw the payload and expire the children.
-        else if ( _payload.valid() )
+        else if ( _surface.valid() )
         {
-            _payload->accept( nv );
+            _surface->accept( nv );
 
             if ( getNumChildren() > 0 )
             {
@@ -228,6 +238,19 @@ TileNode::traverse(osg::NodeVisitor& nv)
                 {
                     expireChildren( nv );
                 }
+            }
+        }
+        
+        // Traverse land cover bins at this LOD.
+        EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
+        for(int i=0; i<context->landCoverBins()->size(); ++i)
+        {
+            const LandCoverBin& bin = context->landCoverBins()->at(i);
+            if ( bin._lod == getTileKey().getLOD() )
+            {
+                cull->pushStateSet( bin._stateSet.get() );
+                _landCover->accept( nv );
+                cull->popStateSet();
             }
         }
 
@@ -248,13 +271,13 @@ TileNode::traverse(osg::NodeVisitor& nv)
                 _children[i]->accept( nv );
             }
         }
-        else if ( _payload.valid() )
+
+        else if ( _surface.valid() )
         {
-            _payload->accept( nv );
+            _surface->accept( nv );
         }
     }
 }
-
 
 void
 TileNode::createChildren(osg::NodeVisitor& nv)
@@ -318,50 +341,6 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
         setElevationExtrema( parent->getElevationExtrema() );
     }
 
-#if 0
-        if ( binding->usage() == binding->ELEVATION )
-        {
-            // Find the elevation texture and calculate the min/max elevations.
-            // TODO: this is not completely thread-safe, querying the parent node path during the CULL traversal. Do this later.
-            if (recalculateExterma)
-            {
-                bool found = false;
-                TileNode* nextParent = 0L;
-                for(TileNode* node = this; node != 0L && !found; node = nextParent)
-                {
-                    osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE));
-                    if ( elevTex )
-                    {
-                        osg::Vec2f extrema;
-                        found = findExtrema(elevTex, matrix, extrema);
-                        if ( found )
-                        {
-                            setElevationExtrema( extrema );
-                            OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
-                            break;
-                        }
-                        else
-                        {
-                            setElevationExtrema( parent->getElevationExtrema() );
-                        }
-                    }
-                    nextParent = nextParent ? dynamic_cast<TileNode*>(node->getParent(0)) : parent;
-                }
-
-                if ( !found )
-                {
-                    // This will happen sometimes, like when the initial levels are loading and there
-                    // is no elevation texture in the graph yet. It's normal.
-                    OE_DEBUG << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
-                }
-            }
-            else
-            {
-                setElevationExtrema( parent->getElevationExtrema() );
-            }
-        }
-#endif
-
     return changesMade;
 }
 
@@ -379,7 +358,6 @@ TileNode::recalculateExtrema(const RenderBindings& bindings)
         OE_WARN << LC << getTileKey().str() << " : recalculateExtrema: illegal state\n";
         return;
     }
-
     u->get(matrix);
 
     bool found = false;
@@ -562,6 +540,7 @@ TileNode::findExtrema(osg::Texture* tex, const osg::Matrix& m, osg::Vec2f& extre
         double s_span   = m(0,0) * (double)image->s();
         double t_span   = m(1,1) * (double)image->t();
 
+        // if the window is smaller than one pixel, forget it.
         if ( s_span < 1.0 || t_span < 1.0 )
             return false;
 

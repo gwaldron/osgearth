@@ -24,11 +24,26 @@
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <OpenThreads/Atomic>
+#include <osgUtil/RenderBin>
 #include <map>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
+
+
+    class LandCoverBin
+    {
+    public:
+        std::string _name;
+        unsigned _lod;
+        osg::ref_ptr<osg::StateSet>      _stateSet;
+        osg::ref_ptr<osgUtil::RenderBin> _binProto;
+    };
+
+    typedef std::vector<LandCoverBin> LandCoverBins;
+
+
 
     /**
      * Holds a reference to each tile created by the driver.

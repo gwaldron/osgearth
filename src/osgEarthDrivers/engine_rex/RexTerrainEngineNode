@@ -66,7 +66,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::StateSet* getSurfaceStateSet();
 
         /** Get the stateset used to render land cover control patches. */
-        osg::StateSet* getLandCoverStateSet();
+        //osg::StateSet* getLandCoverStateSet();
+
+        osg::StateSet* addLandCoverGroup(const std::string& name, unsigned lod);
+
+        void removeLandCoverGroup(const std::string& name);
 
         /** Access to the asychronous data loader */
         Loader* getLoader() { return _loader.get(); }
@@ -169,6 +173,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Threading::Mutex _renderBinMutex;
         osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;
         osg::ref_ptr<osgUtil::RenderBin> _landCoverRenderBinPrototype;
+
+        LandCoverBins _landCoverBins;
 
         bool _quickReleaseInstalled;
 

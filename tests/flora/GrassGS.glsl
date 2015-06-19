@@ -3,9 +3,9 @@
 #pragma vp_entryPoint "oe_grass_geom"
 #pragma vp_location   "geometry"
                 
-layout(triangles) in;
-layout(triangle_strip) out;
-layout(max_vertices = 4) out;
+layout(triangles)        in;        // triangles from the TileDrawable
+layout(triangle_strip)   out;       // output a triangle-strip billboard
+layout(max_vertices = 4) out;       // four verts per billboard
                 
 // Internal helper functions:
 void VP_LoadVertex(in int);
@@ -43,54 +43,53 @@ out vec3 vp_UpVector;
 out vec3 vp_Normal;
 
 
-void oe_grass_clamp(inout vec4 vert_view, in vec3 up)
+void
+oe_grass_clamp(inout vec4 vert_view, in vec3 up, vec2 UV)
 {
     // Sample the elevation texture and move the vertex accordingly.
-    vec4 elevc = oe_tile_elevationTexMatrix * oe_layer_tilec;
+    vec4 elevc = oe_tile_elevationTexMatrix * vec4(UV, 0.0, 1.0);
     float elev = texture(oe_tile_elevationTex, elevc.st).r;
     vert_view.xyz += up*elev;
 }
 
 
 // Generate a pseudo-random value in the specified range:
-float oe_grass_rangeRand(float minValue, float maxValue, vec2 co)
+float
+oe_grass_rangeRand(float minValue, float maxValue, vec2 co)
 {
     float t = fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
     return minValue + t*(maxValue-minValue);
 }
 
-float JitterHeight(float fHeight, float fDelta, vec2 uv)
-{
-	return fHeight + oe_grass_rangeRand(-fDelta, +fDelta, uv);
-}
-
-vec2 JitterPosition(vec2 position, vec2 vDelta, vec2 uv)
-{    
-    float x = oe_grass_rangeRand(-vDelta.x, vDelta.x, uv);
-    float y = oe_grass_rangeRand(-vDelta.y, vDelta.y, position.xy);
-	return position + vec2(x, y);
-}
-
 void
-oe_grass_jitterVertex(inout vec4 vertex, float delta, vec2 seed)
+oe_grass_jitterVertex(inout vec4 vertex, inout vec2 tileCoord, float delta, float tileCoordRes)
 {
     vec2 pos0 = vertex.xy;
-    vertex.x += oe_grass_rangeRand(-delta, delta, seed);
-    vertex.y += oe_grass_rangeRand(-delta, delta, pos0);
+    
+    vec2 dxy = vec2(
+        oe_grass_rangeRand(-delta, delta, tileCoord),
+        oe_grass_rangeRand(-delta, delta, vertex.xy) );
+        
+    vertex.xy += dxy;
+    tileCoord = clamp(tileCoord + dxy*tileCoordRes, 0.0, 1.0);
 }
 
-float oe_grass_applyWind(float time, float factor, float randOffset)
+float
+oe_grass_applyWind(float time, float factor, float randOffset)
 {
    return sin(time + randOffset) * factor;
 }
                                 
-void oe_grass_geom()
-{    
+void
+oe_grass_geom()
+{
+#if 0    
     float lod = floor(oe_grass_lod);
     
     // Bail out if we're not at the correct LOD.
     if ( oe_tile_key.z != lod )
         return;
+#endif
     
     vec4 positions[3];
     vec3 normals[3];
@@ -107,55 +106,49 @@ void oe_grass_geom()
 		//vMask[i] = texture(mask_tex, (mask_texMatrix*oe_layer_tilec).st).a;
         
         normals[i] = vp_Normal;
-		tileCoords[i] = oe_layer_tilec.xy;
+		tileCoords[i] = oe_layer_tilec.st;
     }
 
     // Check the mask and bail if we are outside:
     //if ( (vMask.r+vMask.g+vMask.b)*0.33333 < 0.2 )
-		//return;
-    
-    //float maxOffset = oe_tile_key.w * 0.1;    
+		//return;  
                     
     // Center of the triangle:
-    vec4 center_model = (positions[0] + positions[1] + positions[2])*0.33333;
+    vec4 center_model = (positions[0] + positions[1] + positions[2])*0.3333333;
+    vec2 tileUV       = (tileCoords[0] + tileCoords[1] + tileCoords[2])*0.3333333;
     
+    // Estimate the relative resolution of tile coordinates so we can jitter them
+    // along with the vertex.
+    float tileUVRes = distance(tileCoords[0], tileCoords[1]) / distance(positions[0], positions[1]);
+    
+    // Maximum distance to offset the instances from the original vertex location.
     float maxOffset = distance(center_model, positions[0]) * oe_grass_noise;
 
     // Randomly alter the position    
-    oe_grass_jitterVertex(center_model, maxOffset, oe_layer_tilec.xy);
+    oe_grass_jitterVertex(center_model, tileUV, maxOffset, tileUVRes);
     
     // Transform to view space.
     vec4 center_view = gl_ModelViewMatrix * center_model;
     vec3 up_view     = normalize(gl_NormalMatrix * vp_UpVector);
     
-    // Clamp the ceneter point to the elevation.
-    oe_grass_clamp(center_view, up_view);
+    // Clamp the center point to the elevation.
+    oe_grass_clamp(center_view, up_view, tileUV);
     
-    float range  = -center_view.z;
-            
-    // calcluate the normalized camera range:
-    float nRange = clamp(range/oe_grass_maxDistance, 0.0, 1.0);
+    // calculate the normalized camera range:
+    float nRange = clamp(-center_view.z/oe_grass_maxDistance, 0.0, 1.0);
     
-    float n = texture(oe_noise_tex, oe_layer_tilec.st*oe_grass_noise).r;
-    
-#if 0
-    // Modulate the width based on distance.
-    float width = oe_grass_width + nRange*(oe_grass_width*6 - oe_grass_width);
-    
-    // Modulate the height and width based on the noise function.
-    float height = oe_grass_height * (1.0+n);
-    width = max(width, width+width*n*2);
-#else
-    float height = oe_grass_height;
+    // sample the noise texture.
+    float n = texture(oe_noise_tex, tileUV*oe_grass_noise).r;
+
     float width  = oe_grass_width;
-#endif
 	
-    float falloff = nRange*nRange*nRange;
-    float alpha = 1.0-falloff; // push the falloff closer to the max distance.
+    // push the falloff closer to the max distance.
+    float falloff = 1.0-(nRange*nRange*nRange*nRange);
     
+    // vary the height of each instance and shrink it as it disappears into the distance.
+    float height = oe_grass_height;
     height *= abs(1.0+n);
-    height *= alpha;       // shrink with distance from camera
-    //width  *= (2.0*falloff);
+    height *= falloff;
 
 	// compute the grass vertices in view space.
     vec4 newVerts[4];
@@ -169,13 +162,13 @@ void oe_grass_geom()
                       
     //TODO: animate based on wind parameters.
     newVerts[2].xyz += tangent_view * oe_grass_applyWind(osg_FrameTime*(1+n), oe_grass_width*oe_grass_windFactor*n, newVerts[2].x);
-    newVerts[3].xyz += tangent_view * oe_grass_applyWind(osg_FrameTime*(1-n), oe_grass_width*oe_grass_windFactor*n, oe_layer_tilec.y);
+    newVerts[3].xyz += tangent_view * oe_grass_applyWind(osg_FrameTime*(1-n), oe_grass_width*oe_grass_windFactor*n, tileUV.t);
 
     vec3 normal = vec3(0,0,1);
     normal.xy += vec2(oe_grass_rangeRand(-0.25, 0.25, vec2(n)));
     vp_Normal = normalize(gl_NormalMatrix * normal);
     
-    vp_Color = vec4(0,0,0,alpha);
+    vp_Color = vec4(0,0,0,falloff);
     gl_Position = newVerts[0];
     oe_grass_texCoord = vec2(0,0);
     VP_EmitViewVertex();
@@ -184,7 +177,7 @@ void oe_grass_geom()
     oe_grass_texCoord = vec2(1,0);
     VP_EmitViewVertex();
 
-    vp_Color = vec4(1,1,1,alpha);      
+    vp_Color = vec4(1,1,1,falloff);      
     gl_Position = newVerts[2];
     oe_grass_texCoord = vec2(0,1);
     VP_EmitViewVertex();

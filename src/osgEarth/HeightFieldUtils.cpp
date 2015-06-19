@@ -607,6 +607,8 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
                                      const SpatialReference*        hoodSRS)
 {
     const osg::HeightField* hf = hood._center.get();
+    if ( !hf )
+        return 0L;
     
     osg::Image* image = new osg::Image();
     image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RGBA, GL_UNSIGNED_BYTE);

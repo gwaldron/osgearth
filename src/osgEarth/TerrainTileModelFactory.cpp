@@ -250,9 +250,6 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
     const osgEarth::ElevationInterpolation& interp =
         frame.getMapOptions().elevationInterpolation().get();
 
-    TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
-    layerModel->setName( "oe_normal_map" );
-
     // Can only generate the normal map if the center heightfield was built:
     osg::Image* image = HeightFieldUtils::convertToNormalMap(
         model->heightFields(),
@@ -260,12 +257,14 @@ TerrainTileModelFactory::addNormalMap(TerrainTileModel*            model,
 
     if ( image )
     {
+        TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
+        layerModel->setName( "oe_normal_map" );
+
         // Made an image, so store this as a texture with no matrix.
         osg::Texture* texture = createNormalTexture( image );
         layerModel->setTexture( texture );
+        model->normalModel() = layerModel;
     }
-
-    model->normalModel() = layerModel;
 
     if (progress)
         progress->stats()["fetch_normalmap_time"] += OE_STOP_TIMER(fetch_normalmap);

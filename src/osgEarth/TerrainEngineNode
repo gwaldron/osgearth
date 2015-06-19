@@ -150,8 +150,12 @@ namespace osgEarth
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
 
+        virtual osg::StateSet* addLandCoverGroup(const std::string& name, unsigned lod) { return 0L; }
+
+        virtual void removeLandCoverGroup(const std::string& name) { }
+
         /** Access the stateset used to render the control surface (if implemented). */
-        virtual osg::StateSet* getLandCoverStateSet() { return getOrCreateStateSet(); }
+        //virtual osg::StateSet* getLandCoverStateSet() { return getOrCreateStateSet(); }
 
     public: // TerrainEngine
 

@@ -91,7 +91,6 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
     GLint tileKeyLocation       = -1;
-    //GLint birthTimeLocation     = -1;
     GLint opacityLocation       = -1;
     GLint uidLocation           = -1;
     GLint orderLocation         = -1;
@@ -102,7 +101,6 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
     if ( pcp )
     {
         tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniformNameID );
-        //birthTimeLocation    = pcp->getUniformLocation( _birthTimeUniformNameID );
         opacityLocation      = pcp->getUniformLocation( _opacityUniformNameID );
         uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
         orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
@@ -114,23 +112,6 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
     {
         ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
     }
-
-#if 0
-    // set the "birth time" - i.e. the time this tile last entered the scene in the current GC.
-    if ( birthTimeLocation >= 0 )
-    {
-        PerContextData& pcd = _pcd[contextID];
-        if ( pcd.birthTime < 0.0f )
-        {
-            const osg::FrameStamp* stamp = state.getFrameStamp();
-            if ( stamp )
-            {
-                pcd.birthTime = stamp->getReferenceTime();
-            }
-        }
-        ext->glUniform1f( birthTimeLocation, pcd.birthTime );
-    }
-#endif
 
     float prevOpacity = -1.0f;
 

@@ -221,9 +221,11 @@ _stateUpdateRequired  ( false )
         //_surfaceRenderBinPrototype->setName( "oe.SurfaceBin" ); //." << _uid );
         osgUtil::RenderBin::addRenderBinPrototype( _surfaceRenderBinPrototype->getName(), _surfaceRenderBinPrototype.get() );
 
+#if 0
         _landCoverRenderBinPrototype = new LandCoverBin();
         //_landCoverRenderBinPrototype->setName( "oe.LandCoverBin" ); //." << _uid );
         osgUtil::RenderBin::addRenderBinPrototype( _landCoverRenderBinPrototype->getName(), _landCoverRenderBinPrototype.get() );
+#endif
     }
 
     // install an elevation callback so we can update elevation data
@@ -403,6 +405,7 @@ RexTerrainEngineNode::getSurfaceStateSet()
 #endif
 }
 
+#if 0
 osg::StateSet*
 RexTerrainEngineNode::getLandCoverStateSet()
 {
@@ -412,7 +415,40 @@ RexTerrainEngineNode::getLandCoverStateSet()
     return _terrain ? _terrain->getOrCreateStateSet() : 0L;
 #endif
 }
+#endif
 
+osg::StateSet* 
+RexTerrainEngineNode::addLandCoverGroup(const std::string& name, unsigned lod)
+{
+    _landCoverBins.push_back(LandCoverBin());
+    LandCoverBin& bin = _landCoverBins.back();
+    bin._name = name;
+    bin._lod = lod;
+
+    // create a stateset that we'll use to place things in this bin.
+    bin._stateSet = new osg::StateSet();
+    bin._stateSet->setRenderBinDetails(_landCoverBins.size(), name);
+    bin._stateSet->setNestRenderBins(false);
+
+    // create and register the bin prototype itself.
+    bin._binProto = new osgUtil::RenderBin();
+    bin._binProto->setStateSet( new osg::StateSet() );
+    bin._binProto->setName( name );
+
+    OE_INFO << LC << "Added land cover group \"" << name << "\" at LOD " << lod << "\n";
+
+    osgUtil::RenderBin::addRenderBinPrototype(name, bin._binProto.get());
+
+    updateState();
+
+    return bin._binProto->getStateSet();
+}
+
+void 
+RexTerrainEngineNode::removeLandCoverGroup(const std::string& name)
+{
+    //TODO
+}
 
 void
 RexTerrainEngineNode::setupRenderBindings()
@@ -632,6 +668,7 @@ RexTerrainEngineNode::getEngineContext()
             _loader.get(),
             _liveTiles.get(),
             _deadTiles.get(),
+            &_landCoverBins,
             _renderBindings,
             _terrainOptions );
     }
@@ -837,7 +874,7 @@ RexTerrainEngineNode::updateState()
     {
         osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
         osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
-        osg::StateSet* landCoverStateSet = getLandCoverStateSet();  // just the land cover
+        //osg::StateSet* landCoverStateSet = getLandCoverStateSet();  // just the land cover
         
         // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
@@ -881,8 +918,14 @@ RexTerrainEngineNode::updateState()
             package.loadFunction(surfaceVP, package.VERT_VIEW);
             package.loadFunction(surfaceVP, package.FRAG);
 
-            if ( landCoverStateSet )
+            for(LandCoverBins::iterator i = _landCoverBins.begin(); i != _landCoverBins.end(); ++i)
             {
+                osg::StateSet* landCoverStateSet = i->_binProto->getStateSet();
+
+                OE_INFO << LC << "Installing baseline shaders on land cover bin \"" << i->_name << "\"\n";
+
+            //if ( landCoverStateSet )
+            //{
                 VirtualProgram* landCoverVP = VirtualProgram::getOrCreate(landCoverStateSet);
                 package.loadFunction(landCoverVP, package.VERT_MODEL);
 

@@ -47,7 +47,7 @@ namespace
                 tilenode->recalculateExtrema( _bindings );
             }
 
-            if ( changed )
+            //if ( changed )
             {
                 traverse(node);
             }

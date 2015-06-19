@@ -82,39 +82,20 @@ oe_grass_applyWind(float time, float factor, float randOffset)
                                 
 void
 oe_grass_geom()
-{
-#if 0    
-    float lod = floor(oe_grass_lod);
-    
-    // Bail out if we're not at the correct LOD.
-    if ( oe_tile_key.z != lod )
-        return;
-#endif
-    
+{    
     vec4 positions[3];
-    vec3 normals[3];
 	vec2 tileCoords[3];
-	vec3 vMask;
     
     // Load the triangle data:
     for(int i=0; i < 3; ++i)
     {
+        VP_LoadVertex(i);      
         positions[i] = gl_in[i].gl_Position;
-        VP_LoadVertex(i);
-        
-        // Sample the mask texture
-		//vMask[i] = texture(mask_tex, (mask_texMatrix*oe_layer_tilec).st).a;
-        
-        normals[i] = vp_Normal;
 		tileCoords[i] = oe_layer_tilec.st;
     }
-
-    // Check the mask and bail if we are outside:
-    //if ( (vMask.r+vMask.g+vMask.b)*0.33333 < 0.2 )
-		//return;  
                     
     // Center of the triangle:
-    vec4 center_model = (positions[0] + positions[1] + positions[2])*0.3333333;
+    vec4 center_model = (positions[0]  + positions[1]  + positions[2]) *0.3333333;
     vec2 tileUV       = (tileCoords[0] + tileCoords[1] + tileCoords[2])*0.3333333;
     
     // Estimate the relative resolution of tile coordinates so we can jitter them
@@ -140,10 +121,10 @@ oe_grass_geom()
     // sample the noise texture.
     float n = texture(oe_noise_tex, tileUV*oe_grass_noise).r;
 
-    float width  = oe_grass_width;
+    float width = oe_grass_width;
 	
     // push the falloff closer to the max distance.
-    float falloff = 1.0-(nRange*nRange*nRange*nRange);
+    float falloff = 1.0-(nRange*nRange*nRange);
     
     // vary the height of each instance and shrink it as it disappears into the distance.
     float height = oe_grass_height;

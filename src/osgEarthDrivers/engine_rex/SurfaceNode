@@ -44,15 +44,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const TileKey&        tilekey,
             const MapInfo&        mapinfo,
             const RenderBindings& bindings,
-            GeometryPool*         pool);
+            TileDrawable*         drawable);
 
         void setElevationExtrema(const osg::Vec2f& minmax);
 
         const osg::BoundingBox& getWorldBoundingBox() const { return _bbox; }
 
         const osg::BoundingBox& getAlignedBoundingBox() const;
-
-        void traverse(osg::NodeVisitor& nv);
 
     protected:
         virtual ~SurfaceNode() { }
@@ -61,7 +59,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::BoundingBox           _bbox;
         osg::ref_ptr<TileDrawable> _drawable;
         osg::ref_ptr<osg::Geode>   _surfaceGeode;
-        //osg::ref_ptr<osg::Geode>   _landCoverGeode;
         osg::ref_ptr<osg::Geode>   _debugGeode;
     };
 

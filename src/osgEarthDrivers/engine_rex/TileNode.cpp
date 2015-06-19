@@ -57,9 +57,11 @@ namespace
 TileNode::TileNode() :
 _dirty      ( false )
 {
+    osg::StateSet* stateSet = getOrCreateStateSet();
+
     // The StateSet must have a dynamic data variance since we plan to alter it
-    // as new data becomes available.^
-    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+    // as new data becomes available.
+    stateSet->setDataVariance(osg::Object::DYNAMIC);
 
     _count = 0;
 }
@@ -70,27 +72,44 @@ TileNode::create(const TileKey& key, EngineContext* context)
     _key = key;
 
     // Next, build the surface geometry for the node.
+
+    osg::ref_ptr<osg::Geometry> geom;
+
+    context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom);
+
+    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
+    surfaceDrawable->setDrawAsPatches(false);
+
     _surface = new SurfaceNode(
         key,
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
-        context->getGeometryPool() );
+        surfaceDrawable );
     
     osg::StateSet* surfaceSS = _surface->getOrCreateStateSet();
     surfaceSS->setRenderBinDetails(0, "oe.SurfaceBin");
     surfaceSS->setNestRenderBins(false);
 
+    // Surface node for rendering land cover geometry.
+    TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
+    patchDrawable->setDrawAsPatches(true);
+
     _landCover = new SurfaceNode(
         key,
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
-        context->getGeometryPool() );
+        patchDrawable );
 
-    // add a cluster-culling callback:                
+    // add a cluster-culling callback:
     if ( context->getMapFrame().getMapInfo().isGeocentric() )
     {
         addCullCallback( ClusterCullingFactory::create(key.getExtent()) );
     }
+
+    // Install the tile key uniform.
+    _keyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _keyUniform.get() );
+    updateTileKeyUniform();
 
     // need to recompute the bounds after adding payload:
     dirtyBound();
@@ -137,6 +156,21 @@ TileNode::setElevationExtrema(const osg::Vec2f& value)
         _landCover->setElevationExtrema(value);
 
     _extrema = value;
+}
+
+void
+TileNode::updateTileKeyUniform()
+{
+    float width = 0.0f;
+    if ( _surface.valid() )
+    {
+        const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
+        width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
+    }
+
+    unsigned tw, th;
+    _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
+    _keyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
 }
 
 bool
@@ -340,6 +374,8 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
     {
         setElevationExtrema( parent->getElevationExtrema() );
     }
+
+    updateTileKeyUniform();
 
     return changesMade;
 }

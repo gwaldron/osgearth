@@ -103,24 +103,19 @@ namespace
 
 //..............................................................
 
-SurfaceNode::SurfaceNode(const TileKey& tilekey,
-                         const MapInfo& mapinfo,
+SurfaceNode::SurfaceNode(const TileKey&        tilekey,
+                         const MapInfo&        mapinfo,
                          const RenderBindings& bindings,
-                         GeometryPool*  pool)
+                         TileDrawable*         drawable)
 {
     _tileKey = tilekey;
 
+    _drawable = drawable;
+
     _surfaceGeode = new osg::Geode();
-    //osg::StateSet* surfaceSS = _surfaceGeode->getOrCreateStateSet();
-    //surfaceSS->setRenderBinDetails(0, "oe.SurfaceBin");
-    //surfaceSS->setNestRenderBins(false);
+    _surfaceGeode->addDrawable( drawable );
 
-    // holds the control surface.
-    //_landCoverGeode = new osg::Geode();
-    //osg::StateSet* landCoverSS = _landCoverGeode->getOrCreateStateSet();
-    //landCoverSS->setRenderBinDetails(1, "oe.LandCoverBin");
-    //landCoverSS->setNestRenderBins(false);
-
+#if 0
     if ( pool )
     {
         osg::ref_ptr<osg::Geometry> geom;
@@ -129,16 +124,15 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
         _drawable = new TileDrawable(tilekey, bindings, geom.get());
 
         _surfaceGeode->addDrawable( _drawable.get() );
-        //_landCoverGeode->addDrawable( _drawable.get() );
     }
     else
     {
         OE_WARN << LC << "INTERNAL: no geometry pool; result is an empty geode\n";
     }
+#endif
     
     // Create the final node.
     addChild( _surfaceGeode.get() );
-    //addChild( _landCoverGeode.get() );
         
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
@@ -151,14 +145,6 @@ SurfaceNode::SurfaceNode(const TileKey& tilekey,
 
     // Initialize the cached bounding box.
     setElevationExtrema(osg::Vec2f(0, 0));
-}
-
-void
-SurfaceNode::traverse(osg::NodeVisitor& nv)
-{
-    //_surfaceGeode->accept(nv);
-    //_landCoverGeode->accept(nv);
-    osg::MatrixTransform::traverse(nv);
 }
 
 void

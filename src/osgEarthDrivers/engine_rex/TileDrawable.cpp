@@ -39,7 +39,8 @@ TileDrawable::TileDrawable(const TileKey&        key,
 osg::Drawable( ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
-_minmax      ( 0, 0 )
+_minmax      ( 0, 0 ),
+_drawPatch   ( false )
 {
     setUseVertexBufferObjects( true );
     setUseDisplayList( false );
@@ -51,7 +52,7 @@ _minmax      ( 0, 0 )
     _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
 
     // establish uniform name IDs.
-    _tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
+    //_tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
     _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
     _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
@@ -59,9 +60,33 @@ _minmax      ( 0, 0 )
     _texMatrixUniformNameID    = osg::Uniform::getNameID( "oe_layer_texMatrix" );
 }
 
-
 void
 TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
+{
+    if ( _drawPatch )
+        drawPatches( renderInfo );
+    else
+        drawSurface( renderInfo );
+}
+
+
+void
+TileDrawable::drawPatches(osg::RenderInfo& renderInfo) const
+{
+    osg::State& state = *renderInfo.getState(); 
+    
+    const osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(0));
+    osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
+    state.bindElementBufferObject(ebo);
+    if (ebo)
+        glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
+    else
+        glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, &de->front());
+}
+
+
+void
+TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 {
     unsigned layersDrawn = 0;
 
@@ -100,17 +125,11 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
     // requery the uni locations each time unfortunately. TODO: explore optimizations.
     if ( pcp )
     {
-        tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniformNameID );
+        //tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniformNameID );
         opacityLocation      = pcp->getUniformLocation( _opacityUniformNameID );
         uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
         orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
         texMatrixLocation    = pcp->getUniformLocation( _texMatrixUniformNameID );
-    }
-    
-    // apply the tilekey uniform once.
-    if ( tileKeyLocation >= 0 )
-    {
-        ext->glUniform4fv( tileKeyLocation, 1, _tileKeyValue.ptr() );
     }
 
     float prevOpacity = -1.0f;

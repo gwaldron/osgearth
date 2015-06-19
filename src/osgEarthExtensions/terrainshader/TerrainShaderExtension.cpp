@@ -64,10 +64,6 @@ namespace
                 stateSet = engine->getSurfaceStateSet();
             }
 
-            //osg::StateSet* stateSet = _options.landCover() == true ?
-            //    engine->getLandCoverStateSet() :
-            //    engine->getSurfaceStateSet();
-
             OE_NOTICE << LC << "Installing terrain shader on SS = " << std::hex << stateSet << "\n";
 
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);

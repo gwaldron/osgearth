@@ -535,6 +535,8 @@ namespace osgEarth
         GeoExtent      _dataExtentsUnion;
         Status         _status;
         Mode           _mode;
+
+        mutable Threading::Mutex _mutex;
     };
 
 

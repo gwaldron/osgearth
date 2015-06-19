@@ -328,8 +328,7 @@ const GeoExtent& TileSource::getDataExtentsUnion() const
 {
     if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0)
     {
-        static Threading::Mutex s_mutex;
-        Threading::ScopedMutexLock lock(s_mutex);
+        Threading::ScopedMutexLock lock(_mutex);
         {
             if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0) // double-check
             {

@@ -50,9 +50,23 @@ namespace
         {
             if ( !engine ) return;
 
-            osg::StateSet* stateSet = _options.landCover() == true ?
-                engine->getLandCoverStateSet() :
-                engine->getSurfaceStateSet();
+            osg::StateSet* stateSet = 0L;
+
+            if ( _options.landCoverGroup().isSet() )
+            {                
+                stateSet = engine->addLandCoverGroup(
+                    _options.landCoverGroup().get(),
+                    _options.landCoverLOD().get() );
+            }
+
+            else
+            {
+                stateSet = engine->getSurfaceStateSet();
+            }
+
+            //osg::StateSet* stateSet = _options.landCover() == true ?
+            //    engine->getLandCoverStateSet() :
+            //    engine->getSurfaceStateSet();
 
             OE_NOTICE << LC << "Installing terrain shader on SS = " << std::hex << stateSet << "\n";
 
@@ -86,25 +100,25 @@ namespace
                     }
                 }
             }
+
+            const std::vector<TerrainShaderOptions::Uniform>& uniforms = _options.uniforms();
+            for(int i=0; i<uniforms.size(); ++i)
+            {
+                if ( !uniforms[i]._name.empty() && uniforms[i]._value.isSet() )
+                {
+                    osg::Uniform* u = new osg::Uniform(uniforms[i]._name.c_str(), (float)uniforms[i]._value.get());
+                    stateSet->addUniform( u );
+                }
+            }
         }
 
         void onUninstall(TerrainEngineNode* engine)
         {
             if ( engine )
             {
-                osg::StateSet* stateSet = _options.landCover() == true ?
-                    engine->getLandCoverStateSet() :
-                    engine->getSurfaceStateSet();
-
-                if ( stateSet )
+                if ( _options.landCoverGroup().isSet() )
                 {
-                    VirtualProgram* vp = VirtualProgram::get(stateSet);
-                    if ( vp )
-                    {
-                        _package.unloadAll( vp, _dbOptions.get() );
-                    }
-
-                    // TODO : remove samplers.
+                    engine->removeLandCoverGroup( _options.landCoverGroup().get() );
                 }
             }
         }

@@ -120,6 +120,11 @@ build(osg::ArgumentParser& arguments)
     // the output catalog file describing the texture atlas contents:
     std::string outCatalogFile = osgDB::getSimpleFileName(outImageFile) + ".xml";
 
+    // Whether to build RGB images
+    bool rgb = arguments.read("--rgb");
+    builder.setRGB( rgb );
+    
+
     // auxiliary atlas patterns:
     std::string pattern;
     float r, g, b, a;

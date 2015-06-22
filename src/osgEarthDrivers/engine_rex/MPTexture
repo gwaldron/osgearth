@@ -1,0 +1,81 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_REX_MPTEXTURE
+#define OSGEARTH_REX_MPTEXTURE 1
+
+#include "Common"
+#include <osg/Texture2D>
+#include <osgEarth/ImageLayer>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    /**
+     * MPTexture is a multipass texture attribute that holds one or more Texture2D
+     * objects each with associated texture matrix.
+     */
+    class MPTexture : public osg::Texture2D
+    {
+    public:
+        struct Pass
+        {
+            Pass() : _ownsTexture(false) { }
+            osg::ref_ptr<const ImageLayer> _layer;
+            osg::ref_ptr<osg::Texture>     _texture;
+            bool                           _ownsTexture;
+            osg::Matrixf                   _matrix;
+        };
+
+        typedef std::vector<Pass> Passes;
+
+    public:
+        MPTexture();
+
+        void setLayer(const ImageLayer* layer, osg::Texture* tex);
+
+        //void setMatrix(UID uid, const osg::Matrix& matrix);
+
+        const Passes& getPasses() const { return _passes; }
+
+        void merge(MPTexture* rhs);
+
+        void inheritState(MPTexture* parent, const osg::Matrixf& scaleBias);
+
+    public: // osg::Texture
+
+        void apply(osg::State& state) const { }
+
+        void compileGLObjects(osg::State& state) const;
+        void resizeGLObjectBuffers(unsigned int maxSize);
+        void releaseGLObjects(osg::State* state=0) const;
+
+    protected:
+        virtual ~MPTexture() { }
+
+        Passes _passes;
+        
+    private:
+        /** copy ctor - disabled */
+        MPTexture(const MPTexture& rhs) { }
+    };
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+
+#endif // OSGEARTH_REX_MPTEXTURE

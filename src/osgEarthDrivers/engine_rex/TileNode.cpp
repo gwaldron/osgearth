@@ -111,6 +111,14 @@ TileNode::create(const TileKey& key, EngineContext* context)
     getStateSet()->addUniform( _keyUniform.get() );
     updateTileKeyUniform();
 
+    // Set up an MPTexture attribute for multipass layer rendering.
+    _mptex = new MPTexture();
+    surfaceDrawable->setMPTexture( _mptex.get() );
+
+    getStateSet()->setTextureAttribute(
+        SamplerBinding::findUsage(context->getRenderBindings(), SamplerBinding::COLOR)->unit(),
+        _mptex.get() );
+
     // need to recompute the bounds after adding payload:
     dirtyBound();
 
@@ -347,26 +355,38 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
     // This will inherit textures and use the proper sub-quadrant until new data arrives (later).
     for( RenderBindings::const_iterator binding = bindings.begin(); binding != bindings.end(); ++binding )
     {
-        osg::StateAttribute* sa = getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE);
-
-        // If this node doesn't have a texture for this binding, that means it's inheriting one:
-        osg::Matrixf matrix;
-        if ( sa == 0L )
+        if ( binding->usage() == binding->COLOR )
         {
-            // Find the parent's matrix and scale/bias it to this quadrant:
             if ( parent && parent->getStateSet() )
             {
-                osg::Uniform* matrixUniform = parent->getStateSet()->getUniform( binding->matrixName() );
-                if ( matrixUniform )
-                {
-                    matrixUniform->get( matrix );
-                    matrix.preMult( scaleBias[quadrant] );
-                }
+                MPTexture* parentMPTex = parent->getMPTexture();
+                _mptex->inheritState( parentMPTex, scaleBias[quadrant] );
+                changesMade = true;
             }
+        }
 
-            // Add a new uniform with the scale/bias'd matrix:
-            getOrCreateStateSet()->addUniform( new osg::Uniform(binding->matrixName().c_str(), matrix) );
-            changesMade = true;
+        else
+        {
+            osg::StateAttribute* sa = getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE);        
+            if ( sa == 0L )
+            {
+                osg::Matrixf matrix;
+
+                // Find the parent's matrix and scale/bias it to this quadrant:
+                if ( parent && parent->getStateSet() )
+                {
+                    osg::Uniform* matrixUniform = parent->getStateSet()->getUniform( binding->matrixName() );
+                    if ( matrixUniform )
+                    {
+                        matrixUniform->get( matrix );
+                        matrix.preMult( scaleBias[quadrant] );
+                    }
+                }
+
+                // Add a new uniform with the scale/bias'd matrix:
+                getOrCreateStateSet()->addUniform( new osg::Uniform(binding->matrixName().c_str(), matrix) );
+                changesMade = true;
+            }
         }
     }
 
@@ -424,6 +444,13 @@ TileNode::recalculateExtrema(const RenderBindings& bindings)
 }
 
 void
+TileNode::mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderBindings& bindings)
+{
+    _mptex->merge( mptex );    
+    getStateSet()->merge(*stateSet);
+}
+
+void
 TileNode::load(osg::NodeVisitor& nv)
 {
     // Access the context:
@@ -440,7 +467,7 @@ TileNode::load(osg::NodeVisitor& nv)
     }
         
     // Prioritize by LOD.
-    float priority = -(float)getTileKey().getLOD();
+    float priority = (float)getTileKey().getLOD();
 
     // Submit to the loader.
     //OE_INFO << LC << getTileKey().str() << "load\n";

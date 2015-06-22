@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "LoadTileData"
+#include "MPTexture"
 #include <osgEarth/TerrainEngineNode>
 #include <osg/NodeVisitor>
 
@@ -38,19 +39,14 @@ namespace
 
         void apply(osg::Group& node)
         {
-            bool changed = true;
-
             TileNode* tilenode = dynamic_cast<TileNode*>(&node);
             if ( tilenode )
             {
-                changed = tilenode->inheritState( tilenode->getParentTile(), _bindings );
+                tilenode->inheritState( tilenode->getParentTile(), _bindings );
                 tilenode->recalculateExtrema( _bindings );
             }
 
-            //if ( changed )
-            {
-                traverse(node);
-            }
+            traverse(node);
         }
 
         const RenderBindings& _bindings;
@@ -78,41 +74,38 @@ LoadTileData::invoke()
             _context->getMapFrame(),
             tilenode->getTileKey(),
             0L ); // progress
-    }
-}
 
-void
-LoadTileData::apply()
-{
-    if ( _model.valid() )
-    {
-        osg::ref_ptr<TileNode> tilenode;
-        if ( _tilenode.lock(tilenode) )
+        // Prep the stateset for merging (and for GL pre-compile).
+        if ( _model.valid() )
         {
             const RenderBindings& bindings = _context->getRenderBindings();
 
-            osg::StateSet* stateSet = tilenode->getOrCreateStateSet();
+            osg::StateSet* stateSet = getStateSet();
 
-            for(TerrainTileImageLayerModelVector::iterator i = _model->colorLayers().begin();
-                i != _model->colorLayers().end();
-                ++i)
+            if ( _model->colorLayers().size() > 0 )
             {
-                TerrainTileImageLayerModel* layerModel = i->get();
-                if ( layerModel && layerModel->getTexture() )
+                const SamplerBinding* colorBinding = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
+                if ( colorBinding )
                 {
-                    const SamplerBinding* colorBinding = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR); // TODO
-                    if ( colorBinding )
+                    osg::ref_ptr<MPTexture> mptex = new MPTexture();
+
+                    for(TerrainTileImageLayerModelVector::iterator i = _model->colorLayers().begin();
+                        i != _model->colorLayers().end();
+                        ++i)
+                    {
+                        TerrainTileImageLayerModel* layerModel = i->get();
+                        if ( layerModel && layerModel->getTexture() )
+                        {
+                            mptex->setLayer( layerModel->getImageLayer(), layerModel->getTexture() );
+                        }
+                    }
+
+                    if ( !mptex->getPasses().empty() )
                     {
                         stateSet->setTextureAttribute(
                             colorBinding->unit(),
-                            layerModel->getTexture() );
-
-                        stateSet->addUniform(
-                            new osg::Uniform(colorBinding->matrixName().c_str(),
-                            osg::Matrixf::identity()));
-                    }                    
-                    // TODO.... multipass textures.
-                    break;                            
+                            mptex );
+                    }
                 }
             }
 
@@ -145,6 +138,52 @@ LoadTileData::apply()
                         osg::Matrixf::identity()));
                 }
             }
+
+            // Shared layers:
+            for(TerrainTileImageLayerModelVector::iterator i = _model->sharedLayers().begin();
+                i != _model->sharedLayers().end();
+                ++i)
+            {
+                TerrainTileImageLayerModel* layerModel = i->get();
+                int unit = layerModel->getImageLayer()->shareImageUnit().get();
+                if ( unit >= 0 && layerModel->getTexture() )
+                {
+                    stateSet->setTextureAttribute(
+                        unit,
+                        layerModel->getTexture() );
+
+                    stateSet->addUniform(
+                        new osg::Uniform(layerModel->getImageLayer()->shareTexMatUniformName()->c_str(),
+                        osg::Matrixf::identity()));
+                }
+            }
+        }
+    }
+}
+
+void
+LoadTileData::apply()
+{
+    if ( _model.valid() )
+    {
+        osg::ref_ptr<TileNode> tilenode;
+        if ( _tilenode.lock(tilenode) )
+        {
+            const RenderBindings& bindings = _context->getRenderBindings();
+
+            const SamplerBinding* color = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
+
+            // Find the mptexture, and then remove it since it was only in the state set for ICO compilation.
+            osg::ref_ptr<MPTexture> mptex = dynamic_cast<MPTexture*>(
+                getStateSet()->getTextureAttribute( color->unit(), osg::StateAttribute::TEXTURE) );
+
+            if ( mptex.valid() )
+            {
+                getStateSet()->removeTextureAttribute( color->unit(), mptex.get() );
+            }
+
+            // Merge our prepped stateset into the live one.
+            tilenode->mergeStateSet( getStateSet(), mptex.get(), bindings );
 
             // Update existing inheritance matrices as necessary.
             UpdateInheritance update( bindings );

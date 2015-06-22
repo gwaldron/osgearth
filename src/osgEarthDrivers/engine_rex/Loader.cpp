@@ -35,6 +35,14 @@ Loader::Request::Request()
     _uid = osgEarth::Registry::instance()->createUID();
 }
 
+osg::StateSet*
+Loader::Request::getStateSet()
+{
+    if ( !_stateSet.valid() )
+        _stateSet = new osg::StateSet();
+    return _stateSet.get();
+}
+
 //...............................................
 
 #undef  LC
@@ -72,7 +80,12 @@ namespace
     {
         RequestResultNode(Loader::Request* request) : _request(request)
         {
-            //nop
+            // Do this so the ICO can find and pre-compile GL objects that are
+            // attached to the stateset.
+            if ( _request.valid() )
+            {
+                setStateSet( _request->getStateSet() );
+            }
         }
 
         Loader::Request* getRequest() const { return _request.get(); }

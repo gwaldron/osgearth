@@ -48,6 +48,10 @@ Press 'w' for wireframe mode to see the tessellation!
 
   <extensions>
       
+      <normalmap/>
+  
+      <bumpmap image="../../data/rock_hard.jpg" octaves="12" intensity="1.5"/>
+     
       <noise/>
   
       <terrainshader land_cover_group="grass" land_cover_lod="21">

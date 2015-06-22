@@ -52,6 +52,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const osg::BoundingBox& getAlignedBoundingBox() const;
 
+        TileDrawable* getDrawable() const { return _drawable.get(); }
+
     protected:
         virtual ~SurfaceNode() { }
 

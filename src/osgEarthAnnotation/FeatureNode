@@ -43,21 +43,29 @@ namespace osgEarth { namespace Annotation
         META_AnnotationNode(osgEarthAnnotation, FeatureNode);
 
         /**
-         * Constructs a new FeatureNode.
+         * Constructs a new FeatureNode from a single Feature
          */
         FeatureNode( 
             MapNode* mapNode, 
             Feature* feature,
+            const Style& style = Style(),
+            const GeometryCompilerOptions& options = GeometryCompilerOptions() );
+
+        /**
+         * Constructs a new FeatureNode from a FeatureList
+         */
+        FeatureNode( 
+            MapNode* mapNode, 
+            FeatureList& features,
+            const Style& style = Style(),
             const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
         virtual ~FeatureNode() { }
 
-        /**
-         * The feature that this node will render.
+         /**
+         * Gets the list of features
          */
-        void setFeature( Feature* feature );
-        Feature* getFeature() { return _feature.get(); }
-        const Feature* getFeature() const { return _feature.get(); }
+        FeatureList& getFeatures() { return _features; };
 
         void init();
 
@@ -79,10 +87,11 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
     protected:
-        osg::ref_ptr<Feature>        _feature;
+        FeatureList                  _features;
         GeometryCompilerOptions      _options;
         osg::Group*                  _attachPoint;
         osg::Polytope                _featurePolytope;
+        Style                        _style;
 
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }

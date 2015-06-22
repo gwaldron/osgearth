@@ -56,7 +56,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 if (yMin > rhs.yMin) return false;
                 if (size < rhs.size) return true;
                 if (size > rhs.size) return false;
-                return patch == rhs.patch;
+                return patch != rhs.patch;
             }
 
             int    lod;
@@ -69,11 +69,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void getPooledGeometry(
             const TileKey&               tileKey, 
+            unsigned uiMorphLOD,
             const MapInfo&               mapInfo,
             osg::ref_ptr<osg::Geometry>& out);
 
         osg::Geometry* createGeometry(
             const TileKey& tileKey,
+            unsigned uiMorphLOD,
             const MapInfo& mapInfo,
             MaskGenerator* maskSet ) const;
 

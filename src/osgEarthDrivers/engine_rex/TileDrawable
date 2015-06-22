@@ -23,6 +23,7 @@
 #include "TileNode"
 #include "TileNodeRegistry"
 #include "RenderBindings"
+#include "SelectionInfo"
 #include "MPTexture"
 
 #include <osg/Geometry>
@@ -85,6 +86,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _tileKeyUniformNameID;
         unsigned _texMatrixUniformNameID;
         unsigned _parentTexMatrixUniformNameID;
+        unsigned _tileMorphCUniformNameID;
+        unsigned _tileGridDimsUniformNameID;
+        unsigned _tileExtentsUniformNameID;
 
         // Data stored for each graphics context:
         struct PerContextData {
@@ -95,6 +99,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         mutable osg::buffered_object<PerContextData> _pcd;
 
         mutable osg::Vec4f _tileKeyValue;
+        mutable osg::Vec4f _tileMorphCValue;
+        mutable osg::Vec4f _tileGridDimsValue;
+        mutable osg::Vec4f _tileExtentsValue;
         RenderBindings _bindings;
 
         bool _supportsGLSL;
@@ -119,6 +126,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // construct a new TileDrawable that fronts an osg::Geometry
         TileDrawable(
             const TileKey&        key,
+            const SelectionInfo&  selectionInfo,
             const RenderBindings& bindings,
             osg::Geometry*        geometry);
 
@@ -186,10 +194,19 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 #endif
 
     public:
+#pragma warning( push )
+#pragma warning( disable : 4413 )
         META_Object(osgEarth, TileDrawable);
-        TileDrawable() : osg::Drawable() { }
-        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop) { }
+        TileDrawable() : osg::Drawable() 
+            , _selectionInfo(SelectionInfo())
+        {
+                std::cout<<"Uh Oh!"<<std::endl;
+        }
+#pragma warning( pop )
+        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop), _selectionInfo(rhs._selectionInfo) { }
         virtual ~TileDrawable() { }
+    private:
+        const SelectionInfo& _selectionInfo;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

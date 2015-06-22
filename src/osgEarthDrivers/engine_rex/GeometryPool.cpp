@@ -80,6 +80,7 @@ _debug   ( false )
 
 void
 GeometryPool::getPooledGeometry(const TileKey&               tileKey,
+                                unsigned uiMorphLOD,
                                 const MapInfo&               mapInfo,
                                 osg::ref_ptr<osg::Geometry>& out)
 {
@@ -99,7 +100,7 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
     else
     {
         // Not found. Create it.
-        out = createGeometry( tileKey, mapInfo, 0L );
+        out = createGeometry( tileKey, uiMorphLOD, mapInfo, 0L );
         _geometryMap[ geomKey ] = out.get();
 
         if ( _debug )
@@ -179,6 +180,7 @@ GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
 
 osg::Geometry*
 GeometryPool::createGeometry(const TileKey& tileKey,
+                             unsigned uiMorphLOD,
                              const MapInfo& mapInfo,
                              MaskGenerator* maskSet) const
 {
@@ -233,6 +235,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     geom->setNormalArray( normals );
     geom->setNormalBinding( geom->BIND_PER_VERTEX );
 
+    osg::Vec3Array* tangents = 0;
+    tangents = new osg::Vec3Array();
+    tangents->reserve( numVerts );
+    geom->setTexCoordArray(1, tangents );
+
     // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
     // vert is masked: 0=yes, 1=no
 #ifdef SHARE_TEX_COORDS
@@ -251,6 +258,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 #endif
 
     geom->setTexCoordArray( 0, texCoords );
+    
+    float delta = 1.0/(_tileSize-1);
+    osg::Vec3d tdelta(delta,0,0);
+    tdelta.normalize();
+    osg::Vec3d vZero(0,0,0);
     
     for(unsigned row=0; row<_tileSize; ++row)
     {
@@ -277,6 +289,34 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             osg::Vec3f normal = (modelPlusOne*world2local)-modelLTP;
             normal.normalize();
             normals->push_back( normal );
+
+            if (tileKey.getLOD()>=uiMorphLOD)
+            {
+                osg::Vec3d modelXPlusOne;
+                locator->unitToModel(osg::Vec3d(nx+tdelta.x(), ny, 0.0f), modelXPlusOne);
+                osg::Vec3f tangent = (modelXPlusOne*world2local)-modelLTP;
+                tangent.normalize();
+                tangents->push_back(tangent);
+#if 0
+                // for debugging
+                osg::Vec3d modelYPlusOne;
+                locator->unitToModel(osg::Vec3d(nx, ny+bdelta.y(), 0.0f), modelYPlusOne);
+                osg::Vec3f binormal = (modelYPlusOne*world2local)-modelLTP;
+                binormal.normalize();
+
+                osg::Vec3f recoveredBN = normal^tangent;
+                recoveredBN.normalize();
+
+                float d1 = normal*tangent;
+                float d2 = binormal*tangent;
+                float d3 = binormal*normal;
+#endif
+            }
+            else
+            {
+                // PP: I shouldn't have to do this
+                tangents->push_back(vZero);
+            }
         }
     }
 

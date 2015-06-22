@@ -7,15 +7,17 @@
 #pragma vp_define     "OE_REX_USE_TERRAIN_COLOR"
 
 // uniforms
-uniform mat4 oe_layer_texMatrix;
+//uniform mat4 oe_layer_texMatrix;
 uniform vec4 oe_terrain_color;
 
 // outputs
+out vec4 vp_Color;
+out vec3 vp_Normal;
+
 out vec4 oe_layer_texc;
 out vec4 oe_layer_tilec;
-out vec4 vp_Color;
-out vec3 vp_UpVector;
-out vec3 vp_Normal;
+out vec3 oe_UpVectorView;
+out vec3 oe_TangentVectorView;
 
 void oe_rexEngine_vert(inout vec4 vertexModel)
 {
@@ -23,11 +25,12 @@ void oe_rexEngine_vert(inout vec4 vertexModel)
     oe_layer_tilec = gl_MultiTexCoord0;
 
     // Texture coordinate for the color texture (scale,bias)
-    oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec;
+ //   oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec;
 
 #ifdef OE_REX_USE_TERRAIN_COLOR
     vp_Color = oe_terrain_color;
 #endif
 	
-	vp_UpVector = vp_Normal;
+	oe_UpVectorView = gl_NormalMatrix*vp_Normal;
+	oe_TangentVectorView = gl_NormalMatrix*(gl_MultiTexCoord1.xyz);
 }

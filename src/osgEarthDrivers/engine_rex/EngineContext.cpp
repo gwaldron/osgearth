@@ -36,7 +36,8 @@ EngineContext::EngineContext(const Map*                     map,
                              TileNodeRegistry*              deadTiles,
                              const LandCoverBins*           landCoverBins,
                              const RenderBindings&          renderBindings,
-                             const RexTerrainEngineOptions& options) :
+                             const RexTerrainEngineOptions& options,
+                             const SelectionInfo&           selectionInfo) :
 _frame         ( map ),
 _terrainEngine ( terrainEngine ),
 _geometryPool  ( geometryPool ),
@@ -45,7 +46,8 @@ _liveTiles     ( liveTiles ),
 _deadTiles     ( deadTiles ),
 _landCoverBins ( landCoverBins ),
 _renderBindings( renderBindings ),
-_options       ( options )
+_options       ( options ),
+_selectionInfo ( selectionInfo )
 {
     //NOP
 }

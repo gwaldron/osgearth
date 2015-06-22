@@ -17,7 +17,7 @@ Press 'w' for wireframe mode to see the tessellation!
 <map name="readymap.org" type="geocentric">
     
     <options>        
-        <terrain driver="rex" gpu_tessellation="false" skirt_ratio="0" />
+        <terrain driver="rex" skirt_ratio="0" />
     </options>
     
     <image name="readymap_imagery" driver="tms" shared="true">
@@ -57,6 +57,7 @@ Press 'w' for wireframe mode to see the tessellation!
      
       <noise/>
   
+  <!--
       <terrainshader land_cover_group="grass" land_cover_lod="22">
           <code url="GrassTES.glsl" />
           <code url="GrassTCS.glsl" />
@@ -84,6 +85,7 @@ Press 'w' for wireframe mode to see the tessellation!
           <uniform name="oe_grass_noise"       value="1.5"/>
           <uniform name="oe_grass_density"     value="3.0"/>
       </terrainshader>
+      -->
         
         <viewpoints>
             <viewpoint heading="-0.316509rad" height="0.05537051614373922" lat="21.36485463831751" long="-157.8517958313442" pitch="-0.156294rad" range="2282.41m"/>

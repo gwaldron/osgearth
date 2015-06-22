@@ -54,6 +54,7 @@ SET(TARGET_H
     SurfaceNodeFactory
     TileNodeRegistry
     Loader
+	SelectionInfo
 )
 
 setup_plugin(osgearth_engine_rex)

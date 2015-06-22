@@ -36,11 +36,11 @@ in vec4 oe_layer_tilec;
 out vec2 oe_grass_texCoord;
 
 // Output color variations:
-out vec4 vp_Color;  
-out vec3 vp_UpVector;       
-
-// Output normals:         
+out vec4 vp_Color;
 out vec3 vp_Normal;
+
+// Up vector for clamping.
+in vec3 oe_UpVectorView;  
 
 
 void
@@ -110,7 +110,7 @@ oe_grass_geom()
     
     // Transform to view space.
     vec4 center_view = gl_ModelViewMatrix * center_model;
-    vec3 up_view     = normalize(gl_NormalMatrix * vp_UpVector);
+    vec3 up_view     = oe_UpVectorView;
     
     // Clamp the center point to the elevation.
     oe_grass_clamp(center_view, up_view, tileUV);

@@ -44,25 +44,11 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-
-FeatureNode::FeatureNode(MapNode* mapNode, 
-                         Feature* feature, 
-                         bool     draped,
-                         const GeometryCompilerOptions& options ) :
-AnnotationNode( mapNode ),
-_feature      ( feature ),
-_draped       ( draped ),
-_options      ( options )
-{
-    init();
-}
-
 FeatureNode::FeatureNode(MapNode* mapNode,
                          Feature* feature,
                          const GeometryCompilerOptions& options ) :
 AnnotationNode( mapNode ),
 _feature      ( feature ),
-_draped       ( false ),
 _options      ( options )
 {
     init();
@@ -294,7 +280,6 @@ AnnotationNode( mapNode, conf )
 
     if ( srs.valid() && geom.valid() )
     {
-        //_draped = conf.value<bool>("draped",false);
         Feature* feature = new Feature(geom.get(), srs.get(), style);
 
         conf.getIfSet( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );

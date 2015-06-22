@@ -53,16 +53,8 @@ namespace
     }
 }
 
-TileNode::TileNode()
-    : _selectionInfo(SelectionInfo())
-{
-    std::cout<<"Uh Oh!"<<std::endl;
-}
-
-
-TileNode::TileNode(SelectionInfo& selectionInfo) :
+TileNode::TileNode() : 
 _dirty      ( false )
-, _selectionInfo(selectionInfo)
 {
     osg::StateSet* stateSet = getOrCreateStateSet();
 
@@ -82,14 +74,14 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     osg::ref_ptr<osg::Geometry> geom;
 
-    context->getGeometryPool()->getPooledGeometry(key, _selectionInfo.uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
+    context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo().uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
 
-    TileDrawable* surfaceDrawable = new TileDrawable(key, _selectionInfo, context->getRenderBindings(), geom.get());
+    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getSelectionInfo(), context->getRenderBindings(), geom.get());
     surfaceDrawable->setDrawAsPatches(false);
 
     _surface = new SurfaceNode(
         key,
-        _selectionInfo,
+        context->getSelectionInfo(),
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         surfaceDrawable );
@@ -99,13 +91,13 @@ TileNode::create(const TileKey& key, EngineContext* context)
     surfaceSS->setNestRenderBins(false);
 
     // Surface node for rendering land cover geometry.
-    TileDrawable* patchDrawable = new TileDrawable(key, _selectionInfo, context->getRenderBindings(), geom.get());
+    TileDrawable* patchDrawable = new TileDrawable(key, context->getSelectionInfo(), context->getRenderBindings(), geom.get());
     patchDrawable->setDrawAsPatches(true);
 
     // PPP: Is this correct???
     _landCover = new SurfaceNode(
         key,
-        _selectionInfo,
+        context->getSelectionInfo(),
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         patchDrawable );
@@ -233,9 +225,11 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
         OE_INFO << LC <<"Traversing: "<<"\n";    
     }
 #endif
+    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
+    const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
-    bool bWithinNumLods =  getTileKey().getLOD() < _selectionInfo._numLods;
-    bool bNotHighestResLod =  (currLOD!=_selectionInfo._numLods-1);
+    bool bWithinNumLods =  getTileKey().getLOD() < selectionInfo._numLods;
+    bool bNotHighestResLod =  (currLOD!=selectionInfo._numLods-1);
     bool bAnyChildVisible = false;
     if (bWithinNumLods && bNotHighestResLod)
     {
@@ -243,7 +237,7 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
 #if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
         OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
 #endif
-        float fRadius = _selectionInfo._fVisibilityRanges[currLOD+1];
+        float fRadius = selectionInfo._fVisibilityRanges[currLOD+1];
         bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius, fRadius*fRadius);
     }
 
@@ -259,8 +253,8 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
                 <<" "<<getTileKey().getTileX()
                 <<" "<<getTileKey().getTileY()
                 <<" Cam Dist   : "<<fDistanceToCamera
-                <<" MY Range      : "<<_selectionInfo._fVisibilityRanges[getTileKey().getLOD()]
-            <<" CH Range      : "<<_selectionInfo._fVisibilityRanges[getTileKey().getLOD()+1]
+                <<" MY Range      : "<<selectionInfo._fVisibilityRanges[getTileKey().getLOD()]
+                <<" CH Range      : "<<selectionInfo._fVisibilityRanges[getTileKey().getLOD()+1]
             <<std::endl;
         }
 #endif
@@ -336,7 +330,6 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     }
 
     // Traverse land cover bins at this LOD.
-    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     osgUtil::CullVisitor* cull = dynamic_cast<osgUtil::CullVisitor*>( &nv );
     for(int i=0; i<context->landCoverBins()->size(); ++i)
     {
@@ -395,7 +388,7 @@ TileNode::createChildren(osg::NodeVisitor& nv)
     // Create the four child nodes.
     for(unsigned quadrant=0; quadrant<4; ++quadrant)
     {
-        TileNode* node = new TileNode(_selectionInfo);
+        TileNode* node = new TileNode();
 
         // Build the surface geometry:
         node->create( getTileKey().createChildKey(quadrant), context );

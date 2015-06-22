@@ -31,8 +31,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class EngineContext;
     class SurfaceNode;
 
-    class SelectionInfo;
-
     /**
      * TileNode represents a single tile. TileNode has 5 children:
      * one SurfaceNode that renders the actual tile content under a MatrixTransform;
@@ -41,7 +39,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class TileNode : public osg::Group
     {
     public:
-        TileNode(SelectionInfo& selectionInfo);
+        TileNode();
 
         /** TileKey of the key representing the data in this node. */
         const TileKey& getTileKey() const { return _key; }
@@ -112,14 +110,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void updateTileKeyUniform();
     private:
-        SelectionInfo& _selectionInfo;
         void lodSelect(osg::NodeVisitor& nv);
         void regularUpdate(osg::NodeVisitor& nv);
 
         bool selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare);
         bool childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare);
-
-        TileNode();
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

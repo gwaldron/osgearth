@@ -245,6 +245,7 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
     {
         delete _update_mapf;
     }
+    destroySelectionInfo();
 }
 
 void
@@ -477,6 +478,14 @@ RexTerrainEngineNode::setupRenderBindings()
     this->getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
 }
 
+void RexTerrainEngineNode::destroySelectionInfo()
+{
+    if (_selectionInfo)
+    {
+        delete _selectionInfo; _selectionInfo = 0;
+    }
+}
+
 void RexTerrainEngineNode::buildSelectionInfo()
 {
     _selectionInfo = new SelectionInfo;
@@ -579,6 +588,9 @@ RexTerrainEngineNode::dirtyTerrain()
         setupRenderBindings();
     }
 
+    destroySelectionInfo();
+    buildSelectionInfo();
+
     // Factory to create the root keys:
     EngineContext* context = getEngineContext();
 
@@ -587,11 +599,6 @@ RexTerrainEngineNode::dirtyTerrain()
     std::vector<TileKey> keys;
     _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
-    if (_selectionInfo)
-    {
-        delete _selectionInfo;_selectionInfo=0;
-    }
-    buildSelectionInfo();
     // create a root node for each root tile key.
     OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
@@ -603,7 +610,7 @@ RexTerrainEngineNode::dirtyTerrain()
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        TileNode* tileNode = new TileNode(*_selectionInfo);
+        TileNode* tileNode = new TileNode();
                 
         // Next, build the surface geometry for the node.
         tileNode->create( keys[i], context );
@@ -720,7 +727,8 @@ RexTerrainEngineNode::getEngineContext()
             _deadTiles.get(),
             &_landCoverBins,
             _renderBindings,
-            _terrainOptions );
+            _terrainOptions,
+            *_selectionInfo);
     }
 
     return factory.get();

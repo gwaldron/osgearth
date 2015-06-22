@@ -22,6 +22,7 @@
 #include "Loader"
 #include "LoadTileData"
 #include "ExpireTiles"
+#include "SelectionInfo"
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
@@ -52,10 +53,16 @@ namespace
     }
 }
 
+TileNode::TileNode()
+    : _selectionInfo(SelectionInfo())
+{
+    std::cout<<"Uh Oh!"<<std::endl;
+}
 
 
-TileNode::TileNode() :
+TileNode::TileNode(SelectionInfo& selectionInfo) :
 _dirty      ( false )
+, _selectionInfo(selectionInfo)
 {
     osg::StateSet* stateSet = getOrCreateStateSet();
 
@@ -75,13 +82,14 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     osg::ref_ptr<osg::Geometry> geom;
 
-    context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom);
+    context->getGeometryPool()->getPooledGeometry(key, _selectionInfo.uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
 
-    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
+    TileDrawable* surfaceDrawable = new TileDrawable(key, _selectionInfo, context->getRenderBindings(), geom.get());
     surfaceDrawable->setDrawAsPatches(false);
 
     _surface = new SurfaceNode(
         key,
+        _selectionInfo,
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         surfaceDrawable );
@@ -91,11 +99,13 @@ TileNode::create(const TileKey& key, EngineContext* context)
     surfaceSS->setNestRenderBins(false);
 
     // Surface node for rendering land cover geometry.
-    TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
+    TileDrawable* patchDrawable = new TileDrawable(key, _selectionInfo, context->getRenderBindings(), geom.get());
     patchDrawable->setDrawAsPatches(true);
 
+    // PPP: Is this correct???
     _landCover = new SurfaceNode(
         key,
+        _selectionInfo,
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         patchDrawable );
@@ -125,17 +135,6 @@ osg::BoundingSphere
 TileNode::computeBound() const
 {
     return _surface.valid() ? _surface->computeBound() : osg::BoundingSphere();
-}
-
-float
-TileNode::getSubdivideRange(osg::NodeVisitor& nv) const
-{
-    // TODO - placeholder for now
-    const float factor = 6.0f;
-
-    //return getBound().radius() * factor;
-    const osg::BoundingBox& box = _surface->getAlignedBoundingBox();
-    return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
 
 bool
@@ -197,119 +196,194 @@ TileNode::releaseGLObjects(osg::State* state) const
     osg::Group::releaseGLObjects(state);
 }
 
+bool
+TileNode::selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare)
+{
+    if (_surface.valid()==false)
+    {
+        return false;
+    }
+    return _surface->boxIntersectsSphere(point, radius, radiusSquare);
+}
+
+bool
+TileNode::childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare)
+{
+    if (_surface.valid()==false)
+    {
+        return false;
+    }
+    return _surface->anyChildBoxIntersectsSphere(point, radius, radiusSquare);
+}
+
+#define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
+
+void TileNode::lodSelect(osg::NodeVisitor& nv)
+{
+    if ( nv.getFrameStamp() )
+    {
+        _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
+    }
+
+    unsigned currLOD = getTileKey().getLOD();
+
+#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
+    if (currLOD==0)
+    {
+        OE_INFO << LC <<"Traversing: "<<"\n";    
+    }
+#endif
+
+    bool bWithinNumLods =  getTileKey().getLOD() < _selectionInfo._numLods;
+    bool bNotHighestResLod =  (currLOD!=_selectionInfo._numLods-1);
+    bool bAnyChildVisible = false;
+    if (bWithinNumLods && bNotHighestResLod)
+    {
+        osg::Vec3 cameraPos = nv.getViewPoint();
+#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
+        OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
+#endif
+        float fRadius = _selectionInfo._fVisibilityRanges[currLOD+1];
+        bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius, fRadius*fRadius);
+    }
+
+
+    // If *any* of the children are visible, subdivide.
+    if (bAnyChildVisible)
+    {
+#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
+        //if (getTileKey().getLOD()==10||getTileKey().getLOD()==11)
+        {
+
+            OE_INFO << LC <<"T C for LOD :"<<getTileKey().getLOD()
+                <<" "<<getTileKey().getTileX()
+                <<" "<<getTileKey().getTileY()
+                <<" Cam Dist   : "<<fDistanceToCamera
+                <<" MY Range      : "<<_selectionInfo._fVisibilityRanges[getTileKey().getLOD()]
+            <<" CH Range      : "<<_selectionInfo._fVisibilityRanges[getTileKey().getLOD()+1]
+            <<std::endl;
+        }
+#endif
+        // We are in range of the child nodes. Either draw them or load them.
+        unsigned numChildrenReady = 0;
+
+        // If the children don't exist, create them and inherit the parent's data.
+        if ( getNumChildren() == 0 )
+        {
+            Threading::ScopedMutexLock exclusive(_mutex);
+            if ( getNumChildren() == 0 )
+            {
+                createChildren( nv );
+            }
+        }
+
+        // All 4 children must be ready before we can traverse any of them:
+        for(unsigned i = 0; i < 4; ++i)
+        {                
+            if ( getSubTile(i)->isReadyToTraverse() )
+            {
+                ++numChildrenReady;
+            }
+        }
+
+        // If all are ready, traverse them now.
+        if ( numChildrenReady == 4 )
+        {
+            // TODO:
+            // If we do thing, we need to quite sure that all 4 children will be accepted into
+            // the draw set. Perhaps isReadyToTraverse() needs to check that.
+            _children[0]->accept( nv );
+            _children[1]->accept( nv );
+            _children[2]->accept( nv );
+            _children[3]->accept( nv );
+        }
+
+        // Not all children are ready, so cull the current payload.
+        else if ( _surface.valid() )
+        {
+            _surface->accept( nv );
+        }
+    }
+
+    // If children are outside camera range, draw the payload and expire the children.
+    else if ( _surface.valid() )
+    {
+        _surface->accept( nv );
+
+#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
+        //if (getTileKey().getLOD()==14)
+        {
+
+            OE_INFO<<"Drawing LOD: "<<getTileKey().getLOD()
+                <<" "<<getTileKey().getTileX()
+                <<" "<<getTileKey().getTileY()
+                <<" Cam Dist   : "<<fDistanceToCamera
+                <<" Range      : "<<_selectionInfo._fVisibilityRanges[getTileKey().getLOD()]
+            <<std::endl;
+
+        }
+#endif
+        if ( getNumChildren() > 0 )
+        {
+            if (getSubTile(0)->isDormant( nv ) &&
+                getSubTile(1)->isDormant( nv ) &&
+                getSubTile(2)->isDormant( nv ) &&
+                getSubTile(3)->isDormant( nv ))
+            {
+                expireChildren( nv );
+            }
+        }
+    }
+
+    // Traverse land cover bins at this LOD.
+    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
+    osgUtil::CullVisitor* cull = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+    for(int i=0; i<context->landCoverBins()->size(); ++i)
+    {
+        const LandCoverBin& bin = context->landCoverBins()->at(i);
+        if ( bin._lod == getTileKey().getLOD() )
+        {
+            cull->pushStateSet( bin._stateSet.get() );
+            _landCover->accept( nv );
+            cull->popStateSet();
+        }
+    }
+
+    // If this tile is marked dirty, try loading data.
+    if ( _dirty )
+    {
+        load( nv );
+    }
+}
+void TileNode::regularUpdate(osg::NodeVisitor& nv)
+{
+    if ( getNumChildren() > 0 )
+    {
+        for(unsigned i=0; i<getNumChildren(); ++i)
+        {
+            _children[i]->accept( nv );
+        }
+    }
+
+    else if ( _surface.valid() )
+    {
+        _surface->accept( nv );
+    }
+}
+
 void
 TileNode::traverse(osg::NodeVisitor& nv)
 {
     // Cull
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        if ( nv.getFrameStamp() )
-        {
-            _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
-        }
-
-        const osg::Vec3& center = getBound().center();
-
-        float cameraRange = nv.getDistanceToViewPoint( center, true );
-        
-        osgUtil::CullVisitor* cull = dynamic_cast<osgUtil::CullVisitor*>( &nv );
-
-        // If the children are visible, subdivide.
-        if ( cameraRange < getSubdivideRange(nv) && _key.getLOD() < 23 )
-        {
-            // We are in range of the child nodes. Either draw them or load them.
-            unsigned numChildrenReady = 0;
-
-            // If the children don't exist, create them and inherit the parent's data.
-            if ( getNumChildren() == 0 )
-            {
-                Threading::ScopedMutexLock exclusive(_mutex);
-                if ( getNumChildren() == 0 )
-                {
-                    createChildren( nv );
-                }
-            }
-
-            // All 4 children must be ready before we can traverse any of them:
-            for(unsigned i = 0; i < 4; ++i)
-            {                
-                if ( getSubTile(i)->isReadyToTraverse() )
-                {
-                    ++numChildrenReady;
-                }
-            }
-
-            // If all are ready, traverse them now.
-            if ( numChildrenReady == 4 )
-            {
-                // TODO:
-                // If we do thing, we need to quite sure that all 4 children will be accepted into
-                // the draw set. Perhaps isReadyToTraverse() needs to check that.
-                _children[0]->accept( nv );
-                _children[1]->accept( nv );
-                _children[2]->accept( nv );
-                _children[3]->accept( nv );
-            }
-
-            // Not all children are ready, so cull the current payload.
-            else if ( _surface.valid() )
-            {
-                _surface->accept( nv );
-            }
-        }
-
-        // If children are outside camera range, draw the payload and expire the children.
-        else if ( _surface.valid() )
-        {
-            _surface->accept( nv );
-
-            if ( getNumChildren() > 0 )
-            {
-                if (getSubTile(0)->isDormant( nv ) &&
-                    getSubTile(1)->isDormant( nv ) &&
-                    getSubTile(2)->isDormant( nv ) &&
-                    getSubTile(3)->isDormant( nv ))
-                {
-                    expireChildren( nv );
-                }
-            }
-        }
-        
-        // Traverse land cover bins at this LOD.
-        EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
-        for(int i=0; i<context->landCoverBins()->size(); ++i)
-        {
-            const LandCoverBin& bin = context->landCoverBins()->at(i);
-            if ( bin._lod == getTileKey().getLOD() )
-            {
-                cull->pushStateSet( bin._stateSet.get() );
-                _landCover->accept( nv );
-                cull->popStateSet();
-            }
-        }
-
-        // If this tile is marked dirty, try loading data.
-        if ( _dirty )
-        {
-            load( nv );
-        }
+        lodSelect(nv);
     }
 
     // Update, Intersection, ComputeBounds, CompileGLObjects, etc.
     else
     {
-        if ( getNumChildren() > 0 )
-        {
-            for(unsigned i=0; i<getNumChildren(); ++i)
-            {
-                _children[i]->accept( nv );
-            }
-        }
-
-        else if ( _surface.valid() )
-        {
-            _surface->accept( nv );
-        }
+        regularUpdate(nv);
     }
 }
 
@@ -321,7 +395,7 @@ TileNode::createChildren(osg::NodeVisitor& nv)
     // Create the four child nodes.
     for(unsigned quadrant=0; quadrant<4; ++quadrant)
     {
-        TileNode* node = new TileNode();
+        TileNode* node = new TileNode(_selectionInfo);
 
         // Build the surface geometry:
         node->create( getTileKey().createChildKey(quadrant), context );

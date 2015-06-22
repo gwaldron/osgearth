@@ -19,6 +19,7 @@
 #include "RexTerrainEngineNode"
 #include "Shaders"
 #include "QuickReleaseGLObjects"
+#include "SelectionInfo"
 
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageUtils>
@@ -203,7 +204,8 @@ _tileCount            ( 0 ),
 _tileCreationTime     ( 0.0 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
-_stateUpdateRequired  ( false )
+_stateUpdateRequired  ( false ),
+_selectionInfo(0)
 {
     // unique ID for this engine:
     _uid = Registry::instance()->createUID();
@@ -475,6 +477,49 @@ RexTerrainEngineNode::setupRenderBindings()
     this->getResources()->reserveTextureImageUnit( normal.unit(), "Terrain Normals" );
 }
 
+void RexTerrainEngineNode::buildSelectionInfo()
+{
+    _selectionInfo = new SelectionInfo;
+
+    _selectionInfo->_numLods = (*_terrainOptions.minLOD()+1);  // use min lod for now
+#if 0
+    // for debugging
+    _selectionInfo->_numLods = 9;
+#endif
+
+    _selectionInfo->_uiGridDimensions.first = _selectionInfo->_uiGridDimensions.second = (*_terrainOptions.tileSize());    
+    _selectionInfo->uiLODForMorphing = 5;
+
+    double fLodNear = 0;
+    double fLodFar = 38268824*5; 
+
+    float fRatio = 1.0;
+    _selectionInfo->_fVisibilityRanges.resize(_selectionInfo->_numLods);
+    for( int i = 0; i < _selectionInfo->_numLods; ++i )
+    {
+        _selectionInfo->_fVisibilityRanges[i] = fLodNear + fRatio*(fLodFar-fLodNear);
+        fRatio*= 0.5;
+    }
+
+    double fPrevPos = fLodNear;
+    _selectionInfo->_fMorphStart.resize(_selectionInfo->_numLods, 0);
+    _selectionInfo->_fMorphEnd.resize(_selectionInfo->_numLods, 0);
+    _selectionInfo->_fMorphStartRatio = 0.66;
+    for (int i=_selectionInfo->_numLods-1; i>=0; --i)
+    {
+        _selectionInfo->_fMorphEnd[i] = _selectionInfo->_fVisibilityRanges[i];
+        _selectionInfo->_fMorphStart[i] = fPrevPos + (_selectionInfo->_fMorphEnd[i] - fPrevPos) * _selectionInfo->_fMorphStartRatio;
+
+        fPrevPos = _selectionInfo->_fMorphStart[i];
+    }
+    for( int i = 0; i < _selectionInfo->_numLods; ++i ) 
+    {
+        OE_INFO << LC << "LOD[" << i<<"] = "<<_selectionInfo->_fVisibilityRanges[i]
+        <<" Start: "<<_selectionInfo->_fMorphStart[i]
+        <<" End  : "<<_selectionInfo->_fMorphEnd[i]
+        <<std::endl;
+    }
+}
 void
 RexTerrainEngineNode::dirtyTerrain()
 {
@@ -542,6 +587,11 @@ RexTerrainEngineNode::dirtyTerrain()
     std::vector<TileKey> keys;
     _update_mapf->getProfile()->getAllKeysAtLOD( *_terrainOptions.firstLOD(), keys );
 
+    if (_selectionInfo)
+    {
+        delete _selectionInfo;_selectionInfo=0;
+    }
+    buildSelectionInfo();
     // create a root node for each root tile key.
     OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
@@ -553,7 +603,7 @@ RexTerrainEngineNode::dirtyTerrain()
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        TileNode* tileNode = new TileNode();
+        TileNode* tileNode = new TileNode(*_selectionInfo);
                 
         // Next, build the surface geometry for the node.
         tileNode->create( keys[i], context );

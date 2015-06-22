@@ -29,11 +29,14 @@
 #include <osg/BoundingBox>
 #include <osg/Drawable>
 #include <osg/Geode>
+#include <vector>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
 
+    class SelectionInfo;
+    typedef std::vector<osg::Vec3> VectorPoints;
     /**
      * SurfaceNode holds the geometry of the terrain surface.
      */
@@ -42,6 +45,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         SurfaceNode(
             const TileKey&        tilekey,
+            const SelectionInfo&  selectionInfo,
             const MapInfo&        mapinfo,
             const RenderBindings& bindings,
             TileDrawable*         drawable);
@@ -52,6 +56,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const osg::BoundingBox& getAlignedBoundingBox() const;
 
+        // Returns true if box intersects the sphere of radius centered around point
+        bool boxIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare);
+
+        // A box can have 4 children. 
+        // Returns true if any child box intersects the sphere of radius centered around point
+        bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare);
+
+        float minDistanceFromPointSquare(const osg::Vec3& center);
+        float maxDistanceFromPointSquare(const osg::Vec3& center);
     protected:
         virtual ~SurfaceNode() { }
 
@@ -60,6 +73,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<TileDrawable> _drawable;
         osg::ref_ptr<osg::Geode>   _surfaceGeode;
         osg::ref_ptr<osg::Geode>   _debugGeode;
+        const SelectionInfo&       _selectionInfo;
+
+         VectorPoints _worldCorners;
+
+         typedef std::vector< VectorPoints > ChildrenCorners;
+         ChildrenCorners _childrenCorners;
+
+         float _minDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center);
+         float _maxDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center);
+         
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -43,6 +43,8 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class SelectionInfo;
+
     class RexTerrainEngineNode : public TerrainEngineNode
     {
     public:
@@ -179,6 +181,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool _quickReleaseInstalled;
 
         RexTerrainEngineNode( const RexTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
+
+        SelectionInfo* _selectionInfo;
+        void buildSelectionInfo(void);
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

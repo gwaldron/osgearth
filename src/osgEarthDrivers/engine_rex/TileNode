@@ -31,6 +31,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class EngineContext;
     class SurfaceNode;
 
+    class SelectionInfo;
+
     /**
      * TileNode represents a single tile. TileNode has 5 children:
      * one SurfaceNode that renders the actual tile content under a MatrixTransform;
@@ -39,7 +41,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class TileNode : public osg::Group
     {
     public:
-        TileNode();
+        TileNode(SelectionInfo& selectionInfo);
 
         /** TileKey of the key representing the data in this node. */
         const TileKey& getTileKey() const { return _key; }
@@ -58,9 +60,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Whether the tile is expired; i.e. has not been visited in some time. */
         bool isDormant(osg::NodeVisitor& nv) const;
-
-        /** Distance from camera to tile center at which we subdivide the tile into 4 subtiles. */
-        float getSubdivideRange(osg::NodeVisitor& nv) const;
 
         /** Load (or continue loading) content for the tiles in this quad. */
         void load(osg::NodeVisitor& nv);
@@ -112,6 +111,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool findExtrema(osg::Texture* elevationTex, const osg::Matrix& scaleBias, osg::Vec2f& output) const;
 
         void updateTileKeyUniform();
+    private:
+        SelectionInfo& _selectionInfo;
+        void lodSelect(osg::NodeVisitor& nv);
+        void regularUpdate(osg::NodeVisitor& nv);
+
+        bool selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare);
+        bool childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare);
+
+        TileNode();
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

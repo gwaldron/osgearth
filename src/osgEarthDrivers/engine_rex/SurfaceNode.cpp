@@ -19,6 +19,7 @@
 #include "SurfaceNode"
 #include "GeometryPool"
 #include "TileDrawable"
+#include "SelectionInfo"
 
 #include <osgEarth/TileKey>
 
@@ -28,6 +29,7 @@
 #include <osg/Geometry>
 #include <osgText/Text>
 
+#include <numeric>
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
@@ -104,9 +106,11 @@ namespace
 //..............................................................
 
 SurfaceNode::SurfaceNode(const TileKey&        tilekey,
+                         const SelectionInfo&  selectionInfo,
                          const MapInfo&        mapinfo,
                          const RenderBindings& bindings,
                          TileDrawable*         drawable)
+                         : _selectionInfo(selectionInfo)
 {
     _tileKey = tilekey;
 
@@ -143,10 +147,100 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
     centroid.createLocalToWorld( local2world );
     setMatrix( local2world );
 
+    _worldCorners.resize(8);
+    _childrenCorners.resize(4);
+    for(size_t i = 0; i < _childrenCorners.size(); ++i)
+    {
+        _childrenCorners[i].resize(8);
+    }
     // Initialize the cached bounding box.
     setElevationExtrema(osg::Vec2f(0, 0));
 }
 
+float minVal(float lhs, float rhs)
+{
+    return std::min(lhs, rhs);
+}
+float maxVal(float lhs, float rhs)
+{
+    return std::max(lhs, rhs);
+}
+
+void GetLengthAndLengthSquared(float& diffLength, float& diffLengthSquare, const osg::Vec3& diff)
+{
+   diffLengthSquare = diff*diff;
+   diffLength = sqrt(diffLengthSquare);
+}
+
+template<class Func>
+class AccumulatePredicate
+{
+public:
+    AccumulatePredicate(Func& func, const osg::Vec3& center): m_center(center), m_Func(func){}
+    float operator()(float lhs, const osg::Vec3& corner)
+    {
+        float diffLength, diffLengthSquare;
+        GetLengthAndLengthSquared(diffLength, diffLengthSquare, (corner-m_center));
+        lhs = m_Func(lhs, diffLength);
+        return lhs;
+    }
+private:
+    const osg::Vec3& m_center;
+    Func& m_Func;
+
+};
+
+
+float SurfaceNode::_minDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center)
+{   
+    float fMinDistance = std::accumulate(corners.begin(), corners.end()
+        , std::numeric_limits<float>::max()
+        , AccumulatePredicate< float (float, float) >(minVal, center));
+    return fMinDistance;
+}
+
+float SurfaceNode::_maxDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center)
+{
+    float fMaxDistance = std::accumulate(corners.begin(), corners.end()
+        , std::numeric_limits<float>::min()
+        , AccumulatePredicate< float (float, float) >(maxVal, center));
+
+    return fMaxDistance;
+}
+
+float SurfaceNode::minDistanceFromPointSquare(const osg::Vec3& center)
+{
+    return _minDistanceFromPointSquare(_worldCorners, center);
+}
+
+float SurfaceNode::maxDistanceFromPointSquare(const osg::Vec3& center)
+{
+    return _maxDistanceFromPointSquare(_worldCorners, center);
+}
+
+bool
+SurfaceNode::boxIntersectsSphere(const osg::Vec3& center, float radius, float radiusSquare)
+{
+    float fMinDistanceSquare = minDistanceFromPointSquare(center);
+ // return fMinDistanceSquare<=radiusSquare;
+    return fMinDistanceSquare<=radius;
+}
+
+bool
+SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radius, float radiusSquare)
+{
+    for(ChildrenCorners::const_iterator it = _childrenCorners.begin(); it != _childrenCorners.end(); ++it)
+    {
+        const VectorPoints& childCorners = *it;
+        float fMinDistanceSquare = _minDistanceFromPointSquare(childCorners, center);
+      // if (fMinDistanceSquare<=radiusSquare)
+        if (fMinDistanceSquare<=radius)
+        {
+            return true;
+        }
+    }
+    return false;
+}
 void
 SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
 {
@@ -161,7 +255,77 @@ SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
     _bbox.init();
     for(int i=0; i<8; ++i)
     {
-        _bbox.expandBy( box.corner(i) * local2world );
+        _worldCorners[i] = (box.corner(i) * local2world);
+        _bbox.expandBy( _worldCorners[i] );
+    }
+
+    osg::Vec3 minZMedians[4];
+    osg::Vec3 maxZMedians[4];
+
+    minZMedians[0] = (box.corner(0)+box.corner(1))*0.5;
+    minZMedians[1] = (box.corner(1)+box.corner(3))*0.5;
+    minZMedians[2] = (box.corner(3)+box.corner(2))*0.5;
+    minZMedians[3] = (box.corner(0)+box.corner(2))*0.5;
+                                  
+    maxZMedians[0] = (box.corner(4)+box.corner(5))*0.5;
+    maxZMedians[1] = (box.corner(5)+box.corner(7))*0.5;
+    maxZMedians[2] = (box.corner(7)+box.corner(6))*0.5;
+    maxZMedians[3] = (box.corner(4)+box.corner(6))*0.5;
+                                  
+    // Child 0 corners
+    _childrenCorners[0][0] =  box.corner(0);
+    _childrenCorners[0][1] =  minZMedians[0];
+    _childrenCorners[0][2] =  minZMedians[3];
+    _childrenCorners[0][3] = (minZMedians[0]+minZMedians[2])*0.5;
+
+    _childrenCorners[0][4] =  box.corner(4);
+    _childrenCorners[0][5] =  maxZMedians[0];
+    _childrenCorners[0][6] =  maxZMedians[3];
+    _childrenCorners[0][7] = (maxZMedians[0]+maxZMedians[2])*0.5;
+
+    // Child 1 corners
+    _childrenCorners[1][0] =  minZMedians[0];
+    _childrenCorners[1][1] =  box.corner(1);
+    _childrenCorners[1][2] = (minZMedians[0]+minZMedians[2])*0.5;
+    _childrenCorners[1][3] =  minZMedians[1];
+                     
+    _childrenCorners[1][4] =  maxZMedians[0];
+    _childrenCorners[1][5] =  box.corner(5);
+    _childrenCorners[1][6] = (maxZMedians[0]+maxZMedians[2])*0.5;
+    _childrenCorners[1][7] =  maxZMedians[1];
+
+    // Child 2 corners
+    _childrenCorners[2][0] =  minZMedians[3];
+    _childrenCorners[2][1] = (minZMedians[0]+minZMedians[2])*0.5;
+    _childrenCorners[2][2] =  box.corner(2);
+    _childrenCorners[2][3] =  minZMedians[2];
+                     
+    _childrenCorners[2][4] =  maxZMedians[3];
+    _childrenCorners[2][5] = (maxZMedians[0]+maxZMedians[2])*0.5;
+    _childrenCorners[2][6] =  box.corner(6);
+    _childrenCorners[2][7] =  maxZMedians[2]; 
+
+    // Child 3 corners
+    _childrenCorners[3][0] = (minZMedians[0]+minZMedians[2])*0.5;
+    _childrenCorners[3][1] =  minZMedians[1];
+    _childrenCorners[3][2] =  minZMedians[2];
+    _childrenCorners[3][3] =  box.corner(3);
+                     
+    _childrenCorners[3][4] = (maxZMedians[0]+maxZMedians[2])*0.5;
+    _childrenCorners[3][5] =  maxZMedians[1];
+    _childrenCorners[3][6] =  maxZMedians[2];
+    _childrenCorners[3][7] =  box.corner(7);
+
+    // Transform to world space
+    for(size_t childIndex = 0; childIndex < _childrenCorners.size(); ++ childIndex)
+    {
+         VectorPoints& childrenCorners = _childrenCorners[childIndex];
+         for(size_t cornerIndex = 0; cornerIndex < childrenCorners.size(); ++cornerIndex)
+         {
+             osg::Vec3& childCorner = childrenCorners[cornerIndex];
+             osg::Vec3 childCornerWorldSpace = childCorner*local2world;
+             childCorner = childCornerWorldSpace;
+         }
     }
 
 #if 0

@@ -71,12 +71,11 @@ TileNode::create(const TileKey& key, EngineContext* context)
 {
     _key = key;
 
-    // Next, build the surface geometry for the node.
-
+    // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
-
     context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom);
 
+    // Make a unique Drawable to house the shared geometry:
     TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
     surfaceDrawable->setDrawAsPatches(false);
 
@@ -111,13 +110,9 @@ TileNode::create(const TileKey& key, EngineContext* context)
     getStateSet()->addUniform( _keyUniform.get() );
     updateTileKeyUniform();
 
-    // Set up an MPTexture attribute for multipass layer rendering.
+    // Set up a data container for multipass layer rendering.
     _mptex = new MPTexture();
     surfaceDrawable->setMPTexture( _mptex.get() );
-
-    getStateSet()->setTextureAttribute(
-        SamplerBinding::findUsage(context->getRenderBindings(), SamplerBinding::COLOR)->unit(),
-        _mptex.get() );
 
     // need to recompute the bounds after adding payload:
     dirtyBound();
@@ -349,6 +344,7 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
 {
     bool changesMade = false;
 
+    // which quadrant is this tile in?
     unsigned quadrant = getTileKey().getQuadrant();
 
     // Find all the sampler matrix uniforms and scale/bias them to the current quadrant.
@@ -467,10 +463,11 @@ TileNode::load(osg::NodeVisitor& nv)
     }
         
     // Prioritize by LOD.
-    float priority = (float)getTileKey().getLOD();
+    float priority = - (float)getTileKey().getLOD();
 
     // Submit to the loader.
     //OE_INFO << LC << getTileKey().str() << "load\n";
+    //if ( getTileKey().getLOD() < 6 )
     context->getLoader()->load( _loadRequest.get(), priority, nv );
 }
 

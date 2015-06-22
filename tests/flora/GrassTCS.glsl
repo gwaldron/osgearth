@@ -7,8 +7,9 @@ layout(vertices = 3) out;
 
 uniform float oe_grass_density = 1.0;
 
-uniform sampler2D oe_layer_tex;
-uniform mat4 oe_layer_texMatrix;
+uniform sampler2D floraColor; //oe_layer_tex;
+uniform mat4      floraMatrix; //oe_layer_texMatrix;
+
 in vec4 oe_layer_tilec;
 
 
@@ -20,14 +21,17 @@ void oe_grass_configureTess()
 {
 	if (gl_InvocationID == 0)
 	{        
+#if 0
         vec3 green = toYUV * vec3(0,1,0);
         
         // Testing: masking
-        vec3 color = toYUV * texture(oe_layer_tex, (oe_layer_texMatrix*oe_layer_tilec).st).rgb;
+        vec3 color = toYUV * texture(floraColor, (floraMatrix*oe_layer_tilec).st).rgb;
         
         float d = distance(color, green);
         
         if ( d <= thresh )
+#endif
+        if ( true )
         {
             gl_TessLevelOuter[0] = oe_grass_density;
             gl_TessLevelOuter[1] = oe_grass_density;

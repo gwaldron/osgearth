@@ -137,52 +137,55 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
     {
         float prevOpacity = -1.0f;
 
+        state.setActiveTextureUnit( _textureImageUnit );
+
+        // in FFP mode, we need to enable the GL mode for texturing:
+        if ( !pcp )
+            state.applyMode(GL_TEXTURE_2D, true);
+
         for(MPTexture::Passes::const_iterator p = _mptex->getPasses().begin();
             p != _mptex->getPasses().end();
             ++p)
         {
             const MPTexture::Pass& pass = *p;
 
-            state.setActiveTextureUnit( _textureImageUnit );
-
-            // in FFP mode, we need to enable the GL mode for texturing:
-            if ( !pcp ) //!_supportsGLSL)
+            if ( pass._layer->getVisible() && pass._layer->getOpacity() > 0.1 )
             {
-                state.applyMode(GL_TEXTURE_2D, true);
-            }
-
-            // Apply the texture.
-            pass._texture->apply( state );
+                // Apply the texture.
+                const osg::StateAttribute* lastTex = state.getLastAppliedTextureAttribute(_textureImageUnit, osg::StateAttribute::TEXTURE);
+                if ( lastTex != pass._texture.get() )
+                    pass._texture->apply( state );
             
-            // Apply the texture matrix.
-            ext->glUniformMatrix4fv( texMatrixLocation, 1, GL_FALSE, pass._matrix.ptr() );
+                // Apply the texture matrix.
+                ext->glUniformMatrix4fv( texMatrixLocation, 1, GL_FALSE, pass._matrix.ptr() );
             
-            // Order uniform (TODO: evaluate whether we still need this)
-            if ( orderLocation >= 0 )
-            {
-                ext->glUniform1i( orderLocation, (GLint)layersDrawn );
-            }
-
-            // assign the layer UID:
-            if ( uidLocation >= 0 )
-            {
-                ext->glUniform1i( uidLocation, (GLint)pass._layer->getUID() );
-            }
-
-            // apply opacity:
-            if ( opacityLocation >= 0 )
-            {
-                float opacity = pass._layer->getOpacity();
-                if ( opacity != prevOpacity )
+                // Order uniform (TODO: evaluate whether we still need this)
+                if ( orderLocation >= 0 )
                 {
-                    ext->glUniform1f( opacityLocation, (GLfloat)opacity );
-                    prevOpacity = opacity;
+                    ext->glUniform1i( orderLocation, (GLint)layersDrawn );
                 }
+
+                // assign the layer UID:
+                if ( uidLocation >= 0 )
+                {
+                    ext->glUniform1i( uidLocation, (GLint)pass._layer->getUID() );
+                }
+
+                // apply opacity:
+                if ( opacityLocation >= 0 )
+                {
+                    float opacity = pass._layer->getOpacity();
+                    if ( opacity != prevOpacity )
+                    {
+                        ext->glUniform1f( opacityLocation, (GLfloat)opacity );
+                        prevOpacity = opacity;
+                    }
+                }
+
+                _geom->getPrimitiveSet(0)->draw(state, true);
+
+                ++layersDrawn;
             }
-
-            _geom->getPrimitiveSet(0)->draw(state, true);
-
-            ++layersDrawn;
         }
     }
 

@@ -32,6 +32,7 @@ osg::Texture2D()
 void
 MPTexture::setLayer(const ImageLayer* layer, osg::Texture* tex)
 {
+    // If the layer already exists as a pass, update it
     for(Passes::iterator pass = _passes.begin(); pass != _passes.end(); ++pass)
     {
         if ( pass->_layer.get() == layer )
@@ -43,6 +44,7 @@ MPTexture::setLayer(const ImageLayer* layer, osg::Texture* tex)
         }
     }
 
+    // Layer didn't already exist; add it
     _passes.push_back(Pass());
     Pass& pass = _passes.back();
     pass._layer   = layer;
@@ -88,6 +90,7 @@ MPTexture::inheritState(MPTexture* parent, const osg::Matrixf& scaleBias)
                 {
                     if ( parentPass._layer.get() == j->_layer.get() && !j->_ownsTexture )
                     {
+                        j->_texture = parentPass._texture.get();
                         j->_matrix = parentPass._matrix;
                         j->_matrix.preMult( scaleBias );
                     }

@@ -153,12 +153,9 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                 TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
                 layerModel->setImageLayer( layer );
 
-                if ( geoImage.valid() )
-                {
-                    // made an image. Store as a texture with an identity matrix.
-                    osg::Texture* texture = createImageTexture(geoImage.getImage(), layer);
-                    layerModel->setTexture( texture );
-                }
+                // made an image. Store as a texture with an identity matrix.
+                osg::Texture* texture = createImageTexture(geoImage.getImage(), layer);
+                layerModel->setTexture( texture );
 
 #if 0 // TODO: figure this out in the engine
                 if ( geoImage.valid() )
@@ -173,7 +170,8 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
 
                 if ( layer->isShared() )
                     model->sharedLayers().push_back( layerModel );
-                else
+
+                if ( layer->getVisible() )
                     model->colorLayers().push_back( layerModel );
             }
         }

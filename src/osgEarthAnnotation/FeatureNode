@@ -43,7 +43,7 @@ namespace osgEarth { namespace Annotation
         META_AnnotationNode(osgEarthAnnotation, FeatureNode);
 
         /**
-         * Constructs a new Feautre Node.
+         * Constructs a new FeatureNode.
          */
         FeatureNode( 
             MapNode* mapNode, 

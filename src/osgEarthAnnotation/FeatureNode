@@ -67,6 +67,16 @@ namespace osgEarth { namespace Annotation
          */
         FeatureList& getFeatures() { return _features; };
 
+        /**
+         * Utility that lets you work on this FeatureNode as a single Feature instead of a list
+         */
+        Feature* getFeature();
+
+        /**
+         * Sets the contents of this FeatureNode to a single feature.
+         */
+        void setFeature(Feature* feature);
+
         void init();
 
     public: // AnnotationNode

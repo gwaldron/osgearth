@@ -149,11 +149,6 @@ namespace osgEarth { namespace Annotation
          */
         void setPie(const bool& pie);
 
-        /**
-         * Gets draped property
-         */
-        bool isDraped() const { return _draped; }
-
     public:
 
         EllipseNode(MapNode* mapNode, const Config& conf, const osgDB::Options* dbOptions);
@@ -172,7 +167,6 @@ namespace osgEarth { namespace Annotation
         void rebuild();
         
         Style _style;
-        bool _draped;
         Angle _rotationAngle;
         Distance _radiusMajor;
         Distance _radiusMinor;

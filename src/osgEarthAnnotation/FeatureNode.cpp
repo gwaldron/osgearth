@@ -230,6 +230,25 @@ FeatureNode::setStyle(const Style& style)
     init();
 }
 
+Feature* FeatureNode::getFeature()
+{
+    if (_features.size() == 1)
+    {
+        return _features.front();
+    }
+    return 0;
+}
+
+void FeatureNode::setFeature(Feature* feature)
+{
+    _features.clear();
+    if (feature)
+    {
+        _features.push_back( feature );
+    }
+    init();
+}
+
 osg::Group*
 FeatureNode::getAttachPoint()
 {

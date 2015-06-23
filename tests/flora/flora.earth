@@ -92,7 +92,7 @@ Press 'w' for wireframe mode to see the tessellation!
         
         <viewpoints>
             <viewpoint name="Oahu" heading="-0.316509rad" height="0.05537051614373922" lat="21.36485463831751" long="-157.8517958313442" pitch="-0.156294rad" range="2282.41m"/>
-            <viewpoint name="Hole" heading="1.43491rad" height="0.4415997806936503" lat="46.75834265041716" long="-121.94541301546" pitch="-0.208985rad" range="2770.04m"/>
+            <viewpoint name="POP" heading="-1.70304rad" height="1639.304918422364" lat="46.78673277044018" long="-121.7432863186334" pitch="-0.160356rad" range="175.906m"/>
             <viewpoint name="Washington" heading="-0.665597rad" height="3843.486738826148" lat="46.85515592197764" long="-121.745604227872" pitch="-0.0178488rad" range="168.262m"/>
             <viewpoint name="Boston" heading="-0.531961rad" height="1.1395663022995e-005" lat="42.3545651464811" long="-71.06809017885439" pitch="-0.274288rad" range="36.0636m"/>
             <viewpoint name="Mt R. Nadir 30K" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>

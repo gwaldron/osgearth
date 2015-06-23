@@ -78,6 +78,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             }
             return 0L;
         }
+        
+        static const SamplerBinding* findUID(const std::vector<SamplerBinding>& v, UID uid) {
+            for(int i=0; i<v.size(); ++i) {
+                if ( v[i].sourceUID().isSetTo(uid) )
+                    return &v[i];
+            }
+            return 0L;
+        }
     };
 
     typedef std::vector<SamplerBinding> RenderBindings;

@@ -340,6 +340,7 @@ TileDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
 {
     osg::Drawable::compileGLObjects( renderInfo );
 
+#if 0
     osg::State& state = *renderInfo.getState();
     unsigned contextID = state.getContextID();
 #if OSG_MIN_VERSION_REQUIRED(3,3,3)
@@ -355,6 +356,7 @@ TileDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
         if ( i->_tex.valid() )
             i->_tex->apply( state );
     }
+#endif
 
     if ( _geom.valid() )
     {

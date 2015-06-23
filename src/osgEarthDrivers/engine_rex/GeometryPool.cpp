@@ -208,10 +208,10 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
 
     // Pre-allocate enough space for all triangles.
-    osg::DrawElements* primSet = 
-        numVerts > 0xFFFF ? (osg::DrawElements*)(new osg::DrawElementsUInt(mode)) :
-        numVerts > 0xFF   ? (osg::DrawElements*)(new osg::DrawElementsUShort(mode)) :
-                            (osg::DrawElements*)(new osg::DrawElementsUByte(mode));
+    osg::DrawElements* primSet = new osg::DrawElementsUShort(mode);
+        //numVerts > 0xFFFF ? (osg::DrawElements*)(new osg::DrawElementsUInt(mode)) :
+        //numVerts > 0xFF   ? (osg::DrawElements*)(new osg::DrawElementsUShort(mode)) :
+        //                    (osg::DrawElements*)(new osg::DrawElementsUByte(mode));
 
     primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 

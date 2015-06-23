@@ -500,7 +500,7 @@ void RexTerrainEngineNode::buildSelectionInfo()
     _selectionInfo->uiLODForMorphing = 5;
 
     double fLodNear = 0;
-    double fLodFar = 38268824*5; 
+    double fLodFar = 38268824 * 2.5; //5; //*5; 
 
     float fRatio = 1.0;
     _selectionInfo->_fVisibilityRanges.resize(_selectionInfo->_numLods);
@@ -839,6 +839,7 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 _renderBindings.push_back( SamplerBinding() );
                 SamplerBinding& binding = _renderBindings.back();
 
+                //binding.usage()     = binding.MATERIAL; // ?... not COLOR at least
                 binding.sourceUID() = layerAdded->getUID();
                 binding.unit()      = unit.get();
 
@@ -847,10 +848,14 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 else
                     binding.samplerName() = Stringify() << "oe_layer_" << layerAdded->getUID() << "_tex";
 
+                OE_INFO << LC << " .. Sampler name \"" << binding.samplerName() << "\" in unit " << binding.unit() << "\n";
+
                 if ( layerAdded->shareTexMatUniformName().isSet() )
                     binding.matrixName() = layerAdded->shareTexMatUniformName().get();
                 else
                     binding.matrixName() = Stringify() << "oe_layer_ " << layerAdded->getUID() << "_texMatrix";
+                
+                OE_INFO << LC << " .. Matrix name \"" << binding.matrixName() << "\" in unit " << binding.unit() << "\n";
             }
         }
     }
@@ -932,7 +937,6 @@ RexTerrainEngineNode::updateState()
     {
         osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
         osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
-        //osg::StateSet* landCoverStateSet = getLandCoverStateSet();  // just the land cover
         
         // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
@@ -952,10 +956,11 @@ RexTerrainEngineNode::updateState()
         // install shaders, if we're using them.
         if ( Registry::capabilities().supportsGLSL() )
         {
+            Shaders package;
+
             VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
             terrainVP->setName( "Rex Terrain" );
-            
-            Shaders package;
+            package.loadFunction(terrainVP, package.VERT_MODEL);            
             
             bool useTerrainColor = _terrainOptions.color().isSet();
             package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);
@@ -971,8 +976,7 @@ RexTerrainEngineNode::updateState()
             VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
             surfaceVP->setName("Rex Surface");
 
-            // Functions that affect the terrain surface only:         
-            package.loadFunction(surfaceVP, package.VERT_MODEL);
+            // Functions that affect the terrain surface only:
             package.loadFunction(surfaceVP, package.VERT_VIEW);
             package.loadFunction(surfaceVP, package.FRAG);
 
@@ -982,8 +986,8 @@ RexTerrainEngineNode::updateState()
 
                 OE_INFO << LC << "Installing baseline shaders on land cover bin \"" << i->_name << "\"\n";
 
-                VirtualProgram* landCoverVP = VirtualProgram::getOrCreate(landCoverStateSet);
-                package.loadFunction(landCoverVP, package.VERT_MODEL);
+                //VirtualProgram* landCoverVP = VirtualProgram::getOrCreate(landCoverStateSet);
+                //package.loadFunction(landCoverVP, package.VERT_MODEL);
 
                 // enable alpha-to-coverage multisampling for vegetation.
                 landCoverStateSet->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
@@ -996,6 +1000,8 @@ RexTerrainEngineNode::updateState()
                 landCoverStateSet->setAttributeAndModes(
                     new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
                     osg::StateAttribute::OVERRIDE );
+
+                landCoverStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
             }
 
             // assemble color filter code snippets.
@@ -1068,6 +1074,7 @@ RexTerrainEngineNode::updateState()
                 if ( b->isActive() )
                 {
                     terrainStateSet->addUniform( new osg::Uniform(b->samplerName().c_str(), b->unit()) );
+                    OE_INFO << LC << "> Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
                 }
             }
 

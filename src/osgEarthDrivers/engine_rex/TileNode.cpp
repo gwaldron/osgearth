@@ -227,6 +227,8 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
         OE_INFO << LC <<"Traversing: "<<"\n";    
     }
 #endif
+    osgUtil::CullVisitor* cull = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
@@ -332,7 +334,6 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     }
 
     // Traverse land cover bins at this LOD.
-    osgUtil::CullVisitor* cull = dynamic_cast<osgUtil::CullVisitor*>( &nv );
     for(int i=0; i<context->landCoverBins()->size(); ++i)
     {
         const LandCoverBin& bin = context->landCoverBins()->at(i);
@@ -360,9 +361,10 @@ void TileNode::regularUpdate(osg::NodeVisitor& nv)
         }
     }
 
-    else if ( _surface.valid() )
+    else 
     {
         _surface->accept( nv );
+        //_landCover->accept( nv );
     }
 }
 
@@ -417,7 +419,7 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
     // This will inherit textures and use the proper sub-quadrant until new data arrives (later).
     for( RenderBindings::const_iterator binding = bindings.begin(); binding != bindings.end(); ++binding )
     {
-        if ( binding->usage() == binding->COLOR )
+        if ( binding->usage().isSetTo(binding->COLOR) )
         {
             if ( parent && parent->getStateSet() )
             {

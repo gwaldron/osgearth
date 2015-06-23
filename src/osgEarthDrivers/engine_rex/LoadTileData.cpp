@@ -145,16 +145,19 @@ LoadTileData::invoke()
                 ++i)
             {
                 TerrainTileImageLayerModel* layerModel = i->get();
-                int unit = layerModel->getImageLayer()->shareImageUnit().get();
-                if ( unit >= 0 && layerModel->getTexture() )
+                if ( layerModel->getTexture() )
                 {
-                    stateSet->setTextureAttribute(
-                        unit,
-                        layerModel->getTexture() );
+                    const SamplerBinding* binding = SamplerBinding::findUID(bindings, layerModel->getImageLayer()->getUID());
+                    if ( binding )
+                    {
+                        stateSet->setTextureAttribute(
+                            binding->unit(),
+                            layerModel->getTexture() );
 
-                    stateSet->addUniform(
-                        new osg::Uniform(layerModel->getImageLayer()->shareTexMatUniformName()->c_str(),
-                        osg::Matrixf::identity()));
+                        stateSet->addUniform(
+                            new osg::Uniform(binding->matrixName().c_str(),
+                            osg::Matrixf::identity()));
+                    }
                 }
             }
         }

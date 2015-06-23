@@ -481,16 +481,18 @@ namespace
                 double lat, lon;
                 GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
                 GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
-                double bearing = GeoMath::bearing(D2R*_lat1, D2R*_lon1, lat, lon);
+                double bearing = GeoMath::bearing(D2R*_lat0, D2R*_lon0, lat, lon);
 
                 float a = sin(t0*0.2);
                 bearing += a * 0.5 * osg::PI;
-                float pitch = a * 0.1 * osg::PI;
+                float pitch = 0.0; //a * 0.1 * osg::PI;
 
                 _xform->setPosition( p );
+
                 _pat->setAttitude(
                     osg::Quat(pitch, osg::Vec3d(1,0,0)) *
-                    osg::Quat(bearing, osg::Vec3d(0,0,1)));
+                    osg::Quat(bearing, osg::Vec3d(0,0,-1)));
+
                 _label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN )

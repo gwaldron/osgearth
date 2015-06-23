@@ -883,10 +883,12 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
         _setVP1 = vp;
 
         // If we're no longer going to be tethering, reset the tethering offset quat.
-        if ( !_setVP1->nodeIsSet() )
+        //if ( !_setVP1->nodeIsSet() )
         {
-            _tetherRotationOffset.unset();
-            _tetherRotation = osg::Quat();
+            //_tetherRotationOffset.unset();
+            //_tetherRotation = osg::Quat();
+            _tetherRotationVP0 = _tetherRotation;
+            _tetherRotationVP1 = osg::Quat();
         }
 
         // Fill in any missing end-point data with defaults matching the current camera setup.
@@ -1097,6 +1099,9 @@ EarthManipulator::setViewpointFrame(double time_s)
 
         // Activate.
         setLookAt( newCenter, newAzim, newPitch, newRange, newOffset );
+
+        // interpolate tether rotation:
+        _tetherRotation.slerp(tp, _tetherRotationVP0, _tetherRotationVP1);
 
         // At t=1 the transition is complete.
         if ( t >= 1.0 )
@@ -1972,12 +1977,21 @@ EarthManipulator::updateTether()
                 // Back out the tetheree's rotation, then discard all but the heading component:
                 osg::Matrixd localToFrame(L2W*osg::Matrixd::inverse( _centerLocalToWorld ));
                 double azim = atan2(-localToFrame(0,1),localToFrame(0,0));
+
                 newTetherRotation.makeRotate(-azim, 0.0, 0.0, 1.0);
+
+                newTetherRotation.slerp(t, _tetherRotationVP0, newTetherRotation);
+
+                //osg::Quat final;
+                //final.makeRotate(-azim, 0, 0, 1);
+                //newTetherRotation.slerp(t, osg::Quat(), final);
             
                 // Recalculate rotation to compensate, making for a smooth transition:
                 if ( !_tetherRotationOffset.isSet() )
                 {
-                    _tetherRotationOffset = newTetherRotation.inverse();
+                    //_tetherRotationOffset = newTetherRotation.inverse();
+                    //_tetherRotationOffset = osg::Quat();
+                    //_rotation = osg::Quat();
                 }
             }
 

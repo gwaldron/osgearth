@@ -773,6 +773,9 @@ namespace osgEarth { namespace Util
         // react to a tile-added event from the Terrain
         virtual void handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);
 
+        // returns the absoulte Euler angles composited from the composite rotation matrix.
+        void getCompositeEulerAngles( double* out_azim, double* out_pitch =0L ) const;
+
     protected:
 
         virtual ~EarthManipulator();
@@ -832,9 +835,6 @@ namespace osgEarth { namespace Util
 
         // returns the Euler Angles baked into _rotation, the local frame's rotation quaternion.
         void getEulerAngles(const osg::Quat& quat, double* azim, double* pitch) const;
-
-        // returns the Euler angles composited from _rotation and _tetherRotation.
-        void getCompositeEulerAngles( double* out_azim, double* out_pitch =0L ) const;
 
         // Makes a quaternion from an azimuth and pitch.
         osg::Quat getQuaternion(double azim, double pitch) const;
@@ -996,6 +996,9 @@ namespace osgEarth { namespace Util
         Duration                _setVPDuration;             // Transition time for setViewpoint
         double                  _setVPAccel, _setVPAccel2;  // Acceleration factors for setViewpoint
         double                  _setVPArcHeight;            // Altitude arcing height for setViewpoint
+
+        osg::Quat               _tetherRotationVP0;         // saves _tetherRotation at the start of a transition
+        osg::Quat               _tetherRotationVP1;         // target _tetherRotation if not tethered
 
         TetherMode              _lastTetherMode;
 

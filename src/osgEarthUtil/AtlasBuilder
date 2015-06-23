@@ -62,6 +62,12 @@ namespace osgEarth { namespace Util
         const std::vector<std::string>& auxFilePatterns() const { return _auxPatterns; }
         const std::vector<osg::Vec4f>& auxDefaultValues() const { return _auxDefaults; }
 
+        /**
+         * Whether to generate an RGB texture.  By default RGBA textures are created.
+         */
+        bool getRGB() const { return _rgb; }
+        void setRGB( bool rgb ) { _rgb = rgb; }
+
         /** Builds an atlas. */
         bool build(
             const osgEarth::Symbology::ResourceLibrary* input,
@@ -76,6 +82,7 @@ namespace osgEarth { namespace Util
         std::vector<std::string> _auxPatterns;
         std::vector<osg::Vec4f>  _auxDefaults;
         bool _debug;
+        bool _rgb;
     };
 
 } } // namespace osgEarth::Util

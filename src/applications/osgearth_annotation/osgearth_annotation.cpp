@@ -400,6 +400,73 @@ main(int argc, char** argv)
             editorGroup->addChild( new ImageOverlayEditor( imageOverlay ) );
         }
     }
+
+    /*
+    // Add a bunch of features as individual FeatureNodes.  This is slow.
+    {
+        // A lat/lon grid, showing lots of features as individual feature nodes
+        for (unsigned int i = 0; i < 360; i++)
+        {
+            for (unsigned int j = 0; j < 180; j++)
+            {
+                double w = -180.0 + (double)(i);
+                double e = w + 1.0;
+                double s = -90 + (double)(j);
+                double n = s + 1.0;
+
+                Geometry* geometry = new Polygon();
+                geometry->push_back( w, s );
+                geometry->push_back( e, s );
+                geometry->push_back( e, n );
+                geometry->push_back( w, n );
+                
+                Style style;
+                style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
+                style.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
+
+                Feature*     feature = new Feature(geometry, geoSRS, style);
+                FeatureNode* featureNode = new FeatureNode(mapNode, feature);
+                annoGroup->addChild( featureNode );
+            }
+        }
+    }
+    */
+
+    /*
+     // Add a bunch of features to a single FeatureNodes.  This is slow.
+    {
+        FeatureList features;
+
+        Style style;
+        style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
+        style.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
+
+        // A lat/lon grid, showing lots of features within a single FeatureNode
+        for (unsigned int i = 0; i < 360; i++)
+        {
+            for (unsigned int j = 0; j < 180; j++)
+            {
+                double w = -180.0 + (double)(i);
+                double e = w + 1.0;
+                double s = -90 + (double)(j);
+                double n = s + 1.0;
+
+                Geometry* geometry = new Polygon();
+                geometry->push_back( w, s );
+                geometry->push_back( e, s );
+                geometry->push_back( e, n );
+                geometry->push_back( w, n );
+
+                Feature*     feature = new Feature(geometry, geoSRS );
+                features.push_back( feature );
+            }
+        }
+
+        FeatureNode* featureNode = new FeatureNode( mapNode, features );
+        featureNode->setStyle( style );
+        annoGroup->addChild( featureNode );
+    }
+    */
     
     //--------------------------------------------------------------------
 

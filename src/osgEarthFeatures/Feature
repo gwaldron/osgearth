@@ -179,6 +179,13 @@ namespace osgEarth { namespace Features
          */
         bool getWorldBoundingPolytope( const SpatialReference* srs, osg::Polytope& out_polytope ) const;
 
+        /** 
+         * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
+         * world coordinates covered by the given bounding sphere. This is useful for roughly
+         * intersecting features with the terrain graph.
+         */
+        static bool getWorldBoundingPolytope( const osg::BoundingSphered& bs, const SpatialReference* srs, osg::Polytope& out_polytope );
+
 
         const AttributeTable& getAttrs() const { return _attrs; }
 

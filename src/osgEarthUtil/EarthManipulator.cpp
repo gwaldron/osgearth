@@ -1148,9 +1148,6 @@ EarthManipulator::setLookAt(const osg::Vec3d& center,
 void
 EarthManipulator::resetLookAt()
 {
-    // reset the distance, center, and pitch to legal values.
-    //collapseTetherRotationIntoRotation();
-
     double pitch;
     getEulerAngles( _rotation, 0L, &pitch );
 
@@ -1172,7 +1169,8 @@ EarthManipulator::resetLookAt()
     _viewOffset.set(0,0);
 
     _tetherRotation = osg::Quat();
-    _tetherRotationOffset.unset();
+    _tetherRotationVP0 = osg::Quat();
+    _tetherRotationVP1 = osg::Quat();
 }
 
 bool

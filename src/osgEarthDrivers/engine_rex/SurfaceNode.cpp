@@ -19,7 +19,6 @@
 #include "SurfaceNode"
 #include "GeometryPool"
 #include "TileDrawable"
-#include "SelectionInfo"
 
 #include <osgEarth/TileKey>
 
@@ -106,11 +105,9 @@ namespace
 //..............................................................
 
 SurfaceNode::SurfaceNode(const TileKey&        tilekey,
-                         const SelectionInfo&  selectionInfo,
                          const MapInfo&        mapinfo,
                          const RenderBindings& bindings,
                          TileDrawable*         drawable)
-                         : _selectionInfo(selectionInfo)
 {
     _tileKey = tilekey;
 

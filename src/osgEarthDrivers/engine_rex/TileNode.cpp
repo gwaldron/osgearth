@@ -79,7 +79,6 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     _surface = new SurfaceNode(
         key,
-        context->getSelectionInfo(),
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         surfaceDrawable );
@@ -95,7 +94,6 @@ TileNode::create(const TileKey& key, EngineContext* context)
     // PPP: Is this correct???
     _landCover = new SurfaceNode(
         key,
-        context->getSelectionInfo(),
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         patchDrawable );

@@ -669,7 +669,7 @@ TileNode::findExtrema(osg::Texture* tex, const osg::Matrix& m, osg::Vec2f& extre
         double t_span   = m(1,1) * (double)image->t();
 
         // if the window is smaller than one pixel, forget it.
-        if ( s_span < 1.0 || t_span < 1.0 )
+        if ( s_span < 4.0 || t_span < 4.0 )
             return false;
 
         ImageUtils::PixelReader read(image);

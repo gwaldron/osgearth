@@ -144,7 +144,8 @@ ImageLayerOptions::getConfig( bool isolate ) const
         Config filtersConf("color_filters");
         if ( ColorFilterRegistry::instance()->writeChain( _colorFilters, filtersConf ) )
         {
-            conf.add( filtersConf );
+            conf.update( filtersConf );
+            //conf.add( filtersConf );
         }
     }
 

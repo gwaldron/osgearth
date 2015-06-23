@@ -806,6 +806,12 @@ EarthManipulator::getRotation(const osg::Vec3d& point) const
     return osg::Matrixd::lookAt( point - (lookVector * offset), point, up);
 }
 
+osg::Quat
+EarthManipulator::computeCenterRotation(const osg::Vec3d& point) const
+{
+    return getRotation(point).getRotate().inverse();
+}
+
 
 Viewpoint
 EarthManipulator::getViewpoint() const
@@ -1120,7 +1126,7 @@ EarthManipulator::setLookAt(const osg::Vec3d& center,
     setDistance( range );
 
     _previousUp = getUpVector( _centerLocalToWorld );
-    _centerRotation = getRotation( center ).getRotate().inverse();
+    _centerRotation = computeCenterRotation( center ); //getRotation( center ).getRotate().inverse();
 
     _posOffset = posOffset;
 
@@ -1931,7 +1937,7 @@ EarthManipulator::updateTether()
         if ( !isSettingViewpoint() )
         {
             setCenter( osg::Vec3d(0,0,0) * L2W );
-            _centerRotation = makeCenterRotation(_center);
+            _centerRotation = computeCenterRotation(_center);
             _previousUp = getUpVector( _centerLocalToWorld );
         };
 
@@ -2245,7 +2251,7 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
     osg::Vec3d lookVector(- matrix(2,0),-matrix(2,1),-matrix(2,2));
     osg::Vec3d eye(matrix(3,0),matrix(3,1),matrix(3,2));
 
-    _centerRotation = makeCenterRotation(_center);
+    _centerRotation = computeCenterRotation(_center);
 
     osg::ref_ptr<osg::Node> safeNode = _node.get();
 
@@ -2268,7 +2274,7 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
     if (intersect(start_segment, end_segment, ip, normal))
     {
         setCenter( ip );
-        _centerRotation = makeCenterRotation(_center);
+        _centerRotation = computeCenterRotation(_center);
         setDistance( (eye-ip).length());
 
         osg::Matrixd rotation_matrix = osg::Matrixd::translate(0.0,0.0,-_distance)*
@@ -2288,7 +2294,7 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
         if (intersect(eye + eyeUp*distance, eye - eyeUp*distance, ip, normal))
         {
             setCenter( ip );
-            _centerRotation = makeCenterRotation(_center);
+            _centerRotation = computeCenterRotation(_center);
             setDistance((eye-ip).length());
             _rotation.set(0,0,0,1);
             hitFound = true;
@@ -2365,7 +2371,7 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
 
     osg::Matrixd rotation_matrix = osg::Matrixd::lookAt(eye,center,up);
 
-    _centerRotation = getRotation( _center ).getRotate().inverse();
+    _centerRotation = computeCenterRotation(_center);// getRotation( _center ).getRotate().inverse();
     _rotation = rotation_matrix.getRotate().inverse() * _centerRotation.inverse();	
     
     _previousUp = getUpVector(_centerLocalToWorld);
@@ -2385,7 +2391,7 @@ EarthManipulator::setByLookAtRaw(const osg::Vec3d& eye,const osg::Vec3d& center,
     setCenter( center );
 
     osg::Matrixd rotation_matrix = osg::Matrixd::lookAt(eye,center,up);
-    _centerRotation = getRotation(_center).getRotate().inverse();
+    _centerRotation = computeCenterRotation(_center); // getRotation(_center).getRotate().inverse();
     _rotation = rotation_matrix.getRotate().inverse() * _centerRotation.inverse();
     _previousUp = getUpVector(_centerLocalToWorld);
 
@@ -2458,8 +2464,6 @@ EarthManipulator::pan( double dx, double dy )
             return;
 
         double scale = -0.3f*_distance;
-        double old_azim;
-        getEulerAngles( _rotation, &old_azim, 0L );
 
         osg::Matrixd rotation_matrix;
         rotation_matrix.makeRotate( _rotation * _centerRotation  );
@@ -2482,15 +2486,22 @@ EarthManipulator::pan( double dx, double dy )
         // save the previous CF so we can do azimuth locking:
         osg::CoordinateFrame oldCenterLocalToWorld = _centerLocalToWorld;
 
-        // move the center point:
-        setCenter( _center + dv );
+        // move the center point, and ensure that it doesn't change length.
+        double len = _center.length();
+        osg::Vec3d newCenter = _center + dv;
+        newCenter.normalize();
+        newCenter *= len;
+        setCenter( newCenter );
 
-        // need to recompute the intersection point along the look vector.
-        osg::ref_ptr<osg::Node> safeNode;
-        if ( _node.lock(safeNode) )
+        if ( _settings->getLockAzimuthWhilePanning() )
         {
-            //recalculateCenter( oldCenterLocalToWorld );
-
+            // in azimuth-lock mode, _centerRotation maintains a consistent north vector
+            _centerRotation = computeCenterRotation( _center );
+        }
+        
+        else
+        {
+            // otherwise, we need to rotate _centerRotation manually.
             osg::Vec3d new_localUp = getUpVector( _centerLocalToWorld );
 
             osg::Quat pan_rotation;
@@ -2501,26 +2512,24 @@ EarthManipulator::pan( double dx, double dy )
                 _centerRotation = _centerRotation * pan_rotation;
                 _previousUp = new_localUp;
             }
+
+#if 0
             else
             {
                 //OE_DEBUG<<"New up orientation nearly inline - no need to rotate"<<std::endl;
             }
 
-            if ( _settings->getLockAzimuthWhilePanning() )
+            double new_azim;
+            getEulerAngles( _rotation, &new_azim, 0L );
+            double delta_azim = new_azim - old_azim;
+
+            osg::Quat q;
+            q.makeRotate( delta_azim, new_localUp );
+            if ( !q.zeroRotation() )
             {
-                double new_azim;
-                getEulerAngles( _rotation, &new_azim, 0L );
-
-                double delta_azim = new_azim - old_azim;
-                //OE_NOTICE << "DeltaAzim" << delta_azim << std::endl;
-
-                osg::Quat q;
-                q.makeRotate( delta_azim, new_localUp );
-                if ( !q.zeroRotation() )
-                {
-                    _centerRotation = _centerRotation * q;
-                }
+                _centerRotation = _centerRotation * q;
             }
+#endif
         }
 
         //recalculateLocalPitchAndAzimuth();
@@ -3258,7 +3267,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         // manipulator parameters.
         osg::Matrixd Mmanip = osg::Matrixd::translate(-_viewOffset.x(), -_viewOffset.y(), -_distance) * viewMatInv;
         osg::Vec3d center = Mmanip.getTrans();
-        osg::Quat centerRotation = makeCenterRotation(center);
+        osg::Quat centerRotation = computeCenterRotation(center);
         osg::Matrixd Mrotation = (Mmanip * osg::Matrixd::translate(center * -1)
                              * osg::Matrixd::rotate(centerRotation.inverse()));
         osg::Matrixd Me = osg::Matrixd::rotate(centerRotation)
@@ -3367,7 +3376,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
             _rotation = headMat.getRotate();
             //recalculateLocalPitchAndAzimuth();
         }
-        _centerRotation = makeCenterRotation(_center);
+        _centerRotation = computeCenterRotation(_center);
 
         _previousUp = getUpVector(_centerLocalToWorld);
     }

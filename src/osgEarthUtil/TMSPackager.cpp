@@ -66,7 +66,9 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
 
     // Don't write out a new file if we're not overwriting
     if (osgDB::fileExists(path) && !_packager->getOverwrite())
+    {
         return true;
+    }
 
     // attempt to create the output folder:        
     osgEarth::makeDirectoryForFile( path );       
@@ -370,17 +372,9 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
     {
         // We must use tif no matter what with elevation layers.  It's the only format that currently can read/write single band imagery.
         _extension = "tif";
-        GeoHeightField testHF;
-        for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testHF.valid(); ++i )
-        {
-            testHF = elevationLayer->createHeightField( *i );
-        }
-
-        if (testHF.valid())
-        {
-            _width = testHF.getHeightField()->getNumColumns();
-            _height = testHF.getHeightField()->getNumRows();
-        }
+        int tileSize = elevationLayer->getTileSize();
+        _width = tileSize;
+        _height = tileSize;
     }
 
 

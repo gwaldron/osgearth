@@ -49,8 +49,9 @@ FeatureNode::FeatureNode(MapNode* mapNode,
                          const Style& style,
                          const GeometryCompilerOptions& options ) :
 AnnotationNode( mapNode ),
-_style( style ),
-_options      ( options )
+_style        ( style ),
+_options      ( options ),
+_needsRebuild (true)
 {
     if (_style.empty() && feature->style().isSet())
     {
@@ -58,7 +59,7 @@ _options      ( options )
     }
 
     _features.push_back( feature );
-    init();
+    build();
 }
 
 FeatureNode::FeatureNode(MapNode* mapNode, 
@@ -66,16 +67,17 @@ FeatureNode::FeatureNode(MapNode* mapNode,
                          const Style& style,
                          const GeometryCompilerOptions& options):
 AnnotationNode( mapNode ),
-_style( style ),
-_options      ( options )
+_style        ( style ),
+_options      ( options ),
+_needsRebuild (true)
 {
     _features.insert( _features.end(), features.begin(), features.end() );
-    init();
+    build();
 }
 
 
 void
-FeatureNode::init()
+FeatureNode::build()
 {
     // if there's a decoration, clear it out first.
     this->clearDecoration();
@@ -109,34 +111,54 @@ FeatureNode::init()
 
   
 
-    // Clone the Features before rendering as the GeometryCompiler and it's filters can change the coordinates
-    // of the geometry when performing localization or converting to geocentric.
-    GeoExtent extent;
+    
 
-    FeatureList clone;
-    for(FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+    osg::Node* node = _compiled.get();
+    if (_needsRebuild || !_compiled.valid() )
     {
-        Feature* feature = new Feature( *itr->get(), osg::CopyOp::DEEP_COPY_ALL);
-        GeoExtent featureExtent(feature->getSRS(), feature->getGeometry()->getBounds());
+        // Clone the Features before rendering as the GeometryCompiler and it's filters can change the coordinates
+        // of the geometry when performing localization or converting to geocentric.
+        GeoExtent extent;
 
-        if (extent.isInvalid())
+        FeatureList clone;
+        for(FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
         {
-            extent = featureExtent;
+            Feature* feature = new Feature( *itr->get(), osg::CopyOp::DEEP_COPY_ALL);
+            GeoExtent featureExtent(feature->getSRS(), feature->getGeometry()->getBounds());
+
+            if (extent.isInvalid())
+            {
+                extent = featureExtent;
+            }
+            else
+            {
+                extent.expandToInclude( featureExtent );
+            }
+            clone.push_back( feature );
         }
-        else
+
+        // prep the compiler:
+        GeometryCompiler compiler( options );
+        Session* session = new Session( getMapNode()->getMap() );
+
+        FilterContext context( session, new FeatureProfile( extent ), extent );
+
+        _compiled = compiler.compile( clone, style, context );
+        node = _compiled.get();
+        _needsRebuild = false;
+
+        // Compute the world bounds
+        osg::BoundingSphered bounds;
+        for( FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
         {
-            extent.expandToInclude( featureExtent );
+            osg::BoundingSphered bs;
+            itr->get()->getWorldBound(getMapNode()->getMapSRS(), bs);
+            bounds.expandBy(bs);
         }
-        clone.push_back( feature );
+        // The polytope will ensure we only clamp to intersecting tiles:
+        Feature::getWorldBoundingPolytope(bounds, getMapNode()->getMapSRS(), _featurePolytope);
+
     }
-
-      // prep the compiler:
-    GeometryCompiler compiler( options );
-    Session* session = new Session( getMapNode()->getMap() );
-
-    FilterContext context( session, new FeatureProfile( extent ), extent );
-
-    osg::Node* node = compiler.compile( clone, style, context );
 
     if ( node )
     {
@@ -183,16 +205,6 @@ FeatureNode::init()
                 // save for later when we need to reclamp the mesh on the CPU
                 _altitude = style.get<AltitudeSymbol>();
 
-                osg::BoundingSphered bounds;
-                for( FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
-                {
-                    osg::BoundingSphered bs;
-                    itr->get()->getWorldBound(getMapNode()->getMapSRS(), bs);
-                    bounds.expandBy(bs);
-                }
-                // The polytope will ensure we only clamp to intersecting tiles:
-                Feature::getWorldBoundingPolytope(bounds, getMapNode()->getMapSRS(), _featurePolytope);
-
                 // activate the terrain callback:
                 setCPUAutoClamping( true );
 
@@ -214,7 +226,8 @@ FeatureNode::setMapNode( MapNode* mapNode )
     if ( getMapNode() != mapNode )
     {
         AnnotationNode::setMapNode( mapNode );
-        init();
+        _needsRebuild = true;
+        build();
     }
 }
 
@@ -226,8 +239,23 @@ const Style& FeatureNode::getStyle() const
 void
 FeatureNode::setStyle(const Style& style)
 {
+    // Try to compare the styles and see if we can get away with not compiling the geometry again.
+    Style a = _style;
+    Style b = style;
+   
+    // If the only thing that has changed is the AltitudeSymbol, we don't need to worry about rebuilding the entire geometry again.
+    a.remove<AltitudeSymbol>();
+    b.remove<AltitudeSymbol>();
+    if (a.getConfig().toJSON() == b.getConfig().toJSON())
+    {
+        _needsRebuild = false;
+    }
+    else
+    {
+        _needsRebuild = true;
+    }
     _style = style;
-    init();
+    build();
 }
 
 Feature* FeatureNode::getFeature()
@@ -246,7 +274,14 @@ void FeatureNode::setFeature(Feature* feature)
     {
         _features.push_back( feature );
     }
-    init();
+    _needsRebuild = true;
+    build();
+}
+
+void FeatureNode::init()
+{
+    _needsRebuild = true;
+    build();
 }
 
 osg::Group*
@@ -337,7 +372,7 @@ AnnotationNode( mapNode, conf )
         conf.getIfSet( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
 
         _features.push_back( feature );
-        init();
+        build();
     }
 }
 

@@ -23,6 +23,9 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/ObjectIndex>
 
+#include <osgDB/WriteFile>
+#include <osg/BlendFunc>
+
 using namespace osgEarth;
 
 #define LC "[RTTPicker] "
@@ -34,16 +37,15 @@ namespace
     const char* pickVertexEncode =
         "#version 130\n"
 
-        "#pragma vp_entryPoint \"oe_pick_vert_encode\" \n"
+        "#pragma vp_entryPoint \"oe_pick_encodeObjectID\" \n"
         "#pragma vp_location   \"vertex_clip\" \n"
-        "#pragma vp_order      \"FLT_MAX\" \n"
         
-        "uint oe_index_objectid; \n"                        // Stage global containing the Object ID.
+        "uint oe_index_objectid; \n"                        // Vertex stage global containing the Object ID; set in ObjectIndex shader.
 
         "flat out vec4 oe_pick_encoded_objectid; \n"        // output encoded oid to fragment shader
         "flat out int  oe_pick_color_contains_objectid; \n" // whether color already contains oid (written by another RTT camera)
 
-        "void oe_pick_vert_encode(inout vec4 vertex) \n"
+        "void oe_pick_encodeObjectID(inout vec4 vertex) \n"
         "{ \n"
         "    oe_pick_color_contains_objectid = (oe_index_objectid == 1u) ? 1 : 0; \n"
         "    if ( oe_pick_color_contains_objectid == 0 ) \n"
@@ -52,22 +54,23 @@ namespace
         "        float b1 = float((oe_index_objectid & 0x00ff0000u) >> 16u); \n"
         "        float b2 = float((oe_index_objectid & 0x0000ff00u) >> 8u ); \n"
         "        float b3 = float((oe_index_objectid & 0x000000ffu)       ); \n"
-        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3) * 0.00392156862; \n" // i.e. 1/255
+        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3) * 0.00392156862; \n" // i.e. 1/2558
         "    } \n"
         "} \n";
 
     const char* pickFragment =
         "#version 130\n"
 
-        "#pragma vp_entryPoint \"oe_pick_frag\" \n"
+        "#pragma vp_entryPoint \"oe_pick_renderEncodedObjectID\" \n"
         "#pragma vp_location   \"fragment_output\" \n"
+        "#pragma vp_order      \"last\" \n"
 
         "flat in vec4 oe_pick_encoded_objectid; \n"
         "flat in int  oe_pick_color_contains_objectid; \n"
         
         "out vec4 fragColor; \n"
 
-        "void oe_pick_frag(inout vec4 color) \n"
+        "void oe_pick_renderEncodedObjectID(inout vec4 color) \n"
         "{ \n"
         "    if ( oe_pick_color_contains_objectid == 1 ) \n"
         "        fragColor = color; \n"
@@ -173,6 +176,10 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     rttSS->setMode(GL_BLEND,     disable );    
     rttSS->setMode(GL_LIGHTING,  disable );
     rttSS->setMode(GL_CULL_FACE, disable );
+    
+    // Disabling GL_BLEND is not enough, because osg::Text re-enables it
+    // without regard for the OVERRIDE.
+    rttSS->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO), osg::StateAttribute::OVERRIDE);
 
     // install the picking shaders:
     VirtualProgram* vp = createRTTProgram();
@@ -345,10 +352,14 @@ RTTPicker::checkForPickResult(Pick& pick)
     osg::Image* image = pick._context->_image.get();
     ImageUtils::PixelReader read( image );
 
+    // uncomment to see the RTT image.
+    //osgDB::writeImageFile(*image, "out.png");
+
+    osg::Vec4f value;
     SpiralIterator iter(image->s(), image->t(), std::max(_buffer,1), pick._u, pick._v);
     while(iter.next())
     {
-        osg::Vec4f value = read(iter.s(), iter.t());
+        value = read(iter.s(), iter.t());
 
         ObjectID id = (ObjectID)(
             ((unsigned)(value.r()*255.0) << 24) +

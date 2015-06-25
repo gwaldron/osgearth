@@ -282,7 +282,7 @@ namespace osgEarth
     public:
         typedef std::vector< osg::ref_ptr<osg::Shader> > ShaderVector;
 
-    public:
+    public:        
         struct ShaderEntry
         {
             ShaderEntry();
@@ -299,10 +299,12 @@ namespace osgEarth
             unsigned                   _frameLastUsed;
         };
 
-        typedef std::map< std::string, ShaderEntry > ShaderMap;
-        typedef std::map< std::string, std::string > AttribAliasMap;
+        typedef unsigned                              ShaderID;
+        typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
+        typedef std::map< std::string, std::string >  AttribAliasMap;
         typedef std::pair< std::string, std::string > AttribAlias;
-        typedef std::vector< AttribAlias > AttribAliasVector;
+        typedef std::vector< AttribAlias >            AttribAliasVector;
+
         typedef osgEarth::fast_map< ShaderVector, ProgramEntry > ProgramMap;
         typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
         typedef std::vector< AttributePair > AttrStack;
@@ -320,8 +322,11 @@ namespace osgEarth
         // thread-safe functions map getter
         void getFunctions( ShaderComp::FunctionLocationMap& out ) const;
 
-        // thread-safe shader map getter
+        // thread-safe shader map copy
         void getShaderMap( ShaderMap& out ) const;
+
+        // thread-safe shader accumulator
+        void addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap, const osg::State& state) const;
 
     protected:
         // holds "template" data that should be installed in every auto-generated
@@ -340,14 +345,24 @@ namespace osgEarth
         // _dataModelMutex protects access to this member.
         ShaderMap _shaderMap;
 
+        // per-context cached shader map for thread-safe reuse without constant reallocation.
+        struct ApplyVars
+        {
+            ShaderMap         accumShaderMap;
+            ShaderVector      keyVector;
+            AttribBindingList accumAttribBindings;
+            AttribAliasMap    accumAttribAliases;
+        };
+        mutable osg::buffered_object<ApplyVars> _apply;
+
         // protects access to the data members, which may be accessed by other VPs in the state stack.
-        mutable Threading::ReadWriteMutex _dataModelMutex;
+        mutable Threading::Mutex _dataModelMutex;
 
         // The program cache holds an osg::Program instance for each collection of shaders
         // that comprises this VP. There can be multiple programs in the cache if the VP is
         // shared in the scene graph.
-        mutable ProgramMap                _programCache;
-        mutable Threading::ReadWriteMutex _programCacheMutex;
+        mutable ProgramMap       _programCache;
+        mutable Threading::Mutex _programCacheMutex;
 
         mutable optional<bool> _active;
         bool _inherit;

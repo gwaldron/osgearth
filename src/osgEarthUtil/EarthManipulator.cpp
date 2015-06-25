@@ -2498,11 +2498,16 @@ EarthManipulator::pan( double dx, double dy )
         // save the previous CF so we can do azimuth locking:
         osg::CoordinateFrame oldCenterLocalToWorld = _centerLocalToWorld;
 
-        // move the center point, and ensure that it doesn't change length.
+        // move the center point
         double len = _center.length();
         osg::Vec3d newCenter = _center + dv;
-        newCenter.normalize();
-        newCenter *= len;
+
+        if ( _srs->isGeographic() )
+        {
+            // in geocentric, ensure that it doesn't change length.
+            newCenter.normalize();
+            newCenter *= len;
+        }
         setCenter( newCenter );
 
         if ( _settings->getLockAzimuthWhilePanning() )

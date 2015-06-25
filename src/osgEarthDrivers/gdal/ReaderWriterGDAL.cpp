@@ -1633,10 +1633,6 @@ public:
         if (v < getNoDataMinValue()) return false;
         if (v > getNoDataMaxValue()) return false;
 
-        //Check within a sensible range
-        if (v < -32000) return false;
-        if (v > 32000) return false;
-
         return true;
     }
 
@@ -2067,13 +2063,13 @@ public:
                 for (unsigned int r = 0; r < target_height; r++)
                 {
                     unsigned inv_r = target_height - r -1;
-                    // We multiply by the linear units to get meters.
-                    float h = heights[r * target_width + c] * _linearUnits;
+                    float h = heights[r * target_width + c];
                     // Mark the value as nodata using the universal NO_DATA_VALUE marker.
                     if (!isValidValue( h, band ) )
                     {
                         h = NO_DATA_VALUE;
                     }
+
                     readHF->setHeight(c, inv_r, h );
                 }
             }
@@ -2101,6 +2097,11 @@ public:
                     if (readGeoHeightField.getExtent().contains(geoX, geoY))
                     {
                         h = getHeightAtLocation( readGeoHeightField, geoX, geoY, *_options.interpolation() );
+                    }
+                    if (h != NO_DATA_VALUE)
+                    {
+                        // We multiply by the linear units to get meters.
+                        h *= _linearUnits;
                     }
                     hf->setHeight(c, r, h);
                 }

@@ -1629,10 +1629,6 @@ public:
         if (v < getNoDataMinValue()) return false;
         if (v > getNoDataMaxValue()) return false;
 
-        //Check within a sensible range
-        if (v < -32000) return false;
-        if (v > 32000) return false;
-
         return true;
     }
 

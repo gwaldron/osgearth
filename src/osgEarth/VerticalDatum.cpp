@@ -102,7 +102,7 @@ VerticalDatum::transform(const VerticalDatum* from,
     }
 
     Units fromUnits = from ? from->getUnits() : Units::METERS;
-    Units toUnits = to ? to->getUnits() : fromUnits;
+    Units toUnits = to ? to->getUnits() : Units::METERS;
 
     in_out_z = fromUnits.convertTo(toUnits, in_out_z);
 

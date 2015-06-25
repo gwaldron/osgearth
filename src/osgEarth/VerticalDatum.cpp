@@ -161,7 +161,10 @@ VerticalDatum::transform(const VerticalDatum* from,
         {
             double lat = sw.y() + ystep*double(r);
             float& h = hf->getHeight(c, r);
-            VerticalDatum::transform( from, to, lat, lon, h );
+            if (h != NO_DATA_VALUE)
+            {
+                VerticalDatum::transform( from, to, lat, lon, h );
+            }
         }
     }
 

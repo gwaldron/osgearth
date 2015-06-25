@@ -628,7 +628,8 @@ public:
       _srcDS(NULL),
       _warpedDS(NULL),
       _options(options),
-      _maxDataLevel(30)
+      _maxDataLevel(30),
+      _linearUnits(1.0)
     {
     }
 
@@ -937,6 +938,9 @@ public:
             }
         }
 
+        // Get the linear units so we can transform elevation values to meters.
+        _linearUnits = OSRGetLinearUnits( src_srs->getHandle(), 0 );
+      
         //Get the initial geotransform
         _srcDS->GetGeoTransform(_geotransform);
 
@@ -1629,6 +1633,10 @@ public:
         if (v < getNoDataMinValue()) return false;
         if (v > getNoDataMaxValue()) return false;
 
+        //Check within a sensible range
+        if (v < -32000) return false;
+        if (v > 32000) return false;
+
         return true;
     }
 
@@ -2059,7 +2067,8 @@ public:
                 for (unsigned int r = 0; r < target_height; r++)
                 {
                     unsigned inv_r = target_height - r -1;
-                    float h = heights[r * target_width + c];
+                    // We multiply by the linear units to get meters.
+                    float h = heights[r * target_width + c] * _linearUnits;
                     // Mark the value as nodata using the universal NO_DATA_VALUE marker.
                     if (!isValidValue( h, band ) )
                     {
@@ -2116,6 +2125,8 @@ private:
     GDALDataset* _warpedDS;
     double       _geotransform[6];
     double       _invtransform[6];
+
+    double       _linearUnits;
 
     GeoExtent _extents;
 

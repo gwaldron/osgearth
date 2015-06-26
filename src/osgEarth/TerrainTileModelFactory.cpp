@@ -154,7 +154,12 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                 layerModel->setImageLayer( layer );
 
                 // made an image. Store as a texture with an identity matrix.
-                osg::Texture* texture = createImageTexture(geoImage.getImage(), layer);
+                osg::Texture* texture;
+                if ( layer->isCoverage() )
+                    texture = createCoverageTexture(geoImage.getImage(), layer);
+                else
+                    texture = createImageTexture(geoImage.getImage(), layer);
+
                 layerModel->setTexture( texture );
 
 #if 0 // TODO: figure this out in the engine
@@ -339,7 +344,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
 
     tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
-    tex->setResizeNonPowerOfTwoHint(true); //false);
+    tex->setResizeNonPowerOfTwoHint(false);
 
     osg::Texture::FilterMode magFilter = 
         layer ? layer->getImageLayerOptions().magFilter().get() : osg::Texture::LINEAR;
@@ -355,6 +360,28 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
     {
         tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     }    
+
+    const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
+    if ( unRefPolicy.isSet() )
+        tex->setUnRefImageDataAfterApply( unRefPolicy.get() );
+
+    return tex;
+}
+
+osg::Texture*
+TerrainTileModelFactory::createCoverageTexture(osg::Image*       image,
+                                               const ImageLayer* layer) const
+{
+    osg::Texture2D* tex = new osg::Texture2D( image );
+
+    tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+    tex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );
+    tex->setResizeNonPowerOfTwoHint(false);
+
+    tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
+    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+
+    tex->setMaxAnisotropy( 1.0f );
 
     const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
     if ( unRefPolicy.isSet() )

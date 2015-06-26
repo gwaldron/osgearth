@@ -29,35 +29,24 @@ Press 'w' for wireframe mode to see the tessellation!
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-
-    <!--
-    <image name="BostonParks" driver="agglite" shared="true" visible="true">
-      <features driver="ogr">
-        <url>../../data/boston-parks.shp</url>
-      </features>
-      <styles>
-        <style type="text/css">
-          default {
-          fill:       #ff0000ff;
-          }
-        </style>
-      </styles>
-      <cache_policy usage="no_cache"/>
-      <shared_sampler>park_coverage_tex</shared_sampler>
-      <shared_matrix>park_coverage_tex_matrix</shared_matrix>
-    </image>
-    -->
+    
+    <image name="landcover" driver="agglite" shared="true" coverage="true" visible="false" min_level="11" max_data_level="11">
+        <features driver="ogr" url="H:/data/usgs/landcover/wa.shp" build_spatial_index="true"/>
+        <styles>
+            <style type="text/css">
+                default {                    
+                    coverage-value: [LUCODE];
+                }
+            </style>
+        </styles>
+       <shared_sampler>landUseTex</shared_sampler>
+       <shared_matrix>landUseTexMatrix</shared_matrix>
+       <cache_policy usage="no_cache"/>
+   </image>
 
   <extensions> 
       
-      <normalmap/> 
-      
-      <bumpmap>
-          <image>../../data/rock_hard.jpg</image>
-          <base_lod>13</base_lod>
-          <octaves>16</octaves>
-      </bumpmap>
-          
+      <normalmap/>          
       
       <terrainshader land_cover_group="grass" land_cover_lod="22">
           <code url="GrassTES.glsl" />
@@ -80,7 +69,7 @@ Press 'w' for wireframe mode to see the tessellation!
           <code url="GrassTCS.glsl" />
           <code url="GrassGS.glsl" />
           <code url="GrassFS.glsl" />
-          <sampler name="oe_grass_tex" url="cypress.png"/>
+          <sampler name="oe_grass_tex" url="H:/data/flora/PlantData/Abies_grandis__grand_fir01_256_3310_6000.png"/>
           <uniform name="oe_grass_width"       value="15.0"/>
           <uniform name="oe_grass_height"      value="13.0"/>
           <uniform name="oe_grass_maxDistance" value="7000.0"/>

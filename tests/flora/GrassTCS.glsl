@@ -13,7 +13,7 @@ uniform sampler2D floraColor;
 uniform mat4      floraMatrix;
 
 
-//#define USE_LAND_USE
+#define USE_LAND_USE
 
 #ifdef USE_LAND_USE
 uniform sampler2D landUseTex;
@@ -21,13 +21,7 @@ uniform mat4      landUseTexMatrix;
 
 float getLandUseCode()
 {
-    const float minValue = -8192.0;
-    const float maxValue =  8192.0;                    
-    const vec4 decoderRing = vec4(1.00392156, 1.00392156/255.0, 1.00392156/(255.0*255.0), 1.00392156/(255.0*255.0*255.0));
-    
-    vec4 texel = texture(landUseTex, (landUseTexMatrix * oe_layer_tilec).st);
-    float value = dot(texel, decoderRing);
-    return minValue + value*(maxValue-minValue);
+    return textureLod(landUseTex, (landUseTexMatrix * oe_layer_tilec).st, 0).r;
 }
 #endif
 

@@ -7,23 +7,53 @@ layout(vertices = 3) out;
 
 uniform float oe_grass_density = 1.0;
 
+in vec4 oe_layer_tilec;
+
 uniform sampler2D floraColor;
 uniform mat4      floraMatrix;
 
-in vec4 oe_layer_tilec;
+
+//#define USE_LAND_USE
+
+#ifdef USE_LAND_USE
+uniform sampler2D landUseTex;
+uniform mat4      landUseTexMatrix;
+
+float getLandUseCode()
+{
+    const float minValue = -8192.0;
+    const float maxValue =  8192.0;                    
+    const vec4 decoderRing = vec4(1.00392156, 1.00392156/255.0, 1.00392156/(255.0*255.0), 1.00392156/(255.0*255.0*255.0));
+    
+    vec4 texel = texture(landUseTex, (landUseTexMatrix * oe_layer_tilec).st);
+    float value = dot(texel, decoderRing);
+    return minValue + value*(maxValue-minValue);
+}
+#endif
+
 
 const mat3 toYUV = mat3(0.299, 0.587, 0.114, -0.14713, -0.28886, 0.436, 0.615, -0.51499, -0.10001);
 
 uniform float oe_grass_coverage;
+
                 
 void oe_grass_configureTess()
 {
 	if (gl_InvocationID == 0)
 	{
-        // Try to see how "green" the ground is, and threshold the flora based on that
-        vec3 green = toYUV * vec3(0,1,0);
-        vec3 color = toYUV * texture(floraColor, (floraMatrix*oe_layer_tilec).st).rgb;
-        float d = distance(color, green);
+        float d;
+        
+#ifdef USE_LAND_USE    
+        d = 2.0;
+        float code = getLandUseCode();
+        if ( code >= 40.0 && code < 50 )
+#endif
+        {
+            // Try to see how "green" the ground is, and threshold the flora based on that
+            vec3 green = toYUV * vec3(0,1,0);
+            vec3 color = toYUV * texture(floraColor, (floraMatrix*oe_layer_tilec).st).rgb;
+            d = distance(color, green);
+        }
         
         if ( d <= oe_grass_coverage )
         {

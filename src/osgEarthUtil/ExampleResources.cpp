@@ -484,12 +484,18 @@ MapNodeHelper::parse(MapNode*             mapNode,
     bool useLogDepth2  = args.read("--logdepth2");
     bool kmlUI         = args.read("--kmlui");
     bool inspect       = args.read("--inspect");
+    bool dumpShaders   = args.read("--dump-shaders");
 
     if (args.read("--verbose"))
         osgEarth::setNotifyLevel(osg::INFO);
     
     if (args.read("--quiet"))
         osgEarth::setNotifyLevel(osg::FATAL);
+
+    if (dumpShaders)
+    {
+
+    }
 
     float ambientBrightness = 0.2f;
     args.read("--ambientBrightness", ambientBrightness);

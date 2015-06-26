@@ -2,5 +2,5 @@
 osgearth_viewer flora.earth ^
     --logdepth ^
     --sky ^
-    --uniform oe_grass_threshold 0.5 1.0 ^
+    --uniform oe_grass_coverage 0.4 1.0 ^
     %*

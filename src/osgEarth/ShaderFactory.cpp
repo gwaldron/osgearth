@@ -151,7 +151,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     // parse the vp_varyings (which were injected by the ShaderLoader)
     for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
     {
-        osg::Shader* shader = s->second._shader->getNominalShader();
+        osg::Shader* shader = s->data()._shader->getNominalShader();
         if ( shader )
         {
             ShaderLoader::getAllQuotedPragmaValues(shader->getShaderSource(), "vp_varying", varDefs);

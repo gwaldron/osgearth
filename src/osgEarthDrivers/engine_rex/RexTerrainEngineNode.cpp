@@ -81,7 +81,6 @@ namespace
             this->setName( "oe.SurfaceBin" );
             this->setStateSet( new osg::StateSet() );
             this->setSortMode(SORT_FRONT_TO_BACK);
-            OE_NOTICE << getName() << "ctor\n";
         }
 
         osg::Object* clone(const osg::CopyOp& copyop) const
@@ -116,15 +115,6 @@ namespace
             osgUtil::RenderBin(rhs, copy)
         {
         }
-
-        //void sort()
-        //{
-        //    osgUtil::RenderBin::sort();
-        //    if ( getRenderLeafList().size() > 0 )
-        //    {
-        //        OE_NOTICE << LC << "LC Drawables = " << getRenderLeafList().size() << "\n";
-        //    }
-        //}
     };
 }
 
@@ -643,6 +633,15 @@ namespace
 
 
 void
+RexTerrainEngineNode::dirtyState()
+{
+    // TODO: perhaps defer this until the next update traversal so we don't 
+    // reinitialize the state multiple times unnecessarily. 
+    updateState();
+}
+
+
+void
 RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR && _quickReleaseInstalled == false )
@@ -984,11 +983,6 @@ RexTerrainEngineNode::updateState()
             {
                 osg::StateSet* landCoverStateSet = i->_binProto->getStateSet();
 
-                OE_INFO << LC << "Installing baseline shaders on land cover bin \"" << i->_name << "\"\n";
-
-                //VirtualProgram* landCoverVP = VirtualProgram::getOrCreate(landCoverStateSet);
-                //package.loadFunction(landCoverVP, package.VERT_MODEL);
-
                 // enable alpha-to-coverage multisampling for vegetation.
                 landCoverStateSet->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
 
@@ -1069,12 +1063,16 @@ RexTerrainEngineNode::updateState()
             }
 
             // Apply uniforms for sampler bindings:
+            OE_DEBUG << LC << "Render Bindings:\n";
             for(RenderBindings::const_iterator b = _renderBindings.begin(); b != _renderBindings.end(); ++b)
             {
                 if ( b->isActive() )
                 {
                     terrainStateSet->addUniform( new osg::Uniform(b->samplerName().c_str(), b->unit()) );
-                    OE_INFO << LC << "> Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
+                    OE_DEBUG << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
+
+                    // Not needed I think
+                    //terrainStateSet->addUniform( new osg::Uniform(b->matrixName().c_str(), osg::Matrixf()) );
                 }
             }
 

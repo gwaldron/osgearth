@@ -239,7 +239,7 @@ public:
             unsigned int tileY = key.getTileY();
             unsigned int level = key.getLevelOfDetail();
             
-#if 1
+#if 0
             unsigned int numRows, numCols;
             key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
             tileY  = numRows - tileY - 1;

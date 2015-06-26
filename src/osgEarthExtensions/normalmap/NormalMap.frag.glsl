@@ -1,28 +1,24 @@
 #version 330 compatibility
 
-#pragma vp_entryPoint "oe_nmap_fragment"
+#pragma vp_entryPoint "oe_NormalMap_fragment"
 #pragma vp_location   "fragment_coloring"
 #pragma vp_order      "0.2"
 
 in vec3 vp_Normal;
 
-uniform vec4 oe_tile_key;
 uniform sampler2D oe_tile_normalTex;
 
-in vec4 oe_nmap_normalCoords;
-flat in vec3 oe_nmap_T;
-flat in vec3 oe_nmap_N;
+in vec2 oe_NormalMap_coords;
+flat in mat3 oe_NormalMap_TBN;
 
-void oe_nmap_fragment(inout vec4 color)
+void oe_NormalMap_fragment(inout vec4 color)
 {
-    const vec3 B = vec3(0,1,0);
+    //const vec3 B = vec3(0,1,0);
 
-    vec4 encodedNormal = texture2D(oe_tile_normalTex, oe_nmap_normalCoords.st);
+    vec4 encodedNormal = texture2D(oe_tile_normalTex, oe_NormalMap_coords);
     vec3 normalTangent = normalize(encodedNormal.xyz*2.0-1.0);
-    
-    mat3 TBM = gl_NormalMatrix * mat3(oe_nmap_T, B, oe_nmap_N);
 
-    vp_Normal = normalize(TBM * normalTangent);
+    vp_Normal = normalize(oe_NormalMap_TBN * normalTangent);
 
     // visualize curvature gradient:
     //color.rgb = vec3(0,0,0);
@@ -32,7 +28,7 @@ void oe_nmap_fragment(inout vec4 color)
     // visualize curvature quantized:
     //if(encodedNormal.a >= 0.4) color.r = 1.0;
     //if(encodedNormal.a <= -0.4) color.b = 1.0;
-
+    
     // visualize normals:
     //color.rgb = encodedNormal.xyz;
 }

@@ -17,6 +17,5 @@ osgEarth Sample - Shows an elevation-derived normal map.
     
     <extensions>
         <normalmap/>
-        <sky/>
     </extensions>
 </map>

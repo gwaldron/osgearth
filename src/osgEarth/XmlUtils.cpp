@@ -58,14 +58,12 @@ XmlElement::XmlElement( const Config& conf )
 
     for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
     {
-        if ( j->isSimple() )
-        {
-            attrs[j->key()] = j->value();
-        }
-        else if ( j->children().size() > 0 )
-        {
-            children.push_back( new XmlElement(*j) );
-        }
+        //if ( j->isSimple() )
+        //{
+        //    attrs[j->key()] = j->value();
+        //}
+
+        children.push_back( new XmlElement(*j) );
     }
 }
 

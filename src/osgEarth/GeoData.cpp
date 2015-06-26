@@ -1089,7 +1089,7 @@ GeoExtent::expandToInclude( const GeoExtent& rhs )
 GeoExtent
 GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
 {
-    if ( isInvalid() || rhs.isInvalid() || !_srs->isEquivalentTo( rhs.getSRS() ) )
+    if ( isInvalid() || rhs.isInvalid() || !_srs->isHorizEquivalentTo( rhs.getSRS() ) )
         return GeoExtent::INVALID;
 
     if ( !intersects(rhs) )

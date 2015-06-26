@@ -63,9 +63,7 @@ namespace
             {
                 stateSet = engine->getSurfaceStateSet();
             }
-
-            OE_NOTICE << LC << "Installing terrain shader on SS = " << std::hex << stateSet << "\n";
-
+            
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             _package.loadAll( vp, _dbOptions.get() );
 
@@ -93,6 +91,10 @@ namespace
                             stateSet->setTextureAttribute(unit, tex);
                             stateSet->addUniform(new osg::Uniform(samplers[i]._name.c_str(), unit));
                         }
+                    }
+                    else
+                    {
+                        OE_WARN << LC << "Failed to allocate a texture image unit for this terrain shader sampler!\n";
                     }
                 }
             }

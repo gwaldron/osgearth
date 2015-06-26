@@ -718,7 +718,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
     else if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
         if ( cv )
         {
             // insert traversal data for this camera:

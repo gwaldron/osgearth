@@ -160,9 +160,11 @@ GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
     verts->push_back( (*verts)[INDEX] ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
+    tangents->push_back( osg::Vec3(1,0,0) ); \
     verts->push_back( (*verts)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
+    tangents->push_back( osg::Vec3(1,0,0) ); \
 }
 
 #define addSkirtTriangles(INDEX0, INDEX1) \

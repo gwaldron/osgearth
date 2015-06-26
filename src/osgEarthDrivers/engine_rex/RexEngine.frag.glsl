@@ -10,7 +10,7 @@ uniform sampler2D oe_layer_tex;
 uniform int       oe_layer_uid;
 uniform int       oe_layer_order;
 uniform float     oe_layer_opacity;
-uniform vec4	  oe_tile_key;
+//uniform vec4	  oe_tile_key;
 
 in vec4 oe_layer_texc;
 in vec4 flerp;

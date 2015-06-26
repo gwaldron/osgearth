@@ -360,6 +360,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
     {        
         if ( i->_imageLayerOptions.isSet() )
         {
+            // Disable the l2 cache for composite layers so that we don't get run out of memory on very large datasets.
+            i->_imageLayerOptions->driver()->L2CacheSize() = 0;
+
             osg::ref_ptr< ImageLayer > layer = new ImageLayer(*i->_imageLayerOptions);
             if (!layer->getTileSource())
             {
@@ -373,6 +376,9 @@ CompositeTileSource::initialize(const osgDB::Options* dbOptions)
         }
         else if (i->_elevationLayerOptions.isSet())
         {
+            // Disable the l2 cache for composite layers so that we don't get run out of memory on very large datasets.
+            i->_elevationLayerOptions->driver()->L2CacheSize() = 0;
+
             osg::ref_ptr< ElevationLayer > layer = new ElevationLayer(*i->_elevationLayerOptions);            
             if (!layer->getTileSource())
             {

@@ -583,8 +583,14 @@ AddPolygonDialog::AddPolygonDialog(osg::Group* root, osgEarth::MapNode* mapNode,
         updateButtonColorStyle(_fillColorButton, QColor::fromRgbF(_fillColor.r(), _fillColor.g(), _fillColor.b(), _fillColor.a()));
       }
 
+      bool draped = false;
+      if (feat->style()->has<AltitudeSymbol>() && feat->style()->get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_DRAPE)
+      {
+          draped = true;
+      }
+
       //Get draping
-      _drapeCheckbox->setChecked(polygon->isDraped());
+      _drapeCheckbox->setChecked(draped);
 
       //Get path points
       const osgEarth::Symbology::Polygon* polyGeom = dynamic_cast<const osgEarth::Symbology::Polygon*>(feat->getGeometry());
@@ -759,12 +765,16 @@ void AddPolygonDialog::addPoint(const osgEarth::GeoPoint& point)
     polyStyle.getOrCreate<LineSymbol>()->tessellation() = 20;
     polyStyle.getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
     polyStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    if (_drapeCheckbox->checkState() == Qt::Checked)
+    {
+        polyStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+    }
 
     _polyFeature = new osgEarth::Features::Feature(_polygon, _mapNode->getMapSRS(), polyStyle);
 
     if (!_polyNode.valid())
     {
-      _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, _drapeCheckbox->checkState() == Qt::Checked);
+      _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature);
       _root->addChild(_polyNode);
     }
 
@@ -818,7 +828,19 @@ void AddPolygonDialog::onDrapeCheckStateChanged(int state)
   if (_polyNode.valid())
   {
     _root->removeChild(_polyNode);
-    _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, _drapeCheckbox->checkState() == Qt::Checked);
+
+    Style style;
+    if (_drapeCheckbox->checkState() == Qt::Checked)
+    {
+        style.getOrCreate<AltitudeSymbol>()->clamping()  = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+    }
+    else
+    {
+        style.getOrCreate<AltitudeSymbol>()->clamping()  = AltitudeSymbol::CLAMP_NONE;
+    }
+    
+    _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, style);
     _root->addChild(_polyNode);
   }
 }
@@ -893,8 +915,14 @@ _editing(ellipse ? true : false), _inStyle(ellipse ? ellipse->getStyle() : osgEa
       updateButtonColorStyle(_fillColorButton, QColor::fromRgbF(_fillColor.r(), _fillColor.g(), _fillColor.b(), _fillColor.a()));
     }
 
+    bool draped = false;
+    if (ellipse->getStyle().has<AltitudeSymbol>() && ellipse->getStyle().get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_DRAPE)
+    {
+        draped = true;
+    }
+
     //Get draping
-    _drapeCheckbox->setChecked(ellipse->isDraped());
+    _drapeCheckbox->setChecked(draped);
 
     //Call refreshFeatureNode to update _ellipseStyle
     refreshFeatureNode();

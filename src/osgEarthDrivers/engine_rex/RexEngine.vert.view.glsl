@@ -3,7 +3,7 @@
 #pragma vp_name       "REX Engine - Vertex/View"
 #pragma vp_entryPoint "oe_rexEngine_applyElevation"
 #pragma vp_location   "vertex_view"
-#pragma vp_order      "0.5"
+#pragma vp_order      "0.4"
 
 // Stage globals
 out vec4 oe_layer_tilec;
@@ -87,7 +87,11 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 
 		vertexView.xyz += oe_UpVectorView*elevMorphed;
 
-		oe_layer_texc = oe_layer_texMatrix * vec4(vUVMorphed,oe_layer_tilec.z,oe_layer_tilec.w);	
+        // Update the tile coords:
+        oe_layer_tilec.st = vUVMorphed;
+
+        // And compute the texture coords
+		oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec; //vec4(vUVMorphed,oe_layer_tilec.z,oe_layer_tilec.w);	
 
 		flerp.xyz = vec3(fMorphLerpK);
 	}

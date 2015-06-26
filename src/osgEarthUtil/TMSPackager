@@ -116,6 +116,16 @@ namespace osgEarth { namespace Util
         void setKeepEmpties(bool keepEmpties);
 
         /**
+         * Gets whether to alpha mask out portions of imagery that aren't contained in the specified bounds.
+         */
+        bool getApplyAlphaMask() const;
+
+        /**
+         * Sets whether to alpha mask out portions of imagery that aren't contained in the specified bounds.
+         */
+        void setApplyAlphaMask(bool applyAlphaMask);
+
+        /**
          * Gets the image write options.
          */
         osgDB::Options* getOptions() const;
@@ -168,6 +178,8 @@ namespace osgEarth { namespace Util
         unsigned int _height;
 
         bool _keepEmpties;
+
+        bool _applyAlphaMask;
 
         osg::ref_ptr< TileVisitor > _visitor;
         osg::ref_ptr< WriteTMSTileHandler > _handler;

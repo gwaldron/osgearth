@@ -157,7 +157,7 @@ const char* highlightVert =
     "uniform uint objectid_to_highlight; \n"
     "uint oe_index_objectid;      // Stage global containing object id \n"
     "flat out int selected; \n"
-    "void highlightVertex(inout vec4 vertex) \n"
+    "void checkForHighlight(inout vec4 vertex) \n"
     "{ \n"
     "    selected = (objectid_to_highlight > 1u && objectid_to_highlight == oe_index_objectid) ? 1 : 0; \n"
     "} \n";
@@ -175,7 +175,7 @@ void installHighlighter(osg::StateSet* stateSet, int attrLocation)
 {
     // This shader program will highlight the selected object.
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-    vp->setFunction( "highlightVertex",    highlightVert, ShaderComp::LOCATION_VERTEX_CLIP, FLT_MAX );
+    vp->setFunction( "checkForHighlight",  highlightVert, ShaderComp::LOCATION_VERTEX_CLIP );
     vp->setFunction( "highlightFragment",  highlightFrag, ShaderComp::LOCATION_FRAGMENT_COLORING );
 
     // Since we're accessing object IDs, we need to load the indexing shader as well:

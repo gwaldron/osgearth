@@ -31,25 +31,28 @@ namespace
 {
     static OpenThreads::Atomic s_uniformNameGen;
 
+    static const char* s_commonShaderSource =
+
+        "#version 110 \n"
+        "}\n";
+
+
     static const char* s_localShaderSource =
         "#version 110\n"
 
         "varying vec3 atmos_lightDir;\n"    // light direction (view coords)
         "varying vec3 atmos_up;\n"          // earth up vector at fragment (in view coords)
 
-        "float remap( float val, float vmin, float vmax, float r0, float r1 )\n"
-        "{\n"
-        "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin);\n" 
-        "    return r0 + vr * (r1-r0); \n"
-        "}\n"
-        
         "void __ENTRY_POINT__(inout vec4 color)\n"
         "{\n"
         "    vec3 L = normalize(atmos_lightDir);\n"
         "    vec3 N = normalize(atmos_up);\n"
         "    float NdotL = dot(N,L);\n"
-        "    float day = remap( NdotL, -0.25, 0.0, 0.0, 1.0);\n"
-        "    color.a = 1.0 - day;\n"
+        "    float vmin = -0.25;\n"
+        "    float vmax = 0.0;\n"
+        //   Remap the -0.25 to 0 to 0 to 1.0
+        "    float day = (clamp( NdotL, vmin, vmax) - vmin)/(vmax-vmin);\n"
+        "    color.a *= (1.0 - day);\n"
         "} \n";
 }
 

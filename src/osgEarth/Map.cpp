@@ -305,7 +305,8 @@ Map::setName( const std::string& name ) {
 Revision
 Map::getDataModelRevision() const
 {
-    Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
+    //Don't really need this here.
+    //Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
     return _dataModelRevision;
 }
 

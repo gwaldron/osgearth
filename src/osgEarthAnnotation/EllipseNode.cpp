@@ -225,7 +225,6 @@ EllipseNode::EllipseNode(MapNode*              mapNode,
                          const Config&         conf,
                          const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode, conf ),
-_draped      ( false ),
 _numSegments ( 0 )
 {
     _xform = new osg::MatrixTransform();

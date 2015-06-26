@@ -803,7 +803,7 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
     // cull visitor's current camera view and work with that:
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
         osg::Camera* camera = cv->getCurrentCamera();
 
         if ( camera != 0L && (_rttTraversalMask & nv.getTraversalMask()) != 0 )

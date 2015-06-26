@@ -43,36 +43,45 @@ namespace osgEarth { namespace Annotation
         META_AnnotationNode(osgEarthAnnotation, FeatureNode);
 
         /**
-         * Constructs a new Feautre Node.
+         * Constructs a new FeatureNode from a single Feature
          */
         FeatureNode( 
             MapNode* mapNode, 
             Feature* feature,
+            const Style& style = Style(),
             const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
         /**
-         * Constructs a new Feautre Node.
-         * @deprecated - please use the ctor above.
+         * Constructs a new FeatureNode from a FeatureList
          */
         FeatureNode( 
             MapNode* mapNode, 
-            Feature* feature, 
-            bool     draped,
+            FeatureList& features,
+            const Style& style = Style(),
             const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
         virtual ~FeatureNode() { }
 
-        /**
-         * The feature that this node will render.
+         /**
+         * Gets the list of features
          */
-        void setFeature( Feature* feature );
-        Feature* getFeature() { return _feature.get(); }
-        const Feature* getFeature() const { return _feature.get(); }
+        FeatureList& getFeatures() { return _features; };
 
-        /** Whether the feature is draped on the terrain
-         *  @deprecated - check the style instead */
-        bool isDraped() const { return _draped; }
+        /**
+         * Utility that lets you work on this FeatureNode as a single Feature instead of a list
+         */
+        Feature* getFeature();
 
+        /**
+         * Sets the contents of this FeatureNode to a single feature.
+         */
+        void setFeature(Feature* feature);
+
+
+        /**
+         * Call init to force a rebuild of this FeatureNode.  If you modify the features in the features list or add/remove features
+         * call this function to rebuild the node.
+         */
         void init();
 
     public: // AnnotationNode
@@ -93,16 +102,22 @@ namespace osgEarth { namespace Annotation
         virtual Config getConfig() const;
 
     protected:
-        osg::ref_ptr<Feature>        _feature;
+        FeatureList                  _features;
         GeometryCompilerOptions      _options;
-        bool                         _draped; // to remove
         osg::Group*                  _attachPoint;
         osg::Polytope                _featurePolytope;
+        Style                        _style;
+        bool                         _needsRebuild;
+
+        osg::ref_ptr< osg::Node >    _compiled;
 
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }
         
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+
+        void build();
+
         
     private:
         void clampMesh( osg::Node* terrainModel );

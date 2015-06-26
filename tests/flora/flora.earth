@@ -17,7 +17,7 @@ Press 'w' for wireframe mode to see the tessellation!
 <map name="readymap.org" type="geocentric">
     
     <options>        
-        <terrain driver="rex" skirt_ratio="0" />
+        <terrain driver="rex" skirt_ratio="0.001" />
     </options>
     
     <image name="readymap_imagery" driver="tms" shared="true">
@@ -48,13 +48,16 @@ Press 'w' for wireframe mode to see the tessellation!
     </image>
     -->
 
-  <extensions>
+  <extensions> 
       
-      <!--
-      <normalmap/>  
+      <normalmap/> 
       
-      <bumpmap image="../../data/rock_hard.jpg" octaves="12" intensity="1.5"/>
-      -->
+      <bumpmap>
+          <image>../../data/rock_hard.jpg</image>
+          <base_lod>13</base_lod>
+          <octaves>16</octaves>
+      </bumpmap>
+          
       
       <terrainshader land_cover_group="grass" land_cover_lod="22">
           <code url="GrassTES.glsl" />

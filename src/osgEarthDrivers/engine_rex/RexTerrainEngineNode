@@ -119,6 +119,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // override from TerrainEngineNode
         virtual void dirtyTerrain();
 
+        // override from TerrainEngineNode
+        virtual void dirtyState();
+
     private:
         void init();
         void syncMapModel();

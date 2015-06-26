@@ -29,9 +29,6 @@
 
 #define LC "[NormalMap] "
 
-#define NORMAL_SAMPLER "oe_nmap_normalTex"
-#define NORMAL_MATRIX  "oe_nmap_normalTexMatrix"
-
 using namespace osgEarth;
 using namespace osgEarth::NormalMap;
 

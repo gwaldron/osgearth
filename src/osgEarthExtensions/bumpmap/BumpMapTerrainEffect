@@ -41,6 +41,9 @@ namespace osgEarth { namespace BumpMap
         /** Sets the image containing the normal offsets. */
         void setBumpMapImage(osg::Image* image);
 
+        /** Sets the LOD at which the bumpmap renders with native scale */
+        void setBaseLOD(unsigned value) { _baseLOD = value; }
+
         /** Sets the number of progressive octaves. */
         void setOctaves(int value) { _octaves = value; }
 
@@ -68,6 +71,7 @@ namespace osgEarth { namespace BumpMap
         int   _bumpMapUnit;
         int   _octaves;
         float _maxRange;
+        unsigned _baseLOD;
         osg::ref_ptr<osg::Texture2D> _bumpMapTex;
         osg::ref_ptr<osg::Uniform>   _bumpMapTexUniform;
         osg::ref_ptr<osg::Uniform>   _scaleUniform;

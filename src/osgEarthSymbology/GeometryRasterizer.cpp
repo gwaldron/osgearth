@@ -42,7 +42,7 @@ struct AggState : public osg::Referenced
     }
 
     agg::rendering_buffer           _rbuf;
-    agg::renderer<agg::span_abgr32> _ren;
+    agg::renderer<agg::span_abgr32, agg::rgba8> _ren;
     agg::rasterizer                 _ras;
 };
 

@@ -40,6 +40,7 @@ BumpMapTerrainEffect::BumpMapTerrainEffect(const osgDB::Options* dbOptions)
     BumpMapOptions defaults;
     _octaves = defaults.octaves().get();
     _maxRange = defaults.maxRange().get();
+    _baseLOD  = defaults.baseLOD().get();
 
     _scaleUniform     = new osg::Uniform("oe_bumpmap_scale", defaults.scale().get());
     _intensityUniform = new osg::Uniform("oe_bumpmap_intensity", defaults.intensity().get());
@@ -78,15 +79,15 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             // NormalMap sampler
             _bumpMapTexUniform = stateset->getOrCreateUniform(BUMP_SAMPLER, osg::Uniform::SAMPLER_2D);
             _bumpMapTexUniform->set( _bumpMapUnit );
-            stateset->setTextureAttribute( _bumpMapUnit, _bumpMapTex.get(), osg::StateAttribute::ON );
+            stateset->setTextureAttribute( _bumpMapUnit, _bumpMapTex.get() );
 
             // configure shaders
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
             Shaders package;            
-            package.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
+            package.define( "OE_USE_NORMAL_MAP", false ); //engine->normalTexturesRequired() );
 
-            package.loadFunction( vp, package.VertexModel );
+            //package.loadFunction( vp, package.VertexModel );
             package.loadFunction( vp, package.VertexView );
             package.loadFunction( vp, _octaves <= 1? package.FragmentSimple : package.FragmentProgressive );
 
@@ -94,9 +95,15 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
                 stateset->addUniform(new osg::Uniform("oe_bumpmap_octaves", _octaves));
 
             stateset->addUniform(new osg::Uniform("oe_bumpmap_maxRange", _maxRange));
+            stateset->addUniform(new osg::Uniform("oe_bumpmap_slopeFactor", 1.0f));
+            stateset->addUniform(new osg::Uniform("oe_bumpmap_baseLOD", (float)_baseLOD));
 
             stateset->addUniform( _scaleUniform.get() );
             stateset->addUniform( _intensityUniform.get() );
+        }
+        else
+        {
+            OE_WARN << LC << "Failed to allocation a texture image unit!\n";
         }
     }
 }

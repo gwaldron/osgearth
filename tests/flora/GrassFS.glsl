@@ -4,16 +4,20 @@
 #pragma vp_location   "fragment_coloring"
                      
 uniform bool      oe_terrain_hasMultiSamples;
-uniform sampler2D oe_layer_tex;
+uniform sampler2D floraColor;
+uniform mat4      floraMatrix;
 
 uniform sampler2D oe_grass_tex;
 
 in vec4 vp_Color;
 
 in vec2 oe_grass_texCoord;
+in float oe_grass_falloff;
 in vec4 oe_layer_texc;
+in vec4 oe_layer_tilec;
 
-            
+uniform float mixer;
+
 void oe_grass_fragment(inout vec4 color)
 {    
     // modulate the grass texture
@@ -24,6 +28,6 @@ void oe_grass_fragment(inout vec4 color)
         discard;
         
     // sample and mix in the green channel of the main color texture
-    float green = texture(oe_layer_tex, oe_layer_texc.st).g;
-    color.g = clamp( color.g*(1.0+green), 0.0, 1.0);
+    vec3 groundColor = texture(floraColor, (floraMatrix*oe_layer_tilec).st).rgb;
+    color.rgb = mix(color.rgb, groundColor, oe_grass_falloff);
 }

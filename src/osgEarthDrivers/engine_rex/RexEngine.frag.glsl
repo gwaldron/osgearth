@@ -10,7 +10,6 @@ uniform sampler2D oe_layer_tex;
 uniform int       oe_layer_uid;
 uniform int       oe_layer_order;
 uniform float     oe_layer_opacity;
-uniform vec4	  oe_tile_key;
 
 in vec4 oe_layer_texc;
 in vec4 flerp;
@@ -18,8 +17,16 @@ in vec4 flerp;
 void oe_rexEngine_frag(inout vec4 color)
 {
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
+
+#if 1
     vec4 texel = mix(color, texture2D(oe_layer_tex, oe_layer_texc.st), applyImagery);
     texel.a = mix(texel.a, texel.a*oe_layer_opacity, applyImagery);
+#else
+    // Poor man's LOD blending.
+    vec4 t0 = texture(oe_layer_tex, oe_layer_texc.st, 1.0);
+    vec4 t1 = texture(oe_layer_tex, oe_layer_texc.st);
+    vec4 texel = mix(color, mix(t0, t1, 1.0-flerp.x), applyImagery);
+#endif
 
     float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0;
 

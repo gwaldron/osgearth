@@ -21,6 +21,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ObjectIndex>
 
+#define LC "[AnnotationRegistry] "
+
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 

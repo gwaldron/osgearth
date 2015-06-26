@@ -81,7 +81,6 @@ namespace
             this->setName( "oe.SurfaceBin" );
             this->setStateSet( new osg::StateSet() );
             this->setSortMode(SORT_FRONT_TO_BACK);
-            OE_NOTICE << getName() << "ctor\n";
         }
 
         osg::Object* clone(const osg::CopyOp& copyop) const
@@ -116,15 +115,6 @@ namespace
             osgUtil::RenderBin(rhs, copy)
         {
         }
-
-        //void sort()
-        //{
-        //    osgUtil::RenderBin::sort();
-        //    if ( getRenderLeafList().size() > 0 )
-        //    {
-        //        OE_NOTICE << LC << "LC Drawables = " << getRenderLeafList().size() << "\n";
-        //    }
-        //}
     };
 }
 
@@ -490,7 +480,7 @@ void RexTerrainEngineNode::buildSelectionInfo()
 {
     _selectionInfo = new SelectionInfo;
 
-    _selectionInfo->_numLods = (*_terrainOptions.minLOD()+1);  // use min lod for now
+    _selectionInfo->_numLods = 23; //(*_terrainOptions.minLOD()+1);  // use min lod for now
 #if 0
     // for debugging
     _selectionInfo->_numLods = 9;
@@ -500,7 +490,7 @@ void RexTerrainEngineNode::buildSelectionInfo()
     _selectionInfo->uiLODForMorphing = 5;
 
     double fLodNear = 0;
-    double fLodFar = 38268824*5; 
+    double fLodFar = 38268824 * 2.5; //5; //*5; 
 
     float fRatio = 1.0;
     _selectionInfo->_fVisibilityRanges.resize(_selectionInfo->_numLods);
@@ -639,6 +629,15 @@ namespace
                 OE_WARN << LC << "Oh no! " << count << " orphaned tiles in the reg" << std::endl;
         }
     };
+}
+
+
+void
+RexTerrainEngineNode::dirtyState()
+{
+    // TODO: perhaps defer this until the next update traversal so we don't 
+    // reinitialize the state multiple times unnecessarily. 
+    updateState();
 }
 
 
@@ -839,6 +838,7 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 _renderBindings.push_back( SamplerBinding() );
                 SamplerBinding& binding = _renderBindings.back();
 
+                //binding.usage()     = binding.MATERIAL; // ?... not COLOR at least
                 binding.sourceUID() = layerAdded->getUID();
                 binding.unit()      = unit.get();
 
@@ -847,10 +847,14 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 else
                     binding.samplerName() = Stringify() << "oe_layer_" << layerAdded->getUID() << "_tex";
 
+                OE_INFO << LC << " .. Sampler name \"" << binding.samplerName() << "\" in unit " << binding.unit() << "\n";
+
                 if ( layerAdded->shareTexMatUniformName().isSet() )
                     binding.matrixName() = layerAdded->shareTexMatUniformName().get();
                 else
                     binding.matrixName() = Stringify() << "oe_layer_ " << layerAdded->getUID() << "_texMatrix";
+                
+                OE_INFO << LC << " .. Matrix name \"" << binding.matrixName() << "\" in unit " << binding.unit() << "\n";
             }
         }
     }
@@ -932,7 +936,6 @@ RexTerrainEngineNode::updateState()
     {
         osg::StateSet* terrainStateSet   = _terrain->getOrCreateStateSet();   // everything
         osg::StateSet* surfaceStateSet   = getSurfaceStateSet();    // just the surface
-        //osg::StateSet* landCoverStateSet = getLandCoverStateSet();  // just the land cover
         
         // required for multipass tile rendering to work
         surfaceStateSet->setAttributeAndModes(
@@ -952,10 +955,11 @@ RexTerrainEngineNode::updateState()
         // install shaders, if we're using them.
         if ( Registry::capabilities().supportsGLSL() )
         {
+            Shaders package;
+
             VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
             terrainVP->setName( "Rex Terrain" );
-            
-            Shaders package;
+            package.loadFunction(terrainVP, package.VERT_MODEL);            
             
             bool useTerrainColor = _terrainOptions.color().isSet();
             package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);
@@ -971,21 +975,13 @@ RexTerrainEngineNode::updateState()
             VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
             surfaceVP->setName("Rex Surface");
 
-            // Functions that affect the entire terrain:         
-            package.loadFunction(surfaceVP, package.VERT_MODEL);
+            // Functions that affect the terrain surface only:
             package.loadFunction(surfaceVP, package.VERT_VIEW);
             package.loadFunction(surfaceVP, package.FRAG);
 
             for(LandCoverBins::iterator i = _landCoverBins.begin(); i != _landCoverBins.end(); ++i)
             {
                 osg::StateSet* landCoverStateSet = i->_binProto->getStateSet();
-
-                OE_INFO << LC << "Installing baseline shaders on land cover bin \"" << i->_name << "\"\n";
-
-            //if ( landCoverStateSet )
-            //{
-                VirtualProgram* landCoverVP = VirtualProgram::getOrCreate(landCoverStateSet);
-                package.loadFunction(landCoverVP, package.VERT_MODEL);
 
                 // enable alpha-to-coverage multisampling for vegetation.
                 landCoverStateSet->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
@@ -998,6 +994,8 @@ RexTerrainEngineNode::updateState()
                 landCoverStateSet->setAttributeAndModes(
                     new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
                     osg::StateAttribute::OVERRIDE );
+
+                landCoverStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
             }
 
             // assemble color filter code snippets.
@@ -1065,11 +1063,16 @@ RexTerrainEngineNode::updateState()
             }
 
             // Apply uniforms for sampler bindings:
+            OE_DEBUG << LC << "Render Bindings:\n";
             for(RenderBindings::const_iterator b = _renderBindings.begin(); b != _renderBindings.end(); ++b)
             {
                 if ( b->isActive() )
                 {
                     terrainStateSet->addUniform( new osg::Uniform(b->samplerName().c_str(), b->unit()) );
+                    OE_DEBUG << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
+
+                    // Not needed I think
+                    //terrainStateSet->addUniform( new osg::Uniform(b->matrixName().c_str(), osg::Matrixf()) );
                 }
             }
 

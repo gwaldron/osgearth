@@ -132,7 +132,7 @@ main(int argc, char** argv)
 
     // load the model file into the local coordinate frame, which will be
     // +X=east, +Y=north, +Z=up.
-    osg::Node* model = osgDB::readNodeFile("cessna.osgt.1,-1,1.scale");
+    osg::Node* model = osgDB::readNodeFile("../data/cessna.osgb");
     if ( !model )
         return usage(argv[0]);
 

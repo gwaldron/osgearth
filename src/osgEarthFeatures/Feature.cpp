@@ -405,6 +405,15 @@ Feature::getWorldBoundingPolytope(const SpatialReference* srs,
     osg::BoundingSphered bs;
     if ( getWorldBound(srs, bs) && bs.valid() )
     {
+        return getWorldBoundingPolytope( bs, srs, out_polytope );
+    }
+    return false;
+}
+
+bool Feature::getWorldBoundingPolytope( const osg::BoundingSphered& bs, const SpatialReference* srs, osg::Polytope& out_polytope )
+{
+    if ( bs.valid() )
+    {
         out_polytope.clear();
 
         // add planes for the four sides of the BS. Normals point inwards.

@@ -500,7 +500,7 @@ UpdateLightingUniformsHelper::~UpdateLightingUniformsHelper()
 void
 UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* nv )
 {
-    osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
     if ( cv )
     {
         StateSetStack stateSetStack;

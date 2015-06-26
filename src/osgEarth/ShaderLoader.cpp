@@ -309,9 +309,9 @@ ShaderLoader::loadFunction(VirtualProgram*       vp,
     // order is optional.
     std::string orderStr = getQuotedPragmaValue(source, "vp_order");
     float order;
-    if ( ciEquals(orderStr, "FLT_MAX") )
+    if ( ciEquals(orderStr, "FLT_MAX") || ciEquals(orderStr, "last") )
         order = FLT_MAX;
-    else if ( ciEquals(orderStr, "-FLT_MAX") )
+    else if ( ciEquals(orderStr, "-FLT_MAX") || ciEquals(orderStr, "first") )
         order = -FLT_MAX;
     else
         order = as<float>(orderStr, 1.0f);

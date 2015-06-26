@@ -79,6 +79,9 @@ BumpMapExtension::connect(MapNode* mapNode)
     if ( _options.octaves().isSet() )
         _effect->setOctaves( _options.octaves().get() );
 
+    if ( _options.baseLOD().isSet() )
+        _effect->setBaseLOD( _options.baseLOD().get() );
+
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     
     OE_INFO << LC << "Installed.\n";

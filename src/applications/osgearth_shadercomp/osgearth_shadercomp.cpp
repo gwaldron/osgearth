@@ -325,15 +325,6 @@ namespace TEST_6
         // Return true to activate the shader function.
         bool operator()(const osg::State& state)
         {
-            //if ( state.getFrameStamp() )
-            //{
-            //    unsigned fn = state.getFrameStamp()->getFrameNumber();
-            //    if ( fn != _fn )
-            //    {
-            //        OE_NOTICE << "Accept; FRAME NUMBER = " << _fn << "--------------------\n";
-            //        _fn = fn;
-            //    }
-            //}
             const osg::Viewport* vp = state.getCurrentViewport();
             return vp && vp->x() == 0.0;
         }
@@ -346,6 +337,7 @@ namespace TEST_6
         osg::Group* group1 = new osg::Group();
         VirtualProgram* vp1 = VirtualProgram::getOrCreate(group1->getOrCreateStateSet());
         vp1->setFunction("make_it_red", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, new Acceptor());
+        vp1->setAcceptCallbacksVaryPerFrame(true);
         group1->addChild( node );
 
         osg::Camera* cam1 = new osg::Camera();

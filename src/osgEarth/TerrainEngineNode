@@ -246,6 +246,10 @@ namespace osgEarth
         // Request that the terrain tiles be rebuilt.
         virtual void dirtyTerrain();
 
+        // Request the state setup be refreshed because something has changed that requires new
+        // shaders, state, etc.
+        virtual void dirtyState() { }
+
         // allow subclasses direct access for convenience.
         osg::ref_ptr<TextureCompositor> _texCompositor;
 

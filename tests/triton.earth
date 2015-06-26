@@ -5,8 +5,7 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
 <map name="readymap.org" type="geocentric" version="2">
     
     <options>
-        <elevation_tile_size>7</elevation_tile_size>
-        <terrain first_lod="1"/>
+        <terrain first_lod="1" tile_size="7"/>
     </options>
     
     <image name="readymap_imagery" driver="tms" visible="true">
@@ -24,8 +23,10 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
 			   max_altitude="150000"/>
         <sky hours="18" driver="gl"/>
         <viewpoints>
-            <viewpoint name="Hawaii" heading="-29" height="-204" lat="20.6714" long="-156.5384" pitch="-4" range="3270"/>
-            <viewpoint name="Snafu"  heading="-35.42227636584842" height="-188.2792971581221" lat="20.68154179570284" long="-156.5452311560784" pitch="-14.59403736732238" range="5469.652750028356"/>
+            <viewpoint name="Hawaii"   heading="-29" height="-204" lat="20.6714" long="-156.5384" pitch="-4" range="3270"/>
+            <viewpoint name="Snafu"    heading="-35.42227636584842" height="-188.2792971581221" lat="20.68154179570284" long="-156.5452311560784" pitch="-14.59403736732238" range="5469.652750028356"/>
+            <viewpoint name="NearClip" heading="-0.618211rad" height="-190.1852927561849" lat="20.67586333023495" long="-156.5418074743535" pitch="-0.2546rad" range="1154.32m"/>
+            <viewpoint name="Horizon"  heading="-27.1911" height="-206.3652788307518" lat="20.69785423327782" long="-156.5550697849549" pitch="-16.0293" range="68323m"/>
         </viewpoints>
 		<annotations>
 			<model name="Object in the water">

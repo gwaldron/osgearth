@@ -44,32 +44,40 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-
-FeatureNode::FeatureNode(MapNode* mapNode, 
-                         Feature* feature, 
-                         bool     draped,
-                         const GeometryCompilerOptions& options ) :
-AnnotationNode( mapNode ),
-_feature      ( feature ),
-_draped       ( draped ),
-_options      ( options )
-{
-    init();
-}
-
 FeatureNode::FeatureNode(MapNode* mapNode,
                          Feature* feature,
+                         const Style& style,
                          const GeometryCompilerOptions& options ) :
 AnnotationNode( mapNode ),
-_feature      ( feature ),
-_draped       ( false ),
-_options      ( options )
+_style        ( style ),
+_options      ( options ),
+_needsRebuild (true)
 {
-    init();
+    if (_style.empty() && feature->style().isSet())
+    {
+        _style = *feature->style();
+    }
+
+    _features.push_back( feature );
+    build();
 }
 
+FeatureNode::FeatureNode(MapNode* mapNode, 
+                         FeatureList& features,
+                         const Style& style,
+                         const GeometryCompilerOptions& options):
+AnnotationNode( mapNode ),
+_style        ( style ),
+_options      ( options ),
+_needsRebuild (true)
+{
+    _features.insert( _features.end(), features.begin(), features.end() );
+    build();
+}
+
+
 void
-FeatureNode::init()
+FeatureNode::build()
 {
     // if there's a decoration, clear it out first.
     this->clearDecoration();
@@ -81,15 +89,17 @@ FeatureNode::init()
     if ( !getMapNode() )
         return;
 
-    if ( !_feature.valid() )
+    if ( _features.empty() )
         return;
+
+    const Style &style = getStyle();
 
     // compilation options.
     GeometryCompilerOptions options = _options;
     
     // figure out what kind of altitude manipulation we need to perform.
     AnnotationUtils::AltitudePolicy ap;
-    AnnotationUtils::getAltitudePolicy( *_feature->style(), ap );
+    AnnotationUtils::getAltitudePolicy( style, ap );
 
     // If we're doing auto-clamping on the CPU, shut off compiler map clamping
     // clamping since it would be redundant.
@@ -99,23 +109,61 @@ FeatureNode::init()
         options.ignoreAltitudeSymbol() = true;
     }
 
-    // prep the compiler:
-    GeometryCompiler compiler( options );
-    Session* session = new Session( getMapNode()->getMap() );
-    GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
-    osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
-    FilterContext context( session, profile.get(), extent );
+  
 
-    // Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
-    // of the geometry when performing localization or converting to geocentric.
-    osg::ref_ptr< Feature > clone = new Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);
+    
 
-    osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
+    osg::Node* node = _compiled.get();
+    if (_needsRebuild || !_compiled.valid() )
+    {
+        // Clone the Features before rendering as the GeometryCompiler and it's filters can change the coordinates
+        // of the geometry when performing localization or converting to geocentric.
+        GeoExtent extent;
+
+        FeatureList clone;
+        for(FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+        {
+            Feature* feature = new Feature( *itr->get(), osg::CopyOp::DEEP_COPY_ALL);
+            GeoExtent featureExtent(feature->getSRS(), feature->getGeometry()->getBounds());
+
+            if (extent.isInvalid())
+            {
+                extent = featureExtent;
+            }
+            else
+            {
+                extent.expandToInclude( featureExtent );
+            }
+            clone.push_back( feature );
+        }
+
+        // prep the compiler:
+        GeometryCompiler compiler( options );
+        Session* session = new Session( getMapNode()->getMap() );
+
+        FilterContext context( session, new FeatureProfile( extent ), extent );
+
+        _compiled = compiler.compile( clone, style, context );
+        node = _compiled.get();
+        _needsRebuild = false;
+
+        // Compute the world bounds
+        osg::BoundingSphered bounds;
+        for( FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+        {
+            osg::BoundingSphered bs;
+            itr->get()->getWorldBound(getMapNode()->getMapSRS(), bs);
+            bounds.expandBy(bs);
+        }
+        // The polytope will ensure we only clamp to intersecting tiles:
+        Feature::getWorldBoundingPolytope(bounds, getMapNode()->getMapSRS(), _featurePolytope);
+
+    }
+
     if ( node )
     {
-        if ( _feature->style().isSet() &&
-            AnnotationUtils::styleRequiresAlphaBlending( *_feature->style() ) &&
-            _feature->style()->get<ExtrusionSymbol>() )
+        if ( AnnotationUtils::styleRequiresAlphaBlending( style ) &&
+             getStyle().get<ExtrusionSymbol>() )
         {
             node = AnnotationUtils::installTwoPassAlpha( node );
         }
@@ -140,7 +188,7 @@ FeatureNode::init()
             clampable->addChild( _attachPoint );
             this->addChild( clampable );
 
-            const RenderSymbol* render = _feature->style()->get<RenderSymbol>();
+            const RenderSymbol* render = style.get<RenderSymbol>();
             if ( render && render->depthOffset().isSet() )
             {
                 clampable->setDepthOffsetOptions( *render->depthOffset() );
@@ -155,22 +203,19 @@ FeatureNode::init()
             if ( ap.sceneClamping )
             {
                 // save for later when we need to reclamp the mesh on the CPU
-                _altitude = _feature->style()->get<AltitudeSymbol>();
-
-                // The polytope will ensure we only clamp to intersecting tiles:
-                _feature->getWorldBoundingPolytope( getMapNode()->getMapSRS(), _featurePolytope );
+                _altitude = style.get<AltitudeSymbol>();
 
                 // activate the terrain callback:
                 setCPUAutoClamping( true );
 
                 // set default lighting based on whether we are extruding:
-                setLightingIfNotSet( _feature->style()->has<ExtrusionSymbol>() );
+                setLightingIfNotSet( style.has<ExtrusionSymbol>() );
 
                 // do an initial clamp to get started.
                 clampMesh( getMapNode()->getTerrain()->getGraph() );
             } 
 
-            applyGeneralSymbology( *_feature->style() );
+            applyGeneralSymbology( style );
         }
     }
 }
@@ -181,34 +226,62 @@ FeatureNode::setMapNode( MapNode* mapNode )
     if ( getMapNode() != mapNode )
     {
         AnnotationNode::setMapNode( mapNode );
-        init();
+        _needsRebuild = true;
+        build();
     }
-}
-
-void
-FeatureNode::setFeature( Feature* feature )
-{
-    _feature = feature;
-    init();
 }
 
 const Style& FeatureNode::getStyle() const
 {
-    if ( _feature.valid() )
-    {
-        return *_feature->style();
-    }
-    return AnnotationNode::getStyle();
+    return _style;
 }
 
 void
 FeatureNode::setStyle(const Style& style)
 {
-    if ( _feature.valid() )
+    // Try to compare the styles and see if we can get away with not compiling the geometry again.
+    Style a = _style;
+    Style b = style;
+   
+    // If the only thing that has changed is the AltitudeSymbol, we don't need to worry about rebuilding the entire geometry again.
+    a.remove<AltitudeSymbol>();
+    b.remove<AltitudeSymbol>();
+    if (a.getConfig().toJSON() == b.getConfig().toJSON())
     {
-        _feature->style() = style;
-        init();
+        _needsRebuild = false;
     }
+    else
+    {
+        _needsRebuild = true;
+    }
+    _style = style;
+    build();
+}
+
+Feature* FeatureNode::getFeature()
+{
+    if (_features.size() == 1)
+    {
+        return _features.front();
+    }
+    return 0;
+}
+
+void FeatureNode::setFeature(Feature* feature)
+{
+    _features.clear();
+    if (feature)
+    {
+        _features.push_back( feature );
+    }
+    _needsRebuild = true;
+    build();
+}
+
+void FeatureNode::init()
+{
+    _needsRebuild = true;
+    build();
 }
 
 osg::Group*
@@ -248,10 +321,10 @@ FeatureNode::clampMesh( osg::Node* terrainModel )
 
         if (_altitude.valid())
         {
-            NumericExpression scale(_altitude->verticalScale().value());
-            NumericExpression offset(_altitude->verticalOffset().value());
-            scale = _feature->eval(scale);
-            offset = _feature->eval(offset);
+            NumericExpression scaleExpr(_altitude->verticalScale().value());
+            NumericExpression offsetExpr(_altitude->verticalOffset().value());
+            scale = scaleExpr.eval();
+            offset = offsetExpr.eval();
             relative = _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
         }
 
@@ -289,44 +362,51 @@ AnnotationNode( mapNode, conf )
 
     optional<GeoInterpolation> geoInterp;
 
-    Style style;
-    conf.getObjIfSet( "style", style );
+    conf.getObjIfSet( "style", _style );
 
     if ( srs.valid() && geom.valid() )
     {
-        //_draped = conf.value<bool>("draped",false);
-        Feature* feature = new Feature(geom.get(), srs.get(), style);
+        Feature* feature = new Feature(geom.get(), srs.get() );
 
         conf.getIfSet( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );
         conf.getIfSet( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
 
-        setFeature( feature );
+        _features.push_back( feature );
+        build();
     }
 }
 
 Config
 FeatureNode::getConfig() const
 {
+    
     Config conf("feature");
 
-    if ( _feature.valid() && _feature->getGeometry() )
+    if ( !_features.empty() )
     {
+        // Write out a single feature for now.
+
+        Feature* feature = _features.begin()->get();
+
         conf.set("name", getName());
 
         Config geomConf("geometry");
-        geomConf.value() = GeometryUtils::geometryToWKT( _feature->getGeometry() );
+        geomConf.value() = GeometryUtils::geometryToWKT( feature->getGeometry() );
         conf.add(geomConf);
 
-        std::string srs = _feature->getSRS() ? _feature->getSRS()->getHorizInitString() : "";
+        std::string srs = feature->getSRS() ? feature->getSRS()->getHorizInitString() : "";
         if ( !srs.empty() ) conf.set("srs", srs);
 
-        std::string vsrs = _feature->getSRS() ? _feature->getSRS()->getVertInitString() : "";
+        std::string vsrs = feature->getSRS() ? feature->getSRS()->getVertInitString() : "";
         if ( !vsrs.empty() ) conf.set("vdatum", vsrs);
 
-        if ( _feature->geoInterp().isSet() )
-            conf.set("geointerp", _feature->geoInterp() == GEOINTERP_GREAT_CIRCLE? "greatcircle" : "rhumbline");
+        if ( feature->geoInterp().isSet() )
+            conf.set("geointerp", feature->geoInterp() == GEOINTERP_GREAT_CIRCLE? "greatcircle" : "rhumbline");
+    }
 
-        conf.addObjIfSet( "style", _feature->style() );
+    if (!_style.empty() )
+    {
+        conf.addObj( "style", _style );
     }
 
     return conf;

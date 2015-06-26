@@ -3,13 +3,13 @@
 #pragma vp_name       "REX Engine - Vertex/View"
 #pragma vp_entryPoint "oe_rexEngine_applyElevation"
 #pragma vp_location   "vertex_view"
-#pragma vp_order      "0.5"
+#pragma vp_order      "0.4"
 
 // Stage globals
 out vec4 oe_layer_tilec;
 out vec4 vp_Vertex;
-out vec3 vp_UpVector;
-out vec3 vp_TangentVector;
+out vec3 oe_UpVectorView;
+out vec3 oe_TangentVectorView;
 out vec4 flerp;
 out vec4 oe_layer_texc;
 
@@ -52,7 +52,7 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 		float elev = texture(oe_tile_elevationTex, elevc.st).r;
 
 		// assumption: vp_Normal is normalized
-		vertexView.xyz += vp_UpVector*elev;
+		vertexView.xyz += oe_UpVectorView*elev;
 
 		oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec;
 	}
@@ -63,7 +63,7 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 		float elev = textureLod(oe_tile_elevationTex, elevc.st,0).r;
 
 		vec4 vertexViewElevated = vertexView;
-		vertexViewElevated.xyz += vp_UpVector*elev;
+		vertexViewElevated.xyz += oe_UpVectorView*elev;
 
 		float fDistanceToEye = length(vertexViewElevated);
 		float fMorphLerpK  = 1.0f - clamp( oe_tile_morph_constants.z - fDistanceToEye * oe_tile_morph_constants.w, 0.0, 1.0 );
@@ -75,7 +75,7 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 				  , vertexView.xyz	, oe_layer_tilec.xy
 				  , fMorphLerpK
 				  , oe_tile_extents.xy
-				  , vp_TangentVector, cross(vp_UpVector, vp_TangentVector) );
+				  , oe_TangentVectorView, cross(oe_UpVectorView, oe_TangentVectorView) );
 
 		vertexView.xyz = vPositionMorphed.xyz ;
 
@@ -85,9 +85,13 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 		float mixedHHeight = elev*(1-fMorphLerpK ) + elevMorphed*fMorphLerpK;
 		mixedHHeight = elevMorphed;
 
-		vertexView.xyz += vp_UpVector*elevMorphed;
+		vertexView.xyz += oe_UpVectorView*elevMorphed;
 
-		oe_layer_texc = oe_layer_texMatrix * vec4(vUVMorphed,oe_layer_tilec.z,oe_layer_tilec.w);	
+        // Update the tile coords:
+        oe_layer_tilec.st = vUVMorphed;
+
+        // And compute the texture coords
+		oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec; 
 
 		flerp.xyz = vec3(fMorphLerpK);
 	}

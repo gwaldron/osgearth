@@ -60,7 +60,7 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
     {
         // re-activate culling now that the first cull traversal has taken place.
         this->setCullingActive( true );
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
         if ( cv )
         {
             osg::Viewport::value_type width  = _previousWidth;

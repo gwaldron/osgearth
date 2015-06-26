@@ -149,16 +149,17 @@ public:
         osg::Vec3d center = feature->getGeometry()->getBounds().center();
         GeoPoint point(feature->getSRS(), center.x(), center.y());
 
-        PlaceNode* placeNode = new PlaceNode(0L, point, style, context.getDBOptions());
+        //LabelNode* node = new LabelNode(0L, point, style);
+        PlaceNode* node = new PlaceNode(0L, point, style, context.getDBOptions());
 
         if ( !priorityExpr.empty() )
         {
             AnnotationData* data = new AnnotationData();
             data->setPriority( feature->eval(priorityExpr, &context) );
-            placeNode->setAnnotationData( data );
+            node->setAnnotationData( data );
         }
 
-        return placeNode;
+        return node;
     }
 
 };

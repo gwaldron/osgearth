@@ -29,7 +29,7 @@
 namespace osgEarth
 {
     /**
-     * Viewpoint stores a focal point (or a focal node) and camrea parameters
+     * Viewpoint stores a focal point (or a focal node) and camera parameters
      * relative to that point.
      */
     class OSGEARTH_EXPORT Viewpoint

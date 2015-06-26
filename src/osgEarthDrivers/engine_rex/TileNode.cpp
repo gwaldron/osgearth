@@ -70,10 +70,8 @@ TileNode::create(const TileKey& key, EngineContext* context)
 {
     _key = key;
 
-    // Next, build the surface geometry for the node.
-
+    // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
-
     context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo().uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
 
     TileDrawable* surfaceDrawable = new TileDrawable(key, context->getSelectionInfo(), context->getRenderBindings(), geom.get());
@@ -110,6 +108,10 @@ TileNode::create(const TileKey& key, EngineContext* context)
     _keyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
     getStateSet()->addUniform( _keyUniform.get() );
     updateTileKeyUniform();
+
+    // Set up a data container for multipass layer rendering.
+    _mptex = new MPTexture();
+    surfaceDrawable->setMPTexture( _mptex.get() );
 
     // need to recompute the bounds after adding payload:
     dirtyBound();
@@ -223,6 +225,8 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
         OE_INFO << LC <<"Traversing: "<<"\n";    
     }
 #endif
+    osgUtil::CullVisitor* cull = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
@@ -328,7 +332,6 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     }
 
     // Traverse land cover bins at this LOD.
-    osgUtil::CullVisitor* cull = dynamic_cast<osgUtil::CullVisitor*>( &nv );
     for(int i=0; i<context->landCoverBins()->size(); ++i)
     {
         const LandCoverBin& bin = context->landCoverBins()->at(i);
@@ -356,9 +359,10 @@ void TileNode::regularUpdate(osg::NodeVisitor& nv)
         }
     }
 
-    else if ( _surface.valid() )
+    else 
     {
         _surface->accept( nv );
+        //_landCover->accept( nv );
     }
 }
 
@@ -406,32 +410,45 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
 {
     bool changesMade = false;
 
+    // which quadrant is this tile in?
     unsigned quadrant = getTileKey().getQuadrant();
 
     // Find all the sampler matrix uniforms and scale/bias them to the current quadrant.
     // This will inherit textures and use the proper sub-quadrant until new data arrives (later).
     for( RenderBindings::const_iterator binding = bindings.begin(); binding != bindings.end(); ++binding )
     {
-        osg::StateAttribute* sa = getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE);
-
-        // If this node doesn't have a texture for this binding, that means it's inheriting one:
-        osg::Matrixf matrix;
-        if ( sa == 0L )
+        if ( binding->usage().isSetTo(binding->COLOR) )
         {
-            // Find the parent's matrix and scale/bias it to this quadrant:
             if ( parent && parent->getStateSet() )
             {
-                osg::Uniform* matrixUniform = parent->getStateSet()->getUniform( binding->matrixName() );
-                if ( matrixUniform )
-                {
-                    matrixUniform->get( matrix );
-                    matrix.preMult( scaleBias[quadrant] );
-                }
+                MPTexture* parentMPTex = parent->getMPTexture();
+                _mptex->inheritState( parentMPTex, scaleBias[quadrant] );
+                changesMade = true;
             }
+        }
 
-            // Add a new uniform with the scale/bias'd matrix:
-            getOrCreateStateSet()->addUniform( new osg::Uniform(binding->matrixName().c_str(), matrix) );
-            changesMade = true;
+        else
+        {
+            osg::StateAttribute* sa = getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE);        
+            if ( sa == 0L )
+            {
+                osg::Matrixf matrix;
+
+                // Find the parent's matrix and scale/bias it to this quadrant:
+                if ( parent && parent->getStateSet() )
+                {
+                    osg::Uniform* matrixUniform = parent->getStateSet()->getUniform( binding->matrixName() );
+                    if ( matrixUniform )
+                    {
+                        matrixUniform->get( matrix );
+                        matrix.preMult( scaleBias[quadrant] );
+                    }
+                }
+
+                // Add a new uniform with the scale/bias'd matrix:
+                getOrCreateStateSet()->addUniform( new osg::Uniform(binding->matrixName().c_str(), matrix) );
+                changesMade = true;
+            }
         }
     }
 
@@ -489,6 +506,13 @@ TileNode::recalculateExtrema(const RenderBindings& bindings)
 }
 
 void
+TileNode::mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderBindings& bindings)
+{
+    _mptex->merge( mptex );    
+    getStateSet()->merge(*stateSet);
+}
+
+void
 TileNode::load(osg::NodeVisitor& nv)
 {
     // Access the context:
@@ -505,10 +529,11 @@ TileNode::load(osg::NodeVisitor& nv)
     }
         
     // Prioritize by LOD.
-    float priority = -(float)getTileKey().getLOD();
+    float priority = - (float)getTileKey().getLOD();
 
     // Submit to the loader.
     //OE_INFO << LC << getTileKey().str() << "load\n";
+    //if ( getTileKey().getLOD() < 6 )
     context->getLoader()->load( _loadRequest.get(), priority, nv );
 }
 
@@ -642,7 +667,7 @@ TileNode::findExtrema(osg::Texture* tex, const osg::Matrix& m, osg::Vec2f& extre
         double t_span   = m(1,1) * (double)image->t();
 
         // if the window is smaller than one pixel, forget it.
-        if ( s_span < 1.0 || t_span < 1.0 )
+        if ( s_span < 4.0 || t_span < 4.0 )
             return false;
 
         ImageUtils::PixelReader read(image);

@@ -168,6 +168,8 @@ osgearth_package creates a redistributable `TMS`_ based package from an earth fi
 | ``--concurrency``                  | The number of threads or proceses to use if --mp or --mt           |
 |                                    | are provided                                                       | 
 +------------------------------------+--------------------------------------------------------------------+
+| ``--alpha-mask``                   | Mask out imagery that isn't in the provided extents.               |
++------------------------------------+--------------------------------------------------------------------+
 | ``--verbose``                      | Displays progress of the operation                                 |
 +------------------------------------+--------------------------------------------------------------------+
 

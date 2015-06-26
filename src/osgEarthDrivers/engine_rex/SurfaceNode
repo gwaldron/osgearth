@@ -53,6 +53,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const osg::BoundingBox& getWorldBoundingBox() const { return _bbox; }
 
         const osg::BoundingBox& getAlignedBoundingBox() const;
+        
+        TileDrawable* getDrawable() const { return _drawable.get(); }
 
         // Returns true if box intersects the sphere of radius centered around point
         bool boxIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare);
@@ -63,6 +65,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         float minDistanceFromPointSquare(const osg::Vec3& center);
         float maxDistanceFromPointSquare(const osg::Vec3& center);
+        
     protected:
         virtual ~SurfaceNode() { }
 

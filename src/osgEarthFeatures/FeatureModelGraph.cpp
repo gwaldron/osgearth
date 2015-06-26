@@ -616,7 +616,7 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
             //OE_NOTICE << "  tileFactor = " << tileFactor << " maxRange=" << maxRange << " radius=" << tileBound.radius() << std::endl;
             
             // Construct a tile key that will be used to query the source for this tile.
-#if 1
+#if 0
             unsigned int w, h;
             featureProfile->getProfile()->getNumTiles(lod, w, h);
             tileY = h - tileY - 1;

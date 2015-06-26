@@ -23,6 +23,7 @@ SET(TARGET_SRC
     LoadTileData.cpp
     ExpireTiles.cpp
     MaskGenerator.cpp
+    MPTexture.cpp
     SurfaceNode.cpp
     SurfaceNodeFactory.cpp
 	TileDrawable.cpp
@@ -43,6 +44,7 @@ SET(TARGET_H
     LoadTileData
     ExpireTiles
     MaskGenerator
+    MPTexture
     QuickReleaseGLObjects
     RenderBindings
     SurfaceNode

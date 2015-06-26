@@ -37,17 +37,17 @@ using namespace osgEarth;
 namespace
 {
     const char* indexVertexInit =
-        "#version 130\n"
+        "#version 330\n"
 
-        "#pragma vp_entryPoint \"oe_index_vert_initialize\" \n"
+        "#pragma vp_entryPoint \"oe_index_setObjectID\" \n"
         "#pragma vp_location   \"vertex_model\" \n"
-        "#pragma vp_order      \"-FLT_MAX\" \n"
+        "#pragma vp_order      \"first\" \n"
 
         "uniform uint oe_index_objectid_uniform; \n"   // override objectid if > 0
         "in uint      oe_index_objectid_attr; \n"      // Vertex attribute containing the object ID.
         "uint         oe_index_objectid; \n"           // Stage global containing the Object ID.
 
-        "void oe_index_vert_initialize(inout vec4 vertex) \n"
+        "void oe_index_setObjectID(inout vec4 vertex) \n"
         "{ \n"
         "    if ( oe_index_objectid_uniform > 0u ) \n"
         "        oe_index_objectid = oe_index_objectid_uniform; \n"
@@ -106,7 +106,7 @@ ObjectIndex::insertImpl(osg::Referenced* object)
     // internal: assume mutex is locked
     ObjectID id = ++_idGen;
     _index[id] = object;
-    OE_DEBUG << "Insert " << id << "; size = " << _index.size() << "\n";
+    OE_DEBUG << LC << "Insert " << id << "; size = " << _index.size() << "\n";
     return id;
 }
 

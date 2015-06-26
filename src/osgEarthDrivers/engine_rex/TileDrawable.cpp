@@ -17,14 +17,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "TileDrawable"
+#include "MPTexture"
 
 #include <osg/Version>
 #include <osgUtil/MeshOptimizers>
 #include <iterator>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-
-#include <osgUtil/IncrementalCompileOperation>
 
 using namespace osg;
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -72,8 +71,9 @@ _selectionInfo(selectionInfo)
     _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
     _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
-
     _texMatrixUniformNameID    = osg::Uniform::getNameID( "oe_layer_texMatrix" );
+
+    _textureImageUnit = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR)->unit();
 }
 
 void
@@ -89,6 +89,9 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 void
 TileDrawable::drawPatches(osg::RenderInfo& renderInfo) const
 {
+    if ( _geom->getNumPrimitiveSets() < 1 )
+        return;
+
     osg::State& state = *renderInfo.getState(); 
     
     const osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(0));
@@ -131,7 +134,6 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
-    GLint tileKeyLocation       = -1;
     GLint tileExtentsLocation   = -1;
     GLint tileMorphCLocation    = -1;
     GLint tileGridDimsLocation  = -1;
@@ -144,7 +146,6 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
     // requery the uni locations each time unfortunately. TODO: explore optimizations.
     if ( pcp )
     {
-        //tileKeyLocation      = pcp->getUniformLocation( _tileKeyUniformNameID );
         tileExtentsLocation  = pcp->getUniformLocation( _tileExtentsUniformNameID );
         tileMorphCLocation   = pcp->getUniformLocation( _tileMorphCUniformNameID );
         tileGridDimsLocation = pcp->getUniformLocation( _tileGridDimsUniformNameID );
@@ -166,35 +167,50 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
     {
         ext->glUniform4fv( tileGridDimsLocation, 1, _tileGridDimsValue.ptr() );
     }
+    
     float prevOpacity = -1.0f;
-
-    for(std::vector<Layer>::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
+    if ( _mptex.valid() && !_mptex->getPasses().empty() )
     {
-        const ImageLayer* imageLayer = i->_imageLayer.get();
-        if ( imageLayer->getVisible() && imageLayer->getOpacity() > 0.0f )
+        float prevOpacity = -1.0f;
+
+        state.setActiveTextureUnit( _textureImageUnit );
+
+        // in FFP mode, we need to enable the GL mode for texturing:
+        if ( !pcp )
+            state.applyMode(GL_TEXTURE_2D, true);
+
+        for(MPTexture::Passes::const_iterator p = _mptex->getPasses().begin();
+            p != _mptex->getPasses().end();
+            ++p)
         {
-            // bind the color unit, which is always in the first render binding.
-            state.setActiveTextureUnit( _bindings.front().unit() ); //.color().unit() );
+            const MPTexture::Pass& pass = *p;
 
-            // bind the color texture:
-            if ( i->_tex.valid() )
-                i->_tex->apply( state );  
-            else
-                OE_WARN << LC << "NO texture!\n";
-
-            // apply the color texture matrix uniform:
-            if ( i->_texMatrix.valid() )
-                ext->glUniformMatrix4fv( texMatrixLocation, 1, GL_FALSE, i->_texMatrix->ptr() );
-            else
-                OE_WARN << LC << "NO tex matrix!\n";
-            
-            // apply uniform values:
-            if ( pcp )
+            if ( pass._layer->getVisible() && pass._layer->getOpacity() > 0.1 )
             {
+                // Apply the texture.
+                const osg::StateAttribute* lastTex = state.getLastAppliedTextureAttribute(_textureImageUnit, osg::StateAttribute::TEXTURE);
+                if ( lastTex != pass._texture.get() )
+                    pass._texture->apply( state );
+            
+                // Apply the texture matrix.
+                ext->glUniformMatrix4fv( texMatrixLocation, 1, GL_FALSE, pass._matrix.ptr() );
+            
+                // Order uniform (TODO: evaluate whether we still need this)
+                if ( orderLocation >= 0 )
+                {
+                    ext->glUniform1i( orderLocation, (GLint)layersDrawn );
+                }
+
+                // assign the layer UID:
+                if ( uidLocation >= 0 )
+                {
+                    ext->glUniform1i( uidLocation, (GLint)pass._layer->getUID() );
+                }
+
                 // apply opacity:
                 if ( opacityLocation >= 0 )
                 {
-                    float opacity = imageLayer->getOpacity();
+                    float opacity = pass._layer->getOpacity();
                     if ( opacity != prevOpacity )
                     {
                         ext->glUniform1f( opacityLocation, (GLfloat)opacity );
@@ -202,61 +218,28 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
                     }
                 }
 
-                // assign the layer UID:
-                if ( uidLocation >= 0 )
-                {
-                    ext->glUniform1i( uidLocation, (GLint)imageLayer->getUID() );
-                }
-
-                // assign the layer order:
-                if ( orderLocation >= 0 )
-                {
-                    ext->glUniform1i( orderLocation, (GLint)layersDrawn );
-                }
-
-                // draw the primitive sets.
-                for(unsigned p=0; p != _geom->getPrimitiveSetList().size(); ++p)
-                {
-                    const osg::PrimitiveSet* primSet = _geom->getPrimitiveSet(p);
-                    if ( primSet )
-                    {
-                        primSet->draw(state, true);
-                    }
-                    else
-                    {
-                        OE_WARN << LC << "Strange, TileDrawable had a 0L primset" << std::endl;
-                    }
-                }
+                _geom->getPrimitiveSet(0)->draw(state, true);
 
                 ++layersDrawn;
             }
         }
     }
 
-    // Draw when there are no textures:
+    // No mptex or no layers in the mptex? Draw simple.
     if ( layersDrawn == 0 )
     {
         if ( opacityLocation >= 0 )
             ext->glUniform1f( opacityLocation, (GLfloat)1.0f );
+
         if ( uidLocation >= 0 )
-            ext->glUniform1i( uidLocation, (GLint)0 ); // TEMPORARY! -gw //TODO
-            //ext->glUniform1i( uidLocation, (GLint)-1 );
+            ext->glUniform1i( uidLocation, (GLint)-1 );
+
         if ( orderLocation >= 0 )
             ext->glUniform1i( orderLocation, (GLint)0 );
         
-        for(unsigned p=0; p != _geom->getPrimitiveSetList().size(); ++p)
-        {
-            const osg::PrimitiveSet* primSet = _geom->getPrimitiveSet(p);
-            if ( primSet )
-            {
-                primSet->draw(state, true);
-            }
-            else
-            {
-                OE_WARN << LC << "INTERNAL: TileDrawable had a 0L primset" << std::endl;
-            }
-        }
+        _geom->getPrimitiveSet(0)->draw(state, true);
     }
+
 }
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
@@ -357,6 +340,7 @@ TileDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
 {
     osg::Drawable::compileGLObjects( renderInfo );
 
+#if 0
     osg::State& state = *renderInfo.getState();
     unsigned contextID = state.getContextID();
 #if OSG_MIN_VERSION_REQUIRED(3,3,3)
@@ -372,6 +356,7 @@ TileDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
         if ( i->_tex.valid() )
             i->_tex->apply( state );
     }
+#endif
 
     if ( _geom.valid() )
     {

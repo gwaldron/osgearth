@@ -52,6 +52,9 @@ main(int argc, char** argv)
     if ( arguments.read("--stencil") )
         osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
+    float vfov = -1.0f;
+    arguments.read("--vfov", vfov);
+
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
@@ -59,7 +62,14 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
     // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator() );    
+    viewer.setCameraManipulator( new EarthManipulator() );   
+
+    if ( vfov > 0.0 )
+    {
+        double fov, ar, n, f;
+        viewer.getCamera()->getProjectionMatrixAsPerspective(fov, ar, n, f);
+        viewer.getCamera()->setProjectionMatrixAsPerspective(60.0, ar, n, f);
+    }
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    

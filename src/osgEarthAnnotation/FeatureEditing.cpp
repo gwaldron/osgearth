@@ -59,7 +59,7 @@ AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
         GeoPoint mapPoint;
         mapPoint.fromWorld( mapNode->getMapSRS(), world );
 
-        Feature* feature = _featureNode->getFeature();
+        Feature* feature = _featureNode->getFeatures().front();
 
         if ( feature )            
         {
@@ -122,7 +122,8 @@ public:
 
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          (*_featureNode->getFeature()->getGeometry())[_point] =  osg::Vec3d(position.x(), position.y(), 0);
+          Feature* feature = _featureNode->getFeatures().front();
+          (*feature->getGeometry())[_point] =  osg::Vec3d(position.x(), position.y(), 0);
           _featureNode->init();
       }
 
@@ -196,9 +197,9 @@ FeatureEditor::init()
 {
     removeChildren( 0, getNumChildren() );
 
-    Feature* feature = _featureNode->getFeature();
+    Feature* feature = _featureNode->getFeatures().front();
     //Create a dragger for each point
-    for (unsigned int i = 0; i < _featureNode->getFeature()->getGeometry()->size(); i++)
+    for (unsigned int i = 0; i < feature->getGeometry()->size(); i++)
     {
         SphereDragger* dragger = new SphereDragger( _featureNode->getMapNode() );
         dragger->setColor( _color );

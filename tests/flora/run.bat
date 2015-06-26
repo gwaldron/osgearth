@@ -1,6 +1,6 @@
 @echo off
-osgearth_viewer combo.earth ^
+osgearth_viewer flora.earth ^
     --logdepth ^
-    --samples 1 ^
     --sky ^
+    --uniform oe_grass_coverage 0.4 1.0 ^
     %*

@@ -78,6 +78,7 @@ TerrainEngineNode::addEffect(TerrainEffect* effect)
     {
         effects_.push_back( effect );
         effect->onInstall( this );
+        dirtyState();
     }
 }
 
@@ -91,6 +92,7 @@ TerrainEngineNode::removeEffect(TerrainEffect* effect)
         TerrainEffectVector::iterator i = std::find(effects_.begin(), effects_.end(), effect);
         if ( i != effects_.end() )
             effects_.erase( i );
+        dirtyState();
     }
 }
 

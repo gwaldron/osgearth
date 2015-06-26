@@ -18,6 +18,7 @@ uniform float oe_grass_lod         = 21.0;
 uniform float oe_grass_width       = 0.15;
 uniform float oe_grass_height      = 0.25;
 uniform float oe_grass_noise       = 1.0;
+uniform float oe_grass_ao          = 0.0;   // ambient occlusion of ground verts (0=full)
 
 uniform float oe_grass_windFactor  = 0.0;
 uniform float oe_grass_maxDistance = 25.0;
@@ -35,12 +36,15 @@ in vec4 oe_layer_tilec;
 // Output grass texture coordinates to the fragment shader
 out vec2 oe_grass_texCoord;
 
-// Output color variations:
-out vec4 vp_Color;  
-out vec3 vp_UpVector;       
+// Output a falloff metric to the fragment shader for distance blending
+out float oe_grass_falloff;
 
-// Output normals:         
+// Output color variations:
+out vec4 vp_Color;
 out vec3 vp_Normal;
+
+// Up vector for clamping.
+in vec3 oe_UpVectorView;  
 
 
 void
@@ -110,7 +114,7 @@ oe_grass_geom()
     
     // Transform to view space.
     vec4 center_view = gl_ModelViewMatrix * center_model;
-    vec3 up_view     = normalize(gl_NormalMatrix * vp_UpVector);
+    vec3 up_view     = oe_UpVectorView;
     
     // Clamp the center point to the elevation.
     oe_grass_clamp(center_view, up_view, tileUV);
@@ -130,6 +134,9 @@ oe_grass_geom()
     float height = oe_grass_height;
     height *= abs(1.0+n);
     height *= falloff;
+    
+    // Tell the fragment shader to blend into the distance.
+    oe_grass_falloff = nRange;
 
 	// compute the grass vertices in view space.
     vec4 newVerts[4];
@@ -149,7 +156,7 @@ oe_grass_geom()
     normal.xy += vec2(oe_grass_rangeRand(-0.25, 0.25, vec2(n)));
     vp_Normal = normalize(gl_NormalMatrix * normal);
     
-    vp_Color = vec4(0,0,0,falloff);
+    vp_Color = vec4(oe_grass_ao, oe_grass_ao, oe_grass_ao, falloff);
     gl_Position = newVerts[0];
     oe_grass_texCoord = vec2(0,0);
     VP_EmitViewVertex();

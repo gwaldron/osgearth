@@ -91,7 +91,7 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
         oe_layer_tilec.st = vUVMorphed;
 
         // And compute the texture coords
-		oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec; //vec4(vUVMorphed,oe_layer_tilec.z,oe_layer_tilec.w);	
+		oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec; 
 
 		flerp.xyz = vec3(fMorphLerpK);
 	}

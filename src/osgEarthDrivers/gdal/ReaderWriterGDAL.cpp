@@ -628,8 +628,7 @@ public:
       _srcDS(NULL),
       _warpedDS(NULL),
       _options(options),
-      _maxDataLevel(30),
-      _linearUnits(1.0)
+      _maxDataLevel(30)
     {
     }
 
@@ -938,9 +937,7 @@ public:
             }
         }
 
-        // Get the linear units so we can transform elevation values to meters.
-        _linearUnits = OSRGetLinearUnits( src_srs->getHandle(), 0 );
-      
+     
         //Get the initial geotransform
         _srcDS->GetGeoTransform(_geotransform);
 
@@ -2098,11 +2095,6 @@ public:
                     {
                         h = getHeightAtLocation( readGeoHeightField, geoX, geoY, *_options.interpolation() );
                     }
-                    if (h != NO_DATA_VALUE)
-                    {
-                        // We multiply by the linear units to get meters.
-                        h *= _linearUnits;
-                    }
                     hf->setHeight(c, r, h);
                 }
             }
@@ -2126,8 +2118,6 @@ private:
     GDALDataset* _warpedDS;
     double       _geotransform[6];
     double       _invtransform[6];
-
-    double       _linearUnits;
 
     GeoExtent _extents;
 

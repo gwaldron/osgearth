@@ -105,9 +105,11 @@ namespace osgEarth { namespace Features
 
     protected:
 
+        /** Custom image allocation bu the subclass. Default image is getPixelsPerTile() RGBA. */
+        virtual osg::Image* allocateImage() { return NULL; }
+
         /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
-        virtual osg::Referenced* createBuildData() {
-            return NULL; }     
+        virtual osg::Referenced* createBuildData() { return NULL; }     
 
         /**
          * Creates OSG graph(s) representing the specified feature list.

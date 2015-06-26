@@ -403,7 +403,7 @@ namespace agg
     //     ras.render(ren, agg::rgba8(200, 100, 80));
     //  
     //------------------------------------------------------------------------
-    template<class Span> class renderer
+    template<class Span, class Type> class renderer
     {
     public:
         //--------------------------------------------------------------------
@@ -412,7 +412,7 @@ namespace agg
         }
         
         //--------------------------------------------------------------------
-        void clear(const rgba8& c)
+        void clear(const Type& c)
         {
             unsigned y;
             for(y = 0; y < m_rbuf->height(); y++)
@@ -422,7 +422,7 @@ namespace agg
         }
 
         //--------------------------------------------------------------------
-        void pixel(int x, int y, const rgba8& c)
+        void pixel(int x, int y, const Type& c)
         {
             if(m_rbuf->inbox(x, y))
             {
@@ -431,17 +431,17 @@ namespace agg
         }
 
         //--------------------------------------------------------------------
-        rgba8 pixel(int x, int y) const
+        Type pixel(int x, int y) const
         {
             if(m_rbuf->inbox(x, y))
             {
                 return m_span.get(m_rbuf->row(y), x);
             }
-            return rgba8(0,0,0);
+            return Type(0,0,0);
         }
 
         //--------------------------------------------------------------------
-        void render(const scanline& sl, const rgba8& c)
+        void render(const scanline& sl, const Type& c)
         {
             if(sl.y() < 0 || sl.y() >= int(m_rbuf->height()))
             {
@@ -694,10 +694,10 @@ namespace agg
         }
 
         //--------------------------------------------------------------------
-        template<class Renderer> void render(Renderer& r, 
-                                             const rgba8& c, 
-                                             int dx=0, 
-                                             int dy=0)
+        template<class Renderer, class Type> void render(Renderer& r, 
+                                                         const Type& c, //const rgba8& c, 
+                                                         int dx=0, 
+                                                         int dy=0)
         {
             const cell* const* cells = m_outline.cells();
             if(m_outline.num_cells() == 0) return;

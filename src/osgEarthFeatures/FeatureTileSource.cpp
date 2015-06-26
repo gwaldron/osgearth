@@ -166,8 +166,12 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
     osg::ref_ptr<osg::Referenced> buildData = createBuildData();
 
     // allocate the image.
-    osg::ref_ptr<osg::Image> image = new osg::Image();
-    image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGBA, GL_UNSIGNED_BYTE );
+    osg::ref_ptr<osg::Image> image = allocateImage();
+    if ( !image.valid() )
+    {
+        image = new osg::Image();
+        image->allocateImage( getPixelsPerTile(), getPixelsPerTile(), 1, GL_RGBA, GL_UNSIGNED_BYTE );
+    }
 
     preProcess( image.get(), buildData.get() );
 

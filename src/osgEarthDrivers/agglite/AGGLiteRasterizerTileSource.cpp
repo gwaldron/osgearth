@@ -51,64 +51,65 @@ using namespace OpenThreads;
 
 namespace
 {
+    struct float32
+    {
+        float32() : value(0.0f) { }
+        float32(float v) : value(v) { }
+
+        float value;
+    };
+
     struct span_coverage32
     {
-        //--------------------------------------------------------------------
         static void render(unsigned char* ptr, 
                            int x,
                            unsigned count, 
                            const unsigned char* covers, 
-                           const agg::rgba8& c)
+                           const float32& c)
         {
             unsigned char* p = ptr + (x << 2);
+            float* f = (float*)p;
             do
             {
                 unsigned char cover = *covers++;
                 int hasData = cover > 127;
-                if ( hasData )
-                {
-                    *p++ = c.a;
-                    *p++ = c.b;
-                    *p++ = c.g;
-                    *p++ = c.r;
-                }
-                else
-                {
-                    // 0xffffffff = nodata for coverages.
-                    *p++ = 0xff;
-                    *p++ = 0xff;
-                    *p++ = 0xff;
-                    *p++ = 0xff;
-                }
+                *f++ = hasData ? c.value : FLT_MAX;
             }
             while(--count);
         }
 
-        //--------------------------------------------------------------------
         static void hline(unsigned char* ptr, 
                           int x,
                           unsigned count, 
-                          const agg::rgba8& c)
+                          const float32& c)
         {
             unsigned char* p = ptr + (x << 2);
-            do { *p++ = c.a; *p++ = c.b; *p++ = c.g; *p++ = c.r; } while(--count);
+            float* f = (float*)p;
+            do {
+                *f++ = c.value;
+            }
+            while(--count);
         }
 
-        //--------------------------------------------------------------------
-        static agg::rgba8 get(unsigned char* ptr, int x)
+        static float32 get(unsigned char* ptr, int x)
         {
             unsigned char* p = ptr + (x << 2);
-            agg::rgba8 c;
-            c.a = *p++; 
-            c.b = *p++; 
-            c.g = *p++;
-            c.r = *p;
-            return c;
+            float* f = (float*)p;
+            return float32(*f);
         }
     };
 
     osg::Vec4f encodeCoverageValue(float value)
     {
+        osg::Vec4f color;
+#if 0
+        const float w = 1.0f/255.0f;
+        unsigned char* c = (unsigned char*)&value;
+        color.a() = w * (float)(*c++);
+        color.b() = w * (float)(*c++);
+        color.g() = w * (float)(*c++);
+        color.r() = w * (float)(*c++);
+#else
         const float minValue = -8192.0f;
         const float maxValue =  8192.0f;
         const float tofixed   = 255.0/256.0;
@@ -120,14 +121,13 @@ namespace
         // this algorithm is incremental - use as many bytes as you need (starting
         // with r) for the precision you need. For example, we could use just RGB
         // and save the 'a' for another value like alpha/intensity.
-        osg::Vec4f color;
         float integerPart;
 
         color.r() = modff(v * tofixed,               &integerPart);
         color.g() = modff(v * tofixed * 255.0f,      &integerPart);
         color.b() = modff(v * tofixed * 65025.0f,    &integerPart);
         color.a() = modff(v * tofixed * 16581375.0f, &integerPart);
-
+#endif
         return color;
     }
 }
@@ -150,19 +150,33 @@ public:
     }
 
     //override
+    osg::Image* allocateImage()
+    {
+        osg::Image* image = 0L;
+        if ( _options.coverage() == true )
+        {
+            image = new osg::Image();
+            image->allocateImage(getPixelsPerTile(), getPixelsPerTile(), 1, GL_LUMINANCE, GL_FLOAT);
+            image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+        }
+        return image;
+    }
+
+    //override
     bool preProcess(osg::Image* image, osg::Referenced* buildData)
     {
         agg::rendering_buffer rbuf( image->data(), image->s(), image->t(), image->s()*4 );
-        agg::renderer<agg::span_abgr32> ren(rbuf);
 
         // clear the buffer.
         if ( _options.coverage() == true )
         {
             // For coverage data, ~0 = no data.
-            ren.clear(agg::rgba8(255,255,255,255));
+            agg::renderer<span_coverage32, float32> ren(rbuf);
+            ren.clear(float32(0.0f));
         }
         else
         {
+            agg::renderer<agg::span_abgr32, agg::rgba8> ren(rbuf);
             ren.clear(agg::rgba8(0,0,0,0));
         }
         return true;
@@ -362,21 +376,18 @@ public:
                 const PolygonSymbol* poly =
                     feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
                     masterPoly;
-                
-                osg::Vec4f color;
 
                 if ( _options.coverage() == true && covValue.isSet() )
                 {
                     float value = (float)feature->eval(covValue.mutable_value(), &context);
-                    color = encodeCoverageValue( value );
+                    rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
                 }
                 else
                 {
-                    color = poly->fill()->color();
+                    osg::Vec4f color = poly->fill()->color();
+                    rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
                 }
                 
-                //const osg::Vec4 color = poly ? static_cast<osg::Vec4>(poly->fill()->color()) : osg::Vec4(1,1,1,1);
-                rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
             }
         }
 
@@ -393,19 +404,15 @@ public:
                     feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
                     masterLine;
 
-                osg::Vec4f color;
-
                 if ( _options.coverage() == true && covValue.isSet() )
                 {
                     float value = (float)feature->eval(covValue.mutable_value(), &context);
-                    color = encodeCoverageValue( value );
+                    rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
                 }
                 else
-                {
-                    color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
+                {   osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
+                    rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
                 }
-
-                rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
             }
         }
 
@@ -415,12 +422,15 @@ public:
     //override
     bool postProcess( osg::Image* image, osg::Referenced* data )
     {
-        //convert from ABGR to RGBA
-        unsigned char* pixel = image->data();
-        for(int i=0; i<image->s()*image->t()*4; i+=4, pixel+=4)
+        if ( _options.coverage() == false )
         {
-            std::swap( pixel[0], pixel[3] );
-            std::swap( pixel[1], pixel[2] );
+            //convert from ABGR to RGBA
+            unsigned char* pixel = image->data();
+            for(int i=0; i<image->s()*image->t()*4; i+=4, pixel+=4)
+            {
+                std::swap( pixel[0], pixel[3] );
+                std::swap( pixel[1], pixel[2] );
+            }
         }
 
         return true;
@@ -462,17 +472,36 @@ public:
                     ras.line_to_d( x0, y0 );
             }
         }
+        agg::renderer<agg::span_abgr32, agg::rgba8> ren(buffer);
+        ras.render(ren, fgColor);
+
+        ras.reset();
+    }
+
+
+    void rasterizeCoverage(const Geometry* geometry, float value, RenderFrame& frame, 
+                           agg::rasterizer& ras, agg::rendering_buffer& buffer)
+    {
+        ConstGeometryIterator gi( geometry );
+        while( gi.hasMore() )
+        {
+            const Geometry* g = gi.next();
+
+            for( Geometry::const_iterator p = g->begin(); p != g->end(); p++ )
+            {
+                const osg::Vec3d& p0 = *p;
+                double x0 = frame.xf*(p0.x()-frame.xmin);
+                double y0 = frame.yf*(p0.y()-frame.ymin);
+
+                if ( p == g->begin() )
+                    ras.move_to_d( x0, y0 );
+                else
+                    ras.line_to_d( x0, y0 );
+            }
+        }
         
-        if (_options.coverage() == true )
-        {
-            agg::renderer<span_coverage32> ren(buffer);
-            ras.render(ren, fgColor);
-        }
-        else
-        {
-            agg::renderer<agg::span_abgr32> ren(buffer);
-            ras.render(ren, fgColor);
-        }
+        agg::renderer<span_coverage32, float32> ren(buffer);
+        ras.render(ren, value);
         ras.reset();
     }
 

@@ -13,7 +13,6 @@ in vec4 vp_Color;
 
 in vec2 oe_grass_texCoord;
 in float oe_grass_falloff;
-in vec4 oe_layer_texc;
 in vec4 oe_layer_tilec;
 
 uniform float mixer;

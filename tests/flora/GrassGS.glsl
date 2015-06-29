@@ -14,11 +14,12 @@ void VP_EmitViewVertex();
 uniform float osg_FrameTime;
 uniform vec4  oe_tile_key;
                 
-uniform float oe_grass_lod         = 21.0;
-uniform float oe_grass_width       = 0.15;
-uniform float oe_grass_height      = 0.25;
-uniform float oe_grass_noise       = 1.0;
-uniform float oe_grass_ao          = 0.0;   // ambient occlusion of ground verts (0=full)
+uniform float oe_grass_lod            = 21.0;
+uniform float oe_grass_width          = 0.15;
+uniform float oe_grass_height         = 0.25;
+uniform float oe_grass_noise          = 1.0;
+uniform float oe_grass_ao             = 0.0;   // ambient occlusion of ground verts (0=full)
+uniform float oe_grass_colorVariation = 0.0;
 
 uniform float oe_grass_windFactor  = 0.0;
 uniform float oe_grass_maxDistance = 25.0;
@@ -83,37 +84,48 @@ oe_grass_applyWind(float time, float factor, float randOffset)
 {
    return sin(time + randOffset) * factor;
 }
+
+vec3
+oe_grass_getRandomBarycentricPoint(vec2 seed)
+{
+    // compute random barycentric coordinates.
+    vec3 b;
+    b[0] = oe_grass_rangeRand(0.0, 1.0, seed.xy);
+    b[1] = oe_grass_rangeRand(0.0, 1.0, seed.yx);
+    if (b[0]+b[1] >= 1.0)
+    {
+        b[0] = 1.0 - b[0];
+        b[1] = 1.0 - b[1];
+    }
+    b[2] = 1.0 - b[0] - b[1];
+    return b;
+}
                                 
 void
 oe_grass_geom()
-{    
-    vec4 positions[3];
-	vec2 tileCoords[3];
+{
+    vec4 center = vec4(0,0,0,1);
+    vec2 tileUV = vec2(0,0);
     
-    // Load the triangle data:
+    // get a random point within the input triangle
+    vec3 b = oe_grass_getRandomBarycentricPoint(gl_in[0].gl_Position.xy);
+    
+    // Load the triangle data and compute the new position and tile coords
+    // using the barycentric coordinates.
     for(int i=0; i < 3; ++i)
     {
         VP_LoadVertex(i);      
-        positions[i] = gl_in[i].gl_Position;
-		tileCoords[i] = oe_layer_tilec.st;
-    }
-                    
-    // Center of the triangle:
-    vec4 center_model = (positions[0]  + positions[1]  + positions[2]) *0.3333333;
-    vec2 tileUV       = (tileCoords[0] + tileCoords[1] + tileCoords[2])*0.3333333;
-    
-    // Estimate the relative resolution of tile coordinates so we can jitter them
-    // along with the vertex.
-    float tileUVRes = distance(tileCoords[0], tileCoords[1]) / distance(positions[0], positions[1]);
-    
-    // Maximum distance to offset the instances from the original vertex location.
-    float maxOffset = distance(center_model, positions[0]) * oe_grass_noise;
-
-    // Randomly alter the position    
-    oe_grass_jitterVertex(center_model, tileUV, maxOffset, tileUVRes);
+        
+        center.x += b[i] * gl_in[i].gl_Position.x;
+        center.y += b[i] * gl_in[i].gl_Position.y;
+        center.z += b[i] * gl_in[i].gl_Position.z;
+        
+        tileUV.x += b[i] * oe_layer_tilec.x;
+        tileUV.y += b[i] * oe_layer_tilec.y;
+    } 
     
     // Transform to view space.
-    vec4 center_view = gl_ModelViewMatrix * center_model;
+    vec4 center_view = gl_ModelViewMatrix * center;
     vec3 up_view     = oe_UpVectorView;
     
     // Clamp the center point to the elevation.
@@ -141,22 +153,25 @@ oe_grass_geom()
 	// compute the grass vertices in view space.
     vec4 newVerts[4];
     
-    vec3 tangent_view = vec3(1,0,0); // assuming no roll.
+    const vec3 tangent_view = vec3(1,0,0); // assuming no roll.
     
     newVerts[0] = vec4(center_view.xyz - tangent_view*width*0.5, 1.0);
     newVerts[1] = vec4(center_view.xyz + tangent_view*width*0.5, 1.0);
     newVerts[2] = vec4(newVerts[0].xyz + up_view*height, 1.0);
     newVerts[3] = vec4(newVerts[1].xyz + up_view*height, 1.0);
                       
-    //TODO: animate based on wind parameters.
+    // TODO: animate based on wind parameters.
     newVerts[2].xyz += tangent_view * oe_grass_applyWind(osg_FrameTime*(1+n), oe_grass_width*oe_grass_windFactor*n, newVerts[2].x);
     newVerts[3].xyz += tangent_view * oe_grass_applyWind(osg_FrameTime*(1-n), oe_grass_width*oe_grass_windFactor*n, tileUV.t);
+    
+    // Color variation
+    float cv = clamp(n, 1.0-oe_grass_colorVariation, 1.0);
 
     vec3 normal = vec3(0,0,1);
     normal.xy += vec2(oe_grass_rangeRand(-0.25, 0.25, vec2(n)));
     vp_Normal = normalize(gl_NormalMatrix * normal);
     
-    vp_Color = vec4(oe_grass_ao, oe_grass_ao, oe_grass_ao, falloff);
+    vp_Color = vec4(cv*oe_grass_ao, cv*oe_grass_ao, cv*oe_grass_ao, falloff);
     gl_Position = newVerts[0];
     oe_grass_texCoord = vec2(0,0);
     VP_EmitViewVertex();
@@ -165,7 +180,7 @@ oe_grass_geom()
     oe_grass_texCoord = vec2(1,0);
     VP_EmitViewVertex();
 
-    vp_Color = vec4(1,1,1,falloff);      
+    vp_Color = vec4(cv,cv,cv,falloff);      
     gl_Position = newVerts[2];
     oe_grass_texCoord = vec2(0,1);
     VP_EmitViewVertex();

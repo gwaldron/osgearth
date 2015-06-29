@@ -191,8 +191,10 @@ Control::init()
 
     _geode = new osg::Geode();
     this->addChild( _geode );
-
+    
+#ifdef OSG_GLES2_AVAILABLE
     _alphaEffect = new AlphaEffect(this->getOrCreateStateSet());
+#endif
 }
 
 void

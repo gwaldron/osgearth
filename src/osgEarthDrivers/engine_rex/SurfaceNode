@@ -29,6 +29,7 @@
 #include <osg/BoundingBox>
 #include <osg/Drawable>
 #include <osg/Geode>
+#include <osgText/Text>
 #include <vector>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
@@ -65,7 +66,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         float minDistanceFromPointSquare(const osg::Vec3& center);
         float maxDistanceFromPointSquare(const osg::Vec3& center);
-        
+
+        void setDebugNodeVisible(bool bVisible);
+        bool isDebugNodeVisible(void) const;
+        void setDebugText(const std::string& strText);
+
     protected:
         virtual ~SurfaceNode() { }
 
@@ -73,7 +78,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::BoundingBox           _bbox;
         osg::ref_ptr<TileDrawable> _drawable;
         osg::ref_ptr<osg::Geode>   _surfaceGeode;
-        osg::ref_ptr<osg::Geode>   _debugGeode;
+
+        osg::ref_ptr<osg::Geode>    _debugGeode;
+        osg::ref_ptr<osgText::Text> _debugText;
+        bool                        _debugNodeVisible;
+        static const bool           _enableDebugNodes;
+
+        void addDebugNode(const osg::BoundingBox& box);
+        void removeDebugNode(void);
 
         VectorPoints _worldCorners;
 
@@ -82,7 +94,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         float _minDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center);
         float _maxDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center);
-         
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -46,6 +46,8 @@
 namespace osgEarth
 {
     class ProgressCallback;
+    class Map;
+    class MapFrame;
 
     /**
      * Configuration options for a tile source driver.
@@ -502,6 +504,12 @@ namespace osgEarth
          */
         void setStatus( Status status );
 
+        /**
+         * Accesses the map frame that synchronizes with a map if one is set.
+         * Note; the map frame might be empty/invalid.
+         */
+        MapFrame& getMapFrame() const;
+
 
     protected: // deprecated
 
@@ -535,6 +543,9 @@ namespace osgEarth
         GeoExtent      _dataExtentsUnion;
         Status         _status;
         Mode           _mode;
+
+        void setMap(const Map* map);
+        MapFrame* _frame;
     };
 
 

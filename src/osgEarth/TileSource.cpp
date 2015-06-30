@@ -25,6 +25,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/MemCache>
+#include <osgEarth/MapFrame>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
@@ -213,10 +214,12 @@ const TileSource::Mode TileSource::MODE_CREATE = 0x04;
 TileSource::TileSource(const TileSourceOptions& options) :
 _options( options ),
 _status ( Status::Error("Not initialized") ),
-_mode   ( 0 )
+_mode   ( 0 ),
+_frame  ( 0L )
 {
     this->setThreadSafeRefUnref( true );
 
+    _frame = new MapFrame();
 
     // Initialize the l2 cache size to the options.
     int l2CacheSize = *options.L2CacheSize();
@@ -261,6 +264,11 @@ TileSource::~TileSource()
     if (_blacklist.valid() && !_blacklistFilename.empty())
     {
         _blacklist->write(_blacklistFilename);
+    }
+
+    if ( _frame )
+    {
+        delete _frame;
     }
 }
 
@@ -343,6 +351,18 @@ const GeoExtent& TileSource::getDataExtentsUnion() const
         }
     }
     return _dataExtentsUnion;
+}
+
+void
+TileSource::setMap(const Map* map)
+{
+    _frame->setMap( map );
+}
+
+MapFrame&
+TileSource::getMapFrame() const
+{
+    return *_frame;
 }
 
 osg::Image*

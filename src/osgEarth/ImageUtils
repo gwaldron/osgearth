@@ -323,8 +323,7 @@ namespace osgEarth
                 return (*_reader)(this,
                     (int)(s * (float)(_image->s()-1)),
                     (int)(t * (float)(_image->t()-1)),
-                    (int)(r * (float)(_image->r()-1)),
-                    m);
+                    r, m);
             }
 
             // internals:
@@ -361,6 +360,13 @@ namespace osgEarth
             /** Writes a color to a pixel. */
             void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
                 (*_writer)(this, c, s, t, r, m );
+            }
+
+            void f(const osg::Vec4& c, float s, float t, int r=0, int m=0) {
+                this->operator()( c,
+                    (int)(s * (float)(_image->s()-1)),
+                    (int)(t * (float)(_image->t()-1)),
+                    r, m);
             }
 
             // internals:

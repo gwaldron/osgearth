@@ -253,7 +253,7 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
     // (depends on the viewer's threading mode).
-    _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL, "mp-update" );
+    _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL );
 
     // merge in the custom options:
     _terrainOptions.merge( options );

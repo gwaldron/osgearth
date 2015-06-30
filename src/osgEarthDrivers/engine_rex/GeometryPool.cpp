@@ -288,7 +288,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
             osg::Vec3d modelPlusOne;
             locator->unitToModel(osg::Vec3d(nx, ny, 1.0f), modelPlusOne);
-            osg::Vec3f normal = (modelPlusOne*world2local)-modelLTP;
+            osg::Vec3d normal = (modelPlusOne*world2local)-modelLTP;
             normal.normalize();
             normals->push_back( normal );
 
@@ -296,7 +296,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             {
                 osg::Vec3d modelXPlusOne;
                 locator->unitToModel(osg::Vec3d(nx+tdelta.x(), ny, 0.0f), modelXPlusOne);
-                osg::Vec3f tangent = (modelXPlusOne*world2local)-modelLTP;
+                osg::Vec3d tangent = (modelXPlusOne*world2local)-modelLTP;
                 tangent.normalize();
                 tangents->push_back(tangent);
 #if 0

@@ -1122,10 +1122,6 @@ namespace
      */
     void createSkirtGeometry( Data& d, double skirtRatio )
     {
-        // surface normals will double as our skirt extrusion vectors
-        osg::Vec3Array* skirtVectors = d.normals;
-
-
         // find the skirt height
         double skirtHeight = d.surfaceBound.radius() * skirtRatio;
 
@@ -1161,14 +1157,16 @@ namespace
             }
             else
             {
+                const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
+                skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
+
+                osg::Vec3 skirtVector( surfaceAttribs.x(), surfaceAttribs.y(), surfaceAttribs.z() );
+
                 const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
-                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+                skirtVerts->push_back( surfaceVert - skirtVector*skirtHeight );
 
                 const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
                 skirtNormals->push_back( surfaceNormal );
-
-                const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
-                skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
 
                 const osg::Vec4f& surfaceAttribs2 = (*d.surfaceAttribs2)[orig_i];
                 skirtAttribs2->push_back( surfaceAttribs2 - osg::Vec4f(0,0,0,skirtHeight) );
@@ -1215,15 +1213,18 @@ namespace
             }
             else
             {
+                const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
+                skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
+
+                osg::Vec3 skirtVector( surfaceAttribs.x(), surfaceAttribs.y(), surfaceAttribs.z() );
+
                 const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
-                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+                skirtVerts->push_back( surfaceVert - skirtVector*skirtHeight );
 
                 const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
                 skirtNormals->push_back( surfaceNormal );
 
-                const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
-                skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
-
+            
                 const osg::Vec4f& surfaceAttribs2 = (*d.surfaceAttribs2)[orig_i];
                 skirtAttribs2->push_back( surfaceAttribs2 - osg::Vec4f(0,0,0,skirtHeight) );
 
@@ -1268,14 +1269,16 @@ namespace
             }
             else
             {
+                const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
+                skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
+
+                osg::Vec3 skirtVector( surfaceAttribs.x(), surfaceAttribs.y(), surfaceAttribs.z() );
+
                 const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
-                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+                skirtVerts->push_back( surfaceVert - skirtVector*skirtHeight );
 
                 const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
                 skirtNormals->push_back( surfaceNormal );
-
-                const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
-                skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
 
                 const osg::Vec4f& surfaceAttribs2 = (*d.surfaceAttribs2)[orig_i];
                 skirtAttribs2->push_back( surfaceAttribs2 - osg::Vec4f(0,0,0,skirtHeight) );
@@ -1321,14 +1324,16 @@ namespace
             }
             else
             {
+                const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
+                skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
+
+                 osg::Vec3 skirtVector( surfaceAttribs.x(), surfaceAttribs.y(), surfaceAttribs.z() );
+
                 const osg::Vec3f& surfaceVert = (*d.surfaceVerts)[orig_i];
-                skirtVerts->push_back( surfaceVert - ((*skirtVectors)[orig_i])*skirtHeight );
+                skirtVerts->push_back( surfaceVert - skirtVector*skirtHeight );
 
                 const osg::Vec3f& surfaceNormal = (*d.normals)[orig_i];
                 skirtNormals->push_back( surfaceNormal );
-
-                const osg::Vec4f& surfaceAttribs = (*d.surfaceAttribs)[orig_i];
-                skirtAttribs->push_back( surfaceAttribs - osg::Vec4f(0,0,0,skirtHeight) );
 
                 const osg::Vec4f& surfaceAttribs2 = (*d.surfaceAttribs2)[orig_i];
                 skirtAttribs2->push_back( surfaceAttribs2 - osg::Vec4f(0,0,0,skirtHeight) );

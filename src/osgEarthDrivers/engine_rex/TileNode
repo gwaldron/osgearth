@@ -104,7 +104,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         OpenThreads::Atomic                _lastTraversalFrame;
         unsigned                           _count;
         osg::Vec2f                         _extrema;
-        osg::ref_ptr<osg::Uniform>         _keyUniform;
         osg::ref_ptr<MPTexture>            _mptex;
 
         TileNode* getSubTile(unsigned i) { return dynamic_cast<TileNode*>(getChild(i)); }
@@ -115,13 +114,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool findExtrema(osg::Texture* elevationTex, const osg::Matrix& scaleBias, osg::Vec2f& output) const;
 
-        void updateTileKeyUniform();
     private:
         void lodSelect(osg::NodeVisitor& nv);
         void regularUpdate(osg::NodeVisitor& nv);
 
         bool  shouldSubDivide(osg::NodeVisitor& nv);
         float getSubDivisionRange(void) const;
+
+        void updateTileSpecificUniforms();
+        osg::ref_ptr<osg::Uniform> _keyUniform;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

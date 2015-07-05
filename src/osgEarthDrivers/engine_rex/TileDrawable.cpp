@@ -46,10 +46,6 @@ _drawPatch   ( false )
 
     _supportsGLSL = Registry::capabilities().supportsGLSL();
 
-    unsigned tw, th;
-    key.getProfile()->getNumTiles(key.getLOD(), tw, th);
-    _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
-
 #pragma message("PPP: TO DO ")
 #pragma message("PPP: TO DO ")
 #pragma message("PPP: TO DO ")
@@ -68,14 +64,13 @@ _drawPatch   ( false )
     _tileGridDimsValue.set(fGridDims, fGridDims*0.5f, 2.0/fGridDims, _selectionInfo._uiLODForMorphing);
 #endif
     // establish uniform name IDs.
-    //_tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
-    _tileExtentsUniformNameID           = osg::Uniform::getNameID( "oe_tile_extents" );
-    _tileMorphCUniformNameID            = osg::Uniform::getNameID( "oe_tile_morph_constants" );
-    _tileGridDimsUniformNameID          = osg::Uniform::getNameID( "oe_tile_grid_dimensions" );
-    _uidUniformNameID          = osg::Uniform::getNameID( "oe_layer_uid" );
-    _orderUniformNameID        = osg::Uniform::getNameID( "oe_layer_order" );
-    _opacityUniformNameID      = osg::Uniform::getNameID( "oe_layer_opacity" );
-    _texMatrixUniformNameID    = osg::Uniform::getNameID( "oe_layer_texMatrix" );
+    _tileExtentsUniformNameID   = osg::Uniform::getNameID( "oe_tile_extents" );
+    _tileMorphCUniformNameID    = osg::Uniform::getNameID( "oe_tile_morph_constants" );
+    _tileGridDimsUniformNameID  = osg::Uniform::getNameID( "oe_tile_grid_dimensions" );
+    _uidUniformNameID           = osg::Uniform::getNameID( "oe_layer_uid" );
+    _orderUniformNameID         = osg::Uniform::getNameID( "oe_layer_order" );
+    _opacityUniformNameID       = osg::Uniform::getNameID( "oe_layer_opacity" );
+    _texMatrixUniformNameID     = osg::Uniform::getNameID( "oe_layer_texMatrix" );
 
     _textureImageUnit = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR)->unit();
 }
@@ -275,8 +270,6 @@ TileDrawable:: COMPUTE_BOUND() const
     {
         // update the uniform.
         Threading::ScopedMutexLock exclusive(_frameSyncMutex);
-        _tileKeyValue.w() = bbox.radius(); //std::min( bbox.xMax()-bbox.xMin(), bbox.yMax()-bbox.yMin() ); //bbox.radius();
-        //OE_NOTICE << "tile key radius = " << _tileKeyValue.w() << "\n";
         _tileExtentsValue.x() = abs(bbox.xMax()-bbox.xMin());
         _tileExtentsValue.y() = abs(bbox.yMax()-bbox.yMin());
     }

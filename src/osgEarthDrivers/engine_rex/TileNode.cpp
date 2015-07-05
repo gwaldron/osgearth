@@ -30,6 +30,8 @@
 #include <osg/Uniform>
 #include <osg/ComputeBoundsVisitor>
 
+#include <cassert>
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
@@ -107,7 +109,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
     // Install the tile key uniform.
     _keyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
     getStateSet()->addUniform( _keyUniform.get() );
-    updateTileKeyUniform();
+    updateTileSpecificUniforms();
 
     // Set up a data container for multipass layer rendering.
     _mptex = new MPTexture();
@@ -150,17 +152,16 @@ TileNode::setElevationExtrema(const osg::Vec2f& value)
 }
 
 void
-TileNode::updateTileKeyUniform()
+TileNode::updateTileSpecificUniforms()
 {
-    float width = 0.0f;
-    if ( _surface.valid() )
-    {
-        const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
-        width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
-    }
+    assert(_surface.valid());
+    
+    const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
+    float width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
 
     unsigned tw, th;
     _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
+
     _keyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
 }
 
@@ -423,7 +424,7 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
         setElevationExtrema( parent->getElevationExtrema() );
     }
 
-    updateTileKeyUniform();
+    updateTileSpecificUniforms();
 
     return changesMade;
 }

@@ -46,27 +46,7 @@ _drawPatch   ( false )
 
     _supportsGLSL = Registry::capabilities().supportsGLSL();
 
-#pragma message("PPP: TO DO ")
-#pragma message("PPP: TO DO ")
-#pragma message("PPP: TO DO ")
-#pragma message("PPP: TO DO ")
-#if 0
-    float fStart = (float)_selectionInfo._fMorphStart[key.getLOD()];
-    float fEnd   = (float)_selectionInfo._fMorphEnd[key.getLOD()];
-    _tileMorphCValue.set(
-          fStart
-        , 1.0f / (fEnd-fStart)
-        , fEnd / (fEnd-fStart)
-        , 1.0f / (fEnd-fStart));
-
-    float fGridDims = _selectionInfo._uiGridDimensions.first-1;
-
-    _tileGridDimsValue.set(fGridDims, fGridDims*0.5f, 2.0/fGridDims, _selectionInfo._uiLODForMorphing);
-#endif
     // establish uniform name IDs.
-    _tileExtentsUniformNameID   = osg::Uniform::getNameID( "oe_tile_extents" );
-    _tileMorphCUniformNameID    = osg::Uniform::getNameID( "oe_tile_morph_constants" );
-    _tileGridDimsUniformNameID  = osg::Uniform::getNameID( "oe_tile_grid_dimensions" );
     _uidUniformNameID           = osg::Uniform::getNameID( "oe_layer_uid" );
     _orderUniformNameID         = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID       = osg::Uniform::getNameID( "oe_layer_opacity" );
@@ -133,9 +113,6 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
-    GLint tileExtentsLocation   = -1;
-    GLint tileMorphCLocation    = -1;
-    GLint tileGridDimsLocation  = -1;
     GLint opacityLocation       = -1;
     GLint uidLocation           = -1;
     GLint orderLocation         = -1;
@@ -145,28 +122,12 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
     // requery the uni locations each time unfortunately. TODO: explore optimizations.
     if ( pcp )
     {
-        tileExtentsLocation  = pcp->getUniformLocation( _tileExtentsUniformNameID );
-        tileMorphCLocation   = pcp->getUniformLocation( _tileMorphCUniformNameID );
-        tileGridDimsLocation = pcp->getUniformLocation( _tileGridDimsUniformNameID );
         opacityLocation      = pcp->getUniformLocation( _opacityUniformNameID );
         uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
         orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
         texMatrixLocation    = pcp->getUniformLocation( _texMatrixUniformNameID );
     }
 
-    if ( tileExtentsLocation >= 0 )
-    {
-        ext->glUniform4fv( tileExtentsLocation, 1, _tileExtentsValue.ptr() );
-    }
-    if (tileMorphCLocation >= 0)
-    {
-        ext->glUniform4fv( tileMorphCLocation, 1, _tileMorphCValue.ptr() );
-    }
-    if (tileGridDimsLocation >= 0)
-    {
-        ext->glUniform4fv( tileGridDimsLocation, 1, _tileGridDimsValue.ptr() );
-    }
-    
     float prevOpacity = -1.0f;
     if ( _mptex.valid() && !_mptex->getPasses().empty() )
     {
@@ -267,12 +228,6 @@ TileDrawable:: COMPUTE_BOUND() const
 
     OE_DEBUG << LC << "zmin/max = " << bbox.zMin() << "/" << bbox.zMax() << "; minmax = " << _minmax[0] << "/" << _minmax[1] << "\n";
 
-    {
-        // update the uniform.
-        Threading::ScopedMutexLock exclusive(_frameSyncMutex);
-        _tileExtentsValue.x() = abs(bbox.xMax()-bbox.xMin());
-        _tileExtentsValue.y() = abs(bbox.yMax()-bbox.yMin());
-    }
     return bbox;
 }
 

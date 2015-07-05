@@ -31,8 +31,9 @@ namespace
     // Visitor that recalculates the sampler inheritance matrices in a graph.
     struct UpdateInheritance : public osg::NodeVisitor
     {
-        UpdateInheritance(const RenderBindings& bindings)
+        UpdateInheritance(const RenderBindings& bindings, const SelectionInfo& selectionInfo)
             : _bindings(bindings)
+            , _selectionInfo(selectionInfo)
         {
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
         }
@@ -42,7 +43,7 @@ namespace
             TileNode* tilenode = dynamic_cast<TileNode*>(&node);
             if ( tilenode )
             {
-                tilenode->inheritState( tilenode->getParentTile(), _bindings );
+                tilenode->inheritState( tilenode->getParentTile(), _bindings, _selectionInfo );
                 tilenode->recalculateExtrema( _bindings );
             }
 
@@ -50,6 +51,7 @@ namespace
         }
 
         const RenderBindings& _bindings;
+        const SelectionInfo&  _selectionInfo;
     };
 }
 
@@ -172,7 +174,8 @@ LoadTileData::apply()
         osg::ref_ptr<TileNode> tilenode;
         if ( _tilenode.lock(tilenode) )
         {
-            const RenderBindings& bindings = _context->getRenderBindings();
+            const RenderBindings& bindings      = _context->getRenderBindings();
+            const SelectionInfo&  selectionInfo = _context->getSelectionInfo();
 
             const SamplerBinding* color = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
 
@@ -189,7 +192,7 @@ LoadTileData::apply()
             tilenode->mergeStateSet( getStateSet(), mptex.get(), bindings );
 
             // Update existing inheritance matrices as necessary.
-            UpdateInheritance update( bindings );
+            UpdateInheritance update( bindings, selectionInfo );
             tilenode->accept( update );
 
             // Mark as complete. TODO: per-data requests will do something different.

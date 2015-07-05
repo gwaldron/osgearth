@@ -106,10 +106,8 @@ TileNode::create(const TileKey& key, EngineContext* context)
         addCullCallback( ClusterCullingFactory::create(key.getExtent()) );
     }
 
-    // Install the tile key uniform.
-    _keyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
-    getStateSet()->addUniform( _keyUniform.get() );
-    updateTileSpecificUniforms();
+    createTileSpecificUniforms();
+    updateTileSpecificUniforms(context->getSelectionInfo());
 
     // Set up a data container for multipass layer rendering.
     _mptex = new MPTexture();
@@ -152,17 +150,65 @@ TileNode::setElevationExtrema(const osg::Vec2f& value)
 }
 
 void
-TileNode::updateTileSpecificUniforms()
+TileNode::createTileSpecificUniforms()
+{
+    // Install the tile key uniform.
+    _tileKeyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileKeyUniform.get() );
+
+    _tileMorphUniform = new osg::Uniform("oe_tile_morph_constants", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileMorphUniform.get() );
+
+    _tileGridDimsUniform = new osg::Uniform("oe_tile_grid_dimensions", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileGridDimsUniform.get() );
+
+    _tileExtentsUniform = new osg::Uniform("oe_tile_extents", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileExtentsUniform.get() );
+}
+
+void
+TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
 {
     assert(_surface.valid());
     
+
+    // update the tile key uniform
     const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
     float width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
 
     unsigned tw, th;
     _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
 
-    _keyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
+    _tileKeyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
+
+    // update the morph constants
+#if 0
+    float fStart = (float)selectionInfo._fMorphStart[key.getLOD()];
+    float fEnd   = (float)selectionInfo._fMorphEnd[key.getLOD()];
+#endif
+    float fStart = 0;
+    float fEnd = 0;
+
+    float one_by_end_minus_start = fEnd - fStart;
+    one_by_end_minus_start = 1.0f/one_by_end_minus_start;
+
+    osg::Vec4f vMorphConstants(
+          fStart
+        , one_by_end_minus_start
+        , fEnd * one_by_end_minus_start
+        , one_by_end_minus_start
+        );
+
+    _tileMorphUniform->set((vMorphConstants));
+
+    // Update grid dims
+    float fGridDims = selectionInfo._uiGridDimensions.first-1;
+    _tileGridDimsUniform->set(osg::Vec4f(fGridDims, fGridDims*0.5f, 2.0/fGridDims, selectionInfo._uiLODForMorphing));
+
+    // update tile extents
+    float fXExtents = abs(bbox.xMax()-bbox.xMin());
+    float fYExtents = abs(bbox.yMax()-bbox.yMin());
+    _tileExtentsUniform->set(osg::Vec4f(fXExtents,fYExtents,0,0));
 }
 
 bool
@@ -363,7 +409,7 @@ TileNode::createChildren(osg::NodeVisitor& nv)
         node->create( getTileKey().createChildKey(quadrant), context );
 
         // Inherit the samplers with new scale/bias information.
-        node->inheritState( this, context->getRenderBindings() );
+        node->inheritState( this, context->getRenderBindings(), context->getSelectionInfo() );
 
         // Add to the scene graph.
         addChild( node );
@@ -373,7 +419,7 @@ TileNode::createChildren(osg::NodeVisitor& nv)
 }
 
 bool
-TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
+TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo)
 {
     bool changesMade = false;
 
@@ -424,7 +470,7 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
         setElevationExtrema( parent->getElevationExtrema() );
     }
 
-    updateTileSpecificUniforms();
+    updateTileSpecificUniforms(selectionInfo);
 
     return changesMade;
 }

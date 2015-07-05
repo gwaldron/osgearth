@@ -84,9 +84,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _tileKeyUniformNameID;
         unsigned _texMatrixUniformNameID;
         unsigned _parentTexMatrixUniformNameID;
-        unsigned _tileMorphCUniformNameID;
-        unsigned _tileGridDimsUniformNameID;
-        unsigned _tileExtentsUniformNameID;
 
         // Data stored for each graphics context:
         struct PerContextData {

@@ -31,6 +31,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     class EngineContext;
     class SurfaceNode;
+    class SelectionInfo;
 
     /**
      * TileNode represents a single tile. TileNode has 5 children:
@@ -67,7 +68,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void notifyOfArrival(TileNode* that) { } // nyi - todo
 
         /** Set inheritance matrices as necessary. Return true is changed were made. */
-        bool inheritState(TileNode* parent, const RenderBindings& bindings );
+        bool inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo );
 
         /** Compute the local min/max elevation based on this tile's inherited elevation raster and matrix. */
         void recalculateExtrema(const RenderBindings& bindings);
@@ -121,8 +122,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool  shouldSubDivide(osg::NodeVisitor& nv);
         float getSubDivisionRange(void) const;
 
-        void updateTileSpecificUniforms();
-        osg::ref_ptr<osg::Uniform> _keyUniform;
+        void updateTileSpecificUniforms(const SelectionInfo& selectionInfo);
+        void createTileSpecificUniforms();
+        osg::ref_ptr<osg::Uniform> _tileKeyUniform;
+        osg::ref_ptr<osg::Uniform> _tileMorphUniform;
+        osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
+        osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

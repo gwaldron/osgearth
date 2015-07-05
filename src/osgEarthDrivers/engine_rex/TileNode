@@ -121,13 +121,23 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool  shouldSubDivide(osg::NodeVisitor& nv);
         float getSubDivisionRange(void) const;
+        float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
 
         void updateTileSpecificUniforms(const SelectionInfo& selectionInfo);
-        void createTileSpecificUniforms();
+        void createTileSpecificUniforms(void);
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;
         osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
         osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
+        osg::ref_ptr<osg::Uniform> _tileCenterToCameraDistUniform;
+
+        void updatePerFrameUniforms(const osg::NodeVisitor& nv);
+
+        void setMorphStartDistance(float fVal);
+        void setMorphEndDistance(float fVal);
+
+        float _fMorphStartDistance;
+        float _fMorphEndDistance;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

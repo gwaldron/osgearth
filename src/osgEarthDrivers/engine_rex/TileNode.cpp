@@ -56,7 +56,9 @@ namespace
 }
 
 TileNode::TileNode() : 
-_dirty      ( false )
+_dirty      ( false ),
+_fMorphStartDistance(-1),
+_fMorphEndDistance(-1)
 {
     osg::StateSet* stateSet = getOrCreateStateSet();
 
@@ -106,6 +108,8 @@ TileNode::create(const TileKey& key, EngineContext* context)
         addCullCallback( ClusterCullingFactory::create(key.getExtent()) );
     }
 
+    setMorphStartDistance(getSubDivisionRange());
+
     createTileSpecificUniforms();
     updateTileSpecificUniforms(context->getSelectionInfo());
 
@@ -150,7 +154,7 @@ TileNode::setElevationExtrema(const osg::Vec2f& value)
 }
 
 void
-TileNode::createTileSpecificUniforms()
+TileNode::createTileSpecificUniforms(void)
 {
     // Install the tile key uniform.
     _tileKeyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
@@ -164,6 +168,9 @@ TileNode::createTileSpecificUniforms()
 
     _tileExtentsUniform = new osg::Uniform("oe_tile_extents", osg::Vec4f(0,0,0,0));
     getStateSet()->addUniform( _tileExtentsUniform.get() );
+
+    _tileCenterToCameraDistUniform = new osg::Uniform("oe_tile_camera_to_tilecenter", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileCenterToCameraDistUniform.get() );
 }
 
 void
@@ -171,7 +178,6 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
 {
     assert(_surface.valid());
     
-
     // update the tile key uniform
     const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
     float width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
@@ -182,20 +188,15 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
     _tileKeyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
 
     // update the morph constants
-#if 0
-    float fStart = (float)selectionInfo._fMorphStart[key.getLOD()];
-    float fEnd   = (float)selectionInfo._fMorphEnd[key.getLOD()];
-#endif
-    float fStart = 0;
-    float fEnd = 0;
+    assert(_fMorphStartDistance>0&&_fMorphEndDistance>0);
 
-    float one_by_end_minus_start = fEnd - fStart;
+    float one_by_end_minus_start = _fMorphEndDistance - _fMorphStartDistance;
     one_by_end_minus_start = 1.0f/one_by_end_minus_start;
 
     osg::Vec4f vMorphConstants(
-          fStart
+          _fMorphStartDistance
         , one_by_end_minus_start
-        , fEnd * one_by_end_minus_start
+        , _fMorphEndDistance * one_by_end_minus_start
         , one_by_end_minus_start
         );
 
@@ -209,6 +210,27 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
     float fXExtents = abs(bbox.xMax()-bbox.xMin());
     float fYExtents = abs(bbox.yMax()-bbox.yMin());
     _tileExtentsUniform->set(osg::Vec4f(fXExtents,fYExtents,0,0));
+}
+
+void
+TileNode::updatePerFrameUniforms(const osg::NodeVisitor& nv)
+{
+    if (_tileCenterToCameraDistUniform.get())
+    {
+        osg::Vec4f vPerFrameUniform(getTileCenterToCameraDistance(nv),0,0,0);
+        _tileCenterToCameraDistUniform->set((vPerFrameUniform));
+    }
+}
+
+void
+TileNode::setMorphStartDistance(float fVal)
+{
+    _fMorphStartDistance = fVal;
+}
+void
+TileNode::setMorphEndDistance(float fVal)
+{
+    _fMorphEndDistance = fVal;
 }
 
 bool
@@ -236,6 +258,13 @@ TileNode::releaseGLObjects(osg::State* state) const
 }
 
 float
+TileNode::getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const
+{
+    const osg::Vec3& vTileCenter = getBound().center();
+    return nv.getDistanceToViewPoint( vTileCenter, true );
+}
+
+float
 TileNode::getSubDivisionRange(void) const
 {
     // TODO - placeholder for now
@@ -248,15 +277,11 @@ TileNode::getSubDivisionRange(void) const
 bool
 TileNode::shouldSubDivide(osg::NodeVisitor& nv)
 {
-       const osg::Vec3& vTileCenter = getBound().center();
-
-       float fDistanceToCamera = nv.getDistanceToViewPoint( vTileCenter, true );
-
-       if ( fDistanceToCamera < getSubDivisionRange() && _key.getLOD() < 23 )
-       {
-           return true;
-       }
-       return false;
+    if ( getTileCenterToCameraDistance(nv) < getSubDivisionRange() && _key.getLOD() < 23 )
+    {
+        return true;
+    }
+    return false;
 }
 
 #define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
@@ -269,6 +294,8 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     }
 
     unsigned currLOD = getTileKey().getLOD();
+
+    updatePerFrameUniforms(nv);
 
 #if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
     if (currLOD==0)
@@ -404,6 +431,8 @@ TileNode::createChildren(osg::NodeVisitor& nv)
     for(unsigned quadrant=0; quadrant<4; ++quadrant)
     {
         TileNode* node = new TileNode();
+
+        node->setMorphEndDistance(getSubDivisionRange());
 
         // Build the surface geometry:
         node->create( getTileKey().createChildKey(quadrant), context );

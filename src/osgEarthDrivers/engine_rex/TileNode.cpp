@@ -72,9 +72,9 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
-    context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo().uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
+    context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo()._uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
 
-    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getSelectionInfo(), context->getRenderBindings(), geom.get());
+    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
     surfaceDrawable->setDrawAsPatches(false);
 
     _surface = new SurfaceNode(
@@ -88,7 +88,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
     surfaceSS->setNestRenderBins(false);
 
     // Surface node for rendering land cover geometry.
-    TileDrawable* patchDrawable = new TileDrawable(key, context->getSelectionInfo(), context->getRenderBindings(), geom.get());
+    TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
     patchDrawable->setDrawAsPatches(true);
 
     // PPP: Is this correct???
@@ -188,24 +188,28 @@ TileNode::releaseGLObjects(osg::State* state) const
     osg::Group::releaseGLObjects(state);
 }
 
-bool
-TileNode::selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare)
+float
+TileNode::getSubDivisionRange(void) const
 {
-    if (_surface.valid()==false)
-    {
-        return false;
-    }
-    return _surface->boxIntersectsSphere(point, radius, radiusSquare);
+    // TODO - placeholder for now
+    const float factor = 6.0f;
+
+    const osg::BoundingBox& box = _surface->getAlignedBoundingBox();
+    return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
 
 bool
-TileNode::childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare)
+TileNode::shouldSubDivide(osg::NodeVisitor& nv)
 {
-    if (_surface.valid()==false)
-    {
-        return false;
-    }
-    return _surface->anyChildBoxIntersectsSphere(point, radius, radiusSquare);
+       const osg::Vec3& vTileCenter = getBound().center();
+
+       float fDistanceToCamera = nv.getDistanceToViewPoint( vTileCenter, true );
+
+       if ( fDistanceToCamera < getSubDivisionRange() && _key.getLOD() < 23 )
+       {
+           return true;
+       }
+       return false;
 }
 
 #define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
@@ -230,36 +234,11 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
-    bool bWithinNumLods =  getTileKey().getLOD() < selectionInfo._numLods;
-    bool bNotHighestResLod =  (currLOD!=selectionInfo._numLods-1);
-    bool bAnyChildVisible = false;
-    if (bWithinNumLods && bNotHighestResLod)
-    {
-        osg::Vec3 cameraPos = nv.getViewPoint();
-#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
-        OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
-#endif
-        float fRadius = selectionInfo._fVisibilityRanges[currLOD+1];
-        bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius, fRadius*fRadius);
-    }
-
+    bool bShouldSubDivide = shouldSubDivide(nv);
 
     // If *any* of the children are visible, subdivide.
-    if (bAnyChildVisible)
+    if (bShouldSubDivide)
     {
-#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
-        //if (getTileKey().getLOD()==10||getTileKey().getLOD()==11)
-        {
-
-            OE_INFO << LC <<"T C for LOD :"<<getTileKey().getLOD()
-                <<" "<<getTileKey().getTileX()
-                <<" "<<getTileKey().getTileY()
-                <<" Cam Dist   : "<<fDistanceToCamera
-                <<" MY Range      : "<<selectionInfo._fVisibilityRanges[getTileKey().getLOD()]
-                <<" CH Range      : "<<selectionInfo._fVisibilityRanges[getTileKey().getLOD()+1]
-            <<std::endl;
-        }
-#endif
         // We are in range of the child nodes. Either draw them or load them.
         unsigned numChildrenReady = 0;
 
@@ -306,19 +285,6 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     {
         _surface->accept( nv );
 
-#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
-        //if (getTileKey().getLOD()==14)
-        {
-
-            OE_INFO<<"Drawing LOD: "<<getTileKey().getLOD()
-                <<" "<<getTileKey().getTileX()
-                <<" "<<getTileKey().getTileY()
-                <<" Cam Dist   : "<<fDistanceToCamera
-                <<" Range      : "<<_selectionInfo._fVisibilityRanges[getTileKey().getLOD()]
-            <<std::endl;
-
-        }
-#endif
         if ( getNumChildren() > 0 )
         {
             if (getSubTile(0)->isDormant( nv ) &&

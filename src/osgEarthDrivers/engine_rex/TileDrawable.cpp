@@ -33,15 +33,13 @@ using namespace osgEarth;
 
 
 TileDrawable::TileDrawable(const TileKey&        key,
-                           const SelectionInfo&  selectionInfo,
                            const RenderBindings& bindings,
                            osg::Geometry*        geometry) :
 osg::Drawable( ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
 _minmax      ( 0, 0 ),
-_drawPatch   ( false ),
-_selectionInfo(selectionInfo)
+_drawPatch   ( false )
 {
     setUseVertexBufferObjects( true );
     setUseDisplayList( false );
@@ -52,6 +50,11 @@ _selectionInfo(selectionInfo)
     key.getProfile()->getNumTiles(key.getLOD(), tw, th);
     _tileKeyValue.set( key.getTileX(), th-key.getTileY()-1.0f, key.getLOD(), -1.0f );
 
+#pragma message("PPP: TO DO ")
+#pragma message("PPP: TO DO ")
+#pragma message("PPP: TO DO ")
+#pragma message("PPP: TO DO ")
+#if 0
     float fStart = (float)_selectionInfo._fMorphStart[key.getLOD()];
     float fEnd   = (float)_selectionInfo._fMorphEnd[key.getLOD()];
     _tileMorphCValue.set(
@@ -62,7 +65,8 @@ _selectionInfo(selectionInfo)
 
     float fGridDims = _selectionInfo._uiGridDimensions.first-1;
 
-    _tileGridDimsValue.set(fGridDims, fGridDims*0.5f, 2.0/fGridDims, _selectionInfo.uiLODForMorphing);
+    _tileGridDimsValue.set(fGridDims, fGridDims*0.5f, 2.0/fGridDims, _selectionInfo._uiLODForMorphing);
+#endif
     // establish uniform name IDs.
     //_tileKeyUniformNameID      = osg::Uniform::getNameID( "oe_tile_key" );
     _tileExtentsUniformNameID           = osg::Uniform::getNameID( "oe_tile_extents" );

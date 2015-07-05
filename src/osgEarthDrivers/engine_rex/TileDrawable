@@ -23,14 +23,12 @@
 #include "TileNode"
 #include "TileNodeRegistry"
 #include "RenderBindings"
-#include "SelectionInfo"
 #include "MPTexture"
 
 #include <osg/Geometry>
 #include <osg/buffered_value>
 #include <osgEarth/Map>
 #include <osgEarth/MapFrame>
-
 
 using namespace osgEarth;
 
@@ -126,7 +124,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // construct a new TileDrawable that fronts an osg::Geometry
         TileDrawable(
             const TileKey&        key,
-            const SelectionInfo&  selectionInfo,
             const RenderBindings& bindings,
             osg::Geometry*        geometry);
 
@@ -137,7 +134,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void setMPTexture(MPTexture* tex) { _mptex = tex; }
 
     public:
-
 
         void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
 
@@ -194,19 +190,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 #endif
 
     public:
-#pragma warning( push )
-#pragma warning( disable : 4413 )
         META_Object(osgEarth, TileDrawable);
-        TileDrawable() : osg::Drawable() 
-            , _selectionInfo(SelectionInfo())
-        {
-                std::cout<<"Uh Oh!"<<std::endl;
-        }
-#pragma warning( pop )
-        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop), _selectionInfo(rhs._selectionInfo) { }
-        virtual ~TileDrawable() { }
-    private:
-        const SelectionInfo& _selectionInfo;
+        TileDrawable() : osg::Drawable(){}
+        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop) {}
+        virtual ~TileDrawable() {}
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

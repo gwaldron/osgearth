@@ -120,8 +120,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void lodSelect(osg::NodeVisitor& nv);
         void regularUpdate(osg::NodeVisitor& nv);
 
-        bool selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare);
-        bool childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare);
+        bool  shouldSubDivide(osg::NodeVisitor& nv);
+        float getSubDivisionRange(void) const;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

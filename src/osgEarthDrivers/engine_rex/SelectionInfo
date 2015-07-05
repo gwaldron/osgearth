@@ -28,16 +28,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class SelectionInfo
     {
     public:
-        size_t _numLods;    // Number of lods
+        size_t                    _numLods;          // Number of LODs
         std::pair<size_t, size_t> _uiGridDimensions; // Dimensions of the skeleton grid
-        std::vector<double> _fVisibilityRanges;
-
-        std::vector<double> _fMorphStart;
-        std::vector<double> _fMorphEnd;
-
-        size_t uiLODForMorphing;
-
-        double _fMorphStartRatio;
+        size_t                    _uiLODForMorphing; // LOD at which morphing should start
+        double                    _fMorphStartRatio; // Morph start ratio
     };
 }
 }

@@ -488,7 +488,7 @@ void RexTerrainEngineNode::buildSelectionInfo()
 
     _selectionInfo->_uiGridDimensions.first = _selectionInfo->_uiGridDimensions.second = (*_terrainOptions.tileSize());    
     _selectionInfo->_uiLODForMorphing = 5;
-	_selectionInfo->_uiLODForMorphing = 0.66;
+	_selectionInfo->_fMorphStartRatio = 0.66;
 }
 void
 RexTerrainEngineNode::dirtyTerrain()

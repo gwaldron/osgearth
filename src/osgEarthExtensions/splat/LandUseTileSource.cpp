@@ -149,8 +149,33 @@ LandUseTileSource::createImage(const TileKey&    key,
 
     osg::Image* in = image.getImage();
     osg::Image* out = new osg::Image();
-    out->allocateImage(256, 256, 1, in->getPixelFormat(), in->getDataType(), in->getPacking());
+
+    // Allocate a suitable format:
+    GLenum type;
+    GLint  internalFormat;
+
+    if ( _options.bits().isSetTo(8u) )
+    {
+        // 8-bit integer:
+        type           = GL_UNSIGNED_BYTE;
+        internalFormat = GL_LUMINANCE8;
+    }
+    else if ( _options.bits().isSetTo(16u) )
+    {
+        // 16-bit integer:
+        type           = GL_UNSIGNED_SHORT;
+        internalFormat = GL_LUMINANCE16;
+    }
+    else
+    {
+        // 32-bit float:
+        type           = GL_FLOAT;
+        internalFormat = GL_LUMINANCE32F_ARB;
+    }
     
+    out->allocateImage(256, 256, 1, GL_LUMINANCE, type);
+    out->setInternalTextureFormat(internalFormat);
+
     float noiseLOD = _options.baseLOD().get();
     float warp     = _options.warpFactor().get();
 

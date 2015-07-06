@@ -52,12 +52,17 @@ namespace osgEarth { namespace Splat
         optional<unsigned>& baseLOD() { return _baseLOD; }
         const optional<unsigned>& baseLOD() const { return _baseLOD; }
 
+        /** bit size of the encoded data (default is 16) */
+        optional<unsigned>& bits() { return _bits; }
+        const optional<unsigned>& bits() const { return _bits; }
+
     public:
         Config getConfig() const
         {
             Config conf;
-            conf.addIfSet("warp", _warp);
-            conf.addIfSet("base_lod", _baseLOD);
+            conf.addIfSet("warp",      _warp);
+            conf.addIfSet("base_lod",  _baseLOD);
+            conf.addIfSet("bits",      _bits);
             conf.addObjIfSet( "image", _imageLayerOptions );
             return conf;
         }
@@ -73,12 +78,14 @@ namespace osgEarth { namespace Splat
         {
             conf.getIfSet("warp", _warp);
             conf.getIfSet("base_lod", _baseLOD);
+            conf.getIfSet("bits",      _bits);
             conf.getObjIfSet( "image", _imageLayerOptions );
         }
         
     private:
         optional<float>             _warp;
         optional<unsigned>          _baseLOD;
+        optional<unsigned>          _bits;
         optional<ImageLayerOptions> _imageLayerOptions;
     };
 

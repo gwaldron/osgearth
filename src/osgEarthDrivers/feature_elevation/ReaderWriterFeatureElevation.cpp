@@ -86,15 +86,13 @@ public:
 
         if ( !_options.featureOptions().isSet() )
         {
-            Status::Error( Stringify() << LC << "Illegal: feature source is required" );
-            return false;
+            return Status::Error( Stringify() << LC << "Illegal: feature source is required" );
         }
     
         _features = FeatureSourceFactory::create( _options.featureOptions().value() );
         if ( !_features.valid() )
         {
-            Status::Error( Stringify() << "Illegal: no valid feature source provided");
-            return false;
+            return Status::Error( Stringify() << "Illegal: no valid feature source provided");
         }
 
         //if ( _features->getGeometryType() != osgEarth::Symbology::Geometry::TYPE_POLYGON )

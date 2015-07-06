@@ -5,6 +5,7 @@
 
 #include <osg/Texture>
 
+#include <numeric>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
@@ -12,12 +13,17 @@ using namespace osgEarth;
 #define LC "[ElevationTexureUtils] "
 
 bool
-ElevationTexureUtils::findExtrema(osg::Texture* tex, const osg::Matrix& matrixScaleBias, const TileKey& tileKey, osg::Vec2f& extrema)
+ElevationTexureUtils::findExtrema(osg::Texture* elevationTexture, const osg::Matrix& matrixScaleBias, const TileKey& tileKey, osg::Vec2f& extrema)
 {
+    if (elevationTexture==0)
+    {
+        OE_DEBUG << LC << "Elevation Texture is NULL"<<std::endl;
+        return false;
+    }
     // Searches a texture image (using a texture matrix) for the min and max elevation values.
     extrema.set( FLT_MAX, -FLT_MAX );
 
-    osg::Image* image = tex->getImage(0);
+    osg::Image* image = elevationTexture->getImage(0);
     if ( image )
     {
         double s_offset = matrixScaleBias(3,0) * (double)image->s();

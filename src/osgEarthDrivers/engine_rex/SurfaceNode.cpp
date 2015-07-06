@@ -117,22 +117,6 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
 
     _surfaceGeode = new osg::Geode();
     _surfaceGeode->addDrawable( drawable );
-
-#if 0
-    if ( pool )
-    {
-        osg::ref_ptr<osg::Geometry> geom;
-        pool->getPooledGeometry( tilekey, mapinfo, geom );
-
-        _drawable = new TileDrawable(tilekey, bindings, geom.get());
-
-        _surfaceGeode->addDrawable( _drawable.get() );
-    }
-    else
-    {
-        OE_WARN << LC << "INTERNAL: no geometry pool; result is an empty geode\n";
-    }
-#endif
     
     // Create the final node.
     addChild( _surfaceGeode.get() );

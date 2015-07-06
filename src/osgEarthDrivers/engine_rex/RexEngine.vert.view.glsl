@@ -19,6 +19,7 @@ uniform vec4	  oe_tile_morph_constants;
 uniform vec4	  oe_tile_grid_dimensions;
 uniform vec4	  oe_tile_key;
 uniform vec4	  oe_tile_extents;
+uniform vec4	  oe_tile_camera_to_tilecenter;
 uniform mat4	  oe_layer_texMatrix;
 
 void MorphVertex( inout vec3 vPositionMorphed,  inout vec2 vUVMorphed
@@ -30,6 +31,8 @@ void MorphVertex( inout vec3 vPositionMorphed,  inout vec2 vUVMorphed
 {
    vec2 fFractionalPart = fract( vUVOriginal.xy * vec2(oe_tile_grid_dimensions.y, oe_tile_grid_dimensions.y) ) * vec2(oe_tile_grid_dimensions.z, oe_tile_grid_dimensions.z);
    vUVMorphed = vUVOriginal - (fFractionalPart * fMorphLerpK);
+
+   vUVMorphed = clamp(vUVMorphed, 0, 1);
 
   // vPositionMorphed = vPositionOriginal.xy - (vTileScale*fFractionalPart * fMorphLerpK) ;
   vec2 dudv = vUVMorphed - vUVOriginal;
@@ -81,9 +84,6 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 
 		vec4 elevcMorphed = oe_tile_elevationTexMatrix * vec4(vUVMorphed,oe_layer_tilec.z,oe_layer_tilec.w);
 		float elevMorphed = textureLod(oe_tile_elevationTex, elevcMorphed.st,0).r;
-
-		float mixedHHeight = elev*(1-fMorphLerpK ) + elevMorphed*fMorphLerpK;
-		mixedHHeight = elevMorphed;
 
 		vertexView.xyz += oe_UpVectorView*elevMorphed;
 

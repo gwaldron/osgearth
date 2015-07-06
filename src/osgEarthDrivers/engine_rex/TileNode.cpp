@@ -23,6 +23,7 @@
 #include "LoadTileData"
 #include "ExpireTiles"
 #include "SelectionInfo"
+#include "ElevationTextureUtils"
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
@@ -528,7 +529,7 @@ TileNode::recalculateExtrema(const RenderBindings& bindings)
         if ( elevTex )
         {
             osg::Vec2f extrema;
-            found = findExtrema(elevTex, matrix, extrema);
+            found = ElevationTexureUtils::findExtrema(elevTex, matrix, getTileKey(), extrema);
             if ( found )
             {
                 setElevationExtrema( extrema );
@@ -694,57 +695,3 @@ TileNode::notifyOfArrival(TileNode* that)
 
 #endif
 
-bool
-TileNode::findExtrema(osg::Texture* tex, const osg::Matrix& m, osg::Vec2f& extrema) const
-{
-    // Searches a texture image (using a texture matrix) for the min and max elevation values.
-    extrema.set( FLT_MAX, -FLT_MAX );
-
-    osg::Image* image = tex->getImage(0);
-    if ( image )
-    {
-        double s_offset = m(3,0) * (double)image->s();
-        double t_offset = m(3,1) * (double)image->t();
-        double s_span   = m(0,0) * (double)image->s();
-        double t_span   = m(1,1) * (double)image->t();
-
-        // if the window is smaller than one pixel, forget it.
-        if ( s_span < 4.0 || t_span < 4.0 )
-            return false;
-
-        ImageUtils::PixelReader read(image);
-
-        // starting column and row:
-        int c0 = osg::clampAbove( ((int)s_offset)-1, 0 );
-        int r0 = osg::clampAbove( ((int)t_offset)-1, 0 );
-
-        int c1 = osg::clampBelow( c0 + ((int)s_span) + 1, image->s()-1 );
-        int r1 = osg::clampBelow( r0 + ((int)t_span) + 1, image->t()-1 );
-
-        OE_DEBUG << LC << "find: key=" << getTileKey().str() << std::dec << 
-            "scale=" << s_offset << ", " << t_offset
-            << "; span = " << s_span << ", " << t_span
-            << "; c0=" << c0 << ", r0=" << r0 << "; c1=" << c1 << ", r1=" << r1 << "\n";
-        
-        for(int c=c0; c <= c1; ++c)
-        {
-            for(int r=r0; r <= r1; ++r)
-            {
-                float e = read(c, r).r();
-                if ( e < extrema[0] ) extrema[0] = e;
-                if ( e > extrema[1] ) extrema[1] = e;
-            }
-        }
-
-        if ( extrema[0] > extrema[1] )
-        {
-            OE_WARN << LC << "findExtrema ERROR (" << getTileKey().str() << ") c0=" << c0 << ", r0=" << r0 << "; c1=" << c1 << ", r1=" << r1 << ", s=" << image->s() << ", t=" << image->t() << "\n";
-        }
-    }
-    else
-    {
-        OE_WARN << LC << "findExtrema ERROR (" << getTileKey().str() << ") no tex image available\n";
-    }
-
-    return extrema[0] <= extrema[1];
-}

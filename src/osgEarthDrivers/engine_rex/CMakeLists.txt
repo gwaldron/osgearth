@@ -17,6 +17,7 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 SET(TARGET_SRC
+	ElevationTextureUtils.cpp
     GeometryPool.cpp
     RexTerrainEngineNode.cpp
     RexTerrainEngineDriver.cpp
@@ -36,6 +37,7 @@ SET(TARGET_SRC
 
 SET(TARGET_H
     Common
+	ElevationTextureUtils
     FileLocationCallback
     GeometryPool
     Shaders

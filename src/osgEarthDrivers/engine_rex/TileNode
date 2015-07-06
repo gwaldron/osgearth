@@ -113,8 +113,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void expireChildren(osg::NodeVisitor& nv);
 
-        bool findExtrema(osg::Texture* elevationTex, const osg::Matrix& scaleBias, osg::Vec2f& output) const;
-
     private:
         void lodSelect(osg::NodeVisitor& nv);
         void regularUpdate(osg::NodeVisitor& nv);

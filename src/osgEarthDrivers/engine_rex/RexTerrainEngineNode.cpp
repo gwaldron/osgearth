@@ -480,12 +480,6 @@ void RexTerrainEngineNode::buildSelectionInfo()
 {
     _selectionInfo = new SelectionInfo;
 
-    _selectionInfo->_numLods = 23; //(*_terrainOptions.minLOD()+1);  // use min lod for now
-#if 0
-    // for debugging
-    _selectionInfo->_numLods = 9;
-#endif
-
     _selectionInfo->_uiGridDimensions.first = _selectionInfo->_uiGridDimensions.second = (*_terrainOptions.tileSize());    
     _selectionInfo->_uiLODForMorphing = 5;
 	_selectionInfo->_fMorphStartRatio = 0.66;

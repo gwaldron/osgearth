@@ -30,8 +30,6 @@
 #include <osg/Uniform>
 #include <osg/ComputeBoundsVisitor>
 
-#include <cassert>
-
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
@@ -176,7 +174,10 @@ TileNode::createTileSpecificUniforms(void)
 void
 TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
 {
-    assert(_surface.valid());
+    if(_surface.valid()==false)
+    {
+        return;
+    }
     
     // update the tile key uniform
     const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
@@ -188,19 +189,20 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
     _tileKeyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
 
     // update the morph constants
-    assert(_fMorphStartDistance>0&&_fMorphEndDistance>0);
+    if(_fMorphStartDistance>0&&_fMorphEndDistance>0)
+    {
+        float one_by_end_minus_start = _fMorphEndDistance - _fMorphStartDistance;
+        one_by_end_minus_start = 1.0f/one_by_end_minus_start;
 
-    float one_by_end_minus_start = _fMorphEndDistance - _fMorphStartDistance;
-    one_by_end_minus_start = 1.0f/one_by_end_minus_start;
+        osg::Vec4f vMorphConstants(
+            _fMorphStartDistance
+            , one_by_end_minus_start
+            , _fMorphEndDistance * one_by_end_minus_start
+            , one_by_end_minus_start
+            );
 
-    osg::Vec4f vMorphConstants(
-          _fMorphStartDistance
-        , one_by_end_minus_start
-        , _fMorphEndDistance * one_by_end_minus_start
-        , one_by_end_minus_start
-        );
-
-    _tileMorphUniform->set((vMorphConstants));
+        _tileMorphUniform->set((vMorphConstants));
+    }
 
     // Update grid dims
     float fGridDims = selectionInfo._uiGridDimensions.first-1;

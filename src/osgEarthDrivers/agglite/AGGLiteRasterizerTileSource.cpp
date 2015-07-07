@@ -53,7 +53,7 @@ namespace
 {
     struct float32
     {
-        float32() : value(0.0f) { }
+        float32() : value(NO_DATA_VALUE) { }
         float32(float v) : value(v) { }
 
         float value;
@@ -73,7 +73,7 @@ namespace
             {
                 unsigned char cover = *covers++;
                 int hasData = cover > 127;
-                *f++ = hasData ? c.value : FLT_MAX;
+                *f++ = hasData ? c.value : NO_DATA_VALUE;
             }
             while(--count);
         }
@@ -126,6 +126,7 @@ public:
             image = new osg::Image();
             image->allocateImage(getPixelsPerTile(), getPixelsPerTile(), 1, GL_LUMINANCE, GL_FLOAT);
             image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+            ImageUtils::markAsUnNormalized(image, true);
         }
         return image;
     }
@@ -140,7 +141,7 @@ public:
         {
             // For coverage data, FLT_MAX = no data.
             agg::renderer<span_coverage32, float32> ren(rbuf);
-            ren.clear( float32(FLT_MAX) );
+            ren.clear( float32(NO_DATA_VALUE) );
         }
         else
         {

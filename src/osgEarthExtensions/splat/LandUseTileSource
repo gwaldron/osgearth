@@ -36,23 +36,40 @@ namespace osgEarth { namespace Splat
             : osgEarth::TileSourceOptions(options)
         {
             setDriver("landuse");
-            baseLOD().init( 16u );
+            baseLOD().init( 32u );
             warpFactor().init( 0.01f );
             fromConfig( _conf );
         }
 
     public:
         
+        /**
+         * Image layer from which to read source coverage data.
+         */
         optional<ImageLayerOptions>& imageLayerOptions() { return _imageLayerOptions; }
         const optional<ImageLayerOptions>& imageLayerOptions() const { return _imageLayerOptions; }
 
+        std::vector<ImageLayerOptions>& imageLayerOptionsVector() { return _imageLayerOptionsVec; }
+        const std::vector<ImageLayerOptions>& imageLayerOptionsVector() const { return _imageLayerOptionsVec; }
+
+        /**
+         * Amount by which to warp texture coordinates of coverage data.
+         * Try 0.01 as a starting point.
+         */
         optional<float>& warpFactor() { return _warp; }
         const optional<float>& warpFactor() const { return _warp; }
 
+        /**
+         * LOD at which to calculate the noise function for warping.
+         */
         optional<unsigned>& baseLOD() { return _baseLOD; }
         const optional<unsigned>& baseLOD() const { return _baseLOD; }
 
-        /** bit size of the encoded data (default is 16) */
+        /**
+         * Bit size of the encoded data. The default is 32 (for a 32-bit signed
+         * floating point value) but you can set it to 16 if you know your data
+         * values are all within the range of a signed 16-bit float.
+         */
         optional<unsigned>& bits() { return _bits; }
         const optional<unsigned>& bits() const { return _bits; }
 
@@ -64,6 +81,13 @@ namespace osgEarth { namespace Splat
             conf.addIfSet("base_lod",  _baseLOD);
             conf.addIfSet("bits",      _bits);
             conf.addObjIfSet( "image", _imageLayerOptions );
+            
+            for(std::vector<ImageLayerOptions>::const_iterator i = _imageLayerOptionsVec.begin();
+                i != _imageLayerOptionsVec.end(); 
+                ++i)
+            {
+                conf.add( "image", i->getConfig() );
+            }
             return conf;
         }
 
@@ -80,6 +104,12 @@ namespace osgEarth { namespace Splat
             conf.getIfSet("base_lod", _baseLOD);
             conf.getIfSet("bits",      _bits);
             conf.getObjIfSet( "image", _imageLayerOptions );
+            
+            ConfigSet layerConfs = conf.children("image");
+            for(ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
+            {
+                _imageLayerOptionsVec.push_back( ImageLayerOptions(*i) );
+            }
         }
         
     private:
@@ -87,6 +117,7 @@ namespace osgEarth { namespace Splat
         optional<unsigned>          _baseLOD;
         optional<unsigned>          _bits;
         optional<ImageLayerOptions> _imageLayerOptions;
+        std::vector<ImageLayerOptions> _imageLayerOptionsVec;
     };
 
     /**
@@ -112,6 +143,8 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osgDB::Options> _dbOptions;
         LandUseOptions               _options;        
         osg::ref_ptr<ImageLayer>     _imageLayer;
+        ImageLayerVector             _imageLayers;
+        std::vector<float>           _warps;
         osgEarth::Util::SimplexNoise _noiseGen;
     };
 

@@ -151,7 +151,8 @@ _noDataValue          ( (float)SHRT_MIN ),
 _minValidValue        ( -32000.0f ),
 _maxValidValue        (  32000.0f ),
 _L2CacheSize          ( 16 ),
-_bilinearReprojection ( true )
+_bilinearReprojection ( true ),
+_coverage             ( false )
 { 
     fromConfig( _conf );
 }
@@ -171,6 +172,7 @@ TileSourceOptions::getConfig() const
     conf.updateIfSet( "l2_cache_size", _L2CacheSize );
     conf.updateIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.updateIfSet( "max_data_level", _maxDataLevel );
+    conf.updateIfSet( "coverage", _coverage );
     conf.updateObjIfSet( "profile", _profileOptions );
     return conf;
 }
@@ -195,6 +197,7 @@ TileSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "l2_cache_size", _L2CacheSize );
     conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.getIfSet( "max_data_level", _maxDataLevel );
+    conf.getIfSet( "coverage", _coverage );
     conf.getObjIfSet( "profile", _profileOptions );
 }
 

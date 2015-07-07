@@ -26,6 +26,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
+#define LC "[LandUseTileSource] "
+
 namespace
 {
     osg::Vec2 getSplatCoords(const TileKey& key, float baseLOD, const osg::Vec2& covUV)
@@ -104,6 +106,22 @@ LandUseTileSource::initialize(const osgDB::Options* dbOptions)
         _imageLayer->setTargetProfileHint( profile );
     }
 
+    // load all the image layers:
+    _imageLayers.assign( _options.imageLayerOptionsVector().size(), 0L );
+    _warps.assign( _options.imageLayerOptionsVector().size(), 0.0f );
+
+    for(unsigned i=0; i<_options.imageLayerOptionsVector().size(); ++i)
+    {
+        ImageLayerOptions ilo = _options.imageLayerOptionsVector()[i];
+        ilo.cachePolicy() = CachePolicy::NO_CACHE;
+        ImageLayer* layer = new ImageLayer( ilo );
+        layer->setTargetProfileHint( profile );
+        _imageLayers[i] = layer;
+
+        Config conf = ilo.getConfig();
+        _warps[i] = conf.value("warp", _options.warpFactor().get());
+    }
+
     // set up the IO options so that we do not cache input data.
     CachePolicy::NO_CACHE.apply( _dbOptions.get() );
 
@@ -123,57 +141,80 @@ LandUseTileSource::initialize(const osgDB::Options* dbOptions)
     return STATUS_OK;
 }
 
+namespace
+{
+    struct ILayer 
+    {
+        GeoImage  image;
+        float     scale;
+        osg::Vec2 bias;
+        bool      valid;
+        float     warp;
+        ImageUtils::PixelReader* read;
+
+        ILayer() : valid(true), read(0L) { }
+
+        ~ILayer() { if (read) delete read; }
+
+        void load(const TileKey& key, ImageLayer* sourceLayer, float sourceWarp, ProgressCallback* progress)
+        {
+            if ( sourceLayer->getEnabled() && sourceLayer->getVisible() && sourceLayer->isKeyInRange(key) )
+            {
+                for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
+                {
+                    image = sourceLayer->createImage(k, progress);
+                } 
+            }
+
+            valid = image.valid();
+
+            if ( valid )
+            {
+                scale = key.getExtent().width() / image.getExtent().width();
+                bias.x() = (key.getExtent().xMin() - image.getExtent().xMin()) / image.getExtent().width();
+                bias.y() = (key.getExtent().yMin() - image.getExtent().yMin()) / image.getExtent().height();
+
+                read = new ImageUtils::PixelReader(image.getImage());
+
+                warp = sourceWarp;
+            }
+        }
+    };
+}
+
 osg::Image*
 LandUseTileSource::createImage(const TileKey&    key,
                                ProgressCallback* progress)
 {
-    if ( !_imageLayer.valid() )
+    if ( _imageLayers.empty() )
         return 0L;
 
-    // fetch the image for this key, using a fallback loop until we get data.
-    GeoImage image;
-    for(TileKey k = key; k.valid() && !image.valid(); k = k.createParentKey())
-    {
-        image = _imageLayer->createImage(k, progress);
-    }
+    std::vector<ILayer> layers(_imageLayers.size());
 
-    if (!image.valid() )
-        return 0L;
-    
-    // calculate the subwindow of our key inside the source image, which will be non-unit
-    // if we had to fall back.
-    float scale = key.getExtent().width() / image.getExtent().width();
-    osg::Vec2 bias;
-    bias.x() = (key.getExtent().xMin() - image.getExtent().xMin()) / image.getExtent().width();
-    bias.y() = (key.getExtent().yMin() - image.getExtent().yMin()) / image.getExtent().height();
-
-    osg::Image* in = image.getImage();
+    // Allocate the new coverage image; it will contain unnormalized values.
     osg::Image* out = new osg::Image();
+    ImageUtils::markAsUnNormalized(out, true);
 
     // Allocate a suitable format:
-    GLenum type;
+    GLenum dataType;
     GLint  internalFormat;
-
-    if ( _options.bits().isSetTo(8u) )
+    
+    if ( _options.bits().isSetTo(16u) )
     {
-        // 8-bit integer:
-        type           = GL_UNSIGNED_BYTE;
-        internalFormat = GL_LUMINANCE8;
+        // 16-bit float:
+        dataType       = GL_FLOAT;
+        internalFormat = GL_LUMINANCE16F_ARB;
     }
-    else if ( _options.bits().isSetTo(16u) )
-    {
-        // 16-bit integer:
-        type           = GL_UNSIGNED_SHORT;
-        internalFormat = GL_LUMINANCE16;
-    }
-    else
+    else //if ( _options.bits().isSetTo(32u) )
     {
         // 32-bit float:
-        type           = GL_FLOAT;
+        dataType       = GL_FLOAT;
         internalFormat = GL_LUMINANCE32F_ARB;
     }
     
-    out->allocateImage(256, 256, 1, GL_LUMINANCE, type);
+    int tilesize = getPixelsPerTile();
+
+    out->allocateImage(tilesize, tilesize, 1, GL_LUMINANCE, dataType);
     out->setInternalTextureFormat(internalFormat);
 
     float noiseLOD = _options.baseLOD().get();
@@ -183,30 +224,58 @@ LandUseTileSource::createImage(const TileKey&    key,
     float     noise;  // noise value
     osg::Vec2 noiseCoords;
 
-    float du = 1.0f / (float)(in->s()-1);
-    float dv = 1.0f / (float)(in->t()-1);
-
-    ImageUtils::PixelReader read ( in );
     ImageUtils::PixelWriter write( out );
+
+    float du = 1.0f / (float)(out->s()-1);
+    float dv = 1.0f / (float)(out->t()-1);
+
+    osg::Vec4 nodata;
+    if (internalFormat == GL_LUMINANCE16F_ARB)
+        nodata.set(-32768, -32768, -32768, -32768);
+    else
+        nodata.set(NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE, NO_DATA_VALUE);
 
     for(float u=0.0f; u<=1.0f; u+=du)
     {
         for(float v=0.0f; v<=1.0f; v+=dv)
         {
-            osg::Vec2 cov(scale*u + bias.x(), scale*v + bias.y());
+            bool wrotePixel = false;
+            for(int L = layers.size()-1; L >= 0 && !wrotePixel; --L)
+            {
+                ILayer& layer = layers[L];
+                if ( !layer.valid )
+                    continue;
 
-            // Noise is like a repeating overlay at the noiseLOD. So sample it using
-            // straight U/V tile coordinates.
-            noiseCoords = getSplatCoords( key, noiseLOD, osg::Vec2(u,v) );
-            noise = getNoise( _noiseGen, noiseCoords );
+                if ( !layer.image.valid() )
+                    layer.load(key, _imageLayers[L], _warps[L], progress);
 
-            cov = warpCoverageCoords(cov, noise, warp);
+                if ( !layer.valid )
+                    continue;
 
-            osg::Vec4 texel = read(cov.x(), cov.y());
-            write.f(texel, u, v);
+                osg::Vec2 cov(layer.scale*u + layer.bias.x(), layer.scale*v + layer.bias.y());
 
-            //testing: visualize noise
-            //write.f(osg::Vec4f(noise,noise,noise,1), u, v);
+                if ( cov.x() >= 0.0f && cov.x() <= 1.0f && cov.y() >= 0.0f && cov.y() <= 1.0f )
+                {
+                    // Noise is like a repeating overlay at the noiseLOD. So sample it using
+                    // straight U/V tile coordinates.
+                    noiseCoords = getSplatCoords( key, noiseLOD, osg::Vec2(u,v) );
+                    noise = getNoise( _noiseGen, noiseCoords );
+
+                    cov = warpCoverageCoords(cov, noise, layer.warp);
+
+                    osg::Vec4 texel = (*layer.read)(cov.x(), cov.y());
+                    if ( texel.r() != NO_DATA_VALUE )
+                    {
+                        write.f(texel, u, v);
+                        wrotePixel = true;
+                    }
+                }
+            }
+
+            if ( !wrotePixel )
+            {
+                write.f(nodata, u, v);
+            }
         }
     }
 

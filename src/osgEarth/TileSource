@@ -93,6 +93,10 @@ namespace osgEarth
         optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
         const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
 
+        /** Whether to rasterize into coverage data, which contains discrete non-interpolable values. */
+        optional<bool>& coverage() { return _coverage; }
+        const optional<bool>& coverage() const { return _coverage; }
+
     public:
         /** For backwards-compatibility; use minValidValue() instead 
          *  @deprecated */
@@ -126,6 +130,7 @@ namespace osgEarth
         optional<int>            _L2CacheSize;
         optional<bool>           _bilinearReprojection;
         optional<unsigned>       _maxDataLevel;
+        optional<bool>           _coverage;
     };
 
 

@@ -2260,6 +2260,9 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
 void
 EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
 {
+    if (!established())
+        return;
+
     osg::Vec3d lookVector(- matrix(2,0),-matrix(2,1),-matrix(2,2));
     osg::Vec3d eye(matrix(3,0),matrix(3,1),matrix(3,2));
 

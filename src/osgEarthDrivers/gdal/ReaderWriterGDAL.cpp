@@ -1633,12 +1633,25 @@ public:
                 //Pallete indexed imagery doesn't support interpolation currently and only uses nearest
                 //b/c interpolating pallete indexes doesn't make sense.
                 unsigned char *palette = new unsigned char[target_width * target_height];
-
+                
                 image = new osg::Image;
-                image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
+
+                if ( _options.coverage() == true )
+                {
+                    image->allocateImage(tileSize, tileSize, 1, GL_LUMINANCE, GL_FLOAT);
+                    image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+                    ImageUtils::markAsUnNormalized(image, true);
+                }
+                else
+                {
+                    image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
+                }
+
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
                 bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
+
+                ImageUtils::PixelWriter write(image);
 
                 for (int src_row = 0, dst_row = tile_offset_top;
                     src_row < target_height;
@@ -1648,19 +1661,32 @@ public:
                         src_col < target_width;
                         ++src_col, ++dst_col)
                     {
-
                         unsigned char p = palette[src_col + src_row * target_width];
-                        osg::Vec4ub color;
-                        getPalleteIndexColor( bandPalette, p, color );
-                        if (!isValidValue( p, bandPalette))
-                        {
-                            color.a() = 0.0f;
-                        }
 
-                        *(image->data(dst_col, dst_row) + 0) = color.r();
-                        *(image->data(dst_col, dst_row) + 1) = color.g();
-                        *(image->data(dst_col, dst_row) + 2) = color.b();
-                        *(image->data(dst_col, dst_row) + 3) = color.a();
+                        if ( _options.coverage() == true )
+                        {    
+                            osg::Vec4 pixel;
+                            if ( isValidValue(p, bandPalette) )
+                                pixel.r() = (float)p;
+                            else
+                                pixel.r() = NO_DATA_VALUE;
+
+                            write(pixel, dst_col, dst_row);
+                        }
+                        else
+                        {                            
+                            osg::Vec4ub color;
+                            getPalleteIndexColor( bandPalette, p, color );
+                            if (!isValidValue( p, bandPalette))
+                            {
+                                color.a() = 0.0f;
+                            }
+
+                            *(image->data(dst_col, dst_row) + 0) = color.r();
+                            *(image->data(dst_col, dst_row) + 1) = color.g();
+                            *(image->data(dst_col, dst_row) + 2) = color.b();
+                            *(image->data(dst_col, dst_row) + 3) = color.a();
+                        }
                     }
                 }
 

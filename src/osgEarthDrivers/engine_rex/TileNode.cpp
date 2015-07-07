@@ -31,6 +31,7 @@
 #include <osg/Uniform>
 #include <osg/ComputeBoundsVisitor>
 
+#undef _NDEBUG
 #include <cassert>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -56,6 +57,218 @@ namespace
     }
 }
 
+class ProxyGeometry : public osg::Geometry
+{
+public:
+    ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize, bool gpuTessellation) : _key(key), _dirty(true), _elevationTexture(0), _tileSize(tileSize)
+    {
+        _locator = GeoLocator::createForKey( _key, mapInfo );
+        _mode    = (gpuTessellation == true) ? GL_PATCHES : GL_TRIANGLES;
+
+        constructEmptyGeometry();
+        constructXReferenceFrame();
+    }
+    void setElevationData(osg::Texture* elevationTexture, osg::Matrixf& scaleBiasMatrix)
+    {
+        _elevationTexture = elevationTexture;
+        _scaleBiasMatrix  = scaleBiasMatrix;
+        setDirty(true);
+    }
+
+    void accept(osg::PrimitiveFunctor& f) const 
+    {
+        rebuildIfNecessary();
+        osg::Geometry::accept(f);
+    }
+
+    void accept(osg::PrimitiveIndexFunctor& f) const
+    {
+        rebuildIfNecessary();
+        osg::Geometry::accept(f);
+    }
+
+    void rebuildIfNecessary() const
+    {
+        if (isDirty())
+        {
+            ProxyGeometry* pNonConst = const_cast<ProxyGeometry*>(this);
+            pNonConst->rebuild();
+        }
+    }
+
+    unsigned getNumberOfVerts(void) const
+    {
+        return (_tileSize*_tileSize);    
+    }
+    unsigned getNumberOfIndices(void) const
+    {
+        return (_tileSize-1) * (_tileSize-1) * 6;
+    }
+
+    void constructXReferenceFrame()
+    {
+        // Establish a local reference frame for the tile:
+        osg::Vec3d centerWorld;
+        GeoPoint centroid;
+        _key.getExtent().getCentroid( centroid );
+        centroid.toWorld( centerWorld );
+
+        centroid.createWorldToLocal( _world2local );
+        _local2world.invert( _world2local );
+    }
+
+    void constructEmptyGeometry()
+    {
+        unsigned numVerts   = getNumberOfVerts();    
+        unsigned numIndices = getNumberOfIndices();
+
+        // the geometry:
+        osg::Geometry* geom = this;
+
+        // Pre-allocate enough space for all triangles.
+        osg::DrawElements* primSet = new osg::DrawElementsUShort(_mode);
+        primSet->reserveElements(numIndices);
+        geom->addPrimitiveSet( primSet );
+
+        geom->setUseVertexBufferObjects(true);
+        geom->setUseDisplayList(false);
+
+        // the vertex locations:
+        osg::Vec3Array* verts = new osg::Vec3Array();
+        verts->reserve( numVerts );
+        geom->setVertexArray( verts );
+
+        // the surface normals (i.e. extrusion vectors)
+        osg::Vec3Array* normals = new osg::Vec3Array();
+        normals->reserve( numVerts );
+        geom->setNormalArray( normals );
+        geom->setNormalBinding( geom->BIND_PER_VERTEX );
+    }
+
+    void clear(void)
+    {
+        osg::Geometry* geom = this;
+
+        osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+        verts->clear();
+
+        osg::Vec3Array* normals = static_cast<osg::Vec3Array*>(geom->getNormalArray());
+        normals->clear();
+
+        osg::DrawElementsUShort* primSet = static_cast<osg::DrawElementsUShort*>(geom->getPrimitiveSet(0));
+        primSet->clear();
+    }
+
+    void makeVertsAndNormals()
+    {
+        assert(_elevationTexture && _elevationTexture->getImage(0));
+        ElevationImageReader elevationImageReader(_elevationTexture->getImage(0), _scaleBiasMatrix);
+        if (elevationImageReader.valid()==false)
+        {
+            return;
+        }
+
+        assert(elevationImageReader.startRow()<elevationImageReader.endRow());
+        assert(elevationImageReader.startCol()<elevationImageReader.endCol());
+
+        osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(this->getVertexArray());
+        osg::Vec3Array* normals = static_cast<osg::Vec3Array*>(this->getNormalArray());
+
+        for(unsigned row=0; row<_tileSize; ++row)
+        {
+            float ny = (float)row/(float)(_tileSize-1);
+            for(unsigned col=0; col<_tileSize; ++col)
+            {
+                float nx = (float)col/(float)(_tileSize-1);
+
+                osg::Vec3d model;
+                _locator->unitToModel(osg::Vec3d(nx, ny, 0.0f), model);
+                osg::Vec3d modelLTP = model*_world2local;
+
+                osg::Vec3d modelPlusOne;
+                _locator->unitToModel(osg::Vec3d(nx, ny, 1.0f), modelPlusOne);
+                osg::Vec3d normal = (modelPlusOne*_world2local)-modelLTP;
+                normal.normalize();
+                normals->push_back( normal );
+
+                modelLTP = modelLTP + normal*elevationImageReader.elevationN(nx,ny);
+                verts->push_back( modelLTP);
+            }
+        }
+        
+
+    }
+
+    void tesselate(void)
+    {
+        bool swapOrientation = !_locator->orientationOpenGL();
+
+        osg::DrawElements* primSet = static_cast<osg::DrawElements*>(this->getPrimitiveSet(0));
+
+        for(unsigned j=0; j<_tileSize-1; ++j)
+        {
+            for(unsigned i=0; i<_tileSize-1; ++i)
+            {
+                int i00;
+                int i01;
+                if (swapOrientation)
+                {
+                    i01 = j*_tileSize + i;
+                    i00 = i01+_tileSize;
+                }
+                else
+                {
+                    i00 = j*_tileSize + i;
+                    i01 = i00+_tileSize;
+                }
+
+                int i10 = i00+1;
+                int i11 = i01+1;
+
+                primSet->addElement(i01);
+                primSet->addElement(i00);
+                primSet->addElement(i11);
+
+                primSet->addElement(i00);
+                primSet->addElement(i10);
+                primSet->addElement(i11);
+            }
+        }
+    }
+   
+    void rebuild(void)
+    {
+        assert(isDirty()==true);
+
+        clear();
+
+        if (_elevationTexture)
+        {
+            makeVertsAndNormals();
+            tesselate();
+        }
+
+        setDirty(false);
+        assert(isDirty()==false);
+    }
+
+    bool isDirty(void) const{return _dirty;}
+    void setDirty(bool dirty){ _dirty = true;}
+
+private:
+    const TileKey _key;
+    osg::ref_ptr<GeoLocator> _locator;
+
+    bool _dirty;
+
+    osg::Texture* _elevationTexture;
+    osg::Matrixf  _scaleBiasMatrix;
+    unsigned      _tileSize;
+    GLenum        _mode;
+    osg::Matrix _world2local, _local2world;
+};
+
+
 TileNode::TileNode() : 
 _dirty      ( false ),
 _fMorphStartDistance(-1),
@@ -79,7 +292,12 @@ TileNode::create(const TileKey& key, EngineContext* context)
     osg::ref_ptr<osg::Geometry> geom;
     context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo()._uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
 
-    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
+    _proxyGeometry = new ProxyGeometry(key
+                                     , context->getMapFrame().getMapInfo()
+                                     , context->_options.tileSize().get()
+                                     , context->_options.gpuTessellation().get());
+
+    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), _proxyGeometry.get());
     surfaceDrawable->setDrawAsPatches(false);
 
     _surface = new SurfaceNode(
@@ -93,7 +311,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
     surfaceSS->setNestRenderBins(false);
 
     // Surface node for rendering land cover geometry.
-    TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
+    TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), 0);
     patchDrawable->setDrawAsPatches(true);
 
     // PPP: Is this correct???
@@ -189,19 +407,20 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
     _tileKeyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
 
     // update the morph constants
-    assert(_fMorphStartDistance>0&&_fMorphEndDistance>0);
+    if(_fMorphStartDistance>0&&_fMorphEndDistance>0)
+    {
+        float one_by_end_minus_start = _fMorphEndDistance - _fMorphStartDistance;
+        one_by_end_minus_start = 1.0f/one_by_end_minus_start;
 
-    float one_by_end_minus_start = _fMorphEndDistance - _fMorphStartDistance;
-    one_by_end_minus_start = 1.0f/one_by_end_minus_start;
+        osg::Vec4f vMorphConstants(
+            _fMorphStartDistance
+            , one_by_end_minus_start
+            , _fMorphEndDistance * one_by_end_minus_start
+            , one_by_end_minus_start
+            );
 
-    osg::Vec4f vMorphConstants(
-          _fMorphStartDistance
-        , one_by_end_minus_start
-        , _fMorphEndDistance * one_by_end_minus_start
-        , one_by_end_minus_start
-        );
-
-    _tileMorphUniform->set((vMorphConstants));
+        _tileMorphUniform->set((vMorphConstants));
+    }
 
     // Update grid dims
     float fGridDims = selectionInfo._uiGridDimensions.first-1;
@@ -506,32 +725,38 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const S
 }
 
 void
-TileNode::recalculateExtrema(const RenderBindings& bindings)
+TileNode::updateElevationData(const RenderBindings& bindings)
 {
     const SamplerBinding* elevBinding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
     if ( !elevBinding )
         return;
 
-    osg::Matrixf matrix;
+    osg::Matrixf matrixScaleBias;
+
+    // invalidate
+    osg::ref_ptr<ProxyGeometry> proxyGeometry(static_cast<ProxyGeometry*>(_proxyGeometry.get()));
+    proxyGeometry->setElevationData(0, matrixScaleBias);
+
     const osg::Uniform* u = getStateSet()->getUniform(elevBinding->matrixName());
     if ( !u )
     {
         OE_WARN << LC << getTileKey().str() << " : recalculateExtrema: illegal state\n";
         return;
     }
-    u->get(matrix);
+    u->get(matrixScaleBias);
 
-    bool found = false;
+    bool extremaOK = false;
     TileNode* parent = 0L;
-    for(TileNode* node = this; node != 0L && !found; node = parent)
+    for(TileNode* node = this; node != 0L && !extremaOK; node = parent)
     {
         osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(elevBinding->unit(), osg::StateAttribute::TEXTURE));
         if ( elevTex )
         {
             osg::Vec2f extrema;
-            found = ElevationTexureUtils::findExtrema(elevTex, matrix, getTileKey(), extrema);
-            if ( found )
+            extremaOK = ElevationTexureUtils::findExtrema(elevTex, matrixScaleBias, getTileKey(), extrema);
+            if ( extremaOK )
             {
+                proxyGeometry->setElevationData(elevTex, matrixScaleBias);
                 setElevationExtrema( extrema );
                 OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
                 break;
@@ -540,7 +765,8 @@ TileNode::recalculateExtrema(const RenderBindings& bindings)
         parent = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
     }
 
-    if ( !found )
+  
+    if ( !extremaOK )
     {
         // This will happen sometimes, like when the initial levels are loading and there
         // is no elevation texture in the graph yet. It's normal.

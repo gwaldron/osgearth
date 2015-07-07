@@ -12,6 +12,46 @@ using namespace osgEarth;
 
 #define LC "[ElevationTexureUtils] "
 
+
+ElevationImageReader::ElevationImageReader(const osg::Image* image, const osg::Matrix& matrixScaleBias)
+    : _pixelReader(image)
+{
+    double s_offset = matrixScaleBias(3,0) * (double)image->s();
+    double t_offset = matrixScaleBias(3,1) * (double)image->t();
+    double s_span   = matrixScaleBias(0,0) * (double)image->s();
+    double t_span   = matrixScaleBias(1,1) * (double)image->t();
+
+    // if the window is smaller than one pixel, forget it.
+    if ( s_span < 4.0 || t_span < 4.0 )
+    {
+        _valid = false;
+        return;
+    }
+
+    // starting column and row:
+    _startCol = osg::clampAbove( ((int)s_offset)-1, 0 );
+    _startRow = osg::clampAbove( ((int)t_offset)-1, 0 );
+
+    // ending column and row
+    _endCol = osg::clampBelow( _startCol + ((int)s_span) + 1, image->s()-1 );
+    _endRow = osg::clampBelow( _startRow + ((int)t_span) + 1, image->t()-1 );
+
+    OE_DEBUG << LC << std::dec 
+        << "scale=" << s_offset << ", " << t_offset
+        << "; span = " << s_span << ", " << t_span
+        << "; c0=" << startCol() << ", r0=" << startRow() << "; c1=" << endCol() << ", r1=" << endRow() << "\n";
+
+
+    _valid = true;
+}
+
+float ElevationImageReader::elevationN(float s, float t)
+{
+    int col = startCol() + (endCol()-startCol())*s;
+    int row = startRow() + (endRow()-startRow())*t;
+    return elevation(col, row);
+}
+
 bool
 ElevationTexureUtils::findExtrema(osg::Texture* elevationTexture, const osg::Matrix& matrixScaleBias, const TileKey& tileKey, osg::Vec2f& extrema)
 {
@@ -26,36 +66,20 @@ ElevationTexureUtils::findExtrema(osg::Texture* elevationTexture, const osg::Mat
     osg::Image* image = elevationTexture->getImage(0);
     if ( image )
     {
-        double s_offset = matrixScaleBias(3,0) * (double)image->s();
-        double t_offset = matrixScaleBias(3,1) * (double)image->t();
-        double s_span   = matrixScaleBias(0,0) * (double)image->s();
-        double t_span   = matrixScaleBias(1,1) * (double)image->t();
+        ElevationImageReader reader(image, matrixScaleBias);
 
-        // if the window is smaller than one pixel, forget it.
-        if ( s_span < 4.0 || t_span < 4.0 )
-            return false;
-
-        ImageUtils::PixelReader read(image);
-
-        // starting column and row:
-        int startCol = osg::clampAbove( ((int)s_offset)-1, 0 );
-        int startRow = osg::clampAbove( ((int)t_offset)-1, 0 );
-
-        // ending column and row
-        int endCol = osg::clampBelow( startCol + ((int)s_span) + 1, image->s()-1 );
-        int endRow = osg::clampBelow( startRow + ((int)t_span) + 1, image->t()-1 );
-
-        OE_DEBUG << LC 
-            << "find: key=" << tileKey.str() << std::dec 
-            << "scale=" << s_offset << ", " << t_offset
-            << "; span = " << s_span << ", " << t_span
-            << "; c0=" << startCol << ", r0=" << startRow << "; c1=" << endCol << ", r1=" << endRow << "\n";
-
-        for(int col=startCol; col <= endCol; ++col)
+        if (reader.valid()==false)
         {
-            for(int row=startRow; row <= endRow; ++row)
+            return false;
+        }
+
+        OE_DEBUG << LC << "find: key=" << tileKey.str();
+
+        for(int col=reader.startCol(); col <= reader.endCol(); ++col)
+        {
+            for(int row=reader.startRow(); row <= reader.endRow(); ++row)
             {
-                float elevation = read(col, row).r();
+                float elevation = reader.elevation(col, row);
                 if ( elevation < extrema[0] ) extrema[0] = elevation;
                 if ( elevation > extrema[1] ) extrema[1] = elevation;
             }
@@ -63,7 +87,12 @@ ElevationTexureUtils::findExtrema(osg::Texture* elevationTexture, const osg::Mat
 
         if ( extrema[0] > extrema[1] )
         {
-            OE_WARN << LC << "findExtrema ERROR (" << tileKey.str() << ") c0=" << startCol << ", r0=" << startRow << "; c1=" << endCol << ", r1=" << endRow << ", s=" << image->s() << ", t=" << image->t() << "\n";
+            OE_WARN << LC << "findExtrema ERROR (" << tileKey.str() << ") c0=" << reader.startCol() 
+                                                                    << ", r0=" << reader.startRow() 
+                                                                    << "; c1=" << reader.endCol() 
+                                                                    << ", r1=" << reader.endRow() 
+                                                                    << ", s=" << image->s() 
+                                                                    << ", t=" << image->t() << "\n";
         }
     }
     else

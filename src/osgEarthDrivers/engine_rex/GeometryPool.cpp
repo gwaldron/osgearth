@@ -151,9 +151,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                              unsigned uiMorphLOD,
                              const MapInfo& mapInfo,
                              MaskGenerator* maskSet) const
-{
-    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
-    
+{    
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
     GeoPoint centroid;
@@ -231,7 +229,9 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     osg::Vec3d tdelta(delta,0,0);
     tdelta.normalize();
     osg::Vec3d vZero(0,0,0);
-    
+
+    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
+
     for(unsigned row=0; row<_tileSize; ++row)
     {
         float ny = (float)row/(float)(_tileSize-1);

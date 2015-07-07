@@ -44,7 +44,7 @@ namespace
             if ( tilenode )
             {
                 tilenode->inheritState( tilenode->getParentTile(), _bindings, _selectionInfo );
-                tilenode->recalculateExtrema( _bindings );
+                tilenode->updateElevationData( _bindings );
             }
 
             traverse(node);

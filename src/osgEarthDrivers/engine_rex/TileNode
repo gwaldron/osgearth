@@ -71,7 +71,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo );
 
         /** Compute the local min/max elevation based on this tile's inherited elevation raster and matrix. */
-        void recalculateExtrema(const RenderBindings& bindings);
+        void updateElevationData(const RenderBindings& bindings);
 
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
@@ -136,6 +136,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         float _fMorphStartDistance;
         float _fMorphEndDistance;
+
+        osg::ref_ptr<osg::Geometry> _proxyGeometry;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

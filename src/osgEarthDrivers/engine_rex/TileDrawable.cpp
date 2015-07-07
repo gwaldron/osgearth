@@ -34,10 +34,12 @@ using namespace osgEarth;
 
 TileDrawable::TileDrawable(const TileKey&        key,
                            const RenderBindings& bindings,
-                           osg::Geometry*        geometry) :
+                           osg::Geometry*        geometry,
+                           osg::Geometry*        proxygeometry) :
 osg::Drawable( ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
+_proxyGeom   ( proxygeometry ),
 _minmax      ( 0, 0 ),
 _drawPatch   ( false )
 {

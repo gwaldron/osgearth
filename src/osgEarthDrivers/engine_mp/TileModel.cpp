@@ -203,7 +203,10 @@ _fallbackData( fallbackData )
 
 
     const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
-    if ( unRefPolicy.isSet() )
+    const optional<bool>& layerUnRefPolicy = _layer->getTileSource()->getOptions().unRefImageDataAfterApply();
+    if ( layerUnRefPolicy.isSet() )
+        _texture->setUnRefImageDataAfterApply( layerUnRefPolicy.get() );
+    else if ( unRefPolicy.isSet() )
         _texture->setUnRefImageDataAfterApply( unRefPolicy.get() );
 
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );

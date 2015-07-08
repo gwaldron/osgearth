@@ -159,7 +159,7 @@ namespace osgEarth
          * will be queried.  This allows certain areas on the earth to have higher levels of detail
          * than others and avoids unnecessary queries where there isn't high resolution data available.
          */
-        unsigned int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile ) const;
+        unsigned int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile, unsigned tileSize) const;
 
         /** Clear the database cache.*/
         void clearDatabaseCache() { if (_eqcrc.valid()) _eqcrc->clearDatabaseCache(); }

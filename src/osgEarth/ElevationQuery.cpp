@@ -162,9 +162,9 @@ ElevationQuery::gatherPatchLayers()
 }
 
 unsigned
-ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, const Profile* profile ) const
+ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, const Profile* profile, unsigned tileSize) const
 {
-    int targetTileSizePOT = nextPowerOf2((int)_mapf.getMapOptions().elevationTileSize().get());
+    int targetTileSizePOT = nextPowerOf2((int)tileSize); //(int)_mapf.getMapOptions().elevationTileSize().get());
 
     int maxLevel = 0;
     for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
@@ -418,10 +418,10 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
     }
 
     // tile size (resolution of elevation tiles)
-    unsigned tileSize = std::max(_mapf.getMapOptions().elevationTileSize().get(), 2u);
+    unsigned tileSize = 33;
 
     //This is the max resolution that we actually have data at this point
-    unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS(), _mapf.getProfile());
+    unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS(), _mapf.getProfile(), tileSize );
 
     if (desiredResolution > 0.0)
     {
@@ -473,7 +473,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
                 hf->getFloatArray()->at( i ) = NO_DATA_VALUE;
             }   
 
-            if (_mapf.populateHeightField(hf, key, false))
+            if (_mapf.populateHeightField(hf, key, false /*heightsAsHAE*/, 0L))
             {                
                 geoHF = GeoHeightField( hf.get(), key.getExtent() );
                 _cache.insert( key, geoHF );
@@ -485,7 +485,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
             float elevation = 0.0f;                 
             result = geoHF.getElevation( mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), _mapf.getMapInfo().getElevationInterpolation(), mapPoint.getSRS(), elevation);                              
             if (result && elevation != NO_DATA_VALUE)
-            {                        
+            {
                 // see what the actual resolution of the heightfield is.
                 if ( out_actualResolution )
                     *out_actualResolution = geoHF.getXInterval(); 

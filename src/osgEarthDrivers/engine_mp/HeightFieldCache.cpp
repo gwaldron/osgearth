@@ -93,7 +93,6 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         out_hf,
         key,
         true, // convertToHAE
-        samplePolicy,
         progress );
 
     // Treat Plate Carre specially by scaling the height values. (There is no need

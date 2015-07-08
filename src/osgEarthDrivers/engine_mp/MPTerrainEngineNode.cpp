@@ -663,7 +663,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     {
         while (!populated)
         {
-            populated = _update_mapf->populateHeightField(hf, sampleKey, true, SAMPLE_FIRST_VALID);
+            populated = _update_mapf->populateHeightField(hf, sampleKey, true, 0L);
             if (!populated)
             {
                 // Fallback on the parent

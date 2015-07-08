@@ -1112,12 +1112,13 @@ Map::createReferenceHeightField(const TileKey& key,
     return HeightFieldUtils::createReferenceHeightField(key.getExtent(), size, size, expressHeightsAsHAE);
 }
 
-
+#if 0
 bool
 Map::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
                          const TileKey&                  key,
                          bool                            convertToHAE,
                          ElevationSamplePolicy           samplePolicy, // deprecated (unused)
+                         bool                            fallbackIfPossible,
                          ProgressCallback*               progress) const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
@@ -1134,8 +1135,10 @@ Map::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
         key,
         convertToHAE ? _profileNoVDatum.get() : 0L,
         interp,
+        fallbackIfPossible,
         progress );
 }
+#endif
 
 const SpatialReference*
 Map::getWorldSRS() const

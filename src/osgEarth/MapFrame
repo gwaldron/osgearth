@@ -136,9 +136,8 @@ namespace osgEarth
         bool populateHeightField(
             osg::ref_ptr<osg::HeightField>& hf,
             const TileKey&                  key,
-            bool                            expressHeightsAsHAE =true,
-            ElevationSamplePolicy           samplePolicy        =SAMPLE_FIRST_VALID,
-            ProgressCallback*               progress            =0L) const;
+            bool                            expressHeightsAsHAE,
+            ProgressCallback*               progress) const;
 
     private:
         bool _initialized;

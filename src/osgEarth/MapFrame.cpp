@@ -166,7 +166,6 @@ bool
 MapFrame::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
                               const TileKey&                  key,
                               bool                            convertToHAE,
-                              ElevationSamplePolicy           samplePolicy,
                               ProgressCallback*               progress) const
 {
     osg::ref_ptr<const Map> map;

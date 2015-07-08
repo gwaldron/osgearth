@@ -12,6 +12,9 @@
 // define to activate GPU-generated noise instead of a noise texture.
 #pragma vp_define "SPLAT_GPU_NOISE"
 
+// define to activate color image layer mixing.
+#pragma vp_define "SPLAT_USE_COLOR_IMAGE"
+
 // include files
 #pragma include "Splat.types.glsl"
 #pragma include "Splat.frag.common.glsl"
@@ -40,6 +43,14 @@ uniform mat4 oe_terrain_tex_matrix;
 uniform float oe_splat_detailRange;
 uniform float oe_splat_noiseScale;
 uniform float oe_splat_useBilinear; // 1=true, -1=false
+
+#ifdef SPLAT_USE_COLOR_IMAGE
+uniform float oe_splat_color_start_dist;
+uniform float oe_splat_color_ratio;
+uniform sampler2D oe_color_tex;
+uniform mat4 oe_color_tex_mat;
+
+#endif
 
 #ifdef SPLAT_EDIT
 uniform float oe_splat_brightness;
@@ -314,6 +325,14 @@ void oe_splat_complex(inout vec4 color)
     }
 
     color = mix(color, texel, texel.a);
+
+#ifdef SPLAT_USE_COLOR_IMAGE
+	vec3 groundColor = texture(oe_color_tex, (oe_color_tex_mat*oe_layer_tilec).st).rgb;
+	float fade_dist = oe_splat_color_start_dist/2.0 + 0.1;
+	float fade = clamp(oe_splat_range, oe_splat_color_start_dist, oe_splat_color_start_dist + fade_dist);
+	fade = (fade-oe_splat_color_start_dist)/fade_dist;
+	color.rgb = mix(color.rgb, color.rgb*(2.0*groundColor), oe_splat_color_ratio*fade);
+#endif
 
     // uncomment to visualize slope.
     //color.rgba = vec4(env.slope,0,0,1);

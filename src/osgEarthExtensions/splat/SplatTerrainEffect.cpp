@@ -150,6 +150,15 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             package.define( "SPLAT_GPU_NOISE",   _gpuNoise );
             package.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
 
+			bool use_color_map = (::getenv("SPLAT_USE_COLOR_IMAGE") != 0L);
+			package.define( "SPLAT_USE_COLOR_IMAGE", use_color_map );
+			if(use_color_map)
+			{
+				stateset->addUniform(new osg::Uniform("oe_splat_color_ratio",  0.5f));
+				stateset->addUniform(new osg::Uniform("oe_splat_color_start_dist", 1000.0f));
+			}
+
+
             package.replace( "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);

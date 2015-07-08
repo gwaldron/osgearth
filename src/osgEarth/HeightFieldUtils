@@ -24,7 +24,6 @@
 #include <osg/Shape>
 #include <osg/CoordinateSystemNode>
 #include <osg/ClusterCullingCallback>
-#include <osgTerrain/ValidDataOperator>
 
 namespace osgEarth
 {
@@ -206,6 +205,7 @@ namespace osgEarth
         static bool validateSamples(float &a, float &b, float &c, float &d);
     };
 
+#if 0
     /**
     * A collection of ValidDataOperators.  All operators must pass to be considered valid.
     */
@@ -264,6 +264,7 @@ namespace osgEarth
 
         float _defaultValue;
     };
+#endif
 }
 
 #endif //OSGEARTH_HEIGHTFIELDUTILS_H

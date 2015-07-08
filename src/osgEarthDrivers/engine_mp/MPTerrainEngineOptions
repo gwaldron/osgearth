@@ -42,7 +42,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize     ( 256 ),
             _color             ( Color::White ),
-            _incrementalUpdate ( false )
+            _incrementalUpdate ( false ),
+            _smoothing         ( true )
          {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -86,6 +87,14 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<float>& lodFallOff() { return _lodFallOff; }
         const optional<float>& lodFallOff() const { return _lodFallOff; }
 
+        /**
+         * Whether to create smooth transitions between elevation datasets at differing LODs
+         * by inheriting low-resolution data from parent tiles and filling in the new data.
+         * Defaults to true.
+         */
+        optional<bool>& elevationSmoothing() { return _smoothing; }
+        const optional<bool>& elevationSmoothing() const { return _smoothing; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
@@ -98,6 +107,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.updateIfSet( "color", _color );
             conf.updateIfSet( "incremental_update", _incrementalUpdate );
+            conf.updateIfSet( "elevation_smoothing", _smoothing );
 
             return conf;
         }
@@ -119,6 +129,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.getIfSet( "color", _color );
             conf.getIfSet( "incremental_update", _incrementalUpdate );
+            conf.getIfSet( "elevation_smoothing", _smoothing );
        }
 
         optional<float>               _skirtRatio;
@@ -129,6 +140,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<float>               _tilePixelSize;
         optional<Color>               _color;
         optional<bool>                _incrementalUpdate;
+        optional<bool>                _smoothing;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

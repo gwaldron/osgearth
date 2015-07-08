@@ -498,9 +498,10 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
             }
         }
 
+        // TODO: need this anymore, since PHF does the fallback? -gw 2015-07-08
         if (!result)
         {
-            key = key.createParentKey();                        
+            key = key.createParentKey();
             if (!key.valid())
             {
                 break;

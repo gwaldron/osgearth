@@ -347,16 +347,16 @@ namespace osgEarth
             return _options.noDataValue().value(); }
 
         /**
-         * Gets the nodata min value
+         * Gets the minimum valid value. Any value below this is treated as "nodata"
          */
-        virtual float getNoDataMinValue() {
-            return _options.noDataMinValue().value(); }
+        virtual float getMinValidValue() {
+            return _options.minValidValue().value(); }
 
         /**
-         * Gets the nodata max value
+         * Gets the maximum valid value. Any value above this is considered "nodata"
          */
-        virtual float getNoDataMaxValue() {
-            return _options.noDataMaxValue().value(); }
+        virtual float getMaxValidValue() {
+            return _options.maxValidValue().value(); }
 
         /**
          * Gets the preferred extension for this TileSource

@@ -131,7 +131,7 @@ public:
         }
         return NULL;
     }
-
+    
 
 private:
     const ColorRampOptions _options;

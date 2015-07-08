@@ -81,11 +81,9 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
             return false;
         }
     }
-    
 
     if ( !out_hf.valid() )
     {
-        //TODO.
         // This sets the elevation tile size; query size for all tiles.
         out_hf = HeightFieldUtils::createReferenceHeightField(
             key.getExtent(), _tileSize, _tileSize, true );

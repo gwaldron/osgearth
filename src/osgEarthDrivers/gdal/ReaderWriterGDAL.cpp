@@ -1729,8 +1729,8 @@ public:
         if (getNoDataValue() == v) return false;
 
         //Check to see if the user specified a custom min/max
-        if (v < getNoDataMinValue()) return false;
-        if (v > getNoDataMaxValue()) return false;
+        if (v < getMinValidValue()) return false;
+        if (v > getMaxValidValue()) return false;
 
         return true;
     }

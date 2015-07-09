@@ -27,7 +27,7 @@ using namespace osgEarth;
 
 #define LC "[ProxyGeometry] "
 
-const bool ProxyGeometry::_immediateBuild = true;
+const bool ProxyGeometry::_immediateBuild = false;
 
 void ProxyGeometry::constructXReferenceFrame()
 {

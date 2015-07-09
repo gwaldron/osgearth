@@ -23,6 +23,7 @@
 #include "SplatTerrainEffect"
 
 #include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/XmlUtils>
 
 using namespace osgEarth;

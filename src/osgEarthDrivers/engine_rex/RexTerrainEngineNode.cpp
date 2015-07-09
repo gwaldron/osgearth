@@ -253,7 +253,7 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
     // (depends on the viewer's threading mode).
-    _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL, "mp-update" );
+    _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL );
 
     // merge in the custom options:
     _terrainOptions.merge( options );
@@ -842,19 +842,13 @@ RexTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 binding.sourceUID() = layerAdded->getUID();
                 binding.unit()      = unit.get();
 
-                if ( layerAdded->shareTexUniformName().isSet() )
-                    binding.samplerName() = layerAdded->shareTexUniformName().get();
-                else
-                    binding.samplerName() = Stringify() << "oe_layer_" << layerAdded->getUID() << "_tex";
+                binding.samplerName() = layerAdded->shareTexUniformName().get();
+                binding.matrixName()  = layerAdded->shareTexMatUniformName().get();
 
-                OE_INFO << LC << " .. Sampler name \"" << binding.samplerName() << "\" in unit " << binding.unit() << "\n";
-
-                if ( layerAdded->shareTexMatUniformName().isSet() )
-                    binding.matrixName() = layerAdded->shareTexMatUniformName().get();
-                else
-                    binding.matrixName() = Stringify() << "oe_layer_ " << layerAdded->getUID() << "_texMatrix";
-                
-                OE_INFO << LC << " .. Matrix name \"" << binding.matrixName() << "\" in unit " << binding.unit() << "\n";
+                OE_INFO << LC 
+                    << " .. Sampler=\"" << binding.samplerName() << "\", "
+                    << "Matrix=\"" << binding.matrixName() << ", "
+                    << "unit=" << binding.unit() << "\n";                
             }
         }
     }

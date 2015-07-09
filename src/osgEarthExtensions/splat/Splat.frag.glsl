@@ -1,6 +1,6 @@
 #version 330
 
-#pragma vp_entryPoint "oe_splat_complex"
+#pragma vp_entryPoint "oe_splat_simple"
 #pragma vp_location   "fragment_coloring"
 #pragma vp_order      "0.4"
 

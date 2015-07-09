@@ -316,7 +316,6 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
         out_hf,
         key,
         true, // convertToHAE
-        samplePolicy,
         progress );
 
     if ( populated )

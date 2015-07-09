@@ -27,6 +27,8 @@ using namespace osgEarth;
 
 #define LC "[ProxyGeometry] "
 
+const bool ProxyGeometry::_immediateBuild = true;
+
 void ProxyGeometry::constructXReferenceFrame()
 {
     // Establish a local reference frame for the tile:
@@ -82,7 +84,7 @@ void ProxyGeometry::setElevationData(osg::Texture* elevationTexture, osg::Matrix
         _elevationTexture = elevationTexture;
         _scaleBiasMatrix  = scaleBiasMatrix;
         setDirty(true);
-        //if (_immediateBuild)
+        if (_immediateBuild)
         {
             rebuild();
         }

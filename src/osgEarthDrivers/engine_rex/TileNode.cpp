@@ -77,8 +77,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     _proxyGeometry = new ProxyGeometry(key
                                      , context->getMapFrame().getMapInfo()
-                                     , context->_options.tileSize().get()
-                                     , context->_options.gpuTessellation().get());
+                                     , context->_options.tileSize().get());
 
     TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), _proxyGeometry.get());
     surfaceDrawable->setDrawAsPatches(false);

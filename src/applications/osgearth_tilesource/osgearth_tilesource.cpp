@@ -50,7 +50,7 @@ class CustomTileSource : public TileSource
 {
 public:
     // Constructor that takes the user-provided options.
-    CustomTileSource( const TileSourceOptions& options =TileSourceOptions() ) : TileSource(options)
+    CustomTileSource() : TileSource(TileSourceOptions())
     {
         _geom = new Ring();
         _geom->push_back( osg::Vec3(5, 5, 0) );
@@ -67,6 +67,12 @@ public:
             setProfile( Registry::instance()->getGlobalGeodeticProfile() );
         }
         return STATUS_OK;
+    }
+
+    // Tells the layer not to cache data from this tile source.
+    CachePolicy getCachePolicyHint(const Profile* profile) const 
+    {
+        return CachePolicy::NO_CACHE;
     }
 
     // Define this method to return an image corresponding to the given TileKey.

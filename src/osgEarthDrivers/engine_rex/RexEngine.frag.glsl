@@ -38,7 +38,6 @@ void oe_rexEngine_frag(inout vec4 color)
 #endif
 	//color.xyz = (flerp.xyz);
 	//return;
-
 	//int startkey = 12;
 	
 	//if (oe_tile_key.z == startkey++)

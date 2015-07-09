@@ -16,8 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#undef NDEBUG
-#include <cassert>
 #include "ProxyGeometry"
 #include "ElevationTextureUtils"
 
@@ -93,7 +91,7 @@ void ProxyGeometry::setElevationData(osg::Texture* elevationTexture, osg::Matrix
 
 void ProxyGeometry::rebuild(void)
 {
-    assert(isDirty()==true);
+    //assert(isDirty()==true);
 
     clear();
 
@@ -104,7 +102,7 @@ void ProxyGeometry::rebuild(void)
     }
 
     setDirty(false);
-    assert(isDirty()==false);
+    //assert(isDirty()==false);
 }
 
 void ProxyGeometry::rebuildIfNecessary() const
@@ -141,15 +139,15 @@ void ProxyGeometry::clear(void)
 
 void ProxyGeometry::makeVertices()
 {
-    assert(_elevationTexture && _elevationTexture->getImage(0));
+    //assert(_elevationTexture && _elevationTexture->getImage(0));
     ElevationImageReader elevationImageReader(_elevationTexture->getImage(0), _scaleBiasMatrix);
     if (elevationImageReader.valid()==false)
     {
     return;
     }
 
-    assert(elevationImageReader.startRow()<elevationImageReader.endRow());
-    assert(elevationImageReader.startCol()<elevationImageReader.endCol());
+    //assert(elevationImageReader.startRow()<elevationImageReader.endRow());
+    //assert(elevationImageReader.startCol()<elevationImageReader.endCol());
     
     osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(this->getVertexArray());
 

@@ -37,6 +37,7 @@
 
 #define LC "[osgearth_transform] "
 
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 

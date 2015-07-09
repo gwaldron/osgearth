@@ -36,7 +36,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class ProxyGeometry : public osg::Geometry
     {
     public:
-        ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize, bool gpuTessellation);
+        ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize);
 
         void setElevationData(osg::Texture* elevationTexture, osg::Matrixf& scaleBiasMatrix);
 
@@ -69,11 +69,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::Texture* _elevationTexture;
         osg::Matrixf  _scaleBiasMatrix;
         unsigned      _tileSize;
-        GLenum        _mode;
         osg::Matrix   _world2local;
         osg::Matrix   _local2world;
-
-        static const bool _immediateBuild;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

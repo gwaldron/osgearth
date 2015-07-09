@@ -25,9 +25,9 @@ using namespace osg;
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
-#define LC "[ProxyGeometry] "
+#define OSGEARTH_REX_PROXY_GEOMETRY_DEBUG 0
 
-const bool ProxyGeometry::_immediateBuild = false;
+#define LC "[ProxyGeometry] "
 
 void ProxyGeometry::constructXReferenceFrame()
 {
@@ -50,11 +50,13 @@ void ProxyGeometry::constructEmptyGeometry()
     osg::Geometry* geom = this;
 
     // Pre-allocate enough space for all triangles.
-    osg::DrawElements* primSet = new osg::DrawElementsUShort(_mode);
+    osg::DrawElements* primSet = new osg::DrawElementsUShort(GL_TRIANGLES);
     primSet->reserveElements(numIndices);
     geom->addPrimitiveSet( primSet );
 
+#if OSGEARTH_REX_PROXY_GEOMETRY_DEBUG
     geom->setUseVertexBufferObjects(true);
+#endif
     geom->setUseDisplayList(false);
 
     // the vertex locations:
@@ -63,14 +65,13 @@ void ProxyGeometry::constructEmptyGeometry()
     geom->setVertexArray( verts );
 }
 
-ProxyGeometry::ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize, bool gpuTessellation) : 
-_key(key), 
+ProxyGeometry::ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize) : 
+    _key(key), 
     _dirty(true),
     _tileSize(tileSize),
     _elevationTexture(0)
 {
     _locator = GeoLocator::createForKey( _key, mapInfo );
-    _mode    = (gpuTessellation == true) ? GL_PATCHES : GL_TRIANGLES;
 
     constructEmptyGeometry();
     constructXReferenceFrame();
@@ -84,10 +85,9 @@ void ProxyGeometry::setElevationData(osg::Texture* elevationTexture, osg::Matrix
         _elevationTexture = elevationTexture;
         _scaleBiasMatrix  = scaleBiasMatrix;
         setDirty(true);
-        if (_immediateBuild)
-        {
-            rebuild();
-        }
+#if OSGEARTH_REX_PROXY_GEOMETRY_DEBUG
+        rebuild();
+#endif
     }
 }
 

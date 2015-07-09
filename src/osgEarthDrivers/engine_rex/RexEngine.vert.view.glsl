@@ -5,6 +5,8 @@
 #pragma vp_location   "vertex_view"
 #pragma vp_order      "0.4"
 
+#define VP_REX_TILE_LEVEL_MORPHING 1
+
 // Stage globals
 out vec4 oe_layer_tilec;
 out vec4 vp_Vertex;
@@ -19,6 +21,7 @@ uniform vec4	  oe_tile_morph_constants;
 uniform vec4	  oe_tile_grid_dimensions;
 uniform vec4	  oe_tile_key;
 uniform vec4	  oe_tile_extents;
+uniform vec4	  oe_tile_camera_to_tilecenter;
 uniform mat4	  oe_layer_texMatrix;
 
 void MorphVertex( inout vec3 vPositionMorphed,  inout vec2 vUVMorphed
@@ -31,11 +34,12 @@ void MorphVertex( inout vec3 vPositionMorphed,  inout vec2 vUVMorphed
    vec2 fFractionalPart = fract( vUVOriginal.xy * vec2(oe_tile_grid_dimensions.y, oe_tile_grid_dimensions.y) ) * vec2(oe_tile_grid_dimensions.z, oe_tile_grid_dimensions.z);
    vUVMorphed = vUVOriginal - (fFractionalPart * fMorphLerpK);
 
+   vUVMorphed = clamp(vUVMorphed, 0, 1);
+
   // vPositionMorphed = vPositionOriginal.xy - (vTileScale*fFractionalPart * fMorphLerpK) ;
   vec2 dudv = vUVMorphed - vUVOriginal;
 
-  vPositionMorphed.xyz = vPositionOriginal.xyz + normalize(vTangent)*dudv.x*vTileScale.x + normalize(vBinormal)*dudv.y*vTileScale.y;
-   
+  vPositionMorphed.xyz = vPositionOriginal.xyz + normalize(vTangent)*dudv.x*vTileScale.x + normalize(vBinormal)*dudv.y*vTileScale.y;   
 }
 
 void oe_rexEngine_applyElevation(inout vec4 vertexView)
@@ -65,9 +69,12 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 		vec4 vertexViewElevated = vertexView;
 		vertexViewElevated.xyz += oe_UpVectorView*elev;
 
+#if VP_REX_TILE_LEVEL_MORPHING
+		float fMorphLerpK  = 1.0f - clamp( oe_tile_morph_constants.z - oe_tile_camera_to_tilecenter.x * oe_tile_morph_constants.w, 0.0, 1.0 );
+#else
 		float fDistanceToEye = length(vertexViewElevated);
 		float fMorphLerpK  = 1.0f - clamp( oe_tile_morph_constants.z - fDistanceToEye * oe_tile_morph_constants.w, 0.0, 1.0 );
-	
+#endif
 		vec3 vPositionMorphed;
 		vec2 vUVMorphed;
 
@@ -81,9 +88,6 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 
 		vec4 elevcMorphed = oe_tile_elevationTexMatrix * vec4(vUVMorphed,oe_layer_tilec.z,oe_layer_tilec.w);
 		float elevMorphed = textureLod(oe_tile_elevationTex, elevcMorphed.st,0).r;
-
-		float mixedHHeight = elev*(1-fMorphLerpK ) + elevMorphed*fMorphLerpK;
-		mixedHHeight = elevMorphed;
 
 		vertexView.xyz += oe_UpVectorView*elevMorphed;
 

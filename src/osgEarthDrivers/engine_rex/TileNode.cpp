@@ -23,6 +23,8 @@
 #include "LoadTileData"
 #include "ExpireTiles"
 #include "SelectionInfo"
+#include "ElevationTextureUtils"
+#include "ProxyGeometry"
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
@@ -34,7 +36,6 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[TileNode] "
-
 
 namespace
 {
@@ -54,7 +55,9 @@ namespace
 }
 
 TileNode::TileNode() : 
-_dirty      ( false )
+_dirty      ( false ),
+_fMorphStartDistance(-1),
+_fMorphEndDistance(-1)
 {
     osg::StateSet* stateSet = getOrCreateStateSet();
 
@@ -72,14 +75,18 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
-    context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo().uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
+    context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo()._uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
 
-    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getSelectionInfo(), context->getRenderBindings(), geom.get());
+    _proxyGeometry = new ProxyGeometry(key
+                                     , context->getMapFrame().getMapInfo()
+                                     , context->_options.tileSize().get()
+                                     , context->_options.gpuTessellation().get());
+
+    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), _proxyGeometry.get());
     surfaceDrawable->setDrawAsPatches(false);
 
     _surface = new SurfaceNode(
         key,
-        context->getSelectionInfo(),
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         surfaceDrawable );
@@ -89,13 +96,12 @@ TileNode::create(const TileKey& key, EngineContext* context)
     surfaceSS->setNestRenderBins(false);
 
     // Surface node for rendering land cover geometry.
-    TileDrawable* patchDrawable = new TileDrawable(key, context->getSelectionInfo(), context->getRenderBindings(), geom.get());
+    TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), 0);
     patchDrawable->setDrawAsPatches(true);
 
     // PPP: Is this correct???
     _landCover = new SurfaceNode(
         key,
-        context->getSelectionInfo(),
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         patchDrawable );
@@ -106,10 +112,10 @@ TileNode::create(const TileKey& key, EngineContext* context)
         addCullCallback( ClusterCullingFactory::create(key.getExtent()) );
     }
 
-    // Install the tile key uniform.
-    _keyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
-    getStateSet()->addUniform( _keyUniform.get() );
-    updateTileKeyUniform();
+    setMorphStartDistance(getSubDivisionRange());
+
+    createTileSpecificUniforms();
+    updateTileSpecificUniforms(context->getSelectionInfo());
 
     // Set up a data container for multipass layer rendering.
     _mptex = new MPTexture();
@@ -152,18 +158,83 @@ TileNode::setElevationExtrema(const osg::Vec2f& value)
 }
 
 void
-TileNode::updateTileKeyUniform()
+TileNode::createTileSpecificUniforms(void)
 {
-    float width = 0.0f;
-    if ( _surface.valid() )
-    {
-        const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
-        width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
-    }
+    // Install the tile key uniform.
+    _tileKeyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileKeyUniform.get() );
+
+    _tileMorphUniform = new osg::Uniform("oe_tile_morph_constants", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileMorphUniform.get() );
+
+    _tileGridDimsUniform = new osg::Uniform("oe_tile_grid_dimensions", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileGridDimsUniform.get() );
+
+    _tileExtentsUniform = new osg::Uniform("oe_tile_extents", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileExtentsUniform.get() );
+
+    _tileCenterToCameraDistUniform = new osg::Uniform("oe_tile_camera_to_tilecenter", osg::Vec4f(0,0,0,0));
+    getStateSet()->addUniform( _tileCenterToCameraDistUniform.get() );
+}
+
+void
+TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
+{
+    //assert(_surface.valid());
+    // update the tile key uniform
+    const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
+    float width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
 
     unsigned tw, th;
     _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
-    _keyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
+
+    _tileKeyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
+
+    // update the morph constants
+    if(_fMorphStartDistance>0&&_fMorphEndDistance>0)
+    {
+        float one_by_end_minus_start = _fMorphEndDistance - _fMorphStartDistance;
+        one_by_end_minus_start = 1.0f/one_by_end_minus_start;
+
+        osg::Vec4f vMorphConstants(
+            _fMorphStartDistance
+            , one_by_end_minus_start
+            , _fMorphEndDistance * one_by_end_minus_start
+            , one_by_end_minus_start
+            );
+
+        _tileMorphUniform->set((vMorphConstants));
+    }
+
+    // Update grid dims
+    float fGridDims = selectionInfo._uiGridDimensions.first-1;
+    _tileGridDimsUniform->set(osg::Vec4f(fGridDims, fGridDims*0.5f, 2.0/fGridDims, selectionInfo._uiLODForMorphing));
+
+    // update tile extents
+    float fXExtents = abs(bbox.xMax()-bbox.xMin());
+    float fYExtents = abs(bbox.yMax()-bbox.yMin());
+    _tileExtentsUniform->set(osg::Vec4f(fXExtents,fYExtents,0,0));
+}
+
+void
+TileNode::updatePerFrameUniforms(const osg::NodeVisitor& nv)
+{
+    if (_tileCenterToCameraDistUniform.get())
+    {
+        osg::Vec4f vPerFrameUniform(getTileCenterToCameraDistance(nv),0,0,0);
+        _tileCenterToCameraDistUniform->set((vPerFrameUniform));
+    }
+}
+
+void
+TileNode::setMorphStartDistance(float fVal)
+{
+    _fMorphStartDistance = fVal;
+}
+void
+TileNode::setMorphEndDistance(float fVal)
+{
+    _fMorphEndDistance = fVal;
 }
 
 bool
@@ -190,24 +261,31 @@ TileNode::releaseGLObjects(osg::State* state) const
     osg::Group::releaseGLObjects(state);
 }
 
-bool
-TileNode::selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare)
+float
+TileNode::getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const
 {
-    if (_surface.valid()==false)
-    {
-        return false;
-    }
-    return _surface->boxIntersectsSphere(point, radius, radiusSquare);
+    const osg::Vec3& vTileCenter = getBound().center();
+    return nv.getDistanceToViewPoint( vTileCenter, true );
+}
+
+float
+TileNode::getSubDivisionRange(void) const
+{
+    // TODO - placeholder for now
+    const float factor = 6.0f;
+
+    const osg::BoundingBox& box = _surface->getAlignedBoundingBox();
+    return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
 
 bool
-TileNode::childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare)
+TileNode::shouldSubDivide(osg::NodeVisitor& nv)
 {
-    if (_surface.valid()==false)
+    if ( getTileCenterToCameraDistance(nv) < getSubDivisionRange() && _key.getLOD() < 23 )
     {
-        return false;
+        return true;
     }
-    return _surface->anyChildBoxIntersectsSphere(point, radius, radiusSquare);
+    return false;
 }
 
 #define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
@@ -221,6 +299,8 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
 
     unsigned currLOD = getTileKey().getLOD();
 
+    updatePerFrameUniforms(nv);
+
 #if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
     if (currLOD==0)
     {
@@ -232,36 +312,11 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
-    bool bWithinNumLods =  getTileKey().getLOD() < selectionInfo._numLods;
-    bool bNotHighestResLod =  (currLOD!=selectionInfo._numLods-1);
-    bool bAnyChildVisible = false;
-    if (bWithinNumLods && bNotHighestResLod)
-    {
-        osg::Vec3 cameraPos = nv.getViewPoint();
-#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
-        OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
-#endif
-        float fRadius = selectionInfo._fVisibilityRanges[currLOD+1];
-        bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius, fRadius*fRadius);
-    }
-
+    bool bShouldSubDivide = shouldSubDivide(nv);
 
     // If *any* of the children are visible, subdivide.
-    if (bAnyChildVisible)
+    if (bShouldSubDivide)
     {
-#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
-        //if (getTileKey().getLOD()==10||getTileKey().getLOD()==11)
-        {
-
-            OE_INFO << LC <<"T C for LOD :"<<getTileKey().getLOD()
-                <<" "<<getTileKey().getTileX()
-                <<" "<<getTileKey().getTileY()
-                <<" Cam Dist   : "<<fDistanceToCamera
-                <<" MY Range      : "<<selectionInfo._fVisibilityRanges[getTileKey().getLOD()]
-                <<" CH Range      : "<<selectionInfo._fVisibilityRanges[getTileKey().getLOD()+1]
-            <<std::endl;
-        }
-#endif
         // We are in range of the child nodes. Either draw them or load them.
         unsigned numChildrenReady = 0;
 
@@ -308,19 +363,6 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     {
         _surface->accept( nv );
 
-#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
-        //if (getTileKey().getLOD()==14)
-        {
-
-            OE_INFO<<"Drawing LOD: "<<getTileKey().getLOD()
-                <<" "<<getTileKey().getTileX()
-                <<" "<<getTileKey().getTileY()
-                <<" Cam Dist   : "<<fDistanceToCamera
-                <<" Range      : "<<_selectionInfo._fVisibilityRanges[getTileKey().getLOD()]
-            <<std::endl;
-
-        }
-#endif
         if ( getNumChildren() > 0 )
         {
             if (getSubTile(0)->isDormant( nv ) &&
@@ -394,11 +436,13 @@ TileNode::createChildren(osg::NodeVisitor& nv)
     {
         TileNode* node = new TileNode();
 
+        node->setMorphEndDistance(getSubDivisionRange());
+
         // Build the surface geometry:
         node->create( getTileKey().createChildKey(quadrant), context );
 
         // Inherit the samplers with new scale/bias information.
-        node->inheritState( this, context->getRenderBindings() );
+        node->inheritState( this, context->getRenderBindings(), context->getSelectionInfo() );
 
         // Add to the scene graph.
         addChild( node );
@@ -408,7 +452,7 @@ TileNode::createChildren(osg::NodeVisitor& nv)
 }
 
 bool
-TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
+TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo)
 {
     bool changesMade = false;
 
@@ -459,38 +503,44 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings)
         setElevationExtrema( parent->getElevationExtrema() );
     }
 
-    updateTileKeyUniform();
+    updateTileSpecificUniforms(selectionInfo);
 
     return changesMade;
 }
 
 void
-TileNode::recalculateExtrema(const RenderBindings& bindings)
+TileNode::updateElevationData(const RenderBindings& bindings)
 {
     const SamplerBinding* elevBinding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
     if ( !elevBinding )
         return;
 
-    osg::Matrixf matrix;
+    osg::Matrixf matrixScaleBias;
+
+    // invalidate
+    osg::ref_ptr<ProxyGeometry> proxyGeometry(static_cast<ProxyGeometry*>(_proxyGeometry.get()));
+    proxyGeometry->setElevationData(0, matrixScaleBias);
+
     const osg::Uniform* u = getStateSet()->getUniform(elevBinding->matrixName());
     if ( !u )
     {
         OE_WARN << LC << getTileKey().str() << " : recalculateExtrema: illegal state\n";
         return;
     }
-    u->get(matrix);
+    u->get(matrixScaleBias);
 
-    bool found = false;
+    bool extremaOK = false;
     TileNode* parent = 0L;
-    for(TileNode* node = this; node != 0L && !found; node = parent)
+    for(TileNode* node = this; node != 0L && !extremaOK; node = parent)
     {
         osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(elevBinding->unit(), osg::StateAttribute::TEXTURE));
         if ( elevTex )
         {
             osg::Vec2f extrema;
-            found = findExtrema(elevTex, matrix, extrema);
-            if ( found )
+            extremaOK = ElevationTexureUtils::findExtrema(elevTex, matrixScaleBias, getTileKey(), extrema);
+            if ( extremaOK )
             {
+                proxyGeometry->setElevationData(elevTex, matrixScaleBias);
                 setElevationExtrema( extrema );
                 OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
                 break;
@@ -499,7 +549,8 @@ TileNode::recalculateExtrema(const RenderBindings& bindings)
         parent = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
     }
 
-    if ( !found )
+  
+    if ( !extremaOK )
     {
         // This will happen sometimes, like when the initial levels are loading and there
         // is no elevation texture in the graph yet. It's normal.
@@ -654,57 +705,3 @@ TileNode::notifyOfArrival(TileNode* that)
 
 #endif
 
-bool
-TileNode::findExtrema(osg::Texture* tex, const osg::Matrix& m, osg::Vec2f& extrema) const
-{
-    // Searches a texture image (using a texture matrix) for the min and max elevation values.
-    extrema.set( FLT_MAX, -FLT_MAX );
-
-    osg::Image* image = tex->getImage(0);
-    if ( image )
-    {
-        double s_offset = m(3,0) * (double)image->s();
-        double t_offset = m(3,1) * (double)image->t();
-        double s_span   = m(0,0) * (double)image->s();
-        double t_span   = m(1,1) * (double)image->t();
-
-        // if the window is smaller than one pixel, forget it.
-        if ( s_span < 4.0 || t_span < 4.0 )
-            return false;
-
-        ImageUtils::PixelReader read(image);
-
-        // starting column and row:
-        int c0 = osg::clampAbove( ((int)s_offset)-1, 0 );
-        int r0 = osg::clampAbove( ((int)t_offset)-1, 0 );
-
-        int c1 = osg::clampBelow( c0 + ((int)s_span) + 1, image->s()-1 );
-        int r1 = osg::clampBelow( r0 + ((int)t_span) + 1, image->t()-1 );
-
-        OE_DEBUG << LC << "find: key=" << getTileKey().str() << std::dec << 
-            "scale=" << s_offset << ", " << t_offset
-            << "; span = " << s_span << ", " << t_span
-            << "; c0=" << c0 << ", r0=" << r0 << "; c1=" << c1 << ", r1=" << r1 << "\n";
-        
-        for(int c=c0; c <= c1; ++c)
-        {
-            for(int r=r0; r <= r1; ++r)
-            {
-                float e = read(c, r).r();
-                if ( e < extrema[0] ) extrema[0] = e;
-                if ( e > extrema[1] ) extrema[1] = e;
-            }
-        }
-
-        if ( extrema[0] > extrema[1] )
-        {
-            OE_WARN << LC << "findExtrema ERROR (" << getTileKey().str() << ") c0=" << c0 << ", r0=" << r0 << "; c1=" << c1 << ", r1=" << r1 << ", s=" << image->s() << ", t=" << image->t() << "\n";
-        }
-    }
-    else
-    {
-        OE_WARN << LC << "findExtrema ERROR (" << getTileKey().str() << ") no tex image available\n";
-    }
-
-    return extrema[0] <= extrema[1];
-}

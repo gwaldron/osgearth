@@ -19,7 +19,6 @@
 #include "SurfaceNode"
 #include "GeometryPool"
 #include "TileDrawable"
-#include "SelectionInfo"
 
 #include <osgEarth/TileKey>
 
@@ -30,6 +29,7 @@
 #include <osgText/Text>
 
 #include <numeric>
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
@@ -82,19 +82,17 @@ namespace
             zpos = bbox.zMax();
         }
 
-#if 1
-        osgText::Text* t = new osgText::Text();
-        t->setText( sizeStr );
-        //t->setFont( osgEarth::Registry::instance()->getDefaultFont() );
-        t->setCharacterSizeMode(t->SCREEN_COORDS);
-        t->setCharacterSize(36.0f);
-        t->setAlignment(t->CENTER_CENTER);
-        t->setColor(osg::Vec4(1,1,1,1));
-        t->setBackdropColor(osg::Vec4(0,0,0,1));
-        t->setBackdropType(t->OUTLINE);
-        t->setPosition(osg::Vec3(0,0,zpos));
-        geode->addDrawable(t);
-#endif
+        osgText::Text* textDrawable = new osgText::Text();
+        textDrawable->setText( sizeStr );
+        //textDrawable->setFont( osgEarth::Registry::instance()->getDefaultFont() );
+        textDrawable->setCharacterSizeMode(textDrawable->SCREEN_COORDS);
+        textDrawable->setCharacterSize(20.0f);
+        textDrawable->setAlignment(textDrawable->CENTER_CENTER);
+        textDrawable->setColor(osg::Vec4(1,1,1,1));
+        textDrawable->setBackdropColor(osg::Vec4(0,0,0,1));
+        textDrawable->setBackdropType(textDrawable->OUTLINE);
+        textDrawable->setPosition(osg::Vec3(0,0,zpos));
+        geode->addDrawable(textDrawable);
 
         geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
         geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
@@ -105,12 +103,13 @@ namespace
 
 //..............................................................
 
+const bool SurfaceNode::_enableDebugNodes = true;
+
 SurfaceNode::SurfaceNode(const TileKey&        tilekey,
-                         const SelectionInfo&  selectionInfo,
                          const MapInfo&        mapinfo,
                          const RenderBindings& bindings,
                          TileDrawable*         drawable)
-                         : _selectionInfo(selectionInfo)
+                         : _debugNodeVisible(false)
 {
     _tileKey = tilekey;
 
@@ -118,22 +117,6 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
 
     _surfaceGeode = new osg::Geode();
     _surfaceGeode->addDrawable( drawable );
-
-#if 0
-    if ( pool )
-    {
-        osg::ref_ptr<osg::Geometry> geom;
-        pool->getPooledGeometry( tilekey, mapinfo, geom );
-
-        _drawable = new TileDrawable(tilekey, bindings, geom.get());
-
-        _surfaceGeode->addDrawable( _drawable.get() );
-    }
-    else
-    {
-        OE_WARN << LC << "INTERNAL: no geometry pool; result is an empty geode\n";
-    }
-#endif
     
     // Create the final node.
     addChild( _surfaceGeode.get() );
@@ -190,8 +173,8 @@ private:
 
 };
 
-
-float SurfaceNode::_minDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center)
+float
+SurfaceNode::_minDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center)
 {   
     float fMinDistance = std::accumulate(corners.begin(), corners.end()
         , std::numeric_limits<float>::max()
@@ -199,7 +182,8 @@ float SurfaceNode::_minDistanceFromPointSquare(const VectorPoints& corners, cons
     return fMinDistance;
 }
 
-float SurfaceNode::_maxDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center)
+float
+SurfaceNode::_maxDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center)
 {
     float fMaxDistance = std::accumulate(corners.begin(), corners.end()
         , std::numeric_limits<float>::min()
@@ -208,12 +192,14 @@ float SurfaceNode::_maxDistanceFromPointSquare(const VectorPoints& corners, cons
     return fMaxDistance;
 }
 
-float SurfaceNode::minDistanceFromPointSquare(const osg::Vec3& center)
+float
+SurfaceNode::minDistanceFromPointSquare(const osg::Vec3& center)
 {
     return _minDistanceFromPointSquare(_worldCorners, center);
 }
 
-float SurfaceNode::maxDistanceFromPointSquare(const osg::Vec3& center)
+float
+SurfaceNode::maxDistanceFromPointSquare(const osg::Vec3& center)
 {
     return _maxDistanceFromPointSquare(_worldCorners, center);
 }
@@ -241,6 +227,7 @@ SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radius, 
     }
     return false;
 }
+
 void
 SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
 {
@@ -328,12 +315,66 @@ SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
          }
     }
 
-#if 0
-    if ( _debugGeode.valid() )
-        removeChild( _debugGeode.get() );
+    if(_enableDebugNodes)
+    {
+        removeDebugNode();
+        addDebugNode(box);
+        setDebugNodeVisible(false);
+    }
+}
+
+void
+SurfaceNode::addDebugNode(const osg::BoundingBox& box)
+{
+    _debugText = 0;
     _debugGeode = makeBBox(box);
+
+    for(size_t i = 0; i < _debugGeode->getNumDrawables(); ++i)
+    {
+        if (std::string(_debugGeode->getDrawable(i)->className())=="Text")
+        {
+            _debugText = static_cast<osgText::Text*>(_debugGeode->getDrawable(i));
+            break;
+        }
+    }
     addChild( _debugGeode.get() );
-#endif
+}
+
+void
+SurfaceNode::removeDebugNode(void)
+{
+    _debugText = 0;
+    if ( _debugGeode.valid() )
+    {
+        removeChild( _debugGeode.get() );
+    }
+}
+
+void
+SurfaceNode::setDebugText(const std::string& strText)
+{
+    if (_debugText.valid()==false)
+    {
+        return;
+    }
+    _debugText->setText(strText);
+}
+
+void
+SurfaceNode::setDebugNodeVisible(bool bVisible)
+{
+    _debugNodeVisible = bVisible;
+    if (_enableDebugNodes && _debugGeode.valid())
+    {
+        unsigned int mask = (_debugNodeVisible)? ~0x0 : 0;
+        _debugGeode->setNodeMask(mask);
+    }
+}
+
+bool
+SurfaceNode::isDebugNodeVisible(void) const
+{
+    return _debugNodeVisible;
 }
 
 const osg::BoundingBox&

@@ -31,6 +31,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     class EngineContext;
     class SurfaceNode;
+    class SelectionInfo;
 
     /**
      * TileNode represents a single tile. TileNode has 5 children:
@@ -67,10 +68,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void notifyOfArrival(TileNode* that) { } // nyi - todo
 
         /** Set inheritance matrices as necessary. Return true is changed were made. */
-        bool inheritState(TileNode* parent, const RenderBindings& bindings );
+        bool inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo );
 
         /** Compute the local min/max elevation based on this tile's inherited elevation raster and matrix. */
-        void recalculateExtrema(const RenderBindings& bindings);
+        void updateElevationData(const RenderBindings& bindings);
 
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
@@ -104,7 +105,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         OpenThreads::Atomic                _lastTraversalFrame;
         unsigned                           _count;
         osg::Vec2f                         _extrema;
-        osg::ref_ptr<osg::Uniform>         _keyUniform;
         osg::ref_ptr<MPTexture>            _mptex;
 
         TileNode* getSubTile(unsigned i) { return dynamic_cast<TileNode*>(getChild(i)); }
@@ -113,15 +113,31 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void expireChildren(osg::NodeVisitor& nv);
 
-        bool findExtrema(osg::Texture* elevationTex, const osg::Matrix& scaleBias, osg::Vec2f& output) const;
-
-        void updateTileKeyUniform();
     private:
         void lodSelect(osg::NodeVisitor& nv);
         void regularUpdate(osg::NodeVisitor& nv);
 
-        bool selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare);
-        bool childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare);
+        bool  shouldSubDivide(osg::NodeVisitor& nv);
+        float getSubDivisionRange(void) const;
+        float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
+
+        void updateTileSpecificUniforms(const SelectionInfo& selectionInfo);
+        void createTileSpecificUniforms(void);
+        osg::ref_ptr<osg::Uniform> _tileKeyUniform;
+        osg::ref_ptr<osg::Uniform> _tileMorphUniform;
+        osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
+        osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
+        osg::ref_ptr<osg::Uniform> _tileCenterToCameraDistUniform;
+
+        void updatePerFrameUniforms(const osg::NodeVisitor& nv);
+
+        void setMorphStartDistance(float fVal);
+        void setMorphEndDistance(float fVal);
+
+        float _fMorphStartDistance;
+        float _fMorphEndDistance;
+
+        osg::ref_ptr<osg::Geometry> _proxyGeometry;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

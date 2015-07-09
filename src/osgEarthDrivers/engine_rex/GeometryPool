@@ -72,21 +72,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             unsigned uiMorphLOD,
             const MapInfo&               mapInfo,
             osg::ref_ptr<osg::Geometry>& out);
-
-        osg::Geometry* createGeometry(
-            const TileKey& tileKey,
-            unsigned uiMorphLOD,
-            const MapInfo& mapInfo,
-            MaskGenerator* maskSet ) const;
-
-#if 0
-        osg::Geometry* createPatch(
-            const TileKey& tileKey,
-            unsigned       size,
-            const MapInfo& mapInfo,
-            MaskGenerator* maskSet ) const;
-#endif
-
     protected:
         virtual ~GeometryPool() { }
 
@@ -102,6 +87,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             unsigned       size,
             const MapInfo& mapInfo,
             GeometryKey&   out) const;
+
+        osg::Geometry* createGeometry(
+            const TileKey& tileKey,
+            unsigned uiMorphLOD,
+            const MapInfo& mapInfo,
+            MaskGenerator* maskSet ) const;
 
         bool _debug;
     };

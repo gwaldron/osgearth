@@ -23,14 +23,12 @@
 #include "TileNode"
 #include "TileNodeRegistry"
 #include "RenderBindings"
-#include "SelectionInfo"
 #include "MPTexture"
 
 #include <osg/Geometry>
 #include <osg/buffered_value>
 #include <osgEarth/Map>
 #include <osgEarth/MapFrame>
-
 
 using namespace osgEarth;
 
@@ -86,9 +84,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _tileKeyUniformNameID;
         unsigned _texMatrixUniformNameID;
         unsigned _parentTexMatrixUniformNameID;
-        unsigned _tileMorphCUniformNameID;
-        unsigned _tileGridDimsUniformNameID;
-        unsigned _tileExtentsUniformNameID;
 
         // Data stored for each graphics context:
         struct PerContextData {
@@ -98,7 +93,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         };
         mutable osg::buffered_object<PerContextData> _pcd;
 
-        mutable osg::Vec4f _tileKeyValue;
         mutable osg::Vec4f _tileMorphCValue;
         mutable osg::Vec4f _tileGridDimsValue;
         mutable osg::Vec4f _tileExtentsValue;
@@ -126,9 +120,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // construct a new TileDrawable that fronts an osg::Geometry
         TileDrawable(
             const TileKey&        key,
-            const SelectionInfo&  selectionInfo,
             const RenderBindings& bindings,
-            osg::Geometry*        geometry);
+            osg::Geometry*        geometry,
+            osg::Geometry*        proxygeometry);
 
         // whether to draw this as a multi-image geometry or as a tesselation patch.
         void setDrawAsPatches(bool value) { _drawPatch = value; }
@@ -137,7 +131,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void setMPTexture(MPTexture* tex) { _mptex = tex; }
 
     public:
-
 
         void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
 
@@ -181,10 +174,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void accept(osg::Drawable::ConstAttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
 
         bool supports(osg::PrimitiveFunctor& f) const { return true; }
-        void accept(osg::PrimitiveFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+        void accept(osg::PrimitiveFunctor& f) const 
+        { 
+            if ( _proxyGeom.valid() ) 
+            {
+                _proxyGeom->accept(f); 
+            }
+        }
         
         bool supports(osg::PrimitiveIndexFunctor& f) const { return true; }
-        void accept(osg::PrimitiveIndexFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+        void accept(osg::PrimitiveIndexFunctor& f) const { if ( _proxyGeom.valid() ) _proxyGeom->accept(f); }
         
         // recalculate the bound for the tile key uniform.
 #if OSG_VERSION_GREATER_THAN(3,3,1)
@@ -194,19 +193,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 #endif
 
     public:
-#pragma warning( push )
-#pragma warning( disable : 4413 )
         META_Object(osgEarth, TileDrawable);
-        TileDrawable() : osg::Drawable() 
-            , _selectionInfo(SelectionInfo())
-        {
-                std::cout<<"Uh Oh!"<<std::endl;
-        }
-#pragma warning( pop )
-        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop), _selectionInfo(rhs._selectionInfo) { }
-        virtual ~TileDrawable() { }
-    private:
-        const SelectionInfo& _selectionInfo;
+        TileDrawable() : osg::Drawable(){}
+        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop) {}
+        virtual ~TileDrawable() {}
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

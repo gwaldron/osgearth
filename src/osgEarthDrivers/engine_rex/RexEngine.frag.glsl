@@ -10,6 +10,7 @@ uniform sampler2D oe_layer_tex;
 uniform int       oe_layer_uid;
 uniform int       oe_layer_order;
 uniform float     oe_layer_opacity;
+uniform vec4	  oe_tile_key;
 
 in vec4 oe_layer_texc;
 in vec4 flerp;
@@ -37,34 +38,30 @@ void oe_rexEngine_frag(inout vec4 color)
 #endif
 	//color.xyz = (flerp.xyz);
 	//return;
-	//if (flerp.x>0.95)
+	//int startkey = 12;
+	
+	//if (oe_tile_key.z == startkey++)
 	//{
 	//	color.xyz = vec3(1,0,0);
 	//}
-	//color.xyz = vec3(0,1,0);
-	
-	//if (oe_tile_key.z == 10)
+	//else if (oe_tile_key.z == startkey++)
 	//{
-	//	color.xyz = vec3(1,0,0)*flerp.x;
+	//	color.xyz = vec3(0,1,0);
 	//}
-	//else if (oe_tile_key.z == 11)
+	//else if (oe_tile_key.z == startkey++)
 	//{
-	//	color.xyz = vec3(0,1,0)*flerp.x;
+	//	color.xyz = vec3(0,0,1);
 	//}
-	//else if (oe_tile_key.z == 12)
+	//else if (oe_tile_key.z == startkey++)
 	//{
-	//	color.xyz = vec3(0,0,1)*flerp.x;
+	//	color.xyz = vec3(1,1,0);
 	//}
-	//else if (oe_tile_key.z == 13)
+	//else if (oe_tile_key.z == startkey++)
 	//{
-	//	color.xyz = vec3(1,1,0)*flerp.x;
+	//	color.xyz = vec3(1,0,1);
 	//}
-	//else if (oe_tile_key.z == 14)
+	//else if (oe_tile_key.z == startkey++)
 	//{
-	//	color.xyz = vec3(1,0,1)*flerp.x;
-	//}
-	//else if (oe_tile_key.z == 15)
-	//{
-	//	color.xyz = vec3(0,1,1)*flerp.x;
+	//	color.xyz = vec3(0,1,1);
 	//}
 }

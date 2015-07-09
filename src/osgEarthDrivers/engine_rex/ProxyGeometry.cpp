@@ -19,6 +19,7 @@
 #undef NDEBUG
 #include <cassert>
 #include "ProxyGeometry"
+#include "ElevationTextureUtils"
 
 #include <osgEarth/Locators>
 
@@ -60,12 +61,6 @@ void ProxyGeometry::constructEmptyGeometry()
     osg::Vec3Array* verts = new osg::Vec3Array();
     verts->reserve( numVerts );
     geom->setVertexArray( verts );
-
-    // the surface normals (i.e. extrusion vectors)
-    osg::Vec3Array* normals = new osg::Vec3Array();
-    normals->reserve( numVerts );
-    geom->setNormalArray( normals );
-    geom->setNormalBinding( geom->BIND_PER_VERTEX );
 }
 
 ProxyGeometry::ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize, bool gpuTessellation) : 
@@ -89,9 +84,9 @@ void ProxyGeometry::setElevationData(osg::Texture* elevationTexture, osg::Matrix
         _elevationTexture = elevationTexture;
         _scaleBiasMatrix  = scaleBiasMatrix;
         setDirty(true);
-        if (_immediateBuild)
+        //if (_immediateBuild)
         {
-            //rebuild();
+            rebuild();
         }
     }
 }
@@ -102,10 +97,10 @@ void ProxyGeometry::rebuild(void)
 
     clear();
 
-    //     if (_elevationTexture)
+    if (_elevationTexture)
     {
-        makeVertsAndNormals();
-        tesselate();
+        makeVertices();
+        tessellate();
     }
 
     setDirty(false);
@@ -123,13 +118,13 @@ void ProxyGeometry::rebuildIfNecessary() const
 
 void ProxyGeometry::accept(osg::PrimitiveFunctor& f) const 
 {
-    //     rebuildIfNecessary();
+    rebuildIfNecessary();
     osg::Geometry::accept(f);
 }
 
 void ProxyGeometry::accept(osg::PrimitiveIndexFunctor& f) const
 {
-    //     rebuildIfNecessary();
+    rebuildIfNecessary();
     osg::Geometry::accept(f);
 }
 
@@ -140,16 +135,13 @@ void ProxyGeometry::clear(void)
     osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(geom->getVertexArray());
     verts->clear();
 
-    osg::Vec3Array* normals = static_cast<osg::Vec3Array*>(geom->getNormalArray());
-    normals->clear();
-
     osg::DrawElementsUShort* primSet = static_cast<osg::DrawElementsUShort*>(geom->getPrimitiveSet(0));
     primSet->clear();
 }
 
-void ProxyGeometry::makeVertsAndNormals()
+void ProxyGeometry::makeVertices()
 {
-    /*      assert(_elevationTexture && _elevationTexture->getImage(0));
+    assert(_elevationTexture && _elevationTexture->getImage(0));
     ElevationImageReader elevationImageReader(_elevationTexture->getImage(0), _scaleBiasMatrix);
     if (elevationImageReader.valid()==false)
     {
@@ -158,9 +150,8 @@ void ProxyGeometry::makeVertsAndNormals()
 
     assert(elevationImageReader.startRow()<elevationImageReader.endRow());
     assert(elevationImageReader.startCol()<elevationImageReader.endCol());
-    */
+    
     osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(this->getVertexArray());
-    osg::Vec3Array* normals = static_cast<osg::Vec3Array*>(this->getNormalArray());
 
     for(unsigned row=0; row<_tileSize; ++row)
     {
@@ -177,15 +168,15 @@ void ProxyGeometry::makeVertsAndNormals()
             _locator->unitToModel(osg::Vec3d(nx, ny, 1.0f), modelPlusOne);
             osg::Vec3d normal = (modelPlusOne*_world2local)-modelLTP;
             normal.normalize();
-            normals->push_back( normal );
 
-            modelLTP = modelLTP /*+ normal*elevationImageReader.elevationN(nx,ny)*/;
+            modelLTP = modelLTP + normal*elevationImageReader.elevationN(nx,ny);
             verts->push_back( modelLTP);
         }
     }
+    verts->dirty();
 }
 
-void ProxyGeometry::tesselate(void)
+void ProxyGeometry::tessellate(void)
 {
     bool swapOrientation = !_locator->orientationOpenGL();
 
@@ -220,6 +211,7 @@ void ProxyGeometry::tesselate(void)
             primSet->addElement(i11);
         }
     }
+    primSet->dirty();
 }
 
 unsigned ProxyGeometry::getNumberOfVerts(void) const

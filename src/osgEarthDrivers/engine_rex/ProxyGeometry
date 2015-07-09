@@ -51,8 +51,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void rebuild(void);
         void clear(void);
         
-        void makeVertsAndNormals(void);
-        void tesselate(void);
+        void makeVertices(void);
+        void tessellate(void);
         
         bool isDirty(void) const { return _dirty; }
         void setDirty(bool dirty){ _dirty=dirty; }

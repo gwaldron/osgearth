@@ -55,9 +55,7 @@ namespace
 }
 
 TileNode::TileNode() : 
-_dirty      ( false ),
-_fMorphStartDistance(-1),
-_fMorphEndDistance(-1)
+_dirty      ( false )
 {
     osg::StateSet* stateSet = getOrCreateStateSet();
 
@@ -111,8 +109,6 @@ TileNode::create(const TileKey& key, EngineContext* context)
     {
         addCullCallback( ClusterCullingFactory::create(key.getExtent()) );
     }
-
-    setMorphStartDistance(getSubDivisionRange());
 
     createTileSpecificUniforms();
     updateTileSpecificUniforms(context->getSelectionInfo());
@@ -191,20 +187,22 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
     _tileKeyUniform->set(osg::Vec4f(_key.getTileX(), th-_key.getTileY()-1.0f, _key.getLOD(), width));
 
     // update the morph constants
-    if(_fMorphStartDistance>0&&_fMorphEndDistance>0)
-    {
-        float one_by_end_minus_start = _fMorphEndDistance - _fMorphStartDistance;
-        one_by_end_minus_start = 1.0f/one_by_end_minus_start;
 
-        osg::Vec4f vMorphConstants(
-            _fMorphStartDistance
-            , one_by_end_minus_start
-            , _fMorphEndDistance * one_by_end_minus_start
-            , one_by_end_minus_start
-            );
+    float fStart = (float)selectionInfo._fMorphStart[_key.getLOD()];
+    float fEnd   = (float)selectionInfo._fMorphEnd[_key.getLOD()];
 
-        _tileMorphUniform->set((vMorphConstants));
-    }
+
+    float one_by_end_minus_start = fEnd - fStart;
+    one_by_end_minus_start = 1.0f/one_by_end_minus_start;
+
+    osg::Vec4f vMorphConstants(
+          fStart
+        , one_by_end_minus_start
+        , fEnd * one_by_end_minus_start
+        , one_by_end_minus_start
+        );
+
+    _tileMorphUniform->set((vMorphConstants));
 
     // Update grid dims
     float fGridDims = selectionInfo._uiGridDimensions.first-1;
@@ -224,17 +222,6 @@ TileNode::updatePerFrameUniforms(const osg::NodeVisitor& nv)
         osg::Vec4f vPerFrameUniform(getTileCenterToCameraDistance(nv),0,0,0);
         _tileCenterToCameraDistUniform->set((vPerFrameUniform));
     }
-}
-
-void
-TileNode::setMorphStartDistance(float fVal)
-{
-    _fMorphStartDistance = fVal;
-}
-void
-TileNode::setMorphEndDistance(float fVal)
-{
-    _fMorphEndDistance = fVal;
 }
 
 bool
@@ -278,17 +265,45 @@ TileNode::getSubDivisionRange(void) const
     return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
 
+#define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
+
 bool
-TileNode::shouldSubDivide(osg::NodeVisitor& nv)
+TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo)
 {
-    if ( getTileCenterToCameraDistance(nv) < getSubDivisionRange() && _key.getLOD() < 23 )
+    unsigned currLOD = _key.getLOD();
+    if (   currLOD < selectionInfo._numLods
+        && currLOD != selectionInfo._numLods-1)
     {
-        return true;
+        osg::Vec3 cameraPos = nv.getViewPoint();
+#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
+        OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
+#endif
+        float fRadius = selectionInfo._fVisibilityRanges[currLOD+1];
+        bool bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius, fRadius*fRadius);
+        return bAnyChildVisible;
     }
     return false;
 }
 
-#define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
+bool
+TileNode::selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare)
+{
+    if (_surface.valid()==false)
+    {
+        return false;
+    }
+    return _surface->boxIntersectsSphere(point, radius, radiusSquare);
+}
+
+bool
+TileNode::childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare)
+{
+    if (_surface.valid()==false)
+    {
+        return false;
+    }
+    return _surface->anyChildBoxIntersectsSphere(point, radius, radiusSquare);
+}
 
 void TileNode::lodSelect(osg::NodeVisitor& nv)
 {
@@ -312,7 +327,7 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
-    bool bShouldSubDivide = shouldSubDivide(nv);
+    bool bShouldSubDivide = shouldSubDivide(nv, selectionInfo);
 
     // If *any* of the children are visible, subdivide.
     if (bShouldSubDivide)
@@ -435,8 +450,6 @@ TileNode::createChildren(osg::NodeVisitor& nv)
     for(unsigned quadrant=0; quadrant<4; ++quadrant)
     {
         TileNode* node = new TileNode();
-
-        node->setMorphEndDistance(getSubDivisionRange());
 
         // Build the surface geometry:
         node->create( getTileKey().createChildKey(quadrant), context );

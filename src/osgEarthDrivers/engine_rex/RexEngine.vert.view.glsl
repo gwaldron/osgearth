@@ -5,7 +5,7 @@
 #pragma vp_location   "vertex_view"
 #pragma vp_order      "0.4"
 
-#define VP_REX_TILE_LEVEL_MORPHING 1
+#define VP_REX_TILE_LEVEL_MORPHING 0
 
 // Stage globals
 out vec4 oe_layer_tilec;

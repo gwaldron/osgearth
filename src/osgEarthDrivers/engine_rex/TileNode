@@ -117,7 +117,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void lodSelect(osg::NodeVisitor& nv);
         void regularUpdate(osg::NodeVisitor& nv);
 
-        bool  shouldSubDivide(osg::NodeVisitor& nv);
+        bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo);
         float getSubDivisionRange(void) const;
         float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
 
@@ -131,13 +131,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void updatePerFrameUniforms(const osg::NodeVisitor& nv);
 
-        void setMorphStartDistance(float fVal);
-        void setMorphEndDistance(float fVal);
-
-        float _fMorphStartDistance;
-        float _fMorphEndDistance;
-
         osg::ref_ptr<osg::Geometry> _proxyGeometry;
+
+        bool selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare);
+        bool childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare);
+
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

@@ -33,6 +33,9 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Util;
 
+/**
+ * How to create a simple osgEarth map and display it.
+ */
 int
 main(int argc, char** argv)
 {

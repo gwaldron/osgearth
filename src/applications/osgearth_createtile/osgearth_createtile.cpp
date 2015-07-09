@@ -17,6 +17,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+/**
+ * This app demonstrates the use of TerrainEngine::createTile(), which lets
+ * you create the geometry for an arbitrary terrain tile that you can use for
+ * external purposes.
+ */
+
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
@@ -31,6 +37,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/LatLongFormatter>
 #include <osg/TriangleFunctor>
+#include <osgDB/WriteFile>
 #include <iomanip>
 
 using namespace osgEarth;
@@ -58,7 +65,7 @@ struct CollectTriangles
 struct CollectTrianglesVisitor : public osg::NodeVisitor
 {
     CollectTrianglesVisitor():
-osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+        osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
     {
         _vertices = new osg::Vec3dArray();
     }
@@ -166,14 +173,18 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
 
             TileKey key = s_mapNode->getMap()->getProfile()->createTileKey(mapPoint.x(), mapPoint.y(), 13);
             OE_NOTICE << "Creating tile " << key.str() << std::endl;
-            osg::Node* node = s_mapNode->getTerrainEngine()->createTile(key);
-            if (node)
+            osg::ref_ptr<osg::Node> node = s_mapNode->getTerrainEngine()->createTile(key);
+            if (node.valid())
             {
                 OE_NOTICE << "Created tile for " << key.str() << std::endl;
                 CollectTrianglesVisitor v;
                 node->accept(v);
-                s_root->addChild(v.buildNode());
 
+                osg::ref_ptr<osg::Node> output = v.buildNode();
+                osgDB::writeNodeFile( *output.get(), "createtile.osgt" );
+                OE_NOTICE << "Wrote tile to createtile.osgt\n";
+                //osgDB::writeNodeFile(v.buildNode(
+                //s_root->addChild(v.buildNode());
             }
             else
             {

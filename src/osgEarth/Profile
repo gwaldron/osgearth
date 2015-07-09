@@ -139,6 +139,9 @@ namespace osgEarth
         static const Profile* create(
             const ProfileOptions& options );
 
+        static const Profile* createNamed(
+            const std::string& name);
+
         /**
          * Returns true if the profile is properly initialized.
          */

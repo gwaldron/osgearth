@@ -130,10 +130,6 @@ FeatureNode::build()
         options.ignoreAltitudeSymbol() = true;
     }
 
-  
-
-    
-
     osg::Node* node = _compiled.get();
     if (_needsRebuild || !_compiled.valid() )
     {

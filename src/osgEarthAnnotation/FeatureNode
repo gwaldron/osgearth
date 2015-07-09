@@ -93,6 +93,7 @@ namespace osgEarth { namespace Annotation
          * call this function to rebuild the node.
          */
         void init();
+        void dirty() { init(); }
 
     public: // AnnotationNode
 

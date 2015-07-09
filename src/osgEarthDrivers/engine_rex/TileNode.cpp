@@ -181,7 +181,6 @@ void
 TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
 {
     //assert(_surface.valid());
-    
     // update the tile key uniform
     const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
     float width = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );

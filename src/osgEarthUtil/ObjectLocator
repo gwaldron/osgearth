@@ -29,6 +29,7 @@ namespace osgEarth { namespace Util
     using namespace osgEarth;
 
     /**
+     * @deprecated - slated for removal after Version 2.7
      * ObjectLocator - a revisioned object that generates a positional matrix for a node.
      */
     class OSGEARTHUTIL_EXPORT ObjectLocator : public osg::Referenced, public Revisioned

@@ -27,6 +27,6 @@ void oe_rexEngine_vert(inout vec4 vertexModel)
     vp_Color = oe_terrain_color;
 #endif
 	
-	oe_UpVectorView = gl_NormalMatrix*vp_Normal;
-	oe_TangentVectorView = gl_NormalMatrix*(gl_MultiTexCoord1.xyz);
+	oe_UpVectorView = normalize(gl_NormalMatrix*vp_Normal);
+	oe_TangentVectorView = normalize(gl_NormalMatrix*(gl_MultiTexCoord1.xyz));
 }

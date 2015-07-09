@@ -110,6 +110,7 @@ MeasureToolHandler::rebuild()
 
     _featureNode = new FeatureNode( getMapNode(), _feature.get() );
     _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    _featureNode->setClusterCulling(false);
 
     _group->addChild (_featureNode.get() );
 

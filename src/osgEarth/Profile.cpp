@@ -228,7 +228,7 @@ Profile::create( const ProfileOptions& options )
     // Check for a "well known named" profile:
     if ( options.namedProfile().isSet() )
     {
-        result = osgEarth::Registry::instance()->getNamedProfile( options.namedProfile().value() );
+        result = Profile::createNamed(options.namedProfile().get());
     }
 
     // Next check for a user-defined extents:
@@ -278,6 +278,28 @@ Profile::create( const ProfileOptions& options )
     }
 
     return result;
+}
+
+const Profile*
+Profile::createNamed(const std::string& name)
+{
+    // TODO: move the named profiles from Registry into here.
+    if ( ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )
+    {
+        // Yes I know this is not really Plate Carre but it will stand in for now.
+        return Profile::create(
+            "+proj=eqc +units=m +no_defs",
+            -20037508, -10001966,
+             20037508,  10001966,
+            "", // vdatum
+            2, 1 );
+
+    }
+
+    else
+    {
+        return osgEarth::Registry::instance()->getNamedProfile( name );
+    }
 }
 
 /****************************************************************************/

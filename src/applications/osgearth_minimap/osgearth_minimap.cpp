@@ -39,7 +39,8 @@ using namespace osgEarth::Drivers;
  */
 MapNode* makeMiniMapNode( ) {    
     MapOptions mapOpt;
-    mapOpt.coordSysType() = MapOptions::CSTYPE_PROJECTED;    
+    mapOpt.coordSysType() = MapOptions::CSTYPE_PROJECTED;  
+    mapOpt.profile() = ProfileOptions("plate-carre");
     Map* map = new Map( mapOpt );    
 
     GDALOptions basemapOpt;

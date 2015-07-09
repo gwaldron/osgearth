@@ -1,6 +1,6 @@
 #version 330
 
-#pragma vp_entryPoint "oe_splat_fragment"
+#pragma vp_entryPoint "oe_splat_complex"
 #pragma vp_location   "fragment_coloring"
 #pragma vp_order      "0.4"
 
@@ -108,7 +108,8 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 {
     vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc, env);
-    float coverageValue = 255.0 * texture(oe_splat_coverageTex, warped_tc).r;
+    float coverageValue = texture2D(oe_splat_coverageTex, warped_tc).r;
+    //float coverageValue = 255.0 * texture2D(oe_splat_coverageTex, warped_tc).r;
     oe_SplatRenderInfo ri = oe_splat_getRenderInfo(coverageValue, env);
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);
     float detailToggle = ri.detailIndex >= 0 ? 1.0 : 0.0;
@@ -158,10 +159,10 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     nw_weight *= invTotalWeight;
 
     // Sample coverage values using quantized corner coords:
-    float value_sw = 255.0*texture(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
-    float value_se = 255.0*texture(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
-    float value_ne = 255.0*texture(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
-    float value_nw = 255.0*texture(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
+    float value_sw = texture2D(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
+    float value_se = texture2D(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
+    float value_ne = texture2D(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
+    float value_nw = texture2D(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
 
     // Build the render info data for each corner:
     oe_SplatRenderInfo ri_sw = oe_splat_getRenderInfo(value_sw, env);
@@ -244,8 +245,26 @@ vec2 oe_splat_getSplatCoords(float lod)
     return result;
 }
 
+// Simplified entry point with does no filtering or range blending. (much faster.)
+void oe_splat_simple(inout vec4 color)
+{
+    float noiseLOD = floor(oe_splat_noiseScale);
+    vec2 noiseCoords = oe_splat_getSplatCoords(noiseLOD);
+
+    oe_SplatEnv env;
+    env.range = oe_splat_range;
+    env.slope = oe_splat_getSlope();
+    env.noise = oe_splat_getNoise(noiseCoords);
+    env.elevation = 0.0;
+
+    float lod = 12.0;
+    vec2 splatCoords = oe_splat_getSplatCoords(lod);
+    color = oe_splat_nearest(splatCoords, env);
+}
+
+
 // Main entry point for fragment shader.
-void oe_splat_fragment(inout vec4 color)
+void oe_splat_complex(inout vec4 color)
 {
     // Noise coords.
     float noiseLOD = floor(oe_splat_noiseScale);

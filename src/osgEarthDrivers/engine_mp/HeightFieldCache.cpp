@@ -81,11 +81,9 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
             return false;
         }
     }
-    
 
     if ( !out_hf.valid() )
     {
-        //TODO.
         // This sets the elevation tile size; query size for all tiles.
         out_hf = HeightFieldUtils::createReferenceHeightField(
             key.getExtent(), _tileSize, _tileSize, true );
@@ -95,7 +93,6 @@ HeightFieldCache::getOrCreateHeightField(const MapFrame&                 frame,
         out_hf,
         key,
         true, // convertToHAE
-        samplePolicy,
         progress );
 
     // Treat Plate Carre specially by scaling the height values. (There is no need

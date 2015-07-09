@@ -1039,8 +1039,12 @@ Map::calculateProfile()
         }
         else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_PROJECTED && _profile.valid() && _profile->getSRS()->isGeographic() )
         {
-            OE_INFO << LC << "Projected display with geographic SRS; activating Plate Carre mode" << std::endl;
-            _profile = _profile->overrideSRS( _profile->getSRS()->createPlateCarreGeographicSRS() );
+            OE_INFO << LC << "Projected map with geographic SRS; activating EQC profile" << std::endl;            
+            unsigned u, v;
+            _profile->getNumTiles(0, u, v);
+            const osgEarth::SpatialReference* eqc = _profile->getSRS()->createEquirectangularSRS();
+            osgEarth::GeoExtent e = _profile->getExtent().transform( eqc );
+            _profile = osgEarth::Profile::create( eqc, e.xMin(), e.yMin(), e.xMax(), e.yMax(), u, v);
         }
         else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_PROJECTED && !( _profile.valid() && _profile->getSRS()->isProjected() ) )
         {
@@ -1112,12 +1116,13 @@ Map::createReferenceHeightField(const TileKey& key,
     return HeightFieldUtils::createReferenceHeightField(key.getExtent(), size, size, expressHeightsAsHAE);
 }
 
-
+#if 0
 bool
 Map::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
                          const TileKey&                  key,
                          bool                            convertToHAE,
                          ElevationSamplePolicy           samplePolicy, // deprecated (unused)
+                         bool                            fallbackIfPossible,
                          ProgressCallback*               progress) const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
@@ -1134,8 +1139,10 @@ Map::populateHeightField(osg::ref_ptr<osg::HeightField>& hf,
         key,
         convertToHAE ? _profileNoVDatum.get() : 0L,
         interp,
+        fallbackIfPossible,
         progress );
 }
+#endif
 
 const SpatialReference*
 Map::getWorldSRS() const

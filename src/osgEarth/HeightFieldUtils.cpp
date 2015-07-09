@@ -679,7 +679,7 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
 }
 
 /******************************************************************************************/
-
+#if 0
 ReplaceInvalidDataOperator::ReplaceInvalidDataOperator():
 _replaceWith(0.0f)
 {
@@ -745,3 +745,4 @@ FillNoDataOperator::operator ()(osg::HeightField *heightField)
         }
     }
 }
+#endif

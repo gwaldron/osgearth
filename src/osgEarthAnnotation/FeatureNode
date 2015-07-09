@@ -77,12 +77,23 @@ namespace osgEarth { namespace Annotation
          */
         void setFeature(Feature* feature);
 
+        /**
+         * Get whether cluster culling is enabled on this FeatureNode
+         */
+        bool getClusterCulling() const;
+
+        /*
+         * Sets whether cluster culling is enabled on this FeatureNode.
+         */
+        void setClusterCulling( bool clusterCulling );
+
 
         /**
          * Call init to force a rebuild of this FeatureNode.  If you modify the features in the features list or add/remove features
          * call this function to rebuild the node.
          */
         void init();
+        void dirty() { init(); }
 
     public: // AnnotationNode
 
@@ -108,6 +119,9 @@ namespace osgEarth { namespace Annotation
         osg::Polytope                _featurePolytope;
         Style                        _style;
         bool                         _needsRebuild;
+        bool                         _clusterCulling;
+        GeoExtent                    _extent;
+        osg::NodeCallback*           _clusterCullingCallback;
 
         osg::ref_ptr< osg::Node >    _compiled;
 
@@ -117,6 +131,8 @@ namespace osgEarth { namespace Annotation
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
 
         void build();
+
+        void updateClusterCulling();
 
         
     private:

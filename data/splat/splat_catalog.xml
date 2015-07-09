@@ -70,5 +70,8 @@
 		<class name="urban">
 			<image>urban3.jpg</image>
 		</class>
+        <class name="asphalt">
+            <image>asphalt.jpg</image>
+        </class>
 	</classes>
 </catalog>

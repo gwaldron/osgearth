@@ -254,7 +254,7 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
     // (depends on the viewer's threading mode).
-    _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL, "mp-update" );
+    _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL );
 
     // merge in the custom options:
     _terrainOptions.merge( options );
@@ -481,10 +481,12 @@ MPTerrainEngineNode::dirtyTerrain()
 
     osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
+    bool accumulate = (_terrainOptions.elevationSmoothing() == true);
+
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        osg::ref_ptr<osg::Node> node = factory->createNode( keys[i], true, true, 0L );
+        osg::ref_ptr<osg::Node> node = factory->createNode( keys[i], accumulate, true, 0L );
         if ( node.valid() )
         {
             root->addChild( node.get() );
@@ -615,11 +617,11 @@ MPTerrainEngineNode::createNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    // create the node:
-    osg::ref_ptr<osg::Node> node = getKeyNodeFactory()->createNode( key, true, true, progress );
+    bool accumulate    = (_terrainOptions.elevationSmoothing() == true );
+    bool setupChildren = true;
 
-    // notify anyone listening of the new node:
-    //this->notifyOfTileNode( key, node.get() );
+    // create the node:
+    osg::ref_ptr<osg::Node> node = getKeyNodeFactory()->createNode(key, accumulate, setupChildren, progress);
 
     // release the reference and return it.
     return node.release();
@@ -661,7 +663,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     {
         while (!populated)
         {
-            populated = _update_mapf->populateHeightField(hf, sampleKey, true, SAMPLE_FIRST_VALID);
+            populated = _update_mapf->populateHeightField(hf, sampleKey, true, 0L);
             if (!populated)
             {
                 // Fallback on the parent

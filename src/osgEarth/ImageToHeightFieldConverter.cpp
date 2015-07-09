@@ -18,6 +18,7 @@
 */
 
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/GeoCommon>
 #include <osg/Notify>
 #include <limits.h>
 #include <string.h>
@@ -111,7 +112,14 @@ osg::HeightField* ImageToHeightFieldConverter::convert16(const osg::Image* image
   osg::FloatArray* floats = hf->getFloatArray();
 
   for( unsigned int i = 0; i < floats->size(); ++i ) {
-    floats->at( i ) = *(short*)image->data(i);
+      short v = *(short*)image->data(i);
+      float h = (float)v;
+      // Replace short nodata values with our float marker.
+      if (v == -SHRT_MAX || v == SHRT_MAX)
+      {
+          h = NO_DATA_VALUE;
+      }
+      floats->at( i ) = h;
   }
 
   return hf;
@@ -170,7 +178,13 @@ osg::Image* ImageToHeightFieldConverter::convert16(const osg::HeightField* hf ) 
   const osg::FloatArray* floats = hf->getFloatArray();
 
   for( unsigned int i = 0; i < floats->size(); ++i  ) {
-    *(short*)image->data(i) = (short)floats->at( i );
+      float h = floats->at( i );
+      // Set NO_DATA_VALUE to a valid short value.
+      if (h == NO_DATA_VALUE)
+      {        
+          h = -SHRT_MAX;
+      }
+      *(short*)image->data(i) = (short)h;
   }
 
   return image;

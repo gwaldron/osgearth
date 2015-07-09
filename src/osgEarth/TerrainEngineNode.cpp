@@ -64,7 +64,7 @@ namespace osgEarth
 
 TerrainEngineNode::ImageLayerController::ImageLayerController(const Map*         map,
                                                               TerrainEngineNode* engine) :
-_mapf  ( map, Map::IMAGE_LAYERS, "TerrainEngineNode.ImageLayerController" ),
+_mapf  ( map, Map::IMAGE_LAYERS ),
 _engine( engine )
 {
     //nop
@@ -130,7 +130,7 @@ TerrainEngineNode::~TerrainEngineNode()
     //Remove any callbacks added to the image layers
     if (_map.valid())
     {
-        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS, "TerrainEngineNode::~TerrainEngineNode" );
+        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
             i->get()->removeCallback( _imageLayerController.get() );
@@ -231,7 +231,7 @@ TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options
         _imageLayerController = new ImageLayerController( _map.get(), this );
 
         // register the layer Controller it with all pre-existing image layers:
-        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS, "TerrainEngineNode::initialize" );
+        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
             i->get()->addCallback( _imageLayerController.get() );

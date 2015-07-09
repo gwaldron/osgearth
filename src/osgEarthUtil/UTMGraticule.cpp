@@ -107,8 +107,10 @@ UTMGraticule::init()
     }
 
     // make the shared depth attr:
-    //_depthAttribute = new osg::Depth(osg::Depth::LEQUAL,0,1,false);
     this->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, 0);
+
+    // force it to render after the terrain.
+    this->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
 
     // install the range callback for clip plane activation
     this->addCullCallback( new RangeUniformCullCallback() );

@@ -783,16 +783,10 @@ SpatialReference::createUTMFromLonLat( const Angular& lon, const Angular& lat ) 
     return create( horiz, getVertInitString() );
 }
 
-const SpatialReference* 
-SpatialReference::createPlateCarreGeographicSRS() const
+const SpatialReference*
+SpatialReference::createEquirectangularSRS() const
 {
-    SpatialReference* pc = create( getKey(), false );
-    if ( pc ) 
-    {
-        pc->_is_plate_carre = true;
-        pc->_is_geographic  = false;
-    }
-    return pc;
+    return SpatialReference::create("+proj=eqc +units=m +no_defs", getVertInitString());
 }
 
 bool

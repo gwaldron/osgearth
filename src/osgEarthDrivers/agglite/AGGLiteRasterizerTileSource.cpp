@@ -53,7 +53,7 @@ namespace
 {
     struct float32
     {
-        float32() : value(0.0f) { }
+        float32() : value(NO_DATA_VALUE) { }
         float32(float v) : value(v) { }
 
         float value;
@@ -73,7 +73,7 @@ namespace
             {
                 unsigned char cover = *covers++;
                 int hasData = cover > 127;
-                *f++ = hasData ? c.value : FLT_MAX;
+                *f++ = hasData ? c.value : NO_DATA_VALUE;
             }
             while(--count);
         }
@@ -98,38 +98,6 @@ namespace
             return float32(*f);
         }
     };
-
-    osg::Vec4f encodeCoverageValue(float value)
-    {
-        osg::Vec4f color;
-#if 0
-        const float w = 1.0f/255.0f;
-        unsigned char* c = (unsigned char*)&value;
-        color.a() = w * (float)(*c++);
-        color.b() = w * (float)(*c++);
-        color.g() = w * (float)(*c++);
-        color.r() = w * (float)(*c++);
-#else
-        const float minValue = -8192.0f;
-        const float maxValue =  8192.0f;
-        const float tofixed   = 255.0/256.0;
-
-        // normalize the input:
-        float v = (value-minValue)/(maxValue-minValue); // [0..1)
-
-        // encode as rgba. (http://goo.gl/6sGmZj)
-        // this algorithm is incremental - use as many bytes as you need (starting
-        // with r) for the precision you need. For example, we could use just RGB
-        // and save the 'a' for another value like alpha/intensity.
-        float integerPart;
-
-        color.r() = modff(v * tofixed,               &integerPart);
-        color.g() = modff(v * tofixed * 255.0f,      &integerPart);
-        color.b() = modff(v * tofixed * 65025.0f,    &integerPart);
-        color.a() = modff(v * tofixed * 16581375.0f, &integerPart);
-#endif
-        return color;
-    }
 }
 
 /********************************************************************/
@@ -158,6 +126,7 @@ public:
             image = new osg::Image();
             image->allocateImage(getPixelsPerTile(), getPixelsPerTile(), 1, GL_LUMINANCE, GL_FLOAT);
             image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+            ImageUtils::markAsUnNormalized(image, true);
         }
         return image;
     }
@@ -170,9 +139,9 @@ public:
         // clear the buffer.
         if ( _options.coverage() == true )
         {
-            // For coverage data, ~0 = no data.
+            // For coverage data, FLT_MAX = no data.
             agg::renderer<span_coverage32, float32> ren(rbuf);
-            ren.clear(float32(0.0f));
+            ren.clear( float32(NO_DATA_VALUE) );
         }
         else
         {
@@ -436,28 +405,16 @@ public:
         return true;
     }
 
-    // rasterizes a geometry.
+    // rasterizes a geometry to color
     void rasterize(const Geometry* geometry, const osg::Vec4& color, RenderFrame& frame, 
                    agg::rasterizer& ras, agg::rendering_buffer& buffer)
     {
-        osg::Vec4 c = color;
-        agg::rgba8 fgColor;
-
-        if ( _options.coverage() == true )
-        {
-            // for a coverage value, copy the value exactly.
-            fgColor = agg::rgba8( (unsigned)(c.r()*255.0f), (unsigned)(c.g()*255.0f), (unsigned)(c.b()*255.0f), (unsigned)(c.a()*255.0f) );
-        }
-        else
-        {
-            unsigned a = (unsigned)(127.0f+(c.a()*255.0f)/2.0f); // scale alpha up
-            fgColor = agg::rgba8( (unsigned)(c.r()*255.0f), (unsigned)(c.g()*255.0f), (unsigned)(c.b()*255.0f), a );
-        }
-
+        unsigned a = (unsigned)(127.0f+(color.a()*255.0f)/2.0f); // scale alpha up
+        agg::rgba8 fgColor = agg::rgba8( (unsigned)(color.r()*255.0f), (unsigned)(color.g()*255.0f), (unsigned)(color.b()*255.0f), a );
+        
         ConstGeometryIterator gi( geometry );
         while( gi.hasMore() )
         {
-            c = color;
             const Geometry* g = gi.next();
 
             for( Geometry::const_iterator p = g->begin(); p != g->end(); p++ )

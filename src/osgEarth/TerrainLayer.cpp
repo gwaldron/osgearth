@@ -186,7 +186,6 @@ void
 TerrainLayer::init()
 {
     _tileSourceInitAttempted = false;
-    //_tileSourceInitFailed    = false;
     _tileSize                = 256;
     _dbOptions               = Registry::instance()->cloneOrCreateOptions();
     
@@ -343,90 +342,48 @@ TerrainLayer::getTileSource() const
             // Continue with thread-safe initialization.
             TerrainLayer* this_nc = const_cast<TerrainLayer*>(this);
 
-            osg::ref_ptr<TileSource> ts = 0L;
-
+            osg::ref_ptr<TileSource> ts;
             if ( !isCacheOnly() )
             {
                 // Initialize the tile source once and only once.
                 ts = this_nc->createTileSource();
             }
 
-            // read the cache policy hint from the tile source unless user expressly set 
-            // a policy in the initialization options. In other words, the hint takes
-            // ultimate priority (even over the Registry override) unless expressly
-            // overridden in the layer options!
-            this_nc->refreshTileSourceCachePolicyHint( ts.get() );
-
-            // Unless the user has already configured an expiration policy, use the "last modified"
-            // timestamp of the TileSource to set a minimum valid cache entry timestamp.
-            if ( ts )
+            if ( ts.valid() )
             {
-                CachePolicy& cp = _runtimeOptions->cachePolicy().mutable_value();
-                if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && ts->getLastModifiedTime() > 0)
+                // read the cache policy hint from the tile source unless user expressly set 
+                // a policy in the initialization options. In other words, the hint takes
+                // ultimate priority (even over the Registry override) unless expressly
+                // overridden in the layer options!
+                this_nc->refreshTileSourceCachePolicyHint( ts.get() );
+
+                // Unless the user has already configured an expiration policy, use the "last modified"
+                // timestamp of the TileSource to set a minimum valid cache entry timestamp.
+                if ( ts )
                 {
-                    // The "effective" policy overrides the runtime policy, but it does not
-                    // get serialized.
-                    this_nc->_effectiveCachePolicy = cp;
-                    this_nc->_effectiveCachePolicy->minTime() = ts->getLastModifiedTime();
-                    OE_INFO << LC << "cache min valid time reported by driver = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
+                    CachePolicy& cp = _runtimeOptions->cachePolicy().mutable_value();
+                    if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && ts->getLastModifiedTime() > 0)
+                    {
+                        // The "effective" policy overrides the runtime policy, but it does not
+                        // get serialized.
+                        this_nc->_effectiveCachePolicy = cp;
+                        this_nc->_effectiveCachePolicy->minTime() = ts->getLastModifiedTime();
+                        OE_INFO << LC << "cache min valid time reported by driver = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
+                    }
+                    OE_INFO << LC << "cache policy = " << getCachePolicy().usageString() << std::endl;
                 }
-                OE_INFO << LC << "cache policy = " << getCachePolicy().usageString() << std::endl;
+
+                if ( !_tileSource.valid() )
+                    this_nc->_tileSource = ts.release();
             }
 
-            // finally:
+            // finally, set this whether we succeeded or failed
             _tileSourceInitAttempted = true;
-            this_nc->_tileSource = ts.release();
         }
     }
 
     return _tileSource.get();
 }
-
-
-#if 0
-    if ( isCacheOnly()
-
-    if ((_tileSource.valid() && !_tileSourceInitAttempted) ||
-        (!_tileSource.valid() && !isCacheOnly()))
-    {
-        Threading::ScopedMutexLock lock(_initTileSourceMutex);
-        
-        // double-check pattern
-        if ((_tileSource.valid() && !_tileSourceInitAttempted) ||
-            (!_tileSource.valid() && !isCacheOnly()))
-        {
-            TerrainLayer* this_nc = const_cast<TerrainLayer*>(this);
-
-            // Initialize the tile source once.
-            this_nc->initTileSource();
-
-            // read the cache policy hint from the tile source unless user expressly set 
-            // a policy in the initialization options. In other words, the hint takes
-            // ultimate priority (even over the Registry override) unless expressly
-            // overridden in the layer options!
-            this_nc->refreshTileSourceCachePolicyHint();
-
-            // Unless the user has already configured an expiration policy, use the "last modified"
-            // timestamp of the TileSource to set a minimum valid cache entry timestamp.
-            if ( _tileSource.valid() )
-            {
-                CachePolicy& cp = _runtimeOptions->cachePolicy().mutable_value();
-                if ( !cp.minTime().isSet() && !cp.maxAge().isSet() && _tileSource->getLastModifiedTime() > 0)
-                {
-                    // The "effective" policy overrides the runtime policy, but it does not
-                    // get serialized.
-                    this_nc->_effectiveCachePolicy = cp;
-                    this_nc->_effectiveCachePolicy->minTime() = _tileSource->getLastModifiedTime();
-                    OE_INFO << LC << "cache min valid time reported by driver = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
-                }
-                OE_INFO << LC << "cache policy = " << getCachePolicy().usageString() << std::endl;
-            }
-        }
-    }
-
-    return _tileSource.get();
-}
-#endif
 
 const Profile*
 TerrainLayer::getProfile() const
@@ -631,15 +588,24 @@ TerrainLayer::createTileSource()
 {
     osg::ref_ptr<TileSource> ts;
 
-    // Instantiate it from driver options if it has not already been created.
-    // This will also set a manual "override" profile if the user provided one.
-    if ( _runtimeOptions->driver().isSet() )
+    if ( _tileSource.valid() )
     {
-        OE_INFO << LC << "Creating TileSource, driver = \"" << _runtimeOptions->driver()->getDriver() << "\"\n";
-        ts = TileSourceFactory::create( *_runtimeOptions->driver() );
-        if ( !ts.valid() )
+        // this will happen if the layer was created with an explicit TileSource instance.
+        ts = _tileSource.get();
+    }
+
+    else
+    {
+        // Instantiate it from driver options if it has not already been created.
+        // This will also set a manual "override" profile if the user provided one.
+        if ( _runtimeOptions->driver().isSet() )
         {
-            OE_WARN << LC << "Failed to create TileSource for driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n";
+            OE_INFO << LC << "Creating TileSource, driver = \"" << _runtimeOptions->driver()->getDriver() << "\"\n";
+            ts = TileSourceFactory::create( *_runtimeOptions->driver() );
+            if ( !ts.valid() )
+            {
+                OE_WARN << LC << "Failed to create TileSource for driver \"" << _runtimeOptions->driver()->getDriver() << "\"\n";
+            }
         }
     }
 

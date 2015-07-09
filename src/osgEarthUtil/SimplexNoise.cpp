@@ -222,6 +222,7 @@ double SimplexNoise::getValue(double xin, double yin) const
     if ( _normalize )
     {
         n /= maxamp;
+        n = n * (_high-_low)/2.0 + (_high+_low)/2.0;
     }
     return n;
 }

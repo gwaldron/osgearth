@@ -107,7 +107,7 @@ namespace
 
     static bool s_enabledGlobally = true;
 
-    static char* s_faderFS =
+    static const char* s_faderFS =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "uniform float " FADE_UNIFORM_NAME ";\n"

@@ -105,7 +105,7 @@ _engineUID( engineUID )
 {
     _myNodePath.push_back( this );
 
-    this->setNumChildrenRequiringUpdateTraversal( 1u );
+    //this->setNumChildrenRequiringUpdateTraversal( 1u );
 }
 
 

@@ -26,6 +26,7 @@
 #include <osg/Texture>
 #include <osg/ImageSequence>
 #include <osg/Timer>
+#include <osg/ValueObject>
 #include <osgDB/Registry>
 #include <string.h>
 #include <memory.h>

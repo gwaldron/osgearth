@@ -146,3 +146,4 @@ namespace osgEarth
 } // namespace osgEarth
 
 #endif // OSGEARTH_SHADER_LOADER
+

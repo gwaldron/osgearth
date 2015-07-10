@@ -508,7 +508,7 @@ void RexTerrainEngineNode::buildSelectionInfo()
     }
     for( int i = 0; i < _selectionInfo->_numLods; ++i ) 
     {
-        OE_INFO << LC << "LOD[" << i<<"] = "<<_selectionInfo->_fVisibilityRanges[i]
+        OE_DEBUG << LC << "LOD[" << i<<"] = "<<_selectionInfo->_fVisibilityRanges[i]
         <<" Start: "<<_selectionInfo->_fMorphStart[i]
         <<" End  : "<<_selectionInfo->_fMorphEnd[i]
         <<std::endl;
@@ -684,10 +684,12 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     if ( _loader.valid() ) // ensures that postInitialize has run
     {
         // Pass the tile creation context to the traversal.
-        osg::ref_ptr<osg::Referenced> data = nv.getUserData();    
+        osg::ref_ptr<osg::Referenced> data = nv.getUserData();
         nv.setUserData( this->getEngineContext() );
 
+        this->getEngineContext()->startCull();
         TerrainEngineNode::traverse( nv );
+        this->getEngineContext()->endCull();
 
         if ( data.valid() )
             nv.setUserData( data.get() );

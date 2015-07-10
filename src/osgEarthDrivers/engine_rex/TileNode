@@ -23,6 +23,8 @@
 #include "RenderBindings"
 #include "Loader"
 #include "MPTexture"
+#include "ProxyGeometry"
+
 #include <OpenThreads/Atomic>
 #include <osgEarth/TerrainTileNode>
 #include <vector>
@@ -131,11 +133,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void updatePerFrameUniforms(const osg::NodeVisitor& nv);
 
-        osg::ref_ptr<osg::Geometry> _proxyGeometry;
-
-        bool selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare);
-        bool childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare);
-
+        osg::ref_ptr<ProxyGeometry> _proxyGeometry;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

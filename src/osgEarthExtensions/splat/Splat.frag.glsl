@@ -26,9 +26,9 @@ uniform vec4 oe_tile_key;
 // from the vertex shader:
 in vec2 oe_splat_covtc;
 in float oe_splat_range;
-in float oe_splat_mixer;
 flat in vec3 oe_splat_scaleBias0; 
 flat in vec3 oe_splat_scaleBias1;
+flat in int oe_splat_lodIndex;
 
 
 // from SplatTerrainEffect:
@@ -108,8 +108,8 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 // Generates a texel using nearest-neighbor coverage sampling.
 vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 {
-    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc, env);
-    float coverageValue = texture2D(oe_splat_coverageTex, warped_tc).r;
+    vec2 tc = oe_splat_covtc; //oe_splat_warpCoverageCoords(splat_tc, env);
+    float coverageValue = texture2D(oe_splat_coverageTex, tc).r;
     oe_SplatRenderInfo ri = oe_splat_getRenderInfo(coverageValue, env);
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);
     float detailToggle = ri.detailIndex >= 0 ? 1.0 : 0.0;
@@ -123,7 +123,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     vec4 texel = vec4(0,0,0,1);
 
     //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
-    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc, env);
+    vec2 tc = oe_splat_covtc; //oe_splat_warpCoverageCoords(splat_tc, env);
 
     float a = oe_splat_blur;
     float pixelWidth = a/256.0; // 256 = hard-coded cov tex size //TODO 
@@ -132,19 +132,19 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
 
     // Find the four quantized coverage coordinates that form a box around the actual
     // coverage coordinates, where each quantized coord is at the center of a coverage texel.
-    vec2 rem = mod(warped_tc, pixelWidth);
-    vec2 sw = vec2(0);
-    sw.x = warped_tc.x - rem.x + (rem.x >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
-    sw.y = warped_tc.y - rem.y + (rem.y >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
+    vec2 rem = mod(tc, pixelWidth);
+    vec2 sw;
+    sw.x = tc.x - rem.x + (rem.x >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
+    sw.y = tc.y - rem.y + (rem.y >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
     vec2 ne = sw + pixelWidth;
     vec2 nw = vec2(sw.x, ne.y);
     vec2 se = vec2(ne.x, sw.y);
 
     // Calculate the weighting for each corner.
-    vec2 dsw = warped_tc-sw;
-    vec2 dse = warped_tc-se;
-    vec2 dne = warped_tc-ne;
-    vec2 dnw = warped_tc-nw;
+    vec2 dsw = tc-sw;
+    vec2 dse = tc-se;
+    vec2 dne = tc-ne;
+    vec2 dnw = tc-nw;
 
     float sw_weight = max(pixelWidth2-dot(dsw,dsw),0.0);
     float se_weight = max(pixelWidth2-dot(dse,dse),0.0);
@@ -266,7 +266,7 @@ void oe_splat_complex(inout vec4 color)
 {
     // Noise coords.
     float noiseLOD = floor(oe_splat_noiseScale);
-    vec2 noiseCoords = oe_splat_getSplatCoords(noiseLOD); //12
+    vec2 noiseCoords = oe_splat_getSplatCoords(noiseLOD); //TODO: move to VS for slight speedup
 
     oe_SplatEnv env;
     env.range = oe_splat_range;
@@ -279,8 +279,10 @@ void oe_splat_complex(inout vec4 color)
 
     vec2 splat_tc1 = oe_layer_tilec.st*oe_splat_scaleBias1.x + oe_splat_scaleBias1.yz;
     vec4 texel1 = oe_splat_bilinear(splat_tc1, env);
-
-    vec4 texel = mix(texel0, texel1, oe_splat_mixer);
+    
+    // calculate the blending ratio.
+    float r = (oe_splat_range-oe_SplatRanges[oe_splat_lodIndex])/(oe_SplatRanges[oe_splat_lodIndex+1]-oe_SplatRanges[oe_splat_lodIndex]);
+    vec4 texel = mix(texel0, texel1, r);
 
     color = mix(color, texel, texel.a);
 

@@ -12,7 +12,7 @@ out vec2 oe_splat_covtc;
 
 flat out vec3 oe_splat_scaleBias0;
 flat out vec3 oe_splat_scaleBias1;
-out float oe_splat_mixer;
+flat out int oe_splat_lodIndex;
 
 uniform mat4 $COVERAGE_TEXMAT_UNIFORM;   // assigned at runtime
 uniform float oe_splat_scaleOffset;
@@ -62,7 +62,7 @@ void oe_splat_vertex_view(inout vec4 VertexVIEW)
             float lod1 = oe_SplatLevels[i+1] + scaleOffset;
             oe_splat_scaleBias1 = calcScaleBias(lod1);
 
-            oe_splat_mixer = (oe_splat_range-oe_SplatRanges[i])/(oe_SplatRanges[i+1]-oe_SplatRanges[i]);
+            oe_splat_lodIndex = i;
 
             break;
         }

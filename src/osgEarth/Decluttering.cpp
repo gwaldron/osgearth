@@ -84,7 +84,7 @@ namespace
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
     
-    typedef std::pair<const osg::Node*, osg::BoundingBox> RenderLeafBox;
+    typedef std::pair<const osg::Node*, osg::BoundingBoxd> RenderLeafBox;
 
     // Data structure stored one-per-View.
     struct PerCamInfo
@@ -229,8 +229,11 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         // of the reference camera.
         const osg::Viewport* vp = cam->getViewport();
 
+        osg::Matrix windowMatrix = vp->computeWindowMatrix();
+
         osg::Vec3f  refCamScale(1.0f, 1.0f, 1.0f);
         osg::Matrix refCamScaleMat;
+        osg::Matrix refWindowMatrix = windowMatrix;
 
         if ( cam->isRenderToTextureCamera() )
         {
@@ -240,10 +243,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 const osg::Viewport* refVP = refCam->getViewport();
                 refCamScale.set( vp->width() / refVP->width(), vp->height() / refVP->height(), 1.0 );
                 refCamScaleMat.makeScale( refCamScale );
+                refWindowMatrix = refVP->computeWindowMatrix();
             }
         }
-
-        osg::Matrix windowMatrix = vp->computeWindowMatrix();
 
         // Track the parent nodes of drawables that are obscured (and culled). Drawables
         // with the same parent node (typically a Geode) are considered to be grouped and
@@ -269,12 +271,15 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             osg::BoundingBox box = Utils::getBoundingBox(drawable);
 
             static osg::Vec4d s_zero_w(0,0,0,1);
-            osg::Vec4d clip = s_zero_w * (*leaf->_modelview.get()) * (*leaf->_projection.get());
+            osg::Matrix MVP = (*leaf->_modelview.get()) * (*leaf->_projection.get());
+            osg::Vec4d clip = s_zero_w * MVP;
             osg::Vec3d clip_ndc( clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w() );
             osg::Vec3f winPos = clip_ndc * windowMatrix;
 
             // this accounts for the size difference when using a reference camera (RTT/picking)
+            box.xMin() *= refCamScale.x();
             box.xMax() *= refCamScale.x();
+            box.yMin() *= refCamScale.y();
             box.yMax() *= refCamScale.y();
 
             osg::Vec2f offset( -box.xMin(), -box.yMin() );
@@ -323,6 +328,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             {
                 // passed the test, so add the leaf's bbox to the "used" list, and add the leaf
                 // to the final draw list.
+                //local._used.push_back( std::make_pair(drawableParent, box) );
                 local._used.push_back( std::make_pair(drawableParent, box) );
                 local._passed.push_back( leaf );
             }

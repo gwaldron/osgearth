@@ -26,7 +26,10 @@ uniform vec4 oe_tile_key;
 // from the vertex shader:
 in vec2 oe_splat_covtc;
 in float oe_splat_range;
-in float oe_splat_scaleOffsetInt;
+in float oe_splat_mixer;
+flat in vec3 oe_splat_scaleBias0; 
+flat in vec3 oe_splat_scaleBias1;
+
 
 // from SplatTerrainEffect:
 uniform float oe_splat_warp;
@@ -34,8 +37,6 @@ uniform float oe_splat_blur;
 uniform sampler2D oe_splat_coverageTex;
 uniform sampler2DArray oe_splatTex;
 
-uniform sampler2D oe_terrain_tex;
-uniform mat4 oe_terrain_tex_matrix;
 uniform float oe_splat_detailRange;
 uniform float oe_splat_noiseScale;
 uniform float oe_splat_useBilinear; // 1=true, -1=false
@@ -109,7 +110,6 @@ vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 {
     vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc, env);
     float coverageValue = texture2D(oe_splat_coverageTex, warped_tc).r;
-    //float coverageValue = 255.0 * texture2D(oe_splat_coverageTex, warped_tc).r;
     oe_SplatRenderInfo ri = oe_splat_getRenderInfo(coverageValue, env);
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);
     float detailToggle = ri.detailIndex >= 0 ? 1.0 : 0.0;
@@ -179,7 +179,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     // Detail splat - weighting is in the alpha channel
     // TODO: Pointless to have a detail range? -gw
     // TODO: If noise is a texture, just try to single-sample it instead
-    float detailToggle = env.range < oe_splat_detailRange ? 1.0 : 0.0;
+    float detailToggle =env.range < oe_splat_detailRange ? 1.0 : 0.0;
     vec4 sw_detail = detailToggle * oe_splat_getDetailTexel(ri_sw, splat_tc, env);
     vec4 se_detail = detailToggle * oe_splat_getDetailTexel(ri_se, splat_tc, env);
     vec4 ne_detail = detailToggle * oe_splat_getDetailTexel(ri_ne, splat_tc, env);
@@ -257,11 +257,9 @@ void oe_splat_simple(inout vec4 color)
     env.noise = oe_splat_getNoise(noiseCoords);
     env.elevation = 0.0;
 
-    float lod = 12.0;
-    vec2 splatCoords = oe_splat_getSplatCoords(lod);
-    color = oe_splat_nearest(splatCoords, env);
+    vec2 splat_tc = oe_layer_tilec.st*oe_splat_scaleBias0.x + oe_splat_scaleBias0.yz;
+    color = oe_splat_bilinear(splat_tc, env);
 }
-
 
 // Main entry point for fragment shader.
 void oe_splat_complex(inout vec4 color)
@@ -274,43 +272,15 @@ void oe_splat_complex(inout vec4 color)
     env.range = oe_splat_range;
     env.slope = oe_splat_getSlope();
     env.noise = oe_splat_getNoise(noiseCoords);
-    env.elevation = 0.0; // usused atm. //texture2D(oe_terrain_tex, (oe_terrain_tex_matrix*oe_layer_tilec).st).r;
+    env.elevation = 0.0;
 
-    // Mapping of view ranges to splat texture levels of detail.
-#define RANGE_COUNT 9
-    const float ranges[RANGE_COUNT] = float[](  250.0, 500.0, 1000.0, 4000.0, 30000.0, 150000.0, 300000.0, 1000000.0, 5000000.0 );
-    const float lods  [RANGE_COUNT] = float[](  18.0,  17.0,   16.0,   14.0,    12.0,     10.0,      8.0,       6.0,       4.0 );
+    vec2 splat_tc0 = oe_layer_tilec.st*oe_splat_scaleBias0.x + oe_splat_scaleBias0.yz;
+    vec4 texel0 = oe_splat_bilinear(splat_tc0, env);
 
-    // Choose the best range based on distance to camera.
-    float d = clamp(oe_splat_range, ranges[0], ranges[RANGE_COUNT-1]);
+    vec2 splat_tc1 = oe_layer_tilec.st*oe_splat_scaleBias1.x + oe_splat_scaleBias1.yz;
+    vec4 texel1 = oe_splat_bilinear(splat_tc1, env);
 
-    vec4 texel;
-
-    // Find the 2 ranges bookending the camera range, and blend between then.
-    // TODO: replace bilinear with nearest for far ranges?
-    for(int i=0; i<RANGE_COUNT-1; ++i)
-    {
-        if ( d >= ranges[i] && d <= ranges[i+1] )
-        {
-            float lod0 = lods[i] + oe_splat_scaleOffsetInt;
-            vec2 splat_tc0 = oe_splat_getSplatCoords(lod0);
-            vec4 texel0 = oe_splat_useBilinear > 0.0?
-                oe_splat_bilinear(splat_tc0, env) :
-                oe_splat_nearest(splat_tc0, env);
-            
-
-            float lod1 = lods[i+1] + oe_splat_scaleOffsetInt;
-            vec2 splat_tc1 = oe_splat_getSplatCoords(lod1);
-            vec4 texel1 = oe_splat_useBilinear > 0.0?
-                oe_splat_bilinear(splat_tc1, env) :
-                oe_splat_nearest(splat_tc1, env);
-
-            float r = (d-ranges[i])/(ranges[i+1]-ranges[i]);
-            texel = mix(texel0, texel1, r);
-
-            break;
-        }
-    }
+    vec4 texel = mix(texel0, texel1, oe_splat_mixer);
 
     color = mix(color, texel, texel.a);
 

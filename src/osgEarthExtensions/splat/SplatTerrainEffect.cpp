@@ -123,7 +123,14 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
         // install the splat texture array:
         if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage") )
         {
-            osg::StateSet* stateset = new osg::StateSet();
+            osg::StateSet* stateset;
+            if ( _biomes.size() == 1 )
+                stateset = engine->getSurfaceStateSet();
+            else
+                stateset = new osg::StateSet();
+
+            // TODO: reinstate "biomes"
+            //osg::StateSet* stateset = new osg::StateSet();
 
             // splat sampler
             _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
@@ -188,15 +195,34 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 vp->setShader( "oe_splat_noiseshaders", noiseShader );
             }
 
-            // install the cull callback that will select the appropriate
-            // state based on the position of the camera.
-            _biomeSelector = new BiomeSelector(
-                _biomes,
-                _textureDefs,
-                stateset,
-                _splatTexUnit );
+            // TODO: I disabled BIOMES temporarily because the callback impl applies the splatting shader
+            // to the land cover bin as well as the surface bin, which we do not want -- find another way!
+            if ( _biomes.size() == 1 )
+            {
+                // install his biome's texture set:
+                stateset->setTextureAttribute(_splatTexUnit, _textureDefs[0]._texture.get());
 
-            engine->addCullCallback( _biomeSelector.get() );
+                // install this biome's sampling function. Use cloneOrCreate since each
+                // stateset needs a different shader set in its VP.
+                VirtualProgram* vp = VirtualProgram::cloneOrCreate( stateset );
+                osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, _textureDefs[0]._samplingFunction);
+                vp->setShader( "oe_splat_getRenderInfo", shader );
+            }
+
+            else
+            {
+                OE_WARN << LC << "Multi-biome setup needs re-implementing (reminder)\n";
+
+                // install the cull callback that will select the appropriate
+                // state based on the position of the camera.
+                _biomeSelector = new BiomeSelector(
+                    _biomes,
+                    _textureDefs,
+                    stateset,
+                    _splatTexUnit );
+
+                engine->addCullCallback( _biomeSelector.get() );
+            }
         }
     }
 }

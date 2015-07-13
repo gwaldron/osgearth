@@ -1,4 +1,4 @@
-#version 110
+#version 330
 
 #pragma include "Splat.types.glsl"
 

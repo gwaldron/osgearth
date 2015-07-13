@@ -1,8 +1,6 @@
 // begin: Splat.frag.common.glsl
 
 #pragma vp_define "OE_USE_NORMAL_MAP"
-
-
 #ifdef OE_USE_NORMAL_MAP
 
 // normal map version:

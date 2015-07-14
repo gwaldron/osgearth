@@ -1870,7 +1870,7 @@ public:
     }
 
 
-#if 0
+#if 1
     osg::HeightField* createHeightField( const TileKey&        key,
                                          ProgressCallback*     progress)
     {

@@ -75,6 +75,7 @@ namespace osgEarth { namespace Splat
         const SplatOptions                 _options;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<SplatTerrainEffect>   _effect;
+        osg::ref_ptr<ImageLayer>           _coverageLayer;
     };
 
 } } // namespace osgEarth::Splat

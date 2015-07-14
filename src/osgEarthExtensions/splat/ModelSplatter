@@ -22,7 +22,7 @@
 #include "SplatExport"
 #include "SplatOptions"
 #include <osgEarth/TileKey>
-#include <osgEarth/TerrainTileNode>
+#include <osgEarth/TerrainEngineNode>
 
 namespace osgEarth { namespace Splat
 {
@@ -31,7 +31,7 @@ namespace osgEarth { namespace Splat
     /**
      * Extension for loading the splatting effect on demand.
      */
-    class ModelSplatter : public TerrainTileNodeCallback
+    class ModelSplatter : public TerrainEngine::NodeCallback
     {
     public:
         ModelSplatter();

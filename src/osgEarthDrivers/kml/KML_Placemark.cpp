@@ -95,15 +95,8 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                 IconSymbol*     icon  = style.get<IconSymbol>();
                 TextSymbol*     text  = style.get<TextSymbol>();
 
-                if ( !text && cx._options->defaultTextSymbol().valid() )
-                    text = cx._options->defaultTextSymbol().get();
-
                 // the annotation name:
                 std::string name = getValue(node, "name");
-                if ( text && !name.empty() )
-                {
-                    text->content()->setLiteral( name );
-                }
 
                 AnnotationNode* featureNode = 0L;
                 AnnotationNode* iconNode    = 0L;
@@ -143,9 +136,19 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                     }
 
                     // is there a label?
-                    else if ( !text && !name.empty() )
+                    else if ( !name.empty() )
                     {
-                        text = style.getOrCreate<TextSymbol>();
+                        if ( !text && cx._options->defaultTextSymbol().valid() )
+                        {
+                            text = cx._options->defaultTextSymbol().get();
+                            style.addSymbol( text );
+
+                        }
+                        else
+                        {
+                            text = style.getOrCreate<TextSymbol>();
+                            text->encoding() = TextSymbol::ENCODING_UTF8;
+                        }
                         text->content()->setLiteral( name );
                     }
 

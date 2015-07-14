@@ -39,6 +39,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
+#include <osgEarthUtil/LogarithmicDepthBuffer>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
@@ -91,7 +92,8 @@ namespace
             "b :",                 "break tether",
             "a :",                 "toggle viewpoint arcing",
             "z :",                 "toggle throwing",
-            "k :",                 "toggle collision"            
+            "k :",                 "toggle collision",
+            "L :",                 "toggle log depth buffer"
         };
 
         Grid* g = new Grid();
@@ -143,7 +145,46 @@ namespace
 
         osg::observer_ptr<EarthManipulator> _manip;
     };
+    
 
+    /**
+     * Toggles the logarithmic depth buffer
+     */
+    struct ToggleLDB : public osgGA::GUIEventHandler
+    {
+        ToggleLDB(char key) : _key(key), _installed(false) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                if ( !_installed )
+                {
+                    _ldb.install(aa.asView()->getCamera());
+                    aa.asView()->getCamera()->setNearFarRatio(0.00001);
+                }
+                else
+                {
+                    _ldb.uninstall(aa.asView()->getCamera());
+                    aa.asView()->getCamera()->setNearFarRatio(0.0005);
+                }
+
+                _installed = !_installed;
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle LDB"));
+        }
+
+        char _key;
+        bool _installed;
+        osgEarth::Util::LogarithmicDepthBuffer _ldb;
+    };
 
     /**
      * Handler to toggle "azimuth locking", which locks the camera's relative Azimuth
@@ -615,7 +656,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new BreakTetherHandler('b', manip));
     viewer.addEventHandler(new CycleTetherMode('t', manip));
     viewer.addEventHandler(new SetPositionOffset(manip));
-
+    viewer.addEventHandler(new ToggleLDB('L'));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 

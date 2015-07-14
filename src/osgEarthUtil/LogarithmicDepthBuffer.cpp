@@ -38,7 +38,6 @@
 
 // This is only used in the "precise" variant.
 #define NEAR_RES_COEFF 0.001  // a.k.a. "C"
-#define C_UNIFORM "oe_logDepth_C"
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -95,7 +94,6 @@ _useFragDepth(false)
     _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
     {
-        //_cullCallback = new LogDepthCullCallback();
         _FCUniform = new osg::Uniform(FC_UNIFORM, (float)0.0f);
     }
     else
@@ -117,11 +115,6 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
     {
         // install the shader component:
         osg::StateSet* stateset = camera->getOrCreateStateSet();
-
-        if ( _useFragDepth )
-        {
-            stateset->addUniform( new osg::Uniform(C_UNIFORM, (float)NEAR_RES_COEFF) );
-        }
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
         Shaders pkg;
@@ -171,7 +164,6 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
             }
 
             stateset->removeUniform( FC_UNIFORM );
-            stateset->removeUniform( C_UNIFORM );
         }
     }
 }

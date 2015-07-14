@@ -32,7 +32,7 @@ using namespace osgEarth::Util;
 
 OceanOptions::OceanOptions(const ConfigOptions& options) :
 DriverConfigOptions( options ),
-_maxAltitude       ( 250000.0 )
+_maxAltitude       ( 20000.0 )
 {
     fromConfig(_conf);
 }
@@ -148,7 +148,7 @@ OceanNode::create(const OceanOptions& options,
     if ( driver.empty() )
     {
         OE_INFO << LC << "No driver in options; defaulting to \"simple\"." << std::endl;
-        OE_INFO << LC << options.getConfig().toJSON(true) << std::endl;
+        //OE_INFO << LC << options.getConfig().toJSON(true) << std::endl;
         driver = "simple";
     }
 

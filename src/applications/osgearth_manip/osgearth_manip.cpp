@@ -158,8 +158,6 @@ namespace
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
-                OE_NOTICE << "\n\n...................................................................................\n\n";
-
                 if ( !_installed )
                 {
                     _nfratio = aa.asView()->getCamera()->getNearFarRatio();

@@ -69,7 +69,7 @@ namespace osgEarth
             return
                 valid() && rhs.valid() && 
                 _lod==rhs._lod && _x==rhs._x && _y==rhs._y && 
-                _profile->isHorizEquivalentTo(rhs._profile);
+                _profile->isHorizEquivalentTo(rhs._profile.get());
         }
 
         /** Compare two tilekeys for inequality */

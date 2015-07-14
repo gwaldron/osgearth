@@ -169,11 +169,6 @@ namespace osgEarth
         unsigned int getTileX() const { return _x; }
         unsigned int getTileY() const { return _y; }
 
-        //static inline int getLOD(const osgTerrain::TileID& id)
-        //{
-        //    return id.level;
-        //}
-
         /**
          * Maps this tile key to another tile key in order to account in
          * a resolution difference. For example: we are requesting data for

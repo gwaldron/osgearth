@@ -470,6 +470,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     if ( _session->getMapInfo().isGeocentric() )
     {
+#if 0
         // Convert the extent to lat/long and center it on the equator; this will ensure
         // that all tiles in the same LOD have the same bounding radius.
         GeoExtent eq = workingExtent.transform( workingExtent.getSRS()->getGeographicSRS() );
@@ -480,11 +481,17 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
             -eq.height()/2.0,
             eq.east(),
             eq.height()/2.0 );
-
+        
         GeoPoint centerPoint( workingExtent.getSRS(), center, ALTMODE_ABSOLUTE );
         centerPoint.toWorld( center );
 
         return osg::BoundingSphered( center, equatorialExtent.getBoundingGeoCircle().getRadius() );
+#else
+        GeoPoint centerPoint( workingExtent.getSRS(), center, ALTMODE_ABSOLUTE );
+        centerPoint.toWorld( center );
+
+        return osg::BoundingSphered( center, workingExtent.getBoundingGeoCircle().getRadius() );
+#endif
     }
 
     if (workingExtent.getSRS()->isGeographic() &&

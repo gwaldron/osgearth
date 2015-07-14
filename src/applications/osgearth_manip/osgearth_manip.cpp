@@ -158,15 +158,18 @@ namespace
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
+                OE_NOTICE << "\n\n...................................................................................\n\n";
+
                 if ( !_installed )
                 {
+                    _nfratio = aa.asView()->getCamera()->getNearFarRatio();
                     _ldb.install(aa.asView()->getCamera());
                     aa.asView()->getCamera()->setNearFarRatio(0.00001);
                 }
                 else
                 {
                     _ldb.uninstall(aa.asView()->getCamera());
-                    aa.asView()->getCamera()->setNearFarRatio(0.0005);
+                    aa.asView()->getCamera()->setNearFarRatio(_nfratio);
                 }
 
                 _installed = !_installed;
@@ -182,6 +185,7 @@ namespace
         }
 
         char _key;
+        float _nfratio;
         bool _installed;
         osgEarth::Util::LogarithmicDepthBuffer _ldb;
     };

@@ -154,7 +154,7 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
         osg::StateSet* stateset = camera->getStateSet();
         if ( stateset )
         {
-            VirtualProgram* vp = VirtualProgram::get( camera->getStateSet() );
+            VirtualProgram* vp = VirtualProgram::get( stateset );
             if ( vp )
             {
                 Shaders pkg;

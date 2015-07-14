@@ -51,7 +51,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet( "color", _colorCode );
-            conf.updateIfSet( "invertY", _invertY );
+            conf.updateIfSet( "inverty", _invertY );
             return conf;
         }
 
@@ -64,7 +64,7 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "color", _colorCode );
-            conf.getIfSet( "invertY", _invertY);
+            conf.getIfSet( "inverty", _invertY);
         }
 
         optional<std::string> _colorCode;

@@ -217,12 +217,8 @@ _fallbackData( fallbackData )
     {
         // coverages: no filtering or compression allowed.
         _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-        //_texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST_MIPMAP_NEAREST);
         _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST);
         _texture->setMaxAnisotropy( 1.0f );
-
-        // testing: to support upsampling.
-        //_texture->setUnRefImageDataAfterApply( false );
     }
     else
     {

@@ -850,15 +850,15 @@ MapNodeHelper::usage() const
 {
     return Stringify()
         << "  --sky                         : add a sky model\n"
-        << "  --ocean                       : add an ocean model\n"
         << "  --kml <file.kml>              : load a KML or KMZ file\n"
+        << "  --kmlui                       : display a UI for toggling nodes loaded with --kml\n"
         << "  --coords                      : display map coords under mouse\n"
         << "  --dms                         : dispay deg/min/sec coords under mouse\n"
         << "  --dd                          : display decimal degrees coords under mouse\n"
         << "  --mgrs                        : show MGRS coords under mouse\n"
         << "  --ortho                       : use an orthographic camera\n"
         << "  --logdepth                    : activates the logarithmic depth buffer\n"
-        << "  --autoclip                    : installs an auto-clip plane callback\n"
+        << "  --logdepth2                   : activates logarithmic depth buffer with per-fragment interpolation\n"
         << "  --images [path]               : finds and loads image layers from folder [path]\n"
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
         << "  --out-earth [file]            : write the loaded map to an earth file\n"

@@ -61,9 +61,11 @@ public:
     const FeatureProfile* createFeatureProfile()
     {
         const Profile* wgs84 = Registry::instance()->getGlobalGeodeticProfile();
-        FeatureProfile* profile = new FeatureProfile( wgs84->getExtent() );
-        profile->setProfile( Profile::create("wgs84", -180.0, -90.0, 180.0, 90.0, "", 1, 1) );
-        int level = 12;
+        //GeoExtent extent(wgs84->getSRS(), -180, -90, 0, 90);
+        GeoExtent extent(wgs84->getSRS(), -180, -90, 180, 90);
+        FeatureProfile* profile = new FeatureProfile( extent );
+        profile->setProfile( Profile::create("wgs84", extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(), "", 1, 1) );
+        unsigned int level = *_options.level();
         profile->setFirstLevel(level);
         profile->setMaxLevel(level);
         profile->setTiled(true);
@@ -72,7 +74,6 @@ public:
 
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {
-        OE_NOTICE << LC << " createFeatureCursor" << std::endl;
         unsigned w, h;
         query.tileKey()->getProfile()->getNumTiles( query.tileKey()->getLevelOfDetail(), w, h );      
         TileKey key = TileKey(query.tileKey()->getLevelOfDetail(), query.tileKey()->getTileX(), h - query.tileKey()->getTileY() -1, query.tileKey()->getProfile() );
@@ -84,6 +85,7 @@ public:
         poly->push_back(key.getExtent().xMax(), key.getExtent().yMin());
         poly->push_back(key.getExtent().xMax(), key.getExtent().yMax());
         poly->push_back(key.getExtent().xMin(), key.getExtent().yMax());
+        OE_NOTICE << "Returning " << key.getExtent().toString() << std::endl;
         FeatureList features;
         Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
         features.push_back( feature );

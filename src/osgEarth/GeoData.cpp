@@ -953,23 +953,21 @@ GeoExtent::recomputeCircle()
 
         if ( getSRS()->isProjected() )
         {
-            double ext = std::max( width(), height() );
-            _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
-            //_circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
+            _circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
         }
         else // isGeographic
         {
-            double extDegrees = std::max( width(), height() );
-            double biggestLat =
+            // find the longest east-west edge.
+            double cx = west();
+            double cy =
                 north() > 0.0 && south() > 0.0 ? south() :
                 north() < 0.0 && south() < 0.0 ? north() :
                 north() < fabs(south()) ? north() : south();
 
-            
-            double metersPerEquatorialDegree = (getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-            double ext = extDegrees * metersPerEquatorialDegree * cos(osg::DegreesToRadians(biggestLat));
+            osg::Vec3d p0(x, y, 0.0);
+            osg::Vec3d p1(cx, cy, 0.0);
 
-            _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
+            _circle.setRadius( GeoMath::distance(p0, p1, getSRS()) );
         }
 
         _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );

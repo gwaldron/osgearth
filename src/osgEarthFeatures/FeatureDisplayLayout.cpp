@@ -111,7 +111,7 @@ FeatureDisplayLayout::getConfig() const
 void 
 FeatureDisplayLayout::addLevel( const FeatureLevel& level )
 {
-    _levels.insert( std::make_pair( -level.maxRange(), level ) );
+    _levels.insert( std::make_pair( -level.maxRange().get(), level ) );
 }
 
 unsigned 

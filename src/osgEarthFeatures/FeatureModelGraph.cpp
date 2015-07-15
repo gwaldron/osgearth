@@ -107,10 +107,10 @@ namespace
 #else
         PagedLODWithNodeOperations* p = new PagedLODWithNodeOperations(postMergeOps);
         p->setCenter( bs.center() );
-        p->setRadius( maxRange + bs.radius() );
+        p->setRadius( bs.radius() ); //maxRange + bs.radius() );
         //p->setRadius(-1);
         p->setFileName( 0, uri );
-        p->setRange( 0, minRange, maxRange + bs.radius() );
+        p->setRange( 0, minRange, maxRange );
         p->setPriorityOffset( 0, priOffset );
         p->setPriorityScale( 0, priScale );
 #endif
@@ -356,7 +356,7 @@ FeatureModelGraph::ctor()
             float maxRange = FLT_MAX;
             maxRange = _options.maxRange().getOrUse(maxRange);
             maxRange = _options.layout()->maxRange().getOrUse(maxRange);
-            maxRange = std::min( maxRange, _options.layout()->getLevel(0)->maxRange() );
+            maxRange = std::min( maxRange, _options.layout()->getLevel(0)->maxRange().get() );
         
             _options.layout()->tileSizeFactor() = maxRange / _options.layout()->tileSize().get();
 
@@ -375,9 +375,8 @@ FeatureModelGraph::ctor()
             _lodmap[lod] = level;
 
             OE_INFO << LC << _session->getFeatureSource()->getName() 
-                << ": F.Level max=" << level->maxRange() << ", min=" << level->minRange()
+                << ": F.Level max=" << level->maxRange().get() << ", min=" << level->minRange().get()
                 << ", LOD=" << lod
-                << ", Tile size=" << (level->maxRange() / _options.layout()->tileSizeFactor().get())
                 << std::endl;
         }
     }
@@ -429,6 +428,8 @@ FeatureModelGraph::dirty()
 {
     _dirty = true;
 }
+
+std::ostream& operator << (std::ostream& in, const osg::Vec3d& v) { in << v.x() << ", " << v.y() << ", " << v.z(); return in; }
 
 osg::BoundingSphered
 FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
@@ -489,8 +490,11 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 #else
         GeoPoint centerPoint( workingExtent.getSRS(), center, ALTMODE_ABSOLUTE );
         centerPoint.toWorld( center );
+        double radius = workingExtent.getBoundingGeoCircle().getRadius();
 
-        return osg::BoundingSphered( center, workingExtent.getBoundingGeoCircle().getRadius() );
+        //OE_WARN << LC << "Extent=" << workingExtent.toString() << "; center=" << center << "; radius=" << radius << "\n";
+
+        return osg::BoundingSphered( center, radius );
 #endif
     }
 
@@ -743,6 +747,19 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
     unsigned subtileX = parentTileX * 2;
     unsigned subtileY = parentTileY * 2;
 
+    // Find the next level with data:
+    const FeatureLevel* flevel = 0L;
+    for(unsigned lod=subtileLOD; lod<_lodmap.size() && !flevel; ++lod)
+        flevel = _lodmap[lod];
+
+    // should not happen (or this method would never have been called in teh first place) but
+    // check anyway.
+    if ( !flevel )
+    {
+        OE_INFO << LC << "INTERNAL: buildSubTilePagedLODs called but no further levels exist\n";
+        return;
+    }
+
     // make a paged LOD for each subtile:
     for( unsigned u = subtileX; u <= subtileX + 1; ++u )
     {
@@ -751,11 +768,21 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
             GeoExtent subtileFeatureExtent = s_getTileExtent( subtileLOD, u, v, _usableFeatureExtent );
             osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileFeatureExtent, mapf );
 
-            // Camera range for the PLODs. This should always be sufficient because
-            // the max range of a FeatureLevel below this will, by definition, have a max range
-            // less than or equal to this number -- based on how the LODs were chosen in 
-            // setupPaging.
-            float maxRange = subtile_bs.radius() * _options.layout()->tileSizeFactor().value();
+            // Calculate the maximum camera range for the LOD.
+            float maxRange;
+
+            if ( flevel->maxRange().isSet() )
+            {
+                // User set it expressly
+                maxRange = flevel->maxRange().get();
+                if ( maxRange < FLT_MAX )
+                    maxRange += subtile_bs.radius();
+            }
+            else
+            {
+                // Calculate it based on the tile size factor.
+                maxRange = subtile_bs.radius() * _options.layout()->tileSizeFactor().value();
+            }
 
             std::string uri = s_makeURI( _uid, subtileLOD, u, v );
 
@@ -875,7 +902,7 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     {
         // account for a min-range here. Do not address the max-range here; that happens
         // above when generating paged LOD nodes, etc.
-        float minRange = level.minRange();
+        float minRange = level.minRange().get();
         if ( minRange > 0.0f )
         {
             ElevationLOD* lod = new ElevationLOD( _session->getMapSRS() );

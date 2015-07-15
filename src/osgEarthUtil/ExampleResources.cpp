@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -847,15 +850,15 @@ MapNodeHelper::usage() const
 {
     return Stringify()
         << "  --sky                         : add a sky model\n"
-        << "  --ocean                       : add an ocean model\n"
         << "  --kml <file.kml>              : load a KML or KMZ file\n"
+        << "  --kmlui                       : display a UI for toggling nodes loaded with --kml\n"
         << "  --coords                      : display map coords under mouse\n"
         << "  --dms                         : dispay deg/min/sec coords under mouse\n"
         << "  --dd                          : display decimal degrees coords under mouse\n"
         << "  --mgrs                        : show MGRS coords under mouse\n"
         << "  --ortho                       : use an orthographic camera\n"
         << "  --logdepth                    : activates the logarithmic depth buffer\n"
-        << "  --autoclip                    : installs an auto-clip plane callback\n"
+        << "  --logdepth2                   : activates logarithmic depth buffer with per-fragment interpolation\n"
         << "  --images [path]               : finds and loads image layers from folder [path]\n"
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
         << "  --out-earth [file]            : write the loaded map to an earth file\n"

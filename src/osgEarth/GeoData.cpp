@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -953,21 +953,23 @@ GeoExtent::recomputeCircle()
 
         if ( getSRS()->isProjected() )
         {
-            _circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
+            double ext = std::max( width(), height() );
+            _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
+            //_circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
         }
         else // isGeographic
         {
-            // find the longest east-west edge.
-            double cx = west();
-            double cy =
+            double extDegrees = std::max( width(), height() );
+            double biggestLat =
                 north() > 0.0 && south() > 0.0 ? south() :
                 north() < 0.0 && south() < 0.0 ? north() :
                 north() < fabs(south()) ? north() : south();
 
-            osg::Vec3d p0(x, y, 0.0);
-            osg::Vec3d p1(cx, cy, 0.0);
+            
+            double metersPerEquatorialDegree = (getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+            double ext = extDegrees * metersPerEquatorialDegree * cos(osg::DegreesToRadians(biggestLat));
 
-            _circle.setRadius( GeoMath::distance(p0, p1, getSRS()) );
+            _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
         }
 
         _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );

@@ -78,14 +78,13 @@ public:
         query.tileKey()->getProfile()->getNumTiles( query.tileKey()->getLevelOfDetail(), w, h );      
         TileKey key = TileKey(query.tileKey()->getLevelOfDetail(), query.tileKey()->getTileX(), h - query.tileKey()->getTileY() -1, query.tileKey()->getProfile() );
 
-#if 1
+#if 0
         // Debug
         Polygon* poly = new Polygon();
         poly->push_back(key.getExtent().xMin(), key.getExtent().yMin());
         poly->push_back(key.getExtent().xMax(), key.getExtent().yMin());
         poly->push_back(key.getExtent().xMax(), key.getExtent().yMax());
         poly->push_back(key.getExtent().xMin(), key.getExtent().yMax());
-        OE_NOTICE << "Returning " << key.getExtent().toString() << std::endl;
         FeatureList features;
         Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
         features.push_back( feature );
@@ -143,7 +142,7 @@ public:
                     }
 
                     // Emit the polygon
-                    if (startIndex > 0)
+                    if (startIndex >= 0)
                     {
                         // Emit the polygon
                         Polygon* polygon = new Polygon();
@@ -161,7 +160,7 @@ public:
                
                 if (!features.empty())
                 {
-                    OE_NOTICE << LC << "Returning " << features.size() << " features" << std::endl;
+                    //OE_NOTICE << LC << "Returning " << features.size() << " features" << std::endl;
                     return new FeatureListCursor( features );
                 }
             }

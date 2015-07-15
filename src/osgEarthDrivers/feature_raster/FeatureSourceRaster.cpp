@@ -30,7 +30,6 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
 
-#define LC "[FeatureSourceRaster] "
 
 /**
  * A FeatureSource that reads features from a raster layer
@@ -73,7 +72,12 @@ public:
 
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {
-        /*
+        OE_NOTICE << LC << " createFeatureCursor" << std::endl;
+        unsigned w, h;
+        query.tileKey()->getProfile()->getNumTiles( query.tileKey()->getLevelOfDetail(), w, h );      
+        TileKey key = TileKey(query.tileKey()->getLevelOfDetail(), query.tileKey()->getTileX(), h - query.tileKey()->getTileY() -1, query.tileKey()->getProfile() );
+
+#if 1
         // Debug
         Polygon* poly = new Polygon();
         poly->push_back(key.getExtent().xMin(), key.getExtent().yMin());
@@ -84,15 +88,11 @@ public:
         Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
         features.push_back( feature );
         return new FeatureListCursor( features );
-        */
-
+#else
 
         osg::ref_ptr< osgEarth::ImageLayer > layer = query.getMap()->getImageLayerByName(*_options.layer());
         if (layer.valid())
         {
-            unsigned w, h;
-            query.tileKey()->getProfile()->getNumTiles( query.tileKey()->getLevelOfDetail(), w, h );      
-            TileKey key = TileKey(query.tileKey()->getLevelOfDetail(), query.tileKey()->getTileX(), h - query.tileKey()->getTileY() -1, query.tileKey()->getProfile() ); 
             GeoImage image = layer->createImage( key );
          
             FeatureList features;
@@ -169,6 +169,7 @@ public:
             OE_NOTICE << LC << "Couldn't get layer " << *_options.layer() << std::endl;
         }
         return 0;
+#endif
     }
 
     virtual bool supportsGetFeature() const

@@ -959,17 +959,22 @@ GeoExtent::recomputeCircle()
         }
         else // isGeographic
         {
-            double extDegrees = std::max( width(), height() );
-            double biggestLat =
-                north() > 0.0 && south() > 0.0 ? south() :
-                north() < 0.0 && south() < 0.0 ? north() :
-                north() < fabs(south()) ? north() : south();
+            double extDegrees;
+            double metersPerDegree = (getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
 
-            
-            double metersPerEquatorialDegree = (getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
-            double ext = extDegrees * metersPerEquatorialDegree * cos(osg::DegreesToRadians(biggestLat));
+            if ( width() > height() )
+            {
+                extDegrees = width();
+                double widestLatitude = std::min( fabs(north()), fabs(south()) );
+                metersPerDegree *= cos(osg::DegreesToRadians(widestLatitude));
+            }
+            else
+            {
+                extDegrees = height();
+            }
 
-            _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
+            double extMeters = extDegrees * metersPerDegree;
+            _circle.setRadius( 0.5*extMeters * 1.414121356237 ); /*sqrt(2)*/
         }
 
         _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );

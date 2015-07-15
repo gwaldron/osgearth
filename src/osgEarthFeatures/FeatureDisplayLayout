@@ -47,8 +47,11 @@ namespace osgEarth { namespace Features
         FeatureLevel( float minRange, float maxRange, const std::string& styleName );
 
         /** Minimum and aximum display ranges for this level */
-        float minRange() const { return *_minRange; }
-        float maxRange() const { return *_maxRange; }
+        optional<float>& minRange() { return _minRange; }
+        const optional<float>& minRange() const { return _minRange; }
+
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
 
         /** Style class (or style selector) name associated with this level (optional) */
         optional<std::string>& styleName() { return _styleName; }

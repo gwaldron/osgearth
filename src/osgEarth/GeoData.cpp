@@ -959,6 +959,21 @@ GeoExtent::recomputeCircle()
         }
         else // isGeographic
         {
+            osg::Vec3d center, sw, se, ne, nw;
+
+            GeoPoint(getSRS(), x, y, 0, ALTMODE_ABSOLUTE).toWorld(center);
+            GeoPoint(getSRS(), west(), south(), 0, ALTMODE_ABSOLUTE).toWorld(sw);
+            GeoPoint(getSRS(), east(), south(), 0, ALTMODE_ABSOLUTE).toWorld(se);
+            GeoPoint(getSRS(), east(), north(), 0, ALTMODE_ABSOLUTE).toWorld(ne);
+            GeoPoint(getSRS(), west(), north(), 0, ALTMODE_ABSOLUTE).toWorld(nw);
+            
+            double radius2 = (center-sw).length2();
+            radius2 = std::max(radius2, (center-se).length2());
+            radius2 = std::max(radius2, (center-ne).length2());
+            radius2 = std::max(radius2, (center-sw).length2());
+
+            _circle.setRadius( sqrt(radius2) );
+#if 0
             double extDegrees;
             double metersPerDegree = (getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
 
@@ -975,6 +990,7 @@ GeoExtent::recomputeCircle()
 
             double extMeters = extDegrees * metersPerDegree;
             _circle.setRadius( 0.5*extMeters * 1.414121356237 ); /*sqrt(2)*/
+#endif
         }
 
         _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );

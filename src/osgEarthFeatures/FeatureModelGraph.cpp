@@ -381,6 +381,27 @@ FeatureModelGraph::ctor()
         }
     }
 
+
+    // Compute the feature levels up front for tiled sources.
+    if (featureProfile->getTiled() && _useTiledSource)
+    {    
+        // Get the max range of the root level
+        MapFrame mapf = _session->createMapFrame();
+        osg::BoundingSphered bounds = getBoundInWorldCoords( featureProfile->getExtent(), &mapf );
+        double maxRange = bounds.radius() * *_options.layout()->tileSizeFactor();
+
+        _lodmap.resize(featureProfile->getMaxLevel() + 1);
+         
+        // Compute the max range of all the feature levels.  Each subsequent level if half of the parent.
+        for (unsigned int i = 0; i < featureProfile->getMaxLevel()+1; i++)
+        {
+            //OE_NOTICE << LC << "Computed max range " << maxRange << " for lod " << i << std::endl;
+            FeatureLevel* level = new FeatureLevel(0.0, maxRange);
+            _lodmap[i] = level;
+            maxRange /= 2.0;
+        }
+    }
+
     // Apply some default state. The options properties let you override the
     // defaults, but we'll set some reasonable state if they are not set.
 
@@ -488,13 +509,60 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
         return osg::BoundingSphered( center, equatorialExtent.getBoundingGeoCircle().getRadius() );
 #else
+        
+        /*
         GeoPoint centerPoint( workingExtent.getSRS(), center, ALTMODE_ABSOLUTE );
         centerPoint.toWorld( center );
         double radius = workingExtent.getBoundingGeoCircle().getRadius();
-
         //OE_WARN << LC << "Extent=" << workingExtent.toString() << "; center=" << center << "; radius=" << radius << "\n";
+        return osg::BoundingSphered( center, radius );  
+        */
 
-        return osg::BoundingSphered( center, radius );
+        // Compute the bounding sphere by sampling points along the extent.
+        int samples = 6;
+
+        double xSample = workingExtent.width() / (double)samples;
+        double ySample = workingExtent.height() / (double)samples;
+
+        osg::BoundingSphered bs;
+        for (unsigned int c = 0; c < samples+1; c++)
+        {
+            double x = workingExtent.xMin() + (double)c * xSample;
+            for (unsigned int r = 0; r < samples+1; r++)
+            {
+                double y = workingExtent.yMin() + (double)r * ySample;
+                osg::Vec3d world;
+                GeoPoint(workingExtent.getSRS(), x, y, 0, ALTMODE_ABSOLUTE).toWorld(world);
+                bs.expandBy(world);
+            }
+        }
+        return bs;
+              
+
+        /*
+        // Compute the bounding sphere by sampling the corners.
+        osg::Vec3d sw, se, ne, nw, e, w, s, n;
+        GeoPoint(workingExtent.getSRS(), workingExtent.west(), workingExtent.south(), 0, ALTMODE_ABSOLUTE).toWorld(sw);
+        GeoPoint(workingExtent.getSRS(), workingExtent.east(), workingExtent.south(), 0, ALTMODE_ABSOLUTE).toWorld(se);
+        GeoPoint(workingExtent.getSRS(), workingExtent.east(), workingExtent.north(), 0, ALTMODE_ABSOLUTE).toWorld(ne);
+        GeoPoint(workingExtent.getSRS(), workingExtent.west(), workingExtent.north(), 0, ALTMODE_ABSOLUTE).toWorld(nw);
+        GeoPoint(workingExtent.getSRS(), workingExtent.west(), center.y(),            0, ALTMODE_ABSOLUTE).toWorld(w);
+        GeoPoint(workingExtent.getSRS(), workingExtent.east(), center.y(),            0, ALTMODE_ABSOLUTE).toWorld(e);
+        GeoPoint(workingExtent.getSRS(), center.x(),           workingExtent.north(), 0, ALTMODE_ABSOLUTE).toWorld(n);
+        GeoPoint(workingExtent.getSRS(), center.x(),           workingExtent.south(), 0, ALTMODE_ABSOLUTE).toWorld(s);
+      
+        osg::BoundingSphered bs;
+        bs.expandBy(center);
+        bs.expandBy(sw);
+        bs.expandBy(se);
+        bs.expandBy(ne);
+        bs.expandBy(nw);
+        bs.expandBy(w);
+        bs.expandBy(e);
+        bs.expandBy(n);
+        bs.expandBy(s);
+       
+        */ 
 #endif
     }
 
@@ -747,10 +815,14 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
     unsigned subtileX = parentTileX * 2;
     unsigned subtileY = parentTileY * 2;
 
+    
     // Find the next level with data:
     const FeatureLevel* flevel = 0L;
+    
     for(unsigned lod=subtileLOD; lod<_lodmap.size() && !flevel; ++lod)
+    {
         flevel = _lodmap[lod];
+    }
 
     // should not happen (or this method would never have been called in teh first place) but
     // check anyway.
@@ -759,7 +831,7 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
         OE_INFO << LC << "INTERNAL: buildSubTilePagedLODs called but no further levels exist\n";
         return;
     }
-
+    
     // make a paged LOD for each subtile:
     for( unsigned u = subtileX; u <= subtileX + 1; ++u )
     {
@@ -767,17 +839,19 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
         {
             GeoExtent subtileFeatureExtent = s_getTileExtent( subtileLOD, u, v, _usableFeatureExtent );
             osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileFeatureExtent, mapf );
-
+      
             // Calculate the maximum camera range for the LOD.
             float maxRange;
 
-            if ( flevel->maxRange().isSet() )
+            
+            if ( flevel && flevel->maxRange().isSet() )
             {
                 // User set it expressly
                 maxRange = flevel->maxRange().get();
                 if ( maxRange < FLT_MAX )
                     maxRange += subtile_bs.radius();
             }
+            
             else
             {
                 // Calculate it based on the tile size factor.

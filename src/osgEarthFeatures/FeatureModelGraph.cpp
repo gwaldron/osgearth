@@ -831,6 +831,8 @@ FeatureModelGraph::buildLevel( const FeatureLevel& level, const GeoExtent& exten
     if ( key )
         query.tileKey() = *key;
 
+    query.setMap( _session->getMap() );
+
     // does the level have a style name set?
     if ( level.styleName().isSet() )
     {
@@ -995,6 +997,7 @@ FeatureModelGraph::build(const Style&         defaultStyle,
                 {
                     // merge the selector's query into the existing query
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
+                    combinedQuery.setMap( _session->getMap() );
 
                     // query, sort, and add each style group to th parent:
                     queryAndSortIntoStyleGroups( combinedQuery, *sel.styleExpression(), index, group );
@@ -1009,6 +1012,7 @@ FeatureModelGraph::build(const Style&         defaultStyle,
 
                     // .. and merge it's query into the existing query
                     Query combinedQuery = baseQuery.combineWith( *sel.query() );
+                    combinedQuery.setMap( _session->getMap() );
 
                     // then create the node.
                     osg::Group* styleGroup = createStyleGroup( combinedStyle, combinedQuery, index );
@@ -1066,6 +1070,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
     {
         // merge the selector's query into the existing query
         Query combinedQuery = baseQuery.combineWith( *selector->query() );
+        combinedQuery.setMap( _session->getMap() );
 
         // query, sort, and add each style group to the parent:
         queryAndSortIntoStyleGroups( combinedQuery, *selector->styleExpression(), index, parent );
@@ -1082,6 +1087,7 @@ FeatureModelGraph::buildStyleGroups(const StyleSelector* selector,
 
         // .. and merge it's query into the existing query
         Query combinedQuery = baseQuery.combineWith( *selector->query() );
+        combinedQuery.setMap( _session->getMap() );
 
         // then create the node.
         osg::Node* node = createStyleGroup( style, combinedQuery, index );

@@ -26,6 +26,7 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
 #include <osgEarth/VirtualProgram>
+#include <osg/Light>
 
 using namespace osgEarth;
 

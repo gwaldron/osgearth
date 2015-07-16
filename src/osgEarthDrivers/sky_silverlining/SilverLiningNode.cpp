@@ -155,13 +155,10 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 				cv->getEyePoint().length() - _SL->getSRS()->getEllipsoid()->getRadiusEquator() :
 				cv->getEyePoint().z();
 
-			//if (_lastAltitude <= *_options.cloudsMaxAltitude() )
-			{
-                _SL->updateLocation();
-                _SL->updateLight();
-                _SL->getAtmosphere()->UpdateSkyAndClouds();
-				_SL->getAtmosphere()->CullObjects();
-			}
+            _SL->updateLocation();
+            _SL->updateLight();
+            _SL->getAtmosphere()->UpdateSkyAndClouds();
+			_SL->getAtmosphere()->CullObjects();
         }
     }
 

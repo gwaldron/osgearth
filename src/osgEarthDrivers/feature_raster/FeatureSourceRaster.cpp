@@ -108,54 +108,63 @@ public:
                 {
                     double y = key.getExtent().yMin() + (double)r * pixHeight;
 
-                    int startIndex = -1;
+                    double minX = 0;
+                    double maxX = 0;
+                    float value = 0.0;
+
                     for (unsigned int c = 0; c < image.getImage()->s(); c++)
                     {
                         double x = key.getExtent().xMin() + (double)c * pixWidth;
 
                         osg::Vec4f color = reader(c, r);
 
-                        
-                        // If it's a forest emit a point.
-                        if (color.r() == 100.0f || color.r() == 40.0f || color.r() == 50.0f || color.r() == 60.0f || color.r() == 70 || color.r() == 90.0f )
+                        // Starting a new row.  Initialize the values.
+                        if (c == 0)
                         {
-                            if (startIndex < 0)
-                            {
-                                startIndex = c;
-                            }
+                            minX = x;
+                            maxX = x + pixWidth;
+                            value = color.r(); 
                         }
-                        else if (startIndex >= 0)
+                        // Ending a row, finish the polygon.
+                        else if (c == image.getImage()->s() -1)
                         {
-                            // Emit the polygon
-                            Polygon* polygon = new Polygon();
-                            double minX = key.getExtent().xMin() + (double)startIndex * pixWidth;
-                            double maxX = key.getExtent().xMin() + (double)(c+1) * pixWidth;
+                            // Increment the maxX to finish the row.
+                            maxX = x + pixWidth;
                             Polygon* poly = new Polygon();
                             poly->push_back(minX, y);
                             poly->push_back(maxX, y);
                             poly->push_back(maxX, y+pixHeight);
                             poly->push_back(minX, y+pixHeight);
                             Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
+                            feature->set("value", value);
                             features.push_back( feature );
-                            startIndex = -1;
+                            minX = x;
+                            maxX = x + pixWidth;
+                            value = color.r();
+                        }
+                        // The value is different, so complete the polygon and start a new one.
+                        else if (color.r() != value)
+                        {
+                            Polygon* poly = new Polygon();
+                            poly->push_back(minX, y);
+                            poly->push_back(maxX, y);
+                            poly->push_back(maxX, y+pixHeight);
+                            poly->push_back(minX, y+pixHeight);
+                            Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
+                            feature->set("value", value);
+                            features.push_back( feature );
+                            minX = x;
+                            maxX = x + pixWidth;
+                            value = color.r();
+                        }
+                        // The value is the same as the previous value, continue the polygon by increasing the maxX.
+                        else if (color.r() == value)
+                        {
+                            maxX = x + pixWidth;
                         }
                     }
 
-                    // Emit the polygon
-                    if (startIndex >= 0)
-                    {
-                        // Emit the polygon
-                        Polygon* polygon = new Polygon();
-                        double minX = key.getExtent().xMin() + (double)startIndex * pixWidth;
-                        double maxX = key.getExtent().xMin() + (double)(image.getImage()->s()) * pixWidth;
-                        Polygon* poly = new Polygon();
-                        poly->push_back(minX, y);
-                        poly->push_back(maxX, y);
-                        poly->push_back(maxX, y+pixHeight);
-                        poly->push_back(minX, y+pixHeight);
-                        Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
-                        features.push_back( feature );
-                    }
+                    
                 }
                
                 if (!features.empty())

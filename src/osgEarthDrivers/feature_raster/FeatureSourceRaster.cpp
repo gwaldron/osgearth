@@ -136,7 +136,7 @@ public:
                             poly->push_back(maxX, y+pixHeight);
                             poly->push_back(minX, y+pixHeight);
                             Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
-                            feature->set("value", value);
+                            feature->set(*_options.attribute(), value);
                             features.push_back( feature );
                             minX = x;
                             maxX = x + pixWidth;
@@ -151,7 +151,7 @@ public:
                             poly->push_back(maxX, y+pixHeight);
                             poly->push_back(minX, y+pixHeight);
                             Feature* feature = new Feature(poly, SpatialReference::create("wgs84"));
-                            feature->set("value", value);
+                            feature->set(*_options.attribute(), value);
                             features.push_back( feature );
                             minX = x;
                             maxX = x + pixWidth;

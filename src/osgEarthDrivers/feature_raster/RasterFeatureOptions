@@ -40,11 +40,15 @@ namespace osgEarth { namespace Drivers
         optional<unsigned int>& level() { return _level; }
         const optional<unsigned int>& level() const { return _level; }
 
+        optional<std::string>& attribute() { return _attribute; }
+        const optional<std::string>& attribute() const { return _attribute; }
+
 
     public:
         RasterFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) :
           FeatureSourceOptions( opt ),
-          _level(0)
+          _level(0),
+          _attribute("value")
           {
             setDriver( "raster" );            
             fromConfig( _conf );
@@ -57,6 +61,7 @@ namespace osgEarth { namespace Drivers
             Config conf = FeatureSourceOptions::getConfig();
             conf.updateIfSet("layer", _layer);
             conf.updateIfSet("level", _level);
+            conf.updateIfSet("attribute", _attribute);
             return conf;
         }
 
@@ -70,10 +75,12 @@ namespace osgEarth { namespace Drivers
         void fromConfig( const Config& conf ) {
             conf.getIfSet("layer", _layer);
             conf.getIfSet("level", _level);
+            conf.getIfSet("attribute", _attribute);
         }
 
         optional< std::string > _layer;
         optional< unsigned int > _level;
+        optional< std::string > _attribute;
     };
 
 } } // namespace osgEarth::Drivers

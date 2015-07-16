@@ -81,7 +81,8 @@ namespace osgEarth
         const optional<float>& minTileRangeFactor() const { return _minTileRangeFactor; }
 
         /**
-         * The image-layer fading attenuation distance
+         * Distance (m) over which to ramp min_range and max_range blending
+         * Default = 0.
          */
         optional<float>& attenuationDistance() { return _attenuationDistance; }
         const optional<float>& attentuationDistance() const { return _attenuationDistance; }

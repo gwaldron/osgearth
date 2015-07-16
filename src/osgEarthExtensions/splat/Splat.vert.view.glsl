@@ -18,9 +18,6 @@ void oe_splat_vertex_view(inout vec4 VertexVIEW)
     // range from camera to vertex
     oe_splat_range = -VertexVIEW.z;
 
-    // Choose the best range based on distance to camera.
-    oe_splat_range = clamp(oe_splat_range, oe_SplatRanges[0], oe_SplatRanges[RANGE_COUNT-1]);
-
     // calculate the coverage sampling coordinates. The texture matrix accounts
     // for any super-sampling that might be in effect for the current LOD.
     oe_splat_covtc = ($COVERAGE_TEXMAT_UNIFORM * oe_layer_tilec).st;

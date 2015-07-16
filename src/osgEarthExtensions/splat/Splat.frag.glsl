@@ -279,14 +279,15 @@ void oe_splat_complex(inout vec4 color)
     float lod0;
     float lod1;
     float lodBlend;
+    float clampedRange = clamp(oe_splat_range, oe_SplatRanges[0], oe_SplatRanges[RANGE_COUNT-1]);
 
     for(int i=0, lodIndex=-1; i<RANGE_COUNT-1 && lodIndex < 0; ++i)
     {
-        if ( oe_splat_range >= oe_SplatRanges[i] && oe_splat_range <= oe_SplatRanges[i+1] )
+        if ( clampedRange >= oe_SplatRanges[i] && clampedRange <= oe_SplatRanges[i+1] )
         {
             lod0 = oe_SplatLevels[i]   + scaleOffset;
             lod1 = oe_SplatLevels[i+1] + scaleOffset;
-            lodBlend = (oe_splat_range-oe_SplatRanges[i])/(oe_SplatRanges[i+1]-oe_SplatRanges[i]);
+            lodBlend = clamp((clampedRange-oe_SplatRanges[i])/(oe_SplatRanges[i+1]-oe_SplatRanges[i]), 0.0, 1.0);
         }
     }
 

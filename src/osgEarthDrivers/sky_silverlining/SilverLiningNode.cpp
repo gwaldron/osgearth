@@ -33,9 +33,10 @@
 using namespace osgEarth::SilverLining;
 
 SilverLiningNode::SilverLiningNode(const osgEarth::Map*       map,
-                                   const SilverLiningOptions& options) :
-_options     (options),
-_lastAltitude(DBL_MAX)
+                                   const SilverLiningOptions& options)
+	: SkyNode(options)
+	, _options(options)
+	, _lastAltitude(DBL_MAX)
 {
     // Create a new Light for the Sun.
     _light = new osg::Light();

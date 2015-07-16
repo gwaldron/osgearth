@@ -87,7 +87,7 @@ namespace
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
     
-    typedef std::pair<const osg::Node*, osg::BoundingBoxd> RenderLeafBox;
+    typedef std::pair<const osg::Node*, osg::BoundingBox> RenderLeafBox;
 
     // Data structure stored one-per-View.
     struct PerCamInfo

@@ -1,8 +1,8 @@
 #version 330
 
-#pragma vp_entryPoint "oe_splat_simple"
+#pragma vp_entryPoint "oe_splat_complex"
 #pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.4"
+#pragma vp_order      "0.4"                 // before terrain image layers
 
 // define to activate 'edit' mode in which uniforms control
 // the splatting parameters.

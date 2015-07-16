@@ -51,14 +51,14 @@ namespace
     {
         osg::ref_ptr<osg::Uniform>              _uniform;
         osg::ref_ptr<osg::Camera::DrawCallback> _next;
-        float                                   _C;
+        float                                   _coeff;
 
         SetFarPlaneUniformCallback(osg::Uniform*              uniform,
                                    osg::Camera::DrawCallback* next )
         {
             _uniform = uniform;
             _next    = next;
-            _C       = 1.0f;
+            _coeff   = 1.0f;
         }
 
         void operator () (osg::RenderInfo& renderInfo) const
@@ -69,7 +69,7 @@ namespace
             {
                 float vfov, ar, n, f;
                 proj.getPerspective(vfov, ar, n, f);
-                float fc = (float)(2.0/LOG2(_C*f+1.0));
+                float fc = (float)(2.0/LOG2(_coeff*f+1.0));
                 _uniform->set( fc );
             }
             else // ortho

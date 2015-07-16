@@ -27,6 +27,11 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/VirtualProgram>
 
+// GL_LIGHTING is not always defined on GLES so define it.
+#ifndef GL_LIGHTING
+    #define GL_LIGHTING 0x0B50
+#endif
+
 using namespace osgEarth;
 
 namespace

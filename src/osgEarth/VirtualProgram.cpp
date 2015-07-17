@@ -181,12 +181,10 @@ namespace
                     header = line;
                 }
 
-#ifdef __ANDROID__
                 else if ( tokens[0] == "#pragma")
 		{
 		    continue;
 		}
-#endif
 
                 else
                 {

@@ -16,6 +16,7 @@ Jump to a symbol:
  * Render_
  * Skin_
  * Text_
+ * Coverage_
  
 **Developer Note**:
 

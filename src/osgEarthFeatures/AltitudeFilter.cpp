@@ -149,6 +149,9 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
     // establish an elevation query interface based on the features' SRS.
     ElevationQuery eq( mapf );
 
+    // want a result even if it's low res
+    eq.setFallBackOnNoData( true );
+
     NumericExpression scaleExpr;
     if ( _altitude->verticalScale().isSet() )
         scaleExpr = *_altitude->verticalScale();

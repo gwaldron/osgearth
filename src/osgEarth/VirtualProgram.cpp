@@ -181,6 +181,11 @@ namespace
                     header = line;
                 }
 
+                else if ( tokens[0] == "#pragma")
+		{
+		    continue;
+		}
+
                 else
                 {
                     body << (*line_iter) << "\n";

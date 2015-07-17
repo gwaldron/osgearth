@@ -216,10 +216,9 @@ _liveTiles     ( liveTiles ),
 _terrainOptions( terrainOptions ),
 _terrainReqs   ( terrainReqs )
 {
-    _meshHFCache = new HeightFieldCache(liveTiles, terrainOptions);
-    _meshHFCache->setTileSize( terrainOptions.tileSize().get() );
+    _meshHFCache = new HeightFieldCache( terrainOptions );
 
-    _normalHFCache = new HeightFieldCache(liveTiles, terrainOptions);
+    _normalHFCache = new HeightFieldCache( terrainOptions );
     _normalHFCache->setTileSize( 257 );
 
     _debug = terrainOptions.debug() == true;

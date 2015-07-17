@@ -181,6 +181,13 @@ namespace
                     header = line;
                 }
 
+#ifdef __ANDROID__
+                else if ( tokens[0] == "#pragma")
+		{
+		    continue;
+		}
+#endif
+
                 else
                 {
                     body << (*line_iter) << "\n";
@@ -328,22 +335,6 @@ namespace
                 fragShaderBuf << h->second << "\n";
             fragShaderBuf << fragBodyText << "\n";
             fragBodyText = fragShaderBuf.str();
-
-	    std::string pragma("#pragma");
-	    std::string newPragma("//#pragma");
-            size_t pos = vertBodyText.find(pragma);
-	    while (pos != std::string::npos)
-	    {
-	        vertBodyText.replace(pos, 7, newPragma);
-		pos = vertBodyText.find(pragma, pos + 3);
-	    }
-
-	    pos = fragBodyText.find(pragma);
-	    while (pos != std::string::npos)
-	    {
-	        fragBodyText.replace(pos, 7, newPragma);
-		pos = fragBodyText.find(pragma, pos + 3);
-	    }
 
             // add them to the program.
             program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );
@@ -634,7 +625,7 @@ _acceptCallbacksVaryPerFrame( false )
     // It will cause a conflict in the Registry.
 
     // check the the dump env var
-//    if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
+    if ( ::getenv(OSGEARTH_DUMP_SHADERS) != 0L )
     {
         s_dumpShaders = true;
     }

@@ -345,7 +345,7 @@ FeatureModelGraph::ctor()
 
 
     // compute an appropriate tileSizeFactor for a tiled source if a max range was set but no tilesize factor
-    if (_options.layout()->maxRange().isSet() || _options.maxRange().isSet())
+    if (_options.layout().isSet() && (_options.layout()->maxRange().isSet() || _options.maxRange().isSet()))
     {
         // select the max range either from the Layout or from the model layer options.
         float userMaxRange = FLT_MAX;

@@ -112,7 +112,7 @@ namespace osgEarth
         // Associates a view and a pick camera for that view.
         struct PickContext
         {
-            osg::ref_ptr<osg::View>      _view;
+            osg::observer_ptr<osg::View> _view;
             osg::ref_ptr<osg::Camera>    _pickCamera;
             osg::ref_ptr<osg::Image>     _image;
             osg::ref_ptr<osg::Texture2D> _tex;

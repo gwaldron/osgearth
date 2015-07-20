@@ -1,5 +1,7 @@
 <!--
-osgEarth Sample - Annotations
+osgEarth Sample - Logrithmic depth buffer.
+
+Enable the logrithmic depth buffer by running osgearth_viewer with --logdepth
 -->
 <map name="readymap.org" type="geocentric" version="2">
 

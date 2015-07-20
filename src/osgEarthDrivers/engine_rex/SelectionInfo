@@ -51,7 +51,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         static double   morphStartRatio(void);
 
         // LOD at which morphing should start
-        static unsigned lodForMorphing(void);
+        static unsigned lodForMorphing(bool isProjected);
 
         VisParameters visParameters(unsigned lod) const;
     private:
@@ -62,7 +62,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         static const double             _fMorphStartRatio; 
 
         // This is the lod at which morphing should start (used by shader)
-        static const unsigned           _uiLODForMorphing;
+        static const unsigned           _uiLODForMorphingRoundEarth;
         
         // This is used to determine _numLods given a fLodFar during initialize
         // initialize. This is the distance beyond which further lods (and 

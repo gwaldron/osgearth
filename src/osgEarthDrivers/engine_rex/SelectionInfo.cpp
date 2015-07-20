@@ -7,13 +7,13 @@ using namespace osgEarth;
 
 #define LC "[SelectionInfo] "
 
-const unsigned SelectionInfo::_uiLODForMorphing = 5;
+const unsigned SelectionInfo::_uiLODForMorphingRoundEarth = 5;
 const double   SelectionInfo::_fLodLowerBound   = 12.0;
 const double   SelectionInfo::_fMorphStartRatio = 0.66;
 
-unsigned SelectionInfo::lodForMorphing(void)
+unsigned SelectionInfo::lodForMorphing(bool isProjected)
 {
-    return _uiLODForMorphing;
+    return (isProjected) ? 0 : _uiLODForMorphingRoundEarth;
 }
 
 double SelectionInfo::morphStartRatio(void) 

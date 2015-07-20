@@ -21,7 +21,7 @@ Demonstrates the use of the night color filter, which only shows a layer in nigh
     </image>      
 
     <external>
-        <sky driver="simple" hours="14.0"/>
+        <sky driver="simple" hours="14.0" ambient="1.0"/>
     </external>
     
 </map>

@@ -120,7 +120,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void regularUpdate(osg::NodeVisitor& nv);
 
         bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo);
-        float getSubDivisionRange(void) const;
+        float getVisibilityRangeHint(void) const;
         float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
 
         void updateTileSpecificUniforms(const SelectionInfo& selectionInfo);

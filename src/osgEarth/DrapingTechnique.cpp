@@ -25,7 +25,6 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
-#include <osgEarth/RTTPicker>
 
 #include <osg/BlendFunc>
 #include <osg/TexGen>

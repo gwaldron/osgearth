@@ -51,7 +51,7 @@ bool SelectionInfo::initialized(void) const
     return _vecVisParams.size()>0;
 }
 
-void SelectionInfo::initialize(const RexTerrainEngineOptions& terrainOptions, double fLodFar)
+void SelectionInfo::initialize(unsigned uiTileSize, unsigned int uiMaxLod, double fLodFar)
 {
     if (initialized())
     {
@@ -63,17 +63,14 @@ void SelectionInfo::initialize(const RexTerrainEngineOptions& terrainOptions, do
         OE_INFO << LC <<"Error: Invalid fLodFar hint"<<std::endl;
         return;
     }
-    _uiGridDimensions.first  = (*terrainOptions.tileSize());
-    _uiGridDimensions.second = (*terrainOptions.tileSize());
-
-
-    unsigned maxLods= (*terrainOptions.maxLOD());
+    _uiGridDimensions.first  = uiTileSize;
+    _uiGridDimensions.second = uiTileSize;
 
     double fLodNear = 0;
     float fRatio = 1.0;
 
     unsigned numLods = 0;
-    while(numLods<maxLods)
+    while(numLods<uiMaxLod)
     {
         double fVisibility = fLodNear + fRatio*(fLodFar-fLodNear);
         if (fVisibility<_fLodLowerBound)

@@ -116,7 +116,8 @@ TileNode::create(const TileKey& key, EngineContext* context)
     if (context->getSelectionInfo().initialized()==false)
     {
         SelectionInfo& selectionInfo = const_cast<SelectionInfo&>(context->getSelectionInfo());
-        selectionInfo.initialize(context->_options, getVisibilityRangeHint());
+
+        selectionInfo.initialize(*(context->_options.maxLOD()), *(context->_options.tileSize()), getVisibilityRangeHint());
     }
 
     createTileSpecificUniforms();

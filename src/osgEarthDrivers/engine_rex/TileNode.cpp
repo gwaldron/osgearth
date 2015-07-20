@@ -73,7 +73,9 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
-    context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo().lodForMorphing(), context->getMapFrame().getMapInfo(), geom);
+    bool isProjected = _key.getProfile()->getSRS()->isProjected();
+    unsigned lodForMorphing = context->getSelectionInfo().lodForMorphing(isProjected);
+    context->getGeometryPool()->getPooledGeometry(key, lodForMorphing, context->getMapFrame().getMapInfo(), geom);
 
     _proxyGeometry = new ProxyGeometry(key
                                      , context->getMapFrame().getMapInfo()
@@ -212,7 +214,7 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
 
     // Update grid dims
     float fGridDims = selectionInfo.gridDimX()-1;
-    _tileGridDimsUniform->set(osg::Vec4f(fGridDims, fGridDims*0.5f, 2.0/fGridDims, selectionInfo.lodForMorphing()));
+    _tileGridDimsUniform->set(osg::Vec4f(fGridDims, fGridDims*0.5f, 2.0/fGridDims, selectionInfo.lodForMorphing(_key.getProfile()->getSRS()->isProjected())));
 
     // update tile extents
     float fXExtents = abs(bbox.xMax()-bbox.xMin());

@@ -25,6 +25,7 @@ SET(TARGET_SRC
     ExpireTiles.cpp
     MaskGenerator.cpp
     MPTexture.cpp
+	SelectionInfo.cpp
     SurfaceNode.cpp
     SurfaceNodeFactory.cpp
 	TileDrawable.cpp

@@ -73,7 +73,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
-    context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo()._uiLODForMorphing, context->getMapFrame().getMapInfo(), geom);
+    context->getGeometryPool()->getPooledGeometry(key, context->getSelectionInfo().lodForMorphing(), context->getMapFrame().getMapInfo(), geom);
 
     _proxyGeometry = new ProxyGeometry(key
                                      , context->getMapFrame().getMapInfo()
@@ -107,6 +107,14 @@ TileNode::create(const TileKey& key, EngineContext* context)
     if ( context->getMapFrame().getMapInfo().isGeocentric() )
     {
         addCullCallback( ClusterCullingFactory::create(key.getExtent()) );
+    }
+
+    // PPP: Better way to do this rather than here?
+    // Can't do it at RexTerrainEngineNode level, because the SurfaceNode is not valid yet
+    if (context->getSelectionInfo().initialized()==false)
+    {
+        SelectionInfo& selectionInfo = const_cast<SelectionInfo&>(context->getSelectionInfo());
+        selectionInfo.initialize(context->_options, getVisibilityRangeHint());
     }
 
     createTileSpecificUniforms();
@@ -187,9 +195,8 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
 
     // update the morph constants
 
-    float fStart = (float)selectionInfo._fMorphStart[_key.getLOD()];
-    float fEnd   = (float)selectionInfo._fMorphEnd[_key.getLOD()];
-
+    float fStart = (float)selectionInfo.visParameters(_key.getLOD())._fMorphStart;
+    float fEnd   = (float)selectionInfo.visParameters(_key.getLOD())._fMorphEnd;
 
     float one_by_end_minus_start = fEnd - fStart;
     one_by_end_minus_start = 1.0f/one_by_end_minus_start;
@@ -204,8 +211,8 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
     _tileMorphUniform->set((vMorphConstants));
 
     // Update grid dims
-    float fGridDims = selectionInfo._uiGridDimensions.first-1;
-    _tileGridDimsUniform->set(osg::Vec4f(fGridDims, fGridDims*0.5f, 2.0/fGridDims, selectionInfo._uiLODForMorphing));
+    float fGridDims = selectionInfo.gridDimX()-1;
+    _tileGridDimsUniform->set(osg::Vec4f(fGridDims, fGridDims*0.5f, 2.0/fGridDims, selectionInfo.lodForMorphing()));
 
     // update tile extents
     float fXExtents = abs(bbox.xMax()-bbox.xMin());
@@ -255,11 +262,16 @@ TileNode::getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const
 }
 
 float
-TileNode::getSubDivisionRange(void) const
+TileNode::getVisibilityRangeHint(void) const
 {
-    // TODO - placeholder for now
-    const float factor = 6.0f;
-
+    if (getTileKey().getLOD()!=0)
+    {
+        OE_INFO << LC <<"Error: Visibility Range hint can be computed only using LOD 0"<<std::endl;
+        return -1;
+    }
+    // The motivation here is to use the extents of the tile at lowest resolution
+    // along with a factor as an estimate of the visibility range
+    const float factor = 6.0f * 2.5f;
     const osg::BoundingBox& box = _surface->getAlignedBoundingBox();
     return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
@@ -270,14 +282,14 @@ bool
 TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo)
 {
     unsigned currLOD = _key.getLOD();
-    if (   currLOD < selectionInfo._numLods
-        && currLOD != selectionInfo._numLods-1)
+    if (   currLOD <  selectionInfo.numLods()
+        && currLOD != selectionInfo.numLods()-1)
     {
         osg::Vec3 cameraPos = nv.getViewPoint();
 #if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
         OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
 #endif
-        float fRadius = selectionInfo._fVisibilityRanges[currLOD+1];
+        float fRadius = (float)selectionInfo.visParameters(currLOD+1)._fVisibility;
         bool bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius, fRadius*fRadius);
         return bAnyChildVisible;
     }

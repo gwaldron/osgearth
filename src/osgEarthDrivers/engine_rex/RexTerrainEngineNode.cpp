@@ -479,40 +479,6 @@ void RexTerrainEngineNode::destroySelectionInfo()
 void RexTerrainEngineNode::buildSelectionInfo()
 {
     _selectionInfo = new SelectionInfo;
-
-    _selectionInfo->_uiGridDimensions.first = _selectionInfo->_uiGridDimensions.second = (*_terrainOptions.tileSize());    
-    _selectionInfo->_numLods = 23;
-    _selectionInfo->_uiLODForMorphing = 5;
-	_selectionInfo->_fMorphStartRatio = 0.66;
-
-    double fLodNear = 0;
-    double fLodFar = 38268824 * 2.5; //5; //*5; 
-
-    float fRatio = 1.0;
-    _selectionInfo->_fVisibilityRanges.resize(_selectionInfo->_numLods);
-    for( int i = 0; i < _selectionInfo->_numLods; ++i )
-    {
-        _selectionInfo->_fVisibilityRanges[i] = fLodNear + fRatio*(fLodFar-fLodNear);
-        fRatio*= 0.5;
-    }
-
-    double fPrevPos = fLodNear;
-    _selectionInfo->_fMorphStart.resize(_selectionInfo->_numLods, 0);
-    _selectionInfo->_fMorphEnd.resize(_selectionInfo->_numLods, 0);
-    for (int i=_selectionInfo->_numLods-1; i>=0; --i)
-    {
-        _selectionInfo->_fMorphEnd[i] = _selectionInfo->_fVisibilityRanges[i];
-        _selectionInfo->_fMorphStart[i] = fPrevPos + (_selectionInfo->_fMorphEnd[i] - fPrevPos) * _selectionInfo->_fMorphStartRatio;
-
-        fPrevPos = _selectionInfo->_fMorphStart[i];
-    }
-    for( int i = 0; i < _selectionInfo->_numLods; ++i ) 
-    {
-        OE_INFO << LC << "LOD[" << i<<"] = "<<_selectionInfo->_fVisibilityRanges[i]
-        <<" Start: "<<_selectionInfo->_fMorphStart[i]
-        <<" End  : "<<_selectionInfo->_fMorphEnd[i]
-        <<std::endl;
-    }
 }
 void
 RexTerrainEngineNode::dirtyTerrain()

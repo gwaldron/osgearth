@@ -25,17 +25,49 @@
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class RexTerrainEngineOptions;
+
+    struct VisParameters
+    {
+        double _fVisibility;
+        double _fMorphStart;
+        double _fMorphEnd;
+    };
     class SelectionInfo
     {
     public:
-        size_t                    _numLods;
-        std::pair<size_t, size_t> _uiGridDimensions; // Dimensions of the skeleton grid
-        size_t                    _uiLODForMorphing; // LOD at which morphing should start
-        double                    _fMorphStartRatio; // Morph start ratio
+        bool initialized(void) const;
+        void initialize(const RexTerrainEngineOptions& options, double fLodFar);
 
-        std::vector<double>       _fVisibilityRanges;
-        std::vector<double>       _fMorphStart;
-        std::vector<double>       _fMorphEnd;
+        unsigned numLods(void) const;
+
+        // Dimensions of the skeleton grid in X
+        unsigned gridDimX(void) const;
+
+        // Dimensions of the skeleton grid in Y
+        unsigned gridDimY(void) const;
+
+        // Morph start ratio
+        static double   morphStartRatio(void);
+
+        // LOD at which morphing should start
+        static unsigned lodForMorphing(void);
+
+        VisParameters visParameters(unsigned lod) const;
+    private:
+        size_t                          _numLods;
+        std::pair<unsigned, unsigned>   _uiGridDimensions; 
+        std::vector<VisParameters>      _vecVisParams;
+
+        static const double             _fMorphStartRatio; 
+
+        // This is the lod at which morphing should start (used by shader)
+        static const unsigned           _uiLODForMorphing;
+        
+        // This is used to determine _numLods given a fLodFar during initialize
+        // initialize. This is the distance beyond which further lods (and 
+        // hence VisParameters) are not generated
+        static const double             _fLodLowerBound;
     };
 }
 }

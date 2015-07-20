@@ -65,13 +65,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     class HeightFieldCache : public osg::Referenced //, public Revisioned
     {
     public:
-        HeightFieldCache(TileNodeRegistry* tiles, const MPTerrainEngineOptions& options) :
-          _tiles   ( tiles ),
-          _cache   ( true, 128 ),
-          _tileSize( 17 )
-        {
-            _firstLOD = options.firstLOD().get();            
-        }
+        HeightFieldCache(const MPTerrainEngineOptions& options);
 
         void setTileSize(int tileSize)
         {
@@ -95,9 +89,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     private:
         mutable LRUCache<HFKey,HFValue> _cache;
-        TileNodeRegistry*               _tiles;
         int                             _firstLOD;
         int                             _tileSize;
+        bool                            _useParentAsReferenceHF;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

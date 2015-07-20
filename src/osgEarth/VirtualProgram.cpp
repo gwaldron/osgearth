@@ -181,6 +181,14 @@ namespace
                     header = line;
                 }
 
+                else if ( tokens[0] == "#pragma")
+                {
+                    // Discards all pragmas, since the double-quotes in them are illegal in at least
+                    // GLSL ES compiler (on Android). We should consider doing this for all GLSL
+                    // since technically quoting characters are not part of the GLSL grammar at all.
+                    continue;
+                }
+
                 else
                 {
                     body << (*line_iter) << "\n";

@@ -33,6 +33,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/LatLongFormatter>
+#include <osgEarthUtil/ExampleResources>
 #include <iomanip>
 
 using namespace osgEarth;
@@ -58,6 +59,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     {
         _map = s_mapNode->getMap();
         _query.setMaxTilesToCache(10);
+        _query.setFallBackOnNoData( false );
         _path.push_back( s_mapNode->getTerrainEngine() );
     }
 
@@ -149,7 +151,11 @@ int main(int argc, char** argv)
 
     osgViewer::Viewer viewer(arguments);
 
-    s_mapNode = MapNode::load(arguments);
+    s_mapNode = 0L;
+    osg::Node* earthFile = MapNodeHelper().load(arguments, &viewer);
+    if (earthFile)
+        s_mapNode = MapNode::get(earthFile);
+
     if ( !s_mapNode )
     {
         OE_WARN << "Unable to load earth file." << std::endl;
@@ -163,7 +169,7 @@ int main(int argc, char** argv)
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
     // The MapNode will render the Map object in the scene graph.
-    root->addChild( s_mapNode );
+    root->addChild( earthFile );
 
     // Make the readout:
     Grid* grid = new Grid();
@@ -186,8 +192,7 @@ int main(int argc, char** argv)
         mapSRS->getVerticalDatum()->getName() : 
         Stringify() << "geodetic (" << mapSRS->getEllipsoid()->getName() << ")" );
 
-    ControlCanvas* canvas = new ControlCanvas();    
-    root->addChild(canvas);
+    ControlCanvas* canvas = ControlCanvas::get(&viewer);
     canvas->addControl( grid );
 
     // An event handler that will respond to mouse clicks:

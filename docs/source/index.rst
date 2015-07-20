@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-osgEarth - a C++ Terrain SDK
-============================
+osgEarth - a C++ Geospatial SDK
+===============================
 Welcome to the osgEarth_ documentation project!
 
 osgEarth_ is a big SDK. Keeping up on the documentation is not easy!

@@ -527,6 +527,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
         // Use an appropriate resolution for this extents width
         double resolution = workingExtent.width();
         ElevationQuery query( *mapf );
+        query.setFallBackOnNoData( true );
         GeoPoint p( mapf->getProfile()->getSRS(), center, ALTMODE_ABSOLUTE );
         query.getElevation( p, center.z(), resolution );
         centerZ = center.z();
@@ -1307,7 +1308,11 @@ FeatureModelGraph::createStyleGroup(const Style&         style,
 
     FilterContext context(contextPrototype);
 
-    // first Crop the feature set to the working extent:
+    // First Crop the feature set to the working extent.
+    // Note: There is an obscure edge case that can happen is a feature's centroid
+    // falls exactly on the crop extent boundary. In that case the feature can
+    // show up in more than one tile. It's rare and not trivial to mitigate so for now
+    // we have decided to do nothing. :)
     CropFilter crop( 
         _options.layout().isSet() && _options.layout()->cropFeatures() == true ? 
         CropFilter::METHOD_CROPPING : CropFilter::METHOD_CENTROID );

@@ -36,7 +36,9 @@ Note:  You must have GDAL built with Expat support to read GPX files
     </model>
 	
 	<external>
-        <viewpoint name="Fells Loop" heading="0" height="0" lat="42.43095" long="-71.1076" pitch="-90" range="5000"/>
+        <viewpoints>
+            <viewpoint name="Fells Loop" heading="0" height="0" lat="42.43095" long="-71.1076" pitch="-90" range="5000"/>
+        </viewpoints>
     </external>
   
 </map>

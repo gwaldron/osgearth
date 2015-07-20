@@ -25,9 +25,8 @@ void oe_mp_apply_coloring(inout vec4 color)
     texel.a = mix(texel.a, texel.a*oe_layer_opacity*oe_layer_rangeOpacity, applyImagery);
 
 #ifdef MP_USE_BLENDING
-    //float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0;
-    //color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer);
-    color.rgb = mix(color.rgb, texel.rgb, texel.a);
+    float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0;
+    color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer);    
 #else
     color = texel;
 #endif

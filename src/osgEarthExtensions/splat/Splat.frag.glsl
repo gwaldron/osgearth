@@ -2,7 +2,7 @@
 
 #pragma vp_entryPoint "oe_splat_complex"
 #pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.4"
+#pragma vp_order      "0.4"                 // before terrain image layers
 
 // define to activate 'edit' mode in which uniforms control
 // the splatting parameters.
@@ -26,16 +26,13 @@ uniform vec4 oe_tile_key;
 // from the vertex shader:
 in vec2 oe_splat_covtc;
 in float oe_splat_range;
-flat in vec3 oe_splat_scaleBias0; 
-flat in vec3 oe_splat_scaleBias1;
-flat in int oe_splat_lodIndex;
-
 
 // from SplatTerrainEffect:
 uniform float oe_splat_warp;
 uniform float oe_splat_blur;
 uniform sampler2D oe_splat_coverageTex;
 uniform sampler2DArray oe_splatTex;
+uniform float oe_splat_scaleOffset;
 
 uniform float oe_splat_detailRange;
 uniform float oe_splat_noiseScale;
@@ -224,13 +221,13 @@ vec4 oe_splat_getNoise(in vec2 tc)
 // Scales the incoming tile splat coordinates to match the requested
 // LOD level. We offset the level from the current tile key's LOD (.z)
 // because otherwise you run into single-precision jitter at high LODs.
-vec2 oe_splat_getSplatCoords(float lod)
+vec2 oe_splat_getSplatCoords(in vec2 tc, float lod)
 {
     float dL = oe_tile_key.z - lod;
     float factor = exp2(dL);
     float invFactor = 1.0/factor;
     vec2 scale = vec2(invFactor); 
-    vec2 result = oe_layer_tilec.st * scale;
+    vec2 result = tc * scale;
 
     // For upsampling we need to calculate an offset as well
     if ( factor >= 1.0 )
@@ -249,7 +246,7 @@ vec2 oe_splat_getSplatCoords(float lod)
 void oe_splat_simple(inout vec4 color)
 {
     float noiseLOD = floor(oe_splat_noiseScale);
-    vec2 noiseCoords = oe_splat_getSplatCoords(noiseLOD);
+    vec2 noiseCoords = oe_splat_getSplatCoords(oe_layer_tilec.st, noiseLOD);
 
     oe_SplatEnv env;
     env.range = oe_splat_range;
@@ -257,8 +254,7 @@ void oe_splat_simple(inout vec4 color)
     env.noise = oe_splat_getNoise(noiseCoords);
     env.elevation = 0.0;
 
-    vec2 splat_tc = oe_layer_tilec.st*oe_splat_scaleBias0.x + oe_splat_scaleBias0.yz;
-    color = oe_splat_bilinear(splat_tc, env);
+    color = oe_splat_bilinear(oe_layer_tilec.st, env);
 }
 
 // Main entry point for fragment shader.
@@ -266,7 +262,7 @@ void oe_splat_complex(inout vec4 color)
 {
     // Noise coords.
     float noiseLOD = floor(oe_splat_noiseScale);
-    vec2 noiseCoords = oe_splat_getSplatCoords(noiseLOD); //TODO: move to VS for slight speedup
+    vec2 noiseCoords = oe_splat_getSplatCoords(oe_layer_tilec.st, noiseLOD); //TODO: move to VS for slight speedup
 
     oe_SplatEnv env;
     env.range = oe_splat_range;
@@ -274,15 +270,36 @@ void oe_splat_complex(inout vec4 color)
     env.noise = oe_splat_getNoise(noiseCoords);
     env.elevation = 0.0;
 
-    vec2 splat_tc0 = oe_layer_tilec.st*oe_splat_scaleBias0.x + oe_splat_scaleBias0.yz;
-    vec4 texel0 = oe_splat_bilinear(splat_tc0, env);
+    // quantize the scale offset so we take the hit in the FS
+    float scaleOffset = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset);
+        
+    // Calculate the 2 LODs we need to blend. We have to do this in the FS because 
+    // it's quite possible for a single triangle to span more than 2 LODs.
+    int   lodIndex = -1;
+    float lod0;
+    float lod1;
+    float lodBlend;
+    float clampedRange = clamp(oe_splat_range, oe_SplatRanges[0], oe_SplatRanges[RANGE_COUNT-1]);
 
-    vec2 splat_tc1 = oe_layer_tilec.st*oe_splat_scaleBias1.x + oe_splat_scaleBias1.yz;
-    vec4 texel1 = oe_splat_bilinear(splat_tc1, env);
+    for(int i=0, lodIndex=-1; i<RANGE_COUNT-1 && lodIndex < 0; ++i)
+    {
+        if ( clampedRange >= oe_SplatRanges[i] && clampedRange <= oe_SplatRanges[i+1] )
+        {
+            lod0 = oe_SplatLevels[i]   + scaleOffset;
+            lod1 = oe_SplatLevels[i+1] + scaleOffset;
+            lodBlend = clamp((clampedRange-oe_SplatRanges[i])/(oe_SplatRanges[i+1]-oe_SplatRanges[i]), 0.0, 1.0);
+        }
+    }
+
+    // Sample the two LODs:
+    vec2 tc0 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0);
+    vec4 texel0 = oe_splat_bilinear(tc0, env);
     
-    // calculate the blending ratio.
-    float r = (oe_splat_range-oe_SplatRanges[oe_splat_lodIndex])/(oe_SplatRanges[oe_splat_lodIndex+1]-oe_SplatRanges[oe_splat_lodIndex]);
-    vec4 texel = mix(texel0, texel1, r);
+    vec2 tc1 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod1);
+    vec4 texel1 = oe_splat_bilinear(tc1, env);
+    
+    // Blend:
+    vec4 texel = mix(texel0, texel1, lodBlend);
 
     color = mix(color, texel, texel.a);
 

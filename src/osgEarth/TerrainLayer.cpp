@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -641,11 +641,11 @@ TerrainLayer::createTileSource()
 
 #if 0 //debugging 
             // dump out data extents:
-            if ( _tileSource->getDataExtents().size() > 0 )
+            if ( ts->getDataExtents().size() > 0 )
             {
                 OE_INFO << LC << "Data extents reported:" << std::endl;
-                for(DataExtentList::const_iterator i = _tileSource->getDataExtents().begin();
-                    i != _tileSource->getDataExtents().end(); ++i)
+                for(DataExtentList::const_iterator i = ts->getDataExtents().begin();
+                    i != ts->getDataExtents().end(); ++i)
                 {
                     const DataExtent& de = *i;
                     OE_INFO << "    "

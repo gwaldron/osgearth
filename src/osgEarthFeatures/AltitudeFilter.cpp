@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -148,6 +148,9 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
 
     // establish an elevation query interface based on the features' SRS.
     ElevationQuery eq( mapf );
+
+    // want a result even if it's low res
+    eq.setFallBackOnNoData( true );
 
     NumericExpression scaleExpr;
     if ( _altitude->verticalScale().isSet() )

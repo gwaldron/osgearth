@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -481,7 +484,8 @@ MPTerrainEngineNode::dirtyTerrain()
 
     osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
-    bool accumulate = (_terrainOptions.elevationSmoothing() == true);
+    // Accumulate data from low to high resolution when necessary:
+    bool accumulate = true;
 
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
@@ -617,8 +621,8 @@ MPTerrainEngineNode::createNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    bool accumulate    = (_terrainOptions.elevationSmoothing() == true );
-    bool setupChildren = true;
+    bool accumulate    = true;  // use parent data to help build tiles if neccesary
+    bool setupChildren = true;  // prepare the tile for subdivision
 
     // create the node:
     osg::ref_ptr<osg::Node> node = getKeyNodeFactory()->createNode(key, accumulate, setupChildren, progress);
@@ -679,23 +683,24 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     if (!populated)
     {
         // We have no heightfield so just create a reference heightfield.
-        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
+        int tileSize = _terrainOptions.tileSize().get();
+        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize );
         sampleKey = key;
     }
 
     model->_elevationData = TileModel::ElevationData(
-            hf,
-            GeoLocator::createForKey( sampleKey, mapInfo ),
-            false );        
+        hf,
+        GeoLocator::createForKey( sampleKey, mapInfo ),
+        false );        
 
     bool optimizeTriangleOrientation = getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
     osg::ref_ptr<TileModelCompiler> compiler = new TileModelCompiler(
-            _update_mapf->terrainMaskLayers(),
-            _update_mapf->modelLayers(),
-            _primaryUnit,
-            optimizeTriangleOrientation,
-            _terrainOptions );
+        _update_mapf->terrainMaskLayers(),
+        _update_mapf->modelLayers(),
+        _primaryUnit,
+        optimizeTriangleOrientation,
+        _terrainOptions );
 
     return compiler->compile(model.get(), *_update_mapf, 0L);
 }
@@ -1030,7 +1035,8 @@ MPTerrainEngineNode::updateState()
 
             // default min/max range uniforms. (max < min means ranges are disabled)
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
-            terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", -1.0f) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", FLT_MAX) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attentuationDistance().get()) );
             
             terrainStateSet->getOrCreateUniform(
                 "oe_min_tile_range_factor",

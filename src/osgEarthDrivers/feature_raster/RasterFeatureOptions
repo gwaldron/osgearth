@@ -1,0 +1,89 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_RASTER_FEATURE_SOURCE_OPTIONS
+#define OSGEARTH_DRIVER_RASTER_FEATURE_SOURCE_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/URI>
+#include <osgEarthFeatures/FeatureSource>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    /**
+     * Options for the Raster feature driver.
+     */
+    class RasterFeatureOptions : public FeatureSourceOptions // NO EXPORT; header only
+    {
+    public:
+        optional<std::string>& layer() { return _layer; }
+        const optional<std::string>& layer() const { return _layer; }
+
+        optional<unsigned int>& level() { return _level; }
+        const optional<unsigned int>& level() const { return _level; }
+
+        optional<std::string>& attribute() { return _attribute; }
+        const optional<std::string>& attribute() const { return _attribute; }
+
+
+    public:
+        RasterFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) :
+          FeatureSourceOptions( opt ),
+          _level(0),
+          _attribute("value")
+          {
+            setDriver( "raster" );            
+            fromConfig( _conf );
+        }
+
+        virtual ~RasterFeatureOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = FeatureSourceOptions::getConfig();
+            conf.updateIfSet("layer", _layer);
+            conf.updateIfSet("level", _level);
+            conf.updateIfSet("attribute", _attribute);
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            FeatureSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("layer", _layer);
+            conf.getIfSet("level", _level);
+            conf.getIfSet("attribute", _attribute);
+        }
+
+        optional< std::string > _layer;
+        optional< unsigned int > _level;
+        optional< std::string > _attribute;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_RASTER_FEATURE_SOURCE_OPTIONS
+

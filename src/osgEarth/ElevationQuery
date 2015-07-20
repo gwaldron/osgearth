@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -129,6 +129,13 @@ namespace osgEarth
             double                         desiredResolution = 0.0 );
 
         /**
+         * Whether a query should fall back on lower resolution data if no results
+         * are available at the requested resolution. Default is true.
+         */
+        void setFallBackOnNoData(bool value) { _fallBackOnNoData = value; }
+        bool getFallBackOnNoData() const { return _fallBackOnNoData; }
+
+        /**
          * Sets the maximum cache size for elevation tiles.
          */
         void setMaxTilesToCache( int value );
@@ -158,8 +165,9 @@ namespace osgEarth
          * Gets the maximum level of data available at the given point.  If the layers have DataExtents provided they
          * will be queried.  This allows certain areas on the earth to have higher levels of detail
          * than others and avoids unnecessary queries where there isn't high resolution data available.
+         * Negative return value means there was no data available at the location.
          */
-        unsigned int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile, unsigned tileSize) const;
+        int getMaxLevel(double x, double y, const SpatialReference* srs, const Profile* profile, unsigned tileSize) const;
 
         /** Clear the database cache.*/
         void clearDatabaseCache() { if (_eqcrc.valid()) _eqcrc->clearDatabaseCache(); }
@@ -176,7 +184,8 @@ namespace osgEarth
         MapFrame     _mapf;
         unsigned     _maxCacheSize;
         int          _tileSize;        
-        int          _maxLevelOverride;        
+        int          _maxLevelOverride;
+        bool         _fallBackOnNoData;
 
         typedef LRUCache< TileKey, GeoHeightField > TileCache;
         TileCache _cache;

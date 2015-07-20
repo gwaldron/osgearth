@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -179,6 +179,14 @@ namespace
                 {
                     std::string& header = headers[line];
                     header = line;
+                }
+
+                else if ( tokens[0] == "#pragma")
+                {
+                    // Discards all pragmas, since the double-quotes in them are illegal in at least
+                    // GLSL ES compiler (on Android). We should consider doing this for all GLSL
+                    // since technically quoting characters are not part of the GLSL grammar at all.
+                    continue;
                 }
 
                 else

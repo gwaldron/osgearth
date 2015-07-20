@@ -68,6 +68,15 @@ usage( char** argv )
     return -1;
 }
 
+osg::Vec4
+randomColor()
+{
+    float r = (float)rand() / (float)RAND_MAX;
+    float g = (float)rand() / (float)RAND_MAX;
+    float b = (float)rand() / (float)RAND_MAX;
+    return osg::Vec4(r,g,b,1.0f);
+}
+
 
 //------------------------------------------------------------------
 
@@ -222,7 +231,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
+        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS), geomStyle);
         annoGroup->addChild( gnode );
 
         labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,-30, 50), "Rhumb line polygon", labelStyle) );
@@ -242,7 +251,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         geomStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
+        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS), geomStyle);
         annoGroup->addChild( gnode );
 
         labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS, -175, -35), "Antimeridian polygon", labelStyle) );
@@ -250,7 +259,11 @@ main(int argc, char** argv)
 
     //--------------------------------------------------------------------
 
+
+
     // A path using great-circle interpolation.
+    // Keep a pointer to it so we can modify it later on.
+    FeatureNode* pathNode = 0;
     {
         Geometry* path = new LineString();
         path->push_back( osg::Vec3d(-74, 40.714, 0) );   // New York
@@ -262,12 +275,12 @@ main(int argc, char** argv)
         pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
 
-        Feature* pathFeature = new Feature(path, geoSRS, pathStyle);
+        Feature* pathFeature = new Feature(path, geoSRS);
         pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
 
         //OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
 
-        FeatureNode* pathNode = new FeatureNode(mapNode, pathFeature);
+        pathNode = new FeatureNode(mapNode, pathFeature, pathStyle);
         annoGroup->addChild( pathNode );
 
         labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,-170, 61.2), "Great circle path", labelStyle) );
@@ -383,8 +396,8 @@ main(int argc, char** argv)
         utahStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
         utahStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::White, 0.8);
 
-        Feature*     utahFeature = new Feature(utah, geoSRS, utahStyle);
-        FeatureNode* featureNode = new FeatureNode(mapNode, utahFeature);
+        Feature*     utahFeature = new Feature(utah, geoSRS);
+        FeatureNode* featureNode = new FeatureNode(mapNode, utahFeature, utahStyle);
         annoGroup->addChild( featureNode );
     }
 
@@ -502,5 +515,19 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
     
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-    return viewer.run();
+
+    while (!viewer.done())
+    {
+        if (viewer.getFrameStamp()->getFrameNumber() % 100 == 0)
+        {
+            // Change the color of the great circle path every 100 frames
+            Style pathStyle = pathNode->getStyle();
+            pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = randomColor();
+            pathNode->setStyle( pathStyle );
+        }
+        
+        viewer.frame();
+    }
+
+    return 0;
 }

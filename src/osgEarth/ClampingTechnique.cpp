@@ -360,8 +360,8 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     local->_groupStateSet->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, false) );
 
     osgEarth::Shaders pkg;
-    pkg.loadFunction(vp, pkg.GPUClampingVertex);
-    pkg.loadFunction(vp, pkg.GPUClampingFragment);
+    pkg.load(vp, pkg.GPUClampingVertex);
+    pkg.load(vp, pkg.GPUClampingFragment);
 }
 
 

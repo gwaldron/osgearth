@@ -224,10 +224,10 @@ ShaderLoader::load(const std::string&    filename,
 }
 
 bool
-ShaderLoader::loadFunction(VirtualProgram*       vp,
-                           const std::string&    filename,
-                           const ShaderPackage&  package,
-                           const osgDB::Options* dbOptions)
+ShaderLoader::load(VirtualProgram*       vp,
+                   const std::string&    filename,
+                   const ShaderPackage&  package,
+                   const osgDB::Options* dbOptions)
 {
     if ( !vp )
     {
@@ -241,14 +241,7 @@ ShaderLoader::loadFunction(VirtualProgram*       vp,
         OE_WARN << LC << "Failed to load shader source from \"" << filename << "\"\n";
         return false;
     }
-
-    std::string entryPoint = getQuotedPragmaValue(source, "vp_entryPoint");
-    if ( entryPoint.empty() )
-    {
-        OE_WARN << LC << "Illegal: shader \"" << filename << "\" missing required #pragma vp_entryPoint\n";
-        return false;
-    }
-
+    
     std::string loc = getQuotedPragmaValue(source, "vp_location");
     if ( loc.empty() )
     {
@@ -277,26 +270,44 @@ ShaderLoader::loadFunction(VirtualProgram*       vp,
         return false;
     }
 
-    // order is optional.
-    std::string orderStr = getQuotedPragmaValue(source, "vp_order");
-    float order;
-    if ( ciEquals(orderStr, "FLT_MAX") || ciEquals(orderStr, "last") )
-        order = FLT_MAX;
-    else if ( ciEquals(orderStr, "-FLT_MAX") || ciEquals(orderStr, "first") )
-        order = -FLT_MAX;
-    else
-        order = as<float>(orderStr, 1.0f);
+    // If entry point is set, this is a function; otherwise a simple library.
+    std::string entryPoint = getQuotedPragmaValue(source, "vp_entryPoint");
+    if ( !entryPoint.empty() )
+    {
+        // order is optional.
+        std::string orderStr = getQuotedPragmaValue(source, "vp_order");
+        float order;
+        if ( ciEquals(orderStr, "FLT_MAX") || ciEquals(orderStr, "last") )
+            order = FLT_MAX;
+        else if ( ciEquals(orderStr, "-FLT_MAX") || ciEquals(orderStr, "first") )
+            order = -FLT_MAX;
+        else
+            order = as<float>(orderStr, 1.0f);
 
-    // set the function!
-    vp->setFunction( entryPoint, source, location, 0L, order );
+        // set the function!
+        vp->setFunction( entryPoint, source, location, 0L, order );
+    }
+
+    else
+    {
+        // install as a simple shader.
+        osg::Shader::Type type =
+            location == ShaderComp::LOCATION_VERTEX_MODEL || location == ShaderComp::LOCATION_VERTEX_VIEW || location == ShaderComp::LOCATION_VERTEX_CLIP ? osg::Shader::VERTEX :
+            osg::Shader::FRAGMENT;
+
+        osg::Shader* shader = new osg::Shader(type, source);
+        shader->setName( filename );
+        vp->setShader( filename, shader );
+    }
+
     return true;
 }
 
 bool
-ShaderLoader::unloadFunction(VirtualProgram*       vp,
-                             const std::string&    filename,
-                             const ShaderPackage&  package,
-                             const osgDB::Options* dbOptions)
+ShaderLoader::unload(VirtualProgram*       vp,
+                     const std::string&    filename,
+                     const ShaderPackage&  package,
+                     const osgDB::Options* dbOptions)
 {
     if ( !vp )
     {
@@ -312,13 +323,14 @@ ShaderLoader::unloadFunction(VirtualProgram*       vp,
     }
 
     std::string entryPoint = getQuotedPragmaValue(source, "vp_entryPoint");
-    if ( entryPoint.empty() )
+    if ( !entryPoint.empty() )
     {
-        OE_WARN << LC << "Illegal: shader \"" << filename << "\" missing required #pragma vp_entryPoint\n";
-        return false;
+        vp->removeShader( entryPoint );
     }
-
-    vp->removeShader( entryPoint );
+    else
+    {
+        vp->removeShader( filename );
+    }
     return true;
 }
 
@@ -339,19 +351,19 @@ ShaderPackage::replace(const std::string& pattern,
 }
 
 bool
-ShaderPackage::loadFunction(VirtualProgram*       vp,
-                            const std::string&    filename,
-                            const osgDB::Options* dbOptions) const
+ShaderPackage::load(VirtualProgram*       vp,
+                    const std::string&    filename,
+                    const osgDB::Options* dbOptions) const
 {
-    return ShaderLoader::loadFunction(vp, filename, *this, dbOptions);
+    return ShaderLoader::load(vp, filename, *this, dbOptions);
 }
 
 bool
-ShaderPackage::unloadFunction(VirtualProgram*       vp,
-                              const std::string&    filename,
-                              const osgDB::Options* dbOptions) const
+ShaderPackage::unload(VirtualProgram*       vp,
+                      const std::string&    filename,
+                      const osgDB::Options* dbOptions) const
 {
-    return ShaderLoader::unloadFunction(vp, filename, *this, dbOptions);
+    return ShaderLoader::unload(vp, filename, *this, dbOptions);
 }
 
 bool
@@ -361,7 +373,7 @@ ShaderPackage::loadAll(VirtualProgram*       vp,
     int oks = 0;
     for(SourceMap::const_iterator i = _sources.begin(); i != _sources.end(); ++i)
     {
-        oks += loadFunction( vp, i->first ) ? 1 : 0;
+        oks += load( vp, i->first ) ? 1 : 0;
     }
     return oks == _sources.size();
 }
@@ -373,7 +385,7 @@ ShaderPackage::unloadAll(VirtualProgram*       vp,
     int oks = 0;
     for(SourceMap::const_iterator i = _sources.begin(); i != _sources.end(); ++i)
     {
-        oks += unloadFunction( vp, i->first ) ? 1 : 0;
+        oks += unload( vp, i->first ) ? 1 : 0;
     }
     return oks == _sources.size();
 }

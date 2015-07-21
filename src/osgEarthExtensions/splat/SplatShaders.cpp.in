@@ -28,4 +28,7 @@ Shaders::Shaders()
 
     FragGetRenderInfo = "Splat.frag.getRenderInfo.glsl";
     _sources[FragGetRenderInfo] = MULTILINE(@Splat.frag.getRenderInfo.glsl@);
+
+    Util = "Splat.util.glsl";
+    _sources[Util] = MULTILINE(@Splat.util.glsl@);
 }

@@ -35,7 +35,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         bool initialized(void) const;
-        void initialize(unsigned uiTileSize, unsigned int uiMaxLod, double fLodFar);
+        void initialize(unsigned uiFirstLOD, unsigned uiMaxLod, unsigned uiTileSize, double fLodFar);
 
         unsigned numLods(void) const;
 
@@ -53,9 +53,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         VisParameters visParameters(unsigned lod) const;
     private:
-        size_t                          _numLods;
+        unsigned                        _numLods;
         std::pair<unsigned, unsigned>   _uiGridDimensions; 
         std::vector<VisParameters>      _vecVisParams;
+        unsigned                        _uiFirstLOD;
 
         static const double             _fMorphStartRatio; 
 

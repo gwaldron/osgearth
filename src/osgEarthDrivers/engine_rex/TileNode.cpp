@@ -117,7 +117,11 @@ TileNode::create(const TileKey& key, EngineContext* context)
     {
         SelectionInfo& selectionInfo = const_cast<SelectionInfo&>(context->getSelectionInfo());
 
-        selectionInfo.initialize(*(context->_options.maxLOD()), *(context->_options.tileSize()), getVisibilityRangeHint());
+        unsigned uiFirstLOD = *(context->_options.firstLOD());
+        unsigned uiMaxLod   = *(context->_options.maxLOD());
+        unsigned uiTileSize = *(context->_options.tileSize());
+
+        selectionInfo.initialize(uiFirstLOD, uiMaxLod, uiTileSize, getVisibilityRangeHint(uiFirstLOD));
     }
 
     createTileSpecificUniforms();
@@ -265,9 +269,10 @@ TileNode::getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const
 }
 
 float
-TileNode::getVisibilityRangeHint(void) const
+TileNode::getVisibilityRangeHint(unsigned firstLOD) const
 {
-    if (getTileKey().getLOD()!=0)
+    
+    if (getTileKey().getLOD()!=firstLOD)
     {
         OE_INFO << LC <<"Error: Visibility Range hint can be computed only using LOD 0"<<std::endl;
         return -1;

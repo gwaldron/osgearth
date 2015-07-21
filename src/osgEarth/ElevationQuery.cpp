@@ -230,6 +230,7 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
         // Adjust for the tile size resolution differential, if supported by the layer.
         if ( layerMaxLevel.isSet() )
         {
+#if 0
             int layerTileSize = layer->getTileSize();
             if (layerTileSize > targetTileSizePOT)
             {
@@ -240,6 +241,7 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
                     layerMaxLevel = layerMaxLevel.get() + 1;
                 }
             }
+#endif
 
             if (layerMaxLevel > maxLevel)
             {
@@ -429,7 +431,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
     }
 
     // tile size (resolution of elevation tiles) 
-    unsigned tileSize = 33; // ???
+    unsigned tileSize = 17; // ???
 
     // This is the max resolution that we actually have data at this point
     int bestAvailLevel = getMaxLevel( point.x(), point.y(), point.getSRS(), _mapf.getProfile(), tileSize );

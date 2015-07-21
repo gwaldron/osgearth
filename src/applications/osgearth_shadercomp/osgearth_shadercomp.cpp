@@ -36,6 +36,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
 #include <osgEarthUtil/Controls>
 
@@ -441,6 +442,7 @@ int main(int argc, char** argv)
     }
     else if ( test5 )
     {
+        osgEarth::Registry::instance()->getCapabilities();
         root->addChild( TEST_5::run() );
         label->setText( "Leakage test: red tri on the left, blue on the right." );
     }

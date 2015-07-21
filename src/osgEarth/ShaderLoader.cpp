@@ -75,6 +75,10 @@ ShaderLoader::load(const std::string&    filename,
     {
         output = inlineSource;
         useInlineSource = true;
+        if ( inlineSource.empty() )
+        {
+            OE_WARN << LC << "Inline source for \"" << filename << "\" is empty, and no external file could be found.\n";
+        }
     }
     else
     {

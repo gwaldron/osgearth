@@ -20,7 +20,7 @@ oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);
 
 // from: Splat.util.glsl
 void oe_splat_getLodBlend(in float range, in float baseLOD, out float lod0, out float lod1, out float blend);
-void oe_splat_getSplatCoords(in vec2 coords, in float lod);
+vec2 oe_splat_getSplatCoords(in vec2 coords, in float lod);
 
 // from the terrain engine:
 in vec4 oe_layer_tilec;

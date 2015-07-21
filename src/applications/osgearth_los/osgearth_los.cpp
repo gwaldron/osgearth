@@ -184,7 +184,7 @@ main(int argc, char** argv)
     losGroup->addChild( radialRelEditor );
 
     //Load a plane model.  
-    osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("../data/cessna.osg.5,5,5.scale");
+    osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("../data/cessna.osgb.5,5,5.scale");
 
     //Create 2 moving planes
     osg::Node* plane1 = createPlane(plane, GeoPoint(geoSRS, -121.656, 46.0935, 4133.06, ALTMODE_ABSOLUTE), mapSRS, 5000, 20);

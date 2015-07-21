@@ -34,12 +34,6 @@ namespace
 {
     static OpenThreads::Atomic s_uniformNameGen;
 
-    static const char* s_commonShaderSource =
-
-        "#version 110 \n"
-        "}\n";
-
-
     static const char* s_localShaderSource =
         "#version 110\n"
 

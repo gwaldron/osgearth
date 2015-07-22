@@ -18,11 +18,4 @@ struct oe_SplatRenderInfo {
     float minSlope;
 };
 
-
-// Mapping of view ranges to splat texture levels of detail.
-#define RANGE_COUNT 11
-const float oe_SplatRanges[RANGE_COUNT] = float[](  50.0, 125.0, 250.0, 500.0, 1000.0, 4000.0, 30000.0, 150000.0, 300000.0, 1000000.0, 5000000.0 );
-const float oe_SplatLevels[RANGE_COUNT] = float[](  20.0,  19.0,  18.0,  17.0,   16.0,   14.0,    12.0,     10.0,      8.0,       6.0,       4.0 );
-
-
 // end: Splat.types.glsl

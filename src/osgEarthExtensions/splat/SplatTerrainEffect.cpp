@@ -164,9 +164,10 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             package.replace( "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            package.loadFunction( vp, package.VertModel );
-            package.loadFunction( vp, package.VertView );
-            package.loadFunction( vp, package.Frag );
+            package.load( vp, package.VertModel );
+            package.load( vp, package.VertView );
+            package.load( vp, package.Frag );
+            package.load( vp, package.Util );
 
             // GPU noise is expensive, so only use it to tweak noise function values that you
             // can later bake into the noise texture generator.

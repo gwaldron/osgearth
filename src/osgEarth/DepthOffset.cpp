@@ -184,7 +184,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         s->removeUniform( _minRangeUniform.get() );
         s->removeUniform( _maxRangeUniform.get() );
         
-        shaders.unloadFunction( VirtualProgram::get(s), shaders.DepthOffsetVertex );
+        shaders.unload( VirtualProgram::get(s), shaders.DepthOffsetVertex );
     }
 
     if ( install )
@@ -198,7 +198,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         s->addUniform( _minRangeUniform.get() );
         s->addUniform( _maxRangeUniform.get() );
         
-        shaders.loadFunction(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);        
+        shaders.load(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);        
     }
 
     if ( graphChanging )

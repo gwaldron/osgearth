@@ -422,8 +422,8 @@ SimpleSkyNode::makeSceneLighting()
     if (_options.atmosphericLighting() == true && !Registry::capabilities().isGLES() )
     {
         Shaders pkg;
-        pkg.loadFunction( vp, pkg.Ground_ONeil_Vert );
-        pkg.loadFunction( vp, pkg.Ground_ONeil_Frag );
+        pkg.load( vp, pkg.Ground_ONeil_Vert );
+        pkg.load( vp, pkg.Ground_ONeil_Frag );
     }
 
     else
@@ -504,8 +504,8 @@ SimpleSkyNode::makeAtmosphere(const osg::EllipsoidModel* em)
         vp->setInheritShaders( false );
 
         Shaders pkg;
-        pkg.loadFunction( vp, pkg.Atmosphere_Vert );
-        pkg.loadFunction( vp, pkg.Atmosphere_Frag );
+        pkg.load( vp, pkg.Atmosphere_Vert );
+        pkg.load( vp, pkg.Atmosphere_Frag );
     }
 
     // A nested camera isolates the projection matrix calculations so the node won't 

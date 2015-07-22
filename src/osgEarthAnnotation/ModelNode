@@ -59,6 +59,10 @@ namespace osgEarth { namespace Annotation
         const Style& getStyle() const { return _style; }
 
 
+    public: // LocalizedNode
+        
+        virtual void setScale( const osg::Vec3f& scale );
+
     public:
 
         /**

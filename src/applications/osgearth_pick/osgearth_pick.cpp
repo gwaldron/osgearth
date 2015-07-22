@@ -20,18 +20,18 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/RTTPicker>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ObjectIndex>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/RTTPicker>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureIndex>
 #include <osgEarthAnnotation/AnnotationNode>
 
-#include <osgEarth/Pickers>
+#include <osgEarth/IntersectionPicker>
 
 #include <osgViewer/CompositeViewer>
 #include <osgGA/TrackballManipulator>
@@ -59,8 +59,8 @@ struct TestIsectPicker : public osgGA::GUIEventHandler
     {
         if ( ea.getEventType() == ea.RELEASE )
         {
-            Picker picker(dynamic_cast<osgViewer::View*>(aa.asView()));
-            Picker::Hits hits;
+            IntersectionPicker picker(dynamic_cast<osgViewer::View*>(aa.asView()));
+            IntersectionPicker::Hits hits;
             if(picker.pick(ea.getX(), ea.getY(), hits)) {
                 std::set<ObjectID> oids;
                 if (picker.getObjectIDs(hits, oids)) {

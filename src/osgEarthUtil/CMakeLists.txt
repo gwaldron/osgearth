@@ -45,6 +45,7 @@ SET(HEADERS_ROOT
     Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
+    RTTPicker
     Shaders
 	Shadowing
 	SimplexNoise
@@ -123,6 +124,7 @@ SET(SOURCES_ROOT
     Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
+    RTTPicker.cpp
 	Shadowing.cpp
 	SimplexNoise.cpp
     SpatialData.cpp

@@ -24,7 +24,7 @@
 #include <osgEarthQt/Common>
 #include <osgEarthQt/DataManager>
 
-#include <osgEarth/Draggers>
+#include <osgEarthAnnotation/Draggers>
 #include <osgEarthUtil/LinearLineOfSight>
 #include <osgEarthUtil/RadialLineOfSight>
 
@@ -34,11 +34,11 @@
 
 namespace osgEarth { namespace QtGui 
 {
-  class LOSIntersectingDragger : public osgEarth::SphereDragger
+  class LOSIntersectingDragger : public osgEarth::Annotation::SphereDragger
   {
   public:
       LOSIntersectingDragger(osgEarth::MapNode* mapNode):
-        osgEarth::SphereDragger(mapNode),
+        osgEarth::Annotation::SphereDragger(mapNode),
         _heightAboveTerrain(0.0)
     {
       setLineColor(osg::Vec4(1.0f, 1.0f, 0.0f, 0.0f));

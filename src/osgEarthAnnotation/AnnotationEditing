@@ -25,7 +25,7 @@
 #include <osgEarthAnnotation/CircleNode>
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/RectangleNode>
-#include <osgEarth/Draggers>
+#include <osgEarthAnnotation/Draggers>
 #include <osgEarth/MapNode>
 
 namespace osgEarth { namespace Annotation

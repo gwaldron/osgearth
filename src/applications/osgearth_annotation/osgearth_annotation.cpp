@@ -53,8 +53,6 @@
 #include <osgGA/EventVisitor>
 #include <osgDB/WriteFile>
 
-#include <osgEarth/Pickers>
-
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;

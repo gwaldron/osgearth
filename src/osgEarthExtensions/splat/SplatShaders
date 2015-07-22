@@ -37,7 +37,8 @@ namespace osgEarth { namespace Splat
             VertView,
             Frag,
             FragCommon,
-            FragGetRenderInfo;
+            FragGetRenderInfo,
+            Util;
 	};
 	
 } } // namespace osgEarth::Splat

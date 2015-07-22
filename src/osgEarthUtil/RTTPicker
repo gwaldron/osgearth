@@ -17,56 +17,51 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_RTT_PICKER_H
-#define OSGEARTH_RTT_PICKER_H 1
+#ifndef OSGEARTH_UTIL_RTT_PICKER_H
+#define OSGEARTH_UTIL_RTT_PICKER_H 1
 
-#include <osgEarth/Common>
-#include <osgEarth/ObjectIndex>
+#include <osgEarthUtil/Common>
+#include <osgEarth/Picker>
 #include <osgEarth/VirtualProgram>
 #include <osg/Group>
 #include <osg/Image>
 #include <osg/Texture2D>
-#include <osgGA/GUIEventHandler>
 #include <queue>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Picks objects using an RTT camera and Vertex Attributes.
      */
-    class OSGEARTH_EXPORT RTTPicker : public osgGA::GUIEventHandler
+    class OSGEARTHUTIL_EXPORT RTTPicker : public osgEarth::Picker
     {
     public:
-        struct Callback : public osg::Referenced
-        {
-            // Called when an ID is hit
-            virtual void onHit(ObjectID id) { }
-
-            // Called when a query results in nothing
-            virtual void onMiss() { }
-
-            // Called to ask whether to perform a query based on events
-            virtual bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa) { return false; }
-        };        
-
-    public:
         /**
-         * Creates a new feature picker.
+         * Creates a new RTT-based object picker.
+         * @param cameraSize Size of the RTT picking viewpoint.
          */
         RTTPicker(int cameraSize =256);
 
         /**
-         * Sets the pick buffer. This the number of pixels on each side of the clicked pixel
-         * to check for hits.
+         * Number of pixels on each side of the clicked pixel to check for hits.
          */
         void setBuffer(int value) { _buffer = value; }
         int getBuffer() const { return _buffer; }
         
         /**
-         * Sets the default callback to use when installing the Picker as an EventHandler
+         * Sets a default callback to use when installing the Picker as an EventHandler
          * or when calling pick() with no callback.
          */
         void setDefaultCallback(Callback* value) { _defaultCallback = value; }
+
+        /**
+         * Convenience function that invokes "pick" with no callback, which will cause
+         * this picker to use the default callback installed with setDefaultCallback.
+         */
+        bool pick(osg::View* view, float mouseX, float mouseY);
+
+
+    public: // osgEarth::Picker
 
         /**
          * Starts a pick operation. When the operation completes, invokes the callback
@@ -77,7 +72,7 @@ namespace osgEarth
          *
          * Returns true if the pick was succesfully queued; false if not.
          */
-        bool pick(osg::View* view, float mouseX, float mouseY, Callback* callback =0L);
+        virtual bool pick(osg::View* view, float mouseX, float mouseY, Callback* callback);
 
 
     public: // osgGA::GUIEventHandler
@@ -98,12 +93,13 @@ namespace osgEarth
             the RTT image so you can display it. */
         osg::Texture2D* getOrCreateTexture(osg::View* View);
 
-        static VirtualProgram* createRTTProgram();
-
     protected:
 
         /** dtor */
         virtual ~RTTPicker();
+
+        // builds the shaders for rendering to the pick camera. 
+        VirtualProgram* createRTTProgram();
         
         int                    _rttSize;     // size of the RTT image (pixels per side)
         int                    _buffer;      // buffer around pick point to check (pixels)
@@ -112,7 +108,7 @@ namespace osgEarth
         // Associates a view and a pick camera for that view.
         struct PickContext
         {
-            osg::ref_ptr<osg::View>      _view;
+            osg::observer_ptr<osg::View> _view;
             osg::ref_ptr<osg::Camera>    _pickCamera;
             osg::ref_ptr<osg::Image>     _image;
             osg::ref_ptr<osg::Texture2D> _tex;
@@ -142,6 +138,7 @@ namespace osgEarth
         // container for common RTT pick camera children (see addChild et al.)
         osg::ref_ptr<osg::Group> _group;
     };
-} // namespace osgEarth
 
-#endif // OSGEARTH_RTT_PICKER_H
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_RTT_PICKER_H

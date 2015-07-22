@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/Pickers>
+#include <osgEarth/IntersectionPicker>
 #include <osgEarth/PrimitiveIntersector>
 #include <osgEarth/Registry>
 
@@ -25,7 +25,7 @@
 using namespace osgEarth;
 
 
-Picker::Picker( osgViewer::View* view, osg::Node* root, unsigned travMask, float buffer, Limit limit ) :
+IntersectionPicker::IntersectionPicker( osgViewer::View* view, osg::Node* root, unsigned travMask, float buffer, Limit limit ) :
 _view    ( view ),
 _root    ( root ),
 _travMask( travMask ),
@@ -37,25 +37,25 @@ _limit   ( limit )
 }
 
 void
-Picker::setLimit(const Picker::Limit& value)
+IntersectionPicker::setLimit(const IntersectionPicker::Limit& value)
 {
     _limit = value;
 }
 
 void
-Picker::setTraversalMask(unsigned value)
+IntersectionPicker::setTraversalMask(unsigned value)
 {
     _travMask = value;
 }
 
 void
-Picker::setBuffer(float value)
+IntersectionPicker::setBuffer(float value)
 {
     _buffer = value;
 }
 
 bool
-Picker::pick( float x, float y, Hits& results ) const
+IntersectionPicker::pick( float x, float y, Hits& results ) const
 {
     float local_x, local_y = 0.0;
     const osg::Camera* camera = _view->getCameraContainingPosition(x, y, local_x, local_y);
@@ -153,7 +153,7 @@ Picker::pick( float x, float y, Hits& results ) const
 }
 
 bool
-Picker::getObjectIDs(const Hits& results, std::set<ObjectID>& out_objectIDs) const
+IntersectionPicker::getObjectIDs(const Hits& results, std::set<ObjectID>& out_objectIDs) const
 {
     ObjectIndex* index = Registry::objectIndex();
 

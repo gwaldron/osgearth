@@ -18,6 +18,9 @@
 // ref: Splat.getRenderInfo.frag.glsl
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);
 
+// from: Splat.util.glsl
+void oe_splat_getLodBlend(in float range, in float baseLOD, out float lod0, out float lod1, out float blend);
+vec2 oe_splat_getSplatCoords(in vec2 coords, in float lod);
 
 // from the terrain engine:
 in vec4 oe_layer_tilec;
@@ -217,31 +220,6 @@ vec4 oe_splat_getNoise(in vec2 tc)
 
 #endif // SPLAT_GPU_NOISE
 
-
-// Scales the incoming tile splat coordinates to match the requested
-// LOD level. We offset the level from the current tile key's LOD (.z)
-// because otherwise you run into single-precision jitter at high LODs.
-vec2 oe_splat_getSplatCoords(in vec2 tc, float lod)
-{
-    float dL = oe_tile_key.z - lod;
-    float factor = exp2(dL);
-    float invFactor = 1.0/factor;
-    vec2 scale = vec2(invFactor); 
-    vec2 result = tc * scale;
-
-    // For upsampling we need to calculate an offset as well
-    if ( factor >= 1.0 )
-    {
-        vec2 a = floor(oe_tile_key.xy * invFactor);
-        vec2 b = a * factor;
-        vec2 c = (a+1.0) * factor;
-        vec2 offset = (oe_tile_key.xy-b)/(c-b);
-        result += offset;
-    }
-
-    return result;
-}
-
 // Simplified entry point with does no filtering or range blending. (much faster.)
 void oe_splat_simple(inout vec4 color)
 {
@@ -275,21 +253,10 @@ void oe_splat_complex(inout vec4 color)
         
     // Calculate the 2 LODs we need to blend. We have to do this in the FS because 
     // it's quite possible for a single triangle to span more than 2 LODs.
-    int   lodIndex = -1;
     float lod0;
     float lod1;
-    float lodBlend;
-    float clampedRange = clamp(oe_splat_range, oe_SplatRanges[0], oe_SplatRanges[RANGE_COUNT-1]);
-
-    for(int i=0, lodIndex=-1; i<RANGE_COUNT-1 && lodIndex < 0; ++i)
-    {
-        if ( clampedRange >= oe_SplatRanges[i] && clampedRange <= oe_SplatRanges[i+1] )
-        {
-            lod0 = oe_SplatLevels[i]   + scaleOffset;
-            lod1 = oe_SplatLevels[i+1] + scaleOffset;
-            lodBlend = clamp((clampedRange-oe_SplatRanges[i])/(oe_SplatRanges[i+1]-oe_SplatRanges[i]), 0.0, 1.0);
-        }
-    }
+    float lodBlend = -1.0;
+    oe_splat_getLodBlend(oe_splat_range, scaleOffset, lod0, lod1, lodBlend);
 
     // Sample the two LODs:
     vec2 tc0 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0);

@@ -22,8 +22,8 @@
 #include <osgEarthQt/AnnotationDialogs>
 #include <osgEarthQt/Common>
 
-#include <osgEarth/Draggers>
-#include <osgEarth/Pickers>
+#include <osgEarthAnnotation/Draggers>
+#include <osgEarth/IntersectionPicker>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/EllipseNode>
@@ -435,7 +435,7 @@ void AddPathDialog::refreshFeatureNode()
 
 void AddPathDialog::createPointDragger(int index, const osgEarth::GeoPoint& point)
 {
-  osgEarth::SphereDragger* sd = new osgEarth::SphereDragger(_mapNode);
+  osgEarth::Annotation::SphereDragger* sd = new osgEarth::Annotation::SphereDragger(_mapNode);
   sd->setSize(4.0f);
   sd->setColor(Color::Magenta);
   sd->setPickColor(Color::Green);
@@ -730,7 +730,7 @@ void AddPolygonDialog::refreshFeatureNode(bool geometryOnly)
 
 void AddPolygonDialog::createPointDragger(int index, const osgEarth::GeoPoint& point)
 {
-  osgEarth::SphereDragger* sd = new osgEarth::SphereDragger(_mapNode);
+  osgEarth::Annotation::SphereDragger* sd = new osgEarth::Annotation::SphereDragger(_mapNode);
   sd->setSize(4.0f);
   sd->setColor(Color::Magenta);
   sd->setPickColor(Color::Green);

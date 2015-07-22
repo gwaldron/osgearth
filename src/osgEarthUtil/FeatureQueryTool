@@ -23,7 +23,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
 #include <osgEarth/MapNodeObserver>
-#include <osgEarth/RTTPicker>
+#include <osgEarthUtil/RTTPicker>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceIndexNode>

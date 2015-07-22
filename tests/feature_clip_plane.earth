@@ -1,0 +1,31 @@
+<!--
+osgEarth Sample
+Use this earth file with the osgearth_clipplane example.
+
+This demonstrates how to render geometry on the earth's surface
+with depth testing off and a horizon clip plane. This is one
+way to mitigate z-fighting issues.
+-->
+
+<map name="Feature Geometry Demo" type="geocentric" version="2">
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="boundaries" driver="feature_geom">
+        <features name="world" driver="ogr">
+            <url>../data/world.shp</url>
+        </features>        
+        <styles>
+            <style type="text/css">
+                states {
+                   stroke:            #ffff00;
+				   render-depth-test: false;
+				   render-clip-plane: 0;
+                }                    
+            </style>
+        </styles>        
+    </model>
+  
+</map>

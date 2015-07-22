@@ -59,6 +59,16 @@ ModelNode::setStyle(const Style& style)
     init();
 }
 
+void
+ModelNode::setScale(const osg::Vec3f& scale)
+{
+    osg::StateSet* stateSet = getStateSet();
+    if ( stateSet && stateSet->getBinName() == osgEarth::AUTO_SCALE_BIN )
+    {
+        stateSet->setRenderBinToInherit();
+    }
+    LocalizedNode::setScale( scale );
+}
 
 void
 ModelNode::init()

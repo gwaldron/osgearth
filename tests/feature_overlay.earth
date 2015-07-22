@@ -28,7 +28,7 @@ Drawing simple lines at a set altitude.
                    stroke:                   #ffff00;
                    stroke-width:             2.0;
                    stroke-tessellation-size: 100km;
-				   altitude-offset:          1000.0;
+                   altitude-offset:          1000.0;
                 }            
             </style>
         </styles>

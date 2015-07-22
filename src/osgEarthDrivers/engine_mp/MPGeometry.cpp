@@ -264,7 +264,9 @@ MPGeometry::renderPrimitiveSets(osg::State& state,
             for(first = _layers.size()-1; first > 0; --first)
             {
                 const Layer& layer = _layers[first];
-                if (layer._opaque && 
+                if (layer._opaque &&
+                    //Color filters can modify the opacity
+                    layer._imageLayer->getColorFilters().empty() &&
                     layer._imageLayer->getVisible() &&
                     layer._imageLayer->getOpacity() >= 1.0f)
                 {

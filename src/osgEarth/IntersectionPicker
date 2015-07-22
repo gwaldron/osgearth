@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_PICKING_UTILS_H
-#define OSGEARTH_PICKING_UTILS_H
+#ifndef OSGEARTH_INTERSECTION_PICKER_H
+#define OSGEARTH_INTERSECTION_PICKER_H
 
 #include <osgEarth/Common>
 #include <osgEarth/ObjectIndex>
@@ -30,7 +30,7 @@ namespace osgEarth
     /**
      * Utility for picking objects from the scene.
      */
-    class OSGEARTH_EXPORT Picker
+    class OSGEARTH_EXPORT IntersectionPicker
     {
     public:
         typedef osgEarth::PrimitiveIntersector::Intersection Hit;
@@ -53,7 +53,7 @@ namespace osgEarth
          * @param traversalMask Node mask to apply to the pick visitor
          * @param buffer        Pick buffer around the click (pixels)
          */
-        Picker( 
+        IntersectionPicker( 
             osgViewer::View* view,
             osg::Node*       graph         =0L, 
             unsigned         traversalMask =~0,
@@ -61,7 +61,7 @@ namespace osgEarth
             Limit            limit         =LIMIT_NEAREST);
 
         /** dtor */
-        virtual ~Picker() { }
+        virtual ~IntersectionPicker() { }
 
         /**
          * Sets the node mask to apply to the pick visitor. This lets you
@@ -115,4 +115,4 @@ namespace osgEarth
     };
 }
 
-#endif // OSGEARTH_PICKING_UTILS_H
+#endif // OSGEARTH_INTERSECTION_PICKER_H

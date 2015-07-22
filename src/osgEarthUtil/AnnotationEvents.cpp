@@ -21,7 +21,7 @@
 */
 
 #include <osgEarthUtil/AnnotationEvents>
-#include <osgEarth/Pickers>
+#include <osgEarth/IntersectionPicker>
 #include <osgGA/GUIEventAdapter>
 #include <osgGA/EventVisitor>
 #include <osgViewer/View>
@@ -84,13 +84,13 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
             _args.buttons = ea->getButtonMask();
             _args.modkeys = ea->getModKeyMask();
 
-            Picker picker( view, node );
-            Picker::Hits hits;
+            IntersectionPicker picker( view, node );
+            IntersectionPicker::Hits hits;
             if ( picker.pick( _args.x, _args.y, hits ) )
             {
                 std::set<AnnotationNode*> fired; // prevent multiple hits on the same instance
 
-                for( Picker::Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
+                for( IntersectionPicker::Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
                 {
                     AnnotationNode* anno = picker.getNode<AnnotationNode>( *h );
                     if ( anno && fired.find(anno) == fired.end() )
@@ -117,14 +117,14 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 toUnHover.insert( *i );
             }
 
-            Picker picker( view, node );
-            Picker::Hits hits;
+            IntersectionPicker picker( view, node );
+            IntersectionPicker::Hits hits;
 
             if ( picker.pick( _args.x, _args.y, hits ) )
             {
-                for( Picker::Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
+                for( IntersectionPicker::Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
                 {
-                    const Picker::Hit& hit = *h;
+                    const IntersectionPicker::Hit& hit = *h;
 
                     AnnotationNode* anno = picker.getNode<AnnotationNode>( hit );
                     if ( anno )

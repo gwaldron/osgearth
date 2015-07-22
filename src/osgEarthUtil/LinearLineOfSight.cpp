@@ -469,7 +469,7 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 namespace 
 {
-    class LOSDraggerCallback : public Dragger::PositionChangedCallback
+    class LOSDraggerCallback : public osgEarth::Annotation::Dragger::PositionChangedCallback
     {
     public:
         LOSDraggerCallback(LinearLineOfSightNode* los, bool start):
@@ -478,7 +478,7 @@ namespace
           {      
           }
 
-          virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
+          virtual void onPositionChanged(const osgEarth::Annotation::Dragger* sender, const osgEarth::GeoPoint& position)
           {   
               if ( _start )
                   _los->setStart( position );
@@ -516,13 +516,13 @@ namespace
 LinearLineOfSightEditor::LinearLineOfSightEditor(LinearLineOfSightNode* los):
 _los(los)
 {
-    _startDragger  = new SphereDragger( _los->getMapNode());
+    _startDragger  = new osgEarth::Annotation::SphereDragger( _los->getMapNode());
     _startDragger->addPositionChangedCallback(new LOSDraggerCallback(_los, true ) );    
-    static_cast<SphereDragger*>(_startDragger)->setColor(osg::Vec4(0,0,1,0));
+    static_cast<osgEarth::Annotation::SphereDragger*>(_startDragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_startDragger);
 
-    _endDragger = new SphereDragger( _los->getMapNode());
-    static_cast<SphereDragger*>(_endDragger)->setColor(osg::Vec4(0,0,1,0));
+    _endDragger = new osgEarth::Annotation::SphereDragger( _los->getMapNode());
+    static_cast<osgEarth::Annotation::SphereDragger*>(_endDragger)->setColor(osg::Vec4(0,0,1,0));
     _endDragger->addPositionChangedCallback(new LOSDraggerCallback(_los, false ) );
 
     addChild(_endDragger);

@@ -90,11 +90,6 @@ main(int argc, char** argv)
     // make the map scene graph:
     MapNode* mapNode = new MapNode( map );
     root->addChild( mapNode );
-    
-    // Process cmdline args.
-    MapNodeHelper helper;
-    helper.configureView( &viewer );
-    helper.parse(mapNode, arguments, &viewer, root, new LabelControl("City Demo"));
 
     // zoom to a good startup position
     manip->setViewpoint( Viewpoint(

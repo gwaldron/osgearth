@@ -21,7 +21,7 @@
 
 #include <osgEarthQt/Common>
 
-#include <osgEarth/Draggers>
+#include <osgEarthAnnotation/Draggers>
 #include <osgEarth/GeoMath>
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/EllipseNode>
@@ -395,14 +395,14 @@ namespace osgEarth { namespace QtGui
     osg::Vec3d _currentPoint;
   };
 
-  struct PointDraggerCallback : public osgEarth::Dragger::PositionChangedCallback
+  struct PointDraggerCallback : public osgEarth::Annotation::Dragger::PositionChangedCallback
   {
     PointDraggerCallback(int index, BaseAnnotationDialog* dialog)
       : _index(index), _dialog(dialog)
     {
     }
 
-    void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
+    void onPositionChanged(const osgEarth::Annotation::Dragger* sender, const osgEarth::GeoPoint& position)
     {
       _dialog->movePoint(_index, position);
     }

@@ -21,7 +21,7 @@
 */
 
 #include <osgEarthAnnotation/FeatureEditing>
-#include <osgEarth/Draggers>
+#include <osgEarthAnnotation/Draggers>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;

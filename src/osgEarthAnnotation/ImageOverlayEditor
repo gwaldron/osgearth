@@ -22,7 +22,7 @@
 #include <osgEarthAnnotation/Common>
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthAnnotation/AnnotationEditing>
-#include <osgEarth/Draggers>
+#include <osgEarthAnnotation/Draggers>
 #include <osgEarth/MapNode>
 #include <osg/MatrixTransform>
 #include <osgGA/GUIEventHandler>

@@ -920,9 +920,9 @@ MPTerrainEngineNode::updateState()
 
             package.define( "MP_USE_BLENDING", (_terrainOptions.enableBlending() == true) );
 
-            package.loadFunction( vp, package.VertexModel );
-            package.loadFunction( vp, package.VertexView );
-            package.loadFunction( vp, package.Fragment );
+            package.load( vp, package.VertexModel );
+            package.load( vp, package.VertexView );
+            package.load( vp, package.Fragment );
             
 
             // terrain background color; negative means use the vertex color.

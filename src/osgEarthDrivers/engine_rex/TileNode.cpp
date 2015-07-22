@@ -275,7 +275,7 @@ TileNode::getVisibilityRangeHint(unsigned firstLOD) const
     
     if (getTileKey().getLOD()!=firstLOD)
     {
-        OE_INFO << LC <<"Error: Visibility Range hint can be computed only using LOD 0"<<std::endl;
+        OE_INFO << LC <<"Error: Visibility Range hint can be computed only using the first LOD"<<std::endl;
         return -1;
     }
     // The motivation here is to use the extents of the tile at lowest resolution
@@ -297,8 +297,8 @@ TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionIn
         osg::Vec3 cameraPos = nv.getViewPoint();
 #if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
         OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
-#endif
         OE_INFO << LC <<"LOD Scale: "<<fZoomFactor<<std::endl;
+#endif  
         float fRadius = (float)selectionInfo.visParameters(currLOD+1)._fVisibility;
         bool bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius*fRadius, fZoomFactor);
         return bAnyChildVisible;

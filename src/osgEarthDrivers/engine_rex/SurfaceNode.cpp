@@ -141,12 +141,12 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
 }
 
 float
-SurfaceNode::minSquaredDistanceFromPoint(const VectorPoints& corners, const osg::Vec3& center)
+SurfaceNode::minSquaredDistanceFromPoint(const VectorPoints& corners, const osg::Vec3& center, float fZoomFactor)
 {   
     float mind2 = FLT_MAX;
     for( VectorPoints::const_iterator i=corners.begin(); i != corners.end(); ++i )
     {
-        float d2 = (*i - center).length2();
+        float d2 = (*i - center).length2()*fZoomFactor*fZoomFactor;
         if ( d2 < mind2 ) mind2 = d2;
     }
     return mind2;
@@ -158,8 +158,7 @@ SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radiusSq
     for(ChildrenCorners::const_iterator it = _childrenCorners.begin(); it != _childrenCorners.end(); ++it)
     {
         const VectorPoints& childCorners = *it;
-        float fMinDistanceSquared = minSquaredDistanceFromPoint(childCorners, center);
-        fMinDistanceSquared *= fZoomFactor;
+        float fMinDistanceSquared = minSquaredDistanceFromPoint(childCorners, center, fZoomFactor);
         if (fMinDistanceSquared <= radiusSquared)
         {
             return true;

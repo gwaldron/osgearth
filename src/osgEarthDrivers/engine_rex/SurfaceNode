@@ -61,7 +61,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Returns true if any child box intersects the sphere of radius centered around point
         bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared, float fZoomFactor);
 
-        float minSquaredDistanceFromPoint(const VectorPoints& points, const osg::Vec3& center);
+        float minSquaredDistanceFromPoint(const VectorPoints& points, const osg::Vec3& center, float fZoomFactor);
 
         void setDebugNodeVisible(bool bVisible);
         bool isDebugNodeVisible(void) const;

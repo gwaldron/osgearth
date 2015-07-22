@@ -45,8 +45,8 @@ void FogEffect::attach( osg::StateSet* stateSet )
 {
     VirtualProgram* vp = VirtualProgram::getOrCreate( stateSet );
     Shaders pkg;
-    pkg.loadFunction( vp, pkg.Fog_Vertex );
-    pkg.loadFunction( vp, pkg.Fog_Fragment );
+    pkg.load( vp, pkg.Fog_Vertex );
+    pkg.load( vp, pkg.Fog_Fragment );
     _statesets.push_back(stateSet);
 }
 
@@ -56,8 +56,8 @@ void FogEffect::detach( osg::StateSet* stateSet )
     if ( vp )
     {
         Shaders pkg;
-        pkg.unloadFunction( vp, pkg.Fog_Vertex );
-        pkg.unloadFunction( vp, pkg.Fog_Fragment );
+        pkg.unload( vp, pkg.Fog_Vertex );
+        pkg.unload( vp, pkg.Fog_Fragment );
     }
 }
 

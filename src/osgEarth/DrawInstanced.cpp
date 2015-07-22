@@ -242,7 +242,7 @@ DrawInstanced::install(osg::StateSet* stateset)
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     
     osgEarth::Shaders pkg;
-    pkg.loadFunction( vp, pkg.InstancingVertex );
+    pkg.load( vp, pkg.InstancingVertex );
 
     stateset->getOrCreateUniform("oe_di_postex_TBO", osg::Uniform::SAMPLER_BUFFER)->set(POSTEX_TBO_UNIT);
 }
@@ -259,7 +259,7 @@ DrawInstanced::remove(osg::StateSet* stateset)
         return;
 
     Shaders pkg;
-    pkg.unloadFunction( vp, pkg.InstancingVertex );
+    pkg.unload( vp, pkg.InstancingVertex );
 
     stateset->removeUniform("oe_di_postex_TBO");
     stateset->removeUniform("oe_di_postex_TBO_size");

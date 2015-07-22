@@ -81,7 +81,7 @@ AlphaEffect::attach(osg::StateSet* stateset)
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setName( "osgEarth.AlphaEffect" );
         Shaders pkg;
-        pkg.loadFunction( vp, pkg.AlphaEffectFragment );
+        pkg.load( vp, pkg.AlphaEffectFragment );
         stateset->addUniform( _alphaUniform.get() );
     }
 }
@@ -115,7 +115,7 @@ AlphaEffect::detach(osg::StateSet* stateset)
         if ( vp )
         {
             Shaders pkg;
-            pkg.unloadFunction( vp, pkg.AlphaEffectFragment );
+            pkg.unload( vp, pkg.AlphaEffectFragment );
         }
     }
 }

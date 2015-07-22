@@ -121,12 +121,12 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
 
         if ( _useFragDepth )
         {
-            pkg.loadFunction( vp, pkg.LogDepthBuffer_VertFile );
-            pkg.loadFunction( vp, pkg.LogDepthBuffer_FragFile );
+            pkg.load( vp, pkg.LogDepthBuffer_VertFile );
+            pkg.load( vp, pkg.LogDepthBuffer_FragFile );
         }
         else
         {
-            pkg.loadFunction( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
+            pkg.load( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
         }
 
         osg::ref_ptr<osg::Camera::DrawCallback> next = camera->getPreDrawCallback();
@@ -158,9 +158,9 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
             if ( vp )
             {
                 Shaders pkg;
-                pkg.unloadFunction( vp, pkg.LogDepthBuffer_FragFile );
-                pkg.unloadFunction( vp, pkg.LogDepthBuffer_VertFile );
-                pkg.unloadFunction( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
+                pkg.unload( vp, pkg.LogDepthBuffer_FragFile );
+                pkg.unload( vp, pkg.LogDepthBuffer_VertFile );
+                pkg.unload( vp, pkg.LogDepthBuffer_VertOnly_VertFile );
             }
 
             stateset->removeUniform( FC_UNIFORM );

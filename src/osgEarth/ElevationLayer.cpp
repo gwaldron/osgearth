@@ -98,21 +98,15 @@ namespace
         {
             if ( hf.valid() )
             {
-                unsigned count = 0;
                 osg::FloatArray* values = hf->getFloatArray();
                 for(osg::FloatArray::iterator i = values->begin(); i != values->end(); ++i)
                 {
                     float& value = *i;
-                    if ( value == _noDataValue || value < _minValidValue || value > _maxValidValue )
+                    if ( osg::equivalent(value, _noDataValue) || value < _minValidValue || value > _maxValidValue )
                     {
                         value = NO_DATA_VALUE;
-                        ++count;
                     }
                 } 
-
-                if ( count > 0 ) {
-                    OE_DEBUG << "Replaced " << count << "/" << values->size() << " heights with NODATA; ndv=" << _noDataValue << ", min=" << _minValidValue << ", max=" << _maxValidValue << "\n";
-                }
             }
         }
 

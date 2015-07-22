@@ -51,8 +51,8 @@ GraticuleTerrainEffect::onInstall(TerrainEngineNode* engine)
 
         // configure shaders
         Shaders package;
-        package.loadFunction( vp, package.Graticule_Vertex );
-        package.loadFunction( vp, package.Graticule_Fragment);
+        package.load( vp, package.Graticule_Vertex );
+        package.load( vp, package.Graticule_Fragment);
 
         stateset->addUniform( new osg::Uniform(
             GraticuleOptions::resolutionUniformName(), 10.0/180.0) );
@@ -76,8 +76,8 @@ GraticuleTerrainEffect::onUninstall(TerrainEngineNode* engine)
         if ( vp )
         {
             Shaders package;
-            package.unloadFunction( vp, package.Graticule_Vertex );
-            package.unloadFunction( vp, package.Graticule_Fragment );
+            package.unload( vp, package.Graticule_Vertex );
+            package.unload( vp, package.Graticule_Fragment );
 
             stateset->removeUniform( GraticuleOptions::resolutionUniformName() );
             stateset->removeUniform( GraticuleOptions::colorUniformName() );

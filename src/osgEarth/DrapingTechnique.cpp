@@ -473,8 +473,8 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // shaders
     Shaders pkg;
-    pkg.loadFunction( terrain_vp, pkg.DrapingVertex );
-    pkg.loadFunction( terrain_vp, pkg.DrapingFragment );
+    pkg.load( terrain_vp, pkg.DrapingVertex );
+    pkg.load( terrain_vp, pkg.DrapingFragment );
 }
 
 

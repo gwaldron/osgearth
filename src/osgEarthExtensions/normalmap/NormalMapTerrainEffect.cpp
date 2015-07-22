@@ -104,8 +104,8 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 
         // configure shaders
         Shaders package;
-        package.loadFunction( vp, package.Vertex );
-        package.loadFunction( vp, package.Fragment );
+        package.load( vp, package.Vertex );
+        package.load( vp, package.Fragment );
         
         stateset->addUniform( new osg::Uniform(NORMAL_SAMPLER, _normalMapUnit) );
     }
@@ -122,8 +122,8 @@ NormalMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
         if ( vp )
         {
             Shaders package;
-            package.unloadFunction( vp, package.Vertex );
-            package.unloadFunction( vp, package.Fragment );
+            package.unload( vp, package.Vertex );
+            package.unload( vp, package.Fragment );
         }
         stateset->removeUniform( NORMAL_SAMPLER );
     }

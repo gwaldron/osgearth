@@ -95,7 +95,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Local scale factor.
          */
-        void setScale( const osg::Vec3f& scale );
+        virtual void setScale( const osg::Vec3f& scale );
         const osg::Vec3f& getScale() const { return _scale; }
 
         /**

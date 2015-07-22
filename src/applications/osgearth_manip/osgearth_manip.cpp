@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -36,6 +39,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
+#include <osgEarthUtil/LogarithmicDepthBuffer>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
@@ -88,7 +92,8 @@ namespace
             "b :",                 "break tether",
             "a :",                 "toggle viewpoint arcing",
             "z :",                 "toggle throwing",
-            "k :",                 "toggle collision"            
+            "k :",                 "toggle collision",
+            "L :",                 "toggle log depth buffer"
         };
 
         Grid* g = new Grid();
@@ -140,7 +145,48 @@ namespace
 
         osg::observer_ptr<EarthManipulator> _manip;
     };
+    
 
+    /**
+     * Toggles the logarithmic depth buffer
+     */
+    struct ToggleLDB : public osgGA::GUIEventHandler
+    {
+        ToggleLDB(char key) : _key(key), _installed(false) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                if ( !_installed )
+                {
+                    _nfratio = aa.asView()->getCamera()->getNearFarRatio();
+                    _ldb.install(aa.asView()->getCamera());
+                    aa.asView()->getCamera()->setNearFarRatio(0.00001);
+                }
+                else
+                {
+                    _ldb.uninstall(aa.asView()->getCamera());
+                    aa.asView()->getCamera()->setNearFarRatio(_nfratio);
+                }
+
+                _installed = !_installed;
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle LDB"));
+        }
+
+        char _key;
+        float _nfratio;
+        bool _installed;
+        osgEarth::Util::LogarithmicDepthBuffer _ldb;
+    };
 
     /**
      * Handler to toggle "azimuth locking", which locks the camera's relative Azimuth
@@ -612,7 +658,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new BreakTetherHandler('b', manip));
     viewer.addEventHandler(new CycleTetherMode('t', manip));
     viewer.addEventHandler(new SetPositionOffset(manip));
-
+    viewer.addEventHandler(new ToggleLDB('L'));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -84,25 +84,39 @@ ElevationLayerOptions::mergeConfig( const Config& conf )
 
 namespace
 {
-    struct ElevationLayerPreCacheOperation : public TileSource::HeightFieldOperation
+    // Opeartion that replaces invalid heights with the NO_DATA_VALUE marker.
+    struct NormalizeNoDataValues : public TileSource::HeightFieldOperation
     {
-        osg::ref_ptr<CompositeValidValueOperator> _ops;
-
-        ElevationLayerPreCacheOperation( TileSource* source )
+        NormalizeNoDataValues(TileSource* source)
         {
-            _ops = new CompositeValidValueOperator;
-            _ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
-            _ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
+            _noDataValue   = source->getNoDataValue();
+            _minValidValue = source->getMinValidValue();
+            _maxValidValue = source->getMaxValidValue();
         }
 
-        void operator()( osg::ref_ptr<osg::HeightField>& hf )
+        void operator()(osg::ref_ptr<osg::HeightField>& hf)
         {
-            //Modify the heightfield data so that is contains a standard value for NO_DATA
-            ReplaceInvalidDataOperator op;
-            op.setReplaceWith(NO_DATA_VALUE);
-            op.setValidDataOperator(_ops.get());
-            op( hf.get() );
+            if ( hf.valid() )
+            {
+                unsigned count = 0;
+                osg::FloatArray* values = hf->getFloatArray();
+                for(osg::FloatArray::iterator i = values->begin(); i != values->end(); ++i)
+                {
+                    float& value = *i;
+                    if ( value == _noDataValue || value < _minValidValue || value > _maxValidValue )
+                    {
+                        value = NO_DATA_VALUE;
+                        ++count;
+                    }
+                } 
+
+                if ( count > 0 ) {
+                    OE_DEBUG << "Replaced " << count << "/" << values->size() << " heights with NODATA; ndv=" << _noDataValue << ", min=" << _minValidValue << ", max=" << _maxValidValue << "\n";
+                }
+            }
         }
+
+        float _noDataValue, _minValidValue, _maxValidValue;
     };
 
     // perform very basic sanity-check validation on a heightfield.
@@ -195,12 +209,12 @@ ElevationLayer::fireCallback( ElevationLayerCallbackMethodPtr method )
 TileSource::HeightFieldOperation*
 ElevationLayer::getOrCreatePreCacheOp()
 {
-    if ( !_preCacheOp.valid() )
+    if ( !_preCacheOp.valid() && getTileSource() )
     {
         Threading::ScopedMutexLock lock(_mutex);
         if ( !_preCacheOp.valid() )
         {
-            _preCacheOp = new ElevationLayerPreCacheOperation( getTileSource() );
+            _preCacheOp = new NormalizeNoDataValues( getTileSource() );
         }
     }
     return _preCacheOp.get();
@@ -485,7 +499,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 return GeoHeightField::INVALID;
             }
 
-            // Set up the heightfield so we don't have to worry about it later
+            // Set up the heightfield params.
             double minx, miny, maxx, maxy;
             key.getExtent().getBounds(minx, miny, maxx, maxy);
             hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
@@ -695,6 +709,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
 
     unsigned int total = numColumns * numRows;
     unsigned int completed = 0;
+    int nodataCount = 0;
 
     for (unsigned c = 0; c < numColumns; ++c)
     {
@@ -753,11 +768,17 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     }
 
                     float elevation;
-                    if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
-                        elevation != NO_DATA_VALUE)
+                    if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation))
                     {
-                        resolved = true;                    
-                        hf->setHeight(c, r, elevation);
+                        if ( elevation != NO_DATA_VALUE )
+                        {
+                            resolved = true;                    
+                            hf->setHeight(c, r, elevation);
+                        }
+                        else
+                        {
+                            ++nodataCount;
+                        }
                     }
                 }
 
@@ -804,7 +825,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 }
             }
         }
-    }   
+    }
 
     // Return whether or not we actually read any real data
     return realData;

@@ -36,6 +36,7 @@ In code this would look like this::
 Or, you can use an environment variable that will apply to all earth files. 
 Keep in mind that this will *override* a cache setting in the earth file::
 
+   set OSGEARTH_CACHE_DRIVER=leveldb
    set OSGEARTH_CACHE_PATH=folder_name
 
 In code you can set a global cache in the osgEarth resgistry::

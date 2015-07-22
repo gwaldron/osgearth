@@ -24,23 +24,23 @@ set(TARGET_IN
 set(TARGET_SRC
     Biome.cpp
 	BiomeSelector.cpp
+    LandUseTileSource.cpp
 	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
 	SplatTerrainEffect.cpp
 	SplatCoverageLegend.cpp
-	ModelSplatter.cpp
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
     Biome
 	BiomeSelector
+    LandUseTileSource
 	SplatCoverageLegend
 	SplatCatalog
 	SplatExtension
 	SplatOptions
-	SplatTerrainEffect
-	ModelSplatter)
+	SplatTerrainEffect)
 	
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS}

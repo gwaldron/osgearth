@@ -15,7 +15,7 @@ This shows how to label point features with an attribute.
             <url>../data/ne_cities.shp</url>
         </features>
         
-        <feature_indexing enabled="false"/>
+        <feature_indexing enabled="true"/>
 
         <styles>
 			<selector class="cities">

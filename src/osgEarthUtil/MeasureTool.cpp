@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -110,6 +110,7 @@ MeasureToolHandler::rebuild()
 
     _featureNode = new FeatureNode( getMapNode(), _feature.get() );
     _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    _featureNode->setClusterCulling(false);
 
     _group->addChild (_featureNode.get() );
 

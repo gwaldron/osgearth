@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -266,8 +266,8 @@ namespace osgEarth { namespace Util { namespace Controls
         bool getAbsorbEvents() const { return _absorbEvents; }
 
         /** control opacity [0..1] */
-        void setOpacity(float value) { _alphaEffect->setAlpha(value); }
-        float getOpacity() const { return _alphaEffect->getAlpha(); }
+        void setOpacity(float value) { if ( _alphaEffect.valid() ) _alphaEffect->setAlpha(value); }
+        float getOpacity() const { return _alphaEffect.valid() ? _alphaEffect->getAlpha() : 1.0f; }
 
         void addEventHandler( ControlEventHandler* handler, bool fire =false );
 

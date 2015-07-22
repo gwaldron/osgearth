@@ -175,9 +175,6 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     // Pre-allocate enough space for all triangles.
     osg::DrawElements* primSet = new osg::DrawElementsUShort(mode);
-        //numVerts > 0xFFFF ? (osg::DrawElements*)(new osg::DrawElementsUInt(mode)) :
-        //numVerts > 0xFF   ? (osg::DrawElements*)(new osg::DrawElementsUShort(mode)) :
-        //                    (osg::DrawElements*)(new osg::DrawElementsUByte(mode));
 
     primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 

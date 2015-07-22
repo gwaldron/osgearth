@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -35,7 +38,6 @@
 
 // This is only used in the "precise" variant.
 #define NEAR_RES_COEFF 0.001  // a.k.a. "C"
-#define C_UNIFORM "oe_logDepth_C"
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -49,14 +51,14 @@ namespace
     {
         osg::ref_ptr<osg::Uniform>              _uniform;
         osg::ref_ptr<osg::Camera::DrawCallback> _next;
-        float                                   _C;
+        float                                   _coeff;
 
         SetFarPlaneUniformCallback(osg::Uniform*              uniform,
                                    osg::Camera::DrawCallback* next )
         {
             _uniform = uniform;
             _next    = next;
-            _C       = 1.0f;
+            _coeff   = 1.0f;
         }
 
         void operator () (osg::RenderInfo& renderInfo) const
@@ -67,7 +69,7 @@ namespace
             {
                 float vfov, ar, n, f;
                 proj.getPerspective(vfov, ar, n, f);
-                float fc = (float)(2.0/LOG2(_C*f+1.0));
+                float fc = (float)(2.0/LOG2(_coeff*f+1.0));
                 _uniform->set( fc );
             }
             else // ortho
@@ -92,7 +94,6 @@ _useFragDepth(false)
     _supported = Registry::capabilities().supportsGLSL();
     if ( _supported )
     {
-        //_cullCallback = new LogDepthCullCallback();
         _FCUniform = new osg::Uniform(FC_UNIFORM, (float)0.0f);
     }
     else
@@ -114,11 +115,6 @@ LogarithmicDepthBuffer::install(osg::Camera* camera)
     {
         // install the shader component:
         osg::StateSet* stateset = camera->getOrCreateStateSet();
-
-        if ( _useFragDepth )
-        {
-            stateset->addUniform( new osg::Uniform(C_UNIFORM, (float)NEAR_RES_COEFF) );
-        }
         
         VirtualProgram* vp = VirtualProgram::getOrCreate( stateset );
         Shaders pkg;
@@ -158,7 +154,7 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
         osg::StateSet* stateset = camera->getStateSet();
         if ( stateset )
         {
-            VirtualProgram* vp = VirtualProgram::get( camera->getStateSet() );
+            VirtualProgram* vp = VirtualProgram::get( stateset );
             if ( vp )
             {
                 Shaders pkg;
@@ -168,7 +164,6 @@ LogarithmicDepthBuffer::uninstall(osg::Camera* camera)
             }
 
             stateset->removeUniform( FC_UNIFORM );
-            stateset->removeUniform( C_UNIFORM );
         }
     }
 }

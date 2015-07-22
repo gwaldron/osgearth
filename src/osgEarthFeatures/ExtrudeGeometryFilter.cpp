@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -272,7 +272,10 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
         if ( srs && srs->isGeographic() )
         {
             osg::Vec2d geogCenter = roofBounds.center2d();
-            roofProjSRS = srs->createUTMFromLonLat( Angle(geogCenter.x()), Angle(geogCenter.y()) );
+
+            // This sometimes fails with the aerodrom stuff. No idea why -gw.
+            //roofProjSRS = srs->createUTMFromLonLat( Angle(geogCenter.x()), Angle(geogCenter.y()) );
+            roofProjSRS = SpatialReference::create("spherical-mercator");
             if ( roofProjSRS.valid() )
             {
                 roofBounds.transform( srs, roofProjSRS.get() );

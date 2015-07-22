@@ -51,3 +51,28 @@ _selectionInfo ( selectionInfo )
 {
     //NOP
 }
+
+void
+EngineContext::startCull()
+{
+    _tick = osg::Timer::instance()->tick();
+    _tilesLastCull = _liveTiles->size();
+}
+
+double
+EngineContext::getElapsedCullTime() const
+{
+    osg::Timer_t now = osg::Timer::instance()->tick();
+    return osg::Timer::instance()->delta_s(_tick, now);
+}
+
+void
+EngineContext::endCull()
+{
+    double tms = 1000.0 * getElapsedCullTime();
+    int tileDelta = _liveTiles->size() - _tilesLastCull;
+    if ( tileDelta != 0 )
+    {
+        OE_DEBUG << LC << "Cull time = " << tms << " ms" << ", tile delta = " << tileDelta << "; avt = " << tms/(double)tileDelta << " ms\n";
+    }
+}

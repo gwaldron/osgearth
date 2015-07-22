@@ -24,6 +24,8 @@
 #include <osg/Group>
 #include <osgEarth/IOTypes>
 #include <osgEarth/ThreadingUtils>
+#include <map>
+#include <queue>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
@@ -108,13 +110,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool addChild(osg::Node*);
 
+        void traverse(osg::NodeVisitor& nv);
+
     protected:
         typedef std::map<UID, osg::ref_ptr<Loader::Request> > Requests;
+
+        typedef std::queue< osg::ref_ptr<Loader::Request> > MergeQueue;
 
         UID              _engineUID;
         osg::NodePath    _myNodePath;
         Requests         _requests;
         Threading::Mutex _requestsMutex;
+        MergeQueue       _mergeQueue;    
     };
 
 } } }

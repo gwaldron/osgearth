@@ -73,6 +73,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
+        void startCull();
+
+        void endCull();
+
+        double getElapsedCullTime() const;
+
     protected:
 
         virtual ~EngineContext() { }
@@ -89,6 +95,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Loader*                               _loader;
         const LandCoverBins*                  _landCoverBins;
         const SelectionInfo&                  _selectionInfo;
+        osg::Timer_t                          _tick;
+        int                                   _tilesLastCull;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

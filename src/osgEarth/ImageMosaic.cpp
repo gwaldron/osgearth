@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -102,7 +102,8 @@ ImageMosaic::createImage()
 
     osg::ref_ptr<osg::Image> image = new osg::Image;
     image->allocateImage(pixelsWide, pixelsHigh, 1, _images[0]._image->getPixelFormat(), _images[0]._image->getDataType());
-    image->setInternalTextureFormat(_images[0]._image->getInternalTextureFormat()); 
+    image->setInternalTextureFormat(_images[0]._image->getInternalTextureFormat());
+    ImageUtils::markAsNormalized(image.get(), ImageUtils::isNormalized(_images[0].getImage()));
 
     //Initialize the image to be completely white!
     memset(image->data(), 0xFF, image->getImageSizeInBytes());

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -70,7 +70,7 @@ ImageLayerOptions::setDefaults()
     _magFilter.init( osg::Texture::LINEAR );
     _texcomp.init( osg::Texture::USE_IMAGE_DATA_FORMAT ); // none
     _shared.init( false );
-    _coverage.init( false );
+    _coverage.init( false );    
 }
 
 void
@@ -311,9 +311,13 @@ ImageLayer::init()
 
     if ( _runtimeOptions.shareTexUniformName().isSet() )
         _shareTexUniformName = _runtimeOptions.shareTexUniformName().get();
+    else
+        _shareTexUniformName.init( Stringify() << "layer_" << getUID() << "_tex" );
 
     if ( _runtimeOptions.shareTexMatUniformName().isSet() )
         _shareTexMatUniformName = _runtimeOptions.shareTexMatUniformName().get();
+    else
+        _shareTexMatUniformName.init( Stringify()  << "layer_" << getUID() << "_texMatrix" );
 }
 
 void
@@ -570,7 +574,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
         if ( r.succeeded() )
         {
             cachedImage = r.releaseImage();
-            ImageUtils::normalizeImage( cachedImage.get() );            
+            ImageUtils::fixInternalFormat( cachedImage.get() );            
             bool expired = getCachePolicy().isExpired(r.lastModifiedTime());
             if (!expired)
             {
@@ -604,7 +608,7 @@ ImageLayer::createImageInKeyProfile(const TileKey&    key,
     // Normalize the image if necessary
     if ( result.valid() )
     {
-        ImageUtils::normalizeImage( result.getImage() );
+        ImageUtils::fixInternalFormat( result.getImage() );
     }
 
     // memory cache first:
@@ -679,7 +683,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     }
 
     // create an image from the tile source.
-    osg::ref_ptr<osg::Image> result = source->createImage( key, op.get(), progress );
+    osg::ref_ptr<osg::Image> result = source->createImage( key, op.get(), progress );   
 
     // Process images with full alpha to properly support MP blending.    
     if ( result.valid() && *_runtimeOptions.featherPixels())
@@ -737,24 +741,28 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
         for( std::vector<TileKey>::iterator k = intersectingKeys.begin(); k != intersectingKeys.end(); ++k )
         {
             GeoImage image = createImageFromTileSource( *k, progress );
+
             if ( image.valid() )
             {
-                ImageUtils::normalizeImage(image.getImage());
-
-                // Make sure all images in mosaic are based on "RGBA - unsigned byte" pixels.
-                // This is not the smarter choice (in some case RGB would be sufficient) but
-                // it ensure consistency between all images / layers.
-                //
-                // The main drawback is probably the CPU memory foot-print which would be reduced by allocating RGB instead of RGBA images.
-                // On GPU side, this should not change anything because of data alignements : often RGB and RGBA textures have the same memory footprint
-                //
-                if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
-                    || (image.getImage()->getPixelFormat() != GL_RGBA) )
+                if ( !isCoverage() )
                 {
-                    osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
-                    if (convertedImg.valid())
+                    ImageUtils::fixInternalFormat(image.getImage());
+
+                    // Make sure all images in mosaic are based on "RGBA - unsigned byte" pixels.
+                    // This is not the smarter choice (in some case RGB would be sufficient) but
+                    // it ensure consistency between all images / layers.
+                    //
+                    // The main drawback is probably the CPU memory foot-print which would be reduced by allocating RGB instead of RGBA images.
+                    // On GPU side, this should not change anything because of data alignements : often RGB and RGBA textures have the same memory footprint
+                    //
+                    if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
+                        || (image.getImage()->getPixelFormat() != GL_RGBA) )
                     {
-                        image = GeoImage(convertedImg, image.getExtent());
+                        osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
+                        if (convertedImg.valid())
+                        {
+                            image = GeoImage(convertedImg, image.getExtent());
+                        }
                     }
                 }
 
@@ -794,24 +802,33 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
                 image = createImageFromTileSource( parentKey, progress );
                 if ( image.valid() )
                 {
-                    ImageUtils::normalizeImage(image.getImage());
-                    if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
-                        || (image.getImage()->getPixelFormat() != GL_RGBA) )
+                    GeoImage cropped;
+
+                    if ( !isCoverage() )
                     {
-                        osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
-                        if (convertedImg.valid())
+                        ImageUtils::fixInternalFormat(image.getImage());
+                        if (   (image.getImage()->getDataType() != GL_UNSIGNED_BYTE)
+                            || (image.getImage()->getPixelFormat() != GL_RGBA) )
                         {
-                            image = GeoImage(convertedImg, image.getExtent());
+                            osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(image.getImage());
+                            if (convertedImg.valid())
+                            {
+                                image = GeoImage(convertedImg, image.getExtent());
+                            }
                         }
+
+                        cropped = image.crop( k->getExtent(), false, image.getImage()->s(), image.getImage()->t() );
                     }
 
-                    OE_DEBUG << LC << "Tile " << k->str() << " fell back on " << parentKey.str() << "\n";
-                    
-                    // cut out the piece we need:
-                    GeoImage croppedImage = image.crop( k->getExtent(), true, image.getImage()->s(), image.getImage()->t() );
+                    else
+                    {
+                        // TODO: may not work.... test; tilekey extent will <> cropped extent
+                        cropped = image.crop( k->getExtent(), true, image.getImage()->s(), image.getImage()->t(), false );
+                    }
 
                     // and queue it.
-                    mosaic.getImages().push_back( TileImage(croppedImage.getImage(), *k) );
+                    mosaic.getImages().push_back( TileImage(cropped.getImage(), *k) );       
+
                 }
             }
 
@@ -849,11 +866,11 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
             &key.getExtent(), 
             *_runtimeOptions.reprojectedTileSize(),
             *_runtimeOptions.reprojectedTileSize(),
-            *_runtimeOptions.driver()->bilinearReprojection());
+            *_runtimeOptions.driver()->bilinearReprojection() );
     }
 
     // Process images with full alpha to properly support MP blending.
-    if ( result.valid() && *_runtimeOptions.featherPixels() )
+    if ( result.valid() && *_runtimeOptions.featherPixels() && !isCoverage() )
     {
         ImageUtils::featherAlphaRegions( result.getImage() );
     }

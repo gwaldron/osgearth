@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -155,13 +155,10 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 				cv->getEyePoint().length() - _SL->getSRS()->getEllipsoid()->getRadiusEquator() :
 				cv->getEyePoint().z();
 
-			//if (_lastAltitude <= *_options.cloudsMaxAltitude() )
-			{
-                _SL->updateLocation();
-                _SL->updateLight();
-                _SL->getAtmosphere()->UpdateSkyAndClouds();
-				_SL->getAtmosphere()->CullObjects();
-			}
+            _SL->updateLocation();
+            _SL->updateLight();
+            _SL->getAtmosphere()->UpdateSkyAndClouds();
+			_SL->getAtmosphere()->CullObjects();
         }
     }
 

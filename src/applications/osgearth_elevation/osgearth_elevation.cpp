@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -30,6 +33,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/LatLongFormatter>
+#include <osgEarthUtil/ExampleResources>
 #include <iomanip>
 
 using namespace osgEarth;
@@ -55,6 +59,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     {
         _map = s_mapNode->getMap();
         _query.setMaxTilesToCache(10);
+        _query.setFallBackOnNoData( false );
         _path.push_back( s_mapNode->getTerrainEngine() );
     }
 
@@ -146,7 +151,11 @@ int main(int argc, char** argv)
 
     osgViewer::Viewer viewer(arguments);
 
-    s_mapNode = MapNode::load(arguments);
+    s_mapNode = 0L;
+    osg::Node* earthFile = MapNodeHelper().load(arguments, &viewer);
+    if (earthFile)
+        s_mapNode = MapNode::get(earthFile);
+
     if ( !s_mapNode )
     {
         OE_WARN << "Unable to load earth file." << std::endl;
@@ -160,7 +169,7 @@ int main(int argc, char** argv)
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
     // The MapNode will render the Map object in the scene graph.
-    root->addChild( s_mapNode );
+    root->addChild( earthFile );
 
     // Make the readout:
     Grid* grid = new Grid();
@@ -183,8 +192,7 @@ int main(int argc, char** argv)
         mapSRS->getVerticalDatum()->getName() : 
         Stringify() << "geodetic (" << mapSRS->getEllipsoid()->getName() << ")" );
 
-    ControlCanvas* canvas = new ControlCanvas();    
-    root->addChild(canvas);
+    ControlCanvas* canvas = ControlCanvas::get(&viewer);
     canvas->addControl( grid );
 
     // An event handler that will respond to mouse clicks:

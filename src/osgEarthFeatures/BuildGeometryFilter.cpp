@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -404,8 +404,10 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
                 applyLineSymbology( osgGeom->getOrCreateStateSet(), line );
             }
             
-            // subdivide the mesh if necessary to conform to an ECEF globe:
-            if ( makeECEF && !line->tessellation().isSetTo(0) )
+            // subdivide the mesh if necessary to conform to an ECEF globe;
+            // but if the tessellation is set to zero, or if the style specifies a
+            // tessellation size, skip this step.
+            if ( makeECEF && !line->tessellation().isSetTo(0) && !line->tessellationSize().isSet() )
             {
                 double threshold = osg::DegreesToRadians( *_maxAngle_deg );
                 OE_DEBUG << "Running mesh subdivider with threshold " << *_maxAngle_deg << std::endl;

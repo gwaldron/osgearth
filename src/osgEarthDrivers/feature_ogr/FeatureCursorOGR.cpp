@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -236,7 +236,7 @@ FeatureCursorOGR::readChunk()
             }
             else
             {
-                OE_INFO << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
+                OE_DEBUG << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
             }
         }
         OGR_F_Destroy( _nextHandleToQueue );
@@ -265,7 +265,7 @@ FeatureCursorOGR::readChunk()
                 }
                 else
                 {
-                    OE_INFO << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
+                    OE_DEBUG << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
                 }
             }            
             OGR_F_Destroy( handle );

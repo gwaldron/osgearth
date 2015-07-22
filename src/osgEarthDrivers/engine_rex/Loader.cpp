@@ -39,7 +39,10 @@ osg::StateSet*
 Loader::Request::getStateSet()
 {
     if ( !_stateSet.valid() )
+    {
         _stateSet = new osg::StateSet();
+        _stateSet->setDataVariance( osg::Object::DYNAMIC );
+    }
     return _stateSet.get();
 }
 
@@ -80,10 +83,12 @@ namespace
     {
         RequestResultNode(Loader::Request* request) : _request(request)
         {
-            // Do this so the ICO can find and pre-compile GL objects that are
+            // Do this so the pager/ICO can find and pre-compile GL objects that are
             // attached to the stateset.
             if ( _request.valid() )
             {
+                // TODO: for some reason pre-compiling is causing texture flashing issues 
+                // with things like classification maps when using --ico. Figure out why.
                 setStateSet( _request->getStateSet() );
             }
         }
@@ -99,6 +104,8 @@ PagerLoader::PagerLoader(UID engineUID) :
 _engineUID( engineUID )
 {
     _myNodePath.push_back( this );
+
+    //this->setNumChildrenRequiringUpdateTraversal( 1u );
 }
 
 
@@ -148,6 +155,25 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
     return false;
 }
 
+void
+PagerLoader::traverse(osg::NodeVisitor& nv)
+{
+    if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    {
+        for(int count=0; count<10 && !_mergeQueue.empty(); ++count)
+        {
+            Request* req = _mergeQueue.front().get();
+            if ( req )
+            {
+                req->apply();
+            }
+            _mergeQueue.pop();
+        }
+    }
+
+    LoaderGroup::traverse( nv );
+}
+
 
 bool
 PagerLoader::addChild(osg::Node* node)
@@ -158,6 +184,7 @@ PagerLoader::addChild(osg::Node* node)
         Request* req = result->getRequest();
         if ( req )
         {
+            //_mergeQueue.push( req );
             req->apply();
         }
     }

@@ -1,8 +1,8 @@
 #version 330
 
-#pragma vp_entryPoint "oe_splat_fragment"
+#pragma vp_entryPoint "oe_splat_complex"
 #pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.4"
+#pragma vp_order      "0.4"                 // before terrain image layers
 
 // define to activate 'edit' mode in which uniforms control
 // the splatting parameters.
@@ -26,16 +26,14 @@ uniform vec4 oe_tile_key;
 // from the vertex shader:
 in vec2 oe_splat_covtc;
 in float oe_splat_range;
-in float oe_splat_scaleOffsetInt;
 
 // from SplatTerrainEffect:
 uniform float oe_splat_warp;
 uniform float oe_splat_blur;
 uniform sampler2D oe_splat_coverageTex;
 uniform sampler2DArray oe_splatTex;
+uniform float oe_splat_scaleOffset;
 
-uniform sampler2D oe_terrain_tex;
-uniform mat4 oe_terrain_tex_matrix;
 uniform float oe_splat_detailRange;
 uniform float oe_splat_noiseScale;
 uniform float oe_splat_useBilinear; // 1=true, -1=false
@@ -107,8 +105,8 @@ vec4 oe_splat_getDetailTexel(in oe_SplatRenderInfo ri, in vec2 tc, in oe_SplatEn
 // Generates a texel using nearest-neighbor coverage sampling.
 vec4 oe_splat_nearest(in vec2 splat_tc, in oe_SplatEnv env)
 {
-    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc, env);
-    float coverageValue = 255.0 * texture(oe_splat_coverageTex, warped_tc).r;
+    vec2 tc = oe_splat_covtc; //oe_splat_warpCoverageCoords(splat_tc, env);
+    float coverageValue = texture2D(oe_splat_coverageTex, tc).r;
     oe_SplatRenderInfo ri = oe_splat_getRenderInfo(coverageValue, env);
     vec4 primary = oe_splat_getTexel(ri.primaryIndex, splat_tc);
     float detailToggle = ri.detailIndex >= 0 ? 1.0 : 0.0;
@@ -122,7 +120,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     vec4 texel = vec4(0,0,0,1);
 
     //TODO: coverage warping is slow due to the noise function. Consider removing/reworking.
-    vec2 warped_tc = oe_splat_warpCoverageCoords(splat_tc, env);
+    vec2 tc = oe_splat_covtc; //oe_splat_warpCoverageCoords(splat_tc, env);
 
     float a = oe_splat_blur;
     float pixelWidth = a/256.0; // 256 = hard-coded cov tex size //TODO 
@@ -131,19 +129,19 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
 
     // Find the four quantized coverage coordinates that form a box around the actual
     // coverage coordinates, where each quantized coord is at the center of a coverage texel.
-    vec2 rem = mod(warped_tc, pixelWidth);
-    vec2 sw = vec2(0);
-    sw.x = warped_tc.x - rem.x + (rem.x >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
-    sw.y = warped_tc.y - rem.y + (rem.y >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
+    vec2 rem = mod(tc, pixelWidth);
+    vec2 sw;
+    sw.x = tc.x - rem.x + (rem.x >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
+    sw.y = tc.y - rem.y + (rem.y >= halfPixelWidth ? halfPixelWidth : -halfPixelWidth);
     vec2 ne = sw + pixelWidth;
     vec2 nw = vec2(sw.x, ne.y);
     vec2 se = vec2(ne.x, sw.y);
 
     // Calculate the weighting for each corner.
-    vec2 dsw = warped_tc-sw;
-    vec2 dse = warped_tc-se;
-    vec2 dne = warped_tc-ne;
-    vec2 dnw = warped_tc-nw;
+    vec2 dsw = tc-sw;
+    vec2 dse = tc-se;
+    vec2 dne = tc-ne;
+    vec2 dnw = tc-nw;
 
     float sw_weight = max(pixelWidth2-dot(dsw,dsw),0.0);
     float se_weight = max(pixelWidth2-dot(dse,dse),0.0);
@@ -158,10 +156,10 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     nw_weight *= invTotalWeight;
 
     // Sample coverage values using quantized corner coords:
-    float value_sw = 255.0*texture(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
-    float value_se = 255.0*texture(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
-    float value_ne = 255.0*texture(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
-    float value_nw = 255.0*texture(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
+    float value_sw = texture2D(oe_splat_coverageTex, clamp(sw, 0.0, 1.0)).r;
+    float value_se = texture2D(oe_splat_coverageTex, clamp(se, 0.0, 1.0)).r;
+    float value_ne = texture2D(oe_splat_coverageTex, clamp(ne, 0.0, 1.0)).r;
+    float value_nw = texture2D(oe_splat_coverageTex, clamp(nw, 0.0, 1.0)).r;
 
     // Build the render info data for each corner:
     oe_SplatRenderInfo ri_sw = oe_splat_getRenderInfo(value_sw, env);
@@ -178,7 +176,7 @@ vec4 oe_splat_bilinear(in vec2 splat_tc, in oe_SplatEnv env)
     // Detail splat - weighting is in the alpha channel
     // TODO: Pointless to have a detail range? -gw
     // TODO: If noise is a texture, just try to single-sample it instead
-    float detailToggle = env.range < oe_splat_detailRange ? 1.0 : 0.0;
+    float detailToggle =env.range < oe_splat_detailRange ? 1.0 : 0.0;
     vec4 sw_detail = detailToggle * oe_splat_getDetailTexel(ri_sw, splat_tc, env);
     vec4 se_detail = detailToggle * oe_splat_getDetailTexel(ri_se, splat_tc, env);
     vec4 ne_detail = detailToggle * oe_splat_getDetailTexel(ri_ne, splat_tc, env);
@@ -223,13 +221,13 @@ vec4 oe_splat_getNoise(in vec2 tc)
 // Scales the incoming tile splat coordinates to match the requested
 // LOD level. We offset the level from the current tile key's LOD (.z)
 // because otherwise you run into single-precision jitter at high LODs.
-vec2 oe_splat_getSplatCoords(float lod)
+vec2 oe_splat_getSplatCoords(in vec2 tc, float lod)
 {
     float dL = oe_tile_key.z - lod;
     float factor = exp2(dL);
     float invFactor = 1.0/factor;
     vec2 scale = vec2(invFactor); 
-    vec2 result = oe_layer_tilec.st * scale;
+    vec2 result = tc * scale;
 
     // For upsampling we need to calculate an offset as well
     if ( factor >= 1.0 )
@@ -244,54 +242,64 @@ vec2 oe_splat_getSplatCoords(float lod)
     return result;
 }
 
-// Main entry point for fragment shader.
-void oe_splat_fragment(inout vec4 color)
+// Simplified entry point with does no filtering or range blending. (much faster.)
+void oe_splat_simple(inout vec4 color)
 {
-    // Noise coords.
     float noiseLOD = floor(oe_splat_noiseScale);
-    vec2 noiseCoords = oe_splat_getSplatCoords(noiseLOD); //12
+    vec2 noiseCoords = oe_splat_getSplatCoords(oe_layer_tilec.st, noiseLOD);
 
     oe_SplatEnv env;
     env.range = oe_splat_range;
     env.slope = oe_splat_getSlope();
     env.noise = oe_splat_getNoise(noiseCoords);
-    env.elevation = 0.0; // usused atm. //texture2D(oe_terrain_tex, (oe_terrain_tex_matrix*oe_layer_tilec).st).r;
+    env.elevation = 0.0;
 
-    // Mapping of view ranges to splat texture levels of detail.
-#define RANGE_COUNT 9
-    const float ranges[RANGE_COUNT] = float[](  250.0, 500.0, 1000.0, 4000.0, 30000.0, 150000.0, 300000.0, 1000000.0, 5000000.0 );
-    const float lods  [RANGE_COUNT] = float[](  18.0,  17.0,   16.0,   14.0,    12.0,     10.0,      8.0,       6.0,       4.0 );
+    color = oe_splat_bilinear(oe_layer_tilec.st, env);
+}
 
-    // Choose the best range based on distance to camera.
-    float d = clamp(oe_splat_range, ranges[0], ranges[RANGE_COUNT-1]);
+// Main entry point for fragment shader.
+void oe_splat_complex(inout vec4 color)
+{
+    // Noise coords.
+    float noiseLOD = floor(oe_splat_noiseScale);
+    vec2 noiseCoords = oe_splat_getSplatCoords(oe_layer_tilec.st, noiseLOD); //TODO: move to VS for slight speedup
 
-    vec4 texel;
+    oe_SplatEnv env;
+    env.range = oe_splat_range;
+    env.slope = oe_splat_getSlope();
+    env.noise = oe_splat_getNoise(noiseCoords);
+    env.elevation = 0.0;
 
-    // Find the 2 ranges bookending the camera range, and blend between then.
-    // TODO: replace bilinear with nearest for far ranges?
-    for(int i=0; i<RANGE_COUNT-1; ++i)
+    // quantize the scale offset so we take the hit in the FS
+    float scaleOffset = oe_splat_scaleOffset >= 0.0 ? ceil(oe_splat_scaleOffset) : floor(oe_splat_scaleOffset);
+        
+    // Calculate the 2 LODs we need to blend. We have to do this in the FS because 
+    // it's quite possible for a single triangle to span more than 2 LODs.
+    int   lodIndex = -1;
+    float lod0;
+    float lod1;
+    float lodBlend;
+    float clampedRange = clamp(oe_splat_range, oe_SplatRanges[0], oe_SplatRanges[RANGE_COUNT-1]);
+
+    for(int i=0, lodIndex=-1; i<RANGE_COUNT-1 && lodIndex < 0; ++i)
     {
-        if ( d >= ranges[i] && d <= ranges[i+1] )
+        if ( clampedRange >= oe_SplatRanges[i] && clampedRange <= oe_SplatRanges[i+1] )
         {
-            float lod0 = lods[i] + oe_splat_scaleOffsetInt;
-            vec2 splat_tc0 = oe_splat_getSplatCoords(lod0);
-            vec4 texel0 = oe_splat_useBilinear > 0.0?
-                oe_splat_bilinear(splat_tc0, env) :
-                oe_splat_nearest(splat_tc0, env);
-            
-
-            float lod1 = lods[i+1] + oe_splat_scaleOffsetInt;
-            vec2 splat_tc1 = oe_splat_getSplatCoords(lod1);
-            vec4 texel1 = oe_splat_useBilinear > 0.0?
-                oe_splat_bilinear(splat_tc1, env) :
-                oe_splat_nearest(splat_tc1, env);
-
-            float r = (d-ranges[i])/(ranges[i+1]-ranges[i]);
-            texel = mix(texel0, texel1, r);
-
-            break;
+            lod0 = oe_SplatLevels[i]   + scaleOffset;
+            lod1 = oe_SplatLevels[i+1] + scaleOffset;
+            lodBlend = clamp((clampedRange-oe_SplatRanges[i])/(oe_SplatRanges[i+1]-oe_SplatRanges[i]), 0.0, 1.0);
         }
     }
+
+    // Sample the two LODs:
+    vec2 tc0 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod0);
+    vec4 texel0 = oe_splat_bilinear(tc0, env);
+    
+    vec2 tc1 = oe_splat_getSplatCoords(oe_layer_tilec.st, lod1);
+    vec4 texel1 = oe_splat_bilinear(tc1, env);
+    
+    // Blend:
+    vec4 texel = mix(texel0, texel1, lodBlend);
 
     color = mix(color, texel, texel.a);
 

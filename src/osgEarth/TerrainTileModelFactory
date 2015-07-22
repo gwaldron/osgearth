@@ -89,6 +89,10 @@ namespace osgEarth
             osg::Image*       image,
             const ImageLayer* layer) const;
 
+        osg::Texture* createCoverageTexture(
+            osg::Image*       image,
+            const ImageLayer* layer) const;
+
         osg::Texture* createElevationTexture(
             osg::Image* image) const;
 

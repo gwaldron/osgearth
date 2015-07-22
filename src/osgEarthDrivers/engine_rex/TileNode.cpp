@@ -77,9 +77,11 @@ TileNode::create(const TileKey& key, EngineContext* context)
     unsigned lodForMorphing = context->getSelectionInfo().lodForMorphing(isProjected);
     context->getGeometryPool()->getPooledGeometry(key, lodForMorphing, context->getMapFrame().getMapInfo(), geom);
 
+#if 1
     _proxyGeometry = new ProxyGeometry(key
                                      , context->getMapFrame().getMapInfo()
                                      , context->_options.tileSize().get());
+#endif
 
     TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), _proxyGeometry.get());
     surfaceDrawable->setDrawAsPatches(false);
@@ -98,7 +100,6 @@ TileNode::create(const TileKey& key, EngineContext* context)
     TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), 0);
     patchDrawable->setDrawAsPatches(true);
 
-    // PPP: Is this correct???
     _landCover = new SurfaceNode(
         key,
         context->getMapFrame().getMapInfo(),
@@ -298,30 +299,10 @@ TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionIn
         OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
 #endif
         float fRadius = (float)selectionInfo.visParameters(currLOD+1)._fVisibility;
-        bool bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius, fRadius*fRadius);
+        bool bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius*fRadius);
         return bAnyChildVisible;
     }
     return false;
-}
-
-bool
-TileNode::selfIntersectsSphere(const osg::Vec3& point, float radius, float radiusSquare)
-{
-    if (_surface.valid()==false)
-    {
-        return false;
-    }
-    return _surface->boxIntersectsSphere(point, radius, radiusSquare);
-}
-
-bool
-TileNode::childrenIntersectSphere(const osg::Vec3& point, float radius, float radiusSquare)
-{
-    if (_surface.valid()==false)
-    {
-        return false;
-    }
-    return _surface->anyChildBoxIntersectsSphere(point, radius, radiusSquare);
 }
 
 void TileNode::lodSelect(osg::NodeVisitor& nv)
@@ -346,7 +327,9 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
-    bool bShouldSubDivide = shouldSubDivide(nv, selectionInfo);
+    const double maxCullTime = 4.0/1000.0;
+
+    bool bShouldSubDivide = shouldSubDivide(nv, selectionInfo); // && context->getElapsedCullTime() < maxCullTime;
 
     // If *any* of the children are visible, subdivide.
     if (bShouldSubDivide)
@@ -427,6 +410,7 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
         load( nv );
     }
 }
+
 void TileNode::regularUpdate(osg::NodeVisitor& nv)
 {
     if ( getNumChildren() > 0 )
@@ -550,8 +534,10 @@ TileNode::updateElevationData(const RenderBindings& bindings)
     osg::Matrixf matrixScaleBias;
 
     // invalidate
-    osg::ref_ptr<ProxyGeometry> proxyGeometry(static_cast<ProxyGeometry*>(_proxyGeometry.get()));
-    proxyGeometry->setElevationData(0, matrixScaleBias);
+    if ( _proxyGeometry.valid() )
+    {
+        _proxyGeometry->setElevationData(0, matrixScaleBias);
+    }
 
     const osg::Uniform* u = getStateSet()->getUniform(elevBinding->matrixName());
     if ( !u )
@@ -572,7 +558,11 @@ TileNode::updateElevationData(const RenderBindings& bindings)
             extremaOK = ElevationTexureUtils::findExtrema(elevTex, matrixScaleBias, getTileKey(), extrema);
             if ( extremaOK )
             {
-                proxyGeometry->setElevationData(elevTex, matrixScaleBias);
+                if ( _proxyGeometry.valid() )
+                {
+                    _proxyGeometry->setElevationData(elevTex, matrixScaleBias);
+                }
+
                 setElevationExtrema( extrema );
                 OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
                 break;
@@ -625,7 +615,7 @@ TileNode::load(osg::NodeVisitor& nv)
 void
 TileNode::expireChildren(osg::NodeVisitor& nv)
 {
-    OE_DEBUG << "Expiring children of " << getTileKey().str() << "\n";
+    OE_DEBUG << LC << "Expiring children of " << getTileKey().str() << "\n";
 
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     if ( !_expireRequest.valid() )

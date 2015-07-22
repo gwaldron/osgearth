@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -42,7 +42,7 @@ struct AggState : public osg::Referenced
     }
 
     agg::rendering_buffer           _rbuf;
-    agg::renderer<agg::span_abgr32> _ren;
+    agg::renderer<agg::span_abgr32, agg::rgba8> _ren;
     agg::rasterizer                 _ras;
 };
 

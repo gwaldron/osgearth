@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -123,7 +123,8 @@ TritonContext::update(double simTime)
 {
     if ( _ocean )
     {
-        _ocean->UpdateSimulation( simTime );
+        // fmod requires b/c CUDA is limited to single-precision values
+        _ocean->UpdateSimulation( fmod(simTime, 86400.0) );
     }
 }
 

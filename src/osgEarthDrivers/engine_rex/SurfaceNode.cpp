@@ -103,13 +103,13 @@ namespace
 
 //..............................................................
 
-const bool SurfaceNode::_enableDebugNodes = true;
+const bool SurfaceNode::_enableDebugNodes = false; //true;
 
 SurfaceNode::SurfaceNode(const TileKey&        tilekey,
                          const MapInfo&        mapinfo,
                          const RenderBindings& bindings,
                          TileDrawable*         drawable)
-                         : _debugNodeVisible(false)
+: _debugNodeVisible(false)
 {
     _tileKey = tilekey;
 
@@ -140,87 +140,26 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
     setElevationExtrema(osg::Vec2f(0, 0));
 }
 
-float minVal(float lhs, float rhs)
-{
-    return std::min(lhs, rhs);
-}
-float maxVal(float lhs, float rhs)
-{
-    return std::max(lhs, rhs);
-}
-
-void GetLengthAndLengthSquared(float& diffLength, float& diffLengthSquare, const osg::Vec3& diff)
-{
-   diffLengthSquare = diff*diff;
-   diffLength = sqrt(diffLengthSquare);
-}
-
-template<class Func>
-class AccumulatePredicate
-{
-public:
-    AccumulatePredicate(Func& func, const osg::Vec3& center): m_center(center), m_Func(func){}
-    float operator()(float lhs, const osg::Vec3& corner)
-    {
-        float diffLength, diffLengthSquare;
-        GetLengthAndLengthSquared(diffLength, diffLengthSquare, (corner-m_center));
-        lhs = m_Func(lhs, diffLength);
-        return lhs;
-    }
-private:
-    const osg::Vec3& m_center;
-    Func& m_Func;
-
-};
-
 float
-SurfaceNode::_minDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center)
+SurfaceNode::minSquaredDistanceFromPoint(const VectorPoints& corners, const osg::Vec3& center)
 {   
-    float fMinDistance = std::accumulate(corners.begin(), corners.end()
-        , std::numeric_limits<float>::max()
-        , AccumulatePredicate< float (float, float) >(minVal, center));
-    return fMinDistance;
-}
-
-float
-SurfaceNode::_maxDistanceFromPointSquare(const VectorPoints& corners, const osg::Vec3& center)
-{
-    float fMaxDistance = std::accumulate(corners.begin(), corners.end()
-        , std::numeric_limits<float>::min()
-        , AccumulatePredicate< float (float, float) >(maxVal, center));
-
-    return fMaxDistance;
-}
-
-float
-SurfaceNode::minDistanceFromPointSquare(const osg::Vec3& center)
-{
-    return _minDistanceFromPointSquare(_worldCorners, center);
-}
-
-float
-SurfaceNode::maxDistanceFromPointSquare(const osg::Vec3& center)
-{
-    return _maxDistanceFromPointSquare(_worldCorners, center);
+    float mind2 = FLT_MAX;
+    for( VectorPoints::const_iterator i=corners.begin(); i != corners.end(); ++i )
+    {
+        float d2 = (*i - center).length2();
+        if ( d2 < mind2 ) mind2 = d2;
+    }
+    return mind2;
 }
 
 bool
-SurfaceNode::boxIntersectsSphere(const osg::Vec3& center, float radius, float radiusSquare)
-{
-    float fMinDistanceSquare = minDistanceFromPointSquare(center);
- // return fMinDistanceSquare<=radiusSquare;
-    return fMinDistanceSquare<=radius;
-}
-
-bool
-SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radius, float radiusSquare)
+SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radiusSquared)
 {
     for(ChildrenCorners::const_iterator it = _childrenCorners.begin(); it != _childrenCorners.end(); ++it)
     {
         const VectorPoints& childCorners = *it;
-        float fMinDistanceSquare = _minDistanceFromPointSquare(childCorners, center);
-      // if (fMinDistanceSquare<=radiusSquare)
-        if (fMinDistanceSquare<=radius)
+        float fMinDistanceSquared = minSquaredDistanceFromPoint(childCorners, center);
+        if (fMinDistanceSquared <= radiusSquared)
         {
             return true;
         }
@@ -231,14 +170,15 @@ SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radius, 
 void
 SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
 {
-    _drawable->setElevationExtrema(minmax);
+    // communicate the extrema to the drawable so it can compute a proper bounding box:
+    if ( minmax != osg::Vec2f(0,0) )
+        _drawable->setElevationExtrema(minmax);
 
-    // compute, not get.
-    osg::BoundingBox box = _drawable->computeBox();
-
-    osg::Matrix local2world;
-    this->computeLocalToWorldMatrix(local2world, 0L);
+    // bounding box in local space:
+    const osg::BoundingBox& box = _drawable->getBox();
     
+    // compute the bounding box in world space:
+    const osg::Matrix& local2world = getMatrix();    
     _bbox.init();
     for(int i=0; i<8; ++i)
     {

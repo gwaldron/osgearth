@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_FEATURE_ELEVATION_DRIVEROPTIONS
+#define OSGEARTH_DRIVER_FEATURE_ELEVATION_DRIVEROPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileSource>
+#include <osgEarthFeatures/FeatureSource>
+
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    class FeatureElevationOptions : public TileSourceOptions // NO EXPORT; header only
+    {
+    public: // properties
+
+        /** feature attribute containing the elevation value */
+        optional<std::string>& attr() { return _attr; }
+        const optional<std::string>& attr() const { return _attr; }
+
+        /** Feature source from which to read the feature data */
+        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+
+    public: // ctors
+
+        FeatureElevationOptions( const TileSourceOptions& options =TileSourceOptions() ) :
+            TileSourceOptions( options ),
+            _attr( "ELEVATION" )
+        {
+            setDriver( "feature_elevation" );
+            fromConfig( _conf );
+        }
+
+        virtual ~FeatureElevationOptions() { }
+
+    public:
+
+        Config getConfig() const
+        {
+            Config conf = TileSourceOptions::getConfig();
+            conf.updateIfSet( "attr", _attr );
+            conf.updateObjIfSet( "features", _featureOptions );
+
+            return conf;
+        }
+
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "attr", _attr );
+
+            if ( conf.hasChild("features") )
+                _featureOptions->merge( conf.child("features") );
+        }
+
+        optional<FeatureSourceOptions>  _featureOptions;
+        optional<std::string>           _attr;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_FEATURE_ELEVATION_DRIVEROPTIONS

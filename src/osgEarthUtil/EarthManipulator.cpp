@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -2260,6 +2260,9 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
 void
 EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
 {
+    if (!established())
+        return;
+
     osg::Vec3d lookVector(- matrix(2,0),-matrix(2,1),-matrix(2,2));
     osg::Vec3d eye(matrix(3,0),matrix(3,1),matrix(3,2));
 

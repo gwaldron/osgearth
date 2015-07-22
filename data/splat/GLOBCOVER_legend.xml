@@ -92,7 +92,13 @@
 				 
 		<mapping value="230"
 		         class="water"
-				 name="No data"/>				
+				 name="No data"/>
+				 
+		<mapping value="900"
+		         class="asphalt"
+				 name="Paved roads"/>
+
+                   
 	</mappings>
 </legend>
 

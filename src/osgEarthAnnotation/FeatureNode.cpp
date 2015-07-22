@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -32,6 +35,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+#include <osgEarth/CullingUtils>
 
 #include <osg/BoundingSphere>
 #include <osg/Polytope>
@@ -51,7 +55,9 @@ FeatureNode::FeatureNode(MapNode* mapNode,
 AnnotationNode( mapNode ),
 _style        ( style ),
 _options      ( options ),
-_needsRebuild (true)
+_needsRebuild (true),
+_clusterCulling(true),
+_clusterCullingCallback(0)
 {
     if (_style.empty() && feature->style().isSet())
     {
@@ -69,10 +75,28 @@ FeatureNode::FeatureNode(MapNode* mapNode,
 AnnotationNode( mapNode ),
 _style        ( style ),
 _options      ( options ),
-_needsRebuild (true)
+_needsRebuild (true),
+_clusterCulling(true),
+_clusterCullingCallback(0)
 {
     _features.insert( _features.end(), features.begin(), features.end() );
     build();
+}
+
+bool
+FeatureNode::getClusterCulling() const
+{
+    return _clusterCulling;
+}
+
+void
+FeatureNode::setClusterCulling( bool clusterCulling)
+{
+    if (_clusterCulling != clusterCulling)
+    {
+        _clusterCulling = clusterCulling;
+        updateClusterCulling();
+    }
 }
 
 
@@ -109,16 +133,12 @@ FeatureNode::build()
         options.ignoreAltitudeSymbol() = true;
     }
 
-  
-
-    
-
     osg::Node* node = _compiled.get();
     if (_needsRebuild || !_compiled.valid() )
     {
         // Clone the Features before rendering as the GeometryCompiler and it's filters can change the coordinates
         // of the geometry when performing localization or converting to geocentric.
-        GeoExtent extent;
+        _extent = GeoExtent::INVALID;
 
         FeatureList clone;
         for(FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
@@ -126,13 +146,13 @@ FeatureNode::build()
             Feature* feature = new Feature( *itr->get(), osg::CopyOp::DEEP_COPY_ALL);
             GeoExtent featureExtent(feature->getSRS(), feature->getGeometry()->getBounds());
 
-            if (extent.isInvalid())
+            if (_extent.isInvalid())
             {
-                extent = featureExtent;
+                _extent = featureExtent;
             }
             else
             {
-                extent.expandToInclude( featureExtent );
+                _extent.expandToInclude( featureExtent );
             }
             clone.push_back( feature );
         }
@@ -141,7 +161,7 @@ FeatureNode::build()
         GeometryCompiler compiler( options );
         Session* session = new Session( getMapNode()->getMap() );
 
-        FilterContext context( session, new FeatureProfile( extent ), extent );
+        FilterContext context( session, new FeatureProfile( _extent ), _extent );
 
         _compiled = compiler.compile( clone, style, context );
         node = _compiled.get();
@@ -218,6 +238,8 @@ FeatureNode::build()
             applyGeneralSymbology( style );
         }
     }
+
+    updateClusterCulling();
 }
 
 void
@@ -332,6 +354,38 @@ FeatureNode::clampMesh( osg::Node* terrainModel )
         getAttachPoint()->accept( clamper );
 
         this->dirtyBound();
+    }
+}
+
+void
+FeatureNode::updateClusterCulling()
+{
+    // install a cluster culler.
+    if ( getMapNode()->isGeocentric() && _clusterCulling && !_clusterCullingCallback)
+    {
+        const GeoExtent& ccExtent = _extent;
+        if ( ccExtent.isValid() )
+        {
+            // if the extent is more than 90 degrees, bail
+            GeoExtent geodeticExtent = ccExtent.transform( ccExtent.getSRS()->getGeographicSRS() );
+            if ( geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0 )
+            {
+                // get the geocentric tile center:
+                osg::Vec3d tileCenter;
+                ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
+
+                osg::Vec3d centerECEF;
+                ccExtent.getSRS()->transform( tileCenter, getMapNode()->getMapSRS()->getECEF(), centerECEF );
+                _clusterCullingCallback = ClusterCullingFactory::create2( this, centerECEF );
+                if ( _clusterCullingCallback )
+                    this->addCullCallback( _clusterCullingCallback );
+            }
+        }
+    }
+    else if (!_clusterCulling && _clusterCullingCallback)
+    {
+        this->removeCullCallback( _clusterCullingCallback );
+        _clusterCullingCallback = 0;
     }
 }
 

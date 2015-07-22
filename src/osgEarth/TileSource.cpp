@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/MemCache>
+#include <osgEarth/MapFrame>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
@@ -150,7 +151,8 @@ _noDataValue          ( (float)SHRT_MIN ),
 _minValidValue        ( -32000.0f ),
 _maxValidValue        (  32000.0f ),
 _L2CacheSize          ( 16 ),
-_bilinearReprojection ( true )
+_bilinearReprojection ( true ),
+_coverage             ( false )
 { 
     fromConfig( _conf );
 }
@@ -163,13 +165,12 @@ TileSourceOptions::getConfig() const
     conf.updateIfSet( "tile_size", _tileSize );
     conf.updateIfSet( "nodata_value", _noDataValue );
     conf.updateIfSet( "min_valid_value", _minValidValue );
-    conf.updateIfSet( "nodata_min", _minValidValue ); // backcompat
     conf.updateIfSet( "max_valid_value", _maxValidValue );
-    conf.updateIfSet( "nodata_max", _maxValidValue ); // backcompat
     conf.updateIfSet( "blacklist_filename", _blacklistFilename);
     conf.updateIfSet( "l2_cache_size", _L2CacheSize );
     conf.updateIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.updateIfSet( "max_data_level", _maxDataLevel );
+    conf.updateIfSet( "coverage", _coverage );
     conf.updateObjIfSet( "profile", _profileOptions );
     return conf;
 }
@@ -188,12 +189,15 @@ TileSourceOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "tile_size", _tileSize );
     conf.getIfSet( "nodata_value", _noDataValue );
-    conf.getIfSet( "nodata_min", _minValidValue );
-    conf.getIfSet( "nodata_max", _maxValidValue );
+    conf.getIfSet( "min_valid_value", _minValidValue );
+    conf.getIfSet( "nodata_min", _minValidValue ); // backcompat
+    conf.getIfSet( "max_valid_value", _maxValidValue );
+    conf.getIfSet( "nodata_max", _maxValidValue ); // backcompat
     conf.getIfSet( "blacklist_filename", _blacklistFilename);
     conf.getIfSet( "l2_cache_size", _L2CacheSize );
     conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.getIfSet( "max_data_level", _maxDataLevel );
+    conf.getIfSet( "coverage", _coverage );
     conf.getObjIfSet( "profile", _profileOptions );
 }
 
@@ -216,7 +220,6 @@ _status ( Status::Error("Not initialized") ),
 _mode   ( 0 )
 {
     this->setThreadSafeRefUnref( true );
-
 
     // Initialize the l2 cache size to the options.
     int l2CacheSize = *options.L2CacheSize();

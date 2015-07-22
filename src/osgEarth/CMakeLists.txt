@@ -65,7 +65,6 @@ SET(LIB_PUBLIC_HEADERS
     Decluttering
     DepthOffset
     DPLineSegmentIntersector
-    Draggers
     DrapeableNode
     DrapingTechnique
     DrawInstanced
@@ -128,7 +127,6 @@ SET(LIB_PUBLIC_HEADERS
     Random
     Registry
     Revisioning
-    RTTPicker
     Shaders
     ShaderFactory
     ShaderGenerator
@@ -217,7 +215,6 @@ set(TARGET_SRC
     DateTime.cpp
     Decluttering.cpp
     DepthOffset.cpp
-    Draggers.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
     DrapingTechnique.cpp
@@ -274,7 +271,6 @@ set(TARGET_SRC
     Random.cpp
     Registry.cpp
     Revisioning.cpp
-    RTTPicker.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
     ShaderLoader.cpp

@@ -22,7 +22,7 @@
 #ifndef OSGEARTH_DRAGGERS_H
 #define OSGEARTH_DRAGGERS_H
 
-#include <osgEarth/Common>
+#include <osgEarthAnnotation/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 #include <osgEarth/MapNodeObserver>
@@ -32,12 +32,14 @@
 #include <osgManipulator/Projector>
 #include <osgEarth/Terrain>
 
-namespace osgEarth
-{
+namespace osgEarth {
     class MapNode;
     class Terrain;
+}
 
-    class OSGEARTH_EXPORT Dragger : public osg::MatrixTransform, public MapNodeObserver
+namespace osgEarth { namespace Annotation
+{
+    class OSGEARTHANNO_EXPORT Dragger : public osg::MatrixTransform, public MapNodeObserver
     {
     public:
         /**
@@ -133,7 +135,7 @@ namespace osgEarth
     };
 
     /**********************************************************/
-    class OSGEARTH_EXPORT SphereDragger : public Dragger
+    class OSGEARTHANNO_EXPORT SphereDragger : public Dragger
     {
     public:
         SphereDragger(MapNode* mapNode);
@@ -168,6 +170,6 @@ namespace osgEarth
     };
 
 
-} // namespace osgEarth
+} } // namespace osgEarth::Annotation
 
 #endif // OSGEARTH_DRAGGERS_H

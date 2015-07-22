@@ -19,7 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarth/Draggers>
+#include <osgEarthAnnotation/Draggers>
 #include <osgEarth/MapNode>
 #include <osgEarth/IntersectionPicker>
 
@@ -36,20 +36,22 @@
 
 
 using namespace osgEarth;
+using namespace osgEarth::Annotation;
 
 struct ClampDraggerCallback : public TerrainCallback
 {
     ClampDraggerCallback( Dragger* dragger ):
-_dragger( dragger )
-{
-}
+        _dragger( dragger )
+    {
+        //nop
+    }
 
-void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
-{    
-    _dragger->reclamp( key, tile, context.getTerrain() );
-}
+    void onTileAdded( const TileKey& key, osg::Node* tile, osgEarth::TerrainCallbackContext& context )
+    {    
+        _dragger->reclamp( key, tile, context.getTerrain() );
+    }
 
-Dragger* _dragger;
+    Dragger* _dragger;
 };
 
 /**********************************************************/

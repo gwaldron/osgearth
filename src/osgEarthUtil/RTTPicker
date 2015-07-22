@@ -17,9 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_RTT_PICKER_H
-#define OSGEARTH_RTT_PICKER_H 1
+#ifndef OSGEARTH_UTIL_RTT_PICKER_H
+#define OSGEARTH_UTIL_RTT_PICKER_H 1
 
+#include <osgEarthUtil/Common>
 #include <osgEarth/Picker>
 #include <osgEarth/VirtualProgram>
 #include <osg/Group>
@@ -27,12 +28,12 @@
 #include <osg/Texture2D>
 #include <queue>
 
-namespace osgEarth
+namespace osgEarth { namespace Util
 {
     /**
      * Picks objects using an RTT camera and Vertex Attributes.
      */
-    class OSGEARTH_EXPORT RTTPicker : public osgEarth::Picker
+    class OSGEARTHUTIL_EXPORT RTTPicker : public osgEarth::Picker
     {
     public:
         /**
@@ -137,6 +138,7 @@ namespace osgEarth
         // container for common RTT pick camera children (see addChild et al.)
         osg::ref_ptr<osg::Group> _group;
     };
-} // namespace osgEarth
 
-#endif // OSGEARTH_RTT_PICKER_H
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_RTT_PICKER_H

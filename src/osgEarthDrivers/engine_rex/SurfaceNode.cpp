@@ -153,12 +153,13 @@ SurfaceNode::minSquaredDistanceFromPoint(const VectorPoints& corners, const osg:
 }
 
 bool
-SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radiusSquared)
+SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radiusSquared, float fZoomFactor)
 {
     for(ChildrenCorners::const_iterator it = _childrenCorners.begin(); it != _childrenCorners.end(); ++it)
     {
         const VectorPoints& childCorners = *it;
         float fMinDistanceSquared = minSquaredDistanceFromPoint(childCorners, center);
+        fMinDistanceSquared *= fZoomFactor;
         if (fMinDistanceSquared <= radiusSquared)
         {
             return true;

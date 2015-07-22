@@ -288,7 +288,7 @@ TileNode::getVisibilityRangeHint(unsigned firstLOD) const
 #define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
 
 bool
-TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo)
+TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor)
 {
     unsigned currLOD = _key.getLOD();
     if (   currLOD <  selectionInfo.numLods()
@@ -298,8 +298,9 @@ TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionIn
 #if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
         OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
 #endif
+        OE_INFO << LC <<"LOD Scale: "<<fZoomFactor<<std::endl;
         float fRadius = (float)selectionInfo.visParameters(currLOD+1)._fVisibility;
-        bool bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius*fRadius);
+        bool bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius*fRadius, fZoomFactor);
         return bAnyChildVisible;
     }
     return false;
@@ -329,7 +330,7 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
 
     const double maxCullTime = 4.0/1000.0;
 
-    bool bShouldSubDivide = shouldSubDivide(nv, selectionInfo); // && context->getElapsedCullTime() < maxCullTime;
+    bool bShouldSubDivide = shouldSubDivide(nv, selectionInfo, cull->getLODScale()); // && context->getElapsedCullTime() < maxCullTime;
 
     // If *any* of the children are visible, subdivide.
     if (bShouldSubDivide)

@@ -119,7 +119,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void lodSelect(osg::NodeVisitor& nv);
         void regularUpdate(osg::NodeVisitor& nv);
 
-        bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo);
+        bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
         float getVisibilityRangeHint(unsigned firstLOD) const;
         float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
 

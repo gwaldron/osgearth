@@ -21,7 +21,7 @@
 */
 #include <osgEarth/Draggers>
 #include <osgEarth/MapNode>
-#include <osgEarth/Pickers>
+#include <osgEarth/IntersectionPicker>
 
 #include <osg/AutoTransform>
 #include <osgViewer/View>
@@ -199,8 +199,8 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
 
     if (ea.getEventType() == osgGA::GUIEventAdapter::PUSH)
     {
-        Picker picker( view, this );
-        Picker::Hits hits;
+        IntersectionPicker picker( view, this );
+        IntersectionPicker::Hits hits;
 
         if ( picker.pick( ea.getX(), ea.getY(), hits ) )
         {
@@ -345,8 +345,8 @@ bool Dragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& 
     }   
     else if (ea.getEventType() == osgGA::GUIEventAdapter::MOVE)
     {
-        Picker picker( view, this );
-        Picker::Hits hits;
+        IntersectionPicker picker( view, this );
+        IntersectionPicker::Hits hits;
 
         if ( picker.pick( ea.getX(), ea.getY(), hits ) )
         {

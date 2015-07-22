@@ -119,7 +119,8 @@ SET(LIB_PUBLIC_HEADERS
     OverlayDecorator
     OverlayNode
 	PhongLightingEffect
-    Pickers
+    Picker
+    IntersectionPicker
     PrimitiveIntersector
     Profile
     Profiler
@@ -265,7 +266,7 @@ set(TARGET_SRC
     OverlayDecorator.cpp
     OverlayNode.cpp
 	PhongLightingEffect.cpp
-    Pickers.cpp
+    IntersectionPicker.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
     Profiler.cpp

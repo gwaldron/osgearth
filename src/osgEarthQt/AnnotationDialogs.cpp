@@ -23,7 +23,7 @@
 #include <osgEarthQt/Common>
 
 #include <osgEarth/Draggers>
-#include <osgEarth/Pickers>
+#include <osgEarth/IntersectionPicker>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/EllipseNode>

@@ -228,6 +228,12 @@ RTTPicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 }
 
 bool
+RTTPicker::pick(osg::View* view, float mouseX, float mouseY)
+{
+    return pick(view, mouseX, mouseY, 0L);
+}
+
+bool
 RTTPicker::pick(osg::View* view, float mouseX, float mouseY, Callback* callback)
 {
     if ( !view )

@@ -26,6 +26,13 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <set>
 
+/**
+ * @deprecated
+ *
+ * These classes are deprecated, and will be removed in a future version.
+ * Please consider using the RTTPicker class instead and handling hovering and 
+ * clicking in your own code.
+ */
 namespace osgEarth { namespace Util
 {	
     using namespace osgEarth::Util;
@@ -33,6 +40,7 @@ namespace osgEarth { namespace Util
 
     /**
      * Event handler skeleton for handling events from the AnnotationEventCallback.
+     * @deprecated
      */
     struct AnnotationEventHandler : public osg::Referenced
     {
@@ -55,6 +63,7 @@ namespace osgEarth { namespace Util
     /**
      * Event-traversal node callback that handles user interaction with 
      * annotation objects.
+     * @deprecated
      */
     class OSGEARTHUTIL_EXPORT AnnotationEventCallback : public osg::NodeCallback
     {

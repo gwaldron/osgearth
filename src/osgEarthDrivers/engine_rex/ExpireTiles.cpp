@@ -44,6 +44,8 @@ namespace
 
         void apply(osg::Node& node)
         {
+            // TODO: perhaps check again that the tile is still dormant, so we don't expire
+            // a tile that will immediately be recreated. For this we will need a valid framestamp
             TileNode* tn = dynamic_cast<TileNode*>( &node );
             if ( tn && _live )
             {

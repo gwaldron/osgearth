@@ -31,7 +31,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
 
-
+    //TODO: move this to its own include file
     class LandCoverBin
     {
     public:
@@ -114,8 +114,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Removes a tile */
         void remove( TileNode* tile );
 
+        /** Clears all tiles from the registry */
+        void clear();
+
         /** Moves a tile from this registry to another registry */
         void move( TileNode* tile, TileNodeRegistry* destination );
+
+        /** Moves all tiles to another registry. */
+        void moveAll(TileNodeRegistry* destinataion);
 
         /** Finds a tile in the registry */
         bool get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile );

@@ -37,6 +37,7 @@ TileDrawable::TileDrawable(const TileKey&        key,
                            osg::Geometry*        geometry,
                            osg::Geometry*        proxygeometry) :
 osg::Drawable( ),
+_key         ( key ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
 _proxyGeom   ( proxygeometry ),
@@ -261,14 +262,6 @@ TileDrawable::releaseGLObjects(osg::State* state) const
     {
         _geom->releaseGLObjects( state );
     }
-
-    for(std::vector<Layer>::const_iterator i = _layers.begin(); i != _layers.end(); ++i)
-    {
-        if ( i->_tex.valid() )
-        {
-            i->_tex->releaseGLObjects( state );
-        }
-    }
 }
 
 
@@ -293,24 +286,6 @@ void
 TileDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
 {
     osg::Drawable::compileGLObjects( renderInfo );
-
-#if 0
-    osg::State& state = *renderInfo.getState();
-    unsigned contextID = state.getContextID();
-#if OSG_MIN_VERSION_REQUIRED(3,3,3)
-    osg::GLExtensions* extensions = osg::GLExtensions::Get(contextID, true);
-#else
-    GLBufferObject::Extensions* extensions = GLBufferObject::getExtensions(contextID, true);
-#endif
-    if (!extensions)
-        return;
-
-    for(std::vector<Layer>::iterator i = _layers.begin(); i != _layers.end(); ++i)
-    {
-        if ( i->_tex.valid() )
-            i->_tex->apply( state );
-    }
-#endif
 
     if ( _geom.valid() )
     {

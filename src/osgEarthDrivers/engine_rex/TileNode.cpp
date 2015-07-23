@@ -374,7 +374,7 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     {
         _surface->accept( nv );
 
-        if ( getNumChildren() > 0 )
+        if ( getNumChildren() > 0 && context->maxLiveTilesExceeded() )
         {
             if (getSubTile(0)->isDormant( nv ) &&
                 getSubTile(1)->isDormant( nv ) &&
@@ -600,9 +600,10 @@ TileNode::load(osg::NodeVisitor& nv)
     // Prioritize by LOD.
     float priority = - (float)getTileKey().getLOD();
 
+    if ( context->getOptions().highResolutionFirst() == true )
+        priority = -priority;
+
     // Submit to the loader.
-    //OE_INFO << LC << getTileKey().str() << "load\n";
-    //if ( getTileKey().getLOD() < 6 )
     context->getLoader()->load( _loadRequest.get(), priority, nv );
 }
 
@@ -622,7 +623,6 @@ TileNode::expireChildren(osg::NodeVisitor& nv)
     }
        
     // Low priority for expiry requests.
-    //OE_INFO << LC << getTileKey().str() << "expire\n";
     const float lowPriority = -100.0f;
     context->getLoader()->load( _expireRequest.get(), lowPriority, nv );
 }

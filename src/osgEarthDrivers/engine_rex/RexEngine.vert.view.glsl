@@ -75,6 +75,7 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 		float fDistanceToEye = length(vertexViewElevated);
 		float fMorphLerpK  = 1.0f - clamp( oe_tile_morph_constants.z - fDistanceToEye * oe_tile_morph_constants.w, 0.0, 1.0 );
 #endif
+
 		vec3 vPositionMorphed;
 		vec2 vUVMorphed;
 

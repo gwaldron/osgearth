@@ -58,11 +58,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             void setFrameNumber(unsigned fn) { _lastFrameSubmitted = fn; }
             unsigned getLastFrameSubmitted() const { return _lastFrameSubmitted; }
 
-            UID     _uid;
-            float   _priority;
+            UID                           _uid;
+            float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
-            unsigned _lastFrameSubmitted;
-            osg::ref_ptr<osg::StateSet> _stateSet;
+            unsigned                      _lastFrameSubmitted;
+            osg::Timer_t                  _lastTick;
+            osg::ref_ptr<osg::StateSet>   _stateSet;
         };
 
         class Handler : public osg::Referenced
@@ -71,7 +72,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             virtual void operator()(Request* request) =0;
         };
 
+        /** Start or continue loading a request. */
         virtual bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv) =0;
+
+        /** Clear out all pending requests. */
+        virtual void clear() =0;
     };
 
 
@@ -88,6 +93,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     public: // Loader
         bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
+
+        void clear();
     };
 
 
@@ -102,6 +109,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Asks the loader to begin or continue loading something.
             Returns true if a NEW request was scheduled; false if an existing request was updated. */
         bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
+
+        /** Cancel all pending requests. */
+        void clear();
 
         /** Internal method to invoke a request that was previously queued with load(). */
         Request* invokeAndRelease(UID requestUID);
@@ -121,7 +131,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::NodePath    _myNodePath;
         Requests         _requests;
         Threading::Mutex _requestsMutex;
-        MergeQueue       _mergeQueue;    
+        MergeQueue       _mergeQueue;  
+        osg::Timer_t     _checkpoint;
     };
 
 } } }

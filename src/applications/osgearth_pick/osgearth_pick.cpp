@@ -68,7 +68,7 @@ struct TestIsectPicker : public osgGA::GUIEventHandler
                     ObjectID oid = *oids.begin();
                     osg::ref_ptr<FeatureIndex> fi = index->get<FeatureIndex>(oid);
                     if ( fi.valid() ) {
-                        OE_NOTICE << "Old Picker found OID " << oid << "\n";
+                        OE_NOTICE << "IsectPicker: found OID " << oid << "\n";
                         Feature* f = fi->getFeature(oid);
                         if ( f ) {
                             OE_NOTICE << "...feature ID = " << f->getFID() << "\n";
@@ -76,20 +76,20 @@ struct TestIsectPicker : public osgGA::GUIEventHandler
                     }      
                     osg::ref_ptr<Feature> f = index->get<Feature>(oid);
                     if ( f.valid() ) {
-                        OE_NOTICE << "Old Picker found OID " << oid << "\n";
+                        OE_NOTICE << "IsectPicker: found OID " << oid << "\n";
                         OE_NOTICE << "...feature ID = " << f->getFID() << "\n";
                     }
                     osg::ref_ptr<AnnotationNode> a = index->get<AnnotationNode>(oid);
                     if ( a ) {
-                        OE_NOTICE << "Old Picker found annotation " << a->getName() << "\n";
+                        OE_NOTICE << "IsectPicker: found annotation " << a->getName() << "\n";
                     }
                 }
                 else {
-                    OE_NOTICE << "picked, but no OIDs\n";
+                    OE_NOTICE << "IsectPicker: picked, but no OIDs\n";
                 }
             }
             else {
-                OE_NOTICE << "no intersect\n";
+                OE_NOTICE << "IsectPicker: no intersect\n";
             }
         }
         return false;

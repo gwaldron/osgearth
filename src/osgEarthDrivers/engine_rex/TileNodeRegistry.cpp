@@ -176,6 +176,12 @@ TileNodeRegistry::remove( TileNode* tile )
     }
 }
 
+void
+TileNodeRegistry::clear()
+{
+    Threading::ScopedWriteLock exclusive( _tilesMutex );
+    _tiles.clear();
+}
 
 void
 TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
@@ -190,6 +196,23 @@ TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
     }
 }
 
+void
+TileNodeRegistry::moveAll(TileNodeRegistry* destination)
+{
+    Threading::ScopedWriteLock exclusive( _tilesMutex );
+
+    if ( destination )
+    {
+        for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+        {
+            if ( i->second.valid() )
+                destination->add( i->second.get() );
+        }
+    }
+
+    _tiles.clear();
+}
+    
 
 bool
 TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
@@ -277,19 +300,3 @@ TileNodeRegistry::takeAny()
     removeSafely( tile->getTileKey() );
     return tile.release();
 }
-
-#if 0
-bool
-TileNodeRegistry::get(const TileKey& key, osg::ref_ptr<const TerrainTileModel>& out_model) const
-{
-    Threading::ScopedReadLock shared( _tilesMutex );
-
-    TileNodeMap::const_iterator i = _tiles.find(key);
-    if ( i != _tiles.end() )
-    {
-        out_model = i->second->getModel();
-        return true;
-    }
-    return false;
-}
-#endif

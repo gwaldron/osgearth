@@ -72,6 +72,12 @@ SimpleLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& n
     return request != 0L;
 }
 
+void
+SimpleLoader::clear()
+{
+    // nop.
+}
+
 //...............................................
 
 #undef  LC
@@ -101,7 +107,8 @@ namespace
 
 
 PagerLoader::PagerLoader(UID engineUID) :
-_engineUID( engineUID )
+_engineUID ( engineUID ),
+_checkpoint( (osg::Timer_t)0 )
 {
     _myNodePath.push_back( this );
 
@@ -114,6 +121,9 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
 {
     if ( request && nv.getDatabaseRequestHandler() )
     {
+        // remember the last tick at which this request was submitted
+        request->_lastTick = osg::Timer::instance()->tick();
+
         osgDB::Options* dboptions = 0L;
 
         std::string filename = Stringify() << request->_uid << "." << _engineUID << ".osgearth_rex_loader";
@@ -156,14 +166,22 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
 }
 
 void
+PagerLoader::clear()
+{
+    // Set a time checkpoint for invalidating old requests.
+    _checkpoint = osg::Timer::instance()->tick();
+}
+
+void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
+    //NOTE: unused (experimental)
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
         for(int count=0; count<10 && !_mergeQueue.empty(); ++count)
         {
             Request* req = _mergeQueue.front().get();
-            if ( req )
+            if ( req && req->_lastTick >= _checkpoint )
             {
                 req->apply();
             }
@@ -182,7 +200,7 @@ PagerLoader::addChild(osg::Node* node)
     if ( result.valid() )
     {
         Request* req = result->getRequest();
-        if ( req )
+        if ( req && req->_lastTick >= _checkpoint )
         {
             //_mergeQueue.push( req );
             req->apply();

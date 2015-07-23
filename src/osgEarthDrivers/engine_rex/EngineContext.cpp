@@ -76,3 +76,9 @@ EngineContext::endCull()
         OE_DEBUG << LC << "Cull time = " << tms << " ms" << ", tile delta = " << tileDelta << "; avt = " << tms/(double)tileDelta << " ms\n";
     }
 }
+
+bool
+EngineContext::maxLiveTilesExceeded() const
+{
+    return _liveTiles->size() > _options.expirationThreshold().get();
+}

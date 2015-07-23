@@ -73,11 +73,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
+        const RexTerrainEngineOptions& getOptions() const { return _options; }
+
         void startCull();
 
         void endCull();
 
         double getElapsedCullTime() const;
+
+        bool maxLiveTilesExceeded() const;
 
     protected:
 

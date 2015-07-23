@@ -39,6 +39,8 @@
 #include <osg/Multisample>
 #include <osgUtil/RenderBin>
 
+#include <cstdlib> // for getenv
+
 #define LC "[RexTerrainEngineNode] "
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -195,7 +197,7 @@ _tileCreationTime     ( 0.0 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
 _stateUpdateRequired  ( false ),
-_selectionInfo(0)
+_selectionInfo        ( 0L )
 {
     // unique ID for this engine:
     _uid = Registry::instance()->createUID();
@@ -210,14 +212,7 @@ _selectionInfo(0)
 
         // generate uniquely named render bin prototypes for this engine:
         _surfaceRenderBinPrototype = new SurfaceBin();
-        //_surfaceRenderBinPrototype->setName( "oe.SurfaceBin" ); //." << _uid );
         osgUtil::RenderBin::addRenderBinPrototype( _surfaceRenderBinPrototype->getName(), _surfaceRenderBinPrototype.get() );
-
-#if 0
-        _landCoverRenderBinPrototype = new LandCoverBin();
-        //_landCoverRenderBinPrototype->setName( "oe.LandCoverBin" ); //." << _uid );
-        osgUtil::RenderBin::addRenderBinPrototype( _landCoverRenderBinPrototype->getName(), _landCoverRenderBinPrototype.get() );
-#endif
     }
 
     // install an elevation callback so we can update elevation data
@@ -260,6 +255,21 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 
     if ( _terrainOptions.enableLODBlending() == true )
         _requireParentTextures = true;
+
+    // if the envvar for tile expiration is set, overide the options setting
+    const char* val = ::getenv("OSGEARTH_EXPIRATION_THRESHOLD");
+    if ( val )
+    {
+        _terrainOptions.expirationThreshold() = as<unsigned>(val, _terrainOptions.expirationThreshold().get());
+        OE_INFO << LC << "Expiration threshold set by env var = " << _terrainOptions.expirationThreshold().get() << "\n";
+    }
+
+    // if the envvar for hires prioritization is set, override the options setting
+    const char* hiresFirst = ::getenv("OSGEARTH_HIGH_RES_FIRST");
+    if ( hiresFirst )
+    {
+        _terrainOptions.highResolutionFirst() = true;
+    }
 
     // A shared registry for tile nodes in the scene graph. Enable revision tracking
     // if requested in the options. Revision tracking lets the registry notify all
@@ -485,31 +495,9 @@ RexTerrainEngineNode::dirtyTerrain()
 {
     //TODO: scrub the geometry pool?
 
-#if 0
-    if ( !_surfaceGroup.valid() )
-    {
-        _surfaceGroup = new osg::Group();
-        this->addChild( _surfaceGroup.get() );
-    }
+    // clear the loader:
+    _loader->clear();
 
-    if ( !_landCoverGroup.valid() )
-    {
-        _landCoverGroup = new osg::Group();
-        this->addChild( _landCoverGroup.get() );
-    }
-
-    if ( _terrain.valid() )
-    {
-        _surfaceGroup->removeChild( _terrain.get() );
-        _landCoverGroup->removeChild( _terrain.get() );
-        _terrain = 0L;
-    }
-
-    _terrain = new osg::Group();
-
-    _surfaceGroup->addChild( _terrain.get() );
-    _landCoverGroup->addChild( _terrain.get() );
-#else
     if ( _terrain )
     {
         this->removeChild( _terrain );
@@ -518,15 +506,6 @@ RexTerrainEngineNode::dirtyTerrain()
     // New terrain
     _terrain = new osg::Group();
     this->addChild( _terrain );
-#endif
-
-
-#ifdef USE_RENDER_BINS
-    //_terrain->getOrCreateStateSet()->setRenderBinDetails( 0, _surfaceRenderBinPrototype->getName() );
-    //_terrain->getOrCreateStateSet()->setNestRenderBins(false);
-#else
-    _terrain->getOrCreateStateSet()->setRenderBinDetails(0, "SORT_FRONT_TO_BACK");
-#endif
 
     // are we LOD blending?
     bool setupParentData = 
@@ -539,8 +518,15 @@ RexTerrainEngineNode::dirtyTerrain()
         setupRenderBindings();
     }
 
+    // recalculate the LOD morphing parameters:
     destroySelectionInfo();
     buildSelectionInfo();
+
+    // clear out the tile registry:
+    if ( _liveTiles.valid() )
+    {
+        _liveTiles->moveAll( _deadTiles.get() );
+    }
 
     // Factory to create the root keys:
     EngineContext* context = getEngineContext();
@@ -671,16 +657,11 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 EngineContext*
 RexTerrainEngineNode::getEngineContext()
 {
-    osg::ref_ptr<EngineContext>& factory = _perThreadTileGroupFactories.get(); // thread-safe get
-    if ( !factory.valid() )
+    osg::ref_ptr<EngineContext>& context = _perThreadTileGroupFactories.get(); // thread-safe get
+    if ( !context.valid() )
     {
-        // create a compiler for compiling tile models into geometry
-        // TODO: pass this somehow...?
-        bool optimizeTriangleOrientation = 
-            getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
-
         // initialize a key node factory.
-        factory = new EngineContext(
+        context = new EngineContext(
             getMap(),
             this, // engine
             _geometryPool.get(),
@@ -693,7 +674,7 @@ RexTerrainEngineNode::getEngineContext()
             *_selectionInfo);
     }
 
-    return factory.get();
+    return context.get();
 }
 
 
@@ -916,7 +897,7 @@ RexTerrainEngineNode::updateState()
 
             VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
             terrainVP->setName( "Rex Terrain" );
-            package.loadFunction(terrainVP, package.VERT_MODEL);            
+            package.load(terrainVP, package.VERT_MODEL);            
             
             bool useTerrainColor = _terrainOptions.color().isSet();
             package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);
@@ -933,8 +914,8 @@ RexTerrainEngineNode::updateState()
             surfaceVP->setName("Rex Surface");
 
             // Functions that affect the terrain surface only:
-            package.loadFunction(surfaceVP, package.VERT_VIEW);
-            package.loadFunction(surfaceVP, package.FRAG);
+            package.load(surfaceVP, package.VERT_VIEW);
+            package.load(surfaceVP, package.FRAG);
 
             for(LandCoverBins::iterator i = _landCoverBins.begin(); i != _landCoverBins.end(); ++i)
             {
@@ -1054,7 +1035,7 @@ RexTerrainEngineNode::updateState()
                 osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
 
             // special object ID that denotes the terrain surface.
-            terrainStateSet->addUniform( new osg::Uniform(
+            surfaceStateSet->addUniform( new osg::Uniform(
                 Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
 
         }

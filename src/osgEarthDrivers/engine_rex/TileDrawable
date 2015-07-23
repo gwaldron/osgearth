@@ -115,6 +115,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         int _textureImageUnit;
 
+        const TileKey _key;
+
     public:
         
         // construct a new TileDrawable that fronts an osg::Geometry

@@ -37,6 +37,7 @@ TileDrawable::TileDrawable(const TileKey&        key,
                            osg::Geometry*        geometry,
                            osg::Geometry*        proxygeometry) :
 osg::Drawable( ),
+_key         (key),
 _bindings    ( bindings ),
 _geom        ( geometry ),
 _proxyGeom   ( proxygeometry ),

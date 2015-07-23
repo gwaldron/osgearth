@@ -80,7 +80,7 @@ ProxyGeometry::ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigne
 
 void ProxyGeometry::setElevationData(osg::Texture* elevationTexture, osg::Matrixf& scaleBiasMatrix)
 {
-    if (_elevationTexture!=elevationTexture)
+    if (elevationTexture!=_elevationTexture)
     {
         _elevationTexture = elevationTexture;
         _scaleBiasMatrix  = scaleBiasMatrix;
@@ -101,6 +101,11 @@ void ProxyGeometry::rebuild(void)
     {
         makeVertices();
         tessellate();
+        OE_DEBUG << LC << "Built proxy geometry: "<<_key.getLOD()<<std::endl;
+    }
+    else
+    {
+        OE_DEBUG << LC << "Error: Could not build proxy geometry: "<<_key.getLOD()<<std::endl;
     }
 
     setDirty(false);
@@ -145,7 +150,8 @@ void ProxyGeometry::makeVertices()
     ElevationImageReader elevationImageReader(_elevationTexture->getImage(0), _scaleBiasMatrix);
     if (elevationImageReader.valid()==false)
     {
-    return;
+        OE_DEBUG << LC << "Error: Cannot use elevation texture. Window too small!!"<<std::endl;
+        return;
     }
 
     //assert(elevationImageReader.startRow()<elevationImageReader.endRow());

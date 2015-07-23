@@ -367,13 +367,26 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     std::string outEarth;
     args.read( "--out-earth", outEarth );
 
+    osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
+    
+#if 1
+    Config c;
+    c.add("elevation_smoothing", false);
+    TerrainOptions to(c);
+
+    MapNodeOptions defMNO;
+    defMNO.setTerrainOptions( to );
+
+    options->setPluginStringData("osgEarth.defaultOptions", defMNO.getConfig().toJSON());
+#endif
+
     // read in the Earth file:
     osg::Node* node = 0L;
     for( int i=0; i<args.argc(); ++i )
     {
         if ( osgDB::getLowerCaseFileExtension(args[i]) == "earth" )
         {
-            node = osgDB::readNodeFile( args[i] );
+            node = osgDB::readNodeFile( args[i], options );
             args.remove(i);
             break;
         }

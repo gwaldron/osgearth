@@ -77,11 +77,9 @@ TileNode::create(const TileKey& key, EngineContext* context)
     unsigned lodForMorphing = context->getSelectionInfo().lodForMorphing(isProjected);
     context->getGeometryPool()->getPooledGeometry(key, lodForMorphing, context->getMapFrame().getMapInfo(), geom);
 
-#if 1
     _proxyGeometry = new ProxyGeometry(key
                                      , context->getMapFrame().getMapInfo()
                                      , context->_options.tileSize().get());
-#endif
 
     TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), _proxyGeometry.get());
     surfaceDrawable->setDrawAsPatches(false);

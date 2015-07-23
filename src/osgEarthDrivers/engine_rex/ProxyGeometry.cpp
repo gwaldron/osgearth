@@ -78,17 +78,25 @@ ProxyGeometry::ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigne
     rebuild();
 }
 
-void ProxyGeometry::setElevationData(osg::Texture* elevationTexture, osg::Matrixf& scaleBiasMatrix)
+void ProxyGeometry::getElevationData(const osg::Texture*& elevationTexture, osg::Matrixf& matrixScaleBias)
 {
-    if (elevationTexture!=_elevationTexture)
+    elevationTexture = _elevationTexture;
+    matrixScaleBias  = _scaleBiasMatrix;
+}
+
+void ProxyGeometry::setElevationData(const osg::Texture* elevationTexture, const osg::Matrixf& scaleBiasMatrix)
+{
+    if (elevationTexture==_elevationTexture)
     {
-        _elevationTexture = elevationTexture;
-        _scaleBiasMatrix  = scaleBiasMatrix;
-        setDirty(true);
-#if OSGEARTH_REX_PROXY_GEOMETRY_DEBUG
-        rebuild();
-#endif
+        return;
     }
+
+    _elevationTexture = elevationTexture;
+    _scaleBiasMatrix  = scaleBiasMatrix;
+    setDirty(true);
+#if OSGEARTH_REX_PROXY_GEOMETRY_DEBUG
+    rebuild();
+#endif
 }
 
 void ProxyGeometry::rebuild(void)

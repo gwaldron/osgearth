@@ -157,6 +157,24 @@ TileNode::isDormant(osg::NodeVisitor& nv) const
 }
 
 void
+TileNode::getProxyGeoElevationData(const osg::Texture*& elevationTexture, osg::Matrixf& matrixScaleBias)
+{
+    if ( _proxyGeometry.valid() )
+    {
+        _proxyGeometry->getElevationData(elevationTexture, matrixScaleBias);
+    }
+}
+
+void
+TileNode::setProxyGeoElevationData(const osg::Texture* elevationTexture, const osg::Matrixf& matrixScaleBias)
+{
+    if ( _proxyGeometry.valid() )
+    {
+        _proxyGeometry->setElevationData(elevationTexture, matrixScaleBias);
+    }
+}
+
+void
 TileNode::setElevationExtrema(const osg::Vec2f& value)
 {
     if ( _surface.valid() )
@@ -517,6 +535,11 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const S
 
     if ( parent )
     {
+        const osg::Texture* parentTex = 0;
+        osg::Matrixf matrixScaleBias;
+        parent->getProxyGeoElevationData(parentTex, matrixScaleBias);
+        setProxyGeoElevationData(parentTex, matrixScaleBias);
+
         setElevationExtrema( parent->getElevationExtrema() );
     }
 
@@ -532,21 +555,14 @@ TileNode::updateElevationData(const RenderBindings& bindings)
     if ( !elevBinding )
         return;
 
-    osg::Matrixf matrixScaleBias;
-
-    // invalidate
-    if ( _proxyGeometry.valid() )
-    {
-        _proxyGeometry->setElevationData(0, matrixScaleBias);
-    }
-
-    const osg::Uniform* u = getStateSet()->getUniform(elevBinding->matrixName());
-    if ( !u )
+    const osg::Uniform* uniformScaleBiasMatrix = getStateSet()->getUniform(elevBinding->matrixName());
+    if ( !uniformScaleBiasMatrix )
     {
         OE_WARN << LC << getTileKey().str() << " : recalculateExtrema: illegal state\n";
         return;
     }
-    u->get(matrixScaleBias);
+    osg::Matrixf matrixScaleBias;
+    uniformScaleBiasMatrix->get(matrixScaleBias);
 
     bool extremaOK = false;
     TileNode* parent = 0L;
@@ -559,11 +575,7 @@ TileNode::updateElevationData(const RenderBindings& bindings)
             extremaOK = ElevationTexureUtils::findExtrema(elevTex, matrixScaleBias, getTileKey(), extrema);
             if ( extremaOK )
             {
-                if ( _proxyGeometry.valid() )
-                {
-                    _proxyGeometry->setElevationData(elevTex, matrixScaleBias);
-                }
-
+                setProxyGeoElevationData(elevTex, matrixScaleBias);
                 setElevationExtrema( extrema );
                 OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
                 break;

@@ -80,6 +80,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Sets the min and max elevation values for culling purposes */
         void setElevationExtrema(const osg::Vec2f& minmax);
+        void setProxyGeoElevationData(const osg::Texture* elevationTexture, const osg::Matrixf& matrixScaleBias);
+        void getProxyGeoElevationData(const osg::Texture*& elevationTexture, osg::Matrixf& matrixScaleBias);
 
         const osg::Vec2f& getElevationExtrema() const { return _extrema; }
         

@@ -38,7 +38,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize);
 
-        void setElevationData(osg::Texture* elevationTexture, osg::Matrixf& scaleBiasMatrix);
+        void setElevationData(const osg::Texture* elevationTexture, const osg::Matrixf& matrixScaleBias);
+        void getElevationData(const osg::Texture*& elevationTexture, osg::Matrixf& matrixScaleBias);
 
         void accept(osg::PrimitiveFunctor& f) const ;
         void accept(osg::PrimitiveIndexFunctor& f) const;
@@ -66,7 +67,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool _dirty;
 
-        osg::Texture* _elevationTexture;
+        const osg::Texture* _elevationTexture;
         osg::Matrixf  _scaleBiasMatrix;
         unsigned      _tileSize;
         osg::Matrix   _world2local;

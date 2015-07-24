@@ -37,7 +37,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         MPTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
             _skirtRatio        ( 0.05 ),
             _quickRelease      ( true ),
-            _lodFallOff        ( 0.0 ),
             _normalizeEdges    ( false ),
             _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize     ( 256 ),
@@ -62,7 +61,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<bool>& quickReleaseGLObjects() { return _quickRelease; }
         const optional<bool>& quickReleaseGLObjects() const { return _quickRelease; }
 
-        /** Whether to average normal vectors on tile boundaries */
+        /** Whether to average normal vectors on tile boundaries. Doing so reduces the
+         *  the appearance of seams when using lighting, but requires extra CPU work. */
         optional<bool>& normalizeEdges() { return _normalizeEdges; }
         const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
 
@@ -78,15 +78,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
 
-        /** Whether to update tiles incrementally as needed when the map model changes (true),
-          * or to rebuild the entire terrain when enything changes (false) */
-        optional<bool>& incrementalUpdate() { return _incrementalUpdate; }
-        const optional<bool>& incrementalUpdate() const { return _incrementalUpdate; }
-
-        /** TODO: document this very obscure feature */
-        optional<float>& lodFallOff() { return _lodFallOff; }
-        const optional<float>& lodFallOff() const { return _lodFallOff; }
-
         /**
          * Whether to create smooth transitions between elevation datasets at differing LODs
          * by inheriting low-resolution data from parent tiles and filling in the new data.
@@ -96,12 +87,17 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<bool>& elevationSmoothing() { return _smoothing; }
         const optional<bool>& elevationSmoothing() const { return _smoothing; }
 
+    public:
+
+        /** @deprecated */
+        optional<bool>& incrementalUpdate() { return _incrementalUpdate; }
+        const optional<bool>& incrementalUpdate() const { return _incrementalUpdate; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.updateIfSet( "skirt_ratio", _skirtRatio );
             conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
-            conf.updateIfSet( "lod_fall_off", _lodFallOff );
             conf.updateIfSet( "normalize_edges", _normalizeEdges);
             conf.updateIfSet( "tile_pixel_size", _tilePixelSize );
             conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
@@ -122,7 +118,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "skirt_ratio", _skirtRatio );
             conf.getIfSet( "quick_release_gl_objects", _quickRelease );
-            conf.getIfSet( "lod_fall_off", _lodFallOff );
             conf.getIfSet( "normalize_edges", _normalizeEdges );
             conf.getIfSet( "tile_pixel_size", _tilePixelSize );
 

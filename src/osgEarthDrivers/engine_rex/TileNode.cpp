@@ -533,11 +533,6 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const S
 
     if ( parent )
     {
-        const osg::Texture* parentTex = 0;
-        osg::Matrixf matrixScaleBias;
-        parent->getProxyGeoElevationData(parentTex, matrixScaleBias);
-        setProxyGeoElevationData(parentTex, matrixScaleBias);
-
         setElevationExtrema( parent->getElevationExtrema() );
     }
 

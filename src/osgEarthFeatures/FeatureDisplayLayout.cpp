@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -111,7 +111,7 @@ FeatureDisplayLayout::getConfig() const
 void 
 FeatureDisplayLayout::addLevel( const FeatureLevel& level )
 {
-    _levels.insert( std::make_pair( -level.maxRange(), level ) );
+    _levels.insert( std::make_pair( -level.maxRange().get(), level ) );
 }
 
 unsigned 

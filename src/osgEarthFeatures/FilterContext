@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,6 +28,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osg/Matrix>
 #include <list>
+#include <vector>
 
 namespace osgEarth { namespace Features
 {
@@ -172,6 +173,13 @@ namespace osgEarth { namespace Features
          */
         const osgDB::Options* getDBOptions() const;
 
+        /**
+         * Gets a "history" string for debugging purposes
+         */
+        std::string getHistory() const;
+
+        void pushHistory(const std::string& value) { _history.push_back(value); }
+
     protected:
         osg::ref_ptr<Session>              _session;
         osg::ref_ptr<const FeatureProfile> _profile;
@@ -182,6 +190,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<ResourceCache>        _resourceCache;
         FeatureIndexBuilder*               _index;
         optional<ShaderPolicy>             _shaderPolicy;
+        std::vector<std::string>           _history;
     };
 
 } } // namespace osgEarth::Features

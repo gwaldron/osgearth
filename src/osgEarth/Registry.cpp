@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,9 +30,14 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ObjectIndex>
+
+#include <osgEarth/Units>
 #include <osg/Notify>
 #include <osg/Version>
 #include <osgDB/Registry>
+#include <osgDB/Options>
+#include <osgText/Font>
+
 #include <gdal_priv.h>
 #include <ogr_api.h>
 #include <stdlib.h>
@@ -477,6 +482,12 @@ Registry::createUID()
     //todo: use OpenThreads::Atomic for this
     ScopedLock<Mutex> exclusive( _uidGenMutex );
     return (UID)( _uidGen++ );
+}
+
+const osgDB::Options*
+Registry::getDefaultOptions() const 
+{
+    return _defaultOptions.get();
 }
 
 osgDB::Options*

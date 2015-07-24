@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -78,7 +81,8 @@ namespace osgEarth
         const optional<float>& minTileRangeFactor() const { return _minTileRangeFactor; }
 
         /**
-         * The image-layer fading attenuation distance
+         * Distance (m) over which to ramp min_range and max_range blending
+         * Default = 0.
          */
         optional<float>& attenuationDistance() { return _attenuationDistance; }
         const optional<float>& attentuationDistance() const { return _attenuationDistance; }
@@ -161,21 +165,6 @@ namespace osgEarth
          */
         optional<bool>& enableMercatorFastPath() { return _mercatorFastPath; }
         const optional<bool>& enableMercatorFastPath() const { return _mercatorFastPath; }
-
-        /**
-         * Traversal mask to use for primary geometry -- geometry that comprises the visible
-         * geometry and should participate in intersection, shadowing, etc.
-         */
-        optional<unsigned>& primaryTraversalMask() { return _primaryTraversalMask; }
-        const optional<unsigned>& primaryTraversalMask() const { return _primaryTraversalMask; }
-
-        /**
-         * Traversal mask to use for secondary geometry -- geometry that exists for
-         * secondary purpose (e.g. terrain skirts) that should not participate in 
-         * intersection, shadowing, etc.
-         */
-        optional<unsigned>& secondaryTraversalMask() { return _secondaryTraversalMask; }
-        const optional<unsigned>& secondaryTraversalMask() const { return _secondaryTraversalMask; }
 
         /**
          * The minimum level of detail at which to generate elevation-based normal maps,

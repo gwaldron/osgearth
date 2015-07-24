@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -200,6 +200,9 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
         _features.get(), 
         _dbOptions.get() );
 
+    // Name the session (for debugging purposes)
+    session->setName( this->getName() );
+
     // Graph that will render feature models. May included paged data.
     FeatureModelGraph* graph = new FeatureModelGraph( 
        session,
@@ -209,7 +212,7 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
        _preMergeOps.get(),
        _postMergeOps.get() );
 
-    graph->setName( this->getName() );
+    graph->setName( session->getName() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );

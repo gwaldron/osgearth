@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -86,9 +89,9 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             Shaders package;            
             package.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
 
-            package.loadFunction( vp, package.VertexModel );
-            package.loadFunction( vp, package.VertexView );
-            package.loadFunction( vp, _octaves <= 1? package.FragmentSimple : package.FragmentProgressive );
+            package.load( vp, package.VertexModel );
+            package.load( vp, package.VertexView );
+            package.load( vp, _octaves <= 1? package.FragmentSimple : package.FragmentProgressive );
 
             if ( _octaves > 1 )
                 stateset->addUniform(new osg::Uniform("oe_bumpmap_octaves", _octaves));
@@ -122,10 +125,10 @@ BumpMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
         if ( vp )
         {
             Shaders pkg;
-            pkg.unloadFunction( vp, pkg.VertexModel );
-            pkg.unloadFunction( vp, pkg.VertexView );
-            pkg.unloadFunction( vp, pkg.FragmentSimple );
-            pkg.unloadFunction( vp, pkg.FragmentProgressive );
+            pkg.unload( vp, pkg.VertexModel );
+            pkg.unload( vp, pkg.VertexView );
+            pkg.unload( vp, pkg.FragmentSimple );
+            pkg.unload( vp, pkg.FragmentProgressive );
         }
     }
     

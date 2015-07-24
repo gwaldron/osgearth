@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -296,6 +296,7 @@ namespace osgEarth
             const TileKey& key,
             bool           expressHeightsAsHAE =true) const;
         
+#if 0
         /**
          * Populates a heightfield with data from the elevation layers
          * in the map. The method will create a new heightfield if you
@@ -312,6 +313,7 @@ namespace osgEarth
             bool                            expressHeightsAsHAE =true,
             ElevationSamplePolicy           samplePolicy        =SAMPLE_FIRST_VALID,
             ProgressCallback*               progress            =0L) const;
+#endif
 
         /**
          * Sets the Cache for this Map. Set to NULL for no cache.

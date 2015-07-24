@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -37,14 +37,13 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         MPTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
             _skirtRatio        ( 0.05 ),
             _quickRelease      ( true ),
-            _lodFallOff        ( 0.0 ),
             _normalizeEdges    ( false ),
             _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
             _tilePixelSize     ( 256 ),
             _color             ( Color::White ),
             _incrementalUpdate ( false ),
-            _optimizeTiles     ( false )
-        {
+            _smoothing         ( false )
+         {
             setDriver( "mp" );
             fromConfig( _conf );
         }
@@ -62,7 +61,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<bool>& quickReleaseGLObjects() { return _quickRelease; }
         const optional<bool>& quickReleaseGLObjects() const { return _quickRelease; }
 
-        /** Whether to average normal vectors on tile boundaries */
+        /** Whether to average normal vectors on tile boundaries. Doing so reduces the
+         *  the appearance of seams when using lighting, but requires extra CPU work. */
         optional<bool>& normalizeEdges() { return _normalizeEdges; }
         const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
 
@@ -78,33 +78,33 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
 
-        /** Whether to update tiles incrementally as needed when the map model changes (true),
-          * or to rebuild the entire terrain when enything changes (false) */
+        /**
+         * Whether to create smooth transitions between elevation datasets at differing LODs
+         * by inheriting low-resolution data from parent tiles and filling in the new data.
+         * When smoothing is on, elevation may not be "true" in all locations, since the engine
+         * will interpolate values from low LODs. Defaults to FALSE.
+         */
+        optional<bool>& elevationSmoothing() { return _smoothing; }
+        const optional<bool>& elevationSmoothing() const { return _smoothing; }
+
+    public:
+
+        /** @deprecated */
         optional<bool>& incrementalUpdate() { return _incrementalUpdate; }
         const optional<bool>& incrementalUpdate() const { return _incrementalUpdate; }
-
-        /** TODO: document this very obscure feature */
-        optional<float>& lodFallOff() { return _lodFallOff; }
-        const optional<float>& lodFallOff() const { return _lodFallOff; }
-
-        /** Whether to run the mesh consolidation and vertex cache optimizations on terrain tiles.
-          * They run faster, but take a lot longer to build. */
-        optional<bool>& optimizeTiles() { return _optimizeTiles; }
-        const optional<bool>& optimizeTiles() const { return _optimizeTiles; }
 
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.updateIfSet( "skirt_ratio", _skirtRatio );
             conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
-            conf.updateIfSet( "lod_fall_off", _lodFallOff );
             conf.updateIfSet( "normalize_edges", _normalizeEdges);
             conf.updateIfSet( "tile_pixel_size", _tilePixelSize );
             conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
             conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.updateIfSet( "color", _color );
             conf.updateIfSet( "incremental_update", _incrementalUpdate );
-            conf.updateIfSet( "optimize_tiles", _optimizeTiles );
+            conf.updateIfSet( "elevation_smoothing", _smoothing );
 
             return conf;
         }
@@ -118,7 +118,6 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "skirt_ratio", _skirtRatio );
             conf.getIfSet( "quick_release_gl_objects", _quickRelease );
-            conf.getIfSet( "lod_fall_off", _lodFallOff );
             conf.getIfSet( "normalize_edges", _normalizeEdges );
             conf.getIfSet( "tile_pixel_size", _tilePixelSize );
 
@@ -126,8 +125,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.getIfSet( "color", _color );
             conf.getIfSet( "incremental_update", _incrementalUpdate );
-            conf.getIfSet( "optimize_tiles", _optimizeTiles );
-        }
+            conf.getIfSet( "elevation_smoothing", _smoothing );
+       }
 
         optional<float>               _skirtRatio;
         optional<bool>                _quickRelease;
@@ -137,7 +136,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<float>               _tilePixelSize;
         optional<Color>               _color;
         optional<bool>                _incrementalUpdate;
-        optional<bool>                _optimizeTiles;
+        optional<bool>                _smoothing;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

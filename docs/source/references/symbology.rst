@@ -16,6 +16,7 @@ Jump to a symbol:
  * Render_
  * Skin_
  * Text_
+ * Coverage_
  
 **Developer Note**:
 
@@ -418,3 +419,15 @@ The *text symbol* (SDK: ``TextSymbol``) controls the existance and appearance of
 |                                | when line of sight is obstructed by terrain                        |
 +--------------------------------+--------------------------------------------------------------------+
 
+
+Coverage
+--------
+
+The *coverage symbol* (SDK: ``CoverageSymbol``) controls how a feature is rasterized into
+coverage data with discrete values.
+
++-----------------------+--------------------------------------------------------------------+
+| Property              | Description                                                        |
++=======================+====================================================================+
+| coverage-value        | Expression resolving to the floating-point value to encode.        |
++-----------------------+--------------------------------------------------------------------+

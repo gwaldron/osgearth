@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -100,6 +100,10 @@ namespace osgEarth { namespace Features
         optional<bool>& optimize() { return _optimize; }
         const optional<bool>& optimize() const { return _optimize; }
 
+        /** Whether to run a geometry validation pass on teh resulting group. This is for debugging
+        purposes and will dump issues to the console. */
+        optional<bool>& validate() { return _validate; }
+        const optional<bool>& validate() const { return _validate; }
 
     public:
         Config getConfig() const;
@@ -120,6 +124,7 @@ namespace osgEarth { namespace Features
         optional<bool>                 _useTextureArrays;
         optional<bool>                 _optimizeStateSharing;
         optional<bool>                 _optimize;
+        optional<bool>                 _validate;
 
         void fromConfig( const Config& conf );
 

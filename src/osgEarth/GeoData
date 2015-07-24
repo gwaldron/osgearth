@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -549,10 +549,10 @@ namespace osgEarth
         /** Construct an empty (invalid) geoimage. */
         GeoImage();
 
-        /**
+        /** 
          * Constructs a new goereferenced image.
          */
-        GeoImage( osg::Image* image, const GeoExtent& extent );
+        GeoImage(osg::Image* image, const GeoExtent& extent);
 
         /** dtor */
         virtual ~GeoImage() { }
@@ -648,7 +648,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<osg::Image> _image;
-        GeoExtent _extent;
+        GeoExtent                _extent;
     };
 
     typedef std::vector<GeoImage> GeoImageVector;

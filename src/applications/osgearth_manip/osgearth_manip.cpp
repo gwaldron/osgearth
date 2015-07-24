@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -36,6 +39,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/ExampleResources>
+#include <osgEarthUtil/LogarithmicDepthBuffer>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/Style>
@@ -82,11 +86,14 @@ namespace
             "shift-right-mouse :", "locked panning",
             "u :",                 "toggle azimuth lock",
             "o :",                 "toggle perspective/ortho",
-            "t :",                 "toggle tethering",
-            "T :",                 "toggle tethering (with angles)",
+            "8 :",                 "Tether to thing 1",
+            "9 :",                 "Tether to thing 2",
+            "t :",                 "cycle tethermode",
+            "b :",                 "break tether",
             "a :",                 "toggle viewpoint arcing",
             "z :",                 "toggle throwing",
-            "k :",                 "toggle collision"
+            "k :",                 "toggle collision",
+            "L :",                 "toggle log depth buffer"
         };
 
         Grid* g = new Grid();
@@ -109,12 +116,12 @@ namespace
      * Some preset viewpoints to show off the setViewpoint function.
      */
     static Viewpoint VPs[] = {
-        Viewpoint( "Africa",        osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
-        Viewpoint( "California",    osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
-        Viewpoint( "Europe",        osg::Vec3d(    0.0,  45.0, 0.0 ), 0.0, -90.0, 4e6 ),
-        Viewpoint( "Washington DC", osg::Vec3d(  -77.0,  38.0, 0.0 ), 0.0, -90.0, 1e6 ),
-        Viewpoint( "Australia",     osg::Vec3d(  135.0, -20.0, 0.0 ), 0.0, -90.0, 2e6 ),
-        Viewpoint( "Boston",        osg::Vec3d( -71.096936, 42.332771, 0 ), 0.0, -90, 1e5 )
+        Viewpoint( "Africa",            0.0,   0.0, 0.0, 0.0, -90.0, 10e6 ),
+        Viewpoint( "California",     -121.0,  34.0, 0.0, 0.0, -90.0, 6e6 ),
+        Viewpoint( "Europe",            0.0,  45.0, 0.0, 0.0, -90.0, 4e6 ),
+        Viewpoint( "Washington DC",   -77.0,  38.0, 0.0, 0.0, -90.0, 1e6 ),
+        Viewpoint( "Australia",       135.0, -20.0, 0.0, 0.0, -90.0, 2e6 ),
+        Viewpoint( "Boston",         -71.096936, 42.332771, 0, 0.0, -90, 1e5 )
     };
 
 
@@ -138,7 +145,48 @@ namespace
 
         osg::observer_ptr<EarthManipulator> _manip;
     };
+    
 
+    /**
+     * Toggles the logarithmic depth buffer
+     */
+    struct ToggleLDB : public osgGA::GUIEventHandler
+    {
+        ToggleLDB(char key) : _key(key), _installed(false) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                if ( !_installed )
+                {
+                    _nfratio = aa.asView()->getCamera()->getNearFarRatio();
+                    _ldb.install(aa.asView()->getCamera());
+                    aa.asView()->getCamera()->setNearFarRatio(0.00001);
+                }
+                else
+                {
+                    _ldb.uninstall(aa.asView()->getCamera());
+                    aa.asView()->getCamera()->setNearFarRatio(_nfratio);
+                }
+
+                _installed = !_installed;
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle LDB"));
+        }
+
+        char _key;
+        float _nfratio;
+        bool _installed;
+        osgEarth::Util::LogarithmicDepthBuffer _ldb;
+    };
 
     /**
      * Handler to toggle "azimuth locking", which locks the camera's relative Azimuth
@@ -268,7 +316,127 @@ namespace
         char _key;
         osg::ref_ptr<EarthManipulator> _manip;
     };
+
+    /**
+     * Breaks a tether.
+     */
+    struct CycleTetherMode : public osgGA::GUIEventHandler
+    {
+        CycleTetherMode(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                EarthManipulator::TetherMode mode = _manip->getSettings()->getTetherMode();
+                if ( mode == _manip->TETHER_CENTER ) {
+                    _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER_AND_HEADING );
+                    OE_NOTICE << "Tether mode = TETHER_CENTER_AND_HEADING\n";
+                }
+                else if ( mode == _manip->TETHER_CENTER_AND_HEADING ) {
+                    _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER_AND_ROTATION );
+                    OE_NOTICE << "Tether mode = TETHER_CENTER_AND_ROTATION\n";
+                }
+                else {
+                    _manip->getSettings()->setTetherMode( _manip->TETHER_CENTER );
+                    OE_NOTICE << "Tether mode = CENTER\n";
+                }
+
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Cycle Tether Mode"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
+
+    /**
+     * Breaks a tether.
+     */
+    struct BreakTetherHandler : public osgGA::GUIEventHandler
+    {
+        BreakTetherHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                _manip->clearViewpoint();
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key), string("Break a tether"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
     
+
+    /**
+     * Adjusts the position offset.
+     */
+    struct SetPositionOffset : public osgGA::GUIEventHandler
+    {
+        SetPositionOffset(EarthManipulator* manip)
+            : _manip(manip) { }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && (ea.getModKeyMask() & ea.MODKEY_SHIFT) )
+            {
+                Viewpoint oldvp = _manip->getViewpoint();
+
+                double seconds = 0.5;
+
+                if ( ea.getKey() == ea.KEY_Left )
+                {
+                    Viewpoint vp;
+                    vp.positionOffset() = oldvp.positionOffset().get() + osg::Vec3f(-1000,0,0);
+                    _manip->setViewpoint( vp, seconds );
+                }
+                else if ( ea.getKey() == ea.KEY_Right )
+                {
+                    Viewpoint vp;
+                    vp.positionOffset() = oldvp.positionOffset().get() + osg::Vec3f(1000,0,0);
+                    _manip->setViewpoint( vp, seconds );
+                }
+                else if ( ea.getKey() == ea.KEY_Up )
+                {
+                    Viewpoint vp;
+                    vp.positionOffset() = oldvp.positionOffset().get() + osg::Vec3f(0,0,1000);
+                    _manip->setViewpoint( vp, seconds );
+                }
+                else if ( ea.getKey() == ea.KEY_Down )
+                {
+                    Viewpoint vp;
+                    vp.positionOffset() = oldvp.positionOffset().get() + osg::Vec3f(0,0,-1000);
+                    _manip->setViewpoint( vp, seconds );
+                }
+                aa.requestRedraw();
+                return true;
+            }
+            return false;
+        }
+
+        osg::ref_ptr<EarthManipulator> _manip;
+    };
 
 
     /**
@@ -320,12 +488,12 @@ namespace
      */
     struct Simulator : public osgGA::GUIEventHandler
     {
-        Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode, osg::Node* model)
-            : _manip(manip), _mapnode(mapnode), _model(model), _lat0(55.0), _lon0(45.0), _lat1(-55.0), _lon1(-45.0)
+        Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode, osg::Node* model, const char* name, char key)
+            : _manip(manip), _mapnode(mapnode), _model(model), _name(name), _key(key)
         {
             if ( !model )
             { 
-                _model = AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
+                _model = AnnotationUtils::createHemisphere(250.0, osg::Vec4(1,.7,.4,1)); //, 90.0f); //AnnotationUtils::createSphere( 250.0, osg::Vec4(1,.7,.4,1) );
             }
             
             _xform = new GeoTransform();
@@ -343,7 +511,7 @@ namespace
             Style style;
             style.getOrCreate<TextSymbol>()->size() = 32.0f;
             style.getOrCreate<TextSymbol>()->declutter() = false;
-            _label = new LabelNode(_mapnode, GeoPoint(), "Hello World", style);
+            _label = new LabelNode(_mapnode, GeoPoint(), _name, style);
             _label->setDynamic( true );
             _cam->addChild( _label );
 
@@ -354,40 +522,42 @@ namespace
         {
             if ( ea.getEventType() == ea.FRAME )
             {
-                double t = fmod( osg::Timer::instance()->time_s(), 600.0 ) / 600.0;
+                double t0 = osg::Timer::instance()->time_s();
+                double t = fmod( t0, 600.0 ) / 600.0;
                 double lat, lon;
                 GeoMath::interpolate( D2R*_lat0, D2R*_lon0, D2R*_lat1, D2R*_lon1, t, lat, lon );
                 GeoPoint p( SpatialReference::create("wgs84"), R2D*lon, R2D*lat, 2500.0 );
-                double bearing = GeoMath::bearing(D2R*_lat1, D2R*_lon1, lat, lon);
+                double bearing = GeoMath::bearing(D2R*_lat0, D2R*_lon0, lat, lon);
+
+                float a = sin(t0*0.2);
+                bearing += a * 0.5 * osg::PI;
+                float pitch = 0.0; //a * 0.1 * osg::PI;
+
                 _xform->setPosition( p );
-                _pat->setAttitude(osg::Quat(bearing, osg::Vec3d(0,0,1)));
+
+                _pat->setAttitude(
+                    osg::Quat(pitch, osg::Vec3d(1,0,0)) *
+                    osg::Quat(bearing, osg::Vec3d(0,0,-1)));
+
                 _label->setPosition( p );
             }
             else if ( ea.getEventType() == ea.KEYDOWN )
             {
-                if ( ea.getKey() == 't' )
+                if ( ea.getKey() == _key )
                 {                                
-                    _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
-                    _manip->setTetherNode( _manip->getTetherNode() ? 0L : _xform.get(), 2.0 );
                     Viewpoint vp = _manip->getViewpoint();
-                    vp.setRange(5000);
-                    _manip->setViewpoint(vp);
-                }
-                else if (ea.getKey() == 'T')
-                {                  
-                    _manip->getSettings()->setTetherMode(osgEarth::Util::EarthManipulator::TETHER_CENTER_AND_HEADING);
-                    _manip->setTetherNode(
-                        _manip->getTetherNode() ? 0L : _xform.get(),
-                        2.0,        // time to tether
-                        45.0,       // final heading
-                        -45.0,      // final pitch
-                        5000.0 );   // final range
+                    vp.setNode( _pat.get() );
+                    vp.range() = 25000.0;
+                    vp.pitch() = -45.0;
+                    _manip->setViewpoint(vp, 2.0);
                 }
                 return true;
             }
             return false;
         }
 
+        std::string                        _name;
+        char                               _key;
         MapNode*                           _mapnode;
         EarthManipulator*                  _manip;
         osg::ref_ptr<osg::Camera>          _cam;
@@ -396,6 +566,8 @@ namespace
         double                             _lat0, _lon0, _lat1, _lon1;
         LabelNode*                         _label;
         osg::Node*                         _model;
+        float                              _heading;
+        float                              _pitch;
     };
 }
 
@@ -439,12 +611,31 @@ int main(int argc, char** argv)
         model = osgDB::readNodeFile(modelFile);
 
     // Simulator for tethering:
-    viewer.addEventHandler( new Simulator(root, manip, mapNode, model) );
-    manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_PAN );
+    Simulator* sim1 = new Simulator(root, manip, mapNode, model, "Thing 1", '8');
+    sim1->_lat0 = 55.0;
+    sim1->_lon0 = 45.0;
+    sim1->_lat1 = -55.0;
+    sim1->_lon1 = -45.0;
+    viewer.addEventHandler(sim1);
+
+    Simulator* sim2 = new Simulator(root, manip, mapNode, model, "Thing 2", '9');
+    sim2->_name = "Thing 2";
+    sim2->_lat0 = 54.0;
+    sim2->_lon0 = 45.0;
+    sim2->_lat1 = -54.0;
+    sim2->_lon1 = -44.0;
+    viewer.addEventHandler(sim2);
+
     manip->getSettings()->getBreakTetherActions().push_back( EarthManipulator::ACTION_GOTO );    
 
-   // Set the minimum distance to something larger than the default
+    // Set the minimum distance to something larger than the default
     manip->getSettings()->setMinMaxDistance(10.0, manip->getSettings()->getMaxDistance());
+
+    // Sets the maximum focal point offsets (usually for tethering)
+    manip->getSettings()->setMaxOffset(5000.0, 5000.0);
+    
+    // Pitch limits.
+    manip->getSettings()->setMinMaxPitch(-90, 90);
 
 
     viewer.setSceneData( root );
@@ -464,9 +655,10 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
     viewer.addEventHandler(new ToggleCollisionHandler('k', manip));
     viewer.addEventHandler(new ToggleProjMatrix('o', manip));
-
-    manip->getSettings()->setMinMaxPitch(-90, 90);
-
+    viewer.addEventHandler(new BreakTetherHandler('b', manip));
+    viewer.addEventHandler(new CycleTetherMode('t', manip));
+    viewer.addEventHandler(new SetPositionOffset(manip));
+    viewer.addEventHandler(new ToggleLDB('L'));
 
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 

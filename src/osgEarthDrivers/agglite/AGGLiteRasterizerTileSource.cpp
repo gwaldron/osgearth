@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -51,48 +51,51 @@ using namespace OpenThreads;
 
 namespace
 {
+    struct float32
+    {
+        float32() : value(NO_DATA_VALUE) { }
+        float32(float v) : value(v) { }
+
+        float value;
+    };
+
     struct span_coverage32
     {
-        //--------------------------------------------------------------------
         static void render(unsigned char* ptr, 
                            int x,
                            unsigned count, 
                            const unsigned char* covers, 
-                           const agg::rgba8& c)
+                           const float32& c)
         {
             unsigned char* p = ptr + (x << 2);
+            float* f = (float*)p;
             do
             {
-                int cover = *covers++;
-                int alpha = (cover > 127 ? 255 : 0.0);
-                *p++ = alpha;
-                *p++ = c.b;
-                *p++ = c.g;
-                *p++ = c.r;
+                unsigned char cover = *covers++;
+                int hasData = cover > 127;
+                *f++ = hasData ? c.value : NO_DATA_VALUE;
             }
             while(--count);
         }
 
-        //--------------------------------------------------------------------
         static void hline(unsigned char* ptr, 
                           int x,
                           unsigned count, 
-                          const agg::rgba8& c)
+                          const float32& c)
         {
             unsigned char* p = ptr + (x << 2);
-            do { *p++ = c.a; *p++ = c.b; *p++ = c.g; *p++ = c.r; } while(--count);
+            float* f = (float*)p;
+            do {
+                *f++ = c.value;
+            }
+            while(--count);
         }
 
-        //--------------------------------------------------------------------
-        static agg::rgba8 get(unsigned char* ptr, int x)
+        static float32 get(unsigned char* ptr, int x)
         {
             unsigned char* p = ptr + (x << 2);
-            agg::rgba8 c;
-            c.a = *p++; 
-            c.b = *p++; 
-            c.g = *p++;
-            c.r = *p;
-            return c;
+            float* f = (float*)p;
+            return float32(*f);
         }
     };
 }
@@ -115,16 +118,42 @@ public:
     }
 
     //override
+    osg::Image* allocateImage()
+    {
+        osg::Image* image = 0L;
+        if ( _options.coverage() == true )
+        {
+            image = new osg::Image();
+            image->allocateImage(getPixelsPerTile(), getPixelsPerTile(), 1, GL_LUMINANCE, GL_FLOAT);
+            image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+            ImageUtils::markAsUnNormalized(image, true);
+        }
+        return image;
+    }
+
+    //override
     bool preProcess(osg::Image* image, osg::Referenced* buildData)
     {
         agg::rendering_buffer rbuf( image->data(), image->s(), image->t(), image->s()*4 );
-        agg::renderer<agg::span_abgr32> ren(rbuf);
-        ren.clear(agg::rgba8(0,0,0,0));
+
+        // clear the buffer.
+        if ( _options.coverage() == true )
+        {
+            // For coverage data, FLT_MAX = no data.
+            agg::renderer<span_coverage32, float32> ren(rbuf);
+            ren.clear( float32(NO_DATA_VALUE) );
+        }
+        else
+        {
+            agg::renderer<agg::span_abgr32, agg::rgba8> ren(rbuf);
+            ren.clear(agg::rgba8(0,0,0,0));
+        }
         return true;
     }
 
     //override
     bool renderFeaturesForStyle(
+        Session*           session,
         const Style&       style,
         const FeatureList& features,
         osg::Referenced*   buildData,
@@ -132,11 +161,12 @@ public:
         osg::Image*        image )
     {
         // A processing context to use with the filters:
-        FilterContext context;
+        FilterContext context( session );
         context.setProfile( getFeatureSource()->getFeatureProfile() );
 
         const LineSymbol*    masterLine = style.getSymbol<LineSymbol>();
         const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
+        const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
 
         // sort into bins, making a copy for lines that require buffering.
         FeatureList polygons;
@@ -146,9 +176,13 @@ public:
         {
             if ( f->get()->getGeometry() )
             {
+                bool hasPoly = false;
+                bool hasLine = false;
+
                 if ( masterPoly || f->get()->style()->has<PolygonSymbol>() )
                 {
                     polygons.push_back( f->get() );
+                    hasPoly = true;
                 }
 
                 if ( masterLine || f->get()->style()->has<LineSymbol>() )
@@ -159,6 +193,16 @@ public:
                         newFeature->setGeometry( newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING) );
                     }
                     lines.push_back( newFeature );
+                    hasLine = true;
+                }
+
+                // if there are no geometry symbols but there is a coverage symbol, default to polygons.
+                if ( !hasLine && !hasPoly )
+                {
+                    if ( masterCov || f->get()->style()->has<CoverageSymbol>() )
+                    {
+                        polygons.push_back( f->get() );
+                    }
                 }
             }
         }
@@ -265,7 +309,11 @@ public:
         agg::rasterizer ras;
 
         // Setup the rasterizer
-        ras.gamma(_options.gamma().get());
+        if ( _options.coverage() == true )
+            ras.gamma(1.0);
+        else
+            ras.gamma(_options.gamma().get());
+
         ras.filling_rule(agg::fill_even_odd);
 
         // construct an extent for cropping the geometry to our tile.
@@ -279,6 +327,12 @@ public:
         cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMax(), 0 ));
         cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMax(), 0 ));
 
+        // If there's a coverage symbol, make a copy of the expressions so we can evaluate them
+        optional<NumericExpression> covValue;
+        const CoverageSymbol* covsym = style.get<CoverageSymbol>();
+        if (covsym && covsym->valueExpression().isSet())
+            covValue = covsym->valueExpression().get();
+
         // render the polygons
         for(FeatureList::iterator i = polygons.begin(); i != polygons.end(); i++)
         {
@@ -291,9 +345,18 @@ public:
                 const PolygonSymbol* poly =
                     feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
                     masterPoly;
+
+                if ( _options.coverage() == true && covValue.isSet() )
+                {
+                    float value = (float)feature->eval(covValue.mutable_value(), &context);
+                    rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
+                }
+                else
+                {
+                    osg::Vec4f color = poly->fill()->color();
+                    rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
+                }
                 
-                const osg::Vec4 color = poly ? static_cast<osg::Vec4>(poly->fill()->color()) : osg::Vec4(1,1,1,1);
-                rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
             }
         }
 
@@ -309,9 +372,16 @@ public:
                 const LineSymbol* line =
                     feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
                     masterLine;
-                
-                const osg::Vec4 color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
-                rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
+
+                if ( _options.coverage() == true && covValue.isSet() )
+                {
+                    float value = (float)feature->eval(covValue.mutable_value(), &context);
+                    rasterizeCoverage(croppedGeometry.get(), value, frame, ras, rbuf);
+                }
+                else
+                {   osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
+                    rasterize(croppedGeometry.get(), color, frame, ras, rbuf);
+                }
             }
         }
 
@@ -321,29 +391,57 @@ public:
     //override
     bool postProcess( osg::Image* image, osg::Referenced* data )
     {
-        //convert from ABGR to RGBA
-        unsigned char* pixel = image->data();
-        for(int i=0; i<image->s()*image->t()*4; i+=4, pixel+=4)
+        if ( _options.coverage() == false )
         {
-            std::swap( pixel[0], pixel[3] );
-            std::swap( pixel[1], pixel[2] );
+            //convert from ABGR to RGBA
+            unsigned char* pixel = image->data();
+            for(int i=0; i<image->s()*image->t()*4; i+=4, pixel+=4)
+            {
+                std::swap( pixel[0], pixel[3] );
+                std::swap( pixel[1], pixel[2] );
+            }
         }
 
         return true;
     }
 
-    // rasterizes a geometry.
+    // rasterizes a geometry to color
     void rasterize(const Geometry* geometry, const osg::Vec4& color, RenderFrame& frame, 
                    agg::rasterizer& ras, agg::rendering_buffer& buffer)
     {
-        osg::Vec4 c = color;
-        unsigned int a = (unsigned int)(127.0f+(c.a()*255.0f)/2.0f); // scale alpha up
-        agg::rgba8 fgColor( (unsigned int)(c.r()*255.0f), (unsigned int)(c.g()*255.0f), (unsigned int)(c.b()*255.0f), a );
-
+        unsigned a = (unsigned)(127.0f+(color.a()*255.0f)/2.0f); // scale alpha up
+        agg::rgba8 fgColor = agg::rgba8( (unsigned)(color.r()*255.0f), (unsigned)(color.g()*255.0f), (unsigned)(color.b()*255.0f), a );
+        
         ConstGeometryIterator gi( geometry );
         while( gi.hasMore() )
         {
-            c = color;
+            const Geometry* g = gi.next();
+
+            for( Geometry::const_iterator p = g->begin(); p != g->end(); p++ )
+            {
+                const osg::Vec3d& p0 = *p;
+                double x0 = frame.xf*(p0.x()-frame.xmin);
+                double y0 = frame.yf*(p0.y()-frame.ymin);
+
+                if ( p == g->begin() )
+                    ras.move_to_d( x0, y0 );
+                else
+                    ras.line_to_d( x0, y0 );
+            }
+        }
+        agg::renderer<agg::span_abgr32, agg::rgba8> ren(buffer);
+        ras.render(ren, fgColor);
+
+        ras.reset();
+    }
+
+
+    void rasterizeCoverage(const Geometry* geometry, float value, RenderFrame& frame, 
+                           agg::rasterizer& ras, agg::rendering_buffer& buffer)
+    {
+        ConstGeometryIterator gi( geometry );
+        while( gi.hasMore() )
+        {
             const Geometry* g = gi.next();
 
             for( Geometry::const_iterator p = g->begin(); p != g->end(); p++ )
@@ -359,16 +457,8 @@ public:
             }
         }
         
-        if (_options.coverage() == true )
-        {
-            agg::renderer<span_coverage32> ren(buffer);
-            ras.render(ren, fgColor);
-        }
-        else
-        {
-            agg::renderer<agg::span_abgr32> ren(buffer);
-            ras.render(ren, fgColor);
-        }
+        agg::renderer<span_coverage32, float32> ren(buffer);
+        ras.render(ren, value);
         ras.reset();
     }
 

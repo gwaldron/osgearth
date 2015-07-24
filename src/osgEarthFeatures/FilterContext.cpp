@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -61,6 +61,12 @@ _shaderPolicy( osgEarth::SHADERPOLICY_GENERATE )
     {
         _extent = session->getMapInfo().getProfile()->getExtent();
     }
+
+    // if the session is set, push its name as the first bc.
+    if ( _session.valid() )
+    {
+        pushHistory( _session->getName() );
+    }
 }
 
 FilterContext::FilterContext( const FilterContext& rhs ) :
@@ -72,7 +78,8 @@ _referenceFrame       ( rhs._referenceFrame ),
 _inverseReferenceFrame( rhs._inverseReferenceFrame ),
 _resourceCache        ( rhs._resourceCache.get() ),
 _index                ( rhs._index ),
-_shaderPolicy         ( rhs._shaderPolicy )
+_shaderPolicy         ( rhs._shaderPolicy ),
+_history              ( rhs._history )
 {
     //nop
 }
@@ -149,12 +156,25 @@ FilterContext::toString() const
 
     buf << std::fixed
         << "CONTEXT: ["
-        << "profile extent = "  << profile()->getExtent().toString()
+        << "profile extent = "   << profile()->getExtent().toString()
         << ", working extent = " << extent()->toString()
         << ", geocentric = "     << osgEarth::toString(_isGeocentric)
+        << ", history = "        << getHistory()
         << "]";
 
     std::string str;
     str = buf.str();
     return str;
+}
+
+std::string
+FilterContext::getHistory() const
+{
+    std::stringstream buf;
+    for(unsigned i=0; i<_history.size(); ++i)
+    {
+        if ( i > 0 ) buf << " : ";
+        buf << _history[i];
+    }
+    return buf.str();
 }

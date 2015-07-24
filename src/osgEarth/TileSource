@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -46,6 +46,8 @@
 namespace osgEarth
 {
     class ProgressCallback;
+    class Map;
+    class MapFrame;
 
     /**
      * Configuration options for a tile source driver.
@@ -91,6 +93,10 @@ namespace osgEarth
         optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
         const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
 
+        /** Whether to rasterize into coverage data, which contains discrete non-interpolable values. */
+        optional<bool>& coverage() { return _coverage; }
+        const optional<bool>& coverage() const { return _coverage; }
+
     public:
         /** For backwards-compatibility; use minValidValue() instead 
          *  @deprecated */
@@ -124,6 +130,7 @@ namespace osgEarth
         optional<int>            _L2CacheSize;
         optional<bool>           _bilinearReprojection;
         optional<unsigned>       _maxDataLevel;
+        optional<bool>           _coverage;
     };
 
 
@@ -340,16 +347,16 @@ namespace osgEarth
             return _options.noDataValue().value(); }
 
         /**
-         * Gets the nodata min value
+         * Gets the minimum valid value. Any value below this is treated as "nodata"
          */
-        virtual float getNoDataMinValue() {
-            return _options.noDataMinValue().value(); }
+        virtual float getMinValidValue() {
+            return _options.minValidValue().value(); }
 
         /**
-         * Gets the nodata max value
+         * Gets the maximum valid value. Any value above this is considered "nodata"
          */
-        virtual float getNoDataMaxValue() {
-            return _options.noDataMaxValue().value(); }
+        virtual float getMaxValidValue() {
+            return _options.maxValidValue().value(); }
 
         /**
          * Gets the preferred extension for this TileSource
@@ -502,6 +509,12 @@ namespace osgEarth
          */
         void setStatus( Status status );
 
+        /**
+         * Accesses the map frame that synchronizes with a map if one is set.
+         * Note; the map frame might be empty/invalid.
+         */
+        MapFrame& getMapFrame() const;
+
 
     protected: // deprecated
 
@@ -535,6 +548,9 @@ namespace osgEarth
         GeoExtent      _dataExtentsUnion;
         Status         _status;
         Mode           _mode;
+
+        void setMap(const Map* map);
+        MapFrame* _frame;
     };
 
 

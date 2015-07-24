@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -64,7 +64,7 @@ namespace
     {
         double result = x;
         while( result < minLon ) result += 360.;
-        while( result >  maxLon ) result -= 360.;
+        while( result > maxLon ) result -= 360.;
         return result;
     }
 
@@ -86,7 +86,7 @@ namespace
     void s_getLongitudeFrame( double longitude, double &minLongitude, double &maxLongitude)
     {
         minLongitude = -180.0;
-        maxLongitude = 180.0;
+        maxLongitude =  180.0;
 
         while ( longitude < minLongitude || longitude > maxLongitude)
         {
@@ -636,7 +636,7 @@ _east   ( DBL_MAX ),
 _south  ( DBL_MAX ),
 _north  ( DBL_MAX )
 {
-    //nop
+    //NOP - invalid
 }
 
 GeoExtent::GeoExtent(const SpatialReference* srs,
@@ -646,8 +646,9 @@ _west   ( west ),
 _east   ( east ),
 _south  ( south ),
 _north  ( north )
-{    
-    recomputeCircle();
+{
+    if ( isValid() )
+        recomputeCircle();
 }
 
 
@@ -658,7 +659,8 @@ _east   ( bounds.xMax() ),
 _south  ( bounds.yMin() ),
 _north  ( bounds.yMax() )
 {    
-    recomputeCircle();
+    if ( isValid() )
+        recomputeCircle();
 }
 
 GeoExtent::GeoExtent( const GeoExtent& rhs ) :
@@ -707,10 +709,10 @@ GeoExtent::isValid() const
 {
     return 
         _srs.valid()       && 
-        _east  != DBL_MAX  &&
-        _west  != DBL_MAX  &&
-        _north != DBL_MAX  &&
-        _south != DBL_MAX;
+        _east  != DBL_MAX  && _east  != -DBL_MAX &&
+        _west  != DBL_MAX  && _west  != -DBL_MAX &&
+        _north != DBL_MAX  && _north != -DBL_MAX &&
+        _south != DBL_MAX  && _south != -DBL_MAX;
 }
 
 double
@@ -951,21 +953,44 @@ GeoExtent::recomputeCircle()
 
         if ( getSRS()->isProjected() )
         {
-            _circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
+            double ext = std::max( width(), height() );
+            _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
+            //_circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
         }
         else // isGeographic
         {
-            // find the longest east-west edge.
-            double cx = west();
-            double cy =
-                north() > 0.0 && south() > 0.0 ? south() :
-                north() < 0.0 && south() < 0.0 ? north() :
-                north() < fabs(south()) ? north() : south();
+            osg::Vec3d center, sw, se, ne, nw;
 
-            osg::Vec3d p0(x, y, 0.0);
-            osg::Vec3d p1(cx, cy, 0.0);
+            GeoPoint(getSRS(), x, y, 0, ALTMODE_ABSOLUTE).toWorld(center);
+            GeoPoint(getSRS(), west(), south(), 0, ALTMODE_ABSOLUTE).toWorld(sw);
+            GeoPoint(getSRS(), east(), south(), 0, ALTMODE_ABSOLUTE).toWorld(se);
+            GeoPoint(getSRS(), east(), north(), 0, ALTMODE_ABSOLUTE).toWorld(ne);
+            GeoPoint(getSRS(), west(), north(), 0, ALTMODE_ABSOLUTE).toWorld(nw);
+            
+            double radius2 = (center-sw).length2();
+            radius2 = std::max(radius2, (center-se).length2());
+            radius2 = std::max(radius2, (center-ne).length2());
+            radius2 = std::max(radius2, (center-sw).length2());
 
-            _circle.setRadius( GeoMath::distance(p0, p1, getSRS()) );
+            _circle.setRadius( sqrt(radius2) );
+#if 0
+            double extDegrees;
+            double metersPerDegree = (getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+
+            if ( width() > height() )
+            {
+                extDegrees = width();
+                double widestLatitude = std::min( fabs(north()), fabs(south()) );
+                metersPerDegree *= cos(osg::DegreesToRadians(widestLatitude));
+            }
+            else
+            {
+                extDegrees = height();
+            }
+
+            double extMeters = extDegrees * metersPerDegree;
+            _circle.setRadius( 0.5*extMeters * 1.414121356237 ); /*sqrt(2)*/
+#endif
         }
 
         _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );
@@ -1087,7 +1112,7 @@ GeoExtent::expandToInclude( const GeoExtent& rhs )
 GeoExtent
 GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
 {
-    if ( isInvalid() || rhs.isInvalid() || !_srs->isEquivalentTo( rhs.getSRS() ) )
+    if ( isInvalid() || rhs.isInvalid() || !_srs->isHorizEquivalentTo( rhs.getSRS() ) )
         return GeoExtent::INVALID;
 
     if ( !intersects(rhs) )
@@ -1299,8 +1324,7 @@ _extent( GeoExtent::INVALID )
     //nop
 }
 
-
-GeoImage::GeoImage( osg::Image* image, const GeoExtent& extent ) :
+GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent) :
 _image(image),
 _extent(extent)
 {
@@ -1317,22 +1341,26 @@ GeoImage::valid() const
 }
 
 osg::Image*
-GeoImage::getImage() const {
+GeoImage::getImage() const
+{
     return _image.get();
 }
 
 const SpatialReference*
-GeoImage::getSRS() const {
+GeoImage::getSRS() const
+{
     return _extent.getSRS();
 }
 
 const GeoExtent&
-GeoImage::getExtent() const {
+GeoImage::getExtent() const
+{
     return _extent;
 }
 
 double
-GeoImage::getUnitsPerPixel() const {
+GeoImage::getUnitsPerPixel() const
+{
     double uppw = _extent.width() / (double)_image->s();
     double upph = _extent.height() / (double)_image->t();
     return (uppw + upph) / 2.0;
@@ -1341,6 +1369,9 @@ GeoImage::getUnitsPerPixel() const {
 GeoImage
 GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigned int height, bool useBilinearInterpolation) const
 {
+    if ( !valid() )
+        return *this;
+
     //Check for equivalence
     if ( extent.getSRS()->isEquivalentTo( getSRS() ) )
     {
@@ -1364,7 +1395,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
             }
 
             //Note:  Passing in the current SRS simply forces GDAL to not do any warping
-            return reproject( getSRS(), &extent, width, height, useBilinearInterpolation);
+            return reproject( getSRS(), &extent, width, height, useBilinearInterpolation );
         }
         else
         {
@@ -1434,11 +1465,59 @@ namespace
     {
         // called internally -- GDAL lock not required
 
+        int numBands = ds->GetRasterCount();
+        if ( numBands < 1 )
+            return 0L;
+
+        GLenum dataType;
+        int    sampleSize;
+        GLint  internalFormat;
+
+        switch(ds->GetRasterBand(1)->GetRasterDataType())
+        {
+        case GDT_Byte:
+            dataType = GL_UNSIGNED_BYTE;
+            sampleSize = 1;
+            internalFormat = GL_LUMINANCE8;
+            break;
+        case GDT_UInt16:
+        case GDT_Int16:
+            dataType = GL_UNSIGNED_SHORT;
+            sampleSize = 2;
+            internalFormat = GL_LUMINANCE16;
+            break;
+        default:
+            dataType = GL_FLOAT;
+            sampleSize = 4;
+            internalFormat = GL_LUMINANCE32F_ARB;
+        }
+
+        GLenum pixelFormat =
+            numBands == 1 ? GL_LUMINANCE :
+            numBands == 2 ? GL_LUMINANCE_ALPHA :
+            numBands == 3 ? GL_RGB :
+                            GL_RGBA;
+
+        int pixelBytes = sampleSize * numBands;
+
         //Allocate the image
         osg::Image *image = new osg::Image;
-        image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+        image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, pixelFormat, dataType);
 
-        ds->RasterIO(GF_Read, 0, 0, image->s(), image->t(), (void*)image->data(), image->s(), image->t(), GDT_Byte, 4, NULL, 4, 4 * image->s(), 1);
+        ds->RasterIO(
+            GF_Read, 
+            0, 0, 
+            image->s(), image->t(), 
+            (void*)image->data(), 
+            image->s(), image->t(), 
+            ds->GetRasterBand(1)->GetRasterDataType(),
+            numBands,
+            NULL,
+            pixelBytes,
+            pixelBytes * image->s(),
+            1);
+
+//        ds->RasterIO(GF_Read, 0, 0, image->s(), image->t(), (void*)image->data(), image->s(), image->t(), GDT_Byte, 4, NULL, 4, 4 * image->s(), 1);
         ds->FlushCache();
 
         image->flipVertical();
@@ -1447,7 +1526,7 @@ namespace
     }
 
     GDALDataset*
-    createMemDS(int width, int height, double minX, double minY, double maxX, double maxY, const std::string &projection)
+    createMemDS(int width, int height, int numBands, GDALDataType dataType, double minX, double minY, double maxX, double maxY, const std::string &projection)
     {
         //Get the MEM driver
         GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
@@ -1457,13 +1536,24 @@ namespace
         }
 
         //Create the in memory dataset.
-        GDALDataset* ds = memDriver->Create("", width, height, 4, GDT_Byte, 0);
+        GDALDataset* ds = memDriver->Create("", width, height, numBands, dataType, 0);
 
         //Initialize the color interpretation
-        ds->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
-        ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
-        ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
-        ds->GetRasterBand(4)->SetColorInterpretation(GCI_AlphaBand);
+        if ( numBands == 1 )
+        {
+            ds->GetRasterBand(1)->SetColorInterpretation(GCI_GrayIndex);
+        }
+        else
+        {
+            ds->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
+            ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
+            ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
+
+            if ( numBands == 4 )
+            {
+                ds->GetRasterBand(4)->SetColorInterpretation(GCI_AlphaBand);
+            }
+        }
 
         //Initialize the geotransform
         double geotransform[6];
@@ -1488,9 +1578,51 @@ namespace
         osg::ref_ptr<osg::Image> clonedImage = new osg::Image(*image);
 
         //Flip the image
-        clonedImage->flipVertical();  
+        clonedImage->flipVertical();
 
-        GDALDataset* srcDS = createMemDS(image->s(), image->t(), minX, minY, maxX, maxY, projection);
+        GDALDataType gdalDataType =
+            image->getDataType() == GL_UNSIGNED_BYTE  ? GDT_Byte :
+            image->getDataType() == GL_UNSIGNED_SHORT ? GDT_UInt16 :
+            image->getDataType() == GL_FLOAT          ? GDT_Float32 :
+                                                        GDT_Byte;
+
+        int numBands =
+            image->getPixelFormat() == GL_RGBA      ? 4 :
+            image->getPixelFormat() == GL_RGB       ? 3 :
+            image->getPixelFormat() == GL_LUMINANCE ? 1 : 0;
+
+
+        if ( numBands == 0 )
+        {
+            OE_WARN << LC << "Failure in createDataSetFromImage: unsupported pixel format\n";
+            return 0L;
+        }
+
+        int pixelBytes =
+            gdalDataType == GDT_Byte   ?   numBands :
+            gdalDataType == GDT_UInt16 ? 2*numBands :
+                                         4*numBands;
+        
+        GDALDataset* srcDS = createMemDS(image->s(), image->t(), numBands, gdalDataType, minX, minY, maxX, maxY, projection);
+
+        if ( srcDS )
+        {
+            srcDS->RasterIO(
+                GF_Write, 
+                0, 0,
+                clonedImage->s(), clonedImage->t(),
+                (void*)clonedImage->data(),
+                clonedImage->s(),
+                clonedImage->t(),
+                gdalDataType,
+                numBands,
+                NULL,
+                pixelBytes,
+                pixelBytes * image->s(),
+                1);
+
+
+#if 0
 
         //Write the image data into the memory dataset
         //If the image is already RGBA, just read all 4 bands in one call
@@ -1517,7 +1649,10 @@ namespace
         {
             OE_WARN << LC << "createDataSetFromImage: unsupported pixel format " << std::hex << image->getPixelFormat() << std::endl;
         }
-        srcDS->FlushCache();
+#endif
+
+            srcDS->FlushCache();
+        }
 
         return srcDS;
     }
@@ -1551,8 +1686,11 @@ namespace
             GDALDestroyGenImgProjTransformer(transformer);
         }
 	    OE_DEBUG << "Creating warped output of " << width <<"x" << height << " in " << destWKT << std::endl;
-       
-        GDALDataset* destDS = createMemDS(width, height, destMinX, destMinY, destMaxX, destMaxY, destWKT);
+
+        int numBands = srcDS->GetRasterCount();
+        GDALDataType dataType = srcDS->GetRasterBand(1)->GetRasterDataType();
+               
+        GDALDataset* destDS = createMemDS(width, height, numBands, dataType, destMinX, destMinY, destMaxX, destMaxY, destWKT);
 
         if (useBilinearInterpolation == true)
         {
@@ -1582,11 +1720,11 @@ namespace
     }    
 
 
-    osg::Image*
-    manualReproject(
+    osg::Image* manualReproject(
         const osg::Image* image, 
         const GeoExtent&  src_extent, 
         const GeoExtent&  dest_extent,
+        bool              interpolate,
         unsigned int      width = 0, 
         unsigned int      height = 0)
     {
@@ -1603,7 +1741,9 @@ namespace
 
         osg::Image *result = new osg::Image();
         //result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-        result->allocateImage(width, height, 1, image->getPixelFormat(), GL_UNSIGNED_BYTE);
+        result->allocateImage(width, height, 1, image->getPixelFormat(), image->getDataType()); //GL_UNSIGNED_BYTE);
+        result->setInternalTextureFormat(image->getInternalTextureFormat());
+        ImageUtils::markAsUnNormalized(result, ImageUtils::isUnNormalized(image));
 
         //Initialize the image to be completely transparent/black
         memset(result->data(), 0, result->getImageSizeInBytes());
@@ -1660,7 +1800,7 @@ namespace
                 osg::Vec4 color(0,0,0,0);
 
                 // TODO: consider this again later. Causes blockiness.
-                if ( false ) //! isSrcContiguous ) // non-contiguous space- use nearest neighbot
+                if ( !interpolate ) //! isSrcContiguous ) // non-contiguous space- use nearest neighbot
                 {
                     color = ia(px_i, py_i);
                 }
@@ -1761,8 +1901,6 @@ namespace
     }
 }
 
-
-
 GeoImage
 GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, unsigned int width, unsigned int height, bool useBilinearInterpolation) const
 {  
@@ -1778,21 +1916,23 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
 
     osg::Image* resultImage = 0L;
 
+    bool isNormalized = ImageUtils::isNormalized(getImage());
+    
     if ( getSRS()->isUserDefined()      || 
         to_srs->isUserDefined()         ||
         getSRS()->isSphericalMercator() ||
-        to_srs->isSphericalMercator() )
-        //( getSRS()->isSphericalMercator() && to_srs->isGeographic() ) ||
-        //( getSRS()->isGeographic() && to_srs->isSphericalMercator() ) )
+        to_srs->isSphericalMercator()   ||
+        !isNormalized )
     {
         // if either of the SRS is a custom projection, we have to do a manual reprojection since
         // GDAL will not recognize the SRS.
-        resultImage = manualReproject(getImage(), getExtent(), *to_extent, width, height);
+        resultImage = manualReproject(getImage(), getExtent(), *to_extent, useBilinearInterpolation && isNormalized, width, height);
     }
     else
     {
         // otherwise use GDAL.
-        resultImage = reprojectImage(getImage(),
+        resultImage = reprojectImage(
+            getImage(),
             getSRS()->getWKT(),
             getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),
             to_srs->getWKT(),

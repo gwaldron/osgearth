@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 #include <osgEarth/URI>
 #include <osgEarthSymbology/Color>
 
-namespace osgEarth { namespace Graticule
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
@@ -34,10 +34,6 @@ namespace osgEarth { namespace Graticule
     class GraticuleOptions : public DriverConfigOptions // NO EXPORT; header only
     {
     public:
-        /** Grid cell resolution (0..1 across the profile) */
-        optional<float>& maxResolution() { return _maxResolution; }
-        const optional<float>& maxResolution() const { return _maxResolution; }
-
         /** Grid line color */
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
@@ -54,6 +50,13 @@ namespace osgEarth { namespace Graticule
         optional<int>& gridLines() { return _gridLines; }
         const optional<int>& gridLines() const { return _gridLines; }
 
+        /** Resolutions for the graticule separated by spaces
+         *  Resolutions are in degrees listed from lowest to highest resolution
+         *  For example:  10 5 2.5 1.25
+        */
+        optional<std::string>& resolutions() { return _resolutions; }
+        const optional<std::string>& resolutions() const { return _resolutions; }
+
     public: // uniform names
         static const char* resolutionUniformName() { return "oe_graticule_resolution"; }
         static const char* colorUniformName()      { return "oe_graticule_color"; }
@@ -64,7 +67,6 @@ namespace osgEarth { namespace Graticule
         {
             setDriver( "graticule" );
             _lineWidth.init ( 1.0f );
-            _maxResolution.init( 30.0/180.0 );
             _color.init     ( Color(Color::Yellow, 0.5f) );
             _labelColor.init ( Color::White );
             _gridLines.init(10);
@@ -79,8 +81,8 @@ namespace osgEarth { namespace Graticule
             conf.addIfSet("line_width", _lineWidth);
             conf.addIfSet("color",      _color);
             conf.addIfSet("label_color", _labelColor );
-            conf.addIfSet("max_resolution", _maxResolution);
             conf.addIfSet("grid_lines", _gridLines);
+            conf.addIfSet("resolutions", _resolutions);
             return conf;
         }
 
@@ -95,18 +97,18 @@ namespace osgEarth { namespace Graticule
             conf.getIfSet("line_width", _lineWidth);
             conf.getIfSet("color",      _color);
             conf.getIfSet("label_color", _labelColor);
-            conf.getIfSet("max_resolution", _maxResolution);
             conf.getIfSet("grid_lines", _gridLines);
+            conf.getIfSet("resolutions", _resolutions);
         }
 
-        optional<float> _lineWidth;
-        optional<float> _maxResolution;
-        optional<Color> _color;
-        optional<Color> _labelColor;
-        optional<int>   _gridLines;
+        optional<float>       _lineWidth;
+        optional<Color>       _color;
+        optional<Color>       _labelColor;
+        optional<int>         _gridLines;
+        optional<std::string> _resolutions;
     };
 
-} } // namespace osgEarth::Graticule
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTH_DRIVER_GRATICULE_OPTIONS
 

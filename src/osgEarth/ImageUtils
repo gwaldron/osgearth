@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -62,7 +62,30 @@ namespace osgEarth
          * array compositor) rely on the internal texture format being correct.
          * (http://http.download.nvidia.com/developer/Papers/2005/Fast_Texture_Transfers/Fast_Texture_Transfers.pdf)
          */
-        static void normalizeImage( osg::Image* image );
+        static void fixInternalFormat(osg::Image* image);
+
+        /**
+         * Marks an image as containing un-normalized data values.
+         *
+         * Normally the values in an image are "normalized", i.e. scaled so they are in the
+         * range [0..1]. This is normal for color values. But when the image is being used
+         * for coverage data (a value lookup table) it is desireable to store the raw 
+         * values instead.
+         */
+        static void markAsUnNormalized(osg::Image* image, bool value);
+
+        /** Inverse of above. */
+        static void markAsNormalized(osg::Image* image, bool value) { markAsUnNormalized(image, !value); }
+
+        /**
+         * Whether the image has been marked as containing un-normalized values.
+         */
+        static bool isUnNormalized(const osg::Image* image);
+
+        /**
+         * Whether the image has been marked as containing normalized values.
+         */
+        static bool isNormalized(const osg::Image* image) { return !isUnNormalized(image); }
 
         /**
          * Copys a portion of one image into another.
@@ -298,6 +321,10 @@ namespace osgEarth
         class OSGEARTH_EXPORT PixelReader
         {
         public:
+            /**
+             * Constructs a pixel reader. "Normalized" means that the values in the source
+             * image have been scaled to [0..1] and should be denormalized upon reading.
+             */
             PixelReader(const osg::Image* image);
 
             /** Whether PixelReader supports a given format/datatype combiniation. */
@@ -323,8 +350,7 @@ namespace osgEarth
                 return (*_reader)(this,
                     (int)(s * (float)(_image->s()-1)),
                     (int)(t * (float)(_image->t()-1)),
-                    (int)(r * (float)(_image->r()-1)),
-                    m);
+                    r, m);
             }
 
             // internals:
@@ -340,6 +366,7 @@ namespace osgEarth
             unsigned _colMult;
             unsigned _rowMult;
             unsigned _imageSize;
+            bool     _normalized;
         };
         
         /**
@@ -348,6 +375,10 @@ namespace osgEarth
         class OSGEARTH_EXPORT PixelWriter
         {
         public:
+            /**
+             * Constructs a pixel writer. "Normalized" means the values are scaled to [0..1]
+             * before writing.
+             */
             PixelWriter(osg::Image* image);
 
             /** Whether PixelWriter can write to an image with the given format/datatype combo. */
@@ -363,11 +394,19 @@ namespace osgEarth
                 (*_writer)(this, c, s, t, r, m );
             }
 
+            void f(const osg::Vec4& c, float s, float t, int r=0, int m=0) {
+                this->operator()( c,
+                    (int)(s * (float)(_image->s()-1)),
+                    (int)(t * (float)(_image->t()-1)),
+                    r, m);
+            }
+
             // internals:
             osg::Image* _image;
             unsigned _colMult;
             unsigned _rowMult;
             unsigned _imageSize;
+            bool     _normalized;
 
             unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
                 return m == 0 ?

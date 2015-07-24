@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -66,7 +66,9 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
 
     // Don't write out a new file if we're not overwriting
     if (osgDB::fileExists(path) && !_packager->getOverwrite())
+    {
         return true;
+    }
 
     // attempt to create the output folder:        
     osgEarth::makeDirectoryForFile( path );       
@@ -84,12 +86,15 @@ bool WriteTMSTileHandler::handleTile(const TileKey& key, const TileVisitor& tv)
                 return false;
             }
 
-            // mask out areas not included in the request:
-            for(std::vector<GeoExtent>::const_iterator g = tv.getExtents().begin();
-                g != tv.getExtents().end();
-                ++g)
+            if (_packager->getApplyAlphaMask())
             {
-                geoImage.applyAlphaMask( *g );
+                // mask out areas not included in the request:
+                for(std::vector<GeoExtent>::const_iterator g = tv.getExtents().begin();
+                    g != tv.getExtents().end();
+                    ++g)
+                {
+                    geoImage.applyAlphaMask( *g );
+                }
             }
 
             // OE_NOTICE << "Created image for " << key.str() << std::endl;
@@ -176,6 +181,10 @@ std::string WriteTMSTileHandler::getProcessString() const
     {
         buf << " --overwrite ";
     }            
+    if (_packager->getApplyAlphaMask())
+    {
+        buf << " --alpha-mask ";
+    }
     return buf.str();
 }
 
@@ -190,7 +199,8 @@ _visitor(new TileVisitor()),
     _width(0),
     _height(0),
     _overwrite(false),
-    _keepEmpties(false)
+    _keepEmpties(false),
+    _applyAlphaMask(false)
 {
 }
 
@@ -264,6 +274,16 @@ void TMSPackager::setKeepEmpties(bool keepEmpties)
     _keepEmpties = keepEmpties;
 }
 
+bool TMSPackager::getApplyAlphaMask() const
+{
+    return _applyAlphaMask;
+}
+
+void TMSPackager::setApplyAlphaMask(bool applyAlphaMask)
+{
+    _applyAlphaMask = applyAlphaMask;
+}
+
 TileVisitor* TMSPackager::getTileVisitor() const
 {
     return _visitor;
@@ -331,56 +351,33 @@ void TMSPackager::run( TerrainLayer* layer,  Map* map  )
 
     if (imageLayer)
     {
-        GeoImage testImage;
-        for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testImage.valid(); ++i )
+        int tileSize = imageLayer->getTileSize();
+        _width = tileSize;
+        _height = tileSize;
+
+        // Figure out the extension if we haven't already assigned one.
+        if (_extension.empty())
         {
-            testImage = imageLayer->createImage( *i );
+            // Just default to whatever the source reports as it's extension.
+            _extension = imageLayer->getTileSource()->getExtension();
         }
-        if (testImage.valid())
+
+        if (_extension == "jpg" && _applyAlphaMask)
         {
-            _width = testImage.getImage()->s();
-            _height = testImage.getImage()->t();
-
-            bool alphaChannelRequired =
-                ImageUtils::hasAlphaChannel(testImage.getImage()) ||
-                _visitor->getExtents().size() > 0;
-
-            // Figure out the extension if we haven't already assigned one.
-            if (_extension.empty())
-            {
-                if (alphaChannelRequired)
-                {
-                    _extension = "png";
-                }
-                else
-                {
-                    _extension = "jpg";
-                }
-            }
-            else if (_extension == "jpg" && alphaChannelRequired)
-            {
-                _extension = "png";
-                OE_NOTICE << LC << "Extension changed to PNG since output requires an alpha channel" << std::endl;
-            }
-
-            OE_INFO << LC << "Output extension: " << _extension << std::endl;
+            _extension = "png";
+            OE_NOTICE << LC << "Extension changed to PNG since output requires an alpha channel" << std::endl;
         }
+
+        OE_INFO << LC << "Output extension: " << _extension << std::endl;
+
     }
     else if (elevationLayer)
     {
         // We must use tif no matter what with elevation layers.  It's the only format that currently can read/write single band imagery.
         _extension = "tif";
-        GeoHeightField testHF;
-        for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testHF.valid(); ++i )
-        {
-            testHF = elevationLayer->createHeightField( *i );
-        }
-
-        if (testHF.valid())
-        {
-            _width = testHF.getHeightField()->getNumColumns();
-            _height = testHF.getHeightField()->getNumRows();
-        }
+        int tileSize = elevationLayer->getTileSize();
+        _width = tileSize;
+        _height = tileSize;
     }
 
 

@@ -1,5 +1,5 @@
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -7,10 +7,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -19,8 +22,8 @@
 #include <osgEarthQt/AnnotationDialogs>
 #include <osgEarthQt/Common>
 
-#include <osgEarth/Draggers>
-#include <osgEarth/Pickers>
+#include <osgEarthAnnotation/Draggers>
+#include <osgEarth/IntersectionPicker>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/EllipseNode>
@@ -256,7 +259,12 @@ void AddMarkerDialog::accept()
     osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
     annoData->setName(_altName.length() > 0 ? _altName : getName());
     annoData->setDescription(getDescription());
-    annoData->setViewpoint(osgEarth::Viewpoint(_placeNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _placeNode->getPosition().getSRS()));
+    Viewpoint vp;
+    vp.focalPoint() = _placeNode->getPosition();
+    vp.pitch()->set(-90.0, Units::DEGREES);
+    vp.range()->set(1e5, Units::METERS);
+    annoData->setViewpoint( vp );
+    //annoData->setViewpoint(osgEarth::Viewpoint(_placeNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _placeNode->getPosition().getSRS()));
     _placeNode->setAnnotationData(annoData);
   }
 
@@ -427,7 +435,7 @@ void AddPathDialog::refreshFeatureNode()
 
 void AddPathDialog::createPointDragger(int index, const osgEarth::GeoPoint& point)
 {
-  osgEarth::SphereDragger* sd = new osgEarth::SphereDragger(_mapNode);
+  osgEarth::Annotation::SphereDragger* sd = new osgEarth::Annotation::SphereDragger(_mapNode);
   sd->setSize(4.0f);
   sd->setColor(Color::Magenta);
   sd->setPickColor(Color::Green);
@@ -578,8 +586,14 @@ AddPolygonDialog::AddPolygonDialog(osg::Group* root, osgEarth::MapNode* mapNode,
         updateButtonColorStyle(_fillColorButton, QColor::fromRgbF(_fillColor.r(), _fillColor.g(), _fillColor.b(), _fillColor.a()));
       }
 
+      bool draped = false;
+      if (feat->style()->has<AltitudeSymbol>() && feat->style()->get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_DRAPE)
+      {
+          draped = true;
+      }
+
       //Get draping
-      _drapeCheckbox->setChecked(polygon->isDraped());
+      _drapeCheckbox->setChecked(draped);
 
       //Get path points
       const osgEarth::Symbology::Polygon* polyGeom = dynamic_cast<const osgEarth::Symbology::Polygon*>(feat->getGeometry());
@@ -716,7 +730,7 @@ void AddPolygonDialog::refreshFeatureNode(bool geometryOnly)
 
 void AddPolygonDialog::createPointDragger(int index, const osgEarth::GeoPoint& point)
 {
-  osgEarth::SphereDragger* sd = new osgEarth::SphereDragger(_mapNode);
+  osgEarth::Annotation::SphereDragger* sd = new osgEarth::Annotation::SphereDragger(_mapNode);
   sd->setSize(4.0f);
   sd->setColor(Color::Magenta);
   sd->setPickColor(Color::Green);
@@ -754,12 +768,16 @@ void AddPolygonDialog::addPoint(const osgEarth::GeoPoint& point)
     polyStyle.getOrCreate<LineSymbol>()->tessellation() = 20;
     polyStyle.getOrCreate<PolygonSymbol>()->fill()->color() = _fillColor;
     polyStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    if (_drapeCheckbox->checkState() == Qt::Checked)
+    {
+        polyStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+    }
 
     _polyFeature = new osgEarth::Features::Feature(_polygon, _mapNode->getMapSRS(), polyStyle);
 
     if (!_polyNode.valid())
     {
-      _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, _drapeCheckbox->checkState() == Qt::Checked);
+      _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature);
       _root->addChild(_polyNode);
     }
 
@@ -813,7 +831,19 @@ void AddPolygonDialog::onDrapeCheckStateChanged(int state)
   if (_polyNode.valid())
   {
     _root->removeChild(_polyNode);
-    _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, _drapeCheckbox->checkState() == Qt::Checked);
+
+    Style style;
+    if (_drapeCheckbox->checkState() == Qt::Checked)
+    {
+        style.getOrCreate<AltitudeSymbol>()->clamping()  = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+    }
+    else
+    {
+        style.getOrCreate<AltitudeSymbol>()->clamping()  = AltitudeSymbol::CLAMP_NONE;
+    }
+    
+    _polyNode = new osgEarth::Annotation::FeatureNode(_mapNode, _polyFeature, style);
     _root->addChild(_polyNode);
   }
 }
@@ -888,8 +918,14 @@ _editing(ellipse ? true : false), _inStyle(ellipse ? ellipse->getStyle() : osgEa
       updateButtonColorStyle(_fillColorButton, QColor::fromRgbF(_fillColor.r(), _fillColor.g(), _fillColor.b(), _fillColor.a()));
     }
 
+    bool draped = false;
+    if (ellipse->getStyle().has<AltitudeSymbol>() && ellipse->getStyle().get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_DRAPE)
+    {
+        draped = true;
+    }
+
     //Get draping
-    _drapeCheckbox->setChecked(ellipse->isDraped());
+    _drapeCheckbox->setChecked(draped);
 
     //Call refreshFeatureNode to update _ellipseStyle
     refreshFeatureNode();
@@ -1043,7 +1079,12 @@ void AddEllipseDialog::accept()
     osgEarth::Annotation::AnnotationData* annoData = new osgEarth::Annotation::AnnotationData();
     annoData->setName(getName());
     annoData->setDescription(getDescription());
-    annoData->setViewpoint(osgEarth::Viewpoint(_ellipseNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _ellipseNode->getPosition().getSRS()));
+    Viewpoint vp;
+    vp.focalPoint() = _ellipseNode->getPosition();
+    vp.pitch()->set( -90.0, Units::DEGREES );
+    vp.range()->set( 1e5, Units::METERS );
+    annoData->setViewpoint( vp );
+    //annoData->setViewpoint(osgEarth::Viewpoint(_ellipseNode->getPosition().vec3d(), 0.0, -90.0, 1e5, _ellipseNode->getPosition().getSRS()));
 
     _ellipseNode->setAnnotationData(annoData);
   }

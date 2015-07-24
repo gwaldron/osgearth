@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -64,13 +64,19 @@ KML_Feature::build( xml_node<>* node, KMLContext& cx, osg::Node* working )
         xml_node<>* lookat = node->first_node("lookat", 0, false);
         if ( lookat )
         {
-            Viewpoint vp(
+            Viewpoint vp;
+
+            vp.focalPoint() = GeoPoint(
+                cx._srs.get(),
 				as<double>(getValue(lookat, "longitude"), 0.0),
 				as<double>(getValue(lookat, "latitude"), 0.0),
 				as<double>(getValue(lookat, "altitude"), 0.0),
-				as<double>(getValue(lookat, "heading"), 0.0),
-				-as<double>(getValue(lookat, "tilt"), 45.0),
-				as<double>(getValue(lookat, "range"), 10000.0));
+                ALTMODE_ABSOLUTE );
+
+            vp.heading() =  as<double>(getValue(lookat, "heading"), 0.0);
+            vp.pitch()   = -as<double>(getValue(lookat, "tilt"), 45.0),
+            vp.range()   =  as<double>(getValue(lookat, "range"), 10000.0);
+
             anno->setViewpoint( vp );
         }
 

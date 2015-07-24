@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -234,11 +234,22 @@ public:
     {     
         if (query.tileKey().isSet())
         {
+            const TileKey &key = query.tileKey().get();
+            unsigned int tileX = key.getTileX();
+            unsigned int tileY = key.getTileY();
+            unsigned int level = key.getLevelOfDetail();
+            
+#if 0
+            unsigned int numRows, numCols;
+            key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
+            tileY  = numRows - tileY - 1;
+#endif
+            
             std::stringstream buf;
             std::string path = osgDB::getFilePath(_options.url()->full());
-            buf << path << "/" << query.tileKey().get().getLevelOfDetail() << "/"
-                               << query.tileKey().get().getTileX() << "/"
-                               << query.tileKey().get().getTileY()
+            buf << path << "/" << level << "/"
+                               << tileX << "/"
+                               << tileY
                                << "." << _options.format().get();            
             OE_DEBUG << "TFS url " << buf.str() << std::endl;
             return buf.str();

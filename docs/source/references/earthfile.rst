@@ -58,17 +58,13 @@ the entire map.
 +--------------------------+--------------------------------------------------------------------+
 | Property                 | Description                                                        |
 +==========================+====================================================================+
-| lighting                 | Whether to enable GL_LIGHTING on the entire map. By default this is|
-|                          | unset, meaning it will inherit the lighting mode of the scene.     |
+| lighting                 | Whether to allow lighting shaders to affect the map.               |
 +--------------------------+--------------------------------------------------------------------+
 | elevation_interpolation  | Algorithm to use when resampling elevation source data:            |
 |                          |   :nearest:     Nearest neighbor                                   |
 |                          |   :average:     Averages the neighoring values                     |
 |                          |   :bilinear:    Linear interpolation in both axes                  |
 |                          |   :triangulate: Interp follows triangle slope                      |
-+--------------------------+--------------------------------------------------------------------+
-| elevation_tile_size      | Sets the number of samples to render for each terrain tile         |
-|                          | (width and height)                                                 |
 +--------------------------+--------------------------------------------------------------------+
 | overlay_texture_size     | Sets the texture size to use for draping (projective texturing)    |
 +--------------------------+--------------------------------------------------------------------+
@@ -105,8 +101,9 @@ These options control the rendering of the terrain surface.
                      mercator_fast_path    = "true"
                      blending              = "false"
                      color                 = "#ffffffff"
+                     tile_size             = "17"
                      normalize_edges       = "false"
-                     optimize_tiles        = "false" >
+                     elevation_smoothing   = "false">
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
@@ -146,13 +143,15 @@ These options control the rendering of the terrain surface.
 |                       | underlying geometry. This lets you make the globe partially        |
 |                       | transparent. This is handy for seeing underground objects.         |
 +-----------------------+--------------------------------------------------------------------+
+| tile_size             | The dimensions of each terrain tile. Each terrain tile will have   |
+|                       | ``tile_size`` X ``tile_size`` verticies.                           |
++-----------------------+--------------------------------------------------------------------+
 | normalize_edges       | Calculate normal vectors along the edges of terrain tiles so that  |
 |                       | lighting appears smoother from one tile to the next.               |
 +-----------------------+--------------------------------------------------------------------+
-| optimize_tiles        | Optimize each terrain tile as its built, consolidating its         |
-|                       | geometry and optimizing vertex ordering for the GPU cache. This    |
-|                       | will increase tile load time in exchange for slightly better       |
-|                       | rendering performance.                                             |
+| elevation_smoothing   | Whether to smooth the transition across elevation data insets.     |
+|                       | Doing so will give a smoother appearance to disparate height field |
+|                       | data, but elevations will not be as accurate. Default = false      |
 +-----------------------+--------------------------------------------------------------------+
 
 
@@ -179,6 +178,8 @@ An *image layer* is a raster image overlaid on the map's geometry.
                enabled        = "true"
                visible        = "true"
                shared         = "false"
+               shared_sampler = "string"
+               shared_matrix  = "string"
                coverage       = "false"
                feather_pixels = "false"
                min_filter     = "LINEAR"
@@ -236,6 +237,13 @@ An *image layer* is a raster image overlaid on the map's geometry.
 | shared                | Generates a secondary, dedicated sampler for this layer so that it |
 |                       | may be accessed globally by custom shaders.                        |
 +-----------------------+--------------------------------------------------------------------+
+| shared_sampler        | For a shared layer, the uniform name of the sampler that will be   |
+|                       | available in GLSL code.                                            |
++-----------------------+--------------------------------------------------------------------+
+| shared_matrix         | For a shared layer, the uniform name of the texture matrix that    |
+|                       | will be available in GLSL code that you can use to access          |
+|                       | the proper texture coordinate for the ``shared_sampler`` above.    |
++-----------------------+--------------------------------------------------------------------+
 | coverage              | Indicates that this is a coverage layer, i.e. a layer that conveys |
 |                       | discrete values with particular semantics. An example would be a   |
 |                       | "land use" layer in which each pixel holds a value that indicates  |
@@ -270,15 +278,18 @@ will composite all elevation data into a single heightmap and use that to build 
 .. parsed-literal::
 
     <map>
-        <elevation name           = "text"
-                   driver         = "gdal"
-                   min_level      = "0"
-                   max_level      = "23"
-                   min_resolution = "100.0"
-                   max_resolution = "0.0"
-                   enabled        = "true"
-                   offset         = "false"
-                   nodata_policy  = "interpolate" >
+        <elevation name            = "text"
+                   driver          = "gdal"
+                   min_level       = "0"
+                   max_level       = "23"
+                   min_resolution  = "100.0"
+                   max_resolution  = "0.0"
+                   enabled         = "true"
+                   offset          = "false"
+                   nodata_value    = "-32768"
+                   min_valid_value = "-32768"
+                   max_valid_value = "32768"
+                   nodata_policy   = "interpolate" >
 
 
 +-----------------------+--------------------------------------------------------------------+
@@ -310,6 +321,12 @@ will composite all elevation data into a single heightmap and use that to build 
 | nodata_policy         | What to do with "no data" values. Default is "interpolate" which   |
 |                       | will interpolate neighboring values to fill holes. Set it to "msl" |
 |                       | to replace "no data" samples with the current sea level value.     |
++-----------------------+--------------------------------------------------------------------+
+| nodata_value          | Treat this value as "no data".                                     |
++-----------------------+--------------------------------------------------------------------+
+| min_valid_value       | Treat anything less than this value as "no data".                  |
++-----------------------+--------------------------------------------------------------------+
+| max_valid_value       | Treat anything greater than this value as "no data".               |
 +-----------------------+--------------------------------------------------------------------+
 
 
@@ -427,11 +444,9 @@ Configures a cache for tile data.
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
 +=======================+====================================================================+
-| driver                | Plugin to use for caching.                                         |
-|                       | At the moment there is only one caching plugin that comes with     |
-|                       | osgEarth, the ``filesystem`` plugin.                               |
+| driver                | Plugin to use for caching, ``filesystem`` or ``leveldb``.          |
 +-----------------------+--------------------------------------------------------------------+
-| path                  | Path (relative or absolute) or the root of a ``filesystem`` cache. |
+| path                  | Path (relative or absolute) or the cache folder or file.           |
 +-----------------------+--------------------------------------------------------------------+
 
 
@@ -455,6 +470,8 @@ Policy that determines how a given element will interact with a configured cache
 |                       |                 data source. This is nice for offline rendering.   |
 |                       |   :no_cache:    Ignore caching and always read from the data       |
 |                       |                 source.                                            |
++-----------------------+--------------------------------------------------------------------+
+| max_age               | Treat cache entries older than this value (in seconds) as expired. |
 +-----------------------+--------------------------------------------------------------------+
 
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -31,6 +34,96 @@
 
 namespace osgEarth
 {
+    /**
+     * A std::map-like map that uses a vector and a getUID method for keying.
+     * DATA must have a getUID() method.
+     */
+    template<typename KEY,typename DATA>
+    struct vector_map
+    {
+        struct ENTRY {
+            inline const KEY&  key()  const { return _key; }
+            inline const DATA& data() const { return _data; }
+            inline DATA&       data()       { return _data; }
+            KEY   _key;
+            DATA _data;
+        };
+        typedef std::vector<ENTRY> container_t;
+
+        //typedef std::vector<KEY>  keys_t;
+        //typedef std::vector<DATA> container_t;
+
+        typedef typename container_t::iterator       iterator;
+        typedef typename container_t::const_iterator const_iterator;
+
+        container_t _container;        
+
+        inline DATA& operator[](const KEY& key) {
+            for(unsigned i=0; i<_container.size(); ++i) {
+                if (_container[i]._key == key) {
+                    return _container[i]._data;
+                }
+            }
+            _container.resize(_container.size()+1);
+            //_container.push_back(ENTRY());
+            _container.back()._key = key;
+            return _container.back()._data;
+        }
+
+        inline DATA* find(const KEY& key) {
+            for(unsigned i=0; i<_container.size(); ++i) {
+                if (_container[i]._key == key) {
+                    return &_container[i]._data;
+                }
+            }
+            return 0L;
+        }
+
+        inline const DATA* find(const KEY& key) const {
+            for(unsigned i=0; i<_container.size(); ++i) {
+                if (_container[i]._key == key) {
+                    return &_container[i]._data;
+                }
+            }
+            return 0L;
+        }
+
+        inline const_iterator begin() const { return _container.begin(); }
+        inline const_iterator end()   const { return _container.end(); }
+        inline iterator begin()             { return _container.begin(); }
+        inline iterator end()               { return _container.end(); }
+
+        inline bool empty() const { return _container.empty(); }
+
+        inline void clear() { _container.clear(); }
+        
+        //iterator erase(iterator& i) {
+        //    iterator j = i; ++j;
+        //    *i = _data.at(_data.size()-1);
+        //    _data.resize(_data.size()-1);
+        //    return j;
+        //}
+
+        inline void erase(const KEY& key) {
+            for(unsigned i=0; i<_container.size(); ++i) {
+                if (_container[i]._key == key) {
+                    if (i+1 < _container.size()) {
+                        _container[i] = _container[_container.size()-1];
+                    }
+                    _container.resize(_container.size()-1);
+                    break;
+                }
+            }
+        }
+
+        inline int size() const { return _container.size(); }
+
+        template<typename InputIterator>
+        void insert(InputIterator a, InputIterator b) {
+            for(InputIterator i = a; i != b; ++i) (*this)[i->first] = i->second;
+        }
+    };
+
     /**
      * A std::map-like container that is faster than std::map for small amounts
      * of data accessed by a single user
@@ -93,6 +186,13 @@ namespace osgEarth
         void clear() { _data.clear(); }
         
         iterator erase(iterator& i) { return _data.erase( i ); }
+
+        void erase(const KEY& key) {
+            iterator i = find(key);
+            if ( i != end() ) {
+                erase( i );
+            }
+        }
 
         int size() const { return _data.size(); }
 

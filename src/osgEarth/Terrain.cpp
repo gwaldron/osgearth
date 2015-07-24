@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -128,8 +128,7 @@ Terrain::getHeight(osg::Node*              patch,
     lsi->setIntersectionLimit(osgUtil::Intersector::LIMIT_NEAREST);
 
     osgUtil::IntersectionVisitor iv( lsi );
-    iv.setTraversalMask( ~_terrainOptions.secondaryTraversalMask().value() );
-
+ 
     if ( patch )
         patch->accept( iv );
     else
@@ -173,10 +172,6 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
 
     osg::NodePath nodePath;
     nodePath.push_back( _graph.get() );
-
-    // fine but computeIntersections won't travers a masked Drawable, a la quadtree.
-    unsigned traversalMask = ~_terrainOptions.secondaryTraversalMask().value();
-
 
 #if 0
     // Old code, uses the computeIntersections method directly but sufferes from floating point precision problems.
@@ -228,7 +223,6 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     picker->setIntersectionLimit( osgUtil::Intersector::LIMIT_NEAREST );
 
     osgUtil::IntersectionVisitor iv(picker.get());
-    iv.setTraversalMask(traversalMask);
     nodePath.back()->accept(iv);
 
     if (picker->containsIntersections())
@@ -259,10 +253,7 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view,
     osg::NodePath path;
     path.push_back( _graph.get() );
 
-    // fine but computeIntersections won't travers a masked Drawable, a la quadtree.
-    unsigned mask = ~_terrainOptions.secondaryTraversalMask().value();
-
-    if ( view2->computeIntersections( x, y, path, results, mask ) )
+    if ( view2->computeIntersections( x, y, path, results ) )
     {
         // find the first hit under the mouse:
         osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());

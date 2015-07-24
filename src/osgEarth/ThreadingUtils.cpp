@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -38,6 +38,8 @@ unsigned osgEarth::Threading::getCurrentThreadId()
   return (unsigned)::GetCurrentThreadId();
 #elif __APPLE__
   return ::syscall(SYS_thread_selfid);
+#elif __ANDROID__
+  return gettid();
 #else
   return (unsigned)::syscall(SYS_gettid);
 #endif

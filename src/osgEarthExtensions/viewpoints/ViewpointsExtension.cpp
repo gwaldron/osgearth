@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -39,8 +39,8 @@ namespace
     void flyToViewpoint(EarthManipulator* manip, const Viewpoint& vp)
     {
         Viewpoint currentVP = manip->getViewpoint();
-        GeoPoint vp0(currentVP.getSRS(), currentVP.getFocalPoint(), ALTMODE_ABSOLUTE);
-        GeoPoint vp1(vp.getSRS(), vp.getFocalPoint(), ALTMODE_ABSOLUTE);
+        GeoPoint vp0 = currentVP.focalPoint().get();
+        GeoPoint vp1 = vp.focalPoint().get();
         double distance = vp0.distanceTo(vp1);
         double duration = osg::clampBetween(distance / VP_METERS_PER_SECOND, VP_MIN_DURATION, VP_MAX_DURATION);
         manip->setViewpoint( vp, duration );
@@ -139,7 +139,7 @@ namespace
                 num->setPadding( 4 );
                 grid->setControl( 0, i, num );
 
-                Control* vpc = new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName(), 16.0f);
+                Control* vpc = new LabelControl(vp.name()->empty() ? "<no name>" : vp.name().get(), 16.0f);
                 vpc->setPadding( 4 );
                 vpc->setHorizFill( true );
                 vpc->setActiveColor( osg::Vec4(0.4,0.4,1.0,1.0) ); // blue
@@ -172,6 +172,7 @@ ViewpointsExtension::ViewpointsExtension(const ConfigOptions& options)
     {
         for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
         {
+
             viewpoints.push_back( Viewpoint(*i) );
         }
     }

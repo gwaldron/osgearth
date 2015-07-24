@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileUtils>
 #include <osgDB/Archive>
+#include <osgEarth/Containers>
 #include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 
@@ -113,7 +114,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
 private:
 
-    Threading::PerThread< osg::ref_ptr<KMZArchive> > _archive;
+    PerThread< osg::ref_ptr<KMZArchive> > _archive;
 
 #endif // SUPPORT_KMZ
 };

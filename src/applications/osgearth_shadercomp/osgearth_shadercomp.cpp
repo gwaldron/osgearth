@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -33,6 +36,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <osgEarth/ShaderUtils>
 #include <osgEarthUtil/Controls>
 
@@ -323,15 +327,6 @@ namespace TEST_6
         // Return true to activate the shader function.
         bool operator()(const osg::State& state)
         {
-            //if ( state.getFrameStamp() )
-            //{
-            //    unsigned fn = state.getFrameStamp()->getFrameNumber();
-            //    if ( fn != _fn )
-            //    {
-            //        OE_NOTICE << "Accept; FRAME NUMBER = " << _fn << "--------------------\n";
-            //        _fn = fn;
-            //    }
-            //}
             const osg::Viewport* vp = state.getCurrentViewport();
             return vp && vp->x() == 0.0;
         }
@@ -344,6 +339,7 @@ namespace TEST_6
         osg::Group* group1 = new osg::Group();
         VirtualProgram* vp1 = VirtualProgram::getOrCreate(group1->getOrCreateStateSet());
         vp1->setFunction("make_it_red", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, new Acceptor());
+        vp1->setAcceptCallbacksVaryPerFrame(true);
         group1->addChild( node );
 
         osg::Camera* cam1 = new osg::Camera();
@@ -446,6 +442,7 @@ int main(int argc, char** argv)
     }
     else if ( test5 )
     {
+        osgEarth::Registry::instance()->getCapabilities();
         root->addChild( TEST_5::run() );
         label->setText( "Leakage test: red tri on the left, blue on the right." );
     }

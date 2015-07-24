@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -209,9 +209,15 @@ public:
                                 if ( OGR_L_GetExtent( _layerHandle, &env, 1 ) == OGRERR_NONE )
                                 {
                                     GeoExtent extent( srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY );
-                                    
-                                    // got enough info to make the profile!
-                                    result = new FeatureProfile( extent );
+                                    if ( extent.isValid() )
+                                    {                                    
+                                        // got enough info to make the profile!
+                                        result = new FeatureProfile( extent );
+                                    }
+                                    else
+                                    {
+                                        OE_WARN << LC << "Extent returned from OGR was invalid.\n";
+                                    }
                                 }
                             }
                         }

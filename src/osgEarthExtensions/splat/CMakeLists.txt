@@ -9,7 +9,8 @@ set(TARGET_GLSL
     Splat.vert.view.glsl
     Splat.frag.glsl
     Splat.frag.common.glsl
-    Splat.frag.getRenderInfo.glsl)
+    Splat.frag.getRenderInfo.glsl
+    Splat.util.glsl )
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -24,23 +25,23 @@ set(TARGET_IN
 set(TARGET_SRC
     Biome.cpp
 	BiomeSelector.cpp
+    LandUseTileSource.cpp
 	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
 	SplatTerrainEffect.cpp
 	SplatCoverageLegend.cpp
-	ModelSplatter.cpp
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
     Biome
 	BiomeSelector
+    LandUseTileSource
 	SplatCoverageLegend
 	SplatCatalog
 	SplatExtension
 	SplatOptions
-	SplatTerrainEffect
-	ModelSplatter)
+	SplatTerrainEffect)
 	
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS}

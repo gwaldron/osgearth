@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -46,15 +46,11 @@ namespace osgEarth { namespace Drivers
         optional<double>& gamma() { return _gamma; }
         const optional<double>& gamma() const { return _gamma; }
 
-        optional<bool>& coverage() { return _coverage; }
-        const optional<bool>& coverage() const { return _coverage; }
-
     public:
         AGGLiteOptions( const TileSourceOptions& options =TileSourceOptions() )
             : FeatureTileSourceOptions( options ),
               _optimizeLineSampling   ( true ),
-              _gamma                  ( 1.3 ),
-              _coverage               ( false )
+              _gamma                  ( 1.3 )
         {
             setDriver( "agglite" );
             fromConfig( _conf );
@@ -81,12 +77,10 @@ namespace osgEarth { namespace Drivers
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "optimize_line_sampling", _optimizeLineSampling );
             conf.getIfSet( "gamma", _gamma );
-            conf.getIfSet( "coverage", _coverage ); // from ImageLayerOptions
         }
 
         optional<bool>   _optimizeLineSampling;
         optional<double> _gamma;
-        optional<bool>   _coverage;
     };
 
 } } // namespace osgEarth::Drivers

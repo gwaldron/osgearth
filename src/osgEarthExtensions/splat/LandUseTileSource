@@ -1,0 +1,180 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_SPLAT_LAND_USE_TILE_SOURCE
+#define OSGEARTH_SPLAT_LAND_USE_TILE_SOURCE 1
+
+#include <osgEarth/TileSource>
+#include <osgEarth/ImageLayer>
+#include <osgEarthUtil/SimplexNoise>
+#include <osgDB/FileNameUtils>
+
+namespace osgEarth { namespace Splat
+{
+    /**
+     * Configuration options for the land use tile source
+     */
+    class LandUseOptions : public osgEarth::TileSourceOptions    
+    {
+    public:
+        LandUseOptions(const osgEarth::TileSourceOptions& options)
+            : osgEarth::TileSourceOptions(options)
+        {
+            setDriver("landuse");
+            baseLOD().init( 32u );
+            warpFactor().init( 0.01f );
+            fromConfig( _conf );
+        }
+
+    public:
+        
+        /**
+         * Image layer from which to read source coverage data.
+         */
+        optional<ImageLayerOptions>& imageLayerOptions() { return _imageLayerOptions; }
+        const optional<ImageLayerOptions>& imageLayerOptions() const { return _imageLayerOptions; }
+
+        std::vector<ImageLayerOptions>& imageLayerOptionsVector() { return _imageLayerOptionsVec; }
+        const std::vector<ImageLayerOptions>& imageLayerOptionsVector() const { return _imageLayerOptionsVec; }
+
+        /**
+         * Amount by which to warp texture coordinates of coverage data.
+         * Try 0.01 as a starting point.
+         */
+        optional<float>& warpFactor() { return _warp; }
+        const optional<float>& warpFactor() const { return _warp; }
+
+        /**
+         * LOD at which to calculate the noise function for warping.
+         */
+        optional<unsigned>& baseLOD() { return _baseLOD; }
+        const optional<unsigned>& baseLOD() const { return _baseLOD; }
+
+        /**
+         * Bit size of the encoded data. The default is 32 (for a 32-bit signed
+         * floating point value) but you can set it to 16 if you know your data
+         * values are all within the range of a signed 16-bit float.
+         */
+        optional<unsigned>& bits() { return _bits; }
+        const optional<unsigned>& bits() const { return _bits; }
+
+    public:
+        Config getConfig() const
+        {
+            Config conf;
+            conf.addIfSet("warp",      _warp);
+            conf.addIfSet("base_lod",  _baseLOD);
+            conf.addIfSet("bits",      _bits);
+            conf.addObjIfSet( "image", _imageLayerOptions );
+            
+            for(std::vector<ImageLayerOptions>::const_iterator i = _imageLayerOptionsVec.begin();
+                i != _imageLayerOptionsVec.end(); 
+                ++i)
+            {
+                conf.add( "image", i->getConfig() );
+            }
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf )
+        {
+            conf.getIfSet("warp", _warp);
+            conf.getIfSet("base_lod", _baseLOD);
+            conf.getIfSet("bits",      _bits);
+            conf.getObjIfSet( "image", _imageLayerOptions );
+            
+            ConfigSet layerConfs = conf.children("image");
+            for(ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
+            {
+                _imageLayerOptionsVec.push_back( ImageLayerOptions(*i) );
+            }
+        }
+        
+    private:
+        optional<float>             _warp;
+        optional<unsigned>          _baseLOD;
+        optional<unsigned>          _bits;
+        optional<ImageLayerOptions> _imageLayerOptions;
+        std::vector<ImageLayerOptions> _imageLayerOptionsVec;
+    };
+
+    /**
+     * Tile source that will read from ANOTHER tile source and perform
+     * various pre-processing syntheses operations like warping and detailing.
+     */
+    class LandUseTileSource : public osgEarth::TileSource
+    {
+    public:
+        LandUseTileSource(const LandUseOptions& options);
+
+    public: // TileSource
+
+        // Initialize the tile source.
+        Status initialize(const osgDB::Options* options);
+
+        // Create an image.
+        osg::Image* createImage(const osgEarth::TileKey& key, osgEarth::ProgressCallback* progress);
+
+    protected:
+        virtual ~LandUseTileSource() { }
+
+        osg::ref_ptr<osgDB::Options> _dbOptions;
+        LandUseOptions               _options;        
+        osg::ref_ptr<ImageLayer>     _imageLayer;
+        ImageLayerVector             _imageLayers;
+        std::vector<float>           _warps;
+        osgEarth::Util::SimplexNoise _noiseGen;
+    };
+
+    /**
+     * Driver plugin used to load a land use tile source.
+     */
+    class LandUseDriver : public osgEarth::TileSourceDriver
+    {
+    public:
+        LandUseDriver()
+        {
+            supportsExtension( "osgearth_landuse", "Land Use Driver" );
+        }
+
+        virtual const char* className()
+        {
+            return "Land Use Driver";
+        }
+
+        virtual ReadResult readObject(const std::string& file_name, const Options* options) const
+        {
+            if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
+                return ReadResult::FILE_NOT_HANDLED;
+
+            return new LandUseTileSource( getTileSourceOptions(options) );
+        }
+    };
+
+    REGISTER_OSGPLUGIN(osgearth_landuse, LandUseDriver);
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_SPLAT_LAND_USE_TILE_SOURCE

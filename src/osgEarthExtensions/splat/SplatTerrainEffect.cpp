@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -28,6 +31,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarthUtil/SimplexNoise>
 
+#include <osg/Texture2D>
 #include <osgDB/WriteFile>
 
 #include "SplatShaders"
@@ -122,7 +126,19 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
         // install the splat texture array:
         if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage") )
         {
-            osg::StateSet* stateset = new osg::StateSet();
+            osg::StateSet* stateset;
+
+#ifdef REX // note, rex doesn't support the biome selector cull callback yet b/c of the render binning
+            if ( _biomes.size() == 1 )
+                stateset = engine->getSurfaceStateSet();
+            else
+                stateset = new osg::StateSet();
+#else
+            stateset = new osg::StateSet();
+#endif
+
+            // TODO: reinstate "biomes"
+            //osg::StateSet* stateset = new osg::StateSet();
 
             // splat sampler
             _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
@@ -152,9 +168,10 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             package.replace( "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            package.loadFunction( vp, package.VertModel );
-            package.loadFunction( vp, package.VertView );
-            package.loadFunction( vp, package.Frag );
+            package.load( vp, package.VertModel );
+            package.load( vp, package.VertView );
+            package.load( vp, package.Frag );
+            package.load( vp, package.Util );
 
             // GPU noise is expensive, so only use it to tweak noise function values that you
             // can later bake into the noise texture generator.
@@ -187,15 +204,36 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 vp->setShader( "oe_splat_noiseshaders", noiseShader );
             }
 
-            // install the cull callback that will select the appropriate
-            // state based on the position of the camera.
-            _biomeSelector = new BiomeSelector(
-                _biomes,
-                _textureDefs,
-                stateset,
-                _splatTexUnit );
+#ifdef REX
+            // TODO: I disabled BIOMES temporarily because the callback impl applies the splatting shader
+            // to the land cover bin as well as the surface bin, which we do not want -- find another way!
+            if ( _biomes.size() == 1 )
+            {
+                // install his biome's texture set:
+                stateset->setTextureAttribute(_splatTexUnit, _textureDefs[0]._texture.get());
 
-            engine->addCullCallback( _biomeSelector.get() );
+                // install this biome's sampling function. Use cloneOrCreate since each
+                // stateset needs a different shader set in its VP.
+                VirtualProgram* vp = VirtualProgram::cloneOrCreate( stateset );
+                osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, _textureDefs[0]._samplingFunction);
+                vp->setShader( "oe_splat_getRenderInfo", shader );
+            }
+
+            else
+#endif
+            {
+                //OE_WARN << LC << "Multi-biome setup needs re-implementing (reminder)\n";
+
+                // install the cull callback that will select the appropriate
+                // state based on the position of the camera.
+                _biomeSelector = new BiomeSelector(
+                    _biomes,
+                    _textureDefs,
+                    stateset,
+                    _splatTexUnit );
+
+                engine->addCullCallback( _biomeSelector.get() );
+            }
         }
     }
 }

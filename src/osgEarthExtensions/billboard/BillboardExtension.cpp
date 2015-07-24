@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -171,8 +171,8 @@ BillboardExtension::connect(MapNode* mapNode)
 
         OE_NOTICE << "Clamping elevations...\n";
         osgEarth::ElevationQuery eq(mapNode->getMap());
+        eq.setFallBackOnNoData( true );
         eq.getElevations(verts->asVector(), mapNode->getMapSRS(), true, 0.005);
-
         
         OE_NOTICE << "Building geometry...\n";
         osg::Vec3Array* normals = new osg::Vec3Array(verts->size());

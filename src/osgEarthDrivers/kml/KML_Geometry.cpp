@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -28,18 +28,17 @@
 using namespace osgEarth_kml;
 
 void 
-KML_Geometry::build( xml_node<>* parent, KMLContext& cx, const Style& baseStyle)
+KML_Geometry::build( xml_node<>* parent, KMLContext& cx, Style& style)
 {
 	for (xml_node<>* node = parent->first_node(); node; node = node->next_sibling())
 	{
-		buildChild(node, cx, baseStyle);
+		buildChild(node, cx, style);
 	}
 }
 
 void
-KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, const Style& baseStyle)
+KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, Style& style)
 {
-    Style style = baseStyle;
 	std::string name = toLower(node->name());
     if ( name == "point" )
     {

@@ -22,6 +22,8 @@ needs to be absolutely positioned.
     </options>
     
     <external>
-        <viewpoint name="Zoom to model" lat="40.717" long="-74.018" pitch="-60" range="6000"/>    
+        <viewpoints>
+            <viewpoint name="Zoom to model" lat="40.717" long="-74.018" pitch="-60" range="6000"/>    
+        </viewpoints>
     </external>	
 </map>

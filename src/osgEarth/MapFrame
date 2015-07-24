@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,8 +22,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
-#include <osgEarth/Map>
 #include <osgEarth/MapInfo>
+#include <osgEarth/Map>
 
 namespace osgEarth
 {
@@ -36,26 +36,45 @@ namespace osgEarth
     {
     public:
         /**
-         * Constructs a new map frame.
+         * Constructs a new empty map frame that's not connected to any map.
          */
-        MapFrame(
-            const Map*         map, 
-            Map::ModelParts    parts =Map::TERRAIN_LAYERS,
-            const std::string& name  ="" );
+        MapFrame();
+
+        MapFrame(const MapFrame& rhs);
+
+        MapFrame(Map::ModelParts parts);
+
+        MapFrame(const Map* map);
+
+        MapFrame(const Map* map, Map::ModelParts parts);
+
+        bool isValid() const;
+
+        /**
+         * Constructs a new map frame and connects it to a map.
+         */
+        //MapFrame(
+        //    const Map*         map, 
+        //    Map::ModelParts    parts =Map::TERRAIN_LAYERS,
+        //    const std::string& name  ="" );
 
         /**
          * A copy constructor with a new name (no sync happens)
          */
-        MapFrame(
-            const MapFrame& frame, 
-            const std::string& name ="" );
+       // MapFrame(
+        //    const MapFrame& frame, 
+        //    const std::string& name ="" );
 
         /** dtor */
         virtual ~MapFrame() { }
 
         /**
-         * Synchronizes this frame with the source map model (only if necessary). Returns
-         * true is new data was synced; false if nothing changed.
+         * Sets the map to which this frame is connected.
+         */
+        void setMap(const Map* map);
+
+        /**
+         * Synchronizes this frame to the last-synced map. Returns true if changes occurred.
          */
         bool sync();
 
@@ -117,9 +136,8 @@ namespace osgEarth
         bool populateHeightField(
             osg::ref_ptr<osg::HeightField>& hf,
             const TileKey&                  key,
-            bool                            expressHeightsAsHAE =true,
-            ElevationSamplePolicy           samplePolicy        =SAMPLE_FIRST_VALID,
-            ProgressCallback*               progress            =0L) const;
+            bool                            expressHeightsAsHAE,
+            ProgressCallback*               progress) const;
 
     private:
         bool _initialized;

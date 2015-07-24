@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -62,7 +62,7 @@ namespace
                     unsigned outc = unsigned( (inputLon-origin.x())/colStep );
                     unsigned outr = unsigned( (inputLat-origin.y())/rowStep );
 
-                    Linear h( (double)s_egm84grid[r*cols+c], Units::CENTIMETERS );
+                    Distance h( (double)s_egm84grid[r*cols+c], Units::CENTIMETERS );
                     hf->setHeight( outc, outr, float(h.as(Units::METERS)) );
                 }
             }

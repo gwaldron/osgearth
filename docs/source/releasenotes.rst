@@ -1,6 +1,39 @@
 Release Notes
 =============
 
+Version 2.7 (July 2015)
+---------------------------
+
+* New ObjectIndex system for picking and selection
+* New RTT-based picker that works for all geometry including GPU-modified geometry
+* Extensions - modular code for extending the capabilities of osgEarth
+* New procedural texture splatting extension
+* Upgraded ShaderLoader for better modularization of VirtualProgram code
+* New "elevation smoothing" property to MP terrain engine
+* New support for default MapNodeOptions
+* Logarithmic depth buffer lets you extend your near and far planes
+* Better Triton and Silverlining support
+* Overhaul of the elevation compositing engine and ElevationQuery utility
+* New Raster Feature driver lets you generate features from raster data
+* Attenuation and min/max range for image layers
+* New shader-based geodetic graticule
+* New day/night color filter
+* Viewpoint: consolidation of look-ats and tethering
+* New CoverageSymbol for rastering features into coverage data; agglite driver support
+* New feature clustering and instancing algorithms for better performance and scalability
+* Noise extension for creating a simplex noise sampler
+* New TerrainShader extension lets you inject arbitrary shader code from an earth file
+* VirtualProgram: specify all VP injection criteria with GLSL #pragmas
+* Normal mapping extension with automatic edge-normalization
+* Bump map extension for simple detail bumping
+* Performance improvements based on GlowCode profiling results
+
+
+Version 2.6 (October 2014)
+--------------------------
+
+Maintenance Release. Release notes TBD.
+
 Version 2.5 (November 2013)
 ---------------------------
 

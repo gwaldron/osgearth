@@ -23,6 +23,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/DrapeableNode>
 #include <osg/Notify>
 
 using namespace osgEarth;

@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/DrapingTechnique>
+#include <osgEarth/DrapingCullSet>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderFactory>
@@ -72,7 +73,7 @@ namespace
             if ( cv->getCurrentCamera() == _camera ) {
                 OE_NOTICE << "THey are the same, dummy\n";
             }
-            DrapingCullSet& cullSet = Registry::drapingCullSet(_camera);
+            DrapingCullSet& cullSet = DrapingCullSet::get(_camera);
             cullSet.accept( nv, true );
         }
 
@@ -87,95 +88,6 @@ namespace
     {
         osg::ref_ptr<osg::Uniform> _texGenUniform;
     };
-}
-
-//---------------------------------------------------------------------------
-
-#undef  LC
-#define LC "[DrapingCullSet] "
-
-DrapingCullSet::DrapingCullSet()
-{
-    // nop
-}
-
-void
-DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path)
-{
-    _entries.push_back( Entry() );
-    Entry& entry = _entries.back();
-    entry._node = node;
-    entry._path = path;
-    entry._matrix = new osg::RefMatrix( osg::computeLocalToWorld(path) );
-    _bs.expandBy( node->getBound() );
-}
-
-void
-DrapingCullSet::accept(osg::NodeVisitor& nv, bool remove)
-{
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
-    {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
-
-        // We will use the visitor's path to prevent doubely-applying the statesets
-        // of common ancestors
-        const osg::NodePath& nvPath = nv.getNodePath();
-
-        for( std::vector<Entry>::iterator entry = _entries.begin(); entry != _entries.end(); ++entry )
-        {
-            // If there's an active (non-identity matrix), apply it
-            if ( entry->_matrix.valid() )
-            {
-                entry->_matrix->preMult( *cv->getModelViewMatrix() );
-                cv->pushModelViewMatrix( entry->_matrix.get(), osg::Transform::RELATIVE_RF );
-            }
-
-            // After pushing the matrix, we can perform the culling bounds test.
-            if ( !cv->isCulled( entry->_node->getBound() ) )
-            {
-                // Apply the statesets in the entry's node path, but skip over the ones that are
-                // shared with the current visitor's path since they are already in effect.
-                // Count them so we can pop them later.
-                int numStateSets = 0;
-                for(unsigned i=0; i<entry->_path.size(); ++i)
-                {
-                    if (i >= nvPath.size() || nvPath[i] != entry->_path[i])
-                    {
-                        osg::StateSet* stateSet = entry->_path[i]->getStateSet();
-                        if ( stateSet )
-                        {
-                            cv->pushStateSet( stateSet );
-                            ++numStateSets;
-                        }
-                    }
-                }
-
-                // Cull the DrapeableNode's children (but not the DrapeableNode itself!)
-                // TODO: make sure we aren't skipping any cull callbacks, etc. by calling traverse 
-                // instead of accept. (Cannot call accept b/c that calls traverse)
-                for(unsigned i=0; i<entry->_node->getNumChildren(); ++i)
-                {
-                    entry->_node->getChild(i)->accept( nv );
-                }
-            
-                // pop the same number we pushed
-                for(int i=0; i<numStateSets; ++i)
-                {
-                    cv->popStateSet();
-                }
-            }
-
-            // pop the model view:
-            if ( entry->_matrix.valid() )
-            {
-                cv->popModelViewMatrix();
-            }
-        }
-
-        // reset the cull set for the next frame.
-        _entries.clear();
-        _bs.init();
-    }
 }
 
 //---------------------------------------------------------------------------
@@ -627,7 +539,7 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
 const osg::BoundingSphere&
 DrapingTechnique::getBound(OverlayDecorator::TechRTTParams& params) const
 {
-    return Registry::drapingCullSet(params._mainCamera).getBound();
+    return DrapingCullSet::get(params._mainCamera).getBound();
 }
 
 void

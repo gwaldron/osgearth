@@ -567,16 +567,6 @@ Registry::getObjectIndex() const
     return _objectIndex.get();
 }
 
-DrapingCullSet&
-Registry::getDrapingCullSet(const osg::Camera* cam)
-{
-    // Known issue: it is possible for a draping cull set to be "orphaned" - this
-    // would happen if the cull set were populated and then not used. This is a
-    // very unlikely scenario (because the scene graph would have to change mid-cull)
-    // but nevertheless possible.
-    return _drapingCullSets.get(cam);
-}
-
 void
 Registry::startActivity(const std::string& activity)
 {

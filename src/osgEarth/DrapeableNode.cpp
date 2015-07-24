@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/DrapingCullSet>
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 
@@ -56,7 +57,7 @@ DrapeableNode::traverse(osg::NodeVisitor& nv)
         osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
         // find the cull set for this camera:
-        DrapingCullSet& cullSet = Registry::drapingCullSet(cv->getCurrentCamera());
+        DrapingCullSet& cullSet = DrapingCullSet::get( cv->getCurrentCamera() );
         cullSet.push( this, cv->getNodePath() );
     }
     else

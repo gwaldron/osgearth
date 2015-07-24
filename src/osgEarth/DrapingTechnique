@@ -34,41 +34,6 @@ namespace osgEarth
     class TerrainEngineNode;
 
     /**
-     * Culling set for tracking DrapeableNodes
-     */
-    class OSGEARTH_EXPORT DrapingCullSet
-    {
-    public:
-        struct Entry
-        {            
-            osg::ref_ptr<DrapeableNode>  _node;
-            osg::ref_ptr<osg::RefMatrix> _matrix;
-            osg::NodePath                _path;
-        };
-
-    public:
-        DrapingCullSet();
-        ~DrapingCullSet() { } // not virtual
-
-        /** Pushes a node and its matrix into the cull set */
-        void push(DrapeableNode* node, const osg::NodePath& path);
-
-        /** Runs a node visitor on the cull set, optionally popping as it goes along. */
-        void accept(osg::NodeVisitor& nv, bool remove);
-
-        /** Bounds of this set */
-        const osg::BoundingSphere& getBound() const { return _bs; }
-
-        /** Number of elements in the set */
-        unsigned size() const { return _entries.size(); }
-
-    private:
-        std::vector<Entry>  _entries;
-        osg::BoundingSphere _bs;
-    };
-
-
-    /**
      * Projects an overlay scene graph onto the main model.
      *
      * The OverlayDecorator is automatically installed in the MapNode and is used

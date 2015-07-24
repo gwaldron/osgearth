@@ -25,7 +25,6 @@
 #include <osgEarth/SharedSARepo>
 #include <osgEarth/Containers>
 #include <osgEarth/ShaderGenerator>
-#include <osgEarth/DrapingTechnique>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osgEarth/ThreadingUtils>
@@ -176,12 +175,6 @@ namespace osgEarth
          */
         ProgramSharedRepo* getProgramSharedRepo();
         static ProgramSharedRepo* programSharedRepo() { return instance()->getProgramSharedRepo(); }
-
-        /**
-         * Access to the per-thread Draping cull sets. Used internally by DrapeableNode.
-         */
-        DrapingCullSet& getDrapingCullSet(const osg::Camera*);
-        static DrapingCullSet& drapingCullSet(const osg::Camera* cam) { return instance()->getDrapingCullSet(cam); }
         
         /**
          * Gets a reference to the global task service manager.
@@ -320,8 +313,6 @@ namespace osgEarth
         optional<bool> _unRefImageDataAfterApply;
 
         osg::ref_ptr<ObjectIndex> _objectIndex;
-
-        PerObjectFastMap<const osg::Camera*, DrapingCullSet> _drapingCullSets;
     };
 }
 

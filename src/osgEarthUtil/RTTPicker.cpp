@@ -178,15 +178,11 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
 
     rttSS->setMode(GL_BLEND,     disable );    
     rttSS->setMode(GL_LIGHTING,  disable );
-<<<<<<< HEAD:src/osgEarth/RTTPicker.cpp
-    //rttSS->setMode(GL_CULL_FACE, disable );
-=======
     rttSS->setMode(GL_CULL_FACE, disable );
     
     // Disabling GL_BLEND is not enough, because osg::Text re-enables it
     // without regard for the OVERRIDE.
     rttSS->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ZERO), osg::StateAttribute::OVERRIDE);
->>>>>>> master:src/osgEarthUtil/RTTPicker.cpp
 
     // install the picking shaders:
     VirtualProgram* vp = createRTTProgram();

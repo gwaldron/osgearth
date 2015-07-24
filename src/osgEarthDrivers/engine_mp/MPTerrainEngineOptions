@@ -43,7 +43,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             _tilePixelSize     ( 256 ),
             _color             ( Color::White ),
             _incrementalUpdate ( false ),
-            _smoothing         ( true )
+            _smoothing         ( false )
          {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -90,7 +90,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /**
          * Whether to create smooth transitions between elevation datasets at differing LODs
          * by inheriting low-resolution data from parent tiles and filling in the new data.
-         * Defaults to true.
+         * When smoothing is on, elevation may not be "true" in all locations, since the engine
+         * will interpolate values from low LODs. Defaults to FALSE.
          */
         optional<bool>& elevationSmoothing() { return _smoothing; }
         const optional<bool>& elevationSmoothing() const { return _smoothing; }

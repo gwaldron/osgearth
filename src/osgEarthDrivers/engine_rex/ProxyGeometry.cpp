@@ -109,11 +109,11 @@ void ProxyGeometry::rebuild(void)
     {
         makeVertices();
         tessellate();
-        OE_DEBUG << LC << "Built proxy geometry: "<<_key.getLOD()<<std::endl;
+        OE_DEBUG << LC << "Built proxy geometry: "<<_key.str()<<std::endl;
     }
     else
     {
-        OE_DEBUG << LC << "Error: Could not build proxy geometry: "<<_key.getLOD()<<std::endl;
+        OE_DEBUG << LC << "Error: Could not build proxy geometry: "<<_key.str()<<std::endl;
     }
 
     setDirty(false);

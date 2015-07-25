@@ -205,9 +205,14 @@ public:
         }
 
         if ( _options.minRange().isSet() || _options.maxRange().isSet() )
-        {                
-            float minRange = _options.minRange().isSet() ? (*_options.minRange()) : 0.0f;
-            float maxRange = _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX;
+        {
+            #ifdef OSG_USE_FLOAT_BOUNDINGSPHERE
+                float minRange = _options.minRange().isSet() ? (*_options.minRange()) : 0.0f;
+                float maxRange = _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX;
+            #else
+                double minRange = _options.minRange().isSet() ? (*_options.minRange()) : 0.0f;
+                double maxRange = _options.maxRange().isSet() ? (*_options.maxRange()) : FLT_MAX;
+            #endif
 
             osg::LOD* lod = 0;
 

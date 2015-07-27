@@ -97,6 +97,10 @@ namespace osgEarth
         optional<bool>& coverage() { return _coverage; }
         const optional<bool>& coverage() const { return _coverage; }
 
+        /** osgDB::Options option string to pass through to osgDB reader/writers. */
+        optional<std::string>& osgOptionString() { return _osgOptionString; }
+        const optional<std::string>& osgOptionString() const { return _osgOptionString; }
+
     public:
         /** For backwards-compatibility; use minValidValue() instead 
          *  @deprecated */
@@ -131,6 +135,7 @@ namespace osgEarth
         optional<bool>           _bilinearReprojection;
         optional<unsigned>       _maxDataLevel;
         optional<bool>           _coverage;
+        optional<std::string>    _osgOptionString;
     };
 
 

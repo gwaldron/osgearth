@@ -171,6 +171,7 @@ TileSourceOptions::getConfig() const
     conf.updateIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.updateIfSet( "max_data_level", _maxDataLevel );
     conf.updateIfSet( "coverage", _coverage );
+    conf.updateIfSet( "osg_option_string", _osgOptionString );
     conf.updateObjIfSet( "profile", _profileOptions );
     return conf;
 }
@@ -198,6 +199,7 @@ TileSourceOptions::fromConfig( const Config& conf )
     conf.getIfSet( "bilinear_reprojection", _bilinearReprojection );
     conf.getIfSet( "max_data_level", _maxDataLevel );
     conf.getIfSet( "coverage", _coverage );
+    conf.getIfSet( "osg_option_string", _osgOptionString );
     conf.getObjIfSet( "profile", _profileOptions );
 }
 

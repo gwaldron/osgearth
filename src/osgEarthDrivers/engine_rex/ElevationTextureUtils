@@ -38,6 +38,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         ElevationImageReader(const osg::Image* image, const osg::Matrix& matrixScaleBias);
+        ElevationImageReader(const osg::Image* image);
 
         bool valid(void) const {return _valid;}
 
@@ -59,6 +60,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         int _startCol, _startRow;
         int _endCol, _endRow;
+
+        void init(const osg::Image* image, const osg::Matrix& matrixScaleBias);
     };
 
     class ElevationTexureUtils

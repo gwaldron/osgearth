@@ -12,9 +12,21 @@ using namespace osgEarth;
 
 #define LC "[ElevationTexureUtils] "
 
+ElevationImageReader::ElevationImageReader(const osg::Image* image)
+: _pixelReader(image)
+{
+    init(image, osg::Matrixf::identity());
+}
+
 
 ElevationImageReader::ElevationImageReader(const osg::Image* image, const osg::Matrix& matrixScaleBias)
-    : _pixelReader(image)
+: _pixelReader(image)
+{
+    init(image, matrixScaleBias);
+}
+
+void
+ElevationImageReader::init(const osg::Image* image, const osg::Matrix& matrixScaleBias)
 {
     double s_offset = matrixScaleBias(3,0) * (double)image->s();
     double t_offset = matrixScaleBias(3,1) * (double)image->t();
@@ -37,15 +49,15 @@ ElevationImageReader::ElevationImageReader(const osg::Image* image, const osg::M
     _endRow = osg::clampBelow( _startRow + ((int)t_span) + 1, image->t()-1 );
 
     OE_DEBUG << LC << std::dec 
-             << "scale=" << s_offset << ", " << t_offset
-             << "; span = " << s_span << ", " << t_span
-             << "; c0=" << startCol() << ", r0=" << startRow() << "; c1=" << endCol() << ", r1=" << endRow() << "\n";
-
+        << "scale=" << s_offset << ", " << t_offset
+        << "; span = " << s_span << ", " << t_span
+        << "; c0=" << startCol() << ", r0=" << startRow() << "; c1=" << endCol() << ", r1=" << endRow() << "\n";
 
     _valid = true;
 }
 
-float ElevationImageReader::elevationN(float s, float t)
+float
+ElevationImageReader::elevationN(float s, float t)
 {
     int col = startCol() + (endCol()-startCol())*s;
     int row = startRow() + (endRow()-startRow())*t;

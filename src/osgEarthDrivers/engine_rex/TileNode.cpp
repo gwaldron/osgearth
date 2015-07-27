@@ -16,15 +16,17 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+//#undef NDEBUG
+//#include <cassert>
 #include "TileNode"
 #include "SurfaceNode"
+#include "ProxySurfaceNode"
 #include "EngineContext"
 #include "Loader"
 #include "LoadTileData"
 #include "ExpireTiles"
 #include "SelectionInfo"
 #include "ElevationTextureUtils"
-#include "ProxyGeometry"
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
@@ -34,6 +36,8 @@
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
+
+#define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
 
 #define LC "[TileNode] "
 
@@ -77,11 +81,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
     unsigned lodForMorphing = context->getSelectionInfo().lodForMorphing(isProjected);
     context->getGeometryPool()->getPooledGeometry(key, lodForMorphing, context->getMapFrame().getMapInfo(), geom);
 
-    _proxyGeometry = new ProxyGeometry(key
-                                     , context->getMapFrame().getMapInfo()
-                                     , context->_options.tileSize().get());
-
-    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), _proxyGeometry.get());
+    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
     surfaceDrawable->setDrawAsPatches(false);
 
     _surface = new SurfaceNode(
@@ -95,7 +95,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
     surfaceSS->setNestRenderBins(false);
 
     // Surface node for rendering land cover geometry.
-    TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get(), 0);
+    TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
     patchDrawable->setDrawAsPatches(true);
 
     _landCover = new SurfaceNode(
@@ -152,24 +152,6 @@ TileNode::isDormant(osg::NodeVisitor& nv) const
     return
         nv.getFrameStamp() &&
         nv.getFrameStamp()->getFrameNumber() - _lastTraversalFrame > 2u;
-}
-
-void
-TileNode::getProxyGeoElevationData(const osg::Texture*& elevationTexture, osg::Matrixf& matrixScaleBias)
-{
-    if ( _proxyGeometry.valid() )
-    {
-        _proxyGeometry->getElevationData(elevationTexture, matrixScaleBias);
-    }
-}
-
-void
-TileNode::setProxyGeoElevationData(const osg::Texture* elevationTexture, const osg::Matrixf& matrixScaleBias)
-{
-    if ( _proxyGeometry.valid() )
-    {
-        _proxyGeometry->setElevationData(elevationTexture, matrixScaleBias);
-    }
 }
 
 void
@@ -385,18 +367,31 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
             _children[3]->accept( nv );
         }
 
+#if OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG
+        else if ( _surfaceProxy.valid() )
+        {
+            _surfaceProxy->accept( nv );
+        }
+#else
         // Not all children are ready, so cull the current payload.
         else if ( _surface.valid() )
         {
             _surface->accept( nv );
         }
+#endif
     }
 
     // If children are outside camera range, draw the payload and expire the children.
     else if ( _surface.valid() )
     {
+#if OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG
+        if (_surfaceProxy.valid())
+        {
+            _surfaceProxy->accept(nv);
+        }
+#else
         _surface->accept( nv );
-
+#endif
         if ( getNumChildren() > 0 )
         {
             if (getSubTile(0)->isDormant( nv ) &&
@@ -440,7 +435,19 @@ void TileNode::regularUpdate(osg::NodeVisitor& nv)
 
     else 
     {
-        _surface->accept( nv );
+        osgUtil::IntersectionVisitor* iv = dynamic_cast<osgUtil::IntersectionVisitor*>( &nv );
+        if (iv)
+        {
+            if (_surfaceProxy.valid())
+            {
+                _surfaceProxy->accept(nv);
+            }
+        }
+        else
+        {
+            _surface->accept( nv );
+        }
+        
         //_landCover->accept( nv );
     }
 }
@@ -453,7 +460,6 @@ TileNode::traverse(osg::NodeVisitor& nv)
     {
         lodSelect(nv);
     }
-
     // Update, Intersection, ComputeBounds, CompileGLObjects, etc.
     else
     {
@@ -534,20 +540,43 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const S
     if ( parent )
     {
         setElevationExtrema( parent->getElevationExtrema() );
+        _surfaceProxy = parent->getProxySurfaceNode();
     }
-
     updateTileSpecificUniforms(selectionInfo);
 
     return changesMade;
 }
 
 void
-TileNode::updateElevationData(const RenderBindings& bindings)
+TileNode::updateProxyGeometry(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize)
 {
-    const SamplerBinding* elevBinding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
-    if ( !elevBinding )
-        return;
+    // Update proxy geometry
+    TileNode* parent = 0L;
+    OE_DEBUG << LC << getTileKey().str() << " : attempting proxy node setting"<<std::endl;
+    for(TileNode* node = this; node != 0L; node = parent)
+    {
+        osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(elevBinding->unit(), osg::StateAttribute::TEXTURE));
+        if ( elevTex )
+        {
+            if (node==this)
+            {
+                _surfaceProxy = new ProxySurfaceNode(getTileKey(), mapInfo, tileSize, elevTex);
+                OE_DEBUG << LC << getTileKey().str() << " : made proxy node: "<<_surfaceProxy.get()<<std::endl;
+            }
+            else
+            {
+                _surfaceProxy = parent->getProxySurfaceNode();
+                OE_DEBUG << LC << getTileKey().str() << " : assigned proxy node: "<<_surfaceProxy.get()<<"tile key: "<<parent->getTileKey().str()<<std::endl;
+            }
+            break;
+        }
+        parent = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
+    }
+}
 
+void
+TileNode::updateUpdateExtrema(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize)
+{
     const osg::Uniform* uniformScaleBiasMatrix = getStateSet()->getUniform(elevBinding->matrixName());
     if ( !uniformScaleBiasMatrix )
     {
@@ -557,6 +586,7 @@ TileNode::updateElevationData(const RenderBindings& bindings)
     osg::Matrixf matrixScaleBias;
     uniformScaleBiasMatrix->get(matrixScaleBias);
 
+    // update the elevation extrema
     bool extremaOK = false;
     TileNode* parent = 0L;
     for(TileNode* node = this; node != 0L && !extremaOK; node = parent)
@@ -568,7 +598,6 @@ TileNode::updateElevationData(const RenderBindings& bindings)
             extremaOK = ElevationTexureUtils::findExtrema(elevTex, matrixScaleBias, getTileKey(), extrema);
             if ( extremaOK )
             {
-                setProxyGeoElevationData(elevTex, matrixScaleBias);
                 setElevationExtrema( extrema );
                 OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
                 break;
@@ -577,13 +606,24 @@ TileNode::updateElevationData(const RenderBindings& bindings)
         parent = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
     }
 
-  
+
     if ( !extremaOK )
     {
         // This will happen sometimes, like when the initial levels are loading and there
         // is no elevation texture in the graph yet. It's normal.
-        OE_DEBUG << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
+        OE_WARN << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
     }
+}
+
+void
+TileNode::updateElevationData(const RenderBindings& bindings, const MapInfo& mapInfo, unsigned tileSize)
+{
+    const SamplerBinding* elevBinding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
+    if ( !elevBinding )
+        return;
+
+    updateProxyGeometry(elevBinding, mapInfo, tileSize);
+    updateUpdateExtrema(elevBinding, mapInfo, tileSize);
 }
 
 void
@@ -638,98 +678,3 @@ TileNode::expireChildren(osg::NodeVisitor& nv)
     const float lowPriority = -100.0f;
     context->getLoader()->load( _expireRequest.get(), lowPriority, nv );
 }
-
-
-#if 0
-
-void
-TileNode::notifyOfArrival(TileNode* that)
-{
-    OE_TEST << LC << this->getKey().str()
-        << " was waiting on "
-        << that->getKey().str() << " and it arrived.\n";
-        
-    osg::Texture* thisTex = this->getModel()->getNormalTexture();
-    osg::Texture* thatTex = that->getModel()->getNormalTexture();
-    if ( !thisTex || !thatTex ) {
-        OE_TEST << LC << "bailed on " << getKey().str() << " - null normal texture\n";
-        return;
-    }
-
-    osg::RefMatrixf* thisTexMat = this->getModel()->getNormalTextureMatrix();
-    osg::RefMatrixf* thatTexMat = that->getModel()->getNormalTextureMatrix();
-    if ( !thisTexMat || !thatTexMat || !thisTexMat->isIdentity() || !thatTexMat->isIdentity() ) {
-        OE_TEST << LC << "bailed on " << getKey().str() << " - null texmat\n";
-        return;
-    }
-
-    osg::Image* thisImage = thisTex->getImage(0);
-    osg::Image* thatImage = thatTex->getImage(0);
-    if ( !thisImage || !thatImage ) {
-        OE_TEST << LC << "bailed on " << getKey().str() << " - null image\n";
-        return;
-    }
-
-    int width = thisImage->s();
-    int height = thisImage->t();
-    if ( width != thatImage->s() || height != thatImage->t() ) {
-        OE_TEST << LC << "bailed on " << getKey().str() << " - mismatched sizes\n";
-        return;
-    }
-
-    //if (_model->_normalData.isFallbackData()) {
-    //    OE_TEST << LC << "bailed on " << getKey().str() << " - fallback data\n";
-    //    return;
-    //}
-
-    // Just copy the neighbor's edge normals over to our texture.
-    // Averaging them would be more accurate, but then we'd have to
-    // re-generate each texture multiple times instead of just once.
-    // Besides, there's almost no visual difference anyway.
-    ImageUtils::PixelReader readThat(thatImage);
-    ImageUtils::PixelWriter writeThis(thisImage);
-
-    bool thisDirty = false;
-
-    if ( that->getKey() == getKey().createNeighborKey(1,0) )
-    {
-        // neighbor is to the east:
-        for(int t=1; t<height; ++t) // start at 1 to skip the corner piece
-        {
-            writeThis(readThat(0,t), width-1, t);
-        }
-        thisDirty = true;
-    }
-
-    else if ( that->getKey() == getKey().createNeighborKey(0,1) )
-    {
-        // neighbor is to the south:
-        for(int s=0; s<width-1; ++s) // -1 because of the corner piece
-        {
-            writeThis(readThat(s, height-1), s, 0);
-        }
-        thisDirty = true;
-    }
-
-    else if ( that->getKey() == getKey().createNeighborKey(1,1) )
-    {
-        // the corner
-        writeThis(readThat(0,height-1), width-1, 0);
-        thisDirty = true;
-    }
-
-    else
-    {
-        OE_INFO << LC << "Unhandled notify\n";
-    }
-
-    if ( thisDirty )
-    {
-        // so heavy handed. Wish we could just write the row
-        // or column that changed.
-        thisImage->dirty();
-    }
-}
-
-#endif
-

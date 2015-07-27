@@ -31,23 +31,13 @@ using namespace osgEarth;
 
 #define LC "[TileDrawable] "
 
-#define OSGEARTH_REX_TILE_DRAWABLE_PROXY_GEOMETRY_DEBUG 0
-
-
 TileDrawable::TileDrawable(const TileKey&        key,
                            const RenderBindings& bindings,
-                           osg::Geometry*        geometry,
-                           osg::Geometry*        proxygeometry) :
+                           osg::Geometry*        geometry) :
 osg::Drawable( ),
 _key         (key),
 _bindings    ( bindings ),
-#if OSGEARTH_REX_TILE_DRAWABLE_PROXY_GEOMETRY_DEBUG
-_geom        ( proxygeometry ),
-_proxyGeom   ( geometry ),
-#else
 _geom        ( geometry ),
-_proxyGeom   ( proxygeometry ),
-#endif
 _minmax      ( 0, 0 ),
 _drawPatch   ( false )
 {
@@ -229,11 +219,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 osg::BoundingBox
 TileDrawable:: COMPUTE_BOUND() const
 {
-#if OSGEARTH_REX_TILE_DRAWABLE_PROXY_GEOMETRY_DEBUG
-    osg::BoundingBox bbox = _proxyGeom->COMPUTE_BOUND();
-#else
     osg::BoundingBox bbox = _geom->COMPUTE_BOUND();
-#endif
 
     // Replace the min/max Z with our computes extrema.
     // Offset the zmin to account for cuvature.

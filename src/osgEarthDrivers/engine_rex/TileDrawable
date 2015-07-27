@@ -103,8 +103,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // underlying geometry, possible shared between this tile and other.
         osg::ref_ptr<osg::Geometry> _geom;
 
-        // proxy geometry used for intersections, bounds, etc.
-        osg::ref_ptr<osg::Geometry> _proxyGeom;
 
         // local elevation extrema
         osg::Vec2f _minmax;
@@ -123,8 +121,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileDrawable(
             const TileKey&        key,
             const RenderBindings& bindings,
-            osg::Geometry*        geometry,
-            osg::Geometry*        proxygeometry);
+            osg::Geometry*        geometry);
 
         // whether to draw this as a multi-image geometry or as a tesselation patch.
         void setDrawAsPatches(bool value) { _drawPatch = value; }
@@ -176,16 +173,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void accept(osg::Drawable::ConstAttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
 
         bool supports(osg::PrimitiveFunctor& f) const { return true; }
-        void accept(osg::PrimitiveFunctor& f) const 
-        { 
-            if ( _proxyGeom.valid() ) 
-            {
-                _proxyGeom->accept(f); 
-            }
-        }
+        void accept(osg::PrimitiveFunctor& f) const {}
         
         bool supports(osg::PrimitiveIndexFunctor& f) const { return true; }
-        void accept(osg::PrimitiveIndexFunctor& f) const { if ( _proxyGeom.valid() ) _proxyGeom->accept(f); }
+        void accept(osg::PrimitiveIndexFunctor& f) const {}
         
         // recalculate the bound for the tile key uniform.
 #if OSG_VERSION_GREATER_THAN(3,3,1)

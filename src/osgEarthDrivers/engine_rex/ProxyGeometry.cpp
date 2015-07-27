@@ -16,6 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+//#undef NDEBUG
+//#include <cassert>
 #include "ProxyGeometry"
 #include "ElevationTextureUtils"
 
@@ -29,7 +31,8 @@ using namespace osgEarth;
 
 #define LC "[ProxyGeometry] "
 
-void ProxyGeometry::constructXReferenceFrame()
+void
+ProxyGeometry::constructXReferenceFrame()
 {
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
@@ -41,7 +44,8 @@ void ProxyGeometry::constructXReferenceFrame()
     _local2world.invert( _world2local );
 }
 
-void ProxyGeometry::constructEmptyGeometry()
+void
+ProxyGeometry::constructEmptyGeometry()
 {
     unsigned numVerts   = getNumberOfVerts();    
     unsigned numIndices = getNumberOfIndices();
@@ -65,106 +69,66 @@ void ProxyGeometry::constructEmptyGeometry()
     geom->setVertexArray( verts );
 }
 
-ProxyGeometry::ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize) : 
+ProxyGeometry::ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize, const osg::Texture* elevationTexture) : 
     _key(key), 
-    _dirty(true),
-    _tileSize(tileSize),
-    _elevationTexture(0)
+    //_tileSize(tileSize),
+    _tileSize(elevationTexture->getImage(0)->s()),
+    _elevationTexture(elevationTexture)
 {
     _locator = GeoLocator::createForKey( _key, mapInfo );
+}
 
+const osg::Texture*
+ProxyGeometry::getElevationTexture(void) const
+{
+    return _elevationTexture;
+}
+
+void
+ProxyGeometry::build(void)
+{
     constructEmptyGeometry();
     constructXReferenceFrame();
-    rebuild();
+    makeVertices();
+    tessellate();
+    OE_DEBUG << LC << "Built proxy geometry: "<<_key.str()<<std::endl;
 }
 
-void ProxyGeometry::getElevationData(const osg::Texture*& elevationTexture, osg::Matrixf& matrixScaleBias)
+void
+ProxyGeometry::buildIfNecessary(void) const
 {
-    elevationTexture = _elevationTexture;
-    matrixScaleBias  = _scaleBiasMatrix;
-}
-
-void ProxyGeometry::setElevationData(const osg::Texture* elevationTexture, const osg::Matrixf& scaleBiasMatrix)
-{
-    if (elevationTexture==_elevationTexture)
-    {
-        return;
-    }
-
-    _elevationTexture = elevationTexture;
-    _scaleBiasMatrix  = scaleBiasMatrix;
-    setDirty(true);
-#if OSGEARTH_REX_PROXY_GEOMETRY_DEBUG
-    rebuild();
-#endif
-}
-
-void ProxyGeometry::rebuild(void)
-{
-    //assert(isDirty()==true);
-
-    clear();
-
-    if (_elevationTexture)
-    {
-        makeVertices();
-        tessellate();
-        OE_DEBUG << LC << "Built proxy geometry: "<<_key.str()<<std::endl;
-    }
-    else
-    {
-        OE_DEBUG << LC << "Error: Could not build proxy geometry: "<<_key.str()<<std::endl;
-    }
-
-    setDirty(false);
-    //assert(isDirty()==false);
-}
-
-void ProxyGeometry::rebuildIfNecessary() const
-{
-    if (isDirty())
+    if (getVertexArray()==0)
     {
         ProxyGeometry* pNonConst = const_cast<ProxyGeometry*>(this);
-        pNonConst->rebuild();
-    }
+        pNonConst->build();
+    }   
 }
 
-void ProxyGeometry::accept(osg::PrimitiveFunctor& f) const 
+void
+ProxyGeometry::accept(osg::PrimitiveFunctor& f) const 
 {
-    rebuildIfNecessary();
+    buildIfNecessary();
     osg::Geometry::accept(f);
 }
 
-void ProxyGeometry::accept(osg::PrimitiveIndexFunctor& f) const
+void
+ProxyGeometry::accept(osg::PrimitiveIndexFunctor& f) const
 {
-    rebuildIfNecessary();
+    buildIfNecessary();
     osg::Geometry::accept(f);
 }
 
-void ProxyGeometry::clear(void)
-{
-    osg::Geometry* geom = this;
-
-    osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(geom->getVertexArray());
-    verts->clear();
-
-    osg::DrawElementsUShort* primSet = static_cast<osg::DrawElementsUShort*>(geom->getPrimitiveSet(0));
-    primSet->clear();
-}
-
-void ProxyGeometry::makeVertices()
+void
+ProxyGeometry::makeVertices()
 {
     //assert(_elevationTexture && _elevationTexture->getImage(0));
-    ElevationImageReader elevationImageReader(_elevationTexture->getImage(0), _scaleBiasMatrix);
+    ElevationImageReader elevationImageReader(_elevationTexture->getImage(0));
     if (elevationImageReader.valid()==false)
     {
         OE_DEBUG << LC << "Error: Cannot use elevation texture. Window too small!!"<<std::endl;
         return;
     }
 
-    //assert(elevationImageReader.startRow()<elevationImageReader.endRow());
-    //assert(elevationImageReader.startCol()<elevationImageReader.endCol());
-    
     osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(this->getVertexArray());
 
     for(unsigned row=0; row<_tileSize; ++row)
@@ -190,7 +154,8 @@ void ProxyGeometry::makeVertices()
     verts->dirty();
 }
 
-void ProxyGeometry::tessellate(void)
+void
+ProxyGeometry::tessellate(void)
 {
     bool swapOrientation = !_locator->orientationOpenGL();
 
@@ -228,11 +193,16 @@ void ProxyGeometry::tessellate(void)
     primSet->dirty();
 }
 
-unsigned ProxyGeometry::getNumberOfVerts(void) const
+unsigned
+ProxyGeometry::getNumberOfVerts(void) const
 {
-    return (_tileSize*_tileSize);    
+    unsigned tileSize = _elevationTexture->getImage(0)->s();
+    return (tileSize*tileSize);    
 }
-unsigned ProxyGeometry::getNumberOfIndices(void) const
+
+unsigned
+ProxyGeometry::getNumberOfIndices(void) const
 {
-    return (_tileSize-1) * (_tileSize-1) * 6;
+    unsigned tileSize = _elevationTexture->getImage(0)->s();
+    return (tileSize-1) * (tileSize-1) * 6;
 }

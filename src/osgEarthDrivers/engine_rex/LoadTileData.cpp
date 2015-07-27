@@ -31,9 +31,11 @@ namespace
     // Visitor that recalculates the sampler inheritance matrices in a graph.
     struct UpdateInheritance : public osg::NodeVisitor
     {
-        UpdateInheritance(const RenderBindings& bindings, const SelectionInfo& selectionInfo)
+        UpdateInheritance(const RenderBindings& bindings, const SelectionInfo& selectionInfo, const MapInfo& mapInfo, unsigned tileSize)
             : _bindings(bindings)
             , _selectionInfo(selectionInfo)
+            , _mapInfo(mapInfo)
+            , _tileSize(tileSize)
         {
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
         }
@@ -44,7 +46,7 @@ namespace
             if ( tilenode )
             {
                 tilenode->inheritState( tilenode->getParentTile(), _bindings, _selectionInfo );
-                tilenode->updateElevationData( _bindings );
+                tilenode->updateElevationData( _bindings, _mapInfo, _tileSize );
             }
 
             traverse(node);
@@ -52,6 +54,8 @@ namespace
 
         const RenderBindings& _bindings;
         const SelectionInfo&  _selectionInfo;
+        const MapInfo&        _mapInfo;
+        const unsigned        _tileSize;
     };
 }
 
@@ -176,6 +180,7 @@ LoadTileData::apply()
         {
             const RenderBindings& bindings      = _context->getRenderBindings();
             const SelectionInfo&  selectionInfo = _context->getSelectionInfo();
+            const MapInfo&  mapInfo             = _context->getMapFrame().getMapInfo();
 
             const SamplerBinding* color = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
 
@@ -189,10 +194,10 @@ LoadTileData::apply()
             }
 
             // Merge our prepped stateset into the live one.
-            tilenode->mergeStateSet( getStateSet(), mptex.get(), bindings );
+            tilenode->mergeStateSet( getStateSet(), mptex.get(), bindings);
 
             // Update existing inheritance matrices as necessary.
-            UpdateInheritance update( bindings, selectionInfo );
+            UpdateInheritance update( bindings, selectionInfo, mapInfo, *_context->_options.tileSize() );
             tilenode->accept( update );
 
             // Mark as complete. TODO: per-data requests will do something different.

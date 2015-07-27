@@ -66,6 +66,7 @@ SET(LIB_PUBLIC_HEADERS
     DepthOffset
     DPLineSegmentIntersector
     DrapeableNode
+    DrapingCullSet
     DrapingTechnique
     DrawInstanced
     ECEF
@@ -221,6 +222,7 @@ set(TARGET_SRC
     DepthOffset.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
+    DrapingCullSet.cpp
     DrapingTechnique.cpp
     DrawInstanced.cpp
     ECEF.cpp

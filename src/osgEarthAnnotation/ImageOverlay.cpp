@@ -192,7 +192,7 @@ ImageOverlay::postCTOR()
     _transform->addChild( _geode );
 
     // place the geometry under a drapeable node so it will project onto the terrain    
-    DrapeableNode* d = new DrapeableNode( getMapNode() );
+    DrapeableNode* d = new DrapeableNode(); // getMapNode() );
     addChild( d );
 
     d->addChild( _transform );
@@ -328,13 +328,13 @@ ImageOverlay::setMapNode( MapNode* mapNode )
 bool
 ImageOverlay::getDraped() const
 {
-    return static_cast< const DrapeableNode *>( getChild(0))->getDraped();
+    return static_cast< const DrapeableNode *>( getChild(0))->getDrapingEnabled();
 }
 
 void
 ImageOverlay::setDraped( bool draped )
 {
-    static_cast< DrapeableNode *>( getChild(0))->setDraped( draped );
+    static_cast< DrapeableNode *>( getChild(0))->setDrapingEnabled( draped );
 }
 
 osg::Image*

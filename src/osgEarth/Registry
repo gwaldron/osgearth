@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/SharedSARepo>
+#include <osgEarth/Containers>
 #include <osgEarth/ShaderGenerator>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>

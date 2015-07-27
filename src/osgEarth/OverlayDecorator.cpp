@@ -356,7 +356,7 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd, osg::Camera* cam )
         params._group = _overlayGroups[i].get();
         params._terrainStateSet = pvd._sharedTerrainStateSet.get(); // share it.
         params._horizonDistance = &pvd._sharedHorizonDistance;      // share it.
-        params._terrainParent = this;
+        params._terrainResources = _engine->getResources();
         params._mainCamera = cam;
     }
 }
@@ -613,7 +613,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
         OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
 #else
-        const osg::BoundingSphere& visibleOverlayBS = params._group->getBound();
+        const osg::BoundingSphere& visibleOverlayBS = _techniques[t]->getBound(params); //params._group->getBound();
 #endif
         if ( visibleOverlayBS.valid() )
         {

@@ -204,7 +204,9 @@ GeodeticGraticule::rebuild()
         }
     }
 
-    _root = new DrapeableNode( _mapNode.get(), false );
+    DrapeableNode* drapeable = new DrapeableNode();
+    drapeable->setDrapingEnabled( false );
+    _root = drapeable;
     this->addChild( _root );
 
     // need at least one level

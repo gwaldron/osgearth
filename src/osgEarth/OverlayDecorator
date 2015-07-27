@@ -99,8 +99,8 @@ namespace osgEarth
             osg::Group*                   _group;            // contains the overlay graphics
             osg::StateSet*                _terrainStateSet;  // same object as in PerViewData (shared across techniques)
             osg::ref_ptr<osg::Referenced> _techniqueData;    // technique sets this if needed
-            const double*                 _horizonDistance;  // points to the PVD horizon distance.
-            osg::Group*                   _terrainParent;    // the terrain is in getChild(0).
+            const double*                 _horizonDistance;  // points to the PVD horizon distance
+            TextureCompositor*            _terrainResources; // for accessing image units
             osg::Vec3d                    _eyeWorld;         // eyepoint in world coords
             osgShadow::ConvexPolyhedron   _visibleFrustumPH; // polyhedron representing the frustum
         };
@@ -185,6 +185,9 @@ namespace osgEarth
 
         virtual bool hasData(
             OverlayDecorator::TechRTTParams& params) const { return true; }
+
+        virtual const osg::BoundingSphere& getBound(
+            OverlayDecorator::TechRTTParams& params) const { return params._group->getBound(); }
 
         virtual void onInstall( TerrainEngineNode* engine ) { }
 

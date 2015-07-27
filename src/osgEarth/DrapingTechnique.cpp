@@ -20,11 +20,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/DrapingTechnique>
+#include <osgEarth/DrapingCullSet>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
+#include <osgEarth/CullingUtils>
 
 #include <osg/BlendFunc>
 #include <osg/TexGen>
@@ -40,14 +42,55 @@ using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
+#undef  LC
+#define LC "[DrapingCamera] "
+
 namespace
 {
+    /**
+     * A camera that will traverse the per-thread DrapingCullSet instead of
+     * its own children.
+     */
+    class DrapingCamera : public osg::Camera
+    {
+    public:
+        DrapingCamera() : osg::Camera()
+        {
+            setCullingActive( false );
+        }
+
+    public: // osg::Node
+
+        void accept(osg::NodeVisitor& nv, const osg::Camera* camera)
+        {
+            _camera = camera;
+            osg::Camera::accept( nv );
+        }
+
+        void traverse(osg::NodeVisitor& nv)
+        {
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+            if ( cv->getCurrentCamera() == _camera ) {
+                OE_NOTICE << "THey are the same, dummy\n";
+            }
+            DrapingCullSet& cullSet = DrapingCullSet::get(_camera);
+            cullSet.accept( nv, true );
+        }
+
+    protected:
+        virtual ~DrapingCamera() { }
+        const osg::Camera* _camera;
+    };
+
+
     // Additional per-view data stored by the draping technique.
     struct LocalPerViewData : public osg::Referenced
     {
         osg::ref_ptr<osg::Uniform> _texGenUniform;
     };
 }
+
+//---------------------------------------------------------------------------
 
 namespace
 {
@@ -294,6 +337,9 @@ namespace
 
 //---------------------------------------------------------------------------
 
+#undef  LC
+#define LC "[DrapingTechnique] "
+
 DrapingTechnique::DrapingTechnique() :
 _textureUnit     ( 1 ),
 _textureSize     ( 1024 ),
@@ -314,39 +360,7 @@ _maxFarNearRatio ( 5.0 )
 bool
 DrapingTechnique::hasData(OverlayDecorator::TechRTTParams& params) const
 {
-    return params._group->getNumChildren() > 0;
-}
-
-
-void
-DrapingTechnique::reestablish(TerrainEngineNode* engine)
-{
-    if ( !_textureUnit.isSet() )
-    {
-        // apply the user-request texture unit, if applicable:
-        if ( _explicitTextureUnit.isSet() )
-        {
-            if ( !_textureUnit.isSet() || *_textureUnit != *_explicitTextureUnit )
-            {
-                _textureUnit = *_explicitTextureUnit;
-            }
-        }
-
-        // otherwise, automatically allocate a texture unit if necessary:
-        else if ( !_textureUnit.isSet() )
-        {
-            int texUnit;
-            if ( engine->getResources()->reserveTextureImageUnit(texUnit, "DrapingTechnique") )
-            {
-                _textureUnit = texUnit;
-                OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
-            }
-            else
-            {
-                OE_WARN << LC << "Uh oh, no texture image units available." << std::endl;
-            }
-        }
-    }
+    return getBound(params).valid();
 }
 
 
@@ -367,7 +381,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
     // set up the RTT camera:
-    params._rttCamera = new osg::Camera();
+    params._rttCamera = new DrapingCamera(); //new osg::Camera();
     params._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
     // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
     // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
@@ -400,11 +414,11 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         }
 
         params._rttCamera->setClearStencil( 0 );
-        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT ); //GL_DEPTH_BUFFER_BIT |  );
+        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
     }
     else
     {
-        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT ); //| GL_DEPTH_BUFFER_BIT );
+        params._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT );
     }
 
     // set up a StateSet for the RTT camera.
@@ -461,7 +475,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // Assemble the terrain shaders that will apply projective texturing.
     VirtualProgram* terrain_vp = VirtualProgram::getOrCreate(params._terrainStateSet);
-    terrain_vp->setName( "DrapingTechnique terrain shaders");
+    terrain_vp->setName( "Draping terrain shaders");
 
     // sampler for projected texture:
     params._terrainStateSet->getOrCreateUniform(
@@ -482,12 +496,51 @@ void
 DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
                                  osgUtil::CullVisitor*             cv )
 {
-    if ( !params._rttCamera.valid() && params._group->getNumChildren() > 0 && _textureUnit.isSet() )
+    // allocate a texture image unit the first time through.
+    if ( !_textureUnit.isSet() )
+    {
+        static Threading::Mutex m;
+        m.lock();
+        if ( !_textureUnit.isSet() )
+        {
+            // apply the user-request texture unit, if applicable:
+            if ( _explicitTextureUnit.isSet() )
+            {
+                if ( !_textureUnit.isSet() || *_textureUnit != *_explicitTextureUnit )
+                {
+                    _textureUnit = *_explicitTextureUnit;
+                }
+            }
+
+            // otherwise, automatically allocate a texture unit if necessary:
+            else if ( !_textureUnit.isSet() )
+            {
+                int texUnit;
+                if ( params._terrainResources->reserveTextureImageUnit(texUnit, "Draping") )
+                {
+                    _textureUnit = texUnit;
+                    OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
+                }
+                else
+                {
+                    OE_WARN << LC << "No texture image units available." << std::endl;
+                }
+            }
+        }
+        m.unlock();
+    }
+
+    if ( !params._rttCamera.valid() && _textureUnit.isSet() )
     {
         setUpCamera( params );
     }
 }
-
+       
+const osg::BoundingSphere&
+DrapingTechnique::getBound(OverlayDecorator::TechRTTParams& params) const
+{
+    return DrapingCullSet::get(params._mainCamera).getBound();
+}
 
 void
 DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
@@ -533,7 +586,8 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         }
 
         // traverse the overlay group (via the RTT camera).
-        params._rttCamera->accept( *cv );
+        static_cast<DrapingCamera*>(params._rttCamera.get())->accept( *cv, cv->getCurrentCamera() );
+        //params._rttCamera->accept( *cv );
     }
 }
 

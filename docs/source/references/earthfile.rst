@@ -102,7 +102,8 @@ These options control the rendering of the terrain surface.
                      blending              = "false"
                      color                 = "#ffffffff"
                      tile_size             = "17"
-                     normalize_edges       = "false">
+                     normalize_edges       = "false"
+                     elevation_smoothing   = "false">
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
@@ -147,6 +148,10 @@ These options control the rendering of the terrain surface.
 +-----------------------+--------------------------------------------------------------------+
 | normalize_edges       | Calculate normal vectors along the edges of terrain tiles so that  |
 |                       | lighting appears smoother from one tile to the next.               |
++-----------------------+--------------------------------------------------------------------+
+| elevation_smoothing   | Whether to smooth the transition across elevation data insets.     |
+|                       | Doing so will give a smoother appearance to disparate height field |
+|                       | data, but elevations will not be as accurate. Default = false      |
 +-----------------------+--------------------------------------------------------------------+
 
 

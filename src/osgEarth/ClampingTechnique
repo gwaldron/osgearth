@@ -94,7 +94,6 @@ namespace osgEarth
 
         void onUninstall( TerrainEngineNode* engine );
 
-
     protected:
         virtual ~ClampingTechnique() { }
 

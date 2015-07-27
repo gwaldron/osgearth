@@ -555,7 +555,7 @@ namespace
 
             if (allZero)
             {
-                OE_NOTICE << "ALL ZERO HEIGHTFIELD " << d.model->_tileKey.str() << std::endl;
+                OE_DEBUG << "ALL ZERO HEIGHTFIELD " << d.model->_tileKey.str() << std::endl;
             }
         }
 

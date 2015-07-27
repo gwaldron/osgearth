@@ -323,6 +323,7 @@ MapNode::init()
         if ( _mapNodeOptions.overlayResolutionRatio().isSet() )
             draping->setResolutionRatio( *_mapNodeOptions.overlayResolutionRatio() );
 
+        draping->reestablish( getTerrainEngine() );
         _overlayDecorator->addTechnique( draping );
     }
 

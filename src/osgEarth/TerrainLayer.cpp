@@ -622,6 +622,18 @@ TerrainLayer::createTileSource()
             URIContext( _runtimeOptions->referrer() ).apply( _dbOptions.get() );
         }
 
+        // add the osgDB options string if it's set.
+        const optional<std::string>& osgOptions = ts->getOptions().osgOptionString();
+        if ( osgOptions.isSet() && !osgOptions->empty() )
+        {
+            std::string s = _dbOptions->getOptionString();
+            if ( !s.empty() )
+                s = Stringify() << osgOptions.get() << " " << s;
+            else
+                s = osgOptions.get();
+            _dbOptions->setOptionString( s );
+        }
+
         // report on a manual override profile:
         if ( ts->getProfile() )
         {

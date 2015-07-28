@@ -23,7 +23,7 @@
 #include "RenderBindings"
 #include "Loader"
 #include "MPTexture"
-#include "ProxyGeometry"
+#include "ProxySurfaceNode"
 
 #include <OpenThreads/Atomic>
 #include <osgEarth/TerrainTileNode>
@@ -33,6 +33,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     class EngineContext;
     class SurfaceNode;
+    class ProxySurfaceNode;
     class SelectionInfo;
 
     /**
@@ -70,23 +71,24 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void notifyOfArrival(TileNode* that) { } // nyi - todo
 
         /** Set inheritance matrices as necessary. Return true is changed were made. */
-        bool inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo );
+        bool inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo);
 
         /** Compute the local min/max elevation based on this tile's inherited elevation raster and matrix. */
-        void updateElevationData(const RenderBindings& bindings);
+        void updateElevationData(const RenderBindings& bindings, const MapInfo& mapInfo, unsigned tileSize);
 
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
 
         /** Sets the min and max elevation values for culling purposes */
         void setElevationExtrema(const osg::Vec2f& minmax);
-
         const osg::Vec2f& getElevationExtrema() const { return _extrema; }
         
         /** merge in new stuff from a state set. */
         void mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderBindings& bindings);
 
         MPTexture* getMPTexture() const { return _mptex.get(); }
+
+        ProxySurfaceNode* getProxySurfaceNode() const { return _surfaceProxy.get();}
 
     public: // osg::Node
 
@@ -100,6 +102,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TileKey                            _key;
         osg::ref_ptr<SurfaceNode>          _surface;
         osg::ref_ptr<SurfaceNode>          _landCover;
+        osg::ref_ptr<ProxySurfaceNode>     _surfaceProxy;
         osg::ref_ptr<Loader::Request>      _loadRequest;
         osg::ref_ptr<Loader::Request>      _expireRequest;
         Threading::Mutex                   _mutex;
@@ -119,8 +122,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void lodSelect(osg::NodeVisitor& nv);
         void regularUpdate(osg::NodeVisitor& nv);
 
-        bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo);
-        float getVisibilityRangeHint(void) const;
+        bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
+        float getVisibilityRangeHint(unsigned firstLOD) const;
         float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
 
         void updateTileSpecificUniforms(const SelectionInfo& selectionInfo);
@@ -133,7 +136,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void updatePerFrameUniforms(const osg::NodeVisitor& nv);
 
-        osg::ref_ptr<ProxyGeometry> _proxyGeometry;
+        void updateProxyGeometry(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
+        void updateUpdateExtrema(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

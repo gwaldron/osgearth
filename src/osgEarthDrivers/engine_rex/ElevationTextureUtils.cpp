@@ -12,9 +12,21 @@ using namespace osgEarth;
 
 #define LC "[ElevationTexureUtils] "
 
+ElevationImageReader::ElevationImageReader(const osg::Image* image)
+: _pixelReader(image)
+{
+    init(image, osg::Matrixf::identity());
+}
+
 
 ElevationImageReader::ElevationImageReader(const osg::Image* image, const osg::Matrix& matrixScaleBias)
-    : _pixelReader(image)
+: _pixelReader(image)
+{
+    init(image, matrixScaleBias);
+}
+
+void
+ElevationImageReader::init(const osg::Image* image, const osg::Matrix& matrixScaleBias)
 {
     double s_offset = matrixScaleBias(3,0) * (double)image->s();
     double t_offset = matrixScaleBias(3,1) * (double)image->t();
@@ -41,11 +53,11 @@ ElevationImageReader::ElevationImageReader(const osg::Image* image, const osg::M
         << "; span = " << s_span << ", " << t_span
         << "; c0=" << startCol() << ", r0=" << startRow() << "; c1=" << endCol() << ", r1=" << endRow() << "\n";
 
-
     _valid = true;
 }
 
-float ElevationImageReader::elevationN(float s, float t)
+float
+ElevationImageReader::elevationN(float s, float t)
 {
     int col = startCol() + (endCol()-startCol())*s;
     int row = startRow() + (endRow()-startRow())*t;
@@ -57,7 +69,7 @@ ElevationTexureUtils::findExtrema(osg::Texture* elevationTexture, const osg::Mat
 {
     if (elevationTexture==0)
     {
-        OE_DEBUG << LC << "Elevation Texture is NULL"<<std::endl;
+        OE_DEBUG << LC << "findExtrema ERROR!! Elevation Texture is NULL"<<std::endl;
         return false;
     }
     // Searches a texture image (using a texture matrix) for the min and max elevation values.
@@ -70,10 +82,11 @@ ElevationTexureUtils::findExtrema(osg::Texture* elevationTexture, const osg::Mat
 
         if (reader.valid()==false)
         {
+            OE_DEBUG << LC << "findExtrema ERROR!! Elevation Texture extents too small"<<std::endl;
             return false;
         }
 
-        OE_DEBUG << LC << "find: key=" << tileKey.str();
+        OE_DEBUG << LC << "findExtrema: "<<tileKey.str()<<std::endl;
 
         for(int col=reader.startCol(); col <= reader.endCol(); ++col)
         {
@@ -87,7 +100,7 @@ ElevationTexureUtils::findExtrema(osg::Texture* elevationTexture, const osg::Mat
 
         if ( extrema[0] > extrema[1] )
         {
-            OE_WARN << LC << "findExtrema ERROR (" << tileKey.str() << ") c0=" << reader.startCol() 
+            OE_WARN << LC << "findExtrema ERROR!! (" << tileKey.str() << ") c0=" << reader.startCol() 
                                                                     << ", r0=" << reader.startRow() 
                                                                     << "; c1=" << reader.endCol() 
                                                                     << ", r1=" << reader.endRow() 
@@ -97,8 +110,10 @@ ElevationTexureUtils::findExtrema(osg::Texture* elevationTexture, const osg::Mat
     }
     else
     {
-        OE_WARN << LC << "findExtrema ERROR (" << tileKey.str() << ") no tex image available\n";
+        OE_WARN << LC << "findExtrema ERROR!! (" << tileKey.str() << ") no tex image available\n";
     }
+
+    OE_DEBUG << LC <<tileKey.getLOD()<< " Extrema Min: "<<extrema[0]<<" Max: "<<extrema[1]<<std::endl;
 
     return extrema[0] <= extrema[1];
 }

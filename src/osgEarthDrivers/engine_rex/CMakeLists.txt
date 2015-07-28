@@ -34,6 +34,7 @@ SET(TARGET_SRC
     TileNodeRegistry.cpp
     Loader.cpp
 	ProxyGeometry.cpp
+	ProxySurfaceNode.cpp
     ${SHADERS_CPP}
 )
 
@@ -60,6 +61,7 @@ SET(TARGET_H
     Loader
 	SelectionInfo
 	ProxyGeometry
+	ProxySurfaceNode
 )
 
 setup_plugin(osgearth_engine_rex)

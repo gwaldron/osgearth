@@ -31,16 +31,13 @@ using namespace osgEarth;
 
 #define LC "[TileDrawable] "
 
-
 TileDrawable::TileDrawable(const TileKey&        key,
                            const RenderBindings& bindings,
-                           osg::Geometry*        geometry,
-                           osg::Geometry*        proxygeometry) :
+                           osg::Geometry*        geometry) :
 osg::Drawable( ),
 _key         ( key ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
-_proxyGeom   ( proxygeometry ),
 _minmax      ( 0, 0 ),
 _drawPatch   ( false )
 {

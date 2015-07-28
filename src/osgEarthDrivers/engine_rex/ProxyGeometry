@@ -36,39 +36,32 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class ProxyGeometry : public osg::Geometry
     {
     public:
-        ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize);
+        ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize, const osg::Texture* elevationTexture);
 
-        void setElevationData(osg::Texture* elevationTexture, osg::Matrixf& scaleBiasMatrix);
+        const osg::Texture* getElevationTexture(void) const;
 
         void accept(osg::PrimitiveFunctor& f) const ;
         void accept(osg::PrimitiveIndexFunctor& f) const;
-    private:
 
+    private:
         void constructXReferenceFrame(void);
         void constructEmptyGeometry(void);
 
-        void rebuildIfNecessary() const;
-        void rebuild(void);
-        void clear(void);
+        void build(void);
+        void buildIfNecessary(void) const;
         
         void makeVertices(void);
         void tessellate(void);
         
-        bool isDirty(void) const { return _dirty; }
-        void setDirty(bool dirty){ _dirty=dirty; }
-
         unsigned getNumberOfVerts(void) const;
         unsigned getNumberOfIndices(void) const;
 
     private:
-        const TileKey _key;
+        const TileKey  _key;
+        const unsigned _tileSize;
         osg::ref_ptr<GeoLocator> _locator;
 
-        bool _dirty;
-
-        osg::Texture* _elevationTexture;
-        osg::Matrixf  _scaleBiasMatrix;
-        unsigned      _tileSize;
+        const osg::Texture* _elevationTexture;
         osg::Matrix   _world2local;
         osg::Matrix   _local2world;
     };

@@ -34,7 +34,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             COLOR,
             ELEVATION,
             NORMAL,
-            MATERIAL
+            MATERIAL,
+            COLOR_PARENT
         };
 
     public:

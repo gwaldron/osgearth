@@ -16,6 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+//#undef NDEBUG
+//#include <cassert>
 #include "TileDrawable"
 #include "MPTexture"
 
@@ -47,12 +49,14 @@ _drawPatch   ( false )
     _supportsGLSL = Registry::capabilities().supportsGLSL();
 
     // establish uniform name IDs.
-    _uidUniformNameID           = osg::Uniform::getNameID( "oe_layer_uid" );
-    _orderUniformNameID         = osg::Uniform::getNameID( "oe_layer_order" );
-    _opacityUniformNameID       = osg::Uniform::getNameID( "oe_layer_opacity" );
-    _texMatrixUniformNameID     = osg::Uniform::getNameID( "oe_layer_texMatrix" );
+    _uidUniformNameID             = osg::Uniform::getNameID( "oe_layer_uid" );
+    _orderUniformNameID           = osg::Uniform::getNameID( "oe_layer_order" );
+    _opacityUniformNameID         = osg::Uniform::getNameID( "oe_layer_opacity" );
+    _texMatrixUniformNameID       = osg::Uniform::getNameID( "oe_layer_texMatrix" );
+    _texMatrixParentUniformNameID = osg::Uniform::getNameID( "oe_layer_texMatrix_parent" );
 
-    _textureImageUnit = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR)->unit();
+    _textureImageUnit       = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR)->unit();
+    _textureParentImageUnit = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR_PARENT)->unit();
 }
 
 void
@@ -113,27 +117,27 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
-    GLint opacityLocation       = -1;
-    GLint uidLocation           = -1;
-    GLint orderLocation         = -1;
-    GLint texMatrixLocation     = -1;
+    GLint opacityLocation           = -1;
+    GLint uidLocation               = -1;
+    GLint orderLocation             = -1;
+    GLint texMatrixLocation         = -1;
+    GLint texMatrixParentLocation   = -1;
 
     // The PCP can change (especially in a VirtualProgram environment). So we do need to
     // requery the uni locations each time unfortunately. TODO: explore optimizations.
     if ( pcp )
     {
-        opacityLocation      = pcp->getUniformLocation( _opacityUniformNameID );
-        uidLocation          = pcp->getUniformLocation( _uidUniformNameID );
-        orderLocation        = pcp->getUniformLocation( _orderUniformNameID );
-        texMatrixLocation    = pcp->getUniformLocation( _texMatrixUniformNameID );
+        opacityLocation             = pcp->getUniformLocation( _opacityUniformNameID );
+        uidLocation                 = pcp->getUniformLocation( _uidUniformNameID );
+        orderLocation               = pcp->getUniformLocation( _orderUniformNameID );
+        texMatrixLocation           = pcp->getUniformLocation( _texMatrixUniformNameID );
+        texMatrixParentLocation     = pcp->getUniformLocation( _texMatrixParentUniformNameID );
     }
 
     float prevOpacity = -1.0f;
     if ( _mptex.valid() && !_mptex->getPasses().empty() )
     {
         float prevOpacity = -1.0f;
-
-        state.setActiveTextureUnit( _textureImageUnit );
 
         // in FFP mode, we need to enable the GL mode for texturing:
         if ( !pcp )
@@ -147,14 +151,28 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 
             if ( pass._layer->getVisible() && pass._layer->getOpacity() > 0.1 )
             {
-                // Apply the texture.
-                const osg::StateAttribute* lastTex = state.getLastAppliedTextureAttribute(_textureImageUnit, osg::StateAttribute::TEXTURE);
-                if ( lastTex != pass._texture.get() )
-                    pass._texture->apply( state );
-            
-                // Apply the texture matrix.
-                ext->glUniformMatrix4fv( texMatrixLocation, 1, GL_FALSE, pass._matrix.ptr() );
-            
+                {
+                    // Apply the texture.
+                    state.setActiveTextureUnit( _textureImageUnit );
+                    const osg::StateAttribute* lastTex = state.getLastAppliedTextureAttribute(_textureImageUnit, osg::StateAttribute::TEXTURE);
+                    if ( lastTex != pass._texture.get() )
+                        pass._texture->apply( state );
+
+                    // Apply the texture matrix.
+                    ext->glUniformMatrix4fv( texMatrixLocation, 1, GL_FALSE, pass._matrix.ptr() );
+                }
+
+                {
+                    // Apply the parent texture.
+                    state.setActiveTextureUnit( _textureParentImageUnit );
+                    const osg::StateAttribute* lastTex = state.getLastAppliedTextureAttribute(_textureParentImageUnit, osg::StateAttribute::TEXTURE);
+                    if ( lastTex != pass._textureParent.get() )
+                        pass._textureParent->apply( state );
+
+                    // Apply the parent texture matrix.
+                    ext->glUniformMatrix4fv( texMatrixParentLocation, 1, GL_FALSE, pass._matrixWRTParent.ptr() );
+                }
+
                 // Order uniform (TODO: evaluate whether we still need this)
                 if ( orderLocation >= 0 )
                 {

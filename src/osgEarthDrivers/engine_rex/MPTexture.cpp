@@ -77,22 +77,31 @@ MPTexture::inheritState(MPTexture* parent, const osg::Matrixf& scaleBias)
             {
                 pass->_matrix.preMult(scaleBias);
                 pass->_ownsTexture = false;
+
+                pass->_textureParent = pass->_texture;
+                pass->_matrixWRTParent  = pass->_matrix;
             }
         }
 
         // If we already have data, recalculate the sub-matrixing on existing textures.
         else
         {
-            for(Passes::const_iterator i = parent->getPasses().begin(); i != parent->getPasses().end(); ++i)
+            for(Passes::const_iterator parentPass = parent->getPasses().begin(); parentPass != parent->getPasses().end(); ++parentPass)
             {
-                const Pass& parentPass = *i;
-                for(Passes::iterator j = _passes.begin(); j != _passes.end(); ++j)
+                for(Passes::iterator pass = _passes.begin(); pass != _passes.end(); ++pass)
                 {
-                    if ( parentPass._layer.get() == j->_layer.get() && !j->_ownsTexture )
+                    if ( parentPass->_layer.get() == pass->_layer.get())
                     {
-                        j->_texture = parentPass._texture.get();
-                        j->_matrix = parentPass._matrix;
-                        j->_matrix.preMult( scaleBias );
+                        if (!pass->_ownsTexture)
+                        {
+                            pass->_texture = parentPass->_texture.get();
+                            pass->_matrix = parentPass->_matrix;
+                            pass->_matrix.preMult( scaleBias );
+                        }
+                        
+                        pass->_textureParent = parentPass->_texture.get();
+                        pass->_matrixWRTParent  = parentPass->_matrix;
+                        pass->_matrixWRTParent.preMult( scaleBias );
                     }
                 }
             }

@@ -12,8 +12,11 @@ out vec4 oe_layer_tilec;
 out vec4 vp_Vertex;
 out vec3 oe_UpVectorView;
 out vec3 oe_TangentVectorView;
-out vec4 flerp;
+
 out vec4 oe_layer_texc;
+out vec4 oe_layer_texcParent;
+
+out vec4 flerp;
 
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
@@ -23,6 +26,7 @@ uniform vec4	  oe_tile_key;
 uniform vec4	  oe_tile_extents;
 uniform vec4	  oe_tile_camera_to_tilecenter;
 uniform mat4	  oe_layer_texMatrix;
+uniform mat4	  oe_layer_texMatrix_parent;
 
 void MorphVertex( inout vec3 vPositionMorphed,  inout vec2 vUVMorphed
 				, vec3 vPositionOriginal, vec2 vUVOriginal
@@ -58,7 +62,10 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 		// assumption: vp_Normal is normalized
 		vertexView.xyz += oe_UpVectorView*elev;
 
-		oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec;
+		oe_layer_texc		 = oe_layer_texMatrix		 * oe_layer_tilec;
+		oe_layer_texcParent  = oe_layer_texMatrix_parent * oe_layer_tilec;
+
+		flerp.xyzw = vec4(0);
 	}
 	#if 1
 	else
@@ -95,9 +102,10 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
         oe_layer_tilec.st = vUVMorphed;
 
         // And compute the texture coords
-		oe_layer_texc = oe_layer_texMatrix * oe_layer_tilec; 
+		oe_layer_texc		 = oe_layer_texMatrix		 * oe_layer_tilec; 
+		oe_layer_texcParent  = oe_layer_texMatrix_parent * oe_layer_tilec;
 
-		flerp.xyz = vec3(fMorphLerpK);
+		flerp.xyzw = vec4(fMorphLerpK);
 	}
 	#endif
 }

@@ -42,39 +42,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class TileDrawable : public osg::Drawable
     {
     public:
-        /**
-         * Per-tile attribution for use with the RexGeometry.
-         */
-        struct Layer
-        {
-            Layer()
-            {
-                _texMatrixUniformID = ~0;
-                _parentTexMatrixUniformID = ~0;
-            }
-
-            osgEarth::UID                   _layerID;
-            osg::ref_ptr<const ImageLayer>  _imageLayer;
-
-            osg::ref_ptr<osg::Texture>      _tex;
-            osg::ref_ptr<osg::RefMatrixf>   _texMatrix;
-            unsigned                        _texMatrixUniformID;
-
-            osg::ref_ptr<osg::Texture>      _parentTex;
-            osg::ref_ptr<osg::RefMatrixf>   _parentTexMatrix;
-            unsigned                        _parentTexMatrixUniformID;
-
-            float                           _alphaThreshold;
-            bool                            _opaque;
-
-            // in support of std::find
-            inline bool operator == (const osgEarth::UID& rhs) const {
-                return _layerID == rhs;
-            }
-        };
-
-    public:
-        mutable std::vector<Layer> _layers;
         mutable Threading::Mutex   _frameSyncMutex;
 
         // uniform name IDs.
@@ -83,7 +50,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         unsigned _opacityUniformNameID;
         unsigned _tileKeyUniformNameID;
         unsigned _texMatrixUniformNameID;
-        unsigned _parentTexMatrixUniformNameID;
+        unsigned _texMatrixParentUniformNameID;
 
         // Data stored for each graphics context:
         struct PerContextData {
@@ -112,6 +79,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<MPTexture> _mptex;
 
         int _textureImageUnit;
+        int _textureParentImageUnit;
 
         const TileKey _key;
 

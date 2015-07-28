@@ -440,7 +440,7 @@ void TileNode::regularUpdate(osg::NodeVisitor& nv)
         {
             if (_surfaceProxy.valid())
             {
-                _surfaceProxy->accept(nv);
+                //_surfaceProxy->accept(nv);
             }
         }
         else
@@ -611,7 +611,7 @@ TileNode::updateUpdateExtrema(const SamplerBinding* elevBinding, const MapInfo& 
     {
         // This will happen sometimes, like when the initial levels are loading and there
         // is no elevation texture in the graph yet. It's normal.
-        OE_WARN << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
+        OE_DEBUG << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
     }
 }
 

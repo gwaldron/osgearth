@@ -21,9 +21,9 @@ void oe_rexEngine_frag(inout vec4 color)
 {
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
 
-	vec4 colorTex1 = texture2D(oe_layer_tex		  , oe_layer_texc.st);
-	vec4 colorTex2 = texture2D(oe_layer_tex_parent, oe_layer_texcParent.st);
-	vec4 colorTex = mix(colorTex1, colorTex2, flerp.x);
+	vec4 colorSelf   = texture2D(oe_layer_tex		  , oe_layer_texc.st);
+	vec4 colorParent = texture2D(oe_layer_tex_parent, oe_layer_texcParent.st);
+	vec4 colorTex = mix(colorSelf, colorParent, flerp.y);
 
 	vec4 texel = mix(color, colorTex, applyImagery);
     texel.a = mix(texel.a, texel.a*oe_layer_opacity, applyImagery);
@@ -35,32 +35,4 @@ void oe_rexEngine_frag(inout vec4 color)
 #else
     color = texel;
 #endif
-	//color.xyz = (flerp.xyz);
-	//return;
-	//int startkey = 12;
-	
-	//if (oe_tile_key.z == startkey++)
-	//{
-	//	color.xyz = vec3(1,0,0);
-	//}
-	//else if (oe_tile_key.z == startkey++)
-	//{
-	//	color.xyz = vec3(0,1,0);
-	//}
-	//else if (oe_tile_key.z == startkey++)
-	//{
-	//	color.xyz = vec3(0,0,1);
-	//}
-	//else if (oe_tile_key.z == startkey++)
-	//{
-	//	color.xyz = vec3(1,1,0);
-	//}
-	//else if (oe_tile_key.z == startkey++)
-	//{
-	//	color.xyz = vec3(1,0,1);
-	//}
-	//else if (oe_tile_key.z == startkey++)
-	//{
-	//	color.xyz = vec3(0,1,1);
-	//}
 }

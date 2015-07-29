@@ -82,7 +82,7 @@ namespace
             _stateset = new osg::StateSet();
 
             VirtualProgram* vp = VirtualProgram::getOrCreate(_stateset.get());
-            vp->setFunction( "oe_autoscale_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
+            vp->setFunction( "oe_autoscale_vertex", vs, ShaderComp::LOCATION_VERTEX_VIEW, 0L, 0.5f );
 
             _zp = _stateset->getOrCreateUniform("oe_autoscale_zp", osg::Uniform::FLOAT);
         }

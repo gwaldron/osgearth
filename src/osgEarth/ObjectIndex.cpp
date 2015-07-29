@@ -42,7 +42,7 @@ namespace
     const char* indexVertexInit =
         "#version 330\n"
 
-        "#pragma vp_entryPoint \"oe_index_setObjectID\" \n"
+        "#pragma vp_entryPoint \"oe_index_readObjectID\" \n"
         "#pragma vp_location   \"vertex_model\" \n"
         "#pragma vp_order      \"first\" \n"
 
@@ -50,7 +50,7 @@ namespace
         "in uint      oe_index_objectid_attr; \n"      // Vertex attribute containing the object ID.
         "uint         oe_index_objectid; \n"           // Stage global containing the Object ID.
 
-        "void oe_index_setObjectID(inout vec4 vertex) \n"
+        "void oe_index_readObjectID(inout vec4 vertex) \n"
         "{ \n"
         "    if ( oe_index_objectid_uniform > 0u ) \n"
         "        oe_index_objectid = oe_index_objectid_uniform; \n"

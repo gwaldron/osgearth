@@ -94,6 +94,15 @@ Press 'w' for wireframe mode to see the tessellation!
               <lat>46.65132101133439</lat>
               <height>1128.989560711198</height>
             </viewpoint>
+            <viewpoint name="goof">
+  <heading>44.7475</heading>
+  <pitch>-10.7455</pitch>
+  <range>660.885m</range>
+  <long>-157.850154069563</long>
+  <lat>21.36179514618185</lat>
+  <height>-0.7146450756117702</height>
+  <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+</viewpoint>
         </viewpoints>
         
     </extensions>

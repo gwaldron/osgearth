@@ -44,7 +44,7 @@ namespace
         "uint oe_index_objectid; \n"                        // Vertex stage global containing the Object ID; set in ObjectIndex shader.
 
         "flat out vec4 oe_pick_encoded_objectid; \n"        // output encoded oid to fragment shader
-        "flat out int  oe_pick_color_contains_objectid; \n" // whether color already contains oid (written by another RTT camera)
+        "flat out int oe_pick_color_contains_objectid; \n" // whether color already contains oid (written by another RTT camera)
 
         "void oe_pick_encodeObjectID(inout vec4 vertex) \n"
         "{ \n"
@@ -55,7 +55,7 @@ namespace
         "        float b1 = float((oe_index_objectid & 0x00ff0000u) >> 16u); \n"
         "        float b2 = float((oe_index_objectid & 0x0000ff00u) >> 8u ); \n"
         "        float b3 = float((oe_index_objectid & 0x000000ffu)       ); \n"
-        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3) * 0.00392156862; \n" // i.e. 1/2558
+        "        oe_pick_encoded_objectid = vec4(b0, b1, b2, b3) * 0.00392156862; \n" // i.e. 1/255
         "    } \n"
         "} \n";
 
@@ -67,7 +67,7 @@ namespace
         "#pragma vp_order      \"last\" \n"
 
         "flat in vec4 oe_pick_encoded_objectid; \n"
-        "flat in int  oe_pick_color_contains_objectid; \n"
+        "flat in int oe_pick_color_contains_objectid; \n"
         
         "out vec4 fragColor; \n"
 

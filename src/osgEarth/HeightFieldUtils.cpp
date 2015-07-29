@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -677,7 +677,7 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
 }
 
 /******************************************************************************************/
-
+#if 0
 ReplaceInvalidDataOperator::ReplaceInvalidDataOperator():
 _replaceWith(0.0f)
 {
@@ -743,3 +743,4 @@ FillNoDataOperator::operator ()(osg::HeightField *heightField)
         }
     }
 }
+#endif

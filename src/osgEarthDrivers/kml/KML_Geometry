@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -32,8 +32,8 @@ namespace osgEarth_kml
         KML_Geometry() : _extrude(false), _tessellate(false) { }
         virtual void parseCoords( xml_node<>* node, KMLContext& cx );
         virtual void parseStyle( xml_node<>* node, KMLContext& cs, Style& style );
-        virtual void build( xml_node<>* node, KMLContext& cx, const Style& baseStyle );
-        void buildChild( xml_node<>* node, KMLContext& cx, const Style& baseStyle );
+        virtual void build( xml_node<>* node, KMLContext& cx, Style& style );
+        void buildChild( xml_node<>* node, KMLContext& cx, Style& style );
         osg::ref_ptr<Geometry> _geom;
         bool _extrude, _tessellate;
     private:    

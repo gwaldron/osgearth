@@ -1,0 +1,62 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_PICKER_H
+#define OSGEARTH_PICKER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/ObjectIndex>
+#include <osgGA/GUIEventHandler>
+
+namespace osgEarth
+{
+    /**
+     * Base class for an object picker. Header only (no export)
+     */
+    class Picker : public osgGA::GUIEventHandler
+    {
+    public:
+        struct Callback : public osg::Referenced
+        {
+            // Called when an ID is hit
+            virtual void onHit(ObjectID id) { }
+
+            // Called when a query results in nothing
+            virtual void onMiss() { }
+
+            // Called to ask whether to perform a query based on events
+            virtual bool accept(const osgGA::GUIEventAdapter& ea, const osgGA::GUIActionAdapter& aa) { return false; }
+        };
+
+    public:
+        
+        /**
+         * Initiate a pick. The picker will invoke the callback when the pick is complete.
+         * Returns true is the pick was successfully queued.
+         */
+        virtual bool pick(osg::View* view, float mouseX, float mouseY, Callback* callback) = 0;
+
+    protected:
+
+        virtual ~Picker() { }
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_PICKER

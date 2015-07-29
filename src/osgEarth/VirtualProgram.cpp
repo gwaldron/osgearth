@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -179,6 +179,14 @@ namespace
                 {
                     std::string& header = headers[line];
                     header = line;
+                }
+
+                else if ( tokens[0] == "#pragma")
+                {
+                    // Discards all pragmas, since the double-quotes in them are illegal in at least
+                    // GLSL ES compiler (on Android). We should consider doing this for all GLSL
+                    // since technically quoting characters are not part of the GLSL grammar at all.
+                    continue;
                 }
 
                 else
@@ -1041,7 +1049,12 @@ VirtualProgram::apply( osg::State& state ) const
         // Sine we have no way of knowing whether the user created the VP or OSG created it
         // as the default fallback, we use the "_inheritSet" flag to differeniate. This
         // prevents any shader leakage from a VP-enabled node.
-        if ( state.getLastAppliedProgramObject() != 0L )
+
+        // The following "if" helps performance a bit (based on profiler results) but a user
+        // reported state corruption in the OSG stats display. The underlying cause is likely
+        // in external code, but leave it commented out for now -gw 20150721
+
+        //if ( state.getLastAppliedProgramObject() != 0L )
         {
             const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID,true);
             extensions->glUseProgram( 0 );

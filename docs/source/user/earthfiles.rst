@@ -126,7 +126,7 @@ Here's an example cache setup::
     <map name="TMS Example" type="geocentric" version="2">
     
         <image name="metacarta blue marble" driver="tms">
-            <url>http://labs.metacarta.com/wms-c/Basic.py/1.0.0/satellite/</url>
+            <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
         </image>
 
         <options>

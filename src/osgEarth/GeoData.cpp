@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -953,21 +953,44 @@ GeoExtent::recomputeCircle()
 
         if ( getSRS()->isProjected() )
         {
-            _circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
+            double ext = std::max( width(), height() );
+            _circle.setRadius( 0.5*ext * 1.414121356237 ); /*sqrt(2)*/
+            //_circle.setRadius( (osg::Vec2d(x,y)-osg::Vec2d(_west,_south)).length() );
         }
         else // isGeographic
         {
-            // find the longest east-west edge.
-            double cx = west();
-            double cy =
-                north() > 0.0 && south() > 0.0 ? south() :
-                north() < 0.0 && south() < 0.0 ? north() :
-                north() < fabs(south()) ? north() : south();
+            osg::Vec3d center, sw, se, ne, nw;
 
-            osg::Vec3d p0(x, y, 0.0);
-            osg::Vec3d p1(cx, cy, 0.0);
+            GeoPoint(getSRS(), x, y, 0, ALTMODE_ABSOLUTE).toWorld(center);
+            GeoPoint(getSRS(), west(), south(), 0, ALTMODE_ABSOLUTE).toWorld(sw);
+            GeoPoint(getSRS(), east(), south(), 0, ALTMODE_ABSOLUTE).toWorld(se);
+            GeoPoint(getSRS(), east(), north(), 0, ALTMODE_ABSOLUTE).toWorld(ne);
+            GeoPoint(getSRS(), west(), north(), 0, ALTMODE_ABSOLUTE).toWorld(nw);
+            
+            double radius2 = (center-sw).length2();
+            radius2 = std::max(radius2, (center-se).length2());
+            radius2 = std::max(radius2, (center-ne).length2());
+            radius2 = std::max(radius2, (center-sw).length2());
 
-            _circle.setRadius( GeoMath::distance(p0, p1, getSRS()) );
+            _circle.setRadius( sqrt(radius2) );
+#if 0
+            double extDegrees;
+            double metersPerDegree = (getSRS()->getEllipsoid()->getRadiusEquator() * 2.0 * osg::PI) / 360.0;
+
+            if ( width() > height() )
+            {
+                extDegrees = width();
+                double widestLatitude = std::min( fabs(north()), fabs(south()) );
+                metersPerDegree *= cos(osg::DegreesToRadians(widestLatitude));
+            }
+            else
+            {
+                extDegrees = height();
+            }
+
+            double extMeters = extDegrees * metersPerDegree;
+            _circle.setRadius( 0.5*extMeters * 1.414121356237 ); /*sqrt(2)*/
+#endif
         }
 
         _circle.setCenter( GeoPoint(getSRS(), x, y, 0.0, ALTMODE_ABSOLUTE) );

@@ -32,13 +32,18 @@ is randomized, but it is randomized exactly the same way each time.
              
         <layout>
             <crop_features>true</crop_features>
-            <level max_range="7000" style="parks-1"/>
-            <level max_range="3000" style="parks-2"/>
-            <level max_range="1000" style="parks-3"/>
+            <level max_range="25000" style="park-polygons"/>
+            <level max_range="7000"  style="parks-1"/>
+            <level max_range="3000"  style="parks-2"/>
+            <level max_range="1000"  style="parks-3"/>
         </layout>
              
         <styles>
             <style type="text/css">
+                park-polygons {
+                   fill:                #00ff007f;
+                   altitude-clamping:   terrain-drape;
+                }                
                 parks-1 {
                    model:               "../data/tree.ive";
                    model-placement:     random;
@@ -70,22 +75,6 @@ is randomized, but it is randomized exactly the same way each time.
     </model>
     
     
-    <model name="parks" driver="feature_geom" enabled="true">
-        <features name="parks" driver="ogr">
-            <url>../data/parks.shp</url>
-            <build_spatial_index>false</build_spatial_index>
-        </features>
-        <styles>
-            <style type="text/css">      
-                default {
-                   fill:                #00ff007f;
-                   altitude-clamping:   terrain-drape;
-                }                
-            </style>
-        </styles>
-    </model>
-    
-    
     <image name="mapquest_open_aerial" driver="xyz">
         <url>http://oatile[1234].mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg</url>
         <profile>spherical-mercator</profile>
@@ -94,14 +83,14 @@ is randomized, but it is randomized exactly the same way each time.
     </image>
     
     <elevation name="ReadyMap.org - Elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
-    <external>
+    <extensions>
         <viewpoints>
             <viewpoint name="DC overview" heading="0" height="25.83" lat="38.9015" long="-77.0217" pitch="-89.9" range="28262"/>
             <viewpoint name="DC close up" heading="-13.48" lat="38.911" long="-77.051" pitch="-10.1" range="2711"/>
         </viewpoints>
-    </external>
+    </extensions>
   
 </map>

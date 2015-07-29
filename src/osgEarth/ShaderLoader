@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -36,15 +36,15 @@ namespace osgEarth
         /**
          * Adds a function from this package to the VirtualProgram.
          */
-        bool loadFunction(
+        bool load(
             VirtualProgram*       vp,
             const std::string&    filename,
             const osgDB::Options* dbOptions =0L ) const;
 
         /**
-         * Removes a function loaded by loadFunction from the VirtualProgram.
+         * Removes a function loaded by load from the VirtualProgram.
          */
-        bool unloadFunction(
+        bool unload(
             VirtualProgram*       vp,
             const std::string&    filename,
             const osgDB::Options* dbOptions =0L ) const;
@@ -112,16 +112,16 @@ namespace osgEarth
          *   #pragma vp_entryPoint "oe_my_shader"
          *   #pargma vp_location   "VERTEX_VIEW"
          */
-        static bool loadFunction(
+        static bool load(
             VirtualProgram*       vp,
             const std::string&    filename,
             const ShaderPackage&  package,
             const osgDB::Options* dbOptions =0L );
 
         /**
-         * Removes a function loaded by loadFunction from the VirtualProgram.
+         * Removes a function loaded by load from the VirtualProgram.
          */
-        static bool unloadFunction(
+        static bool unload(
             VirtualProgram*       vp,
             const std::string&    filename,
             const ShaderPackage&  package,
@@ -146,3 +146,4 @@ namespace osgEarth
 } // namespace osgEarth
 
 #endif // OSGEARTH_SHADER_LOADER
+

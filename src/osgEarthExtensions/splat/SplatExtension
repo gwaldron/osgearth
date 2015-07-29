@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -75,6 +75,7 @@ namespace osgEarth { namespace Splat
         const SplatOptions                 _options;
         osg::ref_ptr<const osgDB::Options> _dbOptions;
         osg::ref_ptr<SplatTerrainEffect>   _effect;
+        osg::ref_ptr<ImageLayer>           _coverageLayer;
     };
 
 } } // namespace osgEarth::Splat

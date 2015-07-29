@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -37,7 +37,7 @@ _maxLOD( 23 ),
 _minLOD( 0 ),
 _firstLOD( 0 ),
 _enableLighting( false ),
-_attenuationDistance( 1000000 ),
+_attenuationDistance( 0.0f ),
 _lodTransitionTimeSeconds( 0.5f ),
 _enableMipmapping( true ),
 _clusterCulling( true ),

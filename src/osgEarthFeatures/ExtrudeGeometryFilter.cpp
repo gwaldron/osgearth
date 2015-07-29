@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -1117,22 +1117,22 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             FeatureIndexBuilder* index = context.featureIndex();
 
-            if ( walls.valid() && walls->getVertexArray()->getNumElements() > 0 )
+            if ( walls.valid() && walls->getVertexArray() && walls->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( walls.get(), wallStateSet.get(), name, input, index );
             }
 
-            if ( rooflines.valid() && rooflines->getVertexArray()->getNumElements() > 0 )
+            if ( rooflines.valid() && rooflines->getVertexArray() && rooflines->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( rooflines.get(), roofStateSet.get(), name, input, index );
             }
 
-            if ( baselines.valid() && baselines->getVertexArray()->getNumElements() > 0 )
+            if ( baselines.valid() && baselines->getVertexArray() && baselines->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( baselines.get(), 0L, name, input, index );
             }
 
-            if ( outlines.valid() && outlines->getVertexArray()->getNumElements() > 0 )
+            if ( outlines.valid() && outlines->getVertexArray() && outlines->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( outlines.get(), 0L, name, input, index );
             }

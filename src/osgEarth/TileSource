@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -97,6 +97,10 @@ namespace osgEarth
         optional<bool>& coverage() { return _coverage; }
         const optional<bool>& coverage() const { return _coverage; }
 
+        /** osgDB::Options option string to pass through to osgDB reader/writers. */
+        optional<std::string>& osgOptionString() { return _osgOptionString; }
+        const optional<std::string>& osgOptionString() const { return _osgOptionString; }
+
     public:
         /** For backwards-compatibility; use minValidValue() instead 
          *  @deprecated */
@@ -131,6 +135,7 @@ namespace osgEarth
         optional<bool>           _bilinearReprojection;
         optional<unsigned>       _maxDataLevel;
         optional<bool>           _coverage;
+        optional<std::string>    _osgOptionString;
     };
 
 
@@ -347,16 +352,16 @@ namespace osgEarth
             return _options.noDataValue().value(); }
 
         /**
-         * Gets the nodata min value
+         * Gets the minimum valid value. Any value below this is treated as "nodata"
          */
-        virtual float getNoDataMinValue() {
-            return _options.noDataMinValue().value(); }
+        virtual float getMinValidValue() {
+            return _options.minValidValue().value(); }
 
         /**
-         * Gets the nodata max value
+         * Gets the maximum valid value. Any value above this is considered "nodata"
          */
-        virtual float getNoDataMaxValue() {
-            return _options.noDataMaxValue().value(); }
+        virtual float getMaxValidValue() {
+            return _options.maxValidValue().value(); }
 
         /**
          * Gets the preferred extension for this TileSource

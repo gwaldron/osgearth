@@ -18,9 +18,9 @@ used to control the camera and is optimized for viewing geospatial data.
 +==================================+====================================================================+
 | ``--sky``                        | Installs a SkyNode (sun, moon, stars and atmosphere..globe only)   |
 +----------------------------------+--------------------------------------------------------------------+
-| ``--ocean``                      | Installs a sample ocean surface node                               |
-+----------------------------------+--------------------------------------------------------------------+
 | ``--kml [file.kml]``             | Loads a KML or KMZ file                                            |
++----------------------------------+--------------------------------------------------------------------+
+| ``--kmlui``                      | Displays a limited UI for toggling KML placemarks and folders      |
 +----------------------------------+--------------------------------------------------------------------+
 | ``--coords``                     | Displays map coords under mouse                                    |
 +----------------------------------+--------------------------------------------------------------------+
@@ -38,14 +38,9 @@ used to control the camera and is optimized for viewing geospatial data.
 +----------------------------------+--------------------------------------------------------------------+
 | ``--out-earth [out.earth]``      | With ``--images``, writes out an earth file                        |
 +----------------------------------+--------------------------------------------------------------------+
-| ``--logdepth``                   | Activates the logarithmic depth buffer in high-precision mode.     |
-|                                  | High accuracy with a GPU performance penalty.                      |
+| ``--logdepth``                   | Activates the logarithmic depth buffer in high-speed mode.         |
 +----------------------------------+--------------------------------------------------------------------+
-| ``--logdepth2``                  | Activates the logarithmic depth buffer in low-precision mode.      |
-|                                  | Faster, but less tolerant of poorly tessellated data near the      |
-|                                  | camera.                                                            |
-+----------------------------------+--------------------------------------------------------------------+
-| ``--autoclip``                   | Installs an automatic clip plane handler                           |
+| ``--logdepth2``                  | Activates the logarithmic depth buffer in high-precision mode.     |
 +----------------------------------+--------------------------------------------------------------------+
 | ``--uniform [name] [min] [max]`` | Installs a uniform and displays an on-screen slider to control its |
 |                                  | value. Helpful for debugging.                                      |
@@ -308,7 +303,4 @@ osgearth_overlayviewer
 view of the map and another that shows the bounding frustums that are used for the overlay computations.
 
 .. _TMS: http://en.wikipedia.org/wiki/Tile_Map_Service
-
-
-
 

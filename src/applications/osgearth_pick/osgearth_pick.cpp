@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,27 +8,30 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/RTTPicker>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ObjectIndex>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/RTTPicker>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureIndex>
 #include <osgEarthAnnotation/AnnotationNode>
 
-#include <osgEarth/Pickers>
+#include <osgEarth/IntersectionPicker>
 
 #include <osgViewer/CompositeViewer>
 #include <osgGA/TrackballManipulator>
@@ -56,8 +59,8 @@ struct TestIsectPicker : public osgGA::GUIEventHandler
     {
         if ( ea.getEventType() == ea.RELEASE )
         {
-            Picker picker(dynamic_cast<osgViewer::View*>(aa.asView()));
-            Picker::Hits hits;
+            IntersectionPicker picker(dynamic_cast<osgViewer::View*>(aa.asView()));
+            IntersectionPicker::Hits hits;
             if(picker.pick(ea.getX(), ea.getY(), hits)) {
                 std::set<ObjectID> oids;
                 if (picker.getObjectIDs(hits, oids)) {
@@ -193,6 +196,7 @@ void
 setupRTTView(osgViewer::View* view, osg::Texture* rttTex)
 {
     view->setCameraManipulator(0L);
+    view->getCamera()->setName( "osgearth_pick RTT view" );
     view->getCamera()->setViewport(0,0,256,256);
     view->getCamera()->setClearColor(osg::Vec4(1,1,1,1));
     view->getCamera()->setProjectionMatrixAsOrtho2D(-.5,.5,-.5,.5);
@@ -305,6 +309,8 @@ main(int argc, char** argv)
         installHighlighter(
             MapNode::get(node)->getOrCreateStateSet(),
             Registry::objectIndex()->getObjectIDAttribLocation() );
+
+        mainView->getCamera()->setName( "Main view" );
 
         return viewer.run();
     }

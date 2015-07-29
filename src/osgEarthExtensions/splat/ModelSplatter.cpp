@@ -40,8 +40,8 @@ namespace
         "#extension GL_EXT_gpu_shader4 : enable \n" 
         "#extension GL_ARB_draw_instanced: enable \n" 
 
-        "uniform sampler2D oe_terrain_tex; \n"
-        "uniform mat4 oe_terrain_tex_matrix; \n"
+        "uniform sampler2D oe_tile_elevationTex; \n"
+        "uniform mat4 oe_tile_elevationTexMatrix; \n"
         "uniform vec2 oe_trees_span; \n"
 
         "uniform vec4 oe_tile_key; \n"
@@ -64,14 +64,14 @@ namespace
         "    VertexMODEL.xy += offset; \n"
 
         // matrix mult probably unnecessary 
-        "    vec4 rc = oe_terrain_tex_matrix * vec4(rx, ry, 0.0, 1.0); \n"
+        "    vec4 rc = oe_tile_elevationTexMatrix * vec4(rx, ry, 0.0, 1.0); \n"
      
         // scale and bias the tex coords for heightfield sampling:
         // "17" is the tile size. Obviously this needs to be parameterized.
         "    rc *= 16.0/17.0; \n"
         "    rc += 0.5/17.0; \n"
 
-        "    float h = texture2D(oe_terrain_tex, rc.st).r; \n"
+        "    float h = texture2D(oe_tile_elevationTex, rc.st).r; \n"
         "    VertexMODEL.z += h; \n"
         "} \n";
 
@@ -157,6 +157,7 @@ ModelSplatter::establish()
 void
 ModelSplatter::operator()(const TileKey& key, osg::Node* node)
 {
+#if 0
     TerrainTileNode* tile = osgEarth::findTopMostNodeOfType<TerrainTileNode>(node);
     if ( !tile )
         return;
@@ -166,20 +167,20 @@ ModelSplatter::operator()(const TileKey& key, osg::Node* node)
         // make sure the correct model is loaded
         establish();
 
-        // elevation texture and matrix are required
-        osg::Texture* elevationTex = tile->getElevationTexture();
-        if ( !elevationTex )
-        {
-            //OE_WARN << LC << "No elevation texture for key " << key.str() << "\n";
-            return;
-        }
+        //// elevation texture and matrix are required
+        //osg::Texture* elevationTex = tile->getModel()->elevationModel().get();
+        //if ( !elevationTex )
+        //{
+        //    //OE_WARN << LC << "No elevation texture for key " << key.str() << "\n";
+        //    return;
+        //}
 
-        osg::RefMatrixf* elevationTexMat = tile->getElevationTextureMatrix();
-        if ( !elevationTexMat )
-        {
-            //OE_WARN << LC << "No elevation texture matrix for key " << key.str() << "\n";
-            return;
-        }
+        //osg::RefMatrixf* elevationTexMat = tile->getElevationTextureMatrix();
+        //if ( !elevationTexMat )
+        //{
+        //    //OE_WARN << LC << "No elevation texture matrix for key " << key.str() << "\n";
+        //    return;
+        //}
         
         osg::Group* payload = tile->getOrCreatePayloadGroup();
         payload->addChild( _model.get() );
@@ -196,9 +197,10 @@ ModelSplatter::operator()(const TileKey& key, osg::Node* node)
         float w = key.getExtent().width() * 111320.0f * cos(fabs(osg::DegreesToRadians(p.y())));
         ss->addUniform( new osg::Uniform("oe_trees_span", osg::Vec2f(w,h)) );
         
-        // hack..
-        ss->setTextureAttributeAndModes(2, tile->getElevationTexture(), 1);
-        ss->addUniform(new osg::Uniform("oe_terrain_tex", 2));
-        ss->addUniform(new osg::Uniform("oe_terrain_tex_matrix", *elevationTexMat) );
+        //// hack..
+        //ss->setTextureAttributeAndModes(2, tile->getElevationTexture(), 1);
+        //ss->addUniform(new osg::Uniform("oe_terrain_tex", 2));
+        //ss->addUniform(new osg::Uniform("oe_terrain_tex_matrix", osg::Matrixf(*elevationTexMat)) );        
     }
+#endif
 }

@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -130,8 +133,8 @@ ContourMap::onInstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
         Shaders pkg;
-        pkg.loadFunction(vp, pkg.ContourMap_Vertex);
-        pkg.loadFunction(vp, pkg.ContourMap_Fragment);
+        pkg.load(vp, pkg.ContourMap_Vertex);
+        pkg.load(vp, pkg.ContourMap_Fragment);
 
         // Install some uniforms that tell the shader the height range of the color map.
         stateset->addUniform( _xferMin.get() );
@@ -164,8 +167,8 @@ ContourMap::onUninstall(TerrainEngineNode* engine)
             if ( vp )
             {
                 Shaders pkg;
-                pkg.unloadFunction(vp, pkg.ContourMap_Vertex);
-                pkg.unloadFunction(vp, pkg.ContourMap_Fragment);
+                pkg.unload(vp, pkg.ContourMap_Vertex);
+                pkg.unload(vp, pkg.ContourMap_Fragment);
             }
         }
 

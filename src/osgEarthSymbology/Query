@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarth/Config>
+#include <osgEarth/Map>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 
@@ -54,6 +55,10 @@ namespace osgEarth { namespace Symbology
         /** Sets a driver-specific query expression. */
         optional<osgEarth::TileKey>& tileKey() { return _tileKey; }
         const optional<osgEarth::TileKey>& tileKey() const { return _tileKey; }
+
+        const Map* getMap() const;
+
+        void setMap(const Map* map);
         
 
         /**
@@ -71,6 +76,7 @@ namespace osgEarth { namespace Symbology
         optional<std::string> _expression;
         optional<std::string> _orderby;
         optional<osgEarth::TileKey> _tileKey;
+        const Map* _map;
     };
 
 } } // namespace osgEarth::Symbology

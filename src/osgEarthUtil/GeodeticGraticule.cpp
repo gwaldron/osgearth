@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -204,7 +204,9 @@ GeodeticGraticule::rebuild()
         }
     }
 
-    _root = new DrapeableNode( _mapNode.get(), false );
+    DrapeableNode* drapeable = new DrapeableNode();
+    drapeable->setDrapingEnabled( false );
+    _root = drapeable;
     this->addChild( _root );
 
     // need at least one level

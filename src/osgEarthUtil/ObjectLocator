@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -29,6 +29,7 @@ namespace osgEarth { namespace Util
     using namespace osgEarth;
 
     /**
+     * @deprecated - slated for removal after Version 2.7
      * ObjectLocator - a revisioned object that generates a positional matrix for a node.
      */
     class OSGEARTHUTIL_EXPORT ObjectLocator : public osg::Referenced, public Revisioned

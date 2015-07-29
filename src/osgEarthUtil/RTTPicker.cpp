@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/RTTPicker>
+#include <osgEarthUtil/RTTPicker>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -27,6 +27,7 @@
 #include <osg/BlendFunc>
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 
 #define LC "[RTTPicker] "
 
@@ -159,6 +160,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     
     // make an RTT camera and bind it to our imag:
     c._pickCamera = new osg::Camera();
+    c._pickCamera->setName( "osgEarth::RTTPicker" );
     c._pickCamera->addChild( _group.get() );
     c._pickCamera->setClearColor( osg::Vec4(0,0,0,0) );
     c._pickCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -167,6 +169,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     c._pickCamera->setRenderOrder( osg::Camera::PRE_RENDER, 1 );
     c._pickCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
     c._pickCamera->attach( osg::Camera::COLOR_BUFFER0, c._image.get() );
+    c._pickCamera->setSmallFeatureCullingPixelSize( -1.0f );
     
     osg::StateSet* rttSS = c._pickCamera->getOrCreateStateSet();
 
@@ -195,6 +198,7 @@ RTTPicker::getOrCreatePickContext(osg::View* view)
     view->getCamera()->addChild( c._pickCamera.get() );
 
     // associate the RTT camara with the view's camera.
+    // (e.g., decluttering uses this to find the "true" viewport)
     c._pickCamera->setUserData( view->getCamera() );
 
     return c;
@@ -225,6 +229,12 @@ RTTPicker::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
     }
 
     return false;
+}
+
+bool
+RTTPicker::pick(osg::View* view, float mouseX, float mouseY)
+{
+    return pick(view, mouseX, mouseY, 0L);
 }
 
 bool

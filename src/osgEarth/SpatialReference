@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -300,7 +300,12 @@ namespace osgEarth
         /** Creates a copy of this SRS, but flags the new SRS so that it will operate in
             Plate Carre mode for the purposes of world coordinate conversion. The SRS is
             otherwise mathematically equivalent to its vanilla counterpart. */
-        const SpatialReference* createPlateCarreGeographicSRS() const;
+        //const SpatialReference* createPlateCarreGeographicSRS() const;
+
+        /** Create an equirectangular projected SRS corresponding to the geographic SRS
+            contained in this spatial reference. This is an approximation of a Plate Carre
+            SRS but using equatorial meters. */
+        const SpatialReference* createEquirectangularSRS() const;
 
         /** Creates a new CSN based on this spatial reference. */
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -56,6 +56,26 @@ using namespace osgEarth;
 #       define LIBNAME_UTIL_EXTENSION ".so"
 #   endif
 #endif
+
+namespace
+{
+    void recursiveUniqueKeyMerge(Config& lhs, const Config& rhs)
+    {
+        if ( rhs.value() != lhs.value() )
+        {
+            lhs.value() = rhs.value();
+        }
+
+        for(ConfigSet::const_iterator rhsChild = rhs.children().begin(); rhsChild != rhs.children().end(); ++rhsChild)
+        {
+            Config* lhsChild = lhs.mutable_child(rhsChild->key());
+            if ( lhsChild )
+                recursiveUniqueKeyMerge( *lhsChild, *rhsChild );
+            else
+                lhs.add( *rhsChild );
+        }
+    }
+}
 
 
 class ReaderWriterEarth : public osgDB::ReaderWriter
@@ -139,13 +159,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 return ReadResult( new MapNode() );
             }
 
-            else if ( fileName == "__cube.earth" )
-            {
-                MapOptions options;
-                options.coordSysType() = MapOptions::CSTYPE_GEOCENTRIC_CUBE;
-                return ReadResult( new MapNode( new Map(options) ) );
-            }
-
             else
             {
                 std::string fullFileName = fileName;
@@ -205,7 +218,32 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 else
                 {
                     if ( conf.value("version") != "2" )
-                        OE_INFO << LC << "No valid earth file version; assuming version='2'" << std::endl;
+                        OE_DEBUG << LC << "No valid earth file version; assuming version='2'" << std::endl;
+
+                    // attempt to parse a "default options" JSON string:
+                    std::string defaultConfStr;
+                    if ( options )
+                    {
+                        defaultConfStr = options->getPluginStringData("osgEarth.defaultOptions");
+                        if ( !defaultConfStr.empty() )
+                        {
+                            Config optionsConf("options");
+                            if (optionsConf.fromJSON(defaultConfStr))
+                            {
+                                //OE_NOTICE << "\n\nOriginal = \n" << conf.toJSON(true) << "\n";
+                                Config* original = conf.mutable_child("options");
+                                if ( original )
+                                {
+                                    recursiveUniqueKeyMerge(optionsConf, *original);
+                                }
+                                if ( !optionsConf.empty() )
+                                {
+                                    conf.set("options", optionsConf);
+                                }
+                                //OE_NOTICE << "\n\nMerged = \n" << conf.toJSON(true) << "\n";
+                            }
+                        }
+                    }
 
                     EarthFileSerializer2 ser;
                     mapNode = ser.deserialize( conf, refURI );

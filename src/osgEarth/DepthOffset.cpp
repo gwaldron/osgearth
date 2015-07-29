@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -184,7 +184,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         s->removeUniform( _minRangeUniform.get() );
         s->removeUniform( _maxRangeUniform.get() );
         
-        shaders.unloadFunction( VirtualProgram::get(s), shaders.DepthOffsetVertex );
+        shaders.unload( VirtualProgram::get(s), shaders.DepthOffsetVertex );
     }
 
     if ( install )
@@ -198,7 +198,7 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
         s->addUniform( _minRangeUniform.get() );
         s->addUniform( _maxRangeUniform.get() );
         
-        shaders.loadFunction(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);        
+        shaders.load(VirtualProgram::getOrCreate(s), shaders.DepthOffsetVertex);        
     }
 
     if ( graphChanging )

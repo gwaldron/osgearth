@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -128,6 +128,8 @@ SimpleOceanNode::rebuild()
 
         mpoptions.enableBlending() = true;        // gotsta blend with the main node
 
+        mpoptions.color() = _options.baseColor().get();
+
         mno.setTerrainOptions( mpoptions );
 
         // make the ocean's map node:
@@ -178,8 +180,8 @@ SimpleOceanNode::rebuild()
         std::string vertSource = _options.maskLayer().isSet() ? source_vertMask : source_vertProxy;
         std::string fragSource = _options.maskLayer().isSet() ? source_fragMask : source_fragProxy;
 
-        vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
-        vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
+        vp->setFunction( "oe_ocean_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "oe_ocean_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.6f );
 
         // install the slot attribute(s)
         ss->getOrCreateUniform( "ocean_data", osg::Uniform::SAMPLER_2D )->set( 0 );

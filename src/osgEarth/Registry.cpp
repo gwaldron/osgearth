@@ -62,7 +62,7 @@ _numGdalMutexGets   ( 0 ),
 _uidGen             ( 0 ),
 _caps               ( 0L ),
 _defaultFont        ( 0L ),
-_terrainEngineDriver( "rex" ),
+_terrainEngineDriver( "mp" ),
 _cacheDriver        ( "filesystem" )
 {
     // set up GDAL and OGR.

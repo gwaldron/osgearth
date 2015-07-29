@@ -28,6 +28,12 @@
 #    define GET_SHA ""
 #endif
 
+#ifdef OSGEARTH_DEVEL_VERSION
+#    define isDevelopmentVersion " DEVELOPMENT "
+#else
+#    define isDevelopmentVersion " "
+#endif
+
 extern "C" {
 
 const char* osgEarthGetVersion()
@@ -38,19 +44,21 @@ const char* osgEarthGetVersion()
     {
         if (OSGEARTH_RC_VERSION == 0 )
         {
-            sprintf(osgearth_version,"%d.%d.%d (%s)",
+            sprintf(osgearth_version,"%d.%d.%d%s(%s)",
                 OSGEARTH_MAJOR_VERSION,
                 OSGEARTH_MINOR_VERSION,
                 OSGEARTH_PATCH_VERSION,
+                isDevelopmentVersion,
                 GET_SHA );
         }
         else
         {
-            sprintf(osgearth_version,"%d.%d.%d RC%d (%s)",
+            sprintf(osgearth_version,"%d.%d.%d RC%d%s(%s)",
                 OSGEARTH_MAJOR_VERSION,
                 OSGEARTH_MINOR_VERSION,
                 OSGEARTH_PATCH_VERSION,
                 OSGEARTH_RC_VERSION,
+                isDevelopmentVersion,
                 GET_SHA );
         }
 

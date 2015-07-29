@@ -51,6 +51,25 @@ void MorphVertex( inout vec3 vPositionMorphed,  inout vec2 vUVMorphed
   vPositionMorphed.xyz = vPositionOriginal.xyz + normalize(vTangent)*dudv.x*vTileScale.x + normalize(vBinormal)*dudv.y*vTileScale.y;   
 }
 
+float ComputeMorphFactor(in vec4 vertexView)
+{
+	vec4 elevc = oe_tile_elevationTexMatrix * oe_layer_tilec;
+	float elev = textureLod(oe_tile_elevationTex, elevc.st,0).r;
+
+	vec4 vertexViewElevated = vertexView;
+#if VP_REX_DISPLACEMENT_MAPPING_ENABLED
+	vertexViewElevated.xyz += oe_UpVectorView*elev;
+#endif
+
+#if VP_REX_TILE_LEVEL_MORPHING
+	float fMorphLerpK  = 1.0f - clamp( oe_tile_morph_constants.z - oe_tile_camera_to_tilecenter.x * oe_tile_morph_constants.w, 0.0, 1.0 );
+#else
+	float fDistanceToEye = length(vertexViewElevated);
+	float fMorphLerpK  = 1.0f - clamp( oe_tile_morph_constants.z - fDistanceToEye * oe_tile_morph_constants.w, 0.0, 1.0 );
+#endif
+	return fMorphLerpK;
+}
+
 void oe_rexEngine_applyElevation(inout vec4 vertexView)
 {
 	// We use tangent space morphing only on higher res grids.
@@ -74,20 +93,8 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 #if VP_REX_MORPHING_ENABLED
 	else
 	{
-		vec4 elevc = oe_tile_elevationTexMatrix * oe_layer_tilec;
-		float elev = textureLod(oe_tile_elevationTex, elevc.st,0).r;
+		float fMorphLerpK = ComputeMorphFactor(vertexView);
 
-		vec4 vertexViewElevated = vertexView;
-#if VP_REX_DISPLACEMENT_MAPPING_ENABLED
-		vertexViewElevated.xyz += oe_UpVectorView*elev;
-#endif
-
-#if VP_REX_TILE_LEVEL_MORPHING
-		float fMorphLerpK  = 1.0f - clamp( oe_tile_morph_constants.z - oe_tile_camera_to_tilecenter.x * oe_tile_morph_constants.w, 0.0, 1.0 );
-#else
-		float fDistanceToEye = length(vertexViewElevated);
-		float fMorphLerpK  = 1.0f - clamp( oe_tile_morph_constants.z - fDistanceToEye * oe_tile_morph_constants.w, 0.0, 1.0 );
-#endif
 		vec3 vPositionMorphed;
 		vec2 vUVMorphed;
 

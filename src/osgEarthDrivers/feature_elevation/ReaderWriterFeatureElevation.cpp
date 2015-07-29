@@ -104,13 +104,13 @@ public:
         _features->initialize( _dbOptions );
 
         // populate feature list
-        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
-        while ( cursor.valid() && cursor->hasMore() )
-        {
-            Feature* f = cursor->nextFeature();
-            if ( f && f->getGeometry() )
-                _featureList.push_back(f);
-        }
+        //osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
+        //while ( cursor.valid() && cursor->hasMore() )
+        //{
+        //    Feature* f = cursor->nextFeature();
+        //    if ( f && f->getGeometry() )
+        //        _featureList.push_back(f);
+        //}
 
         if (_features->getFeatureProfile())
         {
@@ -172,6 +172,24 @@ public:
             double xmin, ymin, xmax, ymax;
             key.getExtent().getBounds(xmin, ymin, xmax, ymax);
 
+            // populate feature list
+            const SpatialReference* featureSRS = _features->getFeatureProfile()->getSRS();
+            GeoExtent extentInFeatureSRS = key.getExtent().transform( featureSRS );
+
+            // assemble a spatial query. It helps if your features have a spatial index.
+            Query query;
+            query.bounds() = extentInFeatureSRS.bounds();
+
+            FeatureList featureList;
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
+            while ( cursor.valid() && cursor->hasMore() )
+            {
+                Feature* f = cursor->nextFeature();
+                if ( f && f->getGeometry() )
+                    featureList.push_back(f);
+            }
+
+
             // Iterate over the output heightfield and sample the data that was read into it.
             double dx = (xmax - xmin) / (tileSize-1);
             double dy = (ymax - ymin) / (tileSize-1);
@@ -185,8 +203,7 @@ public:
 
                     float h = NO_DATA_VALUE;
 
-
-                    for (FeatureList::iterator f = _featureList.begin(); f != _featureList.end(); ++f)
+                    for (FeatureList::iterator f = featureList.begin(); f != featureList.end(); ++f)
                     {
                         osgEarth::Symbology::Polygon* p = dynamic_cast<osgEarth::Symbology::Polygon*>((*f)->getGeometry());
 
@@ -229,7 +246,6 @@ private:
     const FeatureElevationOptions _options;
 
     osg::ref_ptr<FeatureSource> _features;
-    FeatureList _featureList;
 
     osg::ref_ptr< CacheBin > _cacheBin;
     osg::ref_ptr< osgDB::Options > _dbOptions;

@@ -72,6 +72,8 @@ float ComputeMorphFactor(in vec4 vertexView)
 
 void oe_rexEngine_applyElevation(inout vec4 vertexView)
 {
+	float fMorphLerpK = ComputeMorphFactor(vertexView);
+
 	// We use tangent space morphing only on higher res grids.
 	// The lod at and beyond which this tangent space morphing is
 	// done is encoded in oe_tile_grid_dimensions.w
@@ -87,13 +89,14 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
 		// assumption: vp_Normal is normalized
 		vertexView.xyz += oe_UpVectorView*elev;
 #endif
-
-		flerp.xyzw = vec4(0);
+	
+		// In this case, the vertices are		to be morphed (this factor is stored in x)
+		// In this case, the textures are *not* to be morphed (this factor is stored in y)
+		flerp.xyzw = vec4(0, fMorphLerpK, 0, 0);
 	}
 #if VP_REX_MORPHING_ENABLED
 	else
 	{
-		float fMorphLerpK = ComputeMorphFactor(vertexView);
 
 		vec3 vPositionMorphed;
 		vec2 vUVMorphed;
@@ -116,7 +119,9 @@ void oe_rexEngine_applyElevation(inout vec4 vertexView)
         // Update the tile coords:
         oe_layer_tilec.st = vUVMorphed;
 
-		flerp.xyzw = vec4(fMorphLerpK);
+		// In this case, the vertices are to be morphed (this factor is stored in x)
+		// In this case, the textures are to be morphed (this factor is stored in y)
+		flerp.xyzw = vec4(fMorphLerpK, fMorphLerpK, 0, 0);
 	}
 #endif
 

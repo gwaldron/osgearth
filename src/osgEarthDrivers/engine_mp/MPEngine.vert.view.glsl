@@ -13,7 +13,7 @@ varying float oe_layer_rangeOpacity;
 
 void oe_mp_vertView(inout vec4 vertexView)
 {
-    float range = -vertexView.z;
+    float range = max(-vertexView.z, 0.0);
 
     float attenMin    = oe_layer_minRange - oe_layer_attenuationRange;
     float attenMax    = oe_layer_maxRange + oe_layer_attenuationRange;

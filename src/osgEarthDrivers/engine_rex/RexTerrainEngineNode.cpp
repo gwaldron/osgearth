@@ -1044,7 +1044,6 @@ RexTerrainEngineNode::updateState()
             // special object ID that denotes the terrain surface.
             surfaceStateSet->addUniform( new osg::Uniform(
                 Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
-
         }
 
         _stateUpdateRequired = false;

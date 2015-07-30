@@ -6,6 +6,7 @@
 #pragma vp_order      "0.5"
 #pragma vp_define     "OE_REX_USE_BLENDING"
 
+uniform bool      oe_isPickCamera;
 uniform sampler2D oe_layer_tex;
 uniform sampler2D oe_layer_tex_parent;
 uniform int       oe_layer_uid;
@@ -35,4 +36,9 @@ void oe_rexEngine_frag(inout vec4 color)
 #else
     color = texel;
 #endif
+
+    // disable primary coloring for pick cameras. Necessary to support picking of
+    // draped geometry.
+    float pick = oe_isPickCamera ? 1.0 : 0.0;
+    color = mix(color, vec4(0), pick);
 }

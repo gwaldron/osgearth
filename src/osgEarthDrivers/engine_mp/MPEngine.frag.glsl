@@ -31,7 +31,8 @@ void oe_mp_apply_coloring(inout vec4 color)
     color = texel;
 #endif
 
-    // disable primary coloring for pick cameras.
+    // disable primary coloring for pick cameras. Necessary to support picking of
+    // draped geometry.
     float pick = oe_isPickCamera ? 1.0 : 0.0;
     color = mix(color, vec4(0), pick);
 }

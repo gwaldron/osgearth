@@ -11,9 +11,6 @@ uniform float oe_layer_attenuationRange;
 
 varying float oe_layer_rangeOpacity;
 
-varying vec3 oe_UpVectorView;
-attribute vec3 oe_terrain_attr;
-
 void oe_mp_vertView(inout vec4 vertexView)
 {
     float range = max(-vertexView.z, 0.0);
@@ -27,6 +24,4 @@ void oe_mp_vertView(inout vec4 vertexView)
         range < oe_layer_minRange                                ? clamp((range-attenMin)/oe_layer_attenuationRange, 0.0, 1.0) :
         range > oe_layer_maxRange                                ? clamp((attenMax-range)/oe_layer_attenuationRange, 0.0, 1.0) :
         0.0;
-
-    oe_UpVectorView = gl_NormalMatrix * oe_terrain_attr.xyz;
 }

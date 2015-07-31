@@ -5,7 +5,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   "vertex_model"
 #pragma vp_order      "0.5"
 
-attribute vec4 oe_terrain_attr;
+attribute vec4 oe_terrain_attr; // mp-only
 uniform float oe_contour_min;
 uniform float oe_contour_range;
 varying float oe_contour_lookup;

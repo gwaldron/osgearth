@@ -158,11 +158,17 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
                 return _neighbors;
             }
 
+            int getUnit() const
+            {
+                return _unit;
+            }
+
         public:
             osg::ref_ptr<osg::HeightField> _hf;
             osg::ref_ptr<GeoLocator>       _locator;
             bool                           _fallbackData;
             osg::ref_ptr<osg::HeightField> _parent;
+            int                            _unit;
 
             HeightFieldNeighborhood _neighbors;
         };

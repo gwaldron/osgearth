@@ -69,10 +69,9 @@ _outOfDate         ( false )
 
             _elevTexMat = new osg::RefMatrixf( osg::Matrixf(elevMatrix) );
             
-            // just stick this here for now.
-            // TODO: use the proper unit binding.
             osg::StateSet* stateSet = getOrCreateStateSet();
 
+            // TEMPORARY.
             stateSet->setTextureAttribute(
                 2,
                 _model->_elevationTexture.get() );
@@ -101,6 +100,15 @@ _outOfDate         ( false )
             normalMatrix.postMult( samplingScaleBias );
 
             _normalTexMat = new osg::RefMatrixf(normalMatrix);
+            
+            osg::StateSet* stateSet = getOrCreateStateSet();
+
+            stateSet->setTextureAttribute(
+                model->_normalData.getUnit(),
+                model->_normalTexture.get() );
+
+            stateSet->addUniform( new osg::Uniform(
+                "oe_tile_normalTexMatrix", *_normalTexMat.get() ) );
         }
     }
 }

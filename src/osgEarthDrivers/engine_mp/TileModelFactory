@@ -66,6 +66,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             osg::ref_ptr<TileModel>& out_model,     // output or NULL upon failure
             ProgressCallback*        progress);     // progess tracking
 
+        void setNormalMapUnit(int unit) { _normalMapUnit = unit; }
+
     private:        
 
         osg::ref_ptr<TileNodeRegistry> _liveTiles;
@@ -73,6 +75,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         TerrainEngineRequirements*     _terrainReqs;
         osg::ref_ptr<HeightFieldCache> _meshHFCache;
         osg::ref_ptr<HeightFieldCache> _normalHFCache;
+        int                            _normalMapUnit;
         bool                           _debug;
         
         void buildElevation(

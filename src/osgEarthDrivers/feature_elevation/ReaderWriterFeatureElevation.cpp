@@ -140,7 +140,7 @@ public:
             return Status::Error( Stringify() << "Failed to establish a profile for " <<  this->getName() );
         }
 
-        getDataExtents().push_back( DataExtent(_extents, 0, _maxDataLevel) );
+        //getDataExtents().push_back( DataExtent(_extents, 0, _maxDataLevel) );
 
         return STATUS_OK;
     }

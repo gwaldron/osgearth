@@ -124,6 +124,55 @@ namespace
         {
         }
     };
+
+#if 0
+    class NormalTexInstaller : public TerrainEngine::NodeCallback
+    {
+    public:
+        NormalTexInstaller(int unit) : _unit(unit) { }
+        
+    public: // TileNodeCallback
+        void operator()(const TileKey& key, osg::Node* node)
+        {
+            TileNode* tile = osgEarth::findTopMostNodeOfType<TileNode>(node);
+            if ( !tile )
+            {
+                OE_WARN << LC << "No tile " << key.str() << "\n";
+                return;
+            }
+
+            if ( !tile->getTileModel() )
+            {
+                OE_WARN << LC << "No tile model available for " << key.str() << "\n";
+                return;
+            }
+            
+            osg::StateSet* ss = node->getOrCreateStateSet();
+            osg::Texture* tex = tile->getTileModel()->getNormalTexture();
+            if ( tex )
+            {
+                ss->setTextureAttribute(_unit, tex);
+            }
+
+            osg::RefMatrixf* mat = tile->getModel()->getNormalTextureMatrix();
+            osg::Matrixf fmat;
+            if ( mat )
+            {
+                fmat = osg::Matrixf(*mat);
+            }
+            else
+            {
+                // special marker indicating that there's no valid normal texture.
+                fmat(0,0) = 0.0f;
+            }
+
+            ss->addUniform(new osg::Uniform("oe_tile_normalTexMatrix", fmat) );
+        }
+
+    private:
+        int _unit;
+    };
+#endif
 }
 
 //---------------------------------------------------------------------------
@@ -291,6 +340,14 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     
     // initialize the model factory:
     _tileModelFactory = new TileModelFactory(_liveTiles.get(), _terrainOptions, this);
+
+    // Normal map texture unit
+    if ( _terrainOptions.normalMaps() == true )
+    {
+        this->_requireNormalTextures = true;
+        getResources()->reserveTextureImageUnit( _normalMapUnit, "MP Normal Maps" );
+        _tileModelFactory->setNormalMapUnit( _normalMapUnit );
+    }
 
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )
@@ -899,9 +956,6 @@ MPTerrainEngineNode::updateState()
             new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON );
 
-        // TESTING
-        terrainStateSet->addUniform( new osg::Uniform("sharedTexture", (int)2) );
-
         // install shaders, if we're using them.
         if ( Registry::capabilities().supportsGLSL() )
         {
@@ -920,10 +974,17 @@ MPTerrainEngineNode::updateState()
 
             package.define( "MP_USE_BLENDING", (_terrainOptions.enableBlending() == true) );
 
-            package.load( vp, package.VertexModel );
-            package.load( vp, package.VertexView );
-            package.load( vp, package.Fragment );
+            package.load( vp, package.EngineVertexModel );
+            package.load( vp, package.EngineVertexView );
+            package.load( vp, package.EngineFragment );
             
+            if ( this->normalTexturesRequired() )
+            {
+                package.load( vp, package.NormalMapVertex );
+                package.load( vp, package.NormalMapFragment );
+
+                terrainStateSet->addUniform( new osg::Uniform("oe_tile_normalTex", _normalMapUnit) );
+            }
 
             // terrain background color; negative means use the vertex color.
             Color terrainColor = _terrainOptions.color().getOrUse( Color(1,1,1,-1) );

@@ -394,6 +394,8 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
                     hf,
                     GeoLocator::createForKey( key, mapInfo ),
                     isFallback );
+
+                model->_normalData._unit = _normalMapUnit;
             }
         }
     }
@@ -408,6 +410,8 @@ TileModelFactory::buildNormalMap(const TileKey&    key,
             hf,
             GeoLocator::createForKey( key, mapInfo ),
             false );
+
+        model->_normalData._unit = _normalMapUnit;
     }
 
     if ( isFallback && parentModel.valid() )

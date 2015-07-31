@@ -4,7 +4,10 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 set(TARGET_GLSL
     MPEngine.vert.model.glsl
     MPEngine.vert.view.glsl
-    MPEngine.frag.glsl)
+    MPEngine.frag.glsl
+    MPEngine.NormalMap.vert.glsl
+    MPEngine.NormalMap.frag.glsl
+)
 
 set(TARGET_IN
     MPShaders.cpp.in)

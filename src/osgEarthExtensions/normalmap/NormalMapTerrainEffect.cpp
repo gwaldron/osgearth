@@ -35,7 +35,7 @@
 using namespace osgEarth;
 using namespace osgEarth::NormalMap;
 
-#if 0
+#if 1
 namespace
 {
     class NormalTexInstaller : public TerrainEngine::NodeCallback
@@ -48,17 +48,20 @@ namespace
         void operator()(const TileKey& key, osg::Node* node)
         {
             TerrainTileNode* tile = osgEarth::findTopMostNodeOfType<TerrainTileNode>(node);
-            if ( !tile )
+            if ( !tile || !tile->getModel() )
+            {
+                OE_WARN << LC << "No normal texture creaed for " << key.str() << "\n";
                 return;
+            }
             
             osg::StateSet* ss = node->getOrCreateStateSet();
-            osg::Texture* tex = tile->getNormalTexture();
+            osg::Texture* tex = tile->getModel()->getNormalTexture();
             if ( tex )
             {
                 ss->setTextureAttribute(_unit, tex);
             }
 
-            osg::RefMatrixf* mat = tile->getNormalTextureMatrix();
+            osg::RefMatrixf* mat = tile->getModel()->getNormalTextureMatrix();
             osg::Matrixf fmat;
             if ( mat )
             {
@@ -70,7 +73,7 @@ namespace
                 fmat(0,0) = 0.0f;
             }
 
-            ss->addUniform(new osg::Uniform(NORMAL_MATRIX, fmat) );
+            ss->addUniform(new osg::Uniform("oe_tile_normalTexMatrix", fmat) );
         }
 
     private:
@@ -93,8 +96,8 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
     {
         engine->requireNormalTextures();
 
-        //engine->getResources()->reserveTextureImageUnit(_normalMapUnit, "NormalMap");
-        //engine->addTileNodeCallback( new NormalTexInstaller(this, _normalMapUnit) );
+        engine->getResources()->reserveTextureImageUnit(_normalMapUnit, "NormalMap");
+        engine->addTileNodeCallback( new NormalTexInstaller(this, _normalMapUnit) );
         
         // shader components
         osg::StateSet* stateset = engine->getSurfaceStateSet();
@@ -105,7 +108,7 @@ NormalMapTerrainEffect::onInstall(TerrainEngineNode* engine)
         package.load( vp, package.Vertex );
         package.load( vp, package.Fragment );
         
-        //stateset->addUniform( new osg::Uniform(NORMAL_SAMPLER, _normalMapUnit) );
+        stateset->addUniform( new osg::Uniform("oe_tile_normalTex", _normalMapUnit) );
     }
 }
 
@@ -123,12 +126,12 @@ NormalMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
             package.unload( vp, package.Vertex );
             package.unload( vp, package.Fragment );
         }
-        //stateset->removeUniform( NORMAL_SAMPLER );
+        stateset->removeUniform( "oe_tile_normalTex" );
     }
     
-    //if ( _normalMapUnit >= 0 )
-    //{
-    //    engine->getResources()->releaseTextureImageUnit( _normalMapUnit );
-    //    _normalMapUnit = -1;
-    //}
+    if ( _normalMapUnit >= 0 )
+    {
+        engine->getResources()->releaseTextureImageUnit( _normalMapUnit );
+        _normalMapUnit = -1;
+    }
 }

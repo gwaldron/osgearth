@@ -31,9 +31,11 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         
     public:
         std::string
-            VertexModel,
-            VertexView,
-            Fragment;
+            EngineVertexModel,
+            EngineVertexView,
+            EngineFragment,
+            NormalMapVertex,
+            NormalMapFragment;
 	};
 	
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

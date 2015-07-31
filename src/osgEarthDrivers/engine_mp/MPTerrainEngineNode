@@ -151,6 +151,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
 
+        osg::ref_ptr<TerrainEngine::NodeCallback> _normalMapInstaller;
+
         MapFrame* _update_mapf; // map frame for the main/update traversal thread
 
         // node registry is shared across all threads.
@@ -166,6 +168,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         int        _primaryUnit;
         int        _secondaryUnit;
         int        _elevationTextureUnit;
+        int        _normalMapUnit;
 
         osg::Uniform* _verticalScaleUniform;
 

@@ -138,7 +138,8 @@ TileModel::NormalData::NormalData(const TileModel::NormalData& rhs) :
 _hf          ( rhs._hf.get() ),
 _locator     ( rhs._locator.get() ),
 _fallbackData( rhs._fallbackData ),
-_parent      ( rhs._parent )
+_parent      ( rhs._parent ),
+_unit        ( rhs._unit )
 {
     _neighbors._center = rhs._neighbors._center.get();
     for(unsigned i=0; i<8; ++i)

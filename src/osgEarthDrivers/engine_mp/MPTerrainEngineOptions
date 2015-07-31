@@ -42,7 +42,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             _tilePixelSize     ( 256 ),
             _color             ( Color::White ),
             _incrementalUpdate ( false ),
-            _smoothing         ( false )
+            _smoothing         ( false ),
+            _normalMaps        ( false )
          {
             setDriver( "mp" );
             fromConfig( _conf );
@@ -87,6 +88,10 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<bool>& elevationSmoothing() { return _smoothing; }
         const optional<bool>& elevationSmoothing() const { return _smoothing; }
 
+        /** Whether to generate normal maps from elevation data. */
+        optional<bool>& normalMaps() { return _normalMaps; }
+        const optional<bool>& normalMaps() const { return _normalMaps; }
+
     public:
 
         /** @deprecated */
@@ -105,6 +110,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.updateIfSet( "color", _color );
             conf.updateIfSet( "incremental_update", _incrementalUpdate );
             conf.updateIfSet( "elevation_smoothing", _smoothing );
+            conf.updateIfSet( "normal_maps", _normalMaps );
 
             return conf;
         }
@@ -126,6 +132,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
             conf.getIfSet( "color", _color );
             conf.getIfSet( "incremental_update", _incrementalUpdate );
             conf.getIfSet( "elevation_smoothing", _smoothing );
+            conf.getIfSet( "normal_maps", _normalMaps );
        }
 
         optional<float>               _skirtRatio;
@@ -137,6 +144,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         optional<Color>               _color;
         optional<bool>                _incrementalUpdate;
         optional<bool>                _smoothing;
+        optional<bool>                _normalMaps;
     };
 
 } } } // namespace osgEarth::Drivers::MPTerrainEngine

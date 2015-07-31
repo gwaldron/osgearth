@@ -1,4 +1,4 @@
-#version 110
+#version 130
 
 #pragma vp_entryPoint "oe_bumpmap_vertexView"
 #pragma vp_location   "vertex_view"

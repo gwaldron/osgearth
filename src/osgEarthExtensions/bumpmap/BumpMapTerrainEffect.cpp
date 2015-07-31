@@ -90,7 +90,7 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             Shaders package;            
             package.define( "OE_USE_NORMAL_MAP", false ); //engine->normalTexturesRequired() );
 
-            package.load( vp, package.VertexModel );
+            //package.load( vp, package.VertexModel );
             package.load( vp, package.VertexView );
             package.load( vp, _octaves <= 1? package.FragmentSimple : package.FragmentProgressive );
 
@@ -132,10 +132,7 @@ BumpMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
         if ( vp )
         {
             Shaders pkg;
-            pkg.unload( vp, pkg.VertexModel );
-            pkg.unload( vp, pkg.VertexView );
-            pkg.unload( vp, pkg.FragmentSimple );
-            pkg.unload( vp, pkg.FragmentProgressive );
+            pkg.unloadAll( vp );
         }
     }
     

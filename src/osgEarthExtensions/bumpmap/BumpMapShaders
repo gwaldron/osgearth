@@ -30,7 +30,7 @@ namespace osgEarth { namespace BumpMap
     struct Shaders : public osgEarth::ShaderPackage
 	{
         Shaders();
-        std::string VertexModel, VertexView;
+        std::string VertexView;
         std::string FragmentSimple, FragmentProgressive, FragmentCommon;
 	};
 	

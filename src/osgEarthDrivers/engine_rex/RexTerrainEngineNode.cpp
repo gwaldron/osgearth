@@ -271,6 +271,12 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
         _terrainOptions.highResolutionFirst() = true;
     }
 
+    // check for normal map generation (required for lighting).
+    if ( _terrainOptions.normalMaps() == true )
+    {
+        this->_requireNormalTextures = true;
+    }
+
     // A shared registry for tile nodes in the scene graph. Enable revision tracking
     // if requested in the options. Revision tracking lets the registry notify all
     // live tiles of the current map revision so they can inrementally update
@@ -904,7 +910,7 @@ RexTerrainEngineNode::updateState()
 
             VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
             terrainVP->setName( "Rex Terrain" );
-            package.load(terrainVP, package.VERT_MODEL);            
+            package.load(terrainVP, package.ENGINE_VERT_MODEL);            
             
             bool useTerrainColor = _terrainOptions.color().isSet();
             package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);
@@ -921,8 +927,15 @@ RexTerrainEngineNode::updateState()
             surfaceVP->setName("Rex Surface");
 
             // Functions that affect the terrain surface only:
-            package.load(surfaceVP, package.VERT_VIEW);
-            package.load(surfaceVP, package.FRAG);
+            package.load(surfaceVP, package.ENGINE_VERT_VIEW);
+            package.load(surfaceVP, package.ENGINE_FRAG);
+
+            // Normal mapping shaders:
+            if ( this->normalTexturesRequired() )
+            {
+                package.load(surfaceVP, package.NORMAL_MAP_VERT);
+                package.load(surfaceVP, package.NORMAL_MAP_FRAG);
+            }
 
             for(LandCoverBins::iterator i = _landCoverBins.begin(); i != _landCoverBins.end(); ++i)
             {

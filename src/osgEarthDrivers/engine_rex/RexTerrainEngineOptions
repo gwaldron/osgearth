@@ -43,7 +43,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _lodBlendDuration       ( 0.25f ),
             _quickRelease           ( true ),
             _expirationThreshold    ( 0 ),
-            _highResolutionFirst    ( false )
+            _highResolutionFirst    ( false ),
+            _normalMaps             ( true )
         {
             setDriver( "rex" );
             fromConfig( _conf );
@@ -86,6 +87,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>& highResolutionFirst() { return _highResolutionFirst; }
         const optional<bool>& highResolutionFirst() const { return _highResolutionFirst; } 
 
+        /** Whether to generate normal map textures. Default is true. */
+        optional<bool>& normalMaps() { return _normalMaps; }
+        const optional<bool>& normalMaps() const { return _normalMaps; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
@@ -97,6 +102,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
             conf.updateIfSet( "expiration_threshold", _expirationThreshold );
             conf.updateIfSet( "high_resolution_first", _highResolutionFirst );
+            conf.updateIfSet( "normal_maps", _normalMaps );
 
             return conf;
         }
@@ -116,6 +122,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.getIfSet( "quick_release_gl_objects", _quickRelease );
             conf.getIfSet( "expiration_threshold", _expirationThreshold );
             conf.getIfSet( "high_resolution_first", _highResolutionFirst );
+            conf.getIfSet( "normal_maps", _normalMaps );
         }
 
         optional<float>               _skirtRatio;
@@ -126,6 +133,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>                _quickRelease;
         optional<unsigned>            _expirationThreshold;
         optional<bool>                _highResolutionFirst;
+        optional<bool>                _normalMaps;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

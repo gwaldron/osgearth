@@ -24,7 +24,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     struct Shaders : public ShaderPackage
 	{
         Shaders();
-        std::string VERT_MODEL, VERT_VIEW, FRAG;
+        std::string
+            ENGINE_VERT_MODEL,
+            ENGINE_VERT_VIEW,
+            ENGINE_FRAG,
+            NORMAL_MAP_VERT,
+            NORMAL_MAP_FRAG;
 	};
 	
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

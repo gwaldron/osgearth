@@ -7,7 +7,12 @@ set(TARGET_GLSL
     RexEngine.tcs.glsl
     RexEngine.tes.glsl
     RexEngine.gs.glsl
-    RexEngine.frag.glsl)
+    RexEngine.frag.glsl
+    RexEngine.NormalMap.vert.glsl
+    RexEngine.NormalMap.frag.glsl)
+
+set(TARGET_IN
+    Shaders.cpp.in)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

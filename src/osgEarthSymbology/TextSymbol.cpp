@@ -190,7 +190,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<TextSymbol>()->halo()->color() = htmlColorToVec4f( c.value() );
     }
     else if ( match(c.key(), "text-halo-offset") ) {
-        style.getOrCreate<TextSymbol>()->haloOffset() = as<float>(c.value(), 0.07f);
+        style.getOrCreate<TextSymbol>()->haloOffset() = as<float>(c.value(), 0.0625f);
     }
     else if ( match(c.key(), "text-remove-duplicate-labels") ) {
         if ( c.value() == "true" )
@@ -272,5 +272,11 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "text-script") ) {
         style.getOrCreate<TextSymbol>()->script() = StringExpression(c.value());
+    }
+    else if ( match(c.key(), "text-offset-x") ) {
+        style.getOrCreate<TextSymbol>()->pixelOffset()->x() = as<double>(c.value(), 0.0);
+    }
+    else if ( match(c.key(), "text-offset-y") ) {
+        style.getOrCreate<TextSymbol>()->pixelOffset()->y() = as<double>(c.value(), 0.0);
     }
 }

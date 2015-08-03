@@ -285,6 +285,15 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             box.yMin() *= refCamScale.y();
             box.yMax() *= refCamScale.y();
 
+            // Quanitize the window draw coordinates so mitigate text rendering filtering anomalies.
+            // Drawing text glyphs on pixel boundaries helps prevent outline aliasing.
+            box.xMin() = floor(box.xMin());
+            box.xMax() = ceil(box.xMax());
+            box.yMin() = floor(box.yMin());
+            box.yMax() = ceil(box.yMax());
+            winPos.x() = osg::round(winPos.x());
+            winPos.y() = osg::round(winPos.y());
+
             osg::Vec2f offset( -box.xMin(), -box.yMin() );
 
             box.set(

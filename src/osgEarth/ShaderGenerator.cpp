@@ -774,6 +774,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
         "void " FRAGMENT_FUNCTION "(inout vec4 color)\n"
         "{ \n"
         INDENT MEDIUMP "vec4 texel = texture2D(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy);\n"
+        //INDENT MEDIUMP "vec4 texel = texture2DLod(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy, 0.0);\n"
         INDENT "color.a *= texel.a; \n"
         "}\n";
 

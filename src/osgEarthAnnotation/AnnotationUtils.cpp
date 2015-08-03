@@ -133,21 +133,25 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     t->setAutoRotateToScreen( false );
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
-    t->setCharacterSize( symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f );
+    float size = symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;
+    t->setCharacterSize( size );
     t->setColor( symbol && symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
 
     osgText::Font* font = 0L;
     if ( symbol && symbol->font().isSet() )
     {
         font = osgText::readFontFile( *symbol->font() );
-        // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
-        if ( font )
-          font->setGlyphImageMargin( 2 );
     }
     if ( !font )
         font = Registry::instance()->getDefaultFont();
+
     if ( font )
+    {
         t->setFont( font );
+
+        // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
+        font->setGlyphImageMargin( 2 );
+    }
 
     if ( symbol )
     {
@@ -155,6 +159,8 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         osgText::Text::AlignmentType at = (osgText::Text::AlignmentType)symbol->alignment().value();
         t->setAlignment( at );
     }
+
+    t->setBackdropOffset( (float)t->getFontWidth() / 256.0f, (float)t->getFontHeight() / 256.0f );
 
     if ( symbol && symbol->halo().isSet() )
     {

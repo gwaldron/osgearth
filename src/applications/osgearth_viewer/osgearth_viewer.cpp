@@ -65,7 +65,7 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
     // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator() );   
+    viewer.setCameraManipulator( new EarthManipulator(arguments) );   
 
     if ( vfov > 0.0 )
     {

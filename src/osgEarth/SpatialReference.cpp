@@ -945,14 +945,9 @@ SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_lo
     }
     else
     {
-        //// convert MSL to HAE if necessary:
-        //osg::Vec3d geodetic;
-        //if ( !transform(xyz, getGeodeticSRS(), geodetic) )
-        //    return false;
-
         // convert to ECEF:
         osg::Vec3d ecef;
-        if ( !transform(xyz, getGeodeticSRS()->getECEF(), ecef) )
+        if ( !transform(xyz, getECEF(), ecef) )
             return false;
 
         //out_local2world = ECEF::createLocalToWorld(ecef);        

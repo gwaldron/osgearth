@@ -93,6 +93,7 @@ namespace osgEarth
               _inAnimTime           ( 0.40f ),
               _outAnimTime          ( 0.00f ),
               _sortByPriority       ( false ),
+              _snapToPixel          ( true ),
               _maxObjects           ( INT_MAX )
         {
             fromConfig(conf);
@@ -120,6 +121,11 @@ namespace osgEarth
         optional<bool>& sortByPriority() { return _sortByPriority; }
         const optional<bool>& sortByPriority() const { return _sortByPriority; }
 
+        /** Whether to always start rendering text on a pixel boundary, thereby 
+          * minimizing filtering artifacts. */
+        optional<bool>& snapToPixel() { return _snapToPixel; }
+        const optional<bool>& snapToPixel() const { return _snapToPixel; }
+
         /** Maximum number of objects to draw after sorting */
         optional<unsigned>& maxObjects() { return _maxObjects; }
         const optional<unsigned>& maxObjects() const { return _maxObjects; }
@@ -134,6 +140,7 @@ namespace osgEarth
         optional<float>    _inAnimTime;
         optional<float>    _outAnimTime;
         optional<bool>     _sortByPriority;
+        optional<bool>     _snapToPixel;
         optional<unsigned> _maxObjects;
 
         void fromConfig( const Config& conf );

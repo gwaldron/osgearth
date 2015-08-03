@@ -258,6 +258,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         const DeclutteringOptions& options = _context->_options;
         unsigned limit = *options.maxObjects();
 
+        bool snapToPixel = options.snapToPixel() == true;
+
         // Go through each leaf and test for visibility.
         // Enforce the "max objects" limit along the way.
         for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); 
@@ -285,14 +287,28 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             box.yMin() *= refCamScale.y();
             box.yMax() *= refCamScale.y();
 
-            // Quanitize the window draw coordinates so mitigate text rendering filtering anomalies.
-            // Drawing text glyphs on pixel boundaries helps prevent outline aliasing.
-            box.xMin() = floor(box.xMin());
-            box.xMax() = ceil(box.xMax());
-            box.yMin() = floor(box.yMin());
-            box.yMax() = ceil(box.yMax());
-            winPos.x() = osg::round(winPos.x());
-            winPos.y() = osg::round(winPos.y());
+            // The "declutter" box is the box we use to reserve screen space.
+            // This must be unquantized regardless of whether snapToPixel is set.
+            osg::BoundingBox delutterBox = box;
+            delutterBox.set(
+                winPos.x() + box.xMin(),
+                winPos.y() + box.yMin(),
+                winPos.z(),
+                winPos.x() + box.xMax(),
+                winPos.y() + box.yMax(),
+                winPos.z() );
+
+            if ( snapToPixel )
+            {
+                // Quanitize the window draw coordinates so mitigate text rendering filtering anomalies.
+                // Drawing text glyphs on pixel boundaries helps prevent outline aliasing.
+                box.xMin() = floor(box.xMin());
+                box.xMax() = ceil(box.xMax());
+                box.yMin() = floor(box.yMin());
+                box.yMax() = ceil(box.yMax());
+                winPos.x() = osg::round(winPos.x());
+                winPos.y() = osg::round(winPos.y());
+            }
 
             osg::Vec2f offset( -box.xMin(), -box.yMin() );
 
@@ -320,10 +336,10 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     {
                         // only need a 2D test since we're in clip space
                         bool isClear =
-                            box.xMin() > j->second.xMax() ||
-                            box.xMax() < j->second.xMin() ||
-                            box.yMin() > j->second.yMax() ||
-                            box.yMax() < j->second.yMin();
+                            delutterBox.xMin() > j->second.xMax() ||
+                            delutterBox.xMax() < j->second.xMin() ||
+                            delutterBox.yMin() > j->second.yMax() ||
+                            delutterBox.yMax() < j->second.yMin();
 
                         // if there's an overlap (and the conflict isn't from the same drawable
                         // parent, which is acceptable), then the leaf is culled.
@@ -340,8 +356,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             {
                 // passed the test, so add the leaf's bbox to the "used" list, and add the leaf
                 // to the final draw list.
-                //local._used.push_back( std::make_pair(drawableParent, box) );
-                local._used.push_back( std::make_pair(drawableParent, box) );
+                local._used.push_back( std::make_pair(drawableParent, delutterBox) );
                 local._passed.push_back( leaf );
             }
 

@@ -285,6 +285,24 @@ _throwDecayRate( rhs._throwDecayRate )
     //NOP
 }
 
+void
+EarthManipulator::Settings::apply(osg::ArgumentParser& args)
+{
+    bool   boolval;
+    double doubleval;
+
+    if ( args.read("--manip-terrain-avoidance", boolval) )
+        setTerrainAvoidanceEnabled( boolval );
+    if ( args.read("--manip-min-distance", doubleval) )
+        setMinMaxDistance(doubleval, _max_distance);
+    if ( args.read("--manip-max-distance", doubleval) )
+        setMinMaxDistance(_min_distance, doubleval);
+    if ( args.read("--manip-min-pitch", doubleval) )
+        setMinMaxPitch(doubleval, _max_pitch);
+    if ( args.read("--manip-max-pitch", doubleval) )
+        setMinMaxPitch(_min_pitch, doubleval);
+}
+
 #define HASMODKEY( W, V ) (( W & V ) == V )
 
 // expands one input spec into many if necessary, to deal with modifier key combos.
@@ -481,6 +499,21 @@ _findNodeTraversalMask ( 0x01 )
     reinitialize();
     configureDefaultSettings();
     _lastTetherMode = _settings->getTetherMode();
+}
+
+EarthManipulator::EarthManipulator(osg::ArgumentParser& args) :
+osgGA::CameraManipulator(),
+_last_action           ( ACTION_NULL ),
+_last_event            ( EVENT_MOUSE_DOUBLE_CLICK ),
+_time_s_last_event     ( 0.0 ),
+_frameCount            ( 0 ),
+_findNodeTraversalMask ( 0x01 )
+{
+    reinitialize();
+    configureDefaultSettings();
+    _lastTetherMode = _settings->getTetherMode();
+
+    getSettings()->apply( args );
 }
 
 EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :

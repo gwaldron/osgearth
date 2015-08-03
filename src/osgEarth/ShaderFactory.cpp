@@ -159,10 +159,10 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     }
 
     struct Variable {
-        std::string interp;     // interpolation qualifer (flat, etc.)
-        std::string type;       // float, vec4, etc.
-        std::string name;       // name without any array specifiers, etc.
-        std::string declaration;   // name including array specifiers (for decl)
+        std::string interp;      // interpolation qualifer (flat, etc.)
+        std::string type;        // float, vec4, etc.
+        std::string name;        // name without any array specifiers, etc.
+        std::string declaration; // name including array specifiers (for decl)
     };
 
     typedef std::vector<Variable> Variables;
@@ -542,10 +542,13 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 << "{ \n";            
             for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
             {
-                buf << INDENT << i->name << " = VP_Interpolate3"
-                    << "( vp_in[0]." << i->name
-                    << ", vp_in[1]." << i->name
-                    << ", vp_in[2]." << i->name << " ); \n";
+                if ( i->interp != "flat" )
+                {
+                    buf << INDENT << i->name << " = VP_Interpolate3"
+                        << "( vp_in[0]." << i->name
+                        << ", vp_in[1]." << i->name
+                        << ", vp_in[2]." << i->name << " ); \n";
+                }
             }
             buf << "} \n";
 

@@ -16,8 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-//#undef NDEBUG
-//#include <cassert>
 #include "ProxyGeometry"
 #include "ElevationTextureUtils"
 
@@ -72,8 +70,8 @@ ProxyGeometry::constructEmptyGeometry()
 
 ProxyGeometry::ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize, const osg::Texture* elevationTexture) : 
     _key(key), 
-    //_tileSize(tileSize),
-    _tileSize(elevationTexture->getImage(0)->s()),
+    _tileSize( 32 ), // temporary
+    //_tileSize(elevationTexture->getImage(0)->s()),
     _elevationTexture(elevationTexture)
 {
     _locator = GeoLocator::createForKey( _key, mapInfo );
@@ -92,9 +90,11 @@ ProxyGeometry::build(void)
     constructXReferenceFrame();
     makeVertices();
     tessellate();
+
     osg::KdTree* kd = new osg::KdTree();
     kd->build(KdTree::BuildOptions(), this);
     this->setShape(kd);
+
     OE_DEBUG << LC << "Built proxy geometry: "<<_key.str()<<std::endl;
 }
 

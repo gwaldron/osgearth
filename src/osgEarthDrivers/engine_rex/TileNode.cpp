@@ -440,7 +440,7 @@ void TileNode::regularUpdate(osg::NodeVisitor& nv)
         {
             if (_surfaceProxy.valid())
             {
-                //_surfaceProxy->accept(nv);
+                _surfaceProxy->accept(nv);
             }
         }
         else

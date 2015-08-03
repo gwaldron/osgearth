@@ -109,9 +109,9 @@ void SelectionInfo::initialize(unsigned uiFirstLOD, unsigned uiMaxLod, unsigned 
     }
     for( int i = 0; i < (int)_numLods; ++i ) 
     {
-        OE_INFO << "LOD[" << i+_uiFirstLOD<<"] = "<<_vecVisParams[i]._fVisibility
-                <<" Start: "<<_vecVisParams[i]._fMorphStart
-                <<" End  : "<<_vecVisParams[i]._fMorphEnd
-                <<std::endl;
+        OE_DEBUG << "LOD[" << i+_uiFirstLOD<<"] = "<<_vecVisParams[i]._fVisibility
+                 <<" Start: "<<_vecVisParams[i]._fMorphStart
+                 <<" End  : "<<_vecVisParams[i]._fMorphEnd
+                 <<std::endl;
     }
 }

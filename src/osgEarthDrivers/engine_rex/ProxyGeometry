@@ -58,7 +58,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     private:
         const TileKey  _key;
-        const unsigned _tileSize;
+        unsigned _tileSize;
         osg::ref_ptr<GeoLocator> _locator;
 
         const osg::Texture* _elevationTexture;

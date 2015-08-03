@@ -103,7 +103,8 @@ These options control the rendering of the terrain surface.
                      color                 = "#ffffffff"
                      tile_size             = "17"
                      normalize_edges       = "false"
-                     elevation_smoothing   = "false">
+                     elevation_smoothing   = "false"
+                     normal_maps           = "false">
 
 +-----------------------+--------------------------------------------------------------------+
 | Property              | Description                                                        |
@@ -152,6 +153,11 @@ These options control the rendering of the terrain surface.
 | elevation_smoothing   | Whether to smooth the transition across elevation data insets.     |
 |                       | Doing so will give a smoother appearance to disparate height field |
 |                       | data, but elevations will not be as accurate. Default = false      |
++-----------------------+--------------------------------------------------------------------+
+| normal_maps           | Whether to generate and use normal maps in place of geometry       |
+|                       | normals. Normal maps are used with lighting to create the          |
+|                       | appearance of higher-resolution terrain than can be represented    |
+|                       | with triangles alone. Default is engine-dependent.                 |
 +-----------------------+--------------------------------------------------------------------+
 
 

@@ -160,7 +160,7 @@ ShadowCaster::reinitialize()
         "} \n";
 
     std::string fragment = Stringify() << 
-        "#version 120\n" //" GLSL_VERSION_STR "\n"
+        "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#extension GL_EXT_texture_array : enable \n"
 

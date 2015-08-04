@@ -36,7 +36,7 @@ namespace
     // SHADERS for the RTT pick camera.
 
     const char* pickVertexEncode =
-        "#version 130\n"
+        "#version " GLSL_VERSION_STR "\n"
 
         "#pragma vp_entryPoint \"oe_pick_encodeObjectID\" \n"
         "#pragma vp_location   \"vertex_clip\" \n"
@@ -60,7 +60,7 @@ namespace
         "} \n";
 
     const char* pickFragment =
-        "#version 130\n"
+        "#version " GLSL_VERSION_STR "\n"
 
         "#pragma vp_entryPoint \"oe_pick_renderEncodedObjectID\" \n"
         "#pragma vp_location   \"fragment_output\" \n"

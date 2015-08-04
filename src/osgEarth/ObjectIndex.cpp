@@ -40,7 +40,7 @@ using namespace osgEarth;
 namespace
 {
     const char* indexVertexInit =
-        "#version 330\n"
+        "#version " GLSL_VERSION_STR "\n"
 
         "#pragma vp_entryPoint \"oe_index_readObjectID\" \n"
         "#pragma vp_location   \"vertex_model\" \n"

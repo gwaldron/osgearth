@@ -1,4 +1,4 @@
-#version 130
+#version $GLSL_VERSION_STR
 
 #pragma vp_entryPoint "oe_bumpmap_vertexView"
 #pragma vp_location   "vertex_view"

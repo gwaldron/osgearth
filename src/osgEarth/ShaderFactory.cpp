@@ -250,7 +250,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
 
         buf <<
-            "#version 120\n"
+            "#version " GLSL_VERSION_STR "\n"
             "#pragma name \"VP Vertex Shader Main\" \n"
             "#extension GL_ARB_gpu_shader5 : enable \n";
 
@@ -858,7 +858,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version 120\n"
+        buf << "#version " GLSL_VERSION_STR "\n"
             << "#pragma name \"VP Fragment Shader Main\" \n"
             << "#extension GL_ARB_gpu_shader5 : enable \n";
 

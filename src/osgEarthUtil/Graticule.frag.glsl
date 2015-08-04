@@ -1,4 +1,5 @@
-#version 110
+#version $GLSL_VERSION_STR
+
 #pragma vp_entryPoint "oe_graticule_fragment"
 #pragma vp_location   "fragment_coloring"
 #pragma vp_order      "0.6"
@@ -8,7 +9,7 @@ uniform float oe_graticule_resolution;
 uniform vec4  oe_graticule_color;
 uniform mat4 osg_ViewMatrixInverse;
 
-varying vec2 oe_graticule_coord;
+in vec2 oe_graticule_coord;
 
 void oe_graticule_fragment(inout vec4 color)
 {

@@ -880,7 +880,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
 
     if ( needNewStateSet )
     {
-        std::string version = Stringify() << buf._version;
+        std::string version = GLSL_VERSION_STR;
 
         std::string vertHeadSource;
         vertHeadSource = buf._vertHead.str();

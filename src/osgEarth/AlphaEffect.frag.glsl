@@ -1,4 +1,4 @@
-#version 110
+#version $GLSL_VERSION_STR
 
 #pragma vp_entryPoint "oe_alphaEffect_frag"
 #pragma vp_location   "fragment_coloring"

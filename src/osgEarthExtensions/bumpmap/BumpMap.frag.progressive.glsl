@@ -1,4 +1,4 @@
-#version 110
+#version $GLSL_VERSION_STR
 
 #pragma vp_entryPoint "oe_bumpmap_fragment"
 #pragma vp_location   "fragment_coloring"

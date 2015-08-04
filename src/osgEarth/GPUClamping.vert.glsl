@@ -1,4 +1,4 @@
-#version 120
+#version $GLSL_VERSION_STR
 
 #pragma vp_entryPoint "oe_clamp_vertex"
 #pragma vp_location   "vertex_view"
@@ -6,14 +6,15 @@
 
 #pragma include "GPUClamping.vert.lib.glsl"
 
-attribute vec4 oe_clamp_attrs;
-attribute float oe_clamp_offset;
-uniform bool oe_clamp_hasAttrs;
+in vec4 oe_clamp_attrs;
+in float oe_clamp_offset;
 
-uniform bool  oe_isGeocentric;
+out float oe_clamp_alpha;
+
+uniform bool oe_clamp_hasAttrs;
+uniform bool oe_isGeocentric;
 uniform float oe_clamp_altitudeOffset;
 uniform float oe_clamp_horizonDistance2;
-varying float oe_clamp_alpha;
 
 void oe_clamp_vertex(inout vec4 vertexView)
 {

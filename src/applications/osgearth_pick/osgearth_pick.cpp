@@ -156,7 +156,7 @@ struct MyPickCallback : public RTTPicker::Callback
 // Shaders that will highlight the currently "picked" feature.
 
 const char* highlightVert =
-    "#version 130\n"
+    "#version " GLSL_VERSION_STR "\n"
     "uniform uint objectid_to_highlight; \n"
     "uint oe_index_objectid;      // Stage global containing object id \n"
     "flat out int selected; \n"
@@ -166,7 +166,7 @@ const char* highlightVert =
     "} \n";
 
 const char* highlightFrag =
-    "#version 130\n"
+    "#version " GLSL_VERSION_STR "\n"
     "flat in int selected; \n"
     "void highlightFragment(inout vec4 color) \n"
     "{ \n"

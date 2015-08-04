@@ -1,4 +1,4 @@
-#version 130
+#version $GLSL_VERSION_STR
 #extension GL_EXT_gpu_shader4 : enable
 #extension GL_ARB_draw_instanced: enable
 

@@ -133,7 +133,7 @@ createFramebufferPass(App& app)
         "}\n";
 
     static const char* fragSource =
-        "#version 120\n"
+        "#version " GLSL_VERSION_STR "\n"
         "#extension GL_ARB_texture_rectangle : enable\n"
         "uniform sampler2DRect gcolor;\n"
         "uniform sampler2DRect gnormal;\n"

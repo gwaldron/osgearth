@@ -91,7 +91,7 @@ namespace
             "t :",                 "cycle tethermode",
             "b :",                 "break tether",
             "a :",                 "toggle viewpoint arcing",
-            "z :",                 "toggle throwing",
+            "q :",                 "toggle throwing",
             "k :",                 "toggle collision",
             "L :",                 "toggle log depth buffer"
         };
@@ -652,7 +652,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
     viewer.addEventHandler(new ToggleArcViewpointTransitionsHandler('a', manip));
-    viewer.addEventHandler(new ToggleThrowingHandler('z', manip));
+    viewer.addEventHandler(new ToggleThrowingHandler('q', manip));
     viewer.addEventHandler(new ToggleCollisionHandler('k', manip));
     viewer.addEventHandler(new ToggleProjMatrix('o', manip));
     viewer.addEventHandler(new BreakTetherHandler('b', manip));

@@ -439,7 +439,7 @@ FeatureModelGraph::ctor()
         _lodmap.resize(featureProfile->getMaxLevel() + 1);
          
         // Compute the max range of all the feature levels.  Each subsequent level if half of the parent.
-        for (unsigned int i = 0; i < featureProfile->getMaxLevel()+1; i++)
+        for (int i = 0; i < featureProfile->getMaxLevel()+1; i++)
         {
             OE_INFO << LC << "Computed max range " << maxRange << " for lod " << i << std::endl;
             FeatureLevel* level = new FeatureLevel(0.0, maxRange);
@@ -572,10 +572,10 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
         double ySample = workingExtent.height() / (double)samples;
 
         osg::BoundingSphered bs;
-        for (unsigned int c = 0; c < samples+1; c++)
+        for (int c = 0; c < samples+1; c++)
         {
             double x = workingExtent.xMin() + (double)c * xSample;
-            for (unsigned int r = 0; r < samples+1; r++)
+            for (int r = 0; r < samples+1; r++)
             {
                 double y = workingExtent.yMin() + (double)r * ySample;
                 osg::Vec3d world;

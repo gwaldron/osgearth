@@ -44,4 +44,8 @@ namespace osgEarth
     typedef int UID;
 }
 
+// VS ignores
+#pragma warning (disable: 4224)
+#pragma warning (disable: 4180)
+
 #endif // OSGEARTH_COMMON_H

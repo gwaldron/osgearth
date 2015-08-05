@@ -46,7 +46,7 @@ namespace osgEarth
         };
 
         void setType(Type type) { _type = type; }
-        const Type getType() const { return _type; }
+        const Type& getType() const { return _type; }
 
     protected:
         Type _type;

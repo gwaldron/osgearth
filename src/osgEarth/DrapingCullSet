@@ -70,4 +70,4 @@ namespace osgEarth
 
 } // namespace osgEarth
 
-#endif OSGEARTH_DRAPING_CULL_SET
+#endif // OSGEARTH_DRAPING_CULL_SET

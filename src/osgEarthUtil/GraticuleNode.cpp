@@ -214,7 +214,7 @@ void GraticuleNode::updateLabels()
         int maxLatIndex = ceil(((extent.yMax() + 90)/resDegrees));
 
         // Generate horizontal labels
-        for (unsigned int i = minLonIndex; i <= maxLonIndex; i++)
+        for (int i = minLonIndex; i <= maxLonIndex; i++)
         {
             GeoPoint point(srs, -180.0 + (double)i * resDegrees, _lat + (_centerOffset.y() * degOffset), 0, ALTMODE_ABSOLUTE);
             LabelNode* label = _labelPool[labelIndex++];
@@ -232,7 +232,7 @@ void GraticuleNode::updateLabels()
 
 
         // Generate the vertical labels
-        for (unsigned int i = minLatIndex; i <= maxLatIndex; i++)
+        for (int i = minLatIndex; i <= maxLatIndex; i++)
         {
             GeoPoint point(srs, _lon + (_centerOffset.x() * degOffset), -90.0 + (double)i * resDegrees, 0, ALTMODE_ABSOLUTE);
             // Skip drawing labels at the poles

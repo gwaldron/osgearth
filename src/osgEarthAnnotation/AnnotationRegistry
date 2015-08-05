@@ -27,6 +27,8 @@
 
 namespace osgEarth { namespace Annotation
 {
+    class AnnotationFactory;
+
     /**
      * Singleton registry for annotation node types.
      */
@@ -59,7 +61,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Adds an annotation type to the registry
          */
-        void add( const std::string& key, class AnnotationFactory* factory );
+        void add( const std::string& key, AnnotationFactory* factory );
 
         virtual ~AnnotationRegistry() { }
 

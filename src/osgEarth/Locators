@@ -27,6 +27,7 @@
 namespace osgEarth
 {
     class MapInfo;
+    class TileKey;
 
     /**
      * Locator that stores the extent of its source data (which might be different

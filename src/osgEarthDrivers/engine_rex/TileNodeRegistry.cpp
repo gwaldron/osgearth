@@ -135,7 +135,7 @@ TileNodeRegistry::removeSafely(const TileKey& key)
         i->second.erase( key );
 
         if ( i->second.size() == 0 )
-            i = _notifiers.erase( i );
+            _notifiers.erase( i++ ); // http://stackoverflow.com/a/8234813/4218920
         else
             ++i;
     }

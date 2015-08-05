@@ -272,6 +272,11 @@ namespace
         program->setParameter( GL_GEOMETRY_OUTPUT_TYPE_EXT,  templateProgram->getParameter(GL_GEOMETRY_OUTPUT_TYPE_EXT) );
     }
 
+    struct SortByType {
+        bool operator()(osg::Shader* lhs, osg::Shader* rhs) {
+            return (int)lhs->getType() < (int)rhs->getType();
+        }
+    };
 
     /**
     * Populates the specified Program with passed-in shaders.
@@ -364,11 +369,6 @@ namespace
             }
             else
             {
-                struct SortByType {
-                    bool operator()(osg::Shader* lhs, osg::Shader* rhs) {
-                        return (int)lhs->getType() < (int)rhs->getType();
-                    }
-                };
                 VirtualProgram::ShaderVector copy(shaders);
                 std::sort(copy.begin(), copy.end(), SortByType());
 

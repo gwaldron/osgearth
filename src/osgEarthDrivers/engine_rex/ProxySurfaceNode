@@ -24,7 +24,7 @@
 
 #include <osgEarth/TileKey>
 
-#include <osg/vec3>
+#include <osg/Vec3>
 #include <osg/MatrixTransform>
 #include <vector>
 

@@ -221,8 +221,8 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
     _tileGridDimsUniform->set(osg::Vec4f(fGridDims, fGridDims*0.5f, 2.0/fGridDims, selectionInfo.lodForMorphing(_key.getProfile()->getSRS()->isProjected())));
 
     // update tile extents
-    float fXExtents = abs(bbox.xMax()-bbox.xMin());
-    float fYExtents = abs(bbox.yMax()-bbox.yMin());
+    float fXExtents = fabs(bbox.xMax()-bbox.xMin());
+    float fYExtents = fabs(bbox.yMax()-bbox.yMin());
     _tileExtentsUniform->set(osg::Vec4f(fXExtents,fYExtents,0,0));
 }
 

@@ -53,4 +53,3 @@ ProxySurfaceNode::ProxySurfaceNode(const TileKey& tilekey, const MapInfo& mapInf
     centroid.createLocalToWorld( local2world );
     setMatrix( local2world );
 }
-

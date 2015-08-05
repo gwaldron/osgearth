@@ -1639,47 +1639,47 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             
                 setViewpointFrame( time_s_now );
             }
-
+            
             aa.requestContinuousUpdate( isSettingViewpoint() );
-        }
 
-        else if (_thrown)
-        {
-            double decayFactor = 1.0 - _settings->getThrowDecayRate();
-
-            _throw_dx = osg::absolute(_throw_dx) > osg::absolute(_dx * 0.01) ? _throw_dx * decayFactor : 0.0;
-            _throw_dy = osg::absolute(_throw_dy) > osg::absolute(_dy * 0.01) ? _throw_dy * decayFactor : 0.0;
-
-            if (_throw_dx == 0.0 && _throw_dy == 0.0)
-                _thrown = false;
-            else            
-                handleMovementAction(_last_action._type, _throw_dx, _throw_dy, aa.asView());
-        }
-
-        if ( _continuous )
-        {
-            handleContinuousAction( _last_action, aa.asView() );
-            aa.requestRedraw();
-        }
-        else
-        {
-            _continuous_dx = 0.0;
-            _continuous_dy = 0.0;
-        }
-        
-        if ( _task.valid() && _task->_type != TASK_NONE )
-        {
-            bool stillRunning = serviceTask();
-            if ( stillRunning ) 
+            if (_thrown)
             {
-                aa.requestContinuousUpdate( true );
+                double decayFactor = 1.0 - _settings->getThrowDecayRate();
+
+                _throw_dx = osg::absolute(_throw_dx) > osg::absolute(_dx * 0.01) ? _throw_dx * decayFactor : 0.0;
+                _throw_dy = osg::absolute(_throw_dy) > osg::absolute(_dy * 0.01) ? _throw_dy * decayFactor : 0.0;
+
+                if (_throw_dx == 0.0 && _throw_dy == 0.0)
+                    _thrown = false;
+                else            
+                    handleMovementAction(_last_action._type, _throw_dx, _throw_dy, aa.asView());
+            }
+
+            if ( _continuous )
+            {
+                handleContinuousAction( _last_action, aa.asView() );
+                aa.requestRedraw();
             }
             else
             {
-                // turn off the continuous, but we still need one last redraw
-                // to process the final state.
-                aa.requestContinuousUpdate( false );
-                aa.requestRedraw();
+                _continuous_dx = 0.0;
+                _continuous_dy = 0.0;
+            }
+        
+            if ( _task.valid() && _task->_type != TASK_NONE )
+            {
+                bool stillRunning = serviceTask();
+                if ( stillRunning ) 
+                {
+                    aa.requestContinuousUpdate( true );
+                }
+                else
+                {
+                    // turn off the continuous, but we still need one last redraw
+                    // to process the final state.
+                    aa.requestContinuousUpdate( false );
+                    aa.requestRedraw();
+                }
             }
         }
 

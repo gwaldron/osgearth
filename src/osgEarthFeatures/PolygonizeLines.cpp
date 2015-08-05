@@ -480,7 +480,7 @@ namespace
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
             // temporary patch to prevent uniform overwrite -gw
-            if ( nv->getFrameStamp() && nv->getFrameStamp()->getFrameNumber() > _frameNumber )
+            if ( nv->getFrameStamp() && (int)nv->getFrameStamp()->getFrameNumber() > _frameNumber )
             {
                 _pixelSizeVectorUniform->set( cv->getCurrentCullingSet().getPixelSizeVector() );    
                 _frameNumber = nv->getFrameStamp()->getFrameNumber();

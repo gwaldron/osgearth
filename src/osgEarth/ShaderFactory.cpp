@@ -73,6 +73,19 @@ ShaderFactory::ShaderFactory()
 #define SPACE_VIEW  1
 #define SPACE_CLIP  2
 
+namespace
+{
+    struct Variable
+    {
+        std::string interp;      // interpolation qualifer (flat, etc.)
+        std::string type;        // float, vec4, etc.
+        std::string name;        // name without any array specifiers, etc.
+        std::string declaration; // name including array specifiers (for decl)
+    };
+
+    typedef std::vector<Variable> Variables;
+}
+
 
 ShaderComp::StageMask
 ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
@@ -158,14 +171,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         }
     }
 
-    struct Variable {
-        std::string interp;      // interpolation qualifer (flat, etc.)
-        std::string type;        // float, vec4, etc.
-        std::string name;        // name without any array specifiers, etc.
-        std::string declaration; // name including array specifiers (for decl)
-    };
-
-    typedef std::vector<Variable> Variables;
     Variables vars;
     for(VarDefs::iterator i = varDefs.begin(); i != varDefs.end(); ++i) 
     {

@@ -92,7 +92,8 @@ ProxyGeometry::build(void)
     tessellate();
 
     osg::KdTree* kd = new osg::KdTree();
-    kd->build(KdTree::BuildOptions(), this);
+    KdTree::BuildOptions kdoptions;
+    kd->build(kdoptions, this);
     this->setShape(kd);
 
     OE_DEBUG << LC << "Built proxy geometry: "<<_key.str()<<std::endl;

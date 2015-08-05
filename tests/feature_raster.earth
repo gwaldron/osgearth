@@ -1,17 +1,5 @@
 <!--
-osgEarth Sample - OpenGL Tessellation Shaders
-
-This example injects a Tessellation Control Shader (TCS) and 
-Tessellation Evaluation Shader (TES) into the terrain rendering
-pipeline. This is EXPERIMENTAL so please be advised of the 
-following caveats:
-
- * Terrain skirts will not render. Set "skirt_ratio" to zero or you
-   will get GL errors.
- * Set gpu_tessellation="true" on the terrain options.
- * EarthManipulator doesn't like GL_PATCHES (yet). Use the viewpoints.
-  
-Press 'w' for wireframe mode to see the tessellation!
+osgEarth Sample - Raster to feature example.
 -->
 
 <map name="readymap.org" type="geocentric">
@@ -20,11 +8,10 @@ Press 'w' for wireframe mode to see the tessellation!
         <terrain skirt_ratio="0.01" />
     </options>
   
-  <!--
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-  -->
+
     
     <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="12">
         <warp>0.01</warp>
@@ -39,16 +26,6 @@ Press 'w' for wireframe mode to see the tessellation!
         <shared_sampler>landUseTex</shared_sampler>
         <shared_matrix>landUseTexMatrix</shared_matrix>
     </image>
-
-<!--
-    <image name="ESA" driver="gdal"  shared="true" visible="false" coverage="true" max_data_level="12">
-        <url>D:/geodata/splatting/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
-        <cache_policy usage="none"/>
-        <shared_sampler>landUseTex</shared_sampler>
-        <shared_matrix>landUseTexMatrix</shared_matrix>
-    </image>
-  -->
-
 
   
     <model name="trees" driver="feature_geom" enabled="true">
@@ -68,7 +45,7 @@ Press 'w' for wireframe mode to see the tessellation!
                    model-density:       1000;
                    model-scale:         2.0;
                    altitude-clamping:   terrain;
-                   altitude-resolution: 0.001;                                         
+                                                            
                 }  
 
                 yellow {
@@ -102,8 +79,6 @@ Press 'w' for wireframe mode to see the tessellation!
     </model>
 
     <extensions> 
-    
-        <normalmap/>
       
         <splat>
             <coverage>CLASSMAP</coverage>

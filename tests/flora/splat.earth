@@ -29,7 +29,7 @@
             <legend>../../data/splat/GLOBCOVER_legend.xml</legend>
             <catalog>../../data/splat/splat_catalog.xml</catalog>
             <coverage_warp>0.0</coverage_warp>
-        </splat>      
+        </splat>  
         
   
       <terrainshader land_cover_group="trees" land_cover_lod="14">

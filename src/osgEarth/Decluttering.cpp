@@ -129,6 +129,7 @@ DeclutteringOptions::fromConfig( const Config& conf )
     conf.getIfSet( "in_animation_time",   _inAnimTime );
     conf.getIfSet( "out_animation_time",  _outAnimTime );
     conf.getIfSet( "sort_by_priority",    _sortByPriority );
+    conf.getIfSet( "snap_to_pixel",       _snapToPixel );
     conf.getIfSet( "max_objects",         _maxObjects );
 }
 
@@ -141,6 +142,7 @@ DeclutteringOptions::getConfig() const
     conf.addIfSet( "in_animation_time",   _inAnimTime );
     conf.addIfSet( "out_animation_time",  _outAnimTime );
     conf.addIfSet( "sort_by_priority",    _sortByPriority );
+    conf.addIfSet( "snap_to_pixel",       _snapToPixel );
     conf.addIfSet( "max_objects",         _maxObjects );
     return conf;
 }

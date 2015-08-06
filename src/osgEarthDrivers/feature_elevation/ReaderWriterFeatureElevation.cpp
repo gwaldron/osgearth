@@ -48,6 +48,8 @@ using namespace std;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
+#include <osgEarth/Profiler>
+
 
 class FeatureElevationTileSource : public TileSource
 {
@@ -55,7 +57,7 @@ public:
     FeatureElevationTileSource( const TileSourceOptions& options ) :
       TileSource( options ),
       _options(options),
-      _maxDataLevel(30)
+      _maxDataLevel(23)
     {
     }
 
@@ -114,26 +116,25 @@ public:
         //    if ( f && f->getGeometry() )
         //        _featureList.push_back(f);
         //}
-
         if (_features->getFeatureProfile())
         {
-            if (getProfile() && !getProfile()->getSRS()->isEquivalentTo(_features->getFeatureProfile()->getSRS()))
+			if (getProfile() && !getProfile()->getSRS()->isEquivalentTo(_features->getFeatureProfile()->getSRS()))
                 OE_WARN << LC << "Specified profile does not match feature profile, ignoring specified profile." << std::endl;
 
             _extents = _features->getFeatureProfile()->getExtent();
 
-            const Profile* profile = Profile::create(
-                _extents.getSRS(),
-                _extents.bounds().xMin(),
-                _extents.bounds().yMin(),
-                _extents.bounds().xMax(),
-                _extents.bounds().yMax());
+			// If you didn't specify a profile (hint, you should have), use the feature profile.
+			if (!getProfile())
+			{
+				const Profile* profile = Profile::create(
+					_extents.getSRS(),
+					_extents.bounds().xMin(),
+					_extents.bounds().yMin(),
+					_extents.bounds().xMax(),
+					_extents.bounds().yMax());
 
-            setProfile( profile );
-        }
-        else if (getProfile())
-        {
-            _extents = getProfile()->getExtent();
+				setProfile( profile );
+			}
         }
         else
         {
@@ -169,7 +170,7 @@ public:
         hf->allocate(tileSize, tileSize);
         for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
 
-        if (intersects(key))
+	    if (intersects(key))
         {
             //Get the extents of the tile
             double xmin, ymin, xmax, ymax;
@@ -183,7 +184,7 @@ public:
             Query query;
             query.bounds() = extentInFeatureSRS.bounds();
 
-            FeatureList featureList;
+		    FeatureList featureList;
             osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor(query);
             while ( cursor.valid() && cursor->hasMore() )
             {
@@ -191,46 +192,48 @@ public:
                 if ( f && f->getGeometry() )
                     featureList.push_back(f);
             }
+		    
+			if (!featureList.empty())
+			{
+				// Iterate over the output heightfield and sample the data that was read into it.
+				double dx = (xmax - xmin) / (tileSize-1);
+				double dy = (ymax - ymin) / (tileSize-1);
 
+				for (int c = 0; c < tileSize; ++c)
+				{
+					double geoX = xmin + (dx * (double)c);
+					for (int r = 0; r < tileSize; ++r)
+					{
+						double geoY = ymin + (dy * (double)r);
 
-            // Iterate over the output heightfield and sample the data that was read into it.
-            double dx = (xmax - xmin) / (tileSize-1);
-            double dy = (ymax - ymin) / (tileSize-1);
+						float h = NO_DATA_VALUE;
 
-            for (int c = 0; c < tileSize; ++c)
-            {
-                double geoX = xmin + (dx * (double)c);
-                for (int r = 0; r < tileSize; ++r)
-                {
-                    double geoY = ymin + (dy * (double)r);
+						for (FeatureList::iterator f = featureList.begin(); f != featureList.end(); ++f)
+						{
+							osgEarth::Symbology::Polygon* p = dynamic_cast<osgEarth::Symbology::Polygon*>((*f)->getGeometry());
 
-                    float h = NO_DATA_VALUE;
+							if (!p)
+							{
+								OE_WARN << LC << "NOT A POLYGON" << std::endl;
+							}
+							else
+							{
+								GeoPoint geo(key.getProfile()->getSRS(), geoX, geoY);
+								if (!key.getProfile()->getSRS()->isEquivalentTo(getProfile()->getSRS()))
+									geo.transform(getProfile()->getSRS());
 
-                    for (FeatureList::iterator f = featureList.begin(); f != featureList.end(); ++f)
-                    {
-                        osgEarth::Symbology::Polygon* p = dynamic_cast<osgEarth::Symbology::Polygon*>((*f)->getGeometry());
+								if (p->contains2D(geo.x(), geo.y()))
+								{
+									h = (*f)->getDouble(_options.attr().value());
+									break;
+								}
+							}
+						}
 
-                        if (!p)
-                        {
-                            OE_WARN << LC << "NOT A POLYGON" << std::endl;
-                        }
-                        else
-                        {
-                            GeoPoint geo(key.getProfile()->getSRS(), geoX, geoY);
-                            if (!key.getProfile()->getSRS()->isEquivalentTo(getProfile()->getSRS()))
-                                geo.transform(getProfile()->getSRS());
-                            
-                            if (p->contains2D(geo.x(), geo.y()))
-                            {
-                                h = (*f)->getDouble(_options.attr().value());
-                                break;
-                            }
-                        }
-                    }
-
-                    hf->setHeight(c, r, h);
-                }
-            }
+						hf->setHeight(c, r, h);
+					}
+				}
+			}	
         }
         return hf.release();
     }

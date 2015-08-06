@@ -152,7 +152,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
             {
                 if ( fn - i->second.get()->getLastFrameSubmitted() > 2 )
-                    i = _requests.erase(i);
+                    _requests.erase(i++);
                 else
                     ++i;
             }

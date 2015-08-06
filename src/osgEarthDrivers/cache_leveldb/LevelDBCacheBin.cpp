@@ -254,7 +254,7 @@ LevelDBCacheBin::read(const std::string& key, const Reader& reader)
     // first read the metadata record.
     std::string metavalue;
     status = _db->Get( ro, metaKey(key), &metavalue );
-    TimeStamp lastModified;
+    TimeStamp lastModified = (TimeStamp)0;
     if ( status.ok() )
     {        
         decodeMeta(metavalue, metadata);

@@ -52,9 +52,6 @@
 				<scale>9.0</scale>
 			</detail>
 		</class>
-		<class name="water">
-			<image>water.jpg</image>
-		</class>
 		<class name="mountain">
 			<image>rock_dark.jpg</image>
 		</class>
@@ -73,5 +70,11 @@
         <class name="asphalt">
             <image>asphalt.jpg</image>
         </class>
+        <class name="sand">
+            <image>sand.jpg</image>
+        </class>
+		<class name="water">
+			<image>water.jpg</image>
+		</class>
 	</classes>
 </catalog>

@@ -26,14 +26,13 @@
         <images>
             <image name="ESA" driver="gdal" coverage="true">
                 <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <cache_policy usage="none"/>
+                <cache_policy usage="no_cache"/>
             </image>
             
-            <image name="Rivers" driver="agglite" coverage="true">
+            <image name="Lakes" driver="agglite" coverage="true">
                 <warp>0</warp>
                 <features driver="ogr">
                     <url>H:/data/naturalearth/vector-10m/ne_10m_lakes.shp</url>
-                    <build_spatial_index>true</build_spatial_index>
                 </features>
                 <styles>
                     <style type="text/css">
@@ -42,7 +41,7 @@
                         }
                     </style>
                 </styles>
-                <cache_policy usage="none"/>
+                <cache_policy usage="no_cache"/>
             </image>
                     
             <image name="Boston streets" driver="agglite" coverage="true" min_level="10">
@@ -57,7 +56,8 @@
                             coverage-value: 900;
                         }
                     </style>
-                </styles>        
+                </styles>   
+                <cache_policy usage="no_cache"/>     
             </image>
             
         </images>
@@ -72,7 +72,7 @@
         
         <splat>
             <coverage>CLASSMAP</coverage>
-            <legend>../data/splat/GLOBCOVER_legend.xml</legend>
+            <legend>../data/splat/GLOBCOVER_legend_nowater.xml</legend>
             <catalog>../data/splat/splat_catalog.xml</catalog>
         </splat>
         

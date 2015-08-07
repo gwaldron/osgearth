@@ -4,8 +4,8 @@ This shows how to label point features with an attribute.
 -->
 
 <map name="Feature Geometry Demo" type="geocentric" version="2">
-        
-    <image name="world" driver="gdal">
+            
+    <image driver="gdal">
         <url>../data/world.tif</url>
     </image>
     
@@ -13,6 +13,7 @@ This shows how to label point features with an attribute.
 
         <features name="cities" driver="ogr">
             <url>../data/ne_cities.shp</url>
+            <profile>spherical-mercator</profile>
         </features>
         
         <feature_indexing enabled="true"/>
@@ -25,21 +26,15 @@ This shows how to label point features with an attribute.
                 cities {
                     icon: "../data/downarrow.png";
                     icon-placement: centroid;
-                    icon-scale: 1.0;
-                    icon-occlusion-cull: false;
-                    icon-occlusion-cull-altitude: 8000;
                     icon-declutter: true;
                     icon-align:    center-bottom;
-                    text-content: [name];
+                    text-content:  [name];
                     text-priority: [rank_max];
-                    text-align:    center-center;
+                    text-align:    center-bottom;
                     text-offset-y: 15;
-                    text-offset-x: -8;
-                    text-halo:     #000000;
-                    altitude-offset: 100;
-                    text-size: 16;
-                    altitude-clamping: terrain;
-                    altitude-technique: scene;
+                    text-halo:     #333333;
+                    text-size:     16+1.25*([rank_max]-9);
+                    text-encoding: utf-8;
                 }     
             </style>
         </styles>

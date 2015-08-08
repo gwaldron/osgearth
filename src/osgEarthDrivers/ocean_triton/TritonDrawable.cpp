@@ -535,7 +535,7 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     // terrain engine automatically generates at the specified location.
     osgEarth::VirtualProgram* heightProgram = new osgEarth::VirtualProgram();
     heightProgram->setFunction( "setupContour", vertexShader,   osgEarth::ShaderComp::LOCATION_VERTEX_MODEL);
-    heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING);//, -1.0 );
+    heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_LIGHTING);//, -1.0 );
     heightProgram->addBindAttribLocation( "oe_terrain_attr", osg::Drawable::ATTRIBUTE_6 );
 
     osg::StateSet *stateSet = _heightCamera->getOrCreateStateSet();

@@ -97,7 +97,7 @@ _cacheDriver        ( "filesystem" )
 
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );
-    osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
+    //osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );

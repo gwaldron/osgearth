@@ -43,10 +43,11 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
     ReaderWriterKML()
     {
         supportsExtension( "kml", "KML" );
-
-#ifdef SUPPORT_KMZ
         supportsExtension( "kmz", "KMZ" );
-#endif // SUPPORT_KMZ
+        osgDB::Registry::instance()->addArchiveExtension("kmz");
+
+        // Not supported for archives:
+        //osgDB::Registry::instance()->addFileExtensionAlias("kmz", "zip"); 
     }
 
     osgDB::ReaderWriter::ReadResult readObject(const std::string& url, const osgDB::Options* options) const
@@ -67,7 +68,8 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
         if ( ext == "kmz" )
         {
-            return URI(url + "/.kml").readNode( dbOptions ).releaseNode();
+            // redirect to the archive.
+            return URI(url + "/doc.kml").readNode(dbOptions).releaseNode();
         }
         else
         {
@@ -99,24 +101,15 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         return ReadResult(node);
     }
 
-#ifdef SUPPORT_KMZ
-
-    osgDB::ReaderWriter::ReadResult openArchive( const std::string& url, ArchiveStatus status, unsigned int dummy, const osgDB::Options* options =0L ) const
+    osgDB::ReaderWriter::ReadResult openArchive(const std::string& url, ArchiveStatus status, unsigned blockSizeHint, const osgDB::Options* options =0L) const
     {
-        // Find the archive for this thread. We store one KMZ archive instance per thread 
-        // so that the minizip library can work in parallel
-        osg::ref_ptr<KMZArchive>& kmz = const_cast<ReaderWriterKML*>(this)->_archive.get();
-        if ( !kmz.valid() )
-            kmz = new KMZArchive( URI(url) );
-
-        return ReadResult( kmz.release() );
+        if ( osgDB::getLowerCaseFileExtension(url) == "kmz" )
+        {
+            OE_NOTICE << LC << "Opening KMZ archive at \"" << url << "\"\n";
+            return new KMZArchive( URI(url), options );
+        }
+        else return ReadResult::FILE_NOT_HANDLED;
     }
-
-private:
-
-    PerThread< osg::ref_ptr<KMZArchive> > _archive;
-
-#endif // SUPPORT_KMZ
 };
 
 REGISTER_OSGPLUGIN( kml, ReaderWriterKML )

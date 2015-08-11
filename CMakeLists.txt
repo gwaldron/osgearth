@@ -165,10 +165,6 @@ IF (WITH_EXTERNAL_TINYXML)
     FIND_PACKAGE(TinyXML)
 ENDIF (WITH_EXTERNAL_TINYXML)
 
-IF (ZLIB_FOUND)
-    FIND_PACKAGE(MiniZip)
-ENDIF (ZLIB_FOUND)
-
 IF(UNIX)
     # Not sure what this will do on Cygwin and Msys
     # Also, remember OS X X11 is a user installed option so it may not exist.

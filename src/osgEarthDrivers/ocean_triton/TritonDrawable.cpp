@@ -189,6 +189,8 @@ namespace
         quad->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
         quad->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
 
+        camera->getOrCreateStateSet()->setAttribute(new osg::Program());
+
 
         // set the camera to render after the main camera.
         camera->setRenderOrder(osg::Camera::POST_RENDER);
@@ -237,6 +239,11 @@ namespace
 
         virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, osgEarth::TerrainCallbackContext& context)
         {
+            update();
+        }
+
+        void update()
+        {
             if ( !_TRITON->ready() )
                 return;
 
@@ -273,6 +280,8 @@ namespace
             double near = osg::maximum(1.0, heightCamEye.length() - hmax);
             double far = osg::maximum(10.0, heightCamEye.length() - hmin + radE);
             //osg::notify( osg::ALWAYS ) << "near = " << near << "; far = " << far << std::endl;
+
+            //horizonDistance *= 0.25;
 
             _heightCam->setProjectionMatrix(osg::Matrix::ortho(-horizonDistance,horizonDistance,-horizonDistance,horizonDistance,near,far) );
             _heightCam->setViewMatrixAsLookAt( heightCamEye, osg::Vec3d(0.0,0.0,0.0), osg::Vec3d(0.0,0.0,1.0));
@@ -355,7 +364,7 @@ namespace
 #else
           "   float nHeight = oe_triton_height;\n"
 #endif
-        "    color = vec4( nHeight, 0.0, 0.0, 1.0 ); \n"
+        "    gl_FragColor = vec4( nHeight, 0.0, 0.0, 1.0 ); \n"
         "} \n";
 }
 
@@ -418,6 +427,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         c->setViewMatrix( renderInfo.getView()->getCamera()->getViewMatrix() );
         c->setProjectionMatrix(renderInfo.getView()->getCamera()->getProjectionMatrix() );
         c->setContextID(renderInfo.getView()->getCamera()->getGraphicsContext()->getState()->getContextID() );
+        c->update();
     }
 
     state->dirtyAllVertexArrays();
@@ -518,7 +528,7 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
 
     // Create its camera and render to it
     _heightCamera = new osg::Camera;
-    _heightCamera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+    _heightCamera->setReferenceFrame(osg::Transform::ABSOLUTE_RF_INHERIT_VIEWPOINT);
     _heightCamera->setClearMask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     _heightCamera->setClearColor(osg::Vec4(-1000.0, -1000.0, -1000.0, 1.0f));
     _heightCamera->setViewport(0, 0, textureSize, textureSize);
@@ -533,14 +543,13 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     // terrain engine automatically generates at the specified location.
     osgEarth::VirtualProgram* heightProgram = new osgEarth::VirtualProgram();
     heightProgram->setFunction( "setupContour", vertexShader,   osgEarth::ShaderComp::LOCATION_VERTEX_MODEL);
-    heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING);//, -1.0 );
+    heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_OUTPUT);//, -1.0 );
     heightProgram->addBindAttribLocation( "oe_terrain_attr", osg::Drawable::ATTRIBUTE_6 );
 
     osg::StateSet *stateSet = _heightCamera->getOrCreateStateSet();
     stateSet->setAttributeAndModes(heightProgram, osg::StateAttribute::ON);// | osg::StateAttribute::OVERRIDE);
     stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);// | osg::StateAttribute::OVERRIDE);
-
-
+    
     if( mapNode && _heightCamera )
     {
         _heightCamera->addChild( mapNode->getTerrainEngine() );

@@ -43,6 +43,12 @@ TritonContext::setSRS(const osgEarth::SpatialReference* srs)
     _srs = srs;
 }
 
+bool
+TritonContext::passHeightMapToTriton() const
+{
+    return _options.useHeightMap() == true;
+}
+
 void
 TritonContext::initialize(osg::RenderInfo& renderInfo)
 {

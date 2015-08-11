@@ -31,8 +31,6 @@
 
 //#define DEBUG_HEIGHTMAP
 
-//#define USE_HEIGHT_MAP
-
 using namespace osgEarth::Triton;
 
 namespace
@@ -388,10 +386,10 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     if ( !_TRITON->ready() )
         return;
 
-#ifdef USE_HEIGHT_MAP
-    if( !_terrainChangedCallback.valid())
+    if ( _TRITON->passHeightMapToTriton() && !_terrainChangedCallback.valid() )
+    {
         const_cast< TritonDrawable *>( this )->setupHeightMap(_mapNode.get());
-#endif
+    }
 
     ::Triton::Environment* environment = _TRITON->getEnvironment();
 

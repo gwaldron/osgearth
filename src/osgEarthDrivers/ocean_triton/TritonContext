@@ -61,6 +61,8 @@ namespace osgEarth { namespace Triton
         ::Triton::Environment* getEnvironment() { return _environment; }
         ::Triton::Ocean* getOcean() { return _ocean; }
 
+        bool passHeightMapToTriton() const;
+
     protected:
 
         virtual ~TritonContext();

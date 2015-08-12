@@ -7,7 +7,7 @@ using namespace osgEarth;
 
 #define LC "[SelectionInfo] "
 
-const unsigned SelectionInfo::_uiLODForMorphingRoundEarth = 5;
+const unsigned SelectionInfo::_uiLODForMorphingRoundEarth = 0;
 const double   SelectionInfo::_fLodLowerBound   = 12.0;
 const double   SelectionInfo::_fMorphStartRatio = 0.66;
 

@@ -255,6 +255,19 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             normal.normalize();
             normals->push_back( normal );
 
+#if 1
+            // neighbor:
+            osg::Vec3d modelNeighborLTP = modelLTP;
+            if ( (col & 0x1)==1 && (row & 0x1)==1 )
+                modelNeighborLTP = (*verts)[verts->size()-2-_tileSize];
+            else if ((row & 0x1)==1)
+                modelNeighborLTP = (*verts)[verts->size()-1-_tileSize];
+            else if ((col & 0x1)==1)
+                modelNeighborLTP = (*verts)[verts->size()-2];
+            
+            tangents->push_back(modelNeighborLTP);
+#else
+
             if (tileKey.getLOD()>=uiMorphLOD)
             {
                 osg::Vec3d modelXPlusOne;
@@ -282,6 +295,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
                 // PP: I shouldn't have to do this
                 tangents->push_back(vZero);
             }
+#endif
         }
     }
 

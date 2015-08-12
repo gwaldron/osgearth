@@ -25,7 +25,7 @@ uniform vec4	  oe_tile_extents;
 // replaced at installation fine; see vp_define
 #define OE_REX_VERTEX_MORPHING
 
-
+#if 0 // original morpher that uses a tangent vector:
 // Morphs a vertex using a morphing factor.
 void oe_rex_MorphVertex(inout vec3 vPositionMorphed, inout vec2 vUVMorphed, vec3 vPositionOriginal, vec2 vUVOriginal, float fMorphLerpK, vec2 vTileScale, vec3 vTangent, vec3 vBinormal)
 {
@@ -38,10 +38,22 @@ void oe_rex_MorphVertex(inout vec3 vPositionMorphed, inout vec2 vUVMorphed, vec3
 
    vPositionMorphed.xyz = vPositionOriginal.xyz + normalize(vTangent)*dudv.x*vTileScale.x + normalize(vBinormal)*dudv.y*vTileScale.y;   
 }
+#endif
+
+// Morphs a vertex using a neighbor.
+void oe_rex_MorphVertex2(inout vec3 position, inout vec2 uv, in vec3 neighborPosition)
+{
+   vec2 fFractionalPart = fract( uv.xy * vec2(oe_tile_grid_dimensions.y, oe_tile_grid_dimensions.y) ) * vec2(oe_tile_grid_dimensions.z, oe_tile_grid_dimensions.z);
+   uv = uv - (fFractionalPart * oe_rex_morphFactor);
+   uv = clamp(uv, 0, 1);
+
+   vec3 morphVector = neighborPosition.xyz - position.xyz;
+   position.xyz = position.xyz + morphVector*oe_rex_morphFactor;
+}
 
 
 // Compute a morphing factor based on model-space inputs:
-float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up, in vec3 tangent)
+float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 {
     // Find the "would be" position of the vertex (the position the vertex would
     // assume with no morphing)
@@ -62,36 +74,13 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up, in vec3 tangent)
 
 
 void oe_rexEngine_morph(inout vec4 vertexModel)
-{
-    vec3 tangent = gl_MultiTexCoord1.xyz;
-    
+{    
     // compute the morphing factor to send down the pipe.
-    oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal, tangent);
+    oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);
     
 #ifdef OE_REX_VERTEX_MORPHING
-    // We use tangent space morphing only on higher res grids.
-	// The lod at and beyond which this tangent space morphing is
-	// done is encoded in oe_tile_grid_dimensions.w
-	if (oe_tile_key.z > oe_tile_grid_dimensions.w)
-	{
-		vec3 vPositionMorphed;
-		vec2 vUVMorphed;
-
-		oe_rex_MorphVertex(
-                    vPositionMorphed
-                  , vUVMorphed
-				  , vertexModel.xyz
-                  , oe_layer_tilec.xy
-				  , oe_rex_morphFactor
-				  , oe_tile_extents.xy
-				  , tangent
-                  , cross(vp_Normal, tangent) );
-
-        vertexModel.xyz = vPositionMorphed.xyz;
-
-        // apply the elevation:
-        oe_layer_tilec.st = vUVMorphed;
-	}
+    vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;
+    oe_rex_MorphVertex2(vertexModel.xyz, oe_layer_tilec.st, neighborVertexModel.xyz);
 #endif
 }
 

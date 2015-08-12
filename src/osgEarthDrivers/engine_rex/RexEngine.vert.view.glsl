@@ -12,7 +12,7 @@ vec4 oe_layer_texcParent;
 vec3 oe_UpVectorView;
 
 uniform mat4 oe_layer_texMatrix;
-uniform mat4 oe_layer_texMatrix_parent;
+uniform mat4 oe_layer_texParentMatrix;
 
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
@@ -27,6 +27,6 @@ void oe_rex_elevateVertexAndSetTexCoords(inout vec4 vertexView)
     vertexView.xyz += normalize(oe_UpVectorView) * elev;
 
     // calculate the texture coordinates:
-	oe_layer_texc		= oe_layer_texMatrix		* oe_layer_tilec;
-	oe_layer_texcParent = oe_layer_texMatrix_parent * oe_layer_tilec;
+	oe_layer_texc		= oe_layer_texMatrix       * oe_layer_tilec;
+	oe_layer_texcParent = oe_layer_texParentMatrix * oe_layer_tilec;
 }

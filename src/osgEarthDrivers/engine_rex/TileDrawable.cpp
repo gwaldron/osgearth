@@ -53,7 +53,8 @@ _drawPatch   ( false )
     _orderUniformNameID           = osg::Uniform::getNameID( "oe_layer_order" );
     _opacityUniformNameID         = osg::Uniform::getNameID( "oe_layer_opacity" );
     _texMatrixUniformNameID       = osg::Uniform::getNameID( "oe_layer_texMatrix" );
-    _texMatrixParentUniformNameID = osg::Uniform::getNameID( "oe_layer_texMatrix_parent" );
+    _texMatrixParentUniformNameID = osg::Uniform::getNameID( "oe_layer_texParentMatrix" );
+    _texParentExistsUniformNameID = osg::Uniform::getNameID( "oe_layer_texParentExists" );
 
     _textureImageUnit       = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR)->unit();
     _textureParentImageUnit = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR_PARENT)->unit();
@@ -117,11 +118,12 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
-    GLint opacityLocation           = -1;
-    GLint uidLocation               = -1;
-    GLint orderLocation             = -1;
-    GLint texMatrixLocation         = -1;
-    GLint texMatrixParentLocation   = -1;
+    GLint opacityLocation            = -1;
+    GLint uidLocation                = -1;
+    GLint orderLocation              = -1;
+    GLint texMatrixLocation          = -1;
+    GLint texMatrixParentLocation    = -1;
+    GLint texParentExistsLocation     = -1;
 
     // The PCP can change (especially in a VirtualProgram environment). So we do need to
     // requery the uni locations each time unfortunately. TODO: explore optimizations.
@@ -132,6 +134,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
         orderLocation               = pcp->getUniformLocation( _orderUniformNameID );
         texMatrixLocation           = pcp->getUniformLocation( _texMatrixUniformNameID );
         texMatrixParentLocation     = pcp->getUniformLocation( _texMatrixParentUniformNameID );
+        texParentExistsLocation     = pcp->getUniformLocation( _texParentExistsUniformNameID );
     }
 
     float prevOpacity = -1.0f;
@@ -142,6 +145,8 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
         // in FFP mode, we need to enable the GL mode for texturing:
         if ( !pcp )
             state.applyMode(GL_TEXTURE_2D, true);
+
+        optional<bool> texParentExists_lastValue;
 
         for(MPTexture::Passes::const_iterator p = _mptex->getPasses().begin();
             p != _mptex->getPasses().end();
@@ -162,6 +167,8 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
                     ext->glUniformMatrix4fv( texMatrixLocation, 1, GL_FALSE, pass._matrix.ptr() );
                 }
 
+                bool texParentExists = pass._textureParent.valid();
+                if ( texParentExists )
                 {
                     // Apply the parent texture.
                     state.setActiveTextureUnit( _textureParentImageUnit );
@@ -171,6 +178,12 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 
                     // Apply the parent texture matrix.
                     ext->glUniformMatrix4fv( texMatrixParentLocation, 1, GL_FALSE, pass._matrixWRTParent.ptr() );
+                }
+
+                if ( !texParentExists_lastValue.isSetTo(texParentExists) )
+                {
+                    texParentExists_lastValue = texParentExists;
+                    ext->glUniform1f( texParentExistsLocation, texParentExists? 1.0f : 0.0f );
                 }
 
                 // Order uniform (TODO: evaluate whether we still need this)

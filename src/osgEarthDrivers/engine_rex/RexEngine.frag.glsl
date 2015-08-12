@@ -8,7 +8,8 @@
 
 uniform bool      oe_isPickCamera;
 uniform sampler2D oe_layer_tex;
-uniform sampler2D oe_layer_tex_parent;
+uniform sampler2D oe_layer_texParent;
+uniform float     oe_layer_texParentExists;
 uniform int       oe_layer_uid;
 uniform int       oe_layer_order;
 uniform float     oe_layer_opacity;
@@ -22,9 +23,10 @@ void oe_rexEngine_frag(inout vec4 color)
 {
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
 
-	vec4 colorSelf   = texture2D(oe_layer_tex		, oe_layer_texc.st);
-	vec4 colorParent = texture2D(oe_layer_tex_parent, oe_layer_texcParent.st);
-	vec4 colorTex = mix(colorSelf, colorParent, oe_rex_morphFactor);
+	vec4 colorSelf   = texture2D(oe_layer_tex,       oe_layer_texc.st);
+	vec4 colorParent = texture2D(oe_layer_texParent, oe_layer_texcParent.st);
+    vec4 source = mix( vec4(colorSelf.rgb, 0.0), colorParent, oe_layer_texParentExists );
+	vec4 colorTex = mix(colorSelf, source, oe_rex_morphFactor);
 
 	vec4 texel = mix(color, colorTex, applyImagery);
     texel.a = mix(texel.a, texel.a*oe_layer_opacity, applyImagery);

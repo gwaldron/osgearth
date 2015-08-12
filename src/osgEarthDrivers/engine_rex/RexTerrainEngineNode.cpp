@@ -469,8 +469,8 @@ RexTerrainEngineNode::setupRenderBindings()
     _renderBindings.push_back( SamplerBinding() );
     SamplerBinding& colorParent = _renderBindings.back();
     colorParent.usage()       = SamplerBinding::COLOR_PARENT;
-    colorParent.samplerName() = "oe_layer_tex_parent";
-    colorParent.matrixName()  = "oe_layer_texMatrix_parent";
+    colorParent.samplerName() = "oe_layer_texParent";
+    colorParent.matrixName()  = "oe_layer_texParentMatrix";
     this->getResources()->reserveTextureImageUnit( colorParent.unit(), "Terrain Color (Parent)" );
 }
 

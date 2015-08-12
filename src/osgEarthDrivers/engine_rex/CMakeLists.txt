@@ -9,7 +9,8 @@ set(TARGET_GLSL
     RexEngine.gs.glsl
     RexEngine.frag.glsl
     RexEngine.NormalMap.vert.glsl
-    RexEngine.NormalMap.frag.glsl)
+    RexEngine.NormalMap.frag.glsl
+    RexEngine.Morphing.vert.glsl)
 
 set(TARGET_IN
     Shaders.cpp.in)

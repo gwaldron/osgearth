@@ -38,13 +38,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         RexTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
             _skirtRatio             ( 0.001 ),
             _color                  ( Color::White ),
-            _enableLODBlending      ( false ),
-            _lodBlendDelay          ( 0.0f ),
-            _lodBlendDuration       ( 0.25f ),
             _quickRelease           ( true ),
             _expirationThreshold    ( 0 ),
             _highResolutionFirst    ( false ),
-            _normalMaps             ( true )
+            _normalMaps             ( true ),
+            _morphTerrain           ( true ),
+            _morphImagery           ( true )
         {
             setDriver( "rex" );
             fromConfig( _conf );
@@ -61,18 +60,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** The color of the globe surface where no images are applied */
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
-
-        /** Whether to enable LOD blending. Default is false. */
-        optional<bool>& enableLODBlending() { return _enableLODBlending; }
-        const optional<bool>& enableLODBlending() const { return _enableLODBlending; }
-
-        /** The time delay for LOD blending */
-        optional<float>& lodBlendDelay() { return _lodBlendDelay; }
-        const optional<float>& lodBlendDelay() const { return _lodBlendDelay; }
-
-        /** The length of time over which LOD blending occurs */
-        optional<float>& lodBlendDuration() { return _lodBlendDuration; }
-        const optional<float>& lodBlendDuration() const { return _lodBlendDuration; }
 
         /** Whether to run a post-render process that releases GL objects as quickly as
           * possible, freeing up memory faster */
@@ -91,18 +78,25 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>& normalMaps() { return _normalMaps; }
         const optional<bool>& normalMaps() const { return _normalMaps; }
 
+        /** Whether to morph terrain data between terrain tile LODs. */
+        optional<bool>& morphTerrain() { return _morphTerrain; }
+        const optional<bool>& morphTerrain() const { return _morphTerrain; }
+
+        /** Whether to morph imagery between terrain tile LODs. */
+        optional<bool>& morphImagery() { return _morphImagery; }
+        const optional<bool>& morphImagery() const { return _morphImagery; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.updateIfSet( "skirt_ratio", _skirtRatio );
             conf.updateIfSet( "color", _color );
-            conf.updateIfSet( "lod_blending", _enableLODBlending );
-            conf.updateIfSet( "lod_blending_delay", _lodBlendDelay );
-            conf.updateIfSet( "lod_blending_duration", _lodBlendDuration );
             conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
             conf.updateIfSet( "expiration_threshold", _expirationThreshold );
             conf.updateIfSet( "high_resolution_first", _highResolutionFirst );
             conf.updateIfSet( "normal_maps", _normalMaps );
+            conf.updateIfSet( "morph_terrain", _morphTerrain );
+            conf.updateIfSet( "morph_imagery", _morphImagery );
 
             return conf;
         }
@@ -116,24 +110,22 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "skirt_ratio", _skirtRatio );
             conf.getIfSet( "color", _color );
-            conf.getIfSet( "lod_blending", _enableLODBlending );
-            conf.getIfSet( "lod_blending_delay", _lodBlendDelay );
-            conf.getIfSet( "lod_blending_duration", _lodBlendDuration );
             conf.getIfSet( "quick_release_gl_objects", _quickRelease );
             conf.getIfSet( "expiration_threshold", _expirationThreshold );
             conf.getIfSet( "high_resolution_first", _highResolutionFirst );
             conf.getIfSet( "normal_maps", _normalMaps );
+            conf.getIfSet( "morph_terrain", _morphTerrain );
+            conf.getIfSet( "morph_imagery", _morphImagery );
         }
 
-        optional<float>               _skirtRatio;
-        optional<Color>               _color;
-        optional<bool>                _enableLODBlending;
-        optional<float>               _lodBlendDelay;
-        optional<float>               _lodBlendDuration;
-        optional<bool>                _quickRelease;
-        optional<unsigned>            _expirationThreshold;
-        optional<bool>                _highResolutionFirst;
-        optional<bool>                _normalMaps;
+        optional<float>    _skirtRatio;
+        optional<Color>    _color;
+        optional<bool>     _quickRelease;
+        optional<unsigned> _expirationThreshold;
+        optional<bool>     _highResolutionFirst;
+        optional<bool>     _normalMaps;
+        optional<bool>     _morphTerrain;
+        optional<bool>     _morphImagery;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

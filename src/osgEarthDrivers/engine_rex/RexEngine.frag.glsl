@@ -16,15 +16,15 @@ uniform vec4	  oe_tile_key;
 
 in vec4 oe_layer_texc;
 in vec4 oe_layer_texcParent;
-in vec4 flerp;
+in float oe_rex_morphFactor;
 
 void oe_rexEngine_frag(inout vec4 color)
 {
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
 
-	vec4 colorSelf   = texture2D(oe_layer_tex		  , oe_layer_texc.st);
+	vec4 colorSelf   = texture2D(oe_layer_tex		, oe_layer_texc.st);
 	vec4 colorParent = texture2D(oe_layer_tex_parent, oe_layer_texcParent.st);
-	vec4 colorTex = mix(colorSelf, colorParent, flerp.y);
+	vec4 colorTex = mix(colorSelf, colorParent, oe_rex_morphFactor);
 
 	vec4 texel = mix(color, colorTex, applyImagery);
     texel.a = mix(texel.a, texel.a*oe_layer_opacity, applyImagery);

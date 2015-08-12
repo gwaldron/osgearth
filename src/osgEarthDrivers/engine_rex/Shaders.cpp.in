@@ -11,6 +11,9 @@ Shaders::Shaders()
     ENGINE_VERT_MODEL = "RexEngine.vert.glsl";
     _sources[ENGINE_VERT_MODEL] = OE_MULTILINE(@RexEngine.vert.glsl@);
 
+    MORPHING_VERT = "RexEngine.Morphing.vert.glsl";
+    _sources[MORPHING_VERT] = OE_MULTILINE(@RexEngine.Morphing.vert.glsl@);
+
     ENGINE_VERT_VIEW = "RexEngine.vert.view.glsl";
     _sources[ENGINE_VERT_VIEW] = OE_MULTILINE(@RexEngine.vert.view.glsl@);
 

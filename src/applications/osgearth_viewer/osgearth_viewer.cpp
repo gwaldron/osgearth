@@ -52,9 +52,6 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
-    if ( arguments.read("--stencil") )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
-
     float vfov = -1.0f;
     arguments.read("--vfov", vfov);
 
@@ -65,13 +62,16 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
     // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator(arguments) );   
+    viewer.setCameraManipulator( new EarthManipulator(arguments) );
+
+    // disable the small-feature culling
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     if ( vfov > 0.0 )
     {
         double fov, ar, n, f;
         viewer.getCamera()->getProjectionMatrixAsPerspective(fov, ar, n, f);
-        viewer.getCamera()->setProjectionMatrixAsPerspective(60.0, ar, n, f);
+        viewer.getCamera()->setProjectionMatrixAsPerspective(vfov, ar, n, f);
     }
 
     // load an earth file, and support all or our example command-line options
@@ -80,8 +80,6 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-
-        viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
         return viewer.run();
     }

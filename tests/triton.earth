@@ -21,7 +21,7 @@ http://sundog-soft.com/sds/features/real-time-3d-clouds/
         <ocean driver="triton"
                user="my_user_name"
                license_code="my_license_code"
-			   max_altitude="20000"/>
+			   max_altitude="10000"/>
                
         <sky hours="18" driver="gl"/>
         

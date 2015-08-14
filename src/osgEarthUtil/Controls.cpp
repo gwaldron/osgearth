@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -191,8 +191,10 @@ Control::init()
 
     _geode = new osg::Geode();
     this->addChild( _geode );
-
+    
+#ifdef OSG_GLES2_AVAILABLE
     _alphaEffect = new AlphaEffect(this->getOrCreateStateSet());
+#endif
 }
 
 void
@@ -349,6 +351,12 @@ Control::setVertAlign( const Alignment& value ) {
         _y.unset(); // vert align is mutex with abs positioning
         dirty();
     }
+}
+
+void
+Control::setAlign(const Alignment& h, const Alignment& v) {
+    setHorizAlign( h );
+    setVertAlign ( v );
 }
 
 void
@@ -1242,7 +1250,7 @@ HSliderControl::draw( const ControlContext& cx )
 {
     Control::draw( cx );
 
-    if ( visible() == true && parentIsVisible())
+    if ( visible() && parentIsVisible())
     {
         osg::ref_ptr<osg::Geometry> g = newGeometry();
 
@@ -1354,7 +1362,7 @@ CheckBoxControl::draw( const ControlContext& cx )
 {
     Control::draw( cx );
 
-    if ( visible() == true && parentIsVisible() )
+    if ( visible() && parentIsVisible() )
     {
         osg::Geometry* g = newGeometry();
 
@@ -1680,7 +1688,7 @@ VBox::clearControls()
 void
 VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
-    if ( visible() == true )
+    if ( visible() )
     {
         _renderSize.set( 0, 0 );
 
@@ -1770,13 +1778,16 @@ VBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
 void
 VBox::draw( const ControlContext& cx )
 {
-    Container::draw( cx );
-
-    for( unsigned i=1; i<getNumChildren(); ++i )
+    if ( visible() )
     {
-        Control* c = dynamic_cast<Control*>(getChild(i));
-        if ( c )
-            c->draw( cx );
+        Container::draw( cx );
+
+        for( unsigned i=1; i<getNumChildren(); ++i )
+        {
+            Control* c = dynamic_cast<Control*>(getChild(i));
+            if ( c )
+                c->draw( cx );
+        }
     }
 }
 
@@ -1812,7 +1823,7 @@ HBox::clearControls()
 void
 HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
-    if ( visible() == true )
+    if ( visible() )
     {
         _renderSize.set( 0, 0 );
 
@@ -1901,13 +1912,16 @@ HBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
 void
 HBox::draw( const ControlContext& cx )
 {
-    Container::draw( cx );
-
-    for( unsigned i=1; i<getNumChildren(); ++i )
+    if ( visible() )
     {
-        Control* c = dynamic_cast<Control*>(getChild(i));
-        if ( c )
-            c->draw( cx );
+        Container::draw( cx );
+
+        for( unsigned i=1; i<getNumChildren(); ++i )
+        {
+            Control* c = dynamic_cast<Control*>(getChild(i));
+            if ( c )
+                c->draw( cx );
+        }
     }
 }
 
@@ -2055,7 +2069,7 @@ Grid::clearControls()
 void
 Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
 {
-    if ( visible() == true )
+    if ( visible() )
     {
         _renderSize.set( 0, 0 );
 
@@ -2153,19 +2167,22 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
 void
 Grid::draw( const ControlContext& cx )
 {
-    Container::draw( cx );
-
-    for( unsigned i=1; i<getNumChildren(); ++i )
+    if ( visible() )
     {
-        osg::Group* rowGroup = getChild(i)->asGroup();
-        if ( rowGroup )
+        Container::draw( cx );
+
+        for( unsigned i=1; i<getNumChildren(); ++i )
         {
-            for( unsigned j=0; j<rowGroup->getNumChildren(); ++j )
+            osg::Group* rowGroup = getChild(i)->asGroup();
+            if ( rowGroup )
             {
-                Control* c = dynamic_cast<Control*>( rowGroup->getChild(j) );
-                if ( c )
+                for( unsigned j=0; j<rowGroup->getNumChildren(); ++j )
                 {
-                    c->draw( cx );
+                    Control* c = dynamic_cast<Control*>( rowGroup->getChild(j) );
+                    if ( c )
+                    {
+                        c->draw( cx );
+                    }
                 }
             }
         }

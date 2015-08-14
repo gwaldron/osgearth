@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -84,25 +84,33 @@ ElevationLayerOptions::mergeConfig( const Config& conf )
 
 namespace
 {
-    struct ElevationLayerPreCacheOperation : public TileSource::HeightFieldOperation
+    // Opeartion that replaces invalid heights with the NO_DATA_VALUE marker.
+    struct NormalizeNoDataValues : public TileSource::HeightFieldOperation
     {
-        osg::ref_ptr<CompositeValidValueOperator> _ops;
-
-        ElevationLayerPreCacheOperation( TileSource* source )
+        NormalizeNoDataValues(TileSource* source)
         {
-            _ops = new CompositeValidValueOperator;
-            _ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
-            _ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
+            _noDataValue   = source->getNoDataValue();
+            _minValidValue = source->getMinValidValue();
+            _maxValidValue = source->getMaxValidValue();
         }
 
-        void operator()( osg::ref_ptr<osg::HeightField>& hf )
+        void operator()(osg::ref_ptr<osg::HeightField>& hf)
         {
-            //Modify the heightfield data so that is contains a standard value for NO_DATA
-            ReplaceInvalidDataOperator op;
-            op.setReplaceWith(NO_DATA_VALUE);
-            op.setValidDataOperator(_ops.get());
-            op( hf.get() );
+            if ( hf.valid() )
+            {
+                osg::FloatArray* values = hf->getFloatArray();
+                for(osg::FloatArray::iterator i = values->begin(); i != values->end(); ++i)
+                {
+                    float& value = *i;
+                    if ( osg::equivalent(value, _noDataValue) || value < _minValidValue || value > _maxValidValue )
+                    {
+                        value = NO_DATA_VALUE;
+                    }
+                } 
+            }
         }
+
+        float _noDataValue, _minValidValue, _maxValidValue;
     };
 
     // perform very basic sanity-check validation on a heightfield.
@@ -192,16 +200,18 @@ ElevationLayer::fireCallback( ElevationLayerCallbackMethodPtr method )
     }
 }
 
-void
-ElevationLayer::initTileSource()
+TileSource::HeightFieldOperation*
+ElevationLayer::getOrCreatePreCacheOp()
 {
-    // call superclass first.
-    TerrainLayer::initTileSource();
-
-    if ( _tileSource.valid() )
+    if ( !_preCacheOp.valid() && getTileSource() )
     {
-        _preCacheOp = new ElevationLayerPreCacheOperation( _tileSource.get() );        
+        Threading::ScopedMutexLock lock(_mutex);
+        if ( !_preCacheOp.valid() )
+        {
+            _preCacheOp = new NormalizeNoDataValues( getTileSource() );
+        }
     }
+    return _preCacheOp.get();
 }
 
 
@@ -234,8 +244,8 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         }
 
         // Make it from the source:
-        result = source->createHeightField( key, _preCacheOp.get(), progress );
-
+        result = source->createHeightField( key, getOrCreatePreCacheOp(), progress );
+   
         // If the result is good, we how have a heightfield but it's vertical values
         // are still relative to the tile source's vertical datum. Convert them.
         if ( result )
@@ -376,6 +386,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
     }
 
     // Check the memory cache first
+    bool fromMemCache = false;
     if ( _memCache.valid() )
     {
         CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() );        
@@ -385,6 +396,8 @@ ElevationLayer::createHeightField(const TileKey&    key,
             result = GeoHeightField(
                 static_cast<osg::HeightField*>(cacheResult.releaseObject()),
                 key.getExtent());
+
+            fromMemCache = true;
         }
         //_memCache->dumpStats(key.getProfile()->getFullSignature());
     }
@@ -459,13 +472,6 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 hf = 0L; // to fall back on cached data if possible.
             }
 
-            // memory cache first:
-            if ( hf && _memCache.valid() )
-            {
-                CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
-                bin->write(key.str(), hf.get());
-            }
-
             // cache if necessary
             if ( hf            && 
                  cacheBin      && 
@@ -487,7 +493,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 return GeoHeightField::INVALID;
             }
 
-            // Set up the heightfield so we don't have to worry about it later
+            // Set up the heightfield params.
             double minx, miny, maxx, maxy;
             key.getExtent().getBounds(minx, miny, maxx, maxy);
             hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
@@ -502,6 +508,13 @@ ElevationLayer::createHeightField(const TileKey&    key,
         {
             result = GeoHeightField( hf.get(), key.getExtent() );
         }
+    }
+
+    // write to mem cache if needed:
+    if ( result.valid() && !fromMemCache && _memCache.valid() )
+    {
+        CacheBin* bin = _memCache->getOrCreateBin( key.getProfile()->getFullSignature() ); 
+        bin->write(key.str(), result.getHeightField());
     }
 
     // post-processing:
@@ -560,6 +573,12 @@ ElevationLayerVector::setExpressTileSize(unsigned tileSize)
     _expressTileSize = tileSize;
 }
 
+namespace
+{
+    typedef osg::ref_ptr<ElevationLayer>          RefElevationLayer;
+    typedef std::pair<RefElevationLayer, TileKey> LayerAndKey;
+    typedef std::vector<LayerAndKey>              LayerAndKeyVector;
+}
 
 bool
 ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
@@ -583,8 +602,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     }
     
     // Collect the valid layers for this tile.
-    ElevationLayerVector contenders;
-    ElevationLayerVector offsets;
+    LayerAndKeyVector contenders;
+    LayerAndKeyVector offsets;
+
+    // Track the number of layers that would return fallback data.
+    unsigned numFallbackLayers = 0;
+
+    // Check them in reverse order since the highest priority is last.
     for(ElevationLayerVector::const_reverse_iterator i = this->rbegin(); i != this->rend(); ++i)
     {
         ElevationLayer* layer = i->get();
@@ -592,18 +616,52 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
         if ( layer->getEnabled() && layer->getVisible() )
         {
             // calculate the resolution-mapped key (adjusted for tile resolution differential).            
-            TileKey mappedKey = 
-                keyToUse.mapResolution(hf->getNumColumns(), layer->getTileSize());
+            TileKey mappedKey = keyToUse.mapResolution(
+                hf->getNumColumns(),
+                layer->getTileSize() );
 
-            // Note: isKeyInRange tests the key, but haData tests the mapped key.
-            // I think that's right!
-            if ((layer->getTileSource() == 0L) || 
-                (layer->isKeyInRange(key) && layer->getTileSource()->hasData(mappedKey)))
+            bool useLayer = true;
+            TileKey bestKey( mappedKey );
+
+            // Is there a tilesource? If not we are cache-only and cannot reject the layer.
+            if ( layer->getTileSource() )
             {
-                if (layer->isOffset())
-                    offsets.push_back(layer);
+                // Check whether the non-mapped key is valid according to the user's min/max level settings:
+                if ( !layer->isKeyInRange(key) )
+                {
+                    useLayer = false;
+                }
+                
+
+                // Find the "best available" mapped key from the tile source:
+                else 
+                {
+                    if ( layer->getTileSource()->getBestAvailableTileKey(mappedKey, bestKey) )
+                    {
+                        // If the bestKey is not the mappedKey, this layer is providing
+                        // fallback data (data at a lower resolution than requested)
+                        if ( mappedKey != bestKey )
+                        {
+                            numFallbackLayers++;
+                        }
+                    }
+                    else
+                    {
+                        useLayer = false;
+                    }
+                }
+            }
+
+            if ( useLayer )
+            {
+                if ( layer->isOffset() )
+                {
+                    offsets.push_back( std::make_pair(layer, bestKey) );
+                }
                 else
-                    contenders.push_back(layer);
+                {
+                    contenders.push_back( std::make_pair(layer, bestKey) );
+                }
             }
         }
     }
@@ -614,6 +672,11 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
         return false;
     }
 
+    // if everything is fallback data, bail out.
+    if ( contenders.size() + offsets.size() == numFallbackLayers )
+    {
+        return false;
+    }
     
     // Sample the layers into our target.
     unsigned numColumns = hf->getNumColumns();
@@ -626,12 +689,21 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     // We will load the actual heightfields on demand. We might not need them all.
     GeoHeightFieldVector heightFields(contenders.size());
     GeoHeightFieldVector offsetFields(offsets.size());
-    std::vector<bool>    heightFailed (contenders.size(), false);
+    std::vector<bool>    heightFallback(contenders.size(), false);
+    std::vector<bool>    heightFailed(contenders.size(), false);
     std::vector<bool>    offsetFailed(offsets.size(), false);
+
+    // The maximum number of heightfields to keep in this local cache
+    unsigned int maxHeightFields = 50;
+    unsigned numHeightFieldsInCache = 0;
 
     const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
 
     bool realData = false;
+
+    unsigned int total = numColumns * numRows;
+    unsigned int completed = 0;
+    int nodataCount = 0;
 
     for (unsigned c = 0; c < numColumns; ++c)
     {
@@ -648,29 +720,73 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 if ( heightFailed[i] )
                     continue;
 
-                GeoHeightField& layerHF = heightFields[i];
-                if ( !layerHF.valid() )
-                {
-                    TileKey mappedKey = 
-                        keyToUse.mapResolution(hf->getNumColumns(), contenders[i]->getTileSize());
+                ElevationLayer* layer = contenders[i].first.get();
 
-                    layerHF = contenders[i]->createHeightField(mappedKey, progress);
-                    if ( !layerHF.valid() )
+                GeoHeightField& layerHF = heightFields[i];
+                TileKey actualKey = contenders[i].second;
+
+                if (!layerHF.valid())
+                {
+                    // We couldn't get the heightfield from the cache, so try to create it.
+                    // We also fallback on parent layers to make sure that we have data at the location even if it's fallback.
+                    while (!layerHF.valid() && actualKey.valid())
+                    {
+                        layerHF = layer->createHeightField(actualKey, progress);
+                        if (!layerHF.valid())
+                        {
+                            actualKey = actualKey.createParentKey();
+                        }
+                    }
+
+                    // Mark this layer as fallback if necessary.
+                    if (layerHF.valid())
+                    {
+                        heightFallback[i] = actualKey != contenders[i].second;
+                        numHeightFieldsInCache++;
+                    }
+                    else
                     {
                         heightFailed[i] = true;
                         continue;
                     }
                 }
 
-                // If we actually got a layer then we have real data
-                realData = true;
-
-                float elevation;
-                if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
-                    elevation != NO_DATA_VALUE)
+                if (layerHF.valid())
                 {
-                    resolved = true;                    
-                    hf->setHeight(c, r, elevation);
+                    bool isFallback = heightFallback[i];
+
+                    // We only have real data if this is not a fallback heightfield.
+                    if (!isFallback)
+                    {
+                        realData = true;
+                    }
+
+                    float elevation;
+                    if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation))
+                    {
+                        if ( elevation != NO_DATA_VALUE )
+                        {
+                            resolved = true;                    
+                            hf->setHeight(c, r, elevation);
+                        }
+                        else
+                        {
+                            ++nodataCount;
+                        }
+                    }
+                }
+
+
+                // Clear the heightfield cache if we have too many heightfields in the cache.
+                if (numHeightFieldsInCache >= maxHeightFields)
+                {
+                    //OE_NOTICE << "Clearing cache" << std::endl;
+                    for (unsigned int k = 0; k < heightFields.size(); k++)
+                    {
+                        heightFields[k] = GeoHeightField::INVALID;
+                        heightFallback[k] = false;
+                    }
+                    numHeightFieldsInCache = 0;
                 }
             }
 
@@ -682,10 +798,9 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 GeoHeightField& layerHF = offsetFields[i];
                 if ( !layerHF.valid() )
                 {
-                    TileKey mappedKey = 
-                        keyToUse.mapResolution(hf->getNumColumns(), offsets[i]->getTileSize());
+                    ElevationLayer* offset = offsets[i].first.get();
 
-                    layerHF = offsets[i]->createHeightField(mappedKey, progress);
+                    layerHF = offset->createHeightField(offsets[i].second, progress);
                     if ( !layerHF.valid() )
                     {
                         offsetFailed[i] = true;
@@ -704,7 +819,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 }
             }
         }
-    }   
+    }
 
     // Return whether or not we actually read any real data
     return realData;

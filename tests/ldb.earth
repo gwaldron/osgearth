@@ -1,0 +1,28 @@
+<!--
+osgEarth Sample - Logrithmic depth buffer.
+
+Enable the logrithmic depth buffer by running osgearth_viewer with --logdepth
+-->
+<map name="readymap.org" type="geocentric" version="2">
+
+    <image name="ReadyMap.org - Imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+    
+    <external>
+        <viewpoints>
+            <viewpoint name="Plane" heading="0" height="-1526.619580102153" lat="0.7502917292180486" long="-90.00003984212466" pitch="-88.99970818676897" range="19080841.37590883"/>
+            <viewpoint name="Plane2" heading="9.977198612994472e-011" height="-1493.142864811234" lat="0.750286505217539" long="-90.00003984212442" pitch="-88.99958540266123" range="19003681.6859768"/>
+        </viewpoints>
+        
+        <annotations>            
+            <model name="flag model">
+                <url>../data/cessna.osgb.100.scale.(-90,-45,0).rot</url>
+                <position lat="0" long="-90" hat="19000000"/>
+                <!-- <position lat="33" long="-120" hat="1000000"/> -->
+            </model>            
+        </annotations>
+        
+        <sky driver="gl"/>
+    </external>
+</map>

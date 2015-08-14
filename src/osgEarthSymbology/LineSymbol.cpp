@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -35,10 +35,12 @@ _creaseAngle ( 0.0f )
 
 LineSymbol::LineSymbol(const LineSymbol& rhs,const osg::CopyOp& copyop):
 Symbol(rhs, copyop),
-_stroke(rhs._stroke),
-_tessellation(rhs._tessellation),
-_creaseAngle(rhs._creaseAngle)
+_stroke          (rhs._stroke),
+_tessellation    (rhs._tessellation),
+_creaseAngle     (rhs._creaseAngle),
+_tessellationSize(rhs._tessellationSize)
 {
+    //nop
 }
 
 Config 
@@ -49,6 +51,7 @@ LineSymbol::getConfig() const
     conf.addObjIfSet("stroke",       _stroke);
     conf.addIfSet   ("tessellation", _tessellation);
     conf.addIfSet   ("crease_angle", _creaseAngle);
+    conf.addObjIfSet("tessellation_size", _tessellationSize );
     return conf;
 }
 
@@ -58,6 +61,7 @@ LineSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet("stroke",       _stroke);
     conf.getIfSet   ("tessellation", _tessellation);
     conf.getIfSet   ("crease_angle", _creaseAngle);
+    conf.getObjIfSet("tessellation_size", _tessellationSize);
 }
 
 void
@@ -96,6 +100,13 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "stroke-tessellation") ) {
         style.getOrCreate<LineSymbol>()->tessellation() = as<unsigned>( c.value(), 0 );
     }
+    else if ( match(c.key(), "stroke-tessellation-size") ) {
+        float value;
+        Units units;
+        if ( Units::parse(c.value(), value, units, Units::METERS) ) {
+            style.getOrCreate<LineSymbol>()->tessellationSize() = Distance(value, units);
+        }
+    }        
     else if ( match(c.key(), "stroke-min-pixels") ) {
         style.getOrCreate<LineSymbol>()->stroke()->minPixels() = as<float>(c.value(), 0.0f);
     }

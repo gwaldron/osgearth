@@ -1,0 +1,52 @@
+<!--
+|  Combining a normal image layer with the Splat effect.
+|  You can tweak the distances by using command-line uniforms:
+|
+|    --uniform oe_layer_minRange <min> <max>
+|    --uniform oe_layer_maxRange <min> <max>
+|    --uniform oe_layer_attenuationRange <range>
+-->
+
+<map>
+
+    <options>
+        <terrain attenuation_distance="40000"/>
+    </options>
+    
+    <image name="readymap_imagery" driver="tms" min_range="65000">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+    
+    <elevation name="readymap_elevation" driver="tms" enabled="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    
+    <image name="GLOBCOVER" driver="gdal" shared="true" visible="false" coverage="true" enabled="true">
+        <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+        <cache_policy usage="none"/>
+    </image>
+
+    <extensions>
+        
+        <normalmap/>  
+    
+        <splat>
+            <coverage>GLOBCOVER</coverage>
+            <legend>../data/splat/GLOBCOVER_legend.xml</legend>
+            <catalog>../data/splat/splat_catalog.xml</catalog>
+        </splat>
+        
+        <viewpoints>
+            <viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>
+            <viewpoint name="Mt R. Nadir 30K" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>
+            <viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
+            <viewpoint name="Mt R. Closeup" heading="-109.6842970297122" height="3843.486737414263" lat="46.85528453766688" long="-121.7455004166102" pitch="-4.617466338845979" range="951.4780720092711"/>
+            <viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>
+            <viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
+            <viewpoint name="Nepal NF" heading="-49.14546953546358" height="6334.332569343038" lat="27.9421778947837" long="86.9935949004298" pitch="-3.643325527310435" range="13302.81192964212"/>
+            <viewpoint name="Matterhorn" heading="-1.429462844200832" height="2282.858508689329" lat="45.95106319557" long="7.642741711675961" pitch="-25.12269405854052" range="26690.10606054494"/>
+        </viewpoints>
+        
+    </extensions>
+
+</map>

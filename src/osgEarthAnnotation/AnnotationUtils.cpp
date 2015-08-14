@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -24,7 +27,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Capabilities>
-
+#include <osgEarth/CullingUtils>
 
 #include <osgText/Text>
 #include <osg/Depth>
@@ -130,21 +133,25 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     t->setAutoRotateToScreen( false );
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
-    t->setCharacterSize( symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f );
+    float size = symbol && symbol->size().isSet() ? (float)(symbol->size()->eval()) : 16.0f;
+    t->setCharacterSize( size );
     t->setColor( symbol && symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
 
     osgText::Font* font = 0L;
     if ( symbol && symbol->font().isSet() )
     {
         font = osgText::readFontFile( *symbol->font() );
-        // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
-        if ( font )
-          font->setGlyphImageMargin( 2 );
     }
     if ( !font )
         font = Registry::instance()->getDefaultFont();
+
     if ( font )
+    {
         t->setFont( font );
+
+        // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
+        font->setGlyphImageMargin( 2 );
+    }
 
     if ( symbol )
     {
@@ -152,6 +159,9 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         osgText::Text::AlignmentType at = (osgText::Text::AlignmentType)symbol->alignment().value();
         t->setAlignment( at );
     }
+
+    t->setFontResolution( size, size );
+    t->setBackdropOffset( (float)t->getFontWidth() / 256.0f, (float)t->getFontHeight() / 256.0f );
 
     if ( symbol && symbol->halo().isSet() )
     {
@@ -210,8 +220,8 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     float s = scale * image->s();
     float t = scale * image->t();
 
-    float x0 = (float)pixelOffset.x() - s/2.0;
-    float y0 = (float)pixelOffset.y() - t/2.0;
+    float x0 = (float)pixelOffset.x(); // - s/2.0;
+    float y0 = (float)pixelOffset.y(); // - t/2.0;
 
     osg::Vec3Array* verts = new osg::Vec3Array(4);
     (*verts)[0].set( x0,     y0,     0 );
@@ -270,120 +280,147 @@ AnnotationUtils::createHighlightUniform()
 // Transform::accept since we don't want to traverse the child graph from
 // this call.
 void
-AnnotationUtils::OrthoNodeAutoTransform::acceptCullNoTraverse( osg::CullStack* cs )
+AnnotationUtils::OrthoNodeAutoTransform::accept(osg::NodeVisitor& nv)
 {
-    osg::Viewport::value_type width = _previousWidth;
-    osg::Viewport::value_type height = _previousHeight;
-
-    osg::Viewport* viewport = cs->getViewport();
-    if (viewport)
+    if ( nv.validNodeMask(*this) )
     {
-        width = viewport->width();
-        height = viewport->height();
-    }
-
-    osg::Vec3d eyePoint = cs->getEyeLocal(); 
-    osg::Vec3d localUp = cs->getUpLocal(); 
-    osg::Vec3d position = getPosition();
-
-    const osg::Matrix& projection = *(cs->getProjectionMatrix());
-
-    bool doUpdate = _firstTimeToInitEyePoint;
-    if (!_firstTimeToInitEyePoint)
-    {
-        osg::Vec3d dv = _previousEyePoint-eyePoint;
-        if (dv.length2()>getAutoUpdateEyeMovementTolerance()*(eyePoint-getPosition()).length2())
+        if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
-            doUpdate = true;
-        }
-        osg::Vec3d dupv = _previousLocalUp-localUp;
-        // rotating the camera only affects ROTATE_TO_*
-        if (_autoRotateMode &&
-            dupv.length2()>getAutoUpdateEyeMovementTolerance())
-        {
-            doUpdate = true;
-        }
-        else if (width!=_previousWidth || height!=_previousHeight)
-        {
-            doUpdate = true;
-        }
-        else if (projection != _previousProjection) 
-        {
-            doUpdate = true;
-        }                
-        else if (position != _previousPosition) 
-        { 
-            doUpdate = true; 
-        } 
-    }
-    _firstTimeToInitEyePoint = false;
+            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
-    if (doUpdate)
-    {            
-        if (getAutoScaleToScreen())
-        {
-            double size = 1.0/cs->pixelSize(getPosition(),0.48f);
-
-            if (_autoScaleTransitionWidthRatio>0.0)
+            // check for a reference camera for size scaling.
+            osg::Vec3f refCamScale(1,1,1);
+            osg::Camera* cam = cv->getCurrentCamera();
+            if ( cam && cam->isRenderToTextureCamera() )
             {
-                if (_minimumScale>0.0)
+                const osg::Viewport* vp = cam->getViewport();
+                if ( vp )
                 {
-                    double j = _minimumScale;
-                    double i = (_maximumScale<DBL_MAX) ? 
-                        _minimumScale+(_maximumScale-_minimumScale)*_autoScaleTransitionWidthRatio :
-                    _minimumScale*(1.0+_autoScaleTransitionWidthRatio);
-                    double c = 1.0/(4.0*(i-j));
-                    double b = 1.0 - 2.0*c*i;
-                    double a = j + b*b / (4.0*c);
-                    double k = -b / (2.0*c);
-
-                    if (size<k) size = _minimumScale;
-                    else if (size<i) size = a + b*size + c*(size*size);
+                    osg::Camera* refCam = dynamic_cast<osg::Camera*>(cam->getUserData());
+                    if ( refCam && refCam->getViewport() )
+                    {
+                        refCamScale.set(
+                            vp->width() / refCam->getViewport()->width(),
+                            vp->height() / refCam->getViewport()->height(),
+                            1.0f );
+                    }
                 }
-
-                if (_maximumScale<DBL_MAX)
-                {
-                    double n = _maximumScale;
-                    double m = (_minimumScale>0.0) ?
-                        _maximumScale+(_minimumScale-_maximumScale)*_autoScaleTransitionWidthRatio :
-                    _maximumScale*(1.0-_autoScaleTransitionWidthRatio);
-                    double c = 1.0 / (4.0*(m-n));
-                    double b = 1.0 - 2.0*c*m;
-                    double a = n + b*b/(4.0*c);
-                    double p = -b / (2.0*c);
-
-                    if (size>p) size = _maximumScale;
-                    else if (size>m) size = a + b*size + c*(size*size);
-                }        
             }
 
-            setScale(size);
+            osg::Viewport::value_type width = _previousWidth;
+            osg::Viewport::value_type height = _previousHeight;
+
+            osg::Viewport* viewport = cv->getViewport();
+            if (viewport)
+            {
+                width = viewport->width();
+                height = viewport->height();
+            }
+
+            osg::Vec3d eyePoint = cv->getEyeLocal(); 
+            osg::Vec3d localUp = cv->getUpLocal(); 
+            osg::Vec3d position = getPosition();
+
+            const osg::Matrix& projection = *(cv->getProjectionMatrix());
+
+            bool doUpdate = _firstTimeToInitEyePoint;
+            if (!_firstTimeToInitEyePoint)
+            {
+                osg::Vec3d dv = _previousEyePoint-eyePoint;
+                if (dv.length2()>getAutoUpdateEyeMovementTolerance()*(eyePoint-getPosition()).length2())
+                {
+                    doUpdate = true;
+                }
+                osg::Vec3d dupv = _previousLocalUp-localUp;
+                // rotating the camera only affects ROTATE_TO_*
+                if (_autoRotateMode &&
+                    dupv.length2()>getAutoUpdateEyeMovementTolerance())
+                {
+                    doUpdate = true;
+                }
+                else if (width!=_previousWidth || height!=_previousHeight)
+                {
+                    doUpdate = true;
+                }
+                else if (projection != _previousProjection) 
+                {
+                    doUpdate = true;
+                }                
+                else if (position != _previousPosition) 
+                { 
+                    doUpdate = true; 
+                } 
+            }
+            _firstTimeToInitEyePoint = false;
+
+            if (doUpdate)
+            {            
+                if (getAutoScaleToScreen())
+                {
+                    double size = 1.0/cv->pixelSize(getPosition(),0.48f);
+
+                    if (_autoScaleTransitionWidthRatio>0.0)
+                    {
+                        if (_minimumScale>0.0)
+                        {
+                            double j = _minimumScale;
+                            double i = (_maximumScale<DBL_MAX) ? 
+                                _minimumScale+(_maximumScale-_minimumScale)*_autoScaleTransitionWidthRatio :
+                            _minimumScale*(1.0+_autoScaleTransitionWidthRatio);
+                            double c = 1.0/(4.0*(i-j));
+                            double b = 1.0 - 2.0*c*i;
+                            double a = j + b*b / (4.0*c);
+                            double k = -b / (2.0*c);
+
+                            if (size<k) size = _minimumScale;
+                            else if (size<i) size = a + b*size + c*(size*size);
+                        }
+
+                        if (_maximumScale<DBL_MAX)
+                        {
+                            double n = _maximumScale;
+                            double m = (_minimumScale>0.0) ?
+                                _maximumScale+(_minimumScale-_maximumScale)*_autoScaleTransitionWidthRatio :
+                            _maximumScale*(1.0-_autoScaleTransitionWidthRatio);
+                            double c = 1.0 / (4.0*(m-n));
+                            double b = 1.0 - 2.0*c*m;
+                            double a = n + b*b/(4.0*c);
+                            double p = -b / (2.0*c);
+
+                            if (size>p) size = _maximumScale;
+                            else if (size>m) size = a + b*size + c*(size*size);
+                        }        
+                    }
+
+                    setScale(size * refCamScale.x());
+                }
+
+                if (_autoRotateMode==ROTATE_TO_SCREEN)
+                {
+                    osg::Vec3d translation;
+                    osg::Quat rotation;
+                    osg::Vec3d scale;
+                    osg::Quat so;
+
+                    cv->getModelViewMatrix()->decompose( translation, rotation, scale, so );
+
+                    setRotation(rotation.inverse());
+                }
+                // GW: removed other unused auto-rotate modes
+
+                _previousEyePoint = eyePoint;
+                _previousLocalUp = localUp;
+                _previousWidth = width;
+                _previousHeight = height;
+                _previousProjection = projection;
+                _previousPosition = position;
+
+                _matrixDirty = true;
+            }
         }
 
-        if (_autoRotateMode==ROTATE_TO_SCREEN)
-        {
-            osg::Vec3d translation;
-            osg::Quat rotation;
-            osg::Vec3d scale;
-            osg::Quat so;
-
-            cs->getModelViewMatrix()->decompose( translation, rotation, scale, so );
-
-            setRotation(rotation.inverse());
-        }
-        // GW: removed other unused auto-rotate modes
-
-        _previousEyePoint = eyePoint;
-        _previousLocalUp = localUp;
-        _previousWidth = width;
-        _previousHeight = height;
-        _previousProjection = projection;
-        _previousPosition = position;
-
-        _matrixDirty = true;
+        osg::Transform::accept( nv );
     }
-
-    // GW: the stock AutoTransform calls Transform::accept here; we do NOT
 }
 
 osg::Node* 

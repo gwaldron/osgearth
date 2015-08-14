@@ -1,0 +1,35 @@
+<!--
+osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+
+ReadyMap.ORG provides free global base map data for osgEarth developers!
+This tiled, worldwide dataset of imagery, elevation, and street map data
+is a great base map that provides global context for your own local datasets.
+It works "out of the box" with osgEarth applications.
+
+**** NOTICE ****
+YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
+http://readymap.org
+
+-->
+<map name="readymap.org" type="geocentric">
+    
+    <options>
+        <terrain first_lod="1" driver="rex" high_resolution_first="true"/>
+    </options>
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    
+    <extensions>        
+        <viewpoints>
+            <viewpoint name="Washington St" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>
+            <viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
+            <viewpoint name="Matterhorn" heading="-1.429462844200832" height="2282.858508689329" lat="45.95106319557" long="7.642741711675961" pitch="-25.12269405854052" range="26690.10606054494"/>
+        </viewpoints>
+    </extensions>
+</map>

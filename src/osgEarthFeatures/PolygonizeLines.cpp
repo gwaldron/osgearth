@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,16 +30,10 @@ using namespace osgEarth::Features;
 
 #define OV(p) "("<<p.x()<<","<<p.y()<<")"
 
+#define ATTR_LOCATION osg::Drawable::ATTRIBUTE_7
+
 namespace
 {
-    inline osg::Vec3 normalize(const osg::Vec3& in) 
-    {
-      osg::Vec3 temp(in);
-      temp.normalize();
-      return temp;
-    }
-
-
     typedef std::pair<osg::Vec3,osg::Vec3> Segment;
     
     // Given two rays (point + direction vector), find the intersection
@@ -172,9 +166,9 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
     if ( autoScale )
     {
         spine = new osg::Vec3Array( *verts );
-        geom->setVertexAttribArray    ( osg::Drawable::ATTRIBUTE_6, spine );
-        geom->setVertexAttribBinding  ( osg::Drawable::ATTRIBUTE_6, osg::Geometry::BIND_PER_VERTEX );
-        geom->setVertexAttribNormalize( osg::Drawable::ATTRIBUTE_6, false );
+        geom->setVertexAttribArray    ( ATTR_LOCATION, spine );
+        geom->setVertexAttribBinding  ( ATTR_LOCATION, osg::Geometry::BIND_PER_VERTEX );
+        geom->setVertexAttribNormalize( ATTR_LOCATION, false );
     }
 
     // initialize the texture coordinates.
@@ -454,7 +448,7 @@ PolygonizeLinesOperator::operator()(osg::Vec3Array* verts,
         geom->setColorArray( colors );
         geom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
     }
-
+     
 #if 0
     //TESTING
     osg::Image* image = osgDB::readImageFile("E:/data/textures/road.jpg");
@@ -476,6 +470,7 @@ namespace
     {
         PixelSizeVectorCullCallback(osg::StateSet* stateset)
         {
+            _frameNumber = 0;
             _pixelSizeVectorUniform = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "oe_PixelSizeVector");
             stateset->addUniform( _pixelSizeVectorUniform.get() );
         }
@@ -483,11 +478,43 @@ namespace
         void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            _pixelSizeVectorUniform->set( cv->getCurrentCullingSet().getPixelSizeVector() );
+
+            // temporary patch to prevent uniform overwrite -gw
+            if ( nv->getFrameStamp() && (int)nv->getFrameStamp()->getFrameNumber() > _frameNumber )
+            {
+                _pixelSizeVectorUniform->set( cv->getCurrentCullingSet().getPixelSizeVector() );    
+                _frameNumber = nv->getFrameStamp()->getFrameNumber();
+            }
+
             traverse(node, nv);
         }
 
         osg::ref_ptr<osg::Uniform> _pixelSizeVectorUniform;
+        int _frameNumber;        
+    };
+
+    class PixelScalingGeode : public osg::Geode
+    {
+    public:
+        void traverse(osg::NodeVisitor& nv)
+        {
+            osgUtil::CullVisitor* cv = 0L;
+            if (nv.getVisitorType() == nv.CULL_VISITOR &&
+                (cv = Culling::asCullVisitor(nv)) != 0L &&
+                cv->getCurrentCamera() )
+            {
+                osg::ref_ptr<osg::StateSet>& ss = _stateSets.get( cv->getCurrentCamera() );
+                if ( !ss.valid() )
+                    ss = new osg::StateSet();
+
+                ss->getOrCreateUniform("oe_PixelSizeVector", osg::Uniform::FLOAT_VEC4)->set(
+                    cv->getCurrentCullingSet().getPixelSizeVector() );
+            }
+
+            osg::Geode::traverse( nv );
+        }
+
+        PerObjectFastMap<osg::Camera*, osg::ref_ptr<osg::StateSet> > _stateSets;
     };
 }
 
@@ -537,8 +564,8 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
         "   vertex_model4.xyz = center.xyz + vector*scale; \n"
         "} \n";
 
-    vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL );
-    vp->addBindAttribLocation( "oe_polyline_center", osg::Drawable::ATTRIBUTE_6 );
+    vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f );
+    vp->addBindAttribLocation( "oe_polyline_center", ATTR_LOCATION );
 
     // add the default scaling uniform.
     // good way to test:
@@ -594,7 +621,7 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
     PolygonizeLinesOperator polygonize( line ? (*line->stroke()) : Stroke() );
 
     // Geode to hold all the geometries.
-    osg::Geode* geode = new osg::Geode();
+    osg::Geode* geode = new PixelScalingGeode(); //osg::Geode();
 
     // iterate over all features.
     for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
@@ -620,11 +647,13 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
             // turn the lines into polygons.
             osg::Geometry* geom = polygonize( verts, normals );
+
+            // install.
             geode->addDrawable( geom );
 
             // record the geometry's primitive set(s) in the index:
             if ( cx.featureIndex() )
-                cx.featureIndex()->tagPrimitiveSets( geom, f );
+                cx.featureIndex()->tagDrawable( geom, f );
         }
     }
 

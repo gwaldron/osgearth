@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -30,10 +30,8 @@ namespace osgEarth {
     class SpatialReference;
 }
 
-namespace osgEarth { namespace Drivers { namespace SilverLining
+namespace osgEarth { namespace SilverLining
 {
-    using namespace osgEarth;
-
     /**
      * Contains all the SilverLining SDK pointers.
      */
@@ -91,12 +89,12 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
         double _skyBoxSize;
 
-        osg::observer_ptr<osg::Light>        _light;
-        osg::ref_ptr<const SpatialReference> _srs;
+        osg::observer_ptr<osg::Light>                  _light;
+        osg::ref_ptr<const osgEarth::SpatialReference> _srs;
 
-        bool             _initAttempted;
-        bool             _initFailed;
-        Threading::Mutex _initMutex;
+        bool                       _initAttempted;
+        bool                       _initFailed;
+        osgEarth::Threading::Mutex _initMutex;
 
         double _maxAmbientLightingAlt;
 
@@ -107,4 +105,4 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         SilverLiningOptions _options;
     };
 
-} } } // namespace osgEarth::Drivers::SilverLining
+} } // namespace osgEarth::SilverLining

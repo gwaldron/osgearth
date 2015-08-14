@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarth/TimeControl>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Containers>
 #include <osgEarthUtil/WMS>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -569,7 +570,7 @@ private:
     bool                             _isPlaying;
     std::vector<SequenceFrameInfo>   _seqFrameInfoVec;
 
-    mutable Threading::ThreadSafeObserverSet<osg::ImageSequence> _sequenceCache;
+    mutable ThreadSafeObserverSet<osg::ImageSequence> _sequenceCache;
 };
 
 

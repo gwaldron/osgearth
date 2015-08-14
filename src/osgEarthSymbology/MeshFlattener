@@ -1,0 +1,91 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_MESH_FLATTENER
+#define OSGEARTHSYMBOLOGY_MESH_FLATTENER
+
+#include <osgEarthSymbology/Common>
+
+namespace osgEarth { namespace Symbology
+{
+    /**
+    * Prepares a scene graph for aggressive optimization.  Removes things like names, user data, callbacks, etc.
+    * Use carefully.
+    */
+    struct OSGEARTHSYMBOLOGY_EXPORT PrepareForOptimizationVisitor : public osg::NodeVisitor
+    {
+        PrepareForOptimizationVisitor();
+
+        virtual void apply(osg::Node& node);
+    };
+
+
+    /**
+     * Utility visitor to aid in flattening a scene graph.  Collects a map of StateSet stacks to Geodes.
+     * Assumes that all transforms have already been removed from the scene graph.
+     */
+    struct OSGEARTHSYMBOLOGY_EXPORT FlattenSceneGraphVisitor : public osg::NodeVisitor
+    {
+        FlattenSceneGraphVisitor();
+
+        virtual void apply(osg::Node& node);
+
+        virtual void apply(osg::Geode& geode);
+
+        void pushStateSet(osg::StateSet* stateSet);
+
+        void popStateSet();
+
+        /**
+        * Build the flattened scene graph from the statesets and geodes.
+        */
+        osg::Node* build();
+
+        typedef std::vector< osg::ref_ptr< osg::StateSet > > StateSetStack;
+        typedef std::vector< osg::ref_ptr< osg::Geometry > > GeometryVector;
+
+        StateSetStack _ssStack;
+
+        typedef std::map< StateSetStack, GeometryVector > StateSetStackToGeometryMap;
+
+        StateSetStackToGeometryMap _geometries;
+    };
+
+
+    /**
+     * Flattens "flatten" the given scene graph, turning it into a 
+     * a very basic scene graph consisting of a group at the top with a list of geodes
+     * each consisting of as small of a number of drawables as possible.
+     *
+     *  Limitations:
+     *      This will only work on relatively simple scene graphs consisting of MatrixTransforms, Groups, Geodes, etc.
+     *      If your scene graph constains things likes AutoTransforms, LightPointNodes, Sequences, etc it will not preserve them.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT MeshFlattener
+    {
+    public:
+        static void run( osg::Group* group );
+    };
+
+
+
+
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_MESH_FLATTENER

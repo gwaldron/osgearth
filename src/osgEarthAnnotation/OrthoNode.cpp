@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -24,6 +27,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 #include <osgText/Text>
 #include <osg/ComputeBoundsVisitor>
 #include <osgUtil/IntersectionVisitor>
@@ -37,104 +41,32 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
-//------------------------------------------------------------------------
-
-namespace
-{
-    struct OrthoOQNode : public osg::OcclusionQueryNode
-    {
-        OrthoOQNode( const std::string& name ) 
-        {
-            setName( name );
-            setVisibilityThreshold(1);
-            setDebugDisplay(true);
-            setCullingActive(false);
-        }
-
-        virtual osg::BoundingSphere computeBound() const
-        {
-            {
-                // Need to make this routine thread-safe. Typically called by the update
-                //   Visitor, or just after the update traversal, but could be called by
-                //   an application thread or by a non-osgViewer application.
-                Threading::ScopedMutexLock lock( _computeBoundMutex );
-
-                // This is the logical place to put this code, but the method is const. Cast
-                //   away constness to compute the bounding box and modify the query geometry.
-                OrthoOQNode* nonConstThis = const_cast<OrthoOQNode*>( this );
-
-                osg::ref_ptr<osg::Vec3Array> v = new osg::Vec3Array(1);
-                (*v)[0].set( _xform->getMatrix().getTrans() );
-
-                osg::Geometry* geom = static_cast< osg::Geometry* >( nonConstThis->_queryGeode->getDrawable( 0 ) );
-                geom->setVertexArray( v.get() );
-                geom->getPrimitiveSetList().clear();
-                geom->addPrimitiveSet( new osg::DrawArrays(GL_POINTS,0,1) );
-                nonConstThis->getQueryStateSet()->setAttributeAndModes(new osg::Point(15), 1);
-                nonConstThis->getQueryStateSet()->setBinNumber(INT_MAX);
-
-                geom = static_cast< osg::Geometry* >( nonConstThis->_debugGeode->getDrawable( 0 ) );
-                geom->setVertexArray( v.get() );
-                geom->getPrimitiveSetList().clear();
-                geom->addPrimitiveSet( new osg::DrawArrays(GL_POINTS,0,1) );
-                nonConstThis->getDebugStateSet()->setAttributeAndModes(new osg::Point(15), 1);
-                osg::Depth* d = new osg::Depth( osg::Depth::LEQUAL, 0.f, 1.f, false );
-                nonConstThis->getDebugStateSet()->setAttributeAndModes( d, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
-                (*dynamic_cast<osg::Vec4Array*>(geom->getColorArray()))[0].set(1,0,0,1);
-            }
-
-            return Group::computeBound();
-        }
-
-        osg::MatrixTransform* _xform;
-    };
-}
-
-//------------------------------------------------------------------------
-
 
 OrthoNode::OrthoNode(MapNode*        mapNode,
                      const GeoPoint& position ) :
 
 PositionedAnnotationNode( mapNode ),
-_horizonCulling         ( false ),
-_occlusionCulling       ( false )
+_occlusionCulling       ( false ),
+_horizonCullingRequested( true )
 {
     init();
-    setHorizonCulling( true );
     setPosition( position );
 }
 
 
 OrthoNode::OrthoNode() :
-_horizonCulling  ( false ),
-_occlusionCulling( false )
+_occlusionCulling       ( false ),
+_horizonCullingRequested( true )
 {
     init();
-    setHorizonCulling( true );
 }
 
-//#define TRY_OQ 1
-#undef TRY_OQ
 
 void
 OrthoNode::init()
 {
     _switch = new osg::Switch();
-
-    // install it, but deactivate it until we can get it to work.
-#ifdef TRY_OQ
-    OrthoOQNode* oq = new OrthoOQNode("");
-    oq->setQueriesEnabled(true);
-    _oq = oq;
-    _oq->addChild( _switch );
-    this->addChild( _oq );
-#else
     this->addChild( _switch );
-#endif
-
-    //_oq->addChild( _switch );
-    //this->addChild( _oq );
 
     _autoxform = new AnnotationUtils::OrthoNodeAutoTransform();
     _autoxform->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
@@ -144,19 +76,27 @@ OrthoNode::init()
 
     _matxform = new osg::MatrixTransform();
     _switch->addChild( _matxform );
-
-#ifdef TRY_OQ
-    oq->_xform = _matxform;
-#endif
-
     _switch->setSingleChildOn( 0 );
 
     _attachPoint = new osg::Group();
-
     _autoxform->addChild( _attachPoint );
     _matxform->addChild( _attachPoint );
 
     this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
+
+    // Callback to cull ortho nodes that are not visible over the geocentric horizon
+    _horizonCuller = new HorizonCullCallback();
+    setHorizonCulling( _horizonCullingRequested );
+
+    _attachPoint->addCullCallback( _horizonCuller.get() );
+}
+
+osg::BoundingSphere
+OrthoNode::computeBound() const
+{
+    osg::BoundingSphere bs = PositionedAnnotationNode::computeBound();
+    //OE_NOTICE << "BOUND RADIUS = " << bs.radius() << "\n";
+    return bs;
 }
 
 void
@@ -183,13 +123,14 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
         // If decluttering is enabled, update the auto-transform but not its children.
         // This is necessary to support picking/selection. An optimization would be to
         // disable this pass when picking is not in use
-        if ( declutter )
-        {
-            static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform)->acceptCullNoTraverse( cv );
-        }
+        //if ( !declutter )
+        //{
+        //    static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform)->accept( nv, false );
+        //}
 
         // turn off small feature culling
-        cv->setSmallFeatureCullingPixelSize(0.0f);
+        // (note: pretty sure this does nothing here -gw)
+        cv->setSmallFeatureCullingPixelSize(-1.0f);
 
         AnnotationNode::traverse( nv );
 
@@ -220,20 +161,6 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
     }
 }
 
-osg::BoundingSphere
-OrthoNode::computeBound() const
-{
-    return PositionedAnnotationNode::computeBound();
-    //return _matxform->computeBound();
- /*   osg::BoundingSphere bs = AnnotationNode::computeBound();
-    OE_NOTICE << bs.center().x() << ", " << bs.center().y() << ", " << bs.center().z()
-        << ", " << bs.radius()
-        << "\n";
-    return bs;
- */   //return AnnotationNode::computeBound();
-    //return osg::BoundingSphere(_matxform->getMatrix().getTrans(), 1000.0);
-}
-
 void
 OrthoNode::setMapNode( MapNode* mapNode )
 {
@@ -250,11 +177,8 @@ OrthoNode::setMapNode( MapNode* mapNode )
         }
 
         // same goes for the horizon culler:
-        if ( _horizonCulling || (oldMapNode == 0L && mapNode->isGeocentric()) )
-        {
-            setHorizonCulling( false );
-            setHorizonCulling( true );
-        }
+        _horizonCuller->setHorizon( Horizon(*mapNode->getMapSRS()->getEllipsoid()) );
+        setHorizonCulling( _horizonCullingRequested );
 
         // re-apply the position since the map has changed
         setPosition( getPosition() );
@@ -356,10 +280,6 @@ OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
         _matxform->setMatrix( local2world );
         
         osg::Vec3d world = local2world.getTrans();
-        if (_horizonCuller.valid())
-        {
-            _horizonCuller->_world = world;
-        }
 
         if (_occlusionCuller.valid())
         {                                
@@ -399,32 +319,18 @@ OrthoNode::getLocalOffset() const
 bool
 OrthoNode::getHorizonCulling() const
 {
-    return _horizonCulling;
+    return _horizonCullingRequested;
 }
 
 void
-OrthoNode::setHorizonCulling( bool value )
+OrthoNode::setHorizonCulling(bool value)
 {
-    if ( _horizonCulling != value )
-    {
-        _horizonCulling = value;
+    _horizonCullingRequested = value;
 
-        if ( _horizonCulling && getMapNode() && getMapNode()->isGeocentric() )
-        {
-            osg::Vec3d world = _autoxform->getPosition();
-
-            _horizonCuller = new CullNodeByHorizon(world, getMapNode()->getMapSRS()->getEllipsoid());
-            addCullCallback( _horizonCuller.get()  );
-        }
-        else
-        {
-            if (_horizonCuller.valid())
-            {
-                removeCullCallback( _horizonCuller.get() );
-                _horizonCuller = 0;
-            }
-        }
-    }
+    _horizonCuller->setEnabled(
+        _horizonCullingRequested &&
+        getMapNode() &&
+        getMapNode()->isGeocentric() );
 }
 
 osg::Vec3d

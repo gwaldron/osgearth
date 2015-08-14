@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -23,6 +26,11 @@
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
 #include <osgEarth/VirtualProgram>
+
+// GL_LIGHTING is not always defined on GLES so define it.
+#ifndef GL_LIGHTING
+    #define GL_LIGHTING 0x0B50
+#endif
 
 using namespace osgEarth;
 
@@ -36,13 +44,13 @@ namespace
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec4 oe_lighting_adjustment; \n"
         "varying vec4 oe_lighting_zero_vec; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
 
         "void oe_phong_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
         "    oe_lighting_adjustment = vec4(1.0); \n"
-        "    vec3 N = oe_Normal; \n"
+        "    vec3 N = vp_Normal; \n"
         "    float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
         "    NdotL = max( 0.0, NdotL ); \n"
 
@@ -86,7 +94,8 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         
         "uniform bool oe_mode_GL_LIGHTING; \n"
-        "varying vec3 oe_phong_vertexView3; \n"
+
+        "out vec3 oe_phong_vertexView3; \n"
 
         "void oe_phong_vertex(inout vec4 VertexVIEW) \n"
         "{ \n"
@@ -99,16 +108,16 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "uniform bool oe_mode_GL_LIGHTING; \n"
-        "varying vec3 oe_phong_vertexView3; \n"
 
-        "vec3 oe_global_Normal; \n"
+        "in vec3 oe_phong_vertexView3; \n"
+        "in vec3 vp_Normal; \n"
 
         "void oe_phong_fragment(inout vec4 color) \n"
         "{ \n"        
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
 
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 N = normalize(oe_global_Normal); \n"
+        "    vec3 N = vp_Normal; \n"//normalize(vp_Normal); \n"
         
         "    vec4 ambient = gl_FrontLightProduct[0].ambient; \n"
 
@@ -174,8 +183,8 @@ PhongLightingEffect::attach(osg::StateSet* stateset)
         _statesets.push_back(stateset);
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setName( "osgEarth.PhongLightingEffect" );
-        vp->setFunction( "oe_phong_vertex", Phong_Vertex, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_phong_fragment", Phong_Fragment, ShaderComp::LOCATION_FRAGMENT_LIGHTING );
+        vp->setFunction( "oe_phong_vertex", Phong_Vertex, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
+        vp->setFunction( "oe_phong_fragment", Phong_Fragment, ShaderComp::LOCATION_FRAGMENT_LIGHTING, 0.5f);
         if ( _lightingUniform.valid() )
             stateset->addUniform( _lightingUniform.get() );
     }

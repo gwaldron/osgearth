@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_NOISE_TERRAIN_EFFECT_H
+#define OSGEARTH_NOISE_TERRAIN_EFFECT_H
+
+#include "NoiseOptions"
+
+#include <osgEarth/TerrainEffect>
+#include <osg/Uniform>
+#include <osg/Texture2D>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Noise
+{
+    /**
+     * Effect that activates a multi-resolution noise texture on the terrain.
+     */
+    class NoiseTerrainEffect : public TerrainEffect
+    {
+    public:
+        /** construct a new terrain effect. */
+        NoiseTerrainEffect(const NoiseOptions& options);        
+
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+
+        void onUninstall(TerrainEngineNode* engine);
+
+
+    protected:
+        virtual ~NoiseTerrainEffect() { }
+
+        osg::Texture* createNoiseTexture() const;
+
+        NoiseOptions                 _options;
+        int                          _texImageUnit;
+        osg::ref_ptr<osg::Texture>   _tex;
+        osg::ref_ptr<osg::Uniform>   _samplerUniform;
+    };
+
+} } // namespace osgEarth::Noise
+
+#endif // OSGEARTH_NOISE_TERRAIN_EFFECT_H

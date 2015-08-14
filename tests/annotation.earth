@@ -29,11 +29,11 @@ osgEarth Sample - Annotations
         <annotations>
         
             <label text="Los Angeles">
-                <position lat="34.051" long="-117.974" alt="100" mode="relative"/>
+                <position lat="35.051" long="-117.974" alt="100" mode="relative"/>
                 <style type="text/css">
                     text-align:     center_center;
                     text-size:      20;
-                    text-declutter: true;
+                    text-declutter: false;
                 </style>
             </label>
             

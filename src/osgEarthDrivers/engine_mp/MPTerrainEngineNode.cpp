@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -34,6 +37,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Utils>
+#include <osgEarth/ObjectIndex>
 
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -41,6 +45,7 @@
 #include <osg/Timer>
 #include <osg/Depth>
 #include <osg/BlendFunc>
+#include <osg/PatchParameter>
 #include <osgDB/DatabasePager>
 #include <osgUtil/RenderBin>
 #include <osgUtil/RenderLeaf>
@@ -119,6 +124,55 @@ namespace
         {
         }
     };
+
+#if 0
+    class NormalTexInstaller : public TerrainEngine::NodeCallback
+    {
+    public:
+        NormalTexInstaller(int unit) : _unit(unit) { }
+        
+    public: // TileNodeCallback
+        void operator()(const TileKey& key, osg::Node* node)
+        {
+            TileNode* tile = osgEarth::findTopMostNodeOfType<TileNode>(node);
+            if ( !tile )
+            {
+                OE_WARN << LC << "No tile " << key.str() << "\n";
+                return;
+            }
+
+            if ( !tile->getTileModel() )
+            {
+                OE_WARN << LC << "No tile model available for " << key.str() << "\n";
+                return;
+            }
+            
+            osg::StateSet* ss = node->getOrCreateStateSet();
+            osg::Texture* tex = tile->getTileModel()->getNormalTexture();
+            if ( tex )
+            {
+                ss->setTextureAttribute(_unit, tex);
+            }
+
+            osg::RefMatrixf* mat = tile->getModel()->getNormalTextureMatrix();
+            osg::Matrixf fmat;
+            if ( mat )
+            {
+                fmat = osg::Matrixf(*mat);
+            }
+            else
+            {
+                // special marker indicating that there's no valid normal texture.
+                fmat(0,0) = 0.0f;
+            }
+
+            ss->addUniform(new osg::Uniform("oe_tile_normalTexMatrix", fmat) );
+        }
+
+    private:
+        int _unit;
+    };
+#endif
 }
 
 //---------------------------------------------------------------------------
@@ -252,7 +306,7 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
     // (depends on the viewer's threading mode).
-    _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL, "mp-update" );
+    _update_mapf = new MapFrame( map, Map::ENTIRE_MODEL );
 
     // merge in the custom options:
     _terrainOptions.merge( options );
@@ -270,9 +324,30 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
     {
         _deadTiles = new TileNodeRegistry("dead");
     }
+
+    // reserve GPU resources. Must do this before initializing the model factory.
+    if ( _primaryUnit < 0 )
+    {
+        getResources()->reserveTextureImageUnit( _primaryUnit, "MP Engine Primary" );
+    }
+
+    // "Secondary" unit serves double duty; it's used for parent textures BUT it's also
+    // used at the "slot" for the tile coordinates.
+    if ( _secondaryUnit < 0 )
+    {
+        getResources()->reserveTextureImageUnit( _secondaryUnit, "MP Engine Secondary" );
+    }
     
     // initialize the model factory:
     _tileModelFactory = new TileModelFactory(_liveTiles.get(), _terrainOptions, this);
+
+    // Normal map texture unit
+    if ( _terrainOptions.normalMaps() == true )
+    {
+        this->_requireNormalTextures = true;
+        getResources()->reserveTextureImageUnit( _normalMapUnit, "MP Normal Maps" );
+        _tileModelFactory->setNormalMapUnit( _normalMapUnit );
+    }
 
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )
@@ -299,16 +374,11 @@ MPTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& optio
 
     _batchUpdateInProgress = false;
 
-    // install some terrain-wide uniforms
-    this->getOrCreateStateSet()->getOrCreateUniform(
-        "oe_min_tile_range_factor",
-        osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
-
-    // set up the initial shaders
-    updateState();
-
     // register this instance to the osgDB plugin can find it.
     registerEngine( this );
+
+    // set up the initial shaders and reserve the texture image units.
+    updateState();
 
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
@@ -350,7 +420,9 @@ MPTerrainEngineNode::invalidateRegion(const GeoExtent& extent,
 void
 MPTerrainEngineNode::refresh(bool forceDirty)
 {
-    if ( _batchUpdateInProgress )
+    // if we're in the middle of a batch update OR if the terrain has not
+    // been fully initialized for rendering, mark it for later.
+    if ( _batchUpdateInProgress || _update_mapf == 0L )
     {
         _refreshRequired = true;
     }
@@ -364,7 +436,7 @@ MPTerrainEngineNode::refresh(bool forceDirty)
         }
         else
         {
-            createTerrain();
+            dirtyTerrain();
         }
 
         _refreshRequired = false;
@@ -374,7 +446,10 @@ MPTerrainEngineNode::refresh(bool forceDirty)
 void
 MPTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
-    createTerrain();
+    if ( _update_mapf != 0L )
+    {
+        dirtyTerrain();
+    }
 }
 
 osg::StateSet*
@@ -387,6 +462,35 @@ MPTerrainEngineNode::getTerrainStateSet()
 #endif
 }
 
+namespace
+{
+    struct NotifyExistingNodesOp : public TileNodeRegistry::Operation
+    {
+        TerrainEngine::NodeCallback* _cb;
+
+        NotifyExistingNodesOp(TerrainEngine::NodeCallback* cb) : _cb(cb) { }
+
+        void operator()(TileNodeRegistry::TileNodeMap& tiles)
+        {
+            //OE_INFO << LC << "Gonna notify " << tiles.size() << " existing nodes...\n";
+
+            for(TileNodeRegistry::TileNodeMap::iterator i = tiles.begin();
+                i != tiles.end();
+                ++i)
+            {
+                _cb->operator()(i->first, i->second.get());
+            }
+        }
+    };
+}
+
+void
+MPTerrainEngineNode::notifyExistingNodes(TerrainEngine::NodeCallback* cb)
+{
+    NotifyExistingNodesOp op( cb );
+    _liveTiles->run( op );
+}
+
 
 osg::StateSet*
 MPTerrainEngineNode::getPayloadStateSet()
@@ -395,7 +499,7 @@ MPTerrainEngineNode::getPayloadStateSet()
 }
 
 void
-MPTerrainEngineNode::createTerrain()
+MPTerrainEngineNode::dirtyTerrain()
 {
     // scrub the heightfield cache.
     if (_tileModelFactory)
@@ -420,30 +524,10 @@ MPTerrainEngineNode::createTerrain()
 #endif
 
     this->addChild( _terrain );
-    
-    // reserve GPU space.
-    if ( _primaryUnit < 0 )
-    {
-        this->getResources()->reserveTextureImageUnit( _primaryUnit );
-        OE_INFO << LC << "Primary color unit = " << _primaryUnit << "\n";
-    }
-
-    if ( _secondaryUnit < 0 )
-    {
-        this->getResources()->reserveTextureImageUnit( _secondaryUnit );
-        OE_INFO << LC << "Secondary color unit = " << _secondaryUnit << "\n";
-    }
-
-    if ( _elevationTextureUnit < 0 )
-    {
-        // testing
-        this->getResources()->reserveTextureImageUnit( _elevationTextureUnit );
-        OE_INFO << LC << "Elevation unit = " << _elevationTextureUnit << "\n";
-    }
 
     // Factory to create the root keys:
     KeyNodeFactory* factory = getKeyNodeFactory();
-
+    
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
     std::vector< TileKey > keys;
@@ -457,10 +541,13 @@ MPTerrainEngineNode::createTerrain()
 
     osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
 
+    // Accumulate data from low to high resolution when necessary:
+    bool accumulate = true;
+
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        osg::ref_ptr<osg::Node> node = factory->createNode( keys[i], true, true, 0L );
+        osg::ref_ptr<osg::Node> node = factory->createNode( keys[i], accumulate, true, 0L );
         if ( node.valid() )
         {
             root->addChild( node.get() );
@@ -477,6 +564,9 @@ MPTerrainEngineNode::createTerrain()
     _rootTilesRegistered = false;
 
     updateState();
+
+    // Call the base class
+    TerrainEngineNode::dirtyTerrain();
 }
 
 namespace
@@ -571,7 +661,6 @@ MPTerrainEngineNode::getKeyNodeFactory()
             _liveTiles.get(),
             _deadTiles.get(),
             _terrainOptions,
-            _uid,
             this );
     }
 
@@ -589,11 +678,11 @@ MPTerrainEngineNode::createNode(const TileKey&    key,
 
     OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
-    // create the node:
-    osg::ref_ptr<osg::Node> node = getKeyNodeFactory()->createNode( key, true, true, progress );
+    bool accumulate    = true;  // use parent data to help build tiles if neccesary
+    bool setupChildren = true;  // prepare the tile for subdivision
 
-    // notify anyone listening of the new node:
-    //this->notifyOfTileNode( key, node.get() );
+    // create the node:
+    osg::ref_ptr<osg::Node> node = getKeyNodeFactory()->createNode(key, accumulate, setupChildren, progress);
 
     // release the reference and return it.
     return node.release();
@@ -635,7 +724,7 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     {
         while (!populated)
         {
-            populated = _update_mapf->populateHeightField(hf, sampleKey, true, SAMPLE_FIRST_VALID);
+            populated = _update_mapf->populateHeightField(hf, sampleKey, true, 0L);
             if (!populated)
             {
                 // Fallback on the parent
@@ -651,23 +740,24 @@ MPTerrainEngineNode::createTile( const TileKey& key )
     if (!populated)
     {
         // We have no heightfield so just create a reference heightfield.
-        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), 15, 15 );
+        int tileSize = _terrainOptions.tileSize().get();
+        hf = HeightFieldUtils::createReferenceHeightField( key.getExtent(), tileSize, tileSize );
         sampleKey = key;
     }
 
     model->_elevationData = TileModel::ElevationData(
-            hf,
-            GeoLocator::createForKey( sampleKey, mapInfo ),
-            false );        
+        hf,
+        GeoLocator::createForKey( sampleKey, mapInfo ),
+        false );        
 
     bool optimizeTriangleOrientation = getMap()->getMapOptions().elevationInterpolation() != INTERP_TRIANGULATE;
 
     osg::ref_ptr<TileModelCompiler> compiler = new TileModelCompiler(
-            _update_mapf->terrainMaskLayers(),
-            _update_mapf->modelLayers(),
-            _primaryUnit,
-            optimizeTriangleOrientation,
-            _terrainOptions );
+        _update_mapf->terrainMaskLayers(),
+        _update_mapf->modelLayers(),
+        _primaryUnit,
+        optimizeTriangleOrientation,
+        _terrainOptions );
 
     return compiler->compile(model.get(), *_update_mapf, 0L);
 }
@@ -750,7 +840,7 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             if ( !unit.isSet() )
             {
                 int temp;
-                if ( getResources()->reserveTextureImageUnit(temp) )
+                if ( getResources()->reserveTextureImageUnit(temp, "MP Engine Shared Layer") )
                 {
                     unit = temp;
                     OE_INFO << LC << "Image unit " << temp << " assigned to shared layer " << layerAdded->getName() << std::endl;
@@ -761,10 +851,17 @@ MPTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 }
             }
 
+            optional<std::string>& texUniformName = layerAdded->shareTexUniformName();
+            if ( !texUniformName.isSet() )
+            {
+                texUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_tex";
+            }
+
             optional<std::string>& texMatUniformName = layerAdded->shareTexMatUniformName();
             if ( !texMatUniformName.isSet() )
             {
-                texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texmat";
+                texMatUniformName = Stringify() << "oe_layer_" << layerAdded->getUID() << "_texMatrix";
+                OE_INFO << LC << "Layer \"" << layerAdded->getName() << "\" texmat uniform = \"" << texMatUniformName.get() << "\"\n";
             }
         }
     }
@@ -843,6 +940,10 @@ MPTerrainEngineNode::updateState()
     }
     else
     {
+        if ( _elevationTextureUnit < 0 && elevationTexturesRequired() )
+        {
+            getResources()->reserveTextureImageUnit( _elevationTextureUnit, "MP Engine Elevation" );
+        }
 
         osg::StateSet* terrainStateSet = getTerrainStateSet();
         
@@ -866,40 +967,28 @@ MPTerrainEngineNode::updateState()
             vp->addBindAttribLocation( "oe_terrain_attr",  osg::Drawable::ATTRIBUTE_6 );
             vp->addBindAttribLocation( "oe_terrain_attr2", osg::Drawable::ATTRIBUTE_7 );
 
-            // Vertex shader:
-            std::string vs_model = ShaderLoader::load(
-                Shaders::MPVertModel,
-                Shaders::MPVertModelSource );
+            Shaders package;
 
-            osgEarth::replaceIn( vs_model, "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
-            osgEarth::replaceIn( vs_model, "$MP_SECONDARY_UNIT", Stringify() << _secondaryUnit );
+            package.replace( "$MP_PRIMARY_UNIT",   Stringify() << _primaryUnit );
+            package.replace( "$MP_SECONDARY_UNIT", Stringify() << (_secondaryUnit>=0?_secondaryUnit:0) );
+
+            package.define( "MP_USE_BLENDING", (_terrainOptions.enableBlending() == true) );
+
+            package.load( vp, package.EngineVertexModel );
+            package.load( vp, package.EngineVertexView );
+            package.load( vp, package.EngineFragment );
             
-            vp->setFunction( "oe_mp_vertModel", vs_model, ShaderComp::LOCATION_VERTEX_MODEL, 0.0 );
-
-            std::string vs_view = ShaderLoader::load(
-                Shaders::MPVertView,
-                Shaders::MPVertViewSource);
-
-            vp->setFunction( "oe_mp_vertView", vs_view, ShaderComp::LOCATION_VERTEX_VIEW, 0.0 );
-
-            // Fragment shader:
-            std::string fs = ShaderLoader::load(
-                Shaders::MPFrag,
-                Shaders::MPFragSource );
-
-            // terrain background color; negative means use the vertex color.
-            Color terrainColor = _terrainOptions.color().getOrUse( Color(-1,-1,-1,-1) );
-            terrainStateSet->addUniform(new osg::Uniform("oe_terrain_color", terrainColor));
-
-            bool useBlending = _terrainOptions.enableBlending() == true;
-            if ( !useBlending )
+            if ( this->normalTexturesRequired() )
             {
-                osgEarth::replaceIn( fs,
-                    "#define MP_USE_BLENDING",
-                    "#undef MP_USE_BLENDING" );
+                package.load( vp, package.NormalMapVertex );
+                package.load( vp, package.NormalMapFragment );
+
+                terrainStateSet->addUniform( new osg::Uniform("oe_tile_normalTex", _normalMapUnit) );
             }
 
-            vp->setFunction( "oe_mp_apply_coloring", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0 );
+            // terrain background color; negative means use the vertex color.
+            Color terrainColor = _terrainOptions.color().getOrUse( Color(1,1,1,-1) );
+            terrainStateSet->addUniform(new osg::Uniform("oe_terrain_color", terrainColor));
 
             
             // assemble color filter code snippets.
@@ -962,7 +1051,7 @@ MPTerrainEngineNode::updateState()
                         "oe_mp_apply_filters",
                         fs_colorfilters,
                         ShaderComp::LOCATION_FRAGMENT_COLORING,
-                        0.0 );
+                        0.5f );
                 }
             }
 
@@ -971,19 +1060,24 @@ MPTerrainEngineNode::updateState()
                 "oe_layer_tex", osg::Uniform::SAMPLER_2D )->set( _primaryUnit );
 
             // binding for the secondary texture (for LOD blending)
-            terrainStateSet->getOrCreateUniform(
-                "oe_layer_tex_parent", osg::Uniform::SAMPLER_2D )->set( _secondaryUnit );
+            if ( parentTexturesRequired() )
+            {
+                terrainStateSet->getOrCreateUniform(
+                    "oe_layer_tex_parent", osg::Uniform::SAMPLER_2D )->set( _secondaryUnit );
+
+                // binding for the default secondary texture matrix
+                osg::Matrixf parent_mat;
+                parent_mat(0,0) = 0.0f;
+                terrainStateSet->getOrCreateUniform(
+                    "oe_layer_parent_matrix", osg::Uniform::FLOAT_MAT4 )->set( parent_mat );
+            }
 
             // uniform for accessing the elevation texture sampler.
-            // TODO: put in the _terrain's SS, not the bin's SS.
-            terrainStateSet->getOrCreateUniform(
-                "oe_terrain_tex", osg::Uniform::SAMPLER_2D)->set( _elevationTextureUnit );
-
-            // binding for the default secondary texture matrix
-            osg::Matrixf parent_mat;
-            parent_mat(0,0) = 0.0f;
-            terrainStateSet->getOrCreateUniform(
-                "oe_layer_parent_matrix", osg::Uniform::FLOAT_MAT4 )->set( parent_mat );
+            if ( elevationTexturesRequired() )
+            {
+                terrainStateSet->getOrCreateUniform(
+                    "oe_terrain_tex", osg::Uniform::SAMPLER_2D)->set( _elevationTextureUnit );
+            }
 
             // uniform that controls per-layer opacity
             terrainStateSet->getOrCreateUniform(
@@ -1000,9 +1094,32 @@ MPTerrainEngineNode::updateState()
             terrainStateSet->getOrCreateUniform(
                 "oe_layer_order", osg::Uniform::INT )->set( 0 );
 
-            // default min/max range uniforms.
+            // default min/max range uniforms. (max < min means ranges are disabled)
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_minRange", 0.0f) );
             terrainStateSet->addUniform( new osg::Uniform("oe_layer_maxRange", FLT_MAX) );
+            terrainStateSet->addUniform( new osg::Uniform("oe_layer_attenuationRange", _terrainOptions.attentuationDistance().get()) );
+            
+            terrainStateSet->getOrCreateUniform(
+                "oe_min_tile_range_factor",
+                osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
+
+            // special object ID that denotes the terrain surface.
+            terrainStateSet->addUniform( new osg::Uniform(
+                Registry::objectIndex()->getObjectIDUniformName().c_str(), OSGEARTH_OBJECTID_TERRAIN) );
+
+            // assign the uniforms for each shared layer.
+            int numImageLayers = _update_mapf->imageLayers().size();
+            for( int i=0; i<numImageLayers; ++i )
+            {
+                ImageLayer* layer = _update_mapf->getImageLayerAt(i);
+                if ( layer->getEnabled() && layer->isShared() )
+                {
+                    terrainStateSet->addUniform( new osg::Uniform(
+                        layer->shareTexUniformName()->c_str(),
+                        layer->shareImageUnit().get() ) );
+                        
+                }
+            }
         }
 
         _stateUpdateRequired = false;

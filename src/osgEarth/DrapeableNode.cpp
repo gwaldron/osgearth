@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -18,36 +18,50 @@
  */
 
 #include <osgEarth/DrapeableNode>
-#include <osgEarth/OverlayDecorator>
-#include <osgEarth/DrapingTechnique>
-#include <osgEarth/MapNode>
+#include <osgEarth/DrapingCullSet>
+#include <osgEarth/Registry>
+#include <osgEarth/CullingUtils>
 
 #define LC "[DrapeableNode] "
 
 using namespace osgEarth;
 
-//------------------------------------------------------------------------
 
-namespace
+DrapeableNode::DrapeableNode() :
+_drapingEnabled( true )
 {
-    static osg::Group* getTechniqueGroup(MapNode* m)
-    {
-        return m ? m->getOverlayDecorator()->getGroup<DrapingTechnique>() : 0L;
-    }
-}
-
-//------------------------------------------------------------------------
-
-DrapeableNode::DrapeableNode( MapNode* mapNode, bool draped ) :
-OverlayNode( mapNode, draped, &getTechniqueGroup )
-{
-    //nop
+    // Unfortunetly, there's no way to return a correct bounding sphere for
+    // the node since the draping will move it to the ground. The bounds
+    // check has to be done by the Draping Camera at cull time. Therefore we
+    // have to ensure that this node makes it into the draping cull set so it
+    // can be frustum-culled at the proper time.
+    setCullingActive( !_drapingEnabled );
 }
 
 void
-DrapeableNode::setRenderOrder(int order)
+DrapeableNode::setDrapingEnabled(bool value)
 {
-    _renderOrder = order;
-    osg::StateSet* s = _overlayProxyContainer->getOrCreateStateSet();
-    s->setRenderBinDetails(order, "RenderBin");
+    if ( value != _drapingEnabled )
+    {
+        _drapingEnabled = value;
+        setCullingActive( !_drapingEnabled );
+    }
+}
+
+void
+DrapeableNode::traverse(osg::NodeVisitor& nv)
+{
+    if ( _drapingEnabled && nv.getVisitorType() == nv.CULL_VISITOR )
+    {
+        // access the cull visitor:
+        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+
+        // find the cull set for this camera:
+        DrapingCullSet& cullSet = DrapingCullSet::get( cv->getCurrentCamera() );
+        cullSet.push( this, cv->getNodePath() );
+    }
+    else
+    {
+        osg::Group::traverse( nv );
+    }
 }

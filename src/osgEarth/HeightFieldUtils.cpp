@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -25,6 +25,36 @@
 #include <osg/Notify>
 
 using namespace osgEarth;
+
+
+bool
+HeightFieldUtils::validateSamples(float &a, float &b, float &c, float &d)
+{
+    // If ALL the sample points are NO_DATA_VALUE then we can't do anything.
+    if (a == NO_DATA_VALUE && b == NO_DATA_VALUE && c == NO_DATA_VALUE && d == NO_DATA_VALUE)
+    {
+        return false;
+    }
+
+    // If any of the samples are valid but some are NO_DATA_VALUE we can replace the nodata with valid values.
+    if (a == NO_DATA_VALUE ||
+        b == NO_DATA_VALUE || 
+        c == NO_DATA_VALUE ||
+        d == NO_DATA_VALUE)
+    {
+        float validValue = a;
+        if (validValue == NO_DATA_VALUE) validValue = b;
+        if (validValue == NO_DATA_VALUE) validValue = c;
+        if (validValue == NO_DATA_VALUE) validValue = d;
+
+        if (a == NO_DATA_VALUE) a = validValue;
+        if (b == NO_DATA_VALUE) b = validValue;
+        if (c == NO_DATA_VALUE) c = validValue;
+        if (d == NO_DATA_VALUE) d = validValue;
+    }
+
+    return true;
+}
 
 float
 HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double r, ElevationInterpolation interpolation)
@@ -76,7 +106,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         float lrHeight = hf->getHeight(colMax, rowMin);
 
         //Make sure not to use NoData in the interpolation
-        if (urHeight == NO_DATA_VALUE || llHeight == NO_DATA_VALUE || ulHeight == NO_DATA_VALUE || lrHeight == NO_DATA_VALUE)
+        if (!validateSamples(urHeight, llHeight, ulHeight, lrHeight))
         {
             return NO_DATA_VALUE;
         }
@@ -129,7 +159,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
         float lrHeight = hf->getHeight(colMax, rowMin);
 
         //Make sure not to use NoData in the interpolation
-        if (urHeight == NO_DATA_VALUE || llHeight == NO_DATA_VALUE || ulHeight == NO_DATA_VALUE || lrHeight == NO_DATA_VALUE)
+        if (!validateSamples(urHeight, llHeight, ulHeight, lrHeight))
         {
             return NO_DATA_VALUE;
         }
@@ -295,10 +325,9 @@ HeightFieldUtils::scaleHeightFieldToDegrees( osg::HeightField* hf )
         //TODO: adjust this calculation based on the actual EllipsoidModel.
         float scale = 1.0f/111319.0f;
 
-        for (unsigned int i = 0; i < hf->getHeightList().size(); ++i)
-        {
-            hf->getHeightList()[i] *= scale;
-        }
+        osg::HeightField::HeightList& heights = hf->getHeightList();
+        for(unsigned i=0; i<heights.size(); ++i)
+            heights[i] *= scale;
     }
     else
     {
@@ -431,10 +460,7 @@ HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
     }
     else
     {
-        for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
-        {
-            hf->getHeightList()[i] = 0.0;
-        }
+        hf->getFloatArray()->assign(numCols*numRows, 0.0f);
     }
 
     hf->setBorderWidth( 0 );
@@ -473,18 +499,17 @@ HeightFieldUtils::resolveInvalidHeights(osg::HeightField* grid,
     }
     else
     {
-        for(unsigned int i=0; i<grid->getHeightList().size(); i++ )
+        osg::HeightField::HeightList& heights = grid->getHeightList();
+        for(unsigned i=0; i<heights.size(); ++i)
         {
-            if ( grid->getHeightList()[i] == invalidValue )
-            {
-                grid->getHeightList()[i] = 0.0;
-            }
+            if ( heights[i] == invalidValue )
+                heights[i] = 0.0f;
         }
     }
 }
 
 osg::NodeCallback*
-HeightFieldUtils::createClusterCullingCallback(osg::HeightField*          grid, 
+HeightFieldUtils::createClusterCullingCallback(const osg::HeightField*    grid, 
                                                const osg::EllipsoidModel* et, 
                                                float                      verticalScale )
 {
@@ -577,6 +602,8 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
                                      const SpatialReference*        hoodSRS)
 {
     const osg::HeightField* hf = hood._center.get();
+    if ( !hf )
+        return 0L;
     
     osg::Image* image = new osg::Image();
     image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -647,7 +674,7 @@ HeightFieldUtils::convertToNormalMap(const HeightFieldNeighborhood& hood,
 }
 
 /******************************************************************************************/
-
+#if 0
 ReplaceInvalidDataOperator::ReplaceInvalidDataOperator():
 _replaceWith(0.0f)
 {
@@ -713,3 +740,4 @@ FillNoDataOperator::operator ()(osg::HeightField *heightField)
         }
     }
 }
+#endif

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include "BumpMapTerrainEffect"
 
 #include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 
 using namespace osgEarth;
 using namespace osgEarth::BumpMap;
@@ -77,6 +78,9 @@ BumpMapExtension::connect(MapNode* mapNode)
 
     if ( _options.octaves().isSet() )
         _effect->setOctaves( _options.octaves().get() );
+
+    if ( _options.baseLOD().isSet() )
+        _effect->setBaseLOD( _options.baseLOD().get() );
 
     mapNode->getTerrainEngine()->addEffect( _effect.get() );
     

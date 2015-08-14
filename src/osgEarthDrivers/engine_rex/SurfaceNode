@@ -1,0 +1,94 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_REX_SURFACE_NODE
+#define OSGEARTH_DRIVERS_REX_SURFACE_NODE 1
+
+#include "Common"
+#include "GeometryPool"
+#include "RenderBindings"
+#include "TileDrawable"
+
+#include <osgEarth/MapInfo>
+#include <osg/MatrixTransform>
+#include <osg/BoundingBox>
+#include <osg/Drawable>
+#include <osg/Geode>
+#include <osgText/Text>
+#include <vector>
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    using namespace osgEarth;
+
+    typedef std::vector<osg::Vec3> VectorPoints;
+    /**
+     * SurfaceNode holds the geometry of the terrain surface.
+     */
+    class SurfaceNode : public osg::MatrixTransform
+    {
+    public:
+        SurfaceNode(
+            const TileKey&        tilekey,
+            const MapInfo&        mapinfo,
+            const RenderBindings& bindings,
+            TileDrawable*         drawable);
+
+        void setElevationExtrema(const osg::Vec2f& minmax);
+
+        const osg::BoundingBox& getWorldBoundingBox() const { return _bbox; }
+
+        const osg::BoundingBox& getAlignedBoundingBox() const;
+        
+        TileDrawable* getDrawable() const { return _drawable.get(); }
+
+        // A box can have 4 children. 
+        // Returns true if any child box intersects the sphere of radius centered around point
+        bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared, float fZoomFactor);
+
+        float minSquaredDistanceFromPoint(const VectorPoints& points, const osg::Vec3& center, float fZoomFactor);
+
+        void setDebugNodeVisible(bool bVisible);
+        bool isDebugNodeVisible(void) const;
+        void setDebugText(const std::string& strText);
+
+    protected:
+        virtual ~SurfaceNode() { }
+
+        TileKey                    _tileKey;
+        osg::BoundingBox           _bbox;
+        osg::ref_ptr<TileDrawable> _drawable;
+        osg::ref_ptr<osg::Geode>   _surfaceGeode;
+
+        osg::ref_ptr<osg::Geode>    _debugGeode;
+        osg::ref_ptr<osgText::Text> _debugText;
+        bool                        _debugNodeVisible;
+        static const bool           _enableDebugNodes;
+
+        void addDebugNode(const osg::BoundingBox& box);
+        void removeDebugNode(void);
+
+        VectorPoints _worldCorners;
+
+        typedef std::vector< VectorPoints > ChildrenCorners;
+        ChildrenCorners _childrenCorners;
+    };
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_REX_SURFACE_NODE

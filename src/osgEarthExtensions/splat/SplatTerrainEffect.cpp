@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -28,6 +31,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarthUtil/SimplexNoise>
 
+#include <osg/Texture2D>
 #include <osgDB/WriteFile>
 
 #include "SplatShaders"
@@ -116,12 +120,21 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             return;
         }
 
-        engine->requireElevationTextures();
+        // Do not need this until/unless the splatting algorithm uses elevation.
+        //engine->requireElevationTextures();
 
         // install the splat texture array:
-        if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit) )
+        if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage") )
         {
-            osg::StateSet* stateset = new osg::StateSet();
+            osg::StateSet* stateset;
+
+            if ( _biomes.size() == 1 )
+                stateset = engine->getSurfaceStateSet();
+            else
+                stateset = new osg::StateSet();
+
+            // TODO: reinstate "biomes"
+            //osg::StateSet* stateset = new osg::StateSet();
 
             // splat sampler
             _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
@@ -141,31 +154,26 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             stateset->addUniform(new osg::Uniform("oe_splat_detailRange",  1000000.0f));
 
-            // Configure the vertex shader:
-            std::string vertexShaderModel = ShaderLoader::load(_shaders.VertModel, _shaders);
-            std::string vertexShaderView = ShaderLoader::load(_shaders.VertView, _shaders);
 
-            osgEarth::replaceIn( vertexShaderView, "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
+            Shaders package;
+
+            package.define( "SPLAT_EDIT",        _editMode );
+            package.define( "SPLAT_GPU_NOISE",   _gpuNoise );
+            package.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
+
+            package.replace( "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
             
-            // Configure the fragment shader:
-            std::string fragmentShader = ShaderLoader::load(_shaders.Frag, _shaders);
-
-            if ( _editMode ) 
-            {
-                osgEarth::replaceIn( fragmentShader, "#undef SPLAT_EDIT", "#define SPLAT_EDIT" );
-            }
-
-            // are normal maps available?
-            if ( engine->normalTexturesRequired() )
-            {
-                osgEarth::replaceIn( fragmentShader, "#undef OE_USE_NORMAL_MAP", "#define OE_USE_NORMAL_MAP" );
-            }
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+            package.load( vp, package.VertModel );
+            package.load( vp, package.VertView );
+            package.load( vp, package.Frag );
+            package.load( vp, package.Util );
 
             // GPU noise is expensive, so only use it to tweak noise function values that you
             // can later bake into the noise texture generator.
             if ( _gpuNoise )
             {                
-                osgEarth::replaceIn( fragmentShader, "#undef SPLAT_GPU_NOISE", "#define SPLAT_GPU_NOISE" );
+                //osgEarth::replaceIn( fragmentShader, "#undef SPLAT_GPU_NOISE", "#define SPLAT_GPU_NOISE" );
 
                 // Use --uniform on the command line to tweak these values:
                 stateset->addUniform(new osg::Uniform("oe_splat_freq",   32.0f));
@@ -175,9 +183,8 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             }
             else // use a noise texture (the default)
             {
-                if (engine->getResources()->reserveTextureImageUnit(_noiseTexUnit))
+                if (engine->getResources()->reserveTextureImageUnit(_noiseTexUnit, "Splat Noise"))
                 {
-                    OE_INFO << LC << "Noise texture -> unit " << _noiseTexUnit << "\n";
                     _noiseTex = createNoiseTexture();
                     stateset->setTextureAttribute( _noiseTexUnit, _noiseTex.get() );
                     _noiseTexUniform = stateset->getOrCreateUniform( NOISE_SAMPLER, osg::Uniform::SAMPLER_2D );
@@ -185,29 +192,42 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 }
             }
 
-            // shader components
-            VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            vp->setFunction( "oe_splat_vertex_model", vertexShaderModel, ShaderComp::LOCATION_VERTEX_MODEL );
-            vp->setFunction( "oe_splat_vertex_view",  vertexShaderView,  ShaderComp::LOCATION_VERTEX_VIEW );
-            vp->setFunction( "oe_splat_fragment",     fragmentShader,    ShaderComp::LOCATION_FRAGMENT_COLORING, _renderOrder );
-
             if ( _gpuNoise )
             {
                 // support shaders
-                std::string noiseShaderSource = ShaderLoader::load(_shaders.Noise, _shaders);
+                std::string noiseShaderSource = ShaderLoader::load( package.Noise, package );
                 osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
                 vp->setShader( "oe_splat_noiseshaders", noiseShader );
             }
 
-            // install the cull callback that will select the appropriate
-            // state based on the position of the camera.
-            _biomeSelector = new BiomeSelector(
-                _biomes,
-                _textureDefs,
-                stateset,
-                _splatTexUnit );
+            // TODO: I disabled BIOMES temporarily because the callback impl applies the splatting shader
+            // to the land cover bin as well as the surface bin, which we do not want -- find another way!
+            if ( _biomes.size() == 1 )
+            {
+                // install his biome's texture set:
+                stateset->setTextureAttribute(_splatTexUnit, _textureDefs[0]._texture.get());
 
-            engine->addCullCallback( _biomeSelector.get() );
+                // install this biome's sampling function. Use cloneOrCreate since each
+                // stateset needs a different shader set in its VP.
+                VirtualProgram* vp = VirtualProgram::cloneOrCreate( stateset );
+                osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, _textureDefs[0]._samplingFunction);
+                vp->setShader( "oe_splat_getRenderInfo", shader );
+            }
+
+            else
+            {
+                OE_WARN << LC << "Multi-biome setup needs re-implementing (reminder)\n";
+
+                // install the cull callback that will select the appropriate
+                // state based on the position of the camera.
+                _biomeSelector = new BiomeSelector(
+                    _biomes,
+                    _textureDefs,
+                    stateset,
+                    _splatTexUnit );
+
+                engine->addCullCallback( _biomeSelector.get() );
+            }
         }
     }
 }
@@ -381,9 +401,10 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
     if ( slopeCount > 0 )
         slopeBuf << ";\n";
 
+    Shaders package;
     std::string code = ShaderLoader::load(
-        _shaders.FragGetRenderInfo,
-        _shaders);
+        package.FragGetRenderInfo,
+        package);
 
     std::string codeToInject = Stringify()
         << IND
@@ -467,10 +488,11 @@ SplatTerrainEffect::createNoiseTexture() const
         OE_INFO << LC << "Noise: MIN = " << nmin << "; MAX = " << nmax << "\n";
     }
 
-
+#if 0
     std::string filename("noise.png");
     osgDB::writeImageFile(*image, filename);
     OE_NOTICE << LC << "Wrote noise texture to " << filename << "\n";
+#endif
 
     // make a texture:
     osg::Texture2D* tex = new osg::Texture2D( image );

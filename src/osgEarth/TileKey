@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -69,7 +69,7 @@ namespace osgEarth
             return
                 valid() && rhs.valid() && 
                 _lod==rhs._lod && _x==rhs._x && _y==rhs._y && 
-                _profile->isHorizEquivalentTo(rhs._profile);
+                _profile->isHorizEquivalentTo(rhs._profile.get());
         }
 
         /** Compare two tilekeys for inequality */
@@ -168,11 +168,6 @@ namespace osgEarth
 
         unsigned int getTileX() const { return _x; }
         unsigned int getTileY() const { return _y; }
-
-        //static inline int getLOD(const osgTerrain::TileID& id)
-        //{
-        //    return id.level;
-        //}
 
         /**
          * Maps this tile key to another tile key in order to account in

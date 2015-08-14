@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -353,7 +356,7 @@ OverlayDecorator::initializePerViewData( PerViewData& pvd, osg::Camera* cam )
         params._group = _overlayGroups[i].get();
         params._terrainStateSet = pvd._sharedTerrainStateSet.get(); // share it.
         params._horizonDistance = &pvd._sharedHorizonDistance;      // share it.
-        params._terrainParent = this;
+        params._terrainResources = _engine->getResources();
         params._mainCamera = cam;
     }
 }
@@ -610,7 +613,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
         OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
 #else
-        const osg::BoundingSphere& visibleOverlayBS = params._group->getBound();
+        const osg::BoundingSphere& visibleOverlayBS = _techniques[t]->getBound(params); //params._group->getBound();
 #endif
         if ( visibleOverlayBS.valid() )
         {
@@ -803,7 +806,7 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
     // cull visitor's current camera view and work with that:
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
         osg::Camera* camera = cv->getCurrentCamera();
 
         if ( camera != 0L && (_rttTraversalMask & nv.getTraversalMask()) != 0 )

@@ -1,0 +1,147 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE
+#define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE 1
+
+#include "Common"
+#include "RenderBindings"
+#include "Loader"
+#include "MPTexture"
+#include "ProxySurfaceNode"
+
+#include <OpenThreads/Atomic>
+#include <osgEarth/TerrainTileNode>
+#include <vector>
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    class EngineContext;
+    class SurfaceNode;
+    class ProxySurfaceNode;
+    class SelectionInfo;
+
+    /**
+     * TileNode represents a single tile. TileNode has 5 children:
+     * one SurfaceNode that renders the actual tile content under a MatrixTransform;
+     * and four TileNodes representing the LOD+1 quadtree tiles under this tile.
+     */
+    class TileNode : public osg::Group
+    {
+    public:
+        TileNode();
+
+        /** TileKey of the key representing the data in this node. */
+        const TileKey& getTileKey() const { return _key; }
+
+        /** Sets the map revision that this tile should be using. */
+        void setMapRevision(Revision rev) { } // nyi - check for need
+
+        /** Tells this tile that it needs to request data. */
+        void setDirty(bool value);
+
+        /** Creates the geometry and state for this tilenode. */
+        void create(const TileKey& key, EngineContext* context);
+
+        /** Whether this node has enough data to traverse. */
+        bool isReadyToTraverse() const;
+
+        /** Whether the tile is expired; i.e. has not been visited in some time. */
+        bool isDormant(osg::NodeVisitor& nv) const;
+
+        /** Load (or continue loading) content for the tiles in this quad. */
+        void load(osg::NodeVisitor& nv);
+
+        /** Notifies this tile that another tile has come into existence. */
+        void notifyOfArrival(TileNode* that) { } // nyi - todo
+
+        /** Set inheritance matrices as necessary. Return true is changed were made. */
+        bool inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo);
+
+        /** Compute the local min/max elevation based on this tile's inherited elevation raster and matrix. */
+        void updateElevationData(const RenderBindings& bindings, const MapInfo& mapInfo, unsigned tileSize);
+
+        /** Returns the tile's parent; convenience function */
+        TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
+
+        /** Sets the min and max elevation values for culling purposes */
+        void setElevationExtrema(const osg::Vec2f& minmax);
+        const osg::Vec2f& getElevationExtrema() const { return _extrema; }
+        
+        /** merge in new stuff from a state set. */
+        void mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderBindings& bindings);
+
+        MPTexture* getMPTexture() const { return _mptex.get(); }
+
+        ProxySurfaceNode* getProxySurfaceNode() const { return _surfaceProxy.get();}
+
+    public: // osg::Node
+
+        osg::BoundingSphere computeBound() const;
+
+        void traverse(osg::NodeVisitor& nv);
+
+        void releaseGLObjects(osg::State* state) const;
+
+    protected:
+        TileKey                            _key;
+        osg::ref_ptr<SurfaceNode>          _surface;
+        osg::ref_ptr<SurfaceNode>          _landCover;
+        osg::ref_ptr<ProxySurfaceNode>     _surfaceProxy;
+        osg::ref_ptr<Loader::Request>      _loadRequest;
+        osg::ref_ptr<Loader::Request>      _expireRequest;
+        Threading::Mutex                   _mutex;
+        bool                               _dirty;
+        OpenThreads::Atomic                _lastTraversalFrame;
+        unsigned                           _count;
+        osg::Vec2f                         _extrema;
+        osg::ref_ptr<MPTexture>            _mptex;
+
+        TileNode* getSubTile(unsigned i) { return dynamic_cast<TileNode*>(getChild(i)); }
+
+        void createChildren(osg::NodeVisitor& nv);
+
+        void expireChildren(osg::NodeVisitor& nv);
+
+    private:
+        void lodSelect(osg::NodeVisitor& nv);
+        void regularUpdate(osg::NodeVisitor& nv);
+
+        bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
+        float getVisibilityRangeHint(unsigned firstLOD) const;
+        float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
+
+        void updateTileSpecificUniforms(const SelectionInfo& selectionInfo);
+        void createTileSpecificUniforms(void);
+        osg::ref_ptr<osg::Uniform> _tileKeyUniform;
+        osg::ref_ptr<osg::Uniform> _tileMorphUniform;
+        osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
+        osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
+        osg::ref_ptr<osg::Uniform> _tileCenterToCameraDistUniform;
+
+        void updatePerFrameUniforms(const osg::NodeVisitor& nv);
+
+        void updateProxyGeometry(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
+        void updateUpdateExtrema(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
+    };
+
+    typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE

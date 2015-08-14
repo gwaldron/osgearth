@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -299,26 +299,11 @@ FeaturesToNodeFilter::applyLineSymbology(osg::StateSet*    stateset,
 
         if ( line->stroke()->stipplePattern().isSet() )
         {
-#if 1
             stateset->setAttributeAndModes(
                 new osg::LineStipple(
                     line->stroke()->stippleFactor().value(),
                     line->stroke()->stipplePattern().value()),
                 osg::StateAttribute::ON );
-#else
-            // goofing around...
-            const char* frag =
-                "#version 110\n"
-                "void oe_stipple_frag(inout vec4 color) {\n"
-                "    float x = mod(gl_FragCoord.x, 5.0);\n"
-                "    float y = mod(gl_FragCoord.y, 5.0);\n"
-                "    if (x < y)\n"
-                "        color.a = 0.0;\n"
-                "}\n";
-
-            VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            vp->setFunction("oe_stipple_frag", frag, ShaderComp::LOCATION_FRAGMENT_COLORING);
-#endif
         }
     }
 }

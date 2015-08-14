@@ -1,23 +1,21 @@
-<!-- 
-osgEarth Sample - Noise Driver
-Demonstrates the application of a normal map to add terrain detail.
+<!--
+osgEarth Sample - Shows an elevation-derived normal map.
 -->
+<map name="readymap.org" type="geocentric">    
 
-<map>
-    <options elevation_tile_size="17">
-        <terrain min_level="20" normalize_edges="true"/>
+    <options>
+        <terrain normal_maps="true"/>
     </options>
-
-    <image name="readymap_imagery" driver="tms" visible="true">
+    
+    <image name="readymap_imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-            
+        
     <elevation name="readymap_elevation" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-	
+    
     <extensions>
-        <normalmap image="../data/rock_hard.jpg"/>
-        <sky hours="16.0"/>
+        <sky driver="gl"/>
     </extensions>
 </map>

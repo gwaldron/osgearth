@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -35,7 +38,7 @@ LocalizedNode::LocalizedNode(MapNode*        mapNode,
                              const GeoPoint& position) :
 PositionedAnnotationNode( mapNode ),
 _initComplete           ( false ),
-_horizonCulling         ( true ),
+_horizonCullingRequested( true ),
 _scale                  ( 1.0f, 1.0f, 1.0f ),
 _mapPosition            ( position )
 {
@@ -46,7 +49,9 @@ _mapPosition            ( position )
 void
 LocalizedNode::init()
 {
-    this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+    this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );    
+    _horizonCuller = new HorizonCullCallback();
+    this->addCullCallback( _horizonCuller.get() );
 }
 
 
@@ -66,7 +71,7 @@ LocalizedNode::computeBound() const
         if ( !_initComplete )
         {
             const_cast<LocalizedNode*>(this)->_initComplete = true;
-            const_cast<LocalizedNode*>(this)->setHorizonCulling( _horizonCulling );
+            const_cast<LocalizedNode*>(this)->setHorizonCulling( _horizonCullingRequested );
             const_cast<LocalizedNode*>(this)->setPosition      ( _mapPosition );
         }
     }
@@ -82,11 +87,7 @@ LocalizedNode::setMapNode( MapNode* mapNode )
         PositionedAnnotationNode::setMapNode( mapNode );
 
         // The horizon culler depends on the map node, so reinitialize it:
-        if ( _horizonCulling )
-        {
-            setHorizonCulling( false );
-            setHorizonCulling( true );
-        }
+        setHorizonCulling( _horizonCullingRequested );
 
         // re-apply the position since the map has changed
         setPosition( _mapPosition );
@@ -208,24 +209,20 @@ LocalizedNode::getLocalRotation() const
 void
 LocalizedNode::setHorizonCulling( bool value )
 {
-    _horizonCulling = value;
+    _horizonCullingRequested = value;
 
-    if ( _initComplete && getMapNode() && getMapNode()->isGeocentric() )
+    if ( _initComplete )
     {
-        if ( _horizonCulling && !_cullByHorizonCB.valid() )
+        if ( getMapNode() )
         {
-            _cullByHorizonCB = new CullNodeByHorizon(
-                getTransform(),
-                getMapNode()->getMapSRS()->getEllipsoid() );
-
-            addCullCallback( _cullByHorizonCB.get() );
+            _horizonCuller->setHorizon(
+                Horizon(*getMapNode()->getMapSRS()->getEllipsoid()) );
         }
 
-        else if ( !_horizonCulling && _cullByHorizonCB.valid() )
-        {
-            removeCullCallback( _cullByHorizonCB.get() );
-            _cullByHorizonCB = 0L;
-        }
+        _horizonCuller->setEnabled(
+            _horizonCullingRequested &&
+            getMapNode() &&
+            getMapNode()->isGeocentric() );
     }
 }
 
@@ -249,7 +246,7 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
     // Draped (projected) geometry
     if ( ap.draping )
     {
-        DrapeableNode* drapable = new DrapeableNode( getMapNode() );
+        DrapeableNode* drapable = new DrapeableNode();
         drapable->addChild( node );
         node = drapable;
     }
@@ -288,7 +285,7 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
 LocalizedNode::LocalizedNode(MapNode* mapNode, const Config& conf) :
 PositionedAnnotationNode( mapNode, conf ),
 _initComplete           ( false ),
-_horizonCulling         ( true ),
+_horizonCullingRequested( true ),
 _scale                  ( 1.0f, 1.0f, 1.0f )
 {
     if ( conf.hasChild( "position" ) )

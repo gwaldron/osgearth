@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -32,13 +32,13 @@ namespace osgEarth { namespace Drivers { namespace GLSky
         "varying vec4 oe_lighting_adjustment; \n"
         "varying vec4 oe_lighting_zero_vec; \n"
 
-        "vec3 oe_global_Normal; \n"
+        "vec3 vp_Normal; \n"
 
         "void oe_sky_vertex_main(inout vec4 VertexVIEW) \n"
         "{ \n"
         "    if ( oe_mode_GL_LIGHTING == false ) return; \n"
         "    oe_lighting_adjustment = vec4(1.0); \n"
-        "    vec3 N = oe_global_Normal; \n"
+        "    vec3 N = vp_Normal; \n"
         "    float NdotL = dot( N, normalize(gl_LightSource[0].position.xyz) ); \n"
         "    NdotL = max( 0.0, NdotL ); \n"
 
@@ -97,7 +97,7 @@ namespace osgEarth { namespace Drivers { namespace GLSky
         "uniform bool oe_mode_GL_LIGHTING; \n"
         "varying vec3 oe_glsky_vertexView3; \n"
         
-        "vec3 oe_global_Normal; \n"
+        "vec3 vp_Normal; \n"
 
         "void oe_sky_fragment_main(inout vec4 color) \n"
         "{ \n"        
@@ -105,7 +105,7 @@ namespace osgEarth { namespace Drivers { namespace GLSky
 
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
         "    vec3 V = normalize(oe_glsky_vertexView3); \n"
-        "    vec3 N = normalize(oe_global_Normal); \n"
+        "    vec3 N = normalize(vp_Normal); \n"
         "    vec3 R = normalize(-reflect(L,N)); \n"
 
         "    float NdotL = max(dot(N,L), 0.0); \n"

@@ -1,0 +1,149 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_NATIVE_PROGRAM_ADAPTER
+#define OSGEARTH_NATIVE_PROGRAM_ADAPTER
+
+#include <osg/State>
+#include <osg/Uniform>
+#include <osg/GL2Extensions>
+#include <osg/Referenced>
+#include <osg/MixinVector>
+#include <osgEarth/Notify>
+#include <vector>
+
+#undef  LC
+#define LC "[NativeProgramAdapter] "
+
+//#undef  OE_DEBUG
+//#define OE_DEBUG OE_INFO
+
+namespace osgEarth
+{
+    /**
+     * Wraps a native glProgram handle so we can earch it form uniforms and
+     * apply values to them.
+     */
+    class NativeProgramAdapter : public osg::Referenced
+    {
+    public:
+        /** Create a program adapter under the current state that wraps the provided glProgram handle. */
+        NativeProgramAdapter(const osg::State* state, GLint handle, const char* prefix = 0L)
+        {
+            OE_DEBUG << LC << "Create adapter for glProgram " << handle << "\n";
+
+            _handle = handle;
+            _ext    = osg::GL2Extensions::Get( state->getContextID(), true );
+
+            GLint   numUniforms = 0;
+            GLsizei maxLen      = 0;
+
+            _ext->glGetProgramiv( _handle, GL_ACTIVE_UNIFORMS,      &numUniforms );
+            _ext->glGetProgramiv( _handle, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen );
+
+            if ( (numUniforms > 0) && (maxLen > 1) )
+            {
+                GLint   size = 0;
+                GLenum  type = 0;
+                GLchar* name = new GLchar[maxLen];
+
+                for( GLint i = 0; i < numUniforms; ++i )
+                {
+                    _ext->glGetActiveUniform( _handle, i, maxLen, 0, &size, &type, name );      
+                    if ( !prefix || (::strlen(name) >= ::strlen(prefix) && ::strncmp(name, prefix, ::strlen(prefix)) == 0) )
+                    {
+                        GLint loc = _ext->glGetUniformLocation( _handle, name );
+                        if ( loc != -1 )
+                        {
+                            _uniformLocations[osg::Uniform::getNameID(reinterpret_cast<const char*>(name))] = loc;
+                        
+                            OE_DEBUG << LC << "    Uniform = \"" << name << "\", location = " << loc << "\n";
+                        }
+                    }
+                }
+            }
+            else
+            {
+                OE_DEBUG << LC << "    No uniforms found.\n";
+            }
+        }
+
+        void apply(const osg::State* state)
+        {
+            reinterpret_cast<const StateEx*>(state)->applyUniformsToProgram(*this);
+        }
+
+    private:
+        GLint  _handle;
+        typedef std::map<unsigned, GLint> UniformMap;
+        UniformMap _uniformLocations;
+        const osg::GL2Extensions* _ext;
+
+        /** Apply the uniform to this program, optionally calling glUseProgram if necessary. */
+        bool apply(const osg::Uniform* uniform, bool useProgram) const
+        {
+            UniformMap::const_iterator location = _uniformLocations.find( uniform->getNameID() );
+            if ( location != _uniformLocations.end() )
+            {        
+                if ( useProgram )
+                    _ext->glUseProgram( _handle );
+                uniform->apply( _ext, location->second );
+                return true;
+            }
+            else return false;
+        }
+
+        struct StateEx : public osg::State 
+        {
+            void applyUniformsToProgram(const NativeProgramAdapter& adapter) const
+            {
+                bool useProgram = true;
+                for(UniformMap::const_iterator i = _uniformMap.begin(); i != _uniformMap.end(); ++i)
+                {
+                    const UniformStack& as = i->second;
+                    if ( !as.uniformVec.empty() )
+                    {                    
+                        const osg::Uniform* uniform = as.uniformVec.back().first;
+                        if (adapter.apply(uniform, useProgram))
+                            useProgram = false;
+                    }
+                }
+            }
+        };
+
+        friend struct StateEx;
+    };
+
+    /**
+     * Collection of program adapters.
+     */
+    class NativeProgramAdapterCollection: public osg::MixinVector< osg::ref_ptr<NativeProgramAdapter> >
+    {
+    public:
+        void apply(const osg::State* state) const
+        {
+            for(const_iterator i = begin(); i != end(); ++i )
+                i->get()->apply( state );
+        }
+    };
+
+}
+
+#undef LC
+
+#endif // OSGEARTH_NATIVE_PROGRAM_ADAPTER

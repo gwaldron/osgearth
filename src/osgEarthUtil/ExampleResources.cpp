@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -37,6 +40,7 @@
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarth/Decluttering>
+#include <osgEarth/TerrainEngineNode>
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
@@ -71,9 +75,7 @@ namespace
     void flyToViewpoint(EarthManipulator* manip, const Viewpoint& vp)
     {
         Viewpoint currentVP = manip->getViewpoint();
-        GeoPoint vp0(currentVP.getSRS(), currentVP.getFocalPoint(), ALTMODE_ABSOLUTE);
-        GeoPoint vp1(vp.getSRS(), vp.getFocalPoint(), ALTMODE_ABSOLUTE);
-        double distance = vp0.distanceTo(vp1);
+        double distance = currentVP.focalPoint()->distanceTo(currentVP.focalPoint().get());
         double duration = osg::clampBetween(distance / VP_METERS_PER_SECOND, VP_MIN_DURATION, VP_MAX_DURATION);
         manip->setViewpoint( vp, duration );
     }
@@ -360,11 +362,24 @@ AnnotationGraphControlFactory::create(osg::Node*       graph,
 osg::Group*
 MapNodeHelper::load(osg::ArgumentParser& args,
                     osgViewer::View*     view,
-                    Control*             userControl ) const
+                    Container*           userContainer ) const
 {
     // do this first before scanning for an earth file
     std::string outEarth;
     args.read( "--out-earth", outEarth );
+
+    osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
+    
+#if 1
+    Config c;
+    c.add("elevation_smoothing", false);
+    TerrainOptions to(c);
+
+    MapNodeOptions defMNO;
+    defMNO.setTerrainOptions( to );
+
+    options->setPluginStringData("osgEarth.defaultOptions", defMNO.getConfig().toJSON());
+#endif
 
     // read in the Earth file:
     osg::Node* node = 0L;
@@ -372,7 +387,7 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     {
         if ( osgDB::getLowerCaseFileExtension(args[i]) == "earth" )
         {
-            node = osgDB::readNodeFile( args[i] );
+            node = osgDB::readNodeFile( args[i], options );
             args.remove(i);
             break;
         }
@@ -419,7 +434,7 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     // parses common cmdline arguments.
     if ( view )
     {
-        parse( mapNode.get(), args, view, root, userControl );
+        parse( mapNode.get(), args, view, root, userContainer );
     }
 
     // Dump out an earth file if so directed.
@@ -444,7 +459,24 @@ MapNodeHelper::parse(MapNode*             mapNode,
                      osg::ArgumentParser& args,
                      osgViewer::View*     view,
                      osg::Group*          root,
-                     Control*             userControl ) const
+                     LabelControl*        userLabel ) const
+{
+    VBox* vbox = new VBox();
+    vbox->setAbsorbEvents( true );
+    vbox->setBackColor( Color(Color::Black, 0.8) );
+    vbox->setHorizAlign( Control::ALIGN_LEFT );
+    vbox->setVertAlign( Control::ALIGN_BOTTOM );
+    vbox->addControl( userLabel );
+
+    parse(mapNode, args, view, root, vbox);
+}
+
+void
+MapNodeHelper::parse(MapNode*             mapNode,
+                     osg::ArgumentParser& args,
+                     osgViewer::View*     view,
+                     osg::Group*          root,
+                     Container*           userContainer ) const
 {
     if ( !root )
         root = mapNode;
@@ -497,15 +529,21 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install a new Canvas for our UI controls, or use one that already exists.
     ControlCanvas* canvas = ControlCanvas::getOrCreate( view );
 
-    Container* mainContainer = canvas->addControl( new VBox() );
-    mainContainer->setAbsorbEvents( true );
-    mainContainer->setBackColor( Color(Color::Black, 0.8) );
-    mainContainer->setHorizAlign( Control::ALIGN_LEFT );
-    mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
+    Container* mainContainer;
+    if ( userContainer )
+    {
+        mainContainer = userContainer;
+    }
+    else
+    {
+        mainContainer = new VBox();
+        mainContainer->setAbsorbEvents( true );
+        mainContainer->setBackColor( Color(Color::Black, 0.8) );
+        mainContainer->setHorizAlign( Control::ALIGN_LEFT );
+        mainContainer->setVertAlign( Control::ALIGN_BOTTOM );
+    }
+    canvas->addControl( mainContainer );
 
-    // install the user control:
-    if ( userControl )
-        mainContainer->addControl( userControl );
 
     // look for external data in the map node:
     const Config& externals = mapNode->externalConfig();
@@ -631,7 +669,8 @@ MapNodeHelper::parse(MapNode*             mapNode,
         AnnotationRegistry::instance()->create( mapNode, annoConf, dbOptions.get(), annotations );
         if ( annotations )
         {
-            root->addChild( annotations );
+            mapNode->addChild( annotations );
+            //root->addChild( annotations );
         }
     }
 
@@ -665,11 +704,7 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Configure for an ortho camera:
     if ( useOrtho )
     {
-        EarthManipulator* manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
-        if ( manip )
-        {
-            manip->getSettings()->setCameraProjection( EarthManipulator::PROJ_ORTHOGRAPHIC );
-        }
+        view->getCamera()->setProjectionMatrixAsOrtho(-1, 1, -1, 1, 0, 1);
     }
 
     // activity monitor (debugging)
@@ -692,17 +727,17 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Install logarithmic depth buffer on main camera
     if ( useLogDepth )
     {
-        OE_INFO << LC << "Activating logarithmic depth buffer on main camera" << std::endl;
+        OE_INFO << LC << "Activating logarithmic depth buffer (vertex-only) on main camera" << std::endl;
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
-        logDepth.setUseFragDepth( true );
+        logDepth.setUseFragDepth( false );
         logDepth.install( view->getCamera() );
     }
 
     else if ( useLogDepth2 )
     {
-        OE_INFO << LC << "Activating logarithmic depth buffer (vertex-only) on main camera" << std::endl;
+        OE_INFO << LC << "Activating logarithmic depth buffer (precise) on main camera" << std::endl;
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
-        logDepth.setUseFragDepth( false );
+        logDepth.setUseFragDepth( true );
         logDepth.install( view->getCamera() );
     }
 
@@ -824,15 +859,15 @@ MapNodeHelper::usage() const
 {
     return Stringify()
         << "  --sky                         : add a sky model\n"
-        << "  --ocean                       : add an ocean model\n"
         << "  --kml <file.kml>              : load a KML or KMZ file\n"
+        << "  --kmlui                       : display a UI for toggling nodes loaded with --kml\n"
         << "  --coords                      : display map coords under mouse\n"
         << "  --dms                         : dispay deg/min/sec coords under mouse\n"
         << "  --dd                          : display decimal degrees coords under mouse\n"
         << "  --mgrs                        : show MGRS coords under mouse\n"
         << "  --ortho                       : use an orthographic camera\n"
         << "  --logdepth                    : activates the logarithmic depth buffer\n"
-        << "  --autoclip                    : installs an auto-clip plane callback\n"
+        << "  --logdepth2                   : activates logarithmic depth buffer with per-fragment interpolation\n"
         << "  --images [path]               : finds and loads image layers from folder [path]\n"
         << "  --image-extensions [ext,...]  : with --images, extensions to use\n"
         << "  --out-earth [file]            : write the loaded map to an earth file\n"

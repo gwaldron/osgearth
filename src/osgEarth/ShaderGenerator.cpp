@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderFactory>
 #include <osgEarth/StringUtils>
+#include <osgEarth/URI>
 
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -35,6 +36,7 @@
 #include <osg/TextureRectangle>
 #include <osg/Texture2DMultisample>
 #include <osg/Texture2DArray>
+#include <osg/TextureBuffer>
 #include <osg/TextureCubeMap>
 #include <osg/TexEnv>
 #include <osg/TexGen>
@@ -122,18 +124,26 @@ struct OSGEarthShaderGenPseudoLoader : public osgDB::ReaderWriter
 
         std::string stripped = osgDB::getNameLessExtension(filename);
 
-        OE_INFO << LC << "Loading " << stripped << " and generating shaders." << std::endl;
+        OE_INFO << LC << "Loading " << stripped << " from PLOD/Proxy and generating shaders." << std::endl;
         
-        osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(stripped, options);
-        if ( node.valid() )
+        osgEarth::ReadResult result = URI(stripped).readNode(options);
+        if ( result.succeeded() && result.getNode() != 0L )
         {
+            osg::ref_ptr<osg::Node> node = result.releaseNode();
+
             osgEarth::Registry::shaderGenerator().run(
                 node.get(),
                 osgDB::getSimpleFileName(stripped),
                 Registry::stateSetCache() );
+
+            return ReadResult( node.release() );
         }
 
-        return node.valid() ? ReadResult(node.release()) : ReadResult::ERROR_IN_READING_FILE;
+        else
+        {
+            OE_WARN << LC << "Error loading \"" << stripped << "\": " << result.errorDetail() << "\n";
+            return ReadResult::ERROR_IN_READING_FILE;
+        }
     }
 };
 
@@ -231,8 +241,8 @@ namespace
                     const osg::State::AttributePair& pair = as.attributeVec.back();
                     osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
                     ActiveAttributeCollector collector(stateset, sa);
-                    bool modeless = !sa->getModeUsage(collector);
-                    if (modeless || isModeless(sa))
+                    bool modeless = isModeless(sa) || !sa->getModeUsage(collector);
+                    if (modeless)
                     {
                         // if getModeUsage returns false, there are no modes associated with
                         // this attr, so just add it (it can't be forcably disabled)
@@ -252,9 +262,9 @@ namespace
                         const osg::State::AttributePair& pair = as.attributeVec.back();
                         osg::StateAttribute* sa = const_cast<osg::StateAttribute*>(pair.first);
                         ActiveAttributeCollector collector(stateset, sa, unit);
-                        bool modeless = !sa->getModeUsage(collector);
-                        if (modeless || isModeless(sa))
-                        {
+						bool modeless = isModeless(sa) || !sa->getModeUsage(collector);
+						if (modeless)
+						{
                             // if getModeUsage returns false, there are no modes associated with
                             // this attr, so just add it (it can't be forcably disabled)
                             stateset->setTextureAttribute(unit, sa, osg::StateAttribute::ON);
@@ -273,7 +283,8 @@ namespace
 #if OSG_VERSION_LESS_THAN(3,3,1)            
             return
                 dynamic_cast<osg::Texture2DArray*>(sa) ||
-                dynamic_cast<osg::Texture2DMultisample*>(sa);
+                dynamic_cast<osg::Texture2DMultisample*>(sa) ||
+				dynamic_cast<osg::TextureBuffer*>(sa);
 #else
             return false;
 #endif
@@ -676,7 +687,7 @@ ShaderGenerator::apply(osg::ClipNode& node)
     osg::StateSet* stateSet = cloneOrCreateStateSet(&node);
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
     if ( vp->referenceCount() == 1 ) vp->setName( _name );
-    vp->setFunction( "oe_sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW );
+    vp->setFunction( "oe_sg_set_clipvertex", s_clip_source, ShaderComp::LOCATION_VERTEX_VIEW, 0.95f );
 
     apply( static_cast<osg::Group&>(node) );
 }
@@ -763,11 +774,12 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
         "void " FRAGMENT_FUNCTION "(inout vec4 color)\n"
         "{ \n"
         INDENT MEDIUMP "vec4 texel = texture2D(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy);\n"
+        //INDENT MEDIUMP "vec4 texel = texture2DLod(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy, 0.0);\n"
         INDENT "color.a *= texel.a; \n"
         "}\n";
 
-    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW );
-    vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING );
+    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
+    vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
 
     return replacement.valid();
@@ -868,7 +880,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
 
     if ( needNewStateSet )
     {
-        std::string version = Stringify() << buf._version;
+        std::string version = GLSL_VERSION_STR;
 
         std::string vertHeadSource;
         vertHeadSource = buf._vertHead.str();
@@ -886,7 +898,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
                 << vertBodySource
                 << "}\n";
 
-            vp->setFunction(VERTEX_FUNCTION, vertSource, ShaderComp::LOCATION_VERTEX_VIEW);
+            vp->setFunction(VERTEX_FUNCTION, vertSource, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f);
         }
 
 
@@ -905,7 +917,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
                 << fragBodySource
                 << "}\n";
 
-            vp->setFunction(FRAGMENT_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            vp->setFunction(FRAGMENT_FUNCTION, fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f);
         }
     }
 
@@ -1069,11 +1081,11 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 
         case osg::TexGen::SPHERE_MAP:
             buf._vertHead
-                << "varying vec3 oe_Normal;\n";
+                << "varying vec3 vp_Normal;\n";
             buf._vertBody 
                 << INDENT "{\n" // scope it in case there are > 1
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w); \n"
-                << INDENT "vec3 r = reflect(view_vec, oe_Normal);\n"
+                << INDENT "vec3 r = reflect(view_vec, vp_Normal);\n"
                 << INDENT "r.z += 1.0; \n"
                 << INDENT "float m = 2.0 * sqrt(dot(r,r)); \n"
                 << INDENT TEX_COORD << unit << " = vec4(r.x/m + 0.5, r.y/m + 0.5, 0.0, 1.0); \n"
@@ -1082,20 +1094,20 @@ ShaderGenerator::apply(osg::TexGen* texgen, int unit, GenBuffers& buf)
 
         case osg::TexGen::REFLECTION_MAP:
             buf._vertHead
-                << "varying vec3 oe_Normal;\n";
+                << "varying vec3 vp_Normal;\n";
             buf._vertBody
                 << INDENT "{\n"
                 << INDENT "vec3 view_vec = normalize(vertex_view.xyz/vertex_view.w);\n"
-                << INDENT TEX_COORD << unit << " = vec4(reflect(view_vec, oe_Normal), 1.0); \n"
+                << INDENT TEX_COORD << unit << " = vec4(reflect(view_vec, vp_Normal), 1.0); \n"
                 << INDENT "}\n";
             break;
 
         case osg::TexGen::NORMAL_MAP:
             buf._vertHead
-                << "varying vec3 oe_Normal;\n";
+                << "varying vec3 vp_Normal;\n";
             buf._vertBody
                 << INDENT "{\n"
-                << INDENT TEX_COORD << unit << " = vec4(oe_Normal, 1.0); \n"
+                << INDENT TEX_COORD << unit << " = vec4(vp_Normal, 1.0); \n"
                 << INDENT "}\n";
             break;
 

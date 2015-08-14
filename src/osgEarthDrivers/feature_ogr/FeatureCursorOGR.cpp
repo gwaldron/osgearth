@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -62,12 +62,12 @@ namespace
 }
 
 
-FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH           dsHandle,
-                                   OGRLayerH                layerHandle,
-                                   const FeatureSource*     source,
-                                   const FeatureProfile*    profile,
-                                   const Symbology::Query&  query,
-                                   const FeatureFilterList& filters ) :
+FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH              dsHandle,
+                                   OGRLayerH                   layerHandle,
+                                   const FeatureSource*        source,
+                                   const FeatureProfile*       profile,
+                                   const Symbology::Query&     query,
+                                   const FeatureFilterList&    filters) :
 _source           ( source ),
 _dsHandle         ( dsHandle ),
 _layerHandle      ( layerHandle ),
@@ -91,12 +91,7 @@ _filters          ( filters )
         // Or quote any layers containing spaces for PostgreSQL
         if (driverName == "ESRI Shapefile" || from.find(" ") != std::string::npos)
         {                        
-            std::string delim = "'";  //Use single quotes by default
-            if (driverName.compare("PostgreSQL") == 0)
-            {
-                //PostgreSQL uses double quotes as identifier delimeters
-                delim = "\"";
-            }            
+            std::string delim = "\"";
             from = delim + from + delim;                    
         }
 
@@ -227,7 +222,7 @@ FeatureCursorOGR::readChunk()
 
     if ( _nextHandleToQueue )
     {
-        osg::ref_ptr<Feature> f = OgrUtils::createFeature( _nextHandleToQueue, _profile->getSRS() );
+        osg::ref_ptr<Feature> f = OgrUtils::createFeature( _nextHandleToQueue, _profile.get() );
         if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
         {
             if ( isGeometryValid( f->getGeometry() ) )
@@ -235,11 +230,13 @@ FeatureCursorOGR::readChunk()
                 _queue.push( f );
 
                 if ( _filters.size() > 0 )
+                {
                     preProcessList.push_back( f.release() );
+                }
             }
             else
             {
-                OE_INFO << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
+                OE_DEBUG << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
             }
         }
         OGR_F_Destroy( _nextHandleToQueue );
@@ -254,7 +251,7 @@ FeatureCursorOGR::readChunk()
         OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
         if ( handle )
         {
-            osg::ref_ptr<Feature> f = OgrUtils::createFeature( handle, _profile->getSRS() );
+            osg::ref_ptr<Feature> f = OgrUtils::createFeature( handle, _profile.get() );
             if ( f.valid() && !_source->isBlacklisted(f->getFID()) )
             {
                 if (isGeometryValid( f->getGeometry() ) )
@@ -262,11 +259,13 @@ FeatureCursorOGR::readChunk()
                     _queue.push( f );
 
                     if ( _filters.size() > 0 )
+                    {
                         preProcessList.push_back( f.release() );
+                    }
                 }
                 else
                 {
-                    OE_INFO << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
+                    OE_DEBUG << LC << "Skipping feature with invalid geometry: " << f->getGeoJSON() << std::endl;
                 }
             }            
             OGR_F_Destroy( handle );

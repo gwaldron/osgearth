@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Containers>
 
 #include "MPTerrainEngineOptions"
 #include "KeyNodeFactory"
@@ -110,6 +111,8 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
     protected:
         // override from TerrainEngineNode
         virtual void updateTextureCombining() { updateState(); }
+        
+        virtual void notifyExistingNodes(TerrainEngine::NodeCallback* cb);
 
     private:
         void init();
@@ -117,7 +120,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         // Reloads all the tiles in the terrain due to a data model change
         void refresh(bool force =false);
-        void createTerrain();
+        virtual void dirtyTerrain();
 
         void addImageLayer( ImageLayer* layer );
         void addElevationLayer( ElevationLayer* layer );
@@ -130,6 +133,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
         
         void updateState(); 
+
 
     private:
         MPTerrainEngineOptions _terrainOptions;
@@ -147,13 +151,15 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
         osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
 
+        osg::ref_ptr<TerrainEngine::NodeCallback> _normalMapInstaller;
+
         MapFrame* _update_mapf; // map frame for the main/update traversal thread
 
         // node registry is shared across all threads.
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
         osg::ref_ptr<TileNodeRegistry> _deadTiles;        // tiles that used to be in the scene graph.
 
-        Threading::PerThread< osg::ref_ptr<KeyNodeFactory> > _perThreadKeyNodeFactories;
+        PerThread< osg::ref_ptr<KeyNodeFactory> > _perThreadKeyNodeFactories;
         KeyNodeFactory* getKeyNodeFactory();
 
         osg::Timer _timer;
@@ -162,6 +168,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         int        _primaryUnit;
         int        _secondaryUnit;
         int        _elevationTextureUnit;
+        int        _normalMapUnit;
 
         osg::Uniform* _verticalScaleUniform;
 

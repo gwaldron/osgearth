@@ -1,6 +1,6 @@
 /* --*-c++-*-- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -133,10 +133,10 @@ namespace osgEarth { namespace Features
             const TileKey*      key);
 
         osg::Group* build( 
-            const Style&        baseStyle, 
-            const Query&        baseQuery, 
-            const GeoExtent&    extent, 
-            FeatureSourceIndex* index);
+            const Style&         baseStyle, 
+            const Query&         baseQuery, 
+            const GeoExtent&     extent, 
+            FeatureIndexBuilder* index);
 
 
     private:
@@ -144,9 +144,9 @@ namespace osgEarth { namespace Features
         void ctor();
         
         osg::Group* createStyleGroup(
-            const Style&        style, 
-            const Query&        query, 
-            FeatureSourceIndex* index);
+            const Style&         style, 
+            const Query&         query, 
+            FeatureIndexBuilder* index);
 
         osg::Group* createStyleGroup(
             const Style&         style, 
@@ -156,13 +156,13 @@ namespace osgEarth { namespace Features
         void buildStyleGroups(
             const StyleSelector* selector,
             const Query&         baseQuery,
-            FeatureSourceIndex*  index,
+            FeatureIndexBuilder* index,
             osg::Group*          parent);
 
         void queryAndSortIntoStyleGroups(
             const Query&            query,
             const StringExpression& styleExpr,
-            FeatureSourceIndex*     index,
+            FeatureIndexBuilder*    index,
             osg::Group*             parent);
 
         osg::Group* getOrCreateStyleGroupFromFactory(
@@ -215,6 +215,8 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<RefNodeOperationVector> _postMergeOperations;
 
         osg::observer_ptr<ModelSource> _modelSource;
+
+        osg::ref_ptr<FeatureSourceIndex> _featureIndex;
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);

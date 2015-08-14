@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -29,9 +29,15 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ObjectIndex>
+
+#include <osgEarth/Units>
 #include <osg/Notify>
 #include <osg/Version>
 #include <osgDB/Registry>
+#include <osgDB/Options>
+#include <osgText/Font>
+
 #include <gdal_priv.h>
 #include <ogr_api.h>
 #include <stdlib.h>
@@ -86,9 +92,12 @@ _cacheDriver        ( "filesystem" )
     // Default unref-after apply policy:
     _unRefImageDataAfterApply = true;
 
+    // Default object index for tracking scene object by UID.
+    _objectIndex = new ObjectIndex();
+
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );
-    osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
+    //osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );
@@ -475,6 +484,12 @@ Registry::createUID()
     return (UID)( _uidGen++ );
 }
 
+const osgDB::Options*
+Registry::getDefaultOptions() const 
+{
+    return _defaultOptions.get();
+}
+
 osgDB::Options*
 Registry::cloneOrCreateOptions(const osgDB::Options* input)
 {
@@ -546,25 +561,47 @@ Registry::getProgramSharedRepo()
     return &_programRepo;
 }
 
+ObjectIndex*
+Registry::getObjectIndex() const
+{
+    return _objectIndex.get();
+}
+
 void
 Registry::startActivity(const std::string& activity)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
-    _activities.insert(activity);
+    _activities.insert(Activity(activity,std::string()));
+}
+
+void
+Registry::startActivity(const std::string& activity,
+                        const std::string& value)
+{
+    Threading::ScopedMutexLock lock(_activityMutex);
+    _activities.insert(Activity(activity,value));
 }
 
 void
 Registry::endActivity(const std::string& activity)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
-    _activities.erase(activity);
+    _activities.erase(Activity(activity,std::string()));
 }
 
 void
 Registry::getActivities(std::set<std::string>& output)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
-    output = _activities;
+    for(std::set<Activity,ActivityLess>::const_iterator i = _activities.begin();
+        i != _activities.end();
+        ++i)
+    {
+        if ( ! i->second.empty() )
+            output.insert( i->first + ": " + i->second );
+        else
+            output.insert( i->first );
+    }
 }
 
 std::string 

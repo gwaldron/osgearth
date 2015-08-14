@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,15 +19,18 @@
 #ifndef OSGEARTH_VIEWPOINT
 #define OSGEARTH_VIEWPOINT
 
-#include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/SpatialReference>
+#include <osgEarth/GeoData>
+#include <osgEarth/Units>
+#include <osgEarth/optional>
+#include <osg/Node>
+#include <osg/observer_ptr>
 
 namespace osgEarth
 {
     /**
-     * Viewpoint data object. Stores a view configuration as a focal point
-     * and the camera's position relative to that focal point.
+     * Viewpoint stores a focal point (or a focal node) and camera parameters
+     * relative to that point.
      */
     class OSGEARTH_EXPORT Viewpoint
     {
@@ -38,145 +41,73 @@ namespace osgEarth
         Viewpoint();
 
         /**
-         * Constructs a new viewpoint.
-         *
-         * @param focal_point
-         *      The location at which the camera points. Express this coordinate
-         *      relative to the spatial reference system of the map, or you 
-         *      can specify the SRS in the last argument.
-         *
-         * @param heading_deg
-         *      Heading (in clockwise degrees) of the camera relative to the 
-         *      tangent plane of the focal point.
-         *
-         * @param pitch_deg
-         *      Pitch (in degrees) of the camera relative to the tangent plane
-         *      of the focal point.
-         *
-         * @param range
-         *      Straight-line distance from the camera to the focal point.
-         *
-         * @param srs (optional)
-         *      Spatial reference defining the focal point.
+         * Copy constructor.
          */
-        Viewpoint(
-            const osg::Vec3d& focal_point,
-            double heading_deg,
-            double pitch_deg,
-            double range,
-            const osgEarth::SpatialReference* srs =NULL );
-
-        Viewpoint(
-            double x_or_lon, double y_or_lat, double z,
-            double heading_deg,
-            double pitch_deg,
-            double range,
-            const osgEarth::SpatialReference* srs =NULL );
-
-        /**
-         * Constructs a new viewpoint.
-         *
-         * @param name
-         *      Name of this viewpoint.
-         *
-         * @param focal_point
-         *      The location at which the camera points. Express this coordinate
-         *      relative to the spatial reference system of the map, or you 
-         *      can specify the SRS in the last argument.
-         *
-         * @param heading_deg
-         *      Heading (in clockwise degrees) of the camera relative to the 
-         *      tangent plane of the focal point.
-         *
-         * @param pitch_deg
-         *      Pitch (in degrees) of the camera relative to the tangent plane
-         *      of the focal point.
-         *
-         * @param range
-         *      Straight-line distance from the camera to the focal point.
-         *
-         * @param srs (optional)
-         *      Spatial reference defining the focal point.
-         */
-        Viewpoint(
-            const std::string& name,
-            const osg::Vec3d& focal_point,
-            double heading_deg,
-            double pitch_deg,
-            double range,
-            const osgEarth::SpatialReference* srs =NULL );
-
-        Viewpoint(
-            const std::string& name,
-            double x_or_lon, double y_or_lat, double z,
-            double heading_deg,
-            double pitch_deg,
-            double range,
-            const osgEarth::SpatialReference* srs =NULL );
+        Viewpoint(const Viewpoint& rhs);
 
         /**
          * Deserialize a Config into this viewpoint object.
          */
-        Viewpoint( const Config& conf );
-
-        /**
-         * Copy constructor.
-         */
-        Viewpoint( const Viewpoint& rhs );
-
-        /** dtor */
-        virtual ~Viewpoint() { }
+        Viewpoint(const Config& conf);
 
     public:
 
         /**
-         * Returns true if this viewpoint contains valid information.
+         * Returns true if this viewpoint contains either a valid focal point or
+         * a valid tracked node.
          */
         bool isValid() const;
 
         /**
          * Gets or sets the name of the viewpoint.
          */
-        void setName( const std::string& name );
-        const std::string& getName() const;
+        optional<std::string>& name()             { return _name; }
+        const optional<std::string>& name() const { return _name; }
 
         /**
-         * Gets or sets the location at which the camera is pointing.
+         * The geospatial location at which the camera is pointing. If the Node (below)
+         * is set, this is ignored.
          */
-        const osg::Vec3d& getFocalPoint() const;
-        void setFocalPoint( const osg::Vec3d& point );
-
-        double x() const;
-        double& x();
-
-        double y() const;
-        double& y();
-
-        double z() const;
-        double& z();
+        optional<GeoPoint>& focalPoint()             { return _point; }
+        const optional<GeoPoint>& focalPoint() const { return _point; }
 
         /**
-         * Gets the heading (in degrees) of the camera relative to the focal point.
+         * The node in the scene graph at which the camera is pointing. The "getter" follows
+         * the observer pattern; i.e. you must copy its value into a ref_ptr before safely
+         * accessing it. getNode() returns true if the safe-reference was successful.
+         *
+         * If a node is set, the Focal Point is ignored.
+         * Node will not serialize into a Config.
          */
-        double getHeading() const;
-        void setHeading( double heading_deg );
+        void setNode(osg::Node* value)                    { _node = value; }
+        bool getNode(osg::ref_ptr<osg::Node>& safe) const { return _node.lock(safe); }
+        bool nodeIsSet() const                            { return _node.valid(); }
 
         /**
-         * Gets the pitch (in degrees) of the camera relative to the focal point.
+         * Heading (in degrees) of the camera relative to the focal point.
          */
-        double getPitch() const;
-        void setPitch( double pitch_deg );
+        optional<Angle>& heading()             { return _heading; }
+        const optional<Angle>& heading() const { return _heading; }
 
         /**
-         * Gets the distance from the camera to the focal point.
+         * The pitch of the camera relative to the focal point.
          */
-        double getRange() const;
-        void setRange( double range );
+        optional<Angle>& pitch()             { return _pitch; }
+        const optional<Angle>& pitch() const { return _pitch; }
 
         /**
-         * Gets the spatial reference system of the focal point, if defined.
+         * The distance from the camera to the focal point.
          */
-        const osgEarth::SpatialReference* getSRS() const;
+        optional<Distance>& range()             { return _range; }
+        const optional<Distance>& range() const { return _range; }
+
+        /**
+         * Local offsets from the focal point, in meters. For example if the Viewpoint
+         * is looking at a Node, this will shift the focal point so it is offset from
+         * the node in a cartesian coordinate system where X=east, Y=north, Z=up.
+         */
+        optional<osg::Vec3d>& positionOffset()             { return _posOffset; }
+        const optional<osg::Vec3d>& positionOffset() const { return _posOffset; }
 
         /**
          * Returns a printable string with the viewpoint data
@@ -184,18 +115,53 @@ namespace osgEarth
         std::string toString() const;
 
         /**
-         * Serialize this viewpoint to a config.
+         * Serialize this viewpoint to a config object.
          */
         Config getConfig() const;
 
+
+    public: // Backwards compatibility functions. Please don't use these in view code.
+
+        /** SRS is WGS84, angles are in degrees, range is in meters. */
+
+        /** @deprecated */
+        Viewpoint(double lon, double lat, double heading, double pitch, double range);
+
+        /** @deprecated */
+        Viewpoint(const char* name, double lon, double lat, double z, double heading, double pitch, double range);
+        
+        /** @deprecated */
+        void setHeading(double value) { _heading->set(value, Units::DEGREES); }
+
+        /** @deprecated */
+        void setPitch  (double value) { _pitch->set(value, Units::DEGREES); }
+
+        /** @deprecated */
+        void setRange  (double value) { _range->set(value, Units::METERS); }
+        
+        /** @deprecated */
+        double getHeading() const { return _heading->as(Units::DEGREES); }
+
+        /** @deprecated */
+        double getPitch()   const { return _pitch->as(Units::DEGREES); }
+
+        /** @deprecated */
+        double getRange()   const { return _range->as(Units::METERS); }
+
+    public:
+
+        /** dtor */
+        ~Viewpoint() { }
+
     private:
-        std::string _name;
-        osg::Vec3d _focal_point;
-        double _heading_deg;
-        double _pitch_deg;
-        double _range;
-        osg::ref_ptr<const osgEarth::SpatialReference> _srs;
-        bool _is_valid;
+        optional<std::string> _name;
+        optional<GeoPoint>    _point;
+        optional<Angle>       _heading;
+        optional<Angle>       _pitch;
+        optional<Distance>    _range;
+        optional<osg::Vec3d>  _posOffset;
+
+        osg::observer_ptr<osg::Node> _node;
     };
 
 } // namespace osgEarth

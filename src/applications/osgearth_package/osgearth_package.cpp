@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -72,6 +72,7 @@ usage( const std::string& msg = "" )
         << "            [--mp]                          ; Use multiprocessing to process the tiles.  Useful for GDAL sources as this avoids the global GDAL lock" << std::endl
         << "            [--mt]                          ; Use multithreading to process the tiles." << std::endl
         << "            [--concurrency]                 ; The number of threads or proceses to use if --mp or --mt are provided." << std::endl
+        << "            [--alpha-mask]                  ; Mask out imagery that isn't in the provided extents." << std::endl
         << std::endl
         << "            [--verbose]                     ; Displays progress of the operation" << std::endl;
 
@@ -144,6 +145,8 @@ makeTMS( osg::ArgumentParser& args )
     unsigned int concurrency = 0;
     args.read("-c", concurrency);
     args.read("--concurrency", concurrency);
+
+    bool applyAlphaMask = args.read("--alpha-mask");
 
     bool writeXML = true;
 
@@ -326,6 +329,7 @@ makeTMS( osg::ArgumentParser& args )
     packager.setWriteOptions(options);    
     packager.setOverwrite(overwrite);
     packager.setKeepEmpties(keepEmpties);
+    packager.setApplyAlphaMask(applyAlphaMask);
 
 
     // new map for an output earth file if necessary.

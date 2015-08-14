@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,29 +16,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVER_TRITON_TRITON_NODE
-#define OSGEARTH_DRIVER_TRITON_TRITON_NODE 1
+#ifndef OSGEARTH_TRITON_NODE
+#define OSGEARTH_TRITON_NODE 1
 
 #include "TritonOptions"
 #include <osgEarthUtil/Ocean>
 #include <osgEarth/MapNode>
 #include <osg/Drawable>
 
-namespace osgEarth { namespace Drivers { namespace Triton
+namespace osgEarth { namespace Triton
 {
     class TritonContext;
-
-    using namespace osgEarth;
-    using namespace osgEarth::Util;
 
     /**
      * Node that roots the Triton adapter.
      */
-    class TritonNode : public OceanNode
+    class TritonNode : public osgEarth::Util::OceanNode
     {
     public:
         TritonNode(
-            MapNode*           mapNode,
+            osgEarth::MapNode*   mapNode,
             const TritonOptions& options );
 
     protected: // OceanNode
@@ -59,6 +56,6 @@ namespace osgEarth { namespace Drivers { namespace Triton
         osg::Drawable*              _drawable;
     };
 
-} } } // namespace osgEarth::Drivers::Triton
+} } // namespace osgEarth::Triton
 
-#endif // OSGEARTH_DRIVER_TRITON_TRITON_NODE
+#endif // OSGEARTH_TRITON_NODE

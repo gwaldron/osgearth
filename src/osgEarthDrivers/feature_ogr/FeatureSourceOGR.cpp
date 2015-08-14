@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -113,6 +113,11 @@ public:
         if ( _options.url().isSet() )
         {
             _source = _options.url()->full();
+            if (osgEarth::endsWith(_source, ".zip", false) ||
+                _source.find(".zip/") != std::string::npos)
+            {
+                _source = Stringify() << "/vsizip/" << _source;
+            }
         }
         else if ( _options.connection().isSet() )
         {
@@ -204,9 +209,15 @@ public:
                                 if ( OGR_L_GetExtent( _layerHandle, &env, 1 ) == OGRERR_NONE )
                                 {
                                     GeoExtent extent( srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY );
-                                    
-                                    // got enough info to make the profile!
-                                    result = new FeatureProfile( extent );
+                                    if ( extent.isValid() )
+                                    {                                    
+                                        // got enough info to make the profile!
+                                        result = new FeatureProfile( extent );
+                                    }
+                                    else
+                                    {
+                                        OE_WARN << LC << "Extent returned from OGR was invalid.\n";
+                                    }
                                 }
                             }
                         }
@@ -286,6 +297,14 @@ public:
                 << "Feature Source: no valid source data available" << std::endl;
         }
 
+        if ( result )
+        {
+            if ( _options.geoInterp().isSet() )
+            {
+                result->geoInterp() = _options.geoInterp().get();
+            }
+        }
+
         return result;
     }
 
@@ -326,7 +345,7 @@ public:
                     layerHandle, 
                     this,
                     getFeatureProfile(),
-                    query, 
+                    query,
                     _options.filters() );
             }
             else
@@ -361,6 +380,11 @@ public:
         return _featureCount;
     }
 
+    bool supportsGetFeature() const
+    {
+        return true;
+    }
+
     virtual Feature* getFeature( FeatureID fid )
     {
         Feature* result = NULL;
@@ -371,9 +395,7 @@ public:
             OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
             if (handle)
             {
-                const FeatureProfile* p = getFeatureProfile();
-                const SpatialReference* srs = p ? p->getSRS() : 0L;
-                result = OgrUtils::createFeature( handle, srs );
+                result = OgrUtils::createFeature( handle, getFeatureProfile() );
                 OGR_F_Destroy( handle );
             }
         }

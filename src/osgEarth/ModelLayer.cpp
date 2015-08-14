@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -38,7 +38,6 @@ namespace
     {
         NodeModelSource( osg::Node* node ) : _node(node) { }
 
-//        osg::Node* createNodeImplementation(const Map* map, const osgDB::Options* dbOptions, ProgressCallback* progress) {
         osg::Node* createNodeImplementation(const Map* map, ProgressCallback* progress) {
             return _node.get();
         }
@@ -187,6 +186,8 @@ ModelLayer::initialize(const osgDB::Options* dbOptions)
         _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
         if ( _modelSource.valid() )
         {
+            _modelSource->setName( this->getName() );
+
             _modelSource->initialize( _dbOptions.get() );
 
             // the mask, if there is one:

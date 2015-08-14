@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include "TerrainShaderOptions"
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
+#include <osgEarth/TerrainEffect>
 #include <osgEarthUtil/Controls>
 
 namespace osgEarth { namespace TerrainShader
@@ -58,9 +59,9 @@ namespace osgEarth { namespace TerrainShader
         TerrainShaderExtension(const TerrainShaderExtension& rhs, const osg::CopyOp& op) { }
 
     private:
-        const TerrainShaderOptions           _options;
-        osg::ref_ptr<const osgDB::Options>   _dbOptions;
-        osg::ref_ptr<class TerrainEffect>    _effect;
+        const TerrainShaderOptions         _options;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<TerrainEffect>        _effect;
     };
 
 } } // namespace osgEarth::TerrainShader

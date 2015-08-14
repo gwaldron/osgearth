@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,12 +19,13 @@
 #include <osg/Drawable>
 #include <osg/RenderInfo>
 #include <osg/Version>
+#include <osgEarth/NativeProgramAdapter>
+#include <vector>
+#include <map>
 
-namespace osgEarth { namespace Drivers { namespace SilverLining
+namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
-
-    using namespace osgEarth;
 
     /**
      * Custom drawable for rendering the SilverLining clouds
@@ -54,9 +55,10 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
         virtual ~CloudsDrawable() { }
 
         osg::observer_ptr<SilverLiningContext> _SL;
-		bool _draw;
+
+        mutable osg::buffered_object<osgEarth::NativeProgramAdapterCollection> _adapters;
         
         CloudsDrawable(const CloudsDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };
 
-} } } // namespace osgEarth::Drivers::SilverLining
+} } // namespace osgEarth::SilverLining

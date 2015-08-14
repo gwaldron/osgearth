@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -134,6 +134,11 @@ namespace osgEarth { namespace Symbology
         virtual Bounds getBounds() const;
 
         /**
+         * Length of the [outermost] geometry.
+         */
+        virtual double getLength() const;
+
+        /**
          * Whether the geometry is lines
          */
         bool isLinear() const { return getComponentType() == TYPE_LINESTRING || getComponentType() == TYPE_RING; }
@@ -153,6 +158,14 @@ namespace osgEarth { namespace Symbology
          */
         bool crop(
             const class Polygon* cropPolygon,
+            osg::ref_ptr<Geometry>& output ) const;
+
+        /**
+         * Creates the union of this geometry with the other geometry, returning
+         * the result in the output parameter. Returns true if the op succeeded.
+         */
+        bool geounion(
+            const Geometry* other,
             osg::ref_ptr<Geometry>& output ) const;
 
         /**
@@ -184,7 +197,6 @@ namespace osgEarth { namespace Symbology
          * Removes consecutive duplicates in the geometry to prepare for tesselation.
          */
         virtual void removeDuplicates();
-
 
         /**
          * Get the winding orientation of the geometry (if you consider the last point
@@ -241,7 +253,6 @@ namespace osgEarth { namespace Symbology
         /** dtor */
         virtual ~LineString();
 
-        double getLength() const;
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
 
     public:
@@ -273,11 +284,17 @@ namespace osgEarth { namespace Symbology
         // gets the signed area of a part that is known to be open.
         virtual double getSignedArea2D() const;
 
+        // gets the length of the ring (override)
+        virtual double getLength() const;
+
         // ensures that the first and last points are not idential.
         virtual void open();
 
         // ensures that the first and last points are identical.
         virtual void close();
+
+        // whether the ring is open (i.e. first and last points are different)
+        virtual bool isOpen() const;
 
         // opens and winds the ring in the specified direction
         virtual void rewind( Orientation ori );
@@ -347,6 +364,9 @@ namespace osgEarth { namespace Symbology
         virtual unsigned getNumComponents() const { return _parts.size(); }
         
         virtual unsigned getNumGeometries() const;
+
+        // gets the combined length of all parts
+        virtual double getLength() const;
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;

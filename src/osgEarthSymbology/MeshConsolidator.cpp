@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -21,6 +24,7 @@
 #include <osgEarth/StringUtils>
 #include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>
+#include <osg/Version>
 #include <osgDB/WriteFile>
 #include <osgUtil/MeshOptimizers>
 #include <limits>
@@ -81,6 +85,134 @@ namespace
             return copy<FROM,osg::DrawElementsUInt>( src, offset );
     }
 
+    template<typename TYPE>
+    osg::Array* convertToBindPerVertex( TYPE* src, unsigned int numVerts)
+    {
+        TYPE* result = new TYPE();
+        result->reserve(numVerts);
+        for (unsigned int i = 0; i < numVerts; i++)
+        {
+            result->push_back((*src)[0]);
+        }
+        return result;
+    }
+
+    osg::Array* makeBindPerVertex( osg::Array* array, unsigned int numVerts)
+    {
+        switch (array->getType())
+        {
+        case osg::Array::ByteArrayType:
+            return convertToBindPerVertex<osg::ByteArray>(static_cast<osg::ByteArray*>(array), numVerts);
+
+        case osg::Array::ShortArrayType:
+            return convertToBindPerVertex<osg::ShortArray>(static_cast<osg::ShortArray*>(array), numVerts);
+
+        case osg::Array::IntArrayType:
+            return convertToBindPerVertex<osg::IntArray>(static_cast<osg::IntArray*>(array), numVerts);
+
+        case osg::Array::UByteArrayType:
+            return convertToBindPerVertex<osg::UByteArray>(static_cast<osg::UByteArray*>(array), numVerts);
+
+        case osg::Array::UShortArrayType:
+            return convertToBindPerVertex<osg::UShortArray>(static_cast<osg::UShortArray*>(array), numVerts);
+
+        case osg::Array::UIntArrayType:
+            return convertToBindPerVertex<osg::UIntArray>(static_cast<osg::UIntArray*>(array), numVerts);
+
+        case osg::Array::FloatArrayType:
+            return convertToBindPerVertex<osg::FloatArray>(static_cast<osg::FloatArray*>(array), numVerts);
+
+        case osg::Array::DoubleArrayType:
+            return convertToBindPerVertex<osg::DoubleArray>(static_cast<osg::DoubleArray*>(array), numVerts);
+
+        case osg::Array::Vec2bArrayType:
+            return convertToBindPerVertex<osg::Vec2bArray>(static_cast<osg::Vec2bArray*>(array), numVerts);
+
+        case osg::Array::Vec3bArrayType:
+            return convertToBindPerVertex<osg::Vec3bArray>(static_cast<osg::Vec3bArray*>(array), numVerts);
+
+        case osg::Array::Vec4bArrayType:
+            return convertToBindPerVertex<osg::Vec4bArray>(static_cast<osg::Vec4bArray*>(array), numVerts);
+
+        case osg::Array::Vec2sArrayType:
+            return convertToBindPerVertex<osg::Vec2sArray>(static_cast<osg::Vec2sArray*>(array), numVerts);
+
+        case osg::Array::Vec3sArrayType:
+            return convertToBindPerVertex<osg::Vec3sArray>(static_cast<osg::Vec3sArray*>(array), numVerts);
+
+        case osg::Array::Vec4sArrayType:
+            return convertToBindPerVertex<osg::Vec4sArray>(static_cast<osg::Vec4sArray*>(array), numVerts);
+
+        
+
+        case osg::Array::Vec4ubArrayType:
+            return convertToBindPerVertex<osg::Vec4ubArray>(static_cast<osg::Vec4ubArray*>(array), numVerts);
+
+
+        case osg::Array::Vec2ArrayType:
+            return convertToBindPerVertex<osg::Vec2Array>(static_cast<osg::Vec2Array*>(array), numVerts);
+
+        case osg::Array::Vec3ArrayType:
+            return convertToBindPerVertex<osg::Vec3Array>(static_cast<osg::Vec3Array*>(array), numVerts);
+
+        case osg::Array::Vec4ArrayType:
+            return convertToBindPerVertex<osg::Vec4Array>(static_cast<osg::Vec4Array*>(array), numVerts);
+
+
+        case osg::Array::Vec2dArrayType:
+            return convertToBindPerVertex<osg::Vec2dArray>(static_cast<osg::Vec2dArray*>(array), numVerts);
+
+        case osg::Array::Vec3dArrayType:
+            return convertToBindPerVertex<osg::Vec3dArray>(static_cast<osg::Vec3dArray*>(array), numVerts);
+
+        case osg::Array::Vec4dArrayType:
+            return convertToBindPerVertex<osg::Vec4dArray>(static_cast<osg::Vec4dArray*>(array), numVerts);
+
+        case osg::Array::MatrixArrayType:
+            return convertToBindPerVertex<osg::MatrixfArray>(static_cast<osg::MatrixfArray*>(array), numVerts);
+
+#if OSG_MIN_VERSION_REQUIRED(3,1,9)
+        case osg::Array::Vec2iArrayType:
+            return convertToBindPerVertex<osg::Vec2iArray>(static_cast<osg::Vec2iArray*>(array), numVerts);
+
+        case osg::Array::Vec3iArrayType:
+            return convertToBindPerVertex<osg::Vec3iArray>(static_cast<osg::Vec3iArray*>(array), numVerts);
+
+        case osg::Array::Vec4iArrayType:
+            return convertToBindPerVertex<osg::Vec4iArray>(static_cast<osg::Vec4iArray*>(array), numVerts);
+
+        case osg::Array::Vec2ubArrayType:
+            return convertToBindPerVertex<osg::Vec2ubArray>(static_cast<osg::Vec2ubArray*>(array), numVerts );
+
+        case osg::Array::Vec3ubArrayType:
+            return convertToBindPerVertex<osg::Vec3ubArray>(static_cast<osg::Vec3ubArray*>(array), numVerts );
+
+        case osg::Array::Vec2usArrayType:
+            return convertToBindPerVertex<osg::Vec2usArray>(static_cast<osg::Vec2usArray*>(array), numVerts);
+
+        case osg::Array::Vec3usArrayType:
+            return convertToBindPerVertex<osg::Vec3usArray>(static_cast<osg::Vec3usArray*>(array), numVerts );
+
+        case osg::Array::Vec4usArrayType:
+            return convertToBindPerVertex<osg::Vec4usArray >(static_cast<osg::Vec4usArray*>(array), numVerts );
+
+        case osg::Array::Vec2uiArrayType:
+            return convertToBindPerVertex<osg::Vec2uiArray>(static_cast<osg::Vec2uiArray*>(array), numVerts);
+
+        case osg::Array::Vec3uiArrayType:
+            return convertToBindPerVertex<osg::Vec3uiArray>(static_cast<osg::Vec3uiArray*>(array), numVerts);
+
+        case osg::Array::Vec4uiArrayType:
+            return convertToBindPerVertex<osg::Vec4uiArray>(static_cast<osg::Vec4uiArray*>(array), numVerts);
+
+        case osg::Array::MatrixdArrayType:
+            return convertToBindPerVertex<osg::MatrixdArray>(static_cast<osg::MatrixdArray*>(array),  numVerts);
+#endif
+        default:
+            return array;
+        }
+    }
+
     osg::PrimitiveSet* convertDAtoDE( osg::DrawArrays* da, unsigned numVerts, unsigned offset )
     {
         osg::DrawElements* de = 0L;
@@ -100,24 +232,55 @@ namespace
 
     bool canOptimize( osg::Geometry& geom )
     {
-        osg::Array* vertexArray = geom.getVertexArray();
+        osg::Vec3Array* vertexArray = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
         if ( !vertexArray )
+        {
             return false;
+        }
 
-        // check that everything is bound per-vertex
+        // check that everything is bound per-vertex or convert bind overall
 
         if ( geom.getColorArray() != 0L && geom.getColorBinding() != osg::Geometry::BIND_PER_VERTEX )
-            return false;
+        {
+            if (geom.getColorBinding() == osg::Geometry::BIND_OVERALL)
+            {
+                geom.setColorArray(makeBindPerVertex(geom.getColorArray(), vertexArray->size()));
+            }
+            else
+            {
+                return false;
+            }
+        }
 
         if ( geom.getNormalArray() != 0L && geom.getNormalBinding() != osg::Geometry::BIND_PER_VERTEX )
-            return false;
+        {
+            if (geom.getNormalBinding() == osg::Geometry::BIND_OVERALL)
+            {
+                geom.setNormalArray(makeBindPerVertex(geom.getNormalArray(), vertexArray->size()));
+            }
+            else
+            {
+                return false;
+            }
+        }
 
         if ( geom.getSecondaryColorArray() != 0L && geom.getSecondaryColorBinding() != osg::Geometry::BIND_PER_VERTEX )
-            return false;
+        {
+            if (geom.getSecondaryColorBinding() == osg::Geometry::BIND_OVERALL)
+            {
+                geom.setSecondaryColorArray(makeBindPerVertex(geom.getSecondaryColorArray(), vertexArray->size()));
+            }
+            else
+            {
+                return false;
+            }
+        }
 
         // just for now.... TODO: allow thi later
         if ( geom.getVertexAttribArrayList().size() > 0 )
+        {
             return false;
+        }
 
         // check that all primitive sets share the same user data
         osg::Geometry::PrimitiveSetList& pslist = geom.getPrimitiveSetList();

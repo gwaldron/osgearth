@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,6 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#ifndef OSGEARTH_TRITON_CONTEXT_H
+#define OSGEARTH_TRITON_CONTEXT_H
+
 #include "TritonOptions"
 #include <osg/Referenced>
 #include <osg/Light>
@@ -31,10 +34,8 @@ namespace Triton {
     class Ocean;
 }
 
-namespace osgEarth { namespace Drivers { namespace Triton
+namespace osgEarth { namespace Triton
 {
-    using namespace osgEarth;
-
     /**
      * Contains all the Triton SDK handles.
      */
@@ -44,14 +45,14 @@ namespace osgEarth { namespace Drivers { namespace Triton
         TritonContext(const TritonOptions& options);
 
         /** Sets the spatial reference system of the map */
-        void setSRS(const SpatialReference* srs);
+        void setSRS(const osgEarth::SpatialReference* srs);
 
     public: // accessors
 
         bool ready() const { return _initAttempted && !_initFailed; }
 
         /** Spatial reference of the map */
-        const SpatialReference* getSRS() const { return _srs.get(); }
+        const osgEarth::SpatialReference* getSRS() const { return _srs.get(); }
 
         void initialize(osg::RenderInfo& renderInfo);
 
@@ -59,6 +60,8 @@ namespace osgEarth { namespace Drivers { namespace Triton
 
         ::Triton::Environment* getEnvironment() { return _environment; }
         ::Triton::Ocean* getOcean() { return _ocean; }
+
+        bool passHeightMapToTriton() const;
 
     protected:
 
@@ -72,11 +75,13 @@ namespace osgEarth { namespace Drivers { namespace Triton
         bool             _initFailed;
         Threading::Mutex _initMutex;
 
-        osg::ref_ptr<const SpatialReference> _srs;
+        osg::ref_ptr<const osgEarth::SpatialReference> _srs;
 
         ::Triton::ResourceLoader* _resourceLoader;
         ::Triton::Environment*    _environment;
         ::Triton::Ocean*          _ocean;
     };
 
-} } } // namespace osgEarth::Drivers::Triton
+} } // namespace osgEarth::Triton
+
+#endif // OSGEARTH_TRITON_CONTEXT_H

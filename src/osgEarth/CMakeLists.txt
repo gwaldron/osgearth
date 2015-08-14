@@ -51,6 +51,7 @@ SET(LIB_PUBLIC_HEADERS
     CachePolicy
     CacheSeed
     Capabilities
+    Clamping
     ClampableNode
     ClampingTechnique
     ColorFilter
@@ -64,8 +65,8 @@ SET(LIB_PUBLIC_HEADERS
     Decluttering
     DepthOffset
     DPLineSegmentIntersector
-    Draggers
     DrapeableNode
+    DrapingCullSet
     DrapingTechnique
     DrawInstanced
     ECEF
@@ -83,6 +84,7 @@ SET(LIB_PUBLIC_HEADERS
     GeoMath
 	GeoTransform
     HeightFieldUtils
+    Horizon
     HTTPClient
     ImageLayer
     ImageMosaic
@@ -109,13 +111,16 @@ SET(LIB_PUBLIC_HEADERS
     MemCache
     ModelLayer
     ModelSource
+    NativeProgramAdapter
     NodeUtils
     Notify
     optional
+    ObjectIndex
     OverlayDecorator
     OverlayNode
 	PhongLightingEffect
-    Pickers
+    Picker
+    IntersectionPicker
     PrimitiveIntersector
     Profile
     Profiler
@@ -139,7 +144,11 @@ SET(LIB_PUBLIC_HEADERS
     TerrainLayer
     TerrainOptions
     TerrainEngineNode
+    TerrainEngineRequirements
+    TerrainTileModel
+    TerrainTileModelFactory
     TerrainTileNode
+    TileKeyDataStore
     Tessellator
     TextureCompositor
     TileKey
@@ -200,6 +209,7 @@ set(TARGET_SRC
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp
+    Clamping.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp
     ColorFilter.cpp
@@ -210,9 +220,9 @@ set(TARGET_SRC
     DateTime.cpp
     Decluttering.cpp
     DepthOffset.cpp
-    Draggers.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
+    DrapingCullSet.cpp
     DrapingTechnique.cpp
     DrawInstanced.cpp
     ECEF.cpp
@@ -228,6 +238,7 @@ set(TARGET_SRC
     GeoMath.cpp
 	GeoTransform.cpp
     HeightFieldUtils.cpp
+    Horizon.cpp
     HTTPClient.cpp
     ImageLayer.cpp
     ImageMosaic.cpp
@@ -254,10 +265,11 @@ set(TARGET_SRC
     ModelSource.cpp
     NodeUtils.cpp
     Notify.cpp
+    ObjectIndex.cpp
     OverlayDecorator.cpp
     OverlayNode.cpp
 	PhongLightingEffect.cpp
-    Pickers.cpp
+    IntersectionPicker.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
     Profiler.cpp
@@ -278,6 +290,8 @@ set(TARGET_SRC
     TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    TerrainTileModel.cpp
+    TerrainTileModelFactory.cpp
     Tessellator.cpp
     TextureCompositor.cpp
     TileKey.cpp

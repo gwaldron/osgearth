@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -157,14 +160,14 @@ ShadowCaster::reinitialize()
         "} \n";
 
     std::string fragment = Stringify() << 
-        "#version 120\n" //" GLSL_VERSION_STR "\n"
+        "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "#extension GL_EXT_texture_array : enable \n"
 
         "uniform sampler2DArray oe_shadow_map; \n"
         "uniform vec4 oe_shadow_color; \n"
         "uniform float oe_shadow_blur; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
         "varying vec4 oe_shadow_coord[" << numSlices << "]; \n"
 
         //TODO-run a generator and rplace
@@ -207,7 +210,7 @@ ShadowCaster::reinitialize()
         "    const float b0 = 0.001; \n"
         "    const float b1 = 0.01; \n"
         "    vec3 L = normalize(gl_LightSource[0].position.xyz); \n"
-        "    vec3 N = normalize(oe_Normal); \n"
+        "    vec3 N = normalize(vp_Normal); \n"
         "    float costheta = clamp(dot(L,N), 0.0, 1.0); \n"
         "    float bias = b0*tan(acos(costheta)); \n"
 
@@ -239,12 +242,14 @@ ShadowCaster::reinitialize()
     vp->setFunction(
         "oe_shadow_vertex", 
         vertex, 
-        ShaderComp::LOCATION_VERTEX_VIEW );
+        ShaderComp::LOCATION_VERTEX_VIEW,
+        0.9f );
 
     vp->setFunction(
         "oe_shadow_fragment",
         fragment,
-        ShaderComp::LOCATION_FRAGMENT_LIGHTING, 10.0f);
+        ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+        0.9f );
 
     // the texture coord generator matrix array (from the caster):
     _shadowMapTexGenUniform = _renderStateSet->getOrCreateUniform(

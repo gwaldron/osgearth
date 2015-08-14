@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-Query::Query( const Config& conf )
+Query::Query( const Config& conf ):
+_map(0)
 {
     mergeConfig( conf );
 }
@@ -96,22 +97,34 @@ Query::combineWith( const Query& rhs ) const
     {
         merged.tileKey() = *_tileKey;
     }
-    else
+    else if ( rhs._tileKey.isSet() )
     {
-        // merge the bounds:
-        if ( bounds().isSet() && rhs.bounds().isSet() )
-        {
-            merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
-        }
-        else if ( bounds().isSet() )
-        {
-            merged.bounds() = *bounds();
-        }
-        else if ( rhs.bounds().isSet() )
-        {
-            merged.bounds() = *rhs.bounds();
-        }
+        merged.tileKey() = *rhs._tileKey;
+    }
+
+    // merge the bounds:
+    if ( bounds().isSet() && rhs.bounds().isSet() )
+    {
+        merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
+    }
+    else if ( bounds().isSet() )
+    {
+        merged.bounds() = *bounds();
+    }
+    else if ( rhs.bounds().isSet() )
+    {
+        merged.bounds() = *rhs.bounds();
     }
 
     return merged;
+}
+
+const Map* Query::getMap() const
+{
+    return _map;
+}
+
+void Query::setMap(const Map* map)
+{
+    _map = map;
 }

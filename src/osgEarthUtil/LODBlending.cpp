@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -83,7 +86,7 @@ namespace
 
         "attribute vec4 oe_terrain_attr; \n"
         "attribute vec4 oe_terrain_attr2; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
 
         "uniform float oe_min_tile_range_factor; \n"
         "uniform vec4 oe_tile_key; \n"
@@ -120,7 +123,7 @@ namespace
 
         "attribute vec4 oe_terrain_attr; \n"
         "attribute vec4 oe_terrain_attr2; \n"
-        "varying vec3 oe_Normal; \n"
+        "varying vec3 vp_Normal; \n"
 
         "uniform float oe_min_tile_range_factor; \n"
         "uniform vec4 oe_tile_key; \n"
@@ -158,7 +161,7 @@ namespace
         "    oe_lodblend_texc = oe_layer_parent_texmat * oe_layer_texc; \n"
         "    oe_lodblend_r    = oe_layer_parent_texmat[0][0] > 0.0 ? r : 0.0; \n" // obe?
 
-        "    oe_Normal = normalize(mix(normalize(oe_Normal), oe_terrain_attr2.xyz, r)); \n"
+        "    vp_Normal = normalize(mix(normalize(vp_Normal), oe_terrain_attr2.xyz, r)); \n"
         "} \n";
 
     const char* fs_imagery =

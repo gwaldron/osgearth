@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
+#include <osgEarth/TerrainTileModel>
 #include <osg/MatrixTransform>
 #include <osg/Texture>
 
@@ -32,53 +33,17 @@ namespace osgEarth
      * This is largely for internal use and subject to change, so
      * be careful relying on the structure of this object.
      */
-    class /*header-only*/ TerrainTileNode // : public osg::MatrixTransform
+    class /*header-only*/ TerrainTileNode
     {
     public:
-        virtual const TileKey& getKey() const =0;
+        const TerrainTileModel* getModel() const { return _model.get(); }
 
-        virtual osg::Texture* getElevationTexture() const =0;
-
-        virtual osg::RefMatrixf* getElevationTextureMatrix() const =0;
-
-        virtual osg::Texture* getNormalTexture() const =0;
-
-        virtual osg::RefMatrixf* getNormalTextureMatrix() const =0;
-
-        virtual osg::Group* getPayloadGroup() const =0;
-
-        virtual osg::Group* getOrCreatePayloadGroup() =0;
+        const TileKey& getKey() const { return _model->getKey(); }
 
     protected:
         virtual ~TerrainTileNode() { }
-    };
 
-    /**
-     * Interface for notification of the creation of TerrainTileNodes by
-     * the terrain engine.
-     */
-    class /*header-only*/ TerrainTileNodeBroker
-    {
-    public:
-        /**
-         * Terrain engine calls this when it finishes creating a single tile node
-         * for a given tile key. (Typically that will happen in a pager thread.)
-         */
-        virtual void notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node* node) =0;
-    };
-
-    /**
-     * Callback you can install on a TerrainEngineNode to get a first look at
-     * a TerrainTileNode when it's created.
-     */
-    class /*header-only*/ TerrainTileNodeCallback : public osg::Referenced
-    {
-    public:
-        // Careful: runs in a terrain engine background thread.
-        virtual void operator()(const TileKey& key, osg::Node* tileNode) =0;
-
-    protected:
-        virtual ~TerrainTileNodeCallback() { }
+        osg::ref_ptr<TerrainTileModel> _model;
     };
 };
 

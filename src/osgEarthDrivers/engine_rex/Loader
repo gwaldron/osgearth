@@ -1,0 +1,141 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_REX_LOADER
+#define OSGEARTH_REX_LOADER 1
+
+#include "Common"
+#include <osg/ref_ptr>
+#include <osg/Group>
+#include <osgEarth/IOTypes>
+#include <osgEarth/ThreadingUtils>
+#include <map>
+#include <queue>
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    /** Interface for a utility to satifies loading requests. */
+    class Loader
+    {
+    public:
+        class Handler;
+
+        class Request : public osg::Referenced
+        {
+        public:
+            Request();
+
+            /** Invoke the operation - not safe to alter the graph */
+            virtual void invoke() { }
+
+            /** Apply the results of the invoke operation - runs safely in update stage */
+            virtual void apply() { }
+
+            bool operator()(const Request& lhs, const Request& rhs) const {
+                return lhs._uid < rhs._uid;
+            }
+
+            UID getUID() const { return _uid; }
+
+            /** Access the stateset that holds optional GL-compilable objects. */
+            osg::StateSet* getStateSet();
+
+            void setFrameNumber(unsigned fn) { _lastFrameSubmitted = fn; }
+            unsigned getLastFrameSubmitted() const { return _lastFrameSubmitted; }
+
+            UID                           _uid;
+            float                         _priority;
+            osg::ref_ptr<osg::Referenced> _internalHandle;
+            unsigned                      _lastFrameSubmitted;
+            osg::Timer_t                  _lastTick;
+            osg::ref_ptr<osg::StateSet>   _stateSet;
+        };
+
+        class Handler : public osg::Referenced
+        {
+        public:
+            virtual void operator()(Request* request) =0;
+        };
+
+        /** Start or continue loading a request. */
+        virtual bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv) =0;
+
+        /** Clear out all pending requests. */
+        virtual void clear() =0;
+    };
+
+
+    class LoaderGroup : public osg::Group, public Loader
+    {
+    };
+
+
+    /** Loader that immediately invokes and applies synchronously. */
+    class SimpleLoader : public LoaderGroup
+    {
+    public:
+        SimpleLoader();
+
+    public: // Loader
+        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
+
+        void clear();
+    };
+
+
+    /** Loader that uses the OSG database pager to run requests in the background. */
+    class PagerLoader : public LoaderGroup
+    {
+    public:
+        PagerLoader(UID engineUID);
+
+    public: // Loader
+
+        /** Asks the loader to begin or continue loading something.
+            Returns true if a NEW request was scheduled; false if an existing request was updated. */
+        bool load(Loader::Request* req, float priority, osg::NodeVisitor& nv);
+
+        /** Cancel all pending requests. */
+        void clear();
+
+        /** Internal method to invoke a request that was previously queued with load(). */
+        Request* invokeAndRelease(UID requestUID);
+
+    public: // osg::Group
+
+        bool addChild(osg::Node*);
+
+        void traverse(osg::NodeVisitor& nv);
+
+    protected:
+        typedef std::map<UID, osg::ref_ptr<Loader::Request> > Requests;
+
+        typedef std::queue< osg::ref_ptr<Loader::Request> > MergeQueue;
+
+        UID              _engineUID;
+        osg::NodePath    _myNodePath;
+        Requests         _requests;
+        Threading::Mutex _requestsMutex;
+        MergeQueue       _mergeQueue;  
+        osg::Timer_t     _checkpoint;
+    };
+
+} } }
+
+
+#endif // OSGEARTH_REX_LOADER

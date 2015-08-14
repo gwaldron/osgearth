@@ -126,6 +126,7 @@ FIND_PACKAGE(LevelDB)
 
 FIND_PACKAGE(SilverLining)
 FIND_PACKAGE(Triton)
+FIND_PACKAGE(Protobuf)
 
 # JavaScript Engines:
 SET(V8_DIR "" CACHE PATH "set to base V8 install path")
@@ -136,6 +137,8 @@ SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version 
 IF (WITH_EXTERNAL_DUKTAPE)
     FIND_PACKAGE(Duktape)
 ENDIF (WITH_EXTERNAL_DUKTAPE)
+
+OPTION(USE_V8 "Use V8 instead of Duktape if V8 is found" OFF)
 
 FIND_PACKAGE(Qt5Core QUIET)
 FIND_PACKAGE(Qt5Widgets QUIET)
@@ -161,10 +164,6 @@ SET (WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use bundled or system wide version 
 IF (WITH_EXTERNAL_TINYXML)
     FIND_PACKAGE(TinyXML)
 ENDIF (WITH_EXTERNAL_TINYXML)
-
-IF (ZLIB_FOUND)
-    FIND_PACKAGE(MiniZip)
-ENDIF (ZLIB_FOUND)
 
 IF(UNIX)
     # Not sure what this will do on Cygwin and Msys

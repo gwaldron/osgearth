@@ -1,18 +1,20 @@
-#version 110
+#version $GLSL_VERSION_STR
 
 #pragma vp_entryPoint "oe_bumpmap_fragment"
-#pragma vp_location   "fragment_lighting"
-#pragma vp_order      "-1.0"
+#pragma vp_location   "fragment_coloring"
+#pragma vp_order      "0.3"
 
 #pragma include "BumpMap.frag.common.glsl"
 
 uniform sampler2D oe_bumpmap_tex;
-uniform float oe_bumpmap_intensity;
-uniform int oe_bumpmap_octaves;
-uniform float oe_bumpmap_maxRange;
+uniform float     oe_bumpmap_intensity;
+uniform int       oe_bumpmap_octaves;
+uniform float     oe_bumpmap_maxRange;
+uniform float     oe_bumpmap_slopeFactor;
 
-// stage global
-vec3 oe_global_Normal;
+// framework/stage global
+in vec3 vp_Normal;
+in vec3 oe_UpVectorView;
 
 // from BumpMap.model.vert.glsl
 in vec2 oe_bumpmap_coords;
@@ -48,9 +50,10 @@ void oe_bumpmap_fragment(inout vec4 color)
 
     // finally, transform into view space and normalize the vector.
     bump = normalize(gl_NormalMatrix*bump);
-
-    float slope = oe_bumpmap_getSlope();
+    
+    // calculate slope from normal:
+    float slope = mix(1.0, 1.0 - dot(oe_UpVectorView, vp_Normal), oe_bumpmap_slopeFactor);
 
 	// permute the normal with the bump.
-	oe_global_Normal = normalize(oe_global_Normal + bump*oe_bumpmap_intensity*slope);
+	vp_Normal = normalize(vp_Normal + bump*oe_bumpmap_intensity*slope);
 }

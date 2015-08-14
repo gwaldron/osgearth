@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,12 +27,11 @@
 #include <osgEarth/Terrain>
 #include <osgEarth/MapNode>
 #include <osg/Timer>
+#include <osg/ArgumentParser>
 #include <osgGA/CameraManipulator>
 #include <map>
 #include <list>
 #include <utility>
-
-#define USE_OBSERVER_NODE_PATH 1
 
 namespace osgEarth { namespace Util
 {
@@ -213,6 +212,9 @@ namespace osgEarth { namespace Util
             /** dtor */
             virtual ~Settings() { }
 
+            // look for settings in an AP
+            void apply(osg::ArgumentParser& args);
+
             /**
              * Assigns behavior to the action of dragging the mouse while depressing one or
              * more mouse buttons and modifier keys.
@@ -322,7 +324,7 @@ namespace osgEarth { namespace Util
              *
              * @param options
              *      Action options. Valid options are:
-             *      OPTION_SCALE_Y
+             *      OPTION_SCALE_Y, OPTION_DURATION
              */
             void bindScroll(
                 ActionType action, int scrolling_motion,
@@ -467,15 +469,9 @@ namespace osgEarth { namespace Util
             */
             void setMaxOffset(double max_x_offset, double max_y_offset);
 
-            /**
-            * Gets the TetherMode
-            */
+            /** Mode used for tethering to a node. */
+            void setTetherMode( TetherMode value ) { _tether_mode = value; }
             TetherMode getTetherMode() const { return _tether_mode; }
-
-            /**
-            * Sets the TetherMode
-            */
-            void setTetherMode( TetherMode tether_mode ) { _tether_mode = tether_mode; }
 
             /** Access to the list of Actions that will automatically break a tether */
             ActionTypeVector& getBreakTetherActions() { return _breakTetherActions; }
@@ -495,13 +491,19 @@ namespace osgEarth { namespace Util
                 out_maxSeconds = _max_vp_duration_s;
             }
 
+#if 0 // removed. please set the matrix yourself.
             /** The camera projection matrix type */
             void setCameraProjection( const CameraProjection& value );
             const CameraProjection& getCameraProjection() const { return _camProjType; }
 
             /** Frustum offset (in pixels) */
             void setCameraFrustumOffsets( const osg::Vec2s& offsets );
-            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }            
+            const osg::Vec2s& getCameraFrustumOffsets() const { return _camFrustOffsets; }     
+#endif       
+
+            /** Whether to automatically adjust an orthographic camera so that it "tracks" the last known FOV and Aspect Ratio. */
+            bool getOrthoTracksPerspective() const { return _orthoTracksPerspective; }
+            void setOrthoTracksPerspective(bool value) { _orthoTracksPerspective = value; }
 
             /** Whether or not to keep the camera from going through the terrain surface */
             bool getTerrainAvoidanceEnabled() const { return _terrainAvoidanceEnabled; }
@@ -551,8 +553,7 @@ namespace osgEarth { namespace Util
             bool _auto_vp_duration;
             double _min_vp_duration_s, _max_vp_duration_s;
 
-            CameraProjection _camProjType;
-            osg::Vec2s _camFrustOffsets;	
+            bool _orthoTracksPerspective;
 
             bool _terrainAvoidanceEnabled;
 
@@ -562,7 +563,8 @@ namespace osgEarth { namespace Util
 
     public:
         EarthManipulator();
-        EarthManipulator( const EarthManipulator& rhs );
+        EarthManipulator(osg::ArgumentParser& args);
+        EarthManipulator(const EarthManipulator& rhs);
 
         /**
          * Applies a new settings object to the manipulator, which takes effect immediately.
@@ -585,9 +587,17 @@ namespace osgEarth { namespace Util
         virtual void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
         
         /**
+         * @deprecated Please use clearViewpoint() instead.
+         *
          * Cancels a viewpoint transition if one is in progress
          */
-        void cancelViewpointTransition() { _setting_viewpoint = false; }        
+        void cancelViewpointTransition();
+
+        /**
+         * Cancels a call to setViewpoint that resulted in an ongoing transition OR
+         * attachment to a node.
+         */
+        void clearViewpoint();
 
         /**
          * Sets the viewpoint to activate when performing the ACTION_HOME action.
@@ -595,11 +605,18 @@ namespace osgEarth { namespace Util
         void setHomeViewpoint( const Viewpoint& vp, double duration_s = 0.0 );
 
         /**
-         * Whether the manipulator is performing a viewpoint transition
+         * Whether the manipulator is performing a viewpoint transition.
          */
-        bool isSettingViewpoint() const { return _setting_viewpoint; }
+        bool isSettingViewpoint() const;
 
         /**
+         * Whether the view is tethered to a node.
+         */
+        bool isTethering() const;
+
+        /**
+         * @deprecated Please use setViewpoint() instead.
+         *
          * Locks the camera's focal point on the center of a node's bounding sphere.
          * While tethered, you can still call navigate or call setViewpoint() to move the
          * camera relative to the tether object. Pass NULL to deactivate the tether.
@@ -609,12 +626,38 @@ namespace osgEarth { namespace Util
          * @param duration_s
          *      The duration that the camera should transition when tethering to the node.
          */
-        void setTetherNode( osg::Node* node, double duration_s =0.0  );
+        void setTetherNode(osg::Node* node, double duration_s =0.0);
+        
+        /**
+         * @deprecated Please use setViewpoint() instead.
+         *
+         * Same as setTether(node, duration) but you also specify the final 
+         * heading, pitch, and range offset from the tethered node.
+         */
+        void setTetherNode(
+            osg::Node* nodeToTetherTo,
+            double     duration_seconds,
+            double     newHeading_degrees,
+            double     newPitch_degrees,
+            double     newRange_meters);
+
+        /**
+         * @deprecated - Please use getViewpoint().getNode() instead.
+         */
+        osg::Node* getTetherNode() const;
+
+        /**
+         * @deprecated Please call clearViewpoint() instead.
+         *
+         * Same as calling setTetherNode(NULL).
+         */
+        void breakTether();
 
         /**
          * Sets a callback to be invoked upon a tether or tether break
          */
-        class TetherCallback : public osg::Referenced {
+        class TetherCallback : public osg::Referenced
+        {
         public:
             virtual void operator()(osg::Node* tetherNode) { }
         protected:
@@ -622,18 +665,6 @@ namespace osgEarth { namespace Util
         };
         void setTetherCallback(TetherCallback* cb) { _tetherCallback = cb; }
         TetherCallback* getTetherCallback() { return _tetherCallback.get(); }
-
-        /**
-         * Gets the node to which the camera is tethered, or NULL if tethering is
-         * disabled.
-         */
-        osg::Node* getTetherNode() const;
-
-        /**
-         * Gets the spatial reference system of the terrain map to which this
-         * manipulator is currently attached.
-         */
-        const osgEarth::SpatialReference* getSRS() const;
 
         /**
          * Move the focal point of the camera using deltas (normalized screen coords).
@@ -747,6 +778,9 @@ namespace osgEarth { namespace Util
         // react to a tile-added event from the Terrain
         virtual void handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);
 
+        // returns the absoulte Euler angles composited from the composite rotation matrix.
+        void getCompositeEulerAngles( double* out_azim, double* out_pitch =0L ) const;
+
     protected:
 
         virtual ~EarthManipulator();
@@ -804,8 +838,11 @@ namespace osgEarth { namespace Util
         // movements.
         bool serviceTask();
 
-        //void recalculateLocalPitchAndAzimuth();
-        void getLocalEulerAngles( double* out_azim, double* out_pitch =0L ) const;
+        // returns the Euler Angles baked into _rotation, the local frame's rotation quaternion.
+        void getEulerAngles(const osg::Quat& quat, double* azim, double* pitch) const;
+
+        // Makes a quaternion from an azimuth and pitch.
+        osg::Quat getQuaternion(double azim, double pitch) const;
 
         /**
          * Fire a ray from the current eyepoint along the current look vector,
@@ -817,10 +854,7 @@ namespace osgEarth { namespace Util
         void recalculateCenter(const osg::CoordinateFrame& frame);
 
         osg::Matrixd getRotation(const osg::Vec3d& center) const;
-        osg::Quat makeCenterRotation(const osg::Vec3d& center) const
-        {
-            return getRotation(center).getRotate().inverse();
-        }
+        osg::Quat computeCenterRotation(const osg::Vec3d& center) const;
 
         void updateTether();
 
@@ -858,12 +892,6 @@ namespace osgEarth { namespace Util
         typedef std::vector<TouchPoint> MultiTouchPoint; // one per ID (finger/touchpoint)
         typedef std::deque<MultiTouchPoint> MultiTouchPointQueue;
         MultiTouchPointQueue _touchPointQueue;
-        //struct TouchEvent {
-        //    EventType _eventType;     // derived touch/other event
-        //    float     _deltaDistance; // change in distance between 2 touches
-        //    float     _dx[2], _dy[2]; // movement of primary and secondary touch points
-        //    float     _dot;
-        //};
         struct TouchEvent {
             TouchEvent() : _mbmask(0) { }
             EventType _eventType;
@@ -901,19 +929,9 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
 
         osg::observer_ptr<osg::Node> _node;
-        osg::observer_ptr<osg::CoordinateSystemNode> _csn;
-        osg::observer_ptr<MapNode> _mapNode;
-#ifdef USE_OBSERVER_NODE_PATH
-        osg::ObserverNodePath _csnObserverPath;
-#endif
-        osg::NodePath _csnPath;
+        osg::observer_ptr<MapNode>   _mapNode;
 
-        osg::ref_ptr<const osgEarth::SpatialReference> _cached_srs;
-        bool _is_geocentric;
-        bool _srs_lookup_failed;
-
-        osg::observer_ptr<osg::Node> _tether_node;     
-        bool                         _tether_completed;
+        osg::ref_ptr<const osgEarth::SpatialReference> _srs;
 
         double                  _time_s_last_frame;
         double                  _time_s_now;        
@@ -932,17 +950,34 @@ namespace osgEarth { namespace Util
         // local2world matrix for the center point.
         osg::CoordinateFrame    _centerLocalToWorld;
 
+        // Rotation offset to _rotation when tethering.
+        osg::Quat               _tetherRotation;
+
+        // The initial offset applied to the tether rotation when orientation-tethering begins.
+        // This is usually just the inverse of the first-calculated _tetherRotation.
+        optional<osg::Quat>     _tetherRotationOffset;
+
         // The rotation (heading and pitch) of the camera in the
-        // earth-local frame.
+        // earth-local frame defined by _centerRotation.
         osg::Quat               _rotation;
 
         // The rotation that makes the camera look down on the focal
         // point on the earth. This is equivalent to a rotation by
         // latitude, longitude.
         osg::Quat               _centerRotation;
+
+        // distance from camera to center of rotation.
         double                  _distance;
-        double                  _offset_x;
-        double                  _offset_y;
+
+        // XYZ offsets of the focal point in the local tangent plane coordinate system
+        // of the focal point.
+        osg::Vec3d              _posOffset;
+
+        // XY offsets (left/right, down/up) of the focal point in the plane normal to
+        // the view heading.
+        osg::Vec2d              _viewOffset;
+
+
         osg::Vec3d              _previousUp;
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;
@@ -957,21 +992,29 @@ namespace osgEarth { namespace Util
 
         // the "pending" viewpoint is only used to enable setting the
         // viewpoint before the frame loop starts
-        bool                    _has_pending_viewpoint;
-        Viewpoint               _pending_viewpoint;
-        double                  _pending_viewpoint_duration_s;
+        optional<Viewpoint>     _pendingViewpoint;
+        Duration                _pendingViewpointDuration;
 
-        bool                    _setting_viewpoint;
-        //bool                    _set_viewpoint_started_while_tethered;
-        Viewpoint               _start_viewpoint;
-        double                  _delta_heading, _delta_pitch, _delta_range, _arc_height;
-        osg::Vec3d              _delta_focal_point;
-        double                  _time_s_set_viewpoint;
-        double                  _set_viewpoint_duration_s;
-        double                  _set_viewpoint_accel;
-        double                  _set_viewpoint_accel_2;
+        optional<Viewpoint>     _setVP0;                    // Starting viewpoint
+        optional<Viewpoint>     _setVP1;                    // Final viewpoint
+        optional<Duration>      _setVPStartTime;            // Time of call to setViewpoint
+        Duration                _setVPDuration;             // Transition time for setViewpoint
+        double                  _setVPAccel, _setVPAccel2;  // Acceleration factors for setViewpoint
+        double                  _setVPArcHeight;            // Altitude arcing height for setViewpoint
 
-        unsigned                _frame_count;
+        osg::Quat               _tetherRotationVP0;         // saves _tetherRotation at the start of a transition
+        osg::Quat               _tetherRotationVP1;         // target _tetherRotation if not tethered
+
+        TetherMode              _lastTetherMode;
+
+        // returns "t", the parametric coefficient of a timed transition. 1=finished.
+        double setViewpointFrame(double time_s);
+
+        void setLookAt(const osg::Vec3d& center, double azim, double pitch, double range, const osg::Vec3d& posoffset);
+        void resetLookAt();
+        void collapseTetherRotationIntoRotation();
+
+        unsigned _frameCount;
 
         osg::ref_ptr<Settings> _settings;		
 
@@ -993,8 +1036,12 @@ namespace osgEarth { namespace Util
         
         struct CameraPostUpdateCallback : public osg::NodeCallback {
             CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }
-            virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) { _m->postUpdate(); traverse(node,nv); }
-            EarthManipulator* _m;
+            virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) { 
+                osg::ref_ptr<EarthManipulator> m;
+                if ( _m.lock(m) ) m->postUpdate();
+                traverse(node,nv);
+            }
+            osg::observer_ptr<EarthManipulator> _m;
         };
         void postUpdate();
         friend struct CameraUpdateCallback;

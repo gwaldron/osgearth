@@ -19,16 +19,18 @@ SET(HEADERS_ROOT
     ContourMap
     ClampCallback
     DataScanner
-    DateTime
     EarthManipulator
 	Ephemeris
     ExampleResources
     Export
-    FeatureManipTool
     FeatureQueryTool
     Fog
     Formatter
     GeodeticGraticule
+    GraticuleExtension
+    GraticuleNode
+    GraticuleOptions
+    GraticuleTerrainEffect
     HTM
     LatLongFormatter
     LineOfSight
@@ -43,6 +45,7 @@ SET(HEADERS_ROOT
     Ocean
     PolyhedralLineOfSight
     RadialLineOfSight
+    RTTPicker
     Shaders
 	Shadowing
 	SimplexNoise
@@ -74,6 +77,8 @@ set(TARGET_GLSL
     ContourMap.frag.glsl
     Fog.vert.glsl
     Fog.frag.glsl
+    Graticule.vert.glsl
+    Graticule.frag.glsl
     LogDepthBuffer.vert.glsl
     LogDepthBuffer.VertOnly.vert.glsl    
     LogDepthBuffer.frag.glsl )
@@ -100,15 +105,17 @@ SET(SOURCES_ROOT
     EarthManipulator.cpp
 	Ephemeris.cpp
     ExampleResources.cpp
-    FeatureManipTool.cpp
     FeatureQueryTool.cpp
     Fog.cpp
     GeodeticGraticule.cpp
+    GraticuleExtension.cpp
+    GraticuleTerrainEffect.cpp
+    GraticuleNode.cpp
     HTM.cpp
     LatLongFormatter.cpp
     LinearLineOfSight.cpp
-    LODBlending.cpp
 	LogarithmicDepthBuffer.cpp
+    LODBlending.cpp
     MeasureTool.cpp
     MGRSFormatter.cpp
     MGRSGraticule.cpp
@@ -117,6 +124,7 @@ SET(SOURCES_ROOT
     Ocean.cpp
     PolyhedralLineOfSight.cpp
     RadialLineOfSight.cpp
+    RTTPicker.cpp
 	Shadowing.cpp
 	SimplexNoise.cpp
     SpatialData.cpp
@@ -147,6 +155,7 @@ SET(HEADERS_COLORFILTER
     HSLColorFilter
     RGBColorFilter
     ChromaKeyColorFilter
+    NightColorFilter
 )
 SOURCE_GROUP( Headers\\ColorFilters FILES ${HEADERS_COLORFILTER} )
 
@@ -159,6 +168,7 @@ SET(SOURCES_COLORFILTER
     HSLColorFilter.cpp
     RGBColorFilter.cpp
     ChromaKeyColorFilter.cpp
+    NightColorFilter.cpp
 )
 SOURCE_GROUP( Sources\\ColorFilters FILES ${SOURCES_COLORFILTER} )
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,11 +26,13 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Shaders>
+#include <osgEarth/ObjectIndex>
 
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
 #include <osg/UserDataContainer>
 #include <osg/LOD>
+#include <osg/TextureBuffer>
 #include <osgUtil/MeshOptimizers>
 
 #define LC "[DrawInstanced] "
@@ -40,9 +42,7 @@ using namespace osgEarth::DrawInstanced;
 
 // Ref: http://sol.gfxile.net/instancing.html
 
-#define POSTEX_TEXTURE_UNIT 5
-#define POSTEX_MAX_TEXTURE_SIZE 256
-
+#define POSTEX_TBO_UNIT 5
 #define TAG_MATRIX_VECTOR "osgEarth::DrawInstanced::MatrixRefVector"
 
 //Uncomment to experiment with instance count adjustment
@@ -119,7 +119,14 @@ namespace
     };
 #endif // USE_INSTANCE_LODS
 
-    typedef std::map< osg::ref_ptr<osg::Node>, std::vector<osg::Matrix> > ModelNodeMatrices;
+    struct ModelInstance
+    {
+        ModelInstance() : objectID( OSGEARTH_OBJECTID_EMPTY ) { }
+        osg::Matrix matrix;
+        ObjectID    objectID;
+    };
+
+    typedef std::map< osg::ref_ptr<osg::Node>, std::vector<ModelInstance> > ModelInstanceMap;
     
     /**
      * Simple bbox callback to return a static bbox.
@@ -132,7 +139,7 @@ namespace
     };
 
     // assume x is positive
-    int nextPowerOf2(int x)
+    static int nextPowerOf2(int x)
     {
         --x;
         x |= x >> 1;
@@ -141,36 +148,6 @@ namespace
         x |= x >> 8;
         x |= x >> 16;
         return x+1;
-    }
-
-    osg::Vec2f calculateIdealTextureSize(unsigned numMats, unsigned maxNumVec4sPerSpan)
-    {
-        unsigned numVec4s = 4 * numMats;
-
-        bool npotOK = false; //Registry::capabilities().supportsNonPowerOfTwoTextures();
-        if ( npotOK )
-        {
-            unsigned cols = std::min(numVec4s, maxNumVec4sPerSpan);
-            unsigned rows = 
-                cols < maxNumVec4sPerSpan ? 1 : 
-                numVec4s % cols == 0 ? numVec4s / cols :
-                1 + (numVec4s / cols);
-            return osg::Vec2f( (float)cols, (float)rows );
-        }
-        else
-        {
-            // start with a square:
-            int x = (int)ceil(sqrt((float)numVec4s));
-
-            // round the x dimension up to a power of 2:
-            x = nextPowerOf2( x );
-
-            // recalculate the necessary rows, given the new column count:
-            int y = numVec4s % x == 0 ? numVec4s/x : 1 + (numVec4s/x);
-            y = nextPowerOf2( y );
-
-            return osg::Vec2f((float)x, (float)y);
-        }
     }
 }
 
@@ -265,9 +242,9 @@ DrawInstanced::install(osg::StateSet* stateset)
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     
     osgEarth::Shaders pkg;
-    pkg.loadFunction( vp, pkg.InstancingVertex );
+    pkg.load( vp, pkg.InstancingVertex );
 
-    stateset->getOrCreateUniform("oe_di_postex", osg::Uniform::SAMPLER_2D)->set(POSTEX_TEXTURE_UNIT);
+    stateset->getOrCreateUniform("oe_di_postex_TBO", osg::Uniform::SAMPLER_BUFFER)->set(POSTEX_TBO_UNIT);
 }
 
 
@@ -282,10 +259,10 @@ DrawInstanced::remove(osg::StateSet* stateset)
         return;
 
     Shaders pkg;
-    pkg.unloadFunction( vp, pkg.InstancingVertex );
+    pkg.unload( vp, pkg.InstancingVertex );
 
-    stateset->removeUniform("oe_di_postex");
-    stateset->removeUniform("oe_di_postex_size");
+    stateset->removeUniform("oe_di_postex_TBO");
+    stateset->removeUniform("oe_di_postex_TBO_size");
 }
 
 
@@ -298,7 +275,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
     parent->setComputeBoundingSphereCallback( new StaticBound(bs) );
     parent->dirtyBound();
 
-    ModelNodeMatrices models;
+    ModelInstanceMap models;
 
     // collect the matrices for all the MT's under the parent. Obviously this assumes
     // a particular scene graph structure.
@@ -308,25 +285,42 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         osg::MatrixTransform* mt = dynamic_cast<osg::MatrixTransform*>( parent->getChild(i) );
         if ( mt )
         {
-            // we have to deep-copy the primitives because we're going to convert them
-            // to use draw-instancing.
             osg::Node* n = mt->getChild(0);
-            models[n].push_back( mt->getMatrix() );
+            //models[n].push_back( mt->getMatrix() );
+
+            ModelInstance instance;
+            instance.matrix = mt->getMatrix();
+
+            // See whether the ObjectID is encoded in a uniform on the MT.
+            osg::StateSet* stateSet = mt->getStateSet();
+            if ( stateSet )
+            {
+                osg::Uniform* uniform = stateSet->getUniform( Registry::objectIndex()->getObjectIDUniformName() );
+                if ( uniform )
+                {
+                    uniform->get( (unsigned&)instance.objectID );
+                }
+            }
+
+            models[n].push_back( instance );
         }
     }
 
     // get rid of the old matrix transforms.
     parent->removeChildren(0, parent->getNumChildren());
 
-    // maximum size of a slice.
-    unsigned maxTexSize   = POSTEX_MAX_TEXTURE_SIZE;
-    unsigned maxSliceSize = (maxTexSize*maxTexSize)/4; // 4 vec4s per matrix.
+	// This is the maximum size of the tbo 
+	int maxTBOSize = Registry::capabilities().getMaxTextureBufferSize();
+	// This is the total number of instances it can store
+	// We will iterate below. If the number of instances is larger than the buffer can store
+	// we make more tbos
+	int maxTBOInstancesSize = maxTBOSize/4;// 4 vec4s per matrix.
 
     // For each model:
-    for( ModelNodeMatrices::iterator i = models.begin(); i != models.end(); ++i )
+    for( ModelInstanceMap::iterator i = models.begin(); i != models.end(); ++i )
     {
-        osg::Node*                node     = i->first.get();
-        std::vector<osg::Matrix>& matrices = i->second;
+        osg::Node*                  node      = i->first.get();
+        std::vector<ModelInstance>& instances = i->second;
 
         // calculate the overall bounding box for the model:
         osg::ComputeBoundsVisitor cbv;
@@ -334,124 +328,100 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         const osg::BoundingBox& nodeBox = cbv.getBoundingBox();
 
         osg::BoundingBox bbox;
-        for( std::vector<osg::Matrix>::iterator m = matrices.begin(); m != matrices.end(); ++m )
+        for( std::vector<ModelInstance>::iterator m = instances.begin(); m != instances.end(); ++m )
         {
-            osg::Matrix& matrix = *m;
-            bbox.expandBy(nodeBox.corner(0) * matrix);
-            bbox.expandBy(nodeBox.corner(1) * matrix);
-            bbox.expandBy(nodeBox.corner(2) * matrix);
-            bbox.expandBy(nodeBox.corner(3) * matrix);
-            bbox.expandBy(nodeBox.corner(4) * matrix);
-            bbox.expandBy(nodeBox.corner(5) * matrix);
-            bbox.expandBy(nodeBox.corner(6) * matrix);
-            bbox.expandBy(nodeBox.corner(7) * matrix);
+            bbox.expandBy(nodeBox.corner(0) * m->matrix);
+            bbox.expandBy(nodeBox.corner(1) * m->matrix);
+            bbox.expandBy(nodeBox.corner(2) * m->matrix);
+            bbox.expandBy(nodeBox.corner(3) * m->matrix);
+            bbox.expandBy(nodeBox.corner(4) * m->matrix);
+            bbox.expandBy(nodeBox.corner(5) * m->matrix);
+            bbox.expandBy(nodeBox.corner(6) * m->matrix);
+            bbox.expandBy(nodeBox.corner(7) * m->matrix);
         }
 
-        // calculate slice count and sizes:
-        unsigned sliceSize = std::min(matrices.size(), (size_t)maxSliceSize);
-        unsigned numSlices = matrices.size() / maxSliceSize;
-        unsigned lastSliceSize = matrices.size() % maxSliceSize;
-        if ( lastSliceSize == 0 )
-            lastSliceSize = sliceSize;
-        else
-            ++numSlices;
+		unsigned tboSize = 0;
+		unsigned numInstancesToStore = 0;
 
+		if (instances.size()<maxTBOInstancesSize)
+		{
+			tboSize = nextPowerOf2(instances.size());
+			numInstancesToStore = instances.size();
+		}
+		else
+		{
+			OE_WARN << "Number of Instances: " << instances.size() << " exceeds Number of instances TBO can store: " << maxTBOInstancesSize << std::endl;
+			OE_WARN << "Storing maximum possible instances in TBO, and skipping the rest"<<std::endl;
+			tboSize = maxTBOInstancesSize;
+			numInstancesToStore = maxTBOInstancesSize;
+		}
+		
         // Convert the node's primitive sets to use "draw-instanced" rendering; at the
         // same time, assign our computed bounding box as the static bounds for all
         // geometries. (As DI's they cannot report bounds naturally.)
-        ConvertToDrawInstanced cdi(sliceSize, bbox, true);
+        ConvertToDrawInstanced cdi(numInstancesToStore, bbox, true);
         node->accept( cdi );
-
-        // If the number of instances is not an exact multiple of the number of slices,
-        // replicate the node so we can draw a difference instance count in the final group.
-        osg::Node* lastNode = node;
-        if ( numSlices > 1 && lastSliceSize < sliceSize )
-        {
-            // clone, but only make copies of necessary things
-            lastNode = osg::clone(
-                node, 
-                osg::CopyOp::DEEP_COPY_NODES | osg::CopyOp::DEEP_COPY_DRAWABLES | osg::CopyOp::DEEP_COPY_PRIMITIVES );
-
-            ConvertToDrawInstanced cdi(lastSliceSize, bbox, false);
-            lastNode->accept( cdi );
-        }
-
-        // Assign matrix vectors to the nodes, so the application can easily retrieve
+		
+        // Assign matrix vectors to the node, so the application can easily retrieve
         // the original position data if necessary.
         MatrixRefVector* nodeMats = new MatrixRefVector();
         nodeMats->setName(TAG_MATRIX_VECTOR);
-        nodeMats->reserve(lastNode != node ? sliceSize*(numSlices-1) : sliceSize*numSlices);
+        nodeMats->reserve(numInstancesToStore);
         node->getOrCreateUserDataContainer()->addUserObject(nodeMats);
 
-        // ...and a separate one for lastNode if necessary
-        MatrixRefVector* lastNodeMats = 0L;
-        if (lastNode != node)
-        {
-            lastNodeMats = new MatrixRefVector();
-            lastNodeMats->setName(TAG_MATRIX_VECTOR);
-            lastNodeMats->reserve(lastSliceSize);
-            lastNode->getOrCreateUserDataContainer()->addUserObject(lastNodeMats);
-        }
+        // this group is simply a container for the uniform:
+        osg::Group* instanceGroup = new osg::Group();
 
-        // Next, break the rendering down into "slices". GLSL will only support a limited
-        // amount of pre-instance uniform data, so we have to portion the graph out into
-        // slices of no more than this chunk size.
-        for( unsigned slice = 0; slice < numSlices; ++slice )
-        {
-            unsigned   offset      = slice * sliceSize;
-            unsigned   currentSize = slice == numSlices-1 ? lastSliceSize : sliceSize;
-            osg::Node* currentNode = slice == numSlices-1 ? lastNode      : node;
+        // sampler that will hold the instance matrices:
+        osg::Image* image = new osg::Image();
+        image->setName("osgearth.drawinstanced.postex");
+		image->allocateImage( tboSize*4, 1, 1, GL_RGBA, GL_FLOAT );
 
-            // this group is simply a container for the uniform:
-            osg::Group* sliceGroup = new osg::Group();
+		// could use PixelWriter but we know the format.
+		// Note: we are building a transposed matrix because it makes the decoding easier in the shader.
+		GLfloat* ptr = reinterpret_cast<GLfloat*>( image->data() );
+		for(unsigned m=0; m<numInstancesToStore; ++m)
+		{
+			ModelInstance& i = instances[m];
+			const osg::Matrixf& mat = i.matrix;
 
-            // calculate the ideal texture size for this slice:
-            osg::Vec2f texSize = calculateIdealTextureSize(currentSize, maxTexSize);
-            OE_DEBUG << LC << "size = " << currentSize << ", tex = " << texSize.x() << ", " << texSize.y() << std::endl;
+			// copy the first 3 columns:
+			for(int col=0; col<3; ++col)
+			{
+				for(int row=0; row<4; ++row)
+				{
+					*ptr++ = mat(row,col);
+				}
+			}
 
-            // sampler that will hold the instance matrices:
-            osg::Image* image = new osg::Image();
-            image->setName("osgearth.drawinstanced.postex");
-            image->allocateImage( (int)texSize.x(), (int)texSize.y(), 1, GL_RGBA, GL_FLOAT );
+			// encode the ObjectID in the last column, which is always (0,0,0,1)
+			// in a standard scale/rot/trans matrix. We will reinstate it in the 
+			// shader after extracting the object ID.
+			*ptr++ = (float)((i.objectID      ) & 0xff);
+			*ptr++ = (float)((i.objectID >>  8) & 0xff);
+			*ptr++ = (float)((i.objectID >> 16) & 0xff);
+			*ptr++ = (float)((i.objectID >> 24) & 0xff);
 
-            osg::Texture2D* postex = new osg::Texture2D( image );
-            postex->setInternalFormat( GL_RGBA16F_ARB );
-            postex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-            postex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
-            postex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP );
-            postex->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP );
-            postex->setUnRefImageDataAfterApply( true );
-            if ( !ImageUtils::isPowerOfTwo(image) )
-                postex->setResizeNonPowerOfTwoHint( false );
+			// store them int the metadata as well
+			nodeMats->push_back(mat);
+		}
 
-            // Tell the SG to skip the positioning texture.
-            ShaderGenerator::setIgnoreHint(postex, true);
+        osg::TextureBuffer* posTBO = new osg::TextureBuffer;
+		posTBO->setImage(image);
+        posTBO->setInternalFormat( GL_RGBA32F_ARB );
+        posTBO->setUnRefImageDataAfterApply( true );
 
-            osg::StateSet* stateset = sliceGroup->getOrCreateStateSet();
-            stateset->setTextureAttributeAndModes(POSTEX_TEXTURE_UNIT, postex, 1);
-            stateset->getOrCreateUniform("oe_di_postex_size", osg::Uniform::FLOAT_VEC2)->set(texSize);
+        // Tell the SG to skip the positioning texture.
+        ShaderGenerator::setIgnoreHint(posTBO, true);
 
-            // could use PixelWriter but we know the format.
-            GLfloat* ptr = reinterpret_cast<GLfloat*>( image->data() );
-            for(unsigned m=0; m<currentSize; ++m)
-            {
-                const osg::Matrixf& mat = matrices[offset + m];
-                for(int col=0; col<4; ++col)
-                    for(int row=0; row<4; ++row)
-                        *ptr++ = mat(row,col);
+        osg::StateSet* stateset = instanceGroup->getOrCreateStateSet();
+        stateset->setTextureAttribute(POSTEX_TBO_UNIT, posTBO);
+        stateset->getOrCreateUniform("oe_di_postex_TBO_size", osg::Uniform::INT)->set((int)tboSize);
 
-                // store them int the metadata as well
-                if (currentNode == node)
-                    nodeMats->push_back(mat);
-                else
-                    lastNodeMats->push_back(mat);
-            }
+		// add the node as a child:
+        instanceGroup->addChild( node );
 
-            // add the node as a child:
-            sliceGroup->addChild( currentNode );
-
-            parent->addChild( sliceGroup );
-        }
+        parent->addChild( instanceGroup );
     }
 }
 

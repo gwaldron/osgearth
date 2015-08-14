@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -135,7 +135,9 @@ _supportsS3TC           ( false ),
 _supportsPVRTC          ( false ),
 _supportsARBTC          ( false ),
 _supportsETC            ( false ),
-_supportsRGTC           ( false )
+_supportsRGTC           ( false ),
+_supportsTextureBuffer  ( false ),
+_maxTextureBufferSize   ( 0 )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -190,7 +192,7 @@ _supportsRGTC           ( false )
         OE_INFO << LC << "  Version = " << _version << std::endl;
 
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );
-        OE_INFO << LC << "  Max FFP texture units = " << _maxFFPTextureUnits << std::endl;
+        //OE_INFO << LC << "  Max FFP texture units = " << _maxFFPTextureUnits << std::endl;
 
         glGetIntegerv( GL_MAX_TEXTURE_IMAGE_UNITS_ARB, &_maxGPUTextureUnits );
         OE_INFO << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
@@ -258,17 +260,17 @@ _supportsRGTC           ( false )
         OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;
 
         _supportsStencilWrap = osg::isGLExtensionSupported( id, "GL_EXT_stencil_wrap" );
-        OE_INFO << LC << "  Stencil wrapping = " << SAYBOOL(_supportsStencilWrap) << std::endl;
+        //OE_INFO << LC << "  Stencil wrapping = " << SAYBOOL(_supportsStencilWrap) << std::endl;
 
         _supportsTwoSidedStencil = osg::isGLExtensionSupported( id, "GL_EXT_stencil_two_side" );
-        OE_INFO << LC << "  2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
+        //OE_INFO << LC << "  2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
 
         _supportsDepthPackedStencilBuffer = osg::isGLExtensionSupported( id, "GL_EXT_packed_depth_stencil" ) || 
                                             osg::isGLExtensionSupported( id, "GL_OES_packed_depth_stencil" );
-        OE_INFO << LC << "  depth-packed stencil = " << SAYBOOL(_supportsDepthPackedStencilBuffer) << std::endl;
+        //OE_INFO << LC << "  depth-packed stencil = " << SAYBOOL(_supportsDepthPackedStencilBuffer) << std::endl;
 
         _supportsOcclusionQuery = osg::isGLExtensionSupported( id, "GL_ARB_occlusion_query" );
-        OE_INFO << LC << "  occlusion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
+        //OE_INFO << LC << "  occlusion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
 
         _supportsDrawInstanced = 
             _supportsGLSL &&
@@ -276,7 +278,7 @@ _supportsRGTC           ( false )
         OE_INFO << LC << "  draw instanced = " << SAYBOOL(_supportsDrawInstanced) << std::endl;
 
         glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
-        OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
+        //OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
 
         _supportsUniformBufferObjects = 
             _supportsGLSL &&
@@ -292,6 +294,23 @@ _supportsRGTC           ( false )
         _supportsNonPowerOfTwoTextures =
             osg::isGLExtensionSupported( id, "GL_ARB_texture_non_power_of_two" );
         OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3, 1, 7)
+        _supportsTextureBuffer = 
+            osg::isGLExtensionOrVersionSupported( id, "GL_ARB_texture_buffer_object", 3.0 ) ||
+            osg::isGLExtensionOrVersionSupported( id, "GL_EXT_texture_buffer_object", 3.0 );
+
+        if ( _supportsTextureBuffer )
+        {
+            glGetIntegerv( GL_MAX_TEXTURE_BUFFER_SIZE, &_maxTextureBufferSize );
+        }
+#endif
+
+        OE_INFO << LC << "  Texture buffers = " << SAYBOOL(_supportsTextureBuffer) << std::endl;
+        if ( _supportsTextureBuffer )
+        {
+            OE_INFO << LC << "  Texture buffer max size = " << _maxTextureBufferSize << std::endl;
+        }            
 
 
         // Writing to gl_FragDepth is not supported under GLES:

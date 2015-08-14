@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,22 +22,20 @@
 #include <osgEarth/Map>
 #include <osgEarth/PhongLightingEffect>
 #include <osg/Light>
+#include <osg/LightSource>
 
-namespace osgEarth { namespace Drivers { namespace SilverLining
+namespace osgEarth { namespace SilverLining
 {
     class SilverLiningContext;
-
-    using namespace osgEarth;
-    using namespace osgEarth::Util;
 
     /**
      * Node that roots the silverlining adapter.
      */
-    class SilverLiningNode : public SkyNode
+    class SilverLiningNode : public osgEarth::Util::SkyNode
     {
     public:
         SilverLiningNode(
-            const Map*                 map,
+            const osgEarth::Map*       map,
             const SilverLiningOptions& options );
 
     public: // SkyNode
@@ -59,12 +57,13 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
         osg::ref_ptr<SilverLiningContext> _SL;
 		osg::ref_ptr<osg::Geode> _geode;
+        osg::ref_ptr<osg::LightSource> _lightSource;
         osg::Drawable* _skyDrawable;
 		osg::ref_ptr<osg::Drawable> _cloudsDrawable;
         osg::ref_ptr<osg::Light> _light;
 		double _lastAltitude;
 		const SilverLiningOptions _options;
-        osg::ref_ptr<PhongLightingEffect> _lighting;
+        osg::ref_ptr<osgEarth::PhongLightingEffect> _lighting;
     };
 
-} } } // namespace osgEarth::Drivers::SilverLining
+} } // namespace osgEarth::SilverLining

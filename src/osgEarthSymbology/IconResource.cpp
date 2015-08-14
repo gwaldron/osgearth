@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,8 +24,10 @@
 
 #include <osg/AutoTransform>
 #include <osg/Depth>
+#include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/TextureRectangle>
+#include <osg/Texture2D>
 #include <osg/Program>
 
 #define LC "[IconResource] "

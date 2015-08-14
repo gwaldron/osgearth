@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -24,6 +27,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Shaders>
+#include <osgEarth/Clamping>
 
 #include <osg/Depth>
 #include <osg/PolygonMode>
@@ -344,15 +348,20 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 #endif
 
     // default value for altitude offset; can be overriden by geometry.
-    local->_groupStateSet->addUniform( new osg::Uniform("oe_clamp_altitudeOffset", 0.0f) );
+    local->_groupStateSet->addUniform( new osg::Uniform(Clamping::AltitudeOffsetUniformName, 0.0f) );
 
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = VirtualProgram::getOrCreate(local->_groupStateSet.get());
     vp->setName( "GPUClamping" );
 
+    // Bind clamping attribute location, and a default uniform indicating whether
+    // they are available (default is false).
+    vp->addBindAttribLocation( Clamping::AnchorAttrName, Clamping::AnchorAttrLocation );
+    local->_groupStateSet->addUniform( new osg::Uniform(Clamping::HasAttrsUniformName, false) );
+
     osgEarth::Shaders pkg;
-    pkg.loadFunction(vp, pkg.GPUClampingVertex);
-    pkg.loadFunction(vp, pkg.GPUClampingFragment);
+    pkg.load(vp, pkg.GPUClampingVertex);
+    pkg.load(vp, pkg.GPUClampingFragment);
 }
 
 

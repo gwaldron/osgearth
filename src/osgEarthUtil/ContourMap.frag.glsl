@@ -3,6 +3,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint "oe_contour_fragment"
 #pragma vp_location   "fragment_coloring"
+#pragma vp_order      "0.2"
 
 uniform sampler1D oe_contour_xfer;
 uniform float oe_contour_opacity;

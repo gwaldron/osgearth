@@ -1,0 +1,114 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_HORIZON_H
+#define OSGEARTH_HORIZON_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/SpatialReference>
+#include <osg/NodeCallback>
+#include <osg/Vec3d>
+#include <osg/Shape>
+
+namespace osgEarth
+{
+    /**
+     * Horizon operations (for a geocentric map).
+     */
+    class OSGEARTH_EXPORT Horizon
+    {
+    public:
+        /** Construct a horizon using a default WGS84 ellipsoid model. */
+        Horizon();
+
+        /** Construct a horizon providing the ellipsoid model. */
+        Horizon(const osg::EllipsoidModel& ellipsoid);
+
+        /** Copy */
+        Horizon(const Horizon& rhs);
+
+        virtual ~Horizon() { }
+
+        /**
+         * Ellipsoid model to use for occlusion testing
+         */
+        void setEllipsoid(const osg::EllipsoidModel& ellipsoid);
+
+        /**
+         * Sets the eye position to use when testing for occlusion.
+         */
+        void setEye(const osg::Vec3d& eyeECEF);
+
+        /**
+         * Whether a world point is occluded by the horizon. You can
+         * optionally pass in a radius to test against a sphere.
+         */
+        bool occludes(const osg::Vec3d& pointECEF, double radius =0.0) const;
+
+        /**
+         * Sets the output variable to the horizon plane plane with its
+         * normal pointing at the eye. 
+         */
+        bool getPlane(osg::Plane& out_plane) const;
+        
+    protected:
+
+        osg::Vec3d _cv;
+        double     _vhMag2;
+        osg::Vec3d _scale;
+        osg::Vec3d _scaleInv;
+        osg::Vec3d _scaleToMinHAE;
+    };
+
+
+    /**
+     * Cull callback that culls a node if it is occluded by the
+     * horizon.
+     */
+    class OSGEARTH_EXPORT HorizonCullCallback : public osg::NodeCallback
+    {
+    public:
+        /** Construct the callback with a default Horizon model. */
+        HorizonCullCallback();
+        
+        /** Construct a cull callback with the specified horizon */
+        HorizonCullCallback(const Horizon& horizon);
+
+        /** Enable/disable */
+        void setEnabled(bool value) { _enabled = value; }
+
+        /** The horizon to use for culling. */
+        void setHorizon(const Horizon& horizon) { _horizon = horizon; }
+        const Horizon& getHorizon() const       { return _horizon; }
+
+    public: // osg::NodeCallback
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+    protected:
+        virtual ~HorizonCullCallback() { }
+
+    private:
+        bool    _enabled;
+        Horizon _horizon;
+    };
+
+
+}
+
+#endif // OSGEARTH_HORIZON_H

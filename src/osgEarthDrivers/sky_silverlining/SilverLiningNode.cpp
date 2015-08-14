@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <SilverLining.h>
 
 #include "SilverLiningNode"
 #include "SilverLiningContext"
@@ -25,15 +26,13 @@
 #include <osg/Light>
 #include <osg/LightSource>
 #include <osgEarth/CullingUtils>
-#include <SilverLining.h>
 
+#undef  LC
 #define LC "[SilverLiningNode] "
 
-using namespace osgEarth;
-using namespace osgEarth::Util;
-using namespace osgEarth::Drivers::SilverLining;
+using namespace osgEarth::SilverLining;
 
-SilverLiningNode::SilverLiningNode(const Map*                 map,
+SilverLiningNode::SilverLiningNode(const osgEarth::Map*       map,
                                    const SilverLiningOptions& options) :
 _options     (options),
 _lastAltitude(DBL_MAX)
@@ -46,10 +45,9 @@ _lastAltitude(DBL_MAX)
     _light->setPosition( osg::Vec4(1, 0, 0, 0) ); // w=0 means infinity
     _light->setDirection( osg::Vec3(-1,0,0) );
 
-    osg::LightSource* source = new osg::LightSource();
-    source->setLight( _light.get() );
-    source->setReferenceFrame(osg::LightSource::RELATIVE_RF);
-    this->addChild( source );
+    _lightSource = new osg::LightSource();
+    _lightSource->setLight( _light.get() );
+    _lightSource->setReferenceFrame(osg::LightSource::RELATIVE_RF);
 
     // The main silver lining data:
     _SL = new SilverLiningContext( options );
@@ -67,7 +65,7 @@ _lastAltitude(DBL_MAX)
 
     // Clouds draw after everything else
     _cloudsDrawable = new CloudsDrawable( _SL.get() );
-    _cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "RenderBin" );
+    _cloudsDrawable->getOrCreateStateSet()->setRenderBinDetails( 99, "DepthSortedBin" );
     _geode->addDrawable( _cloudsDrawable.get() );
 
     // scene lighting
@@ -77,8 +75,8 @@ _lastAltitude(DBL_MAX)
     _lighting->attach( stateset );
 
     // ensure it's depth sorted and draws after the terrain
-    stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-    getOrCreateStateSet()->setRenderBinDetails( 100, "RenderBin" );
+    //stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+    //getOrCreateStateSet()->setRenderBinDetails( 100, "DepthSortedBin" );
 
     // SL requires an update pass.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
@@ -125,14 +123,11 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
         if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
         {
 			int frameNumber = nv.getFrameStamp()->getFrameNumber();
-            _SL->updateLocation();
-            _SL->updateLight();
-            _SL->getAtmosphere()->UpdateSkyAndClouds();
             _skyDrawable->dirtyBound();
 
             if( _cloudsDrawable )
             {
-                if (_lastAltitude <= *_options.cloudsMaxAltitude() )
+                if ( _lastAltitude <= *_options.cloudsMaxAltitude() )
                 {
                     if ( _cloudsDrawable->getNumParents() == 0 )
                         _geode->addDrawable( _cloudsDrawable.get() );
@@ -146,8 +141,10 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
                 }
             }
         }
+
         else if ( nv.getVisitorType() == nv.CULL_VISITOR )
         {
+
             // TODO: make this multi-camera safe
             _SL->setCameraPosition( nv.getEyePoint() );
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
@@ -158,10 +155,10 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 				cv->getEyePoint().length() - _SL->getSRS()->getEllipsoid()->getRadiusEquator() :
 				cv->getEyePoint().z();
 
-			if (_lastAltitude <= *_options.cloudsMaxAltitude() )
-			{
-				_SL->getAtmosphere()->CullObjects();
-			}
+            _SL->updateLocation();
+            _SL->updateLight();
+            _SL->getAtmosphere()->UpdateSkyAndClouds();
+			_SL->getAtmosphere()->CullObjects();
         }
     }
 
@@ -170,5 +167,10 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
     if ( _geode.valid() )
     {
         _geode->accept(nv);
+    }
+
+    if ( _lightSource.valid() )
+    {
+        _lightSource->accept(nv);
     }
 }

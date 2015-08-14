@@ -23,8 +23,6 @@ i.e. "altitude-clamping: terrain-drape".
             <url>../data/world.shp</url>
             <build_spatial_index>true</build_spatial_index>
         </features>
-		
-		<feature_indexing/>	
                 
         <styles>
             <style type="text/css">

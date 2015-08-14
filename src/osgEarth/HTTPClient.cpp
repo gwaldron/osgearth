@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -352,7 +352,7 @@ namespace
     // TODO: consider moving this stuff into the osgEarth::Registry;
     // don't like it here in the global scope
     // per-thread client map (must be global scope)
-    static Threading::PerThread<HTTPClient> s_clientPerThread;
+    static PerThread<HTTPClient>       s_clientPerThread;
 
     static optional<ProxySettings>     s_proxySettings;
 

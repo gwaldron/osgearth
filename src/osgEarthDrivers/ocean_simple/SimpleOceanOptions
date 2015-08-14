@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -86,7 +86,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleOcean
               _highFeatherOffset( -10.0f ),
               _maxRange         ( 1000000.0f ),
               _fadeRange        ( 125000.0f ),
-              _maxLOD           ( 11 ),
+              _maxLOD           ( 20 ),
               _baseColor        ( osg::Vec4(0.2, 0.3, 0.5, 0.8) )
         {
             mergeConfig( _conf );

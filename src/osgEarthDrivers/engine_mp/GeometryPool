@@ -1,0 +1,92 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_GEOMETRY_POOL
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_GEOMETRY_POOL 1
+
+#include "Common"
+#include "MaskGenerator"
+#include "MPTerrainEngineOptions"
+#include <osgEarth/MapInfo>
+#include <osgEarth/TileKey>
+#include <osgEarth/ThreadingUtils>
+#include <osg/Geometry>
+
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
+{
+    using namespace osgEarth;
+
+    /**
+     * Pooled geometry manager.
+     * Concept adapted from OSG's osgTerrain::GeometryPool
+     */
+    class GeometryPool : public osg::Referenced
+    {
+    public:
+        GeometryPool(
+            unsigned tileSize,
+            const MPTerrainEngineOptions& options);
+
+    public:
+        /**
+         * Hashtable key for unique (and therefore shareable) geometries.
+         */
+        struct GeometryKey
+        {
+            GeometryKey() : lod(-1) {}
+
+            bool operator < (const GeometryKey& rhs) const
+            {
+                if (lod < rhs.lod) return true;
+                if (lod > rhs.lod) return false;                
+                return (yMin < rhs.yMin);
+            }
+
+            int    lod;
+            double yMin;
+        };
+
+        typedef std::map<GeometryKey, osg::ref_ptr<osg::Geometry> > GeometryMap;
+
+        void getPooledGeometry(
+            const TileKey&               tileKey, 
+            const MapInfo&               mapInfo,
+            osg::ref_ptr<osg::Geometry>& out);
+
+        osg::Geometry* createGeometry(
+            const TileKey& tileKey,
+            const MapInfo& mapInfo,
+            MaskGenerator* maskSet ) const;
+
+    protected:
+        virtual ~GeometryPool() { }
+
+        mutable Threading::Mutex      _geometryMapMutex;
+        GeometryMap                   _geometryMap;
+        unsigned                      _tileSize;
+        const MPTerrainEngineOptions& _options;
+        
+        void createKeyForTileKey(
+            const TileKey& tileKey, 
+            const MapInfo& mapInfo,
+            GeometryKey&   out) const;
+    };
+
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_GEOMETRY_POOL

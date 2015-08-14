@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgDB/Options>
 #include <map>
+#include <set>
 
 namespace osgEarth
 {
@@ -36,27 +37,71 @@ namespace osgEarth
         /**
          * Adds a function from this package to the VirtualProgram.
          */
-        bool loadFunction(
+        bool load(
             VirtualProgram*       vp,
             const std::string&    filename,
             const osgDB::Options* dbOptions =0L ) const;
 
         /**
-         * Removes a function loaded by loadFunction from the VirtualProgram.
+         * Removes a function loaded by load from the VirtualProgram.
          */
-        bool unloadFunction(
+        bool unload(
             VirtualProgram*       vp,
             const std::string&    filename,
             const osgDB::Options* dbOptions =0L ) const;
 
+        /**
+         * Adds all the functions in this package to the VirtualProgram.
+         */
+        bool loadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Removes all the functions in this package from the VirtualProgram.
+         */
+        bool unloadAll(
+            VirtualProgram*       vp,
+            const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Defs or undefs a GLSL #define proprocessor macro.
+         * Don't include the "#" in the defineName.
+         */
+        void define(
+            const std::string& defineName,
+            bool               defOrUndef);
+
+        /**
+         * Replaces the specified string with another string in the loaded
+         * shader source. Nested replacements are not supported.
+         */
+        void replace(
+            const std::string& pattern,
+            const std::string& value);
+
+        /**
+         * Add a file/source to the package. If you only have inline source, just
+         * set the filename to a unique description string.
+         */
+        void add(const std::string& filename, const std::string& inlineSource)
+        {
+            _sources[filename] = inlineSource;
+        }
+
     public:
         typedef std::map<std::string, std::string> SourceMap;
+        typedef std::map<std::string, std::string> ReplaceMap;
+        typedef std::map<std::string, bool>        DefineMap;
+
         const SourceMap& context() const { return _sources; }
-        void add(const std::string& filename, const std::string& inlineSource) {
-            _sources[filename] = inlineSource; }
+
 
     protected:        
         SourceMap _sources;
+        DefineMap _defines;
+        ReplaceMap _replaces;
+        friend class ShaderLoader;
     };
 
     /**
@@ -74,16 +119,16 @@ namespace osgEarth
          *   #pragma vp_entryPoint "oe_my_shader"
          *   #pargma vp_location   "VERTEX_VIEW"
          */
-        static bool loadFunction(
+        static bool load(
             VirtualProgram*       vp,
             const std::string&    filename,
             const ShaderPackage&  package,
             const osgDB::Options* dbOptions =0L );
 
         /**
-         * Removes a function loaded by loadFunction from the VirtualProgram.
+         * Removes a function loaded by load from the VirtualProgram.
          */
-        static bool unloadFunction(
+        static bool unload(
             VirtualProgram*       vp,
             const std::string&    filename,
             const ShaderPackage&  package,
@@ -103,8 +148,23 @@ namespace osgEarth
             const std::string&    filename,
             const ShaderPackage&  package,
             const osgDB::Options* dbOptions =0L );
+
+        /**
+         * Utility function that returns the value of a quoted #pragma; e.g.,
+         * #pragma vp_something "You are here"
+         * returns the string inside the quotes (without the quotes).
+         */
+        static std::string getQuotedPragmaValue(
+            const std::string& source,
+            const std::string& key);
+
+        static void getAllQuotedPragmaValues(
+            const std::string&     source,
+            const std::string&     key,
+            std::set<std::string>& output);
     };
 
 } // namespace osgEarth
 
 #endif // OSGEARTH_SHADER_LOADER
+

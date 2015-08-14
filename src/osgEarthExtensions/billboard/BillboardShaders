@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -25,78 +28,87 @@ using namespace osgEarth;
 
 namespace
 {
-
-    const char* billboardVertShader =
-        "#version " GLSL_VERSION_STR "\n"
-        //"#extension GL_EXT_geometry_shader4 : enable\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "varying out vec3 normal;\n"
-        "varying out vec4 color;\n"
-        "void main(void)\n"
-        "{\n"
-        "    normal = gl_Normal;\n"
-        "    color = gl_Color;\n"
-        "    gl_Position = gl_Vertex;\n"
-        "}\n";
-
-
-    /**
-     * 
-     */
     const char* billboardGeomShader =
-        "#version " GLSL_VERSION_STR "\n"
-        "#extension GL_EXT_geometry_shader4 : enable\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-        "varying out vec2 tex_coord;\n"
-        "varying out float brightness;\n"
-        "varying in vec3 normal[];\n"
-        "varying in vec4 color[];\n"
-        "uniform float billboard_width; \n"
-        "uniform float billboard_height; \n"
+        "#version 330 compatibility\n"
+        "#pragma vp_name       \"Billboard Extension Geometry Shader\"\n"
+        "#pragma vp_entryPoint \"createBillboard\"\n"
+        "#pragma vp_location   \"geometry\"\n"
+        "\n"        
+        "in vec3 vp_Normal; \n"
+        "in vec4 vp_Color; \n"
+        "in vec4 vp_Vertex; \n"
+        "\n"
+        "out vec2 tex_coord;\n"
+        "out float brightness;\n"
+        "\n"
+        "uniform float     billboard_width; \n"
+        "uniform float     billboard_height; \n"
         "uniform sampler2D billboard_tex; \n"
-        "void main(void)\n"
+        "\n"
+        "void VP_LoadVertex(in int);\n"
+        "void VP_EmitViewVertex(); \n"
+        "\n"        
+        "layout(points)         in; \n"
+        "layout(triangle_strip) out; \n"
+        "layout(max_vertices=4) out; \n"
+        "\n"
+        "void createBillboard()\n"
         "{\n"
-        "    vec4 v = gl_ModelViewMatrix * gl_PositionIn[0];\n"
-        "    vec4 v2 = gl_ModelViewMatrix * (gl_PositionIn[0] + vec4(normal[0]*billboard_height, 0.0));\n"
+        "    VP_LoadVertex(0); \n"
+
+        "    vec3 n = gl_NormalMatrix * vp_Normal; \n"
+        "    vec4 v = gl_ModelViewMatrix * gl_in[0].gl_Position; \n"
+        "    vec4 v2 = v + vec4(n*billboard_height, 0.0); \n"
+        
+        //"    vec4 v = gl_ModelViewMatrix * gl_in[0].gl_Position; \n"
+        //"    vec4 v2 = gl_ModelViewMatrix * (gl_in[0].gl_Position + vec4(vp_Normal*billboard_height, 0.0));\n"
         "    \n"
         // TODO: this width calculation isn't great but works for now
         "    vec4 center_v = gl_ModelViewMatrix * vec4(0.,0.,0.,1.);\n"
-        "    vec4 right_v = gl_ModelViewMatrix * vec4(billboard_width,0.,0.,1.);\n"
+        "    vec4 right_v  = gl_ModelViewMatrix * vec4(billboard_width,0.,0.,1.);\n"
+
         "    float width = distance(right_v, center_v);\n"
         "    \n"
-        "    brightness = color[0].r;\n"
-        "    gl_Position = gl_ProjectionMatrix * (v + vec4(width, 0., 0., 0.)); \n"
+        "    brightness = vp_Color.r;\n"
+        "    gl_Position = v + vec4(width, 0., 0., 0.); \n"
         "    tex_coord = vec2(1.0, 0.0); \n"
-        "    EmitVertex(); \n"
-        "    gl_Position = gl_ProjectionMatrix * (v + vec4(-width, 0., 0., 0.)); \n"
+        "    VP_EmitViewVertex(); \n"
+        "    \n"
+        "    gl_Position = v + vec4(-width, 0., 0., 0.); \n"
         "    tex_coord = vec2(0.0, 0.0); \n"
-        "    brightness = color[0].r;\n"
-        "    EmitVertex(); \n"
-        
-        "    brightness = color[0].r*2.0;\n"
-        "    gl_Position = gl_ProjectionMatrix * (v2 + vec4(width, 0., 0., 0.)); \n"
+        "    brightness = vp_Color.r;\n"
+        "    VP_EmitViewVertex(); \n"
+        "    \n"
+        "    brightness = vp_Color.r*2.0;\n"
+        "    gl_Position = v2 + vec4(width, 0., 0., 0.); \n"
         "    tex_coord = vec2(1.0, 1.0); \n"
-        "    EmitVertex(); \n"
-        "    gl_Position = gl_ProjectionMatrix * (v2 + vec4(-width, 0., 0., 0.)); \n"
+        "    VP_EmitViewVertex(); \n"
+        "    \n"
+        "    gl_Position = v2 + vec4(-width, 0., 0., 0.); \n"
         "    tex_coord = vec2(0.0, 1.0); \n"
-        "    EmitVertex(); \n"
+        "    VP_EmitViewVertex(); \n"
+        "    \n"
         "    EndPrimitive(); \n"
         "}\n";
 
 
-    const char* billboardFragmentShader =
-        "#version " GLSL_VERSION_STR "\n"
-        //"#extension GL_EXT_geometry_shader4 : enable\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+    const char* billboardFragShader =
+        "#version 330\n"
+        "#pragma vp_name       \"Billboard Extension Frag Shader\"\n"
+        "#pragma vp_entryPoint \"drawBillboard\"\n"
+        "#pragma vp_location   \"fragment_coloring\"\n"
+        "\n"
         "uniform sampler2D billboard_tex; \n"
-        "varying vec2 tex_coord;\n"
-        "varying float brightness;\n"
-        "void main(void) {\n"
+        "\n"
+        "in vec2  tex_coord;\n"
+        "in float brightness;\n"
+        "\n"
+        "void drawBillboard(inout vec4 color)\n"
+        "{\n"
         "    float contrast = clamp(1.0-brightness, 0.85, 1.0);\n"
-        "    vec4 color = texture2D(billboard_tex, tex_coord);\n"
+        "    color = texture(billboard_tex, tex_coord);\n"
         "    color.rgb = clamp(((color.rgb-0.5)*contrast + 0.5) * (1.0+brightness), 0.0, 1.0);\n"
         "    if ( color.a < 0.5 ) discard; \n"
-        "    gl_FragColor = color; \n"
         "}\n";
 }
 

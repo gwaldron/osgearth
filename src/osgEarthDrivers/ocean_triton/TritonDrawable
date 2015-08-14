@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -16,6 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#ifndef OSGEARTH_TRITON_DRAWABLE_H
+#define OSGEARTH_TRITON_DRAWABLE_H
+
 #include <osg/Drawable>
 #include <osg/RenderInfo>
 #include <osg/TextureCubeMap>
@@ -23,16 +26,14 @@
 #include <osg/Texture2D>
 
 #include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
+#include <osgEarth/NativeProgramAdapter>
 
-const unsigned int OCEAN_MASK         = 0x4; // 0100
+const unsigned int TRITON_OCEAN_MASK = 0x4; // 0100
 
-class OceanTerrainChangedCallback;
-
-namespace osgEarth { namespace Drivers { namespace Triton
+namespace osgEarth { namespace Triton
 {
     class TritonContext;
-
-    using namespace osgEarth;
 
     /**
      * Custom drawable for rendering the Triton ocean effects
@@ -69,12 +70,16 @@ namespace osgEarth { namespace Drivers { namespace Triton
         osg::BoundingBox                  _bbox;
         osg::ref_ptr<osg::Texture2D> _heightMap;
         osg::ref_ptr<osg::Camera> _heightCamera;
-        osg::observer_ptr<OceanTerrainChangedCallback> _terrainChangedCallback;
+        osg::observer_ptr<osgEarth::TerrainCallback> _terrainChangedCallback;
         
         osg::ref_ptr< osg::Texture2D >       _planarReflectionMap;
         osg::ref_ptr< osg::RefMatrix >       _planarReflectionProjection;
+
+        mutable osg::buffered_object<osgEarth::NativeProgramAdapterCollection> _adapters;
         
         TritonDrawable(const TritonDrawable& copy, const osg::CopyOp& op=osg::CopyOp::SHALLOW_COPY) { }
     };
 
-} } } // namespace osgEarth::Drivers::Triton
+} } // namespace osgEarth::Triton
+
+#endif // OSGEARTH_TRITON_DRAWABLE_H

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 
 #include <osg/Point>
 #include <osg/Texture2D>
+#include <osg/MatrixTransform>
 
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/MapNode>
@@ -28,6 +29,8 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Random>
+#include <osgEarth/ShaderLoader>
+
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ScatterFilter>
 
@@ -171,8 +174,8 @@ BillboardExtension::connect(MapNode* mapNode)
 
         OE_NOTICE << "Clamping elevations...\n";
         osgEarth::ElevationQuery eq(mapNode->getMap());
+        eq.setFallBackOnNoData( true );
         eq.getElevations(verts->asVector(), mapNode->getMapSRS(), true, 0.005);
-
         
         OE_NOTICE << "Building geometry...\n";
         osg::Vec3Array* normals = new osg::Vec3Array(verts->size());
@@ -253,15 +256,13 @@ BillboardExtension::connect(MapNode* mapNode)
 
         //for now just using an osg::Program
         //TODO: need to add GeometryShader support to the shader comp setup
-        osg::Program* pgm = new osg::Program;
-        pgm->setName("billboard_program");
-        pgm->addShader( new osg::Shader( osg::Shader::VERTEX, billboardVertShader ) );
-        pgm->addShader( new osg::Shader( osg::Shader::GEOMETRY, billboardGeomShader ) );
-        pgm->addShader( new osg::Shader( osg::Shader::FRAGMENT, billboardFragmentShader ) );
-        pgm->setParameter( GL_GEOMETRY_VERTICES_OUT_EXT, 4 );
-        pgm->setParameter( GL_GEOMETRY_INPUT_TYPE_EXT, GL_POINTS );
-        pgm->setParameter( GL_GEOMETRY_OUTPUT_TYPE_EXT, GL_TRIANGLE_STRIP );
-        geode_ss->setAttribute(pgm);
+        VirtualProgram* vp = VirtualProgram::getOrCreate(geode_ss);
+        vp->setName( "osgEarth Billboard Extension" );
+
+        ShaderPackage shaders;
+        shaders.add( "Billboard geometry shader", billboardGeomShader );
+        shaders.add( "Billboard fragment shader", billboardFragShader );
+        shaders.loadAll( vp );
 
         geode_ss->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
         geode->setCullingActive(false);

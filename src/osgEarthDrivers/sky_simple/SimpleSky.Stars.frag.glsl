@@ -1,7 +1,7 @@
-#version 120
+#version $GLSL_VERSION_STR
 
-varying float visibility; 
-varying vec4 osg_FrontColor; 
+in float visibility; 
+in vec4 osg_FrontColor; 
 
 void main( void ) 
 { 

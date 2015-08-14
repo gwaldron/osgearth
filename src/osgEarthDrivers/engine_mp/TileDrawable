@@ -1,0 +1,156 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_DRAWABLE
+#define OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_TILE_DRAWABLE 1
+
+#include "Common"
+#include "TileNode"
+#include "TileNodeRegistry"
+#include "RenderBindings"
+
+#include <osg/Geometry>
+#include <osg/buffered_value>
+#include <osgEarth/Map>
+#include <osgEarth/MapFrame>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
+{
+    /**
+     * A Geometry that will draw its primitive sets multiple time,
+     * once for each configured "layer". For rendering multipass
+     * data from a single cull.
+     */
+    class TileDrawable : public osg::Drawable
+    {
+    public:
+        /**
+         * Per-tile attribution for use with the MPGeometry.
+         */
+        struct Layer
+        {
+            Layer()
+            {
+                _texMatrixUniformID = ~0;
+                _parentTexMatrixUniformID = ~0;
+            }
+
+            osgEarth::UID                   _layerID;
+            osg::ref_ptr<const ImageLayer>  _imageLayer;
+
+            osg::ref_ptr<osg::Texture>      _tex;
+            osg::ref_ptr<osg::RefMatrixf>   _texMatrix;
+            unsigned                        _texMatrixUniformID;
+
+            osg::ref_ptr<osg::Texture>      _parentTex;
+            osg::ref_ptr<osg::RefMatrixf>   _parentTexMatrix;
+            unsigned                        _parentTexMatrixUniformID;
+
+            float                           _alphaThreshold;
+            bool                            _opaque;
+
+            // in support of std::find
+            inline bool operator == (const osgEarth::UID& rhs) const {
+                return _layerID == rhs;
+            }
+        };
+
+    public:
+        mutable MapFrame           _frame;
+        mutable std::vector<Layer> _layers;
+        mutable Threading::Mutex   _frameSyncMutex;
+
+        // uniform name IDs.
+        unsigned _uidUniformNameID;
+        unsigned _birthTimeUniformNameID;
+        unsigned _orderUniformNameID;
+        unsigned _opacityUniformNameID;
+        unsigned _tileKeyUniformNameID;
+        unsigned _texMatrixUniformNameID;
+        unsigned _parentTexMatrixUniformNameID;
+
+        // Data stored for each graphics context:
+        struct PerContextData {
+            PerContextData() : birthTime(-1.0f), lastFrame(0) { }
+            float    birthTime;
+            unsigned lastFrame;
+        };
+        mutable osg::buffered_object<PerContextData> _pcd;
+
+
+        mutable osg::Vec4f _tileKeyValue;
+
+        //int _imageUnit;          // image unit for primary texture
+        //int _imageUnitParent;    // image unit for secondary (parent) texture
+        //int _elevUnit;           // image unit for elevation texture
+        RenderBindings _bindings;
+
+        bool _supportsGLSL;
+
+        // underlying geometry, possible shared between this tile and other.
+        osg::ref_ptr<osg::Geometry> _geom;
+
+    public:
+        
+        // construct a new TileDrawable that fronts an osg::Geometry
+        TileDrawable(
+            const TileKey&        key,
+            const MapFrame&       frame,
+            const RenderBindings& bindings,
+            osg::Geometry*        geometry);
+
+        void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
+
+        void drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const;
+
+        // validate the geometry is OK.
+        void validate();
+
+    public: // osg::Geometry overrides
+
+        // override so we can properly release the GL buffer objects
+        // that are not tracked by the Geometry itself but rather are
+        // stored in the LayerRenderData.
+        void releaseGLObjects(osg::State* state) const;
+        void resizeGLObjectBuffers(unsigned maxSize);
+        void compileGLObjects(osg::RenderInfo& renderInfo) const;
+
+        // this is copied mostly from osg::Geometry, but we've removed 
+        // all the code that handles non-fastPath (don't need it) and
+        // called into our custom renderPrimitiveSets method.
+        void drawImplementation(osg::RenderInfo& renderInfo) const;
+        
+        // recalculate the bound for the tile key uniform.
+#if OSG_VERSION_GREATER_THAN(3,3,1)
+        osg::BoundingBox computeBoundingBox() const;
+#else
+        osg::BoundingBox computeBound() const;
+#endif
+
+    public:
+        META_Object(osgEarth, TileDrawable);
+        TileDrawable() : osg::Drawable(), _frame(0L) { }
+        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop), _frame(rhs._frame) { }
+        virtual ~TileDrawable() { }
+    };
+
+} } } // namespace osgEarth::Drivers::MPTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_MP_TERRAIN_ENGINE_MPGEOMETRY

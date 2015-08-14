@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,11 +24,9 @@
 
 #define LC "[SilverLiningDriver] "
 
-using namespace osgEarth::Util;
-
-namespace osgEarth { namespace Drivers { namespace SilverLining
+namespace osgEarth { namespace SilverLining
 {
-    class SilverLiningDriver : public SkyDriver
+    class SilverLiningDriver : public osgEarth::Util::SkyDriver
     {
     public:
         SilverLiningDriver()
@@ -70,7 +68,7 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
                 }
             }
 
-            MapNode* mapnode = getMapNode(options);
+            osgEarth::MapNode* mapnode = getMapNode(options);
             const Map* map = mapnode ? mapnode->getMap() : 0L;
             return new SilverLiningNode( map, slOptions );
         }
@@ -81,4 +79,4 @@ namespace osgEarth { namespace Drivers { namespace SilverLining
 
     REGISTER_OSGPLUGIN(osgearth_sky_silverlining, SilverLiningDriver)
 
-} } } // namespace osgEarth::Drivers::SilverLining
+} } // namespace osgEarth::Drivers::SilverLining

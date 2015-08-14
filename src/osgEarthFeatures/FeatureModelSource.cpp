@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/DrapeableNode>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -200,6 +201,9 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
         _features.get(), 
         _dbOptions.get() );
 
+    // Name the session (for debugging purposes)
+    session->setName( this->getName() );
+
     // Graph that will render feature models. May included paged data.
     FeatureModelGraph* graph = new FeatureModelGraph( 
        session,
@@ -208,6 +212,8 @@ FeatureModelSource::createNodeImplementation(const Map*        map,
        this,
        _preMergeOps.get(),
        _postMergeOps.get() );
+
+    graph->setName( session->getName() );
 
     // then run the ops on the staring graph:
     firePostProcessors( graph );
@@ -224,7 +230,22 @@ osg::Group*
 FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                                           Session*     session)
 {
-    osg::Group* group = new osg::Group();
+    osg::Group* group = 0L;
+
+    // If we're draping, the style group will be a DrapeableNode.
+    const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+    if (alt &&
+        alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN &&
+        alt->technique() == AltitudeSymbol::TECHNIQUE_DRAPE )
+    {
+        group = new DrapeableNode();
+    }
+
+    // Otherwise, a normal group.
+    if ( !group )
+    {
+        group = new osg::Group();
+    }
 
     // apply necessary render styles.
     const RenderSymbol* render = style.get<RenderSymbol>();
@@ -259,11 +280,13 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
                 (render->backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
         }
 
+#ifndef OSG_GLES2_AVAILABLE
         if ( render->clipPlane().isSet() )
         {
             GLenum mode = GL_CLIP_PLANE0 + (render->clipPlane().value());
             group->getOrCreateStateSet()->setMode(mode, 1);
         }
+#endif
 
         if ( render->minAlpha().isSet() )
         {

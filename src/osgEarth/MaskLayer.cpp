@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -118,6 +118,7 @@ MaskLayer::initialize( const osgDB::Options* dbOptions, const Map* map )
 osg::Vec3dArray*
 MaskLayer::getOrCreateMaskBoundary( float heightScale, const SpatialReference *srs, ProgressCallback* progress )
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _mutex );
     if ( _maskSource.valid() )
     {
         // if the model source has changed, regenerate the node.

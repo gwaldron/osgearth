@@ -82,6 +82,14 @@ namespace osgEarth
             osg::Vec3d&             output) const;
 
         /**
+         * Transform a point from this SRS to another SRS.
+         * Returns true if ALL transforms succeeded, false if at least one failed.
+         */
+        virtual bool transform(
+            osg::Vec3d& input,
+            const SpatialReference*  outputSRS ) const;
+
+        /**
          * Transform a collection of points from this SRS to another SRS.
          * Returns true if ALL transforms succeeded, false if at least one failed.
          */
@@ -383,6 +391,10 @@ namespace osgEarth
 
         virtual const SpatialReference* postTransform(std::vector<osg::Vec3d>&) const { return this; }
 
+        virtual const SpatialReference* preTransform(const osg::Vec3d&) const { return this; }
+
+        virtual const SpatialReference* postTransform(const osg::Vec3d&) const { return this; }
+
         bool transformXYPointArrays(
             double*  x,
             double*  y,
@@ -394,9 +406,13 @@ namespace osgEarth
             const SpatialReference*  outputSRS,
             bool                     pointsAreGeodetic) const;
 
+        bool transformZ(
+            osg::Vec3d& point,
+            const SpatialReference*  outputSRS,
+            bool                     pointIsLatLong) const;
+
         typedef std::map<Key, osg::ref_ptr<SpatialReference> > SRSCache;
         static SRSCache& getSRSCache();
-
 
     private:
 

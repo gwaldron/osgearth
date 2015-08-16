@@ -30,6 +30,73 @@ using namespace osgEarth;
 
 #define LC "[ProxyGeometry] "
 
+IndexPool ProxyGeometry::_indexPool;
+namespace 
+{
+unsigned getNumberOfVerts(unsigned tileSize)
+{
+    return (tileSize*tileSize);    
+}
+
+unsigned getNumberOfIndices(unsigned tileSize)
+{
+    return (tileSize-1) * (tileSize-1) * 6;
+}
+
+void tessellate(osg::DrawElements* primSet, unsigned tileSize, bool swapOrientation)
+{
+    int i00;
+    int i01;
+    for(unsigned j=0; j<tileSize-1; ++j)
+    {
+        for(unsigned i=0; i<tileSize-1; ++i)
+        {
+            if (swapOrientation)
+            {
+                i01 = j*tileSize + i;
+                i00 = i01+tileSize;
+            }
+            else
+            {
+                i00 = j*tileSize + i;
+                i01 = i00+tileSize;
+            }
+
+            int i10 = i00+1;
+            int i11 = i01+1;
+
+            primSet->addElement(i01);
+            primSet->addElement(i00);
+            primSet->addElement(i11);
+
+            primSet->addElement(i00);
+            primSet->addElement(i10);
+            primSet->addElement(i11);
+        }
+    }
+    primSet->dirty();
+}
+}
+
+DrawElements* IndexPool::getOrCreate(unsigned tileSize, bool swapOrientation)
+{
+    MapTileSizeToIndices::const_iterator it = _mapIndices.find(tileSize);
+    if (it!=_mapIndices.end())
+    {
+        return it->second.get();
+    }
+
+    OE_INFO << LC <<" Constructing Indices for TileSize: "<<tileSize<<std::endl;
+
+    // Pre-allocate enough space for all triangles.
+    osg::DrawElements* primSet = new osg::DrawElementsUShort(GL_TRIANGLES);
+    primSet->reserveElements(getNumberOfIndices(tileSize));
+    _mapIndices.insert(std::make_pair(tileSize, primSet));
+    tessellate(primSet, tileSize, swapOrientation);
+
+    return primSet;
+}
+
 void
 ProxyGeometry::constructXReferenceFrame()
 {
@@ -46,16 +113,12 @@ ProxyGeometry::constructXReferenceFrame()
 void
 ProxyGeometry::constructEmptyGeometry()
 {
-    unsigned numVerts   = getNumberOfVerts();    
-    unsigned numIndices = getNumberOfIndices();
-
     // the geometry:
     osg::Geometry* geom = this;
 
     // Pre-allocate enough space for all triangles.
-    osg::DrawElements* primSet = new osg::DrawElementsUShort(GL_TRIANGLES);
-    primSet->reserveElements(numIndices);
-    geom->addPrimitiveSet( primSet );
+    osg::DrawElements* primSet = _indexPool.getOrCreate(_tileSize, !_locator->orientationOpenGL());
+    geom->addPrimitiveSet(primSet);
 
 #if OSGEARTH_REX_PROXY_GEOMETRY_DEBUG
     geom->setUseVertexBufferObjects(true);
@@ -64,14 +127,14 @@ ProxyGeometry::constructEmptyGeometry()
 
     // the vertex locations:
     osg::Vec3Array* verts = new osg::Vec3Array();
-    verts->reserve( numVerts );
+    verts->reserve( getNumberOfVerts(_tileSize) );
     geom->setVertexArray( verts );
 }
 
 ProxyGeometry::ProxyGeometry(const TileKey& key, const MapInfo& mapInfo, unsigned tileSize, const osg::Texture* elevationTexture) : 
     _key(key), 
-    _tileSize( 32 ), // temporary
-    //_tileSize(elevationTexture->getImage(0)->s()),
+    //_tileSize( 32 ), // temporary
+    _tileSize(elevationTexture->getImage(0)->s()),
     _elevationTexture(elevationTexture)
 {
     _locator = GeoLocator::createForKey( _key, mapInfo );
@@ -89,7 +152,6 @@ ProxyGeometry::build(void)
     constructEmptyGeometry();
     constructXReferenceFrame();
     makeVertices();
-    tessellate();
 
     osg::KdTree* kd = new osg::KdTree();
     KdTree::BuildOptions kdoptions;
@@ -157,57 +219,4 @@ ProxyGeometry::makeVertices()
         }
     }
     verts->dirty();
-}
-
-void
-ProxyGeometry::tessellate(void)
-{
-    bool swapOrientation = !_locator->orientationOpenGL();
-
-    osg::DrawElements* primSet = static_cast<osg::DrawElements*>(this->getPrimitiveSet(0));
-
-    int i00;
-    int i01;
-    for(unsigned j=0; j<_tileSize-1; ++j)
-    {
-        for(unsigned i=0; i<_tileSize-1; ++i)
-        {
-            if (swapOrientation)
-            {
-                i01 = j*_tileSize + i;
-                i00 = i01+_tileSize;
-            }
-            else
-            {
-                i00 = j*_tileSize + i;
-                i01 = i00+_tileSize;
-            }
-
-            int i10 = i00+1;
-            int i11 = i01+1;
-
-            primSet->addElement(i01);
-            primSet->addElement(i00);
-            primSet->addElement(i11);
-
-            primSet->addElement(i00);
-            primSet->addElement(i10);
-            primSet->addElement(i11);
-        }
-    }
-    primSet->dirty();
-}
-
-unsigned
-ProxyGeometry::getNumberOfVerts(void) const
-{
-    unsigned tileSize = _elevationTexture->getImage(0)->s();
-    return (tileSize*tileSize);    
-}
-
-unsigned
-ProxyGeometry::getNumberOfIndices(void) const
-{
-    unsigned tileSize = _elevationTexture->getImage(0)->s();
-    return (tileSize-1) * (tileSize-1) * 6;
 }

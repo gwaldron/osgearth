@@ -20,7 +20,7 @@
 #include "ElevationTextureUtils"
 
 #include <osgEarth/Locators>
-#include <osg/KdTree>
+#include <osgEarth/QuadTree>
 
 using namespace osg;
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -41,6 +41,11 @@ unsigned getNumberOfVerts(unsigned tileSize)
 unsigned getNumberOfIndices(unsigned tileSize)
 {
     return (tileSize-1) * (tileSize-1) * 6;
+}
+
+unsigned getNumTriangles(unsigned tileSize)
+{
+    return (tileSize-1)*(tileSize-1)*2;
 }
 
 void tessellate(osg::DrawElements* primSet, unsigned tileSize, bool swapOrientation)
@@ -153,10 +158,13 @@ ProxyGeometry::build(void)
     constructXReferenceFrame();
     makeVertices();
 
-    osg::KdTree* kd = new osg::KdTree();
-    KdTree::BuildOptions kdoptions;
-    kd->build(kdoptions, this);
-    this->setShape(kd);
+    QuadTree* quadTree = new QuadTree();
+    QuadTree::BuildOptions options;
+    options._maxNumLevels = 10;    // PPP: Auto compute an estimate?
+    options._targetNumTrianglesPerLeaf = 16*16;    // PPP: Auto compute an estimate?
+    options._numTriangles = getNumTriangles(_tileSize);
+    quadTree->build(options, this);
+    this->setShape(quadTree);
 
     OE_DEBUG << LC << "Built proxy geometry: "<<_key.str()<<std::endl;
 }

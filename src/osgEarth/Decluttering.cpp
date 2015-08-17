@@ -81,9 +81,8 @@ namespace
     // TODO: a way to clear out this list when drawables go away
     struct DrawableInfo
     {
-        DrawableInfo() : _lastAlpha(1.0), _lastScale(1.0), _lastXY(-1.0, -1.0) { }
+        DrawableInfo() : _lastAlpha(1.0), _lastScale(1.0) { }
         float _lastAlpha, _lastScale;
-        osg::Vec2d _lastXY;
     };
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
@@ -292,33 +291,36 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
             // The "declutter" box is the box we use to reserve screen space.
             // This must be unquantized regardless of whether snapToPixel is set.
-            box.set(
-                floor(winPos.x() + box.xMin()),
-                floor(winPos.y() + box.yMin()),
+            osg::BoundingBox delutterBox = box;
+            delutterBox.set(
+                winPos.x() + box.xMin(),
+                winPos.y() + box.yMin(),
                 winPos.z(),
-                ceil(winPos.x() + box.xMax()),
-                ceil(winPos.y() + box.yMax()),
+                winPos.x() + box.xMax(),
+                winPos.y() + box.yMax(),
                 winPos.z() );
 
-            // if snapping is enabled, only snap when the camera stops moving.
-            bool quantize = snapToPixel;
-            if ( quantize )
+            if ( snapToPixel )
             {
-                DrawableInfo& info = local._memory[drawable];
-                
-                if ( info._lastXY.x() == winPos.x() && info._lastXY.y() == winPos.y() )
-                {
-                    // Quanitize the window draw coordinates so mitigate text rendering filtering anomalies.
-                    // Drawing text glyphs on pixel boundaries mitigates aliasing.
-                    // Adding 0.5 will cause the GPU to sample the glyph texels exactly on center.
-                    winPos.x() = floor(winPos.x()) + 0.5;
-                    winPos.y() = floor(winPos.y()) + 0.5;
-                }
-                else
-                {
-                    info._lastXY.set( winPos.x(), winPos.y() );
-                }
+                // Quanitize the window draw coordinates so mitigate text rendering filtering anomalies.
+                // Drawing text glyphs on pixel boundaries helps prevent outline aliasing.
+                box.xMin() = floor(box.xMin());
+                box.xMax() = ceil(box.xMax());
+                box.yMin() = floor(box.yMin());
+                box.yMax() = ceil(box.yMax());
+                winPos.x() = osg::round(winPos.x());
+                winPos.y() = osg::round(winPos.y());
             }
+
+            osg::Vec2f offset( -box.xMin(), -box.yMin() );
+
+            box.set(
+                winPos.x() + box.xMin(),
+                winPos.y() + box.yMin(),
+                winPos.z(),
+                winPos.x() + box.xMax(),
+                winPos.y() + box.yMax(),
+                winPos.z() );
 
             // if this leaf is already in a culled group, skip it.
             if ( s_enabledGlobally )
@@ -336,10 +338,10 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     {
                         // only need a 2D test since we're in clip space
                         bool isClear =
-                            box.xMin() > j->second.xMax() ||
-                            box.xMax() < j->second.xMin() ||
-                            box.yMin() > j->second.yMax() ||
-                            box.yMax() < j->second.yMin();
+                            delutterBox.xMin() > j->second.xMax() ||
+                            delutterBox.xMax() < j->second.xMin() ||
+                            delutterBox.yMin() > j->second.yMax() ||
+                            delutterBox.yMax() < j->second.yMin();
 
                         // if there's an overlap (and the conflict isn't from the same drawable
                         // parent, which is acceptable), then the leaf is culled.
@@ -356,7 +358,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             {
                 // passed the test, so add the leaf's bbox to the "used" list, and add the leaf
                 // to the final draw list.
-                local._used.push_back( std::make_pair(drawableParent, box) );
+                local._used.push_back( std::make_pair(drawableParent, delutterBox) );
                 local._passed.push_back( leaf );
             }
 
@@ -371,7 +373,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // modify the leaf's modelview matrix to correctly position it in the 2D ortho
             // projection when it's drawn later. We'll also preserve the scale.
             osg::Matrix newModelView;
-            newModelView.makeTranslate( winPos.x(), winPos.y(), 0 );
+            newModelView.makeTranslate( box.xMin() + offset.x(), box.yMin() + offset.y(), 0 );
             newModelView.preMultScale( leaf->_modelview->getScale() * refCamScaleMat );
             
             // Leaf modelview matrixes are shared (by objects in the traversal stack) so we 
@@ -525,6 +527,11 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
 
             m->makeOrtho2D( vp->x(), vp->x()+vp->width()-1, vp->y(), vp->y()+vp->height()-1 );
             state.applyProjectionMatrix( m.get() );
+
+            //osg::ref_ptr<osg::RefMatrix> rm = new osg::RefMatrix( osg::Matrix::ortho2D(
+            //    vp->x(), vp->x()+vp->width()-1,
+            //    vp->y(), vp->y()+vp->height()-1 ) );
+            //state.applyProjectionMatrix( rm.get() );
         }
 
         // render the list

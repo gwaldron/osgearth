@@ -125,9 +125,6 @@ namespace osgEarth
         /** SRS is WGS84, angles are in degrees, range is in meters. */
 
         /** @deprecated */
-        Viewpoint(double lon, double lat, double heading, double pitch, double range);
-
-        /** @deprecated */
         Viewpoint(const char* name, double lon, double lat, double z, double heading, double pitch, double range);
         
         /** @deprecated */

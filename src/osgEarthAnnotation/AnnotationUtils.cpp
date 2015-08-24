@@ -160,6 +160,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         t->setAlignment( at );
     }
 
+    t->setFontResolution( size, size );
     t->setBackdropOffset( (float)t->getFontWidth() / 256.0f, (float)t->getFontHeight() / 256.0f );
 
     if ( symbol && symbol->halo().isSet() )

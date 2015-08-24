@@ -125,6 +125,7 @@ SET(LIB_PUBLIC_HEADERS
     Profile
     Profiler
     Progress
+	QuadTree
     Random
     Registry
     Revisioning
@@ -274,6 +275,7 @@ set(TARGET_SRC
     Profile.cpp
     Profiler.cpp
     Progress.cpp
+	QuadTree.cpp
     Random.cpp
     Registry.cpp
     Revisioning.cpp

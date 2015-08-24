@@ -33,6 +33,15 @@ namespace osgEarth
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class IndexPool
+    {
+    public:
+        osg::DrawElements* getOrCreate(unsigned tileSize, bool swapOrientation);
+    private:
+        typedef std::map<unsigned, osg::ref_ptr<osg::DrawElements> > MapTileSizeToIndices;
+        MapTileSizeToIndices _mapIndices;
+    };
+
     class ProxyGeometry : public osg::Geometry
     {
     public:
@@ -51,19 +60,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void buildIfNecessary(void) const;
         
         void makeVertices(void);
-        void tessellate(void);
-        
-        unsigned getNumberOfVerts(void) const;
-        unsigned getNumberOfIndices(void) const;
-
     private:
         const TileKey  _key;
-        unsigned _tileSize;
+        const unsigned _tileSize;
         osg::ref_ptr<GeoLocator> _locator;
 
         const osg::Texture* _elevationTexture;
         osg::Matrix   _world2local;
         osg::Matrix   _local2world;
+        static IndexPool _indexPool;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

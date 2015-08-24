@@ -53,16 +53,41 @@ namespace
     }    
 
     // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
+    bool sphericalMercatorToGeographic( osg::Vec3d& point )
+    {
+        double x = osg::clampBetween(point.x(), MERC_MINX, MERC_MAXX);
+        double y = osg::clampBetween(point.y(), MERC_MINY, MERC_MAXY);
+        double xr = -osg::PI + ((x-MERC_MINX)/MERC_WIDTH)*2.0*osg::PI;
+        double yr = -osg::PI + ((y-MERC_MINY)/MERC_HEIGHT)*2.0*osg::PI;
+        point.x() = osg::RadiansToDegrees( xr );
+        point.y() = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
+        // z doesn't change here.
+        return true;
+    }
+
+    // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
     bool sphericalMercatorToGeographic( std::vector<osg::Vec3d>& points )
     {
         for( unsigned i=0; i<points.size(); ++i )
         {
-            double x = osg::clampBetween(points[i].x(), MERC_MINX, MERC_MAXX);
-            double y = osg::clampBetween(points[i].y(), MERC_MINY, MERC_MAXY);
-            double xr = -osg::PI + ((x-MERC_MINX)/MERC_WIDTH)*2.0*osg::PI;
-            double yr = -osg::PI + ((y-MERC_MINY)/MERC_HEIGHT)*2.0*osg::PI;
-            points[i].x() = osg::RadiansToDegrees( xr );
-            points[i].y() = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
+            sphericalMercatorToGeographic(points[i]);
+        }
+        return true;
+    }
+
+    // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
+    bool geographicToSphericalMercator( osg::Vec3d& point )
+    {
+        double lon = osg::clampBetween(point.x(), -180.0, 180.0);
+        double lat = osg::clampBetween(point.y(), -90.0, 90.0);
+        double xr = (osg::DegreesToRadians(lon) - (-osg::PI)) / (2.0*osg::PI);
+        double sinLat = sin(osg::DegreesToRadians(lat));
+        double oneMinusSinLat = 1-sinLat;
+        if ( oneMinusSinLat != 0.0 )
+        {
+            double yr = ((0.5 * log( (1+sinLat)/oneMinusSinLat )) - (-osg::PI)) / (2.0*osg::PI);
+            point.x() = osg::clampBetween(MERC_MINX + (xr * MERC_WIDTH), MERC_MINX, MERC_MAXX);
+            point.y() = osg::clampBetween(MERC_MINY + (yr * MERC_HEIGHT), MERC_MINY, MERC_MAXY);
             // z doesn't change here.
         }
         return true;
@@ -73,43 +98,42 @@ namespace
     {
         for( unsigned i=0; i<points.size(); ++i )
         {
-            double lon = osg::clampBetween(points[i].x(), -180.0, 180.0);
-            double lat = osg::clampBetween(points[i].y(), -90.0, 90.0);
-            double xr = (osg::DegreesToRadians(lon) - (-osg::PI)) / (2.0*osg::PI);
-            double sinLat = sin(osg::DegreesToRadians(lat));
-            double oneMinusSinLat = 1-sinLat;
-            if ( oneMinusSinLat != 0.0 )
-            {
-                double yr = ((0.5 * log( (1+sinLat)/oneMinusSinLat )) - (-osg::PI)) / (2.0*osg::PI);
-                points[i].x() = osg::clampBetween(MERC_MINX + (xr * MERC_WIDTH), MERC_MINX, MERC_MAXX);
-                points[i].y() = osg::clampBetween(MERC_MINY + (yr * MERC_HEIGHT), MERC_MINY, MERC_MAXY);
-                // z doesn't change here.
-            }
+            geographicToSphericalMercator(points[i]);
         }
         return true;
+    }
+
+    void geodeticToECEF(osg::Vec3d& point, const osg::EllipsoidModel* em)
+    {
+        double x, y, z;
+        em->convertLatLongHeightToXYZ(
+            osg::DegreesToRadians( point.y() ), osg::DegreesToRadians( point.x() ), point.z(),
+            x, y, z );
+        point.set( x, y, z );
     }
 
     void geodeticToECEF(std::vector<osg::Vec3d>& points, const osg::EllipsoidModel* em)
     {
         for( unsigned i=0; i<points.size(); ++i )
         {
-            double x, y, z;
-            em->convertLatLongHeightToXYZ(
-                osg::DegreesToRadians( points[i].y() ), osg::DegreesToRadians( points[i].x() ), points[i].z(),
-                x, y, z );
-            points[i].set( x, y, z );
+            geodeticToECEF(points[i], em);
         }
+    }
+
+    void ECEFtoGeodetic(osg::Vec3d& point, const osg::EllipsoidModel* em)
+    {
+        double lat, lon, alt;
+        em->convertXYZToLatLongHeight(
+            point.x(), point.y(), point.z(),
+            lat, lon, alt );
+        point.set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), alt );
     }
 
     void ECEFtoGeodetic(std::vector<osg::Vec3d>& points, const osg::EllipsoidModel* em)
     {
         for( unsigned i=0; i<points.size(); ++i )
         {
-            double lat, lon, alt;
-            em->convertXYZToLatLongHeight(
-                points[i].x(), points[i].y(), points[i].z(),
-                lat, lon, alt );
-            points[i].set( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), alt );
+            ECEFtoGeodetic(points[i], em);
         }
     }
 }
@@ -975,14 +999,111 @@ SpatialReference::transform(const osg::Vec3d&       input,
     if ( !outputSRS )
         return false;
 
-    std::vector<osg::Vec3d> v(1, input);
+    osg::Vec3d v(input);
 
     if ( transform(v, outputSRS) )
     {
-        output = v[0];
+        output = v;
         return true;
     }
     return false;
+}
+
+bool
+SpatialReference::transform(osg::Vec3d& point,
+                            const SpatialReference*  outputSRS) const
+{
+    if ( !outputSRS )
+        return false;
+
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
+    // trivial equivalency:
+    if ( isEquivalentTo(outputSRS) )
+        return true;
+
+    bool success = false;
+
+    // do the pre-transformation pass:
+    const SpatialReference* inputSRS = preTransform( point );
+    if ( !inputSRS )
+        return false;
+
+    // Spherical Mercator is a special case transformation, because we want to bypass
+    // any normal horizontal datum conversion. In other words we ignore the ellipsoid
+    // of the other SRS and just do a straight spherical conversion.
+    if ( inputSRS->isGeographic() && outputSRS->isSphericalMercator() )
+    {        
+        inputSRS->transformZ( point, outputSRS, true );
+        success = geographicToSphericalMercator( point );
+        return success;
+    }
+
+    else if ( inputSRS->isSphericalMercator() && outputSRS->isGeographic() )
+    {     
+        success = sphericalMercatorToGeographic( point );
+        inputSRS->transformZ( point, outputSRS, true );
+        return success;
+    }
+
+    else if ( inputSRS->isECEF() && !outputSRS->isECEF() )
+    {
+        const SpatialReference* outputGeoSRS = outputSRS->getGeodeticSRS();
+        ECEFtoGeodetic(point, outputGeoSRS->getEllipsoid());
+        return outputGeoSRS->transform(point, outputSRS);
+    }
+
+    else if ( !inputSRS->isECEF() && outputSRS->isECEF() )
+    {
+        const SpatialReference* outputGeoSRS = outputSRS->getGeodeticSRS();
+        success = inputSRS->transform(point, outputGeoSRS);
+        geodeticToECEF(point, outputGeoSRS->getEllipsoid());
+        return success;
+    }
+
+    // if the points are starting as geographic, do the Z's first to avoid an unneccesary
+    // transformation in the case of differing vdatums.
+    bool z_done = false;
+    if ( inputSRS->isGeographic() )
+    {
+        z_done = inputSRS->transformZ( point, outputSRS, true );
+    }
+
+    // move the xy data into straight arrays that OGR can use
+    double x = point.x();
+    double y = point.y();
+
+    success = inputSRS->transformXYPointArrays( &x, &y, 1, outputSRS );
+
+    if ( success )
+    {
+        if ( inputSRS->isProjected() && outputSRS->isGeographic() )
+        {
+            // special case: when going from projected to geographic, clamp the 
+            // points to the maximum geographic extent. Sometimes the conversion from
+            // a global/projected SRS (like mercator) will result in *slightly* invalid
+            // geographic points (like long=180.000003), so this addresses that issue.
+            point.x() = osg::clampBetween( x, -180.0, 180.0 );
+            point.y() = osg::clampBetween( y,  -90.0,  90.0 );
+        }
+        else
+        {
+            point.x() = x;
+            point.y() = y;
+        }
+    }
+
+    // calculate the Zs if we haven't already done so
+    if ( !z_done )
+    {
+        z_done = inputSRS->transformZ( point, outputSRS, outputSRS->isGeographic() );
+    }   
+
+    // run the user post-transform code
+    outputSRS->postTransform( point );
+
+    return success;
 }
 
 
@@ -1099,7 +1220,6 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     return success;
 }
 
-
 bool 
 SpatialReference::transform2D(double x, double y,
                               const SpatialReference* outputSRS,
@@ -1148,6 +1268,63 @@ SpatialReference::transformXYPointArrays(double*  x,
     }
 
     return OCTTransform( xform_handle, count, x, y, 0L ) > 0;
+}
+
+bool
+SpatialReference::transformZ(osg::Vec3d& point,
+                             const SpatialReference*  outputSRS,
+                             bool                     pointIsLatLong) const
+{
+    const VerticalDatum* outVDatum = outputSRS->getVerticalDatum();
+
+    // same vdatum, no xformation necessary.
+    if ( _vdatum.get() == outVDatum )
+        return true;
+
+    Units inUnits = _vdatum.valid() ? _vdatum->getUnits() : Units::METERS;
+    Units outUnits = outVDatum ? outVDatum->getUnits() : inUnits;
+
+    if ( isGeographic() || pointIsLatLong )
+    {
+        if ( _vdatum.valid() )
+        {
+            // to HAE:
+            point.z() = _vdatum->msl2hae( point.y(), point.x(), point.z() );
+        }
+
+        // do the units conversion:
+        point.z() = inUnits.convertTo(outUnits, point.z());
+
+        if ( outVDatum )
+        {
+            // to MSL:
+            point.z() = outVDatum->hae2msl( point.y(), point.x(), point.z() );
+        }
+    }
+
+    else // need to xform input points
+    {
+        // copy the points and convert them to geographic coordinates (lat/long with the same Z):
+        osg::Vec3d geopoint(point);
+        transform( geopoint, getGeographicSRS() );
+
+        if ( _vdatum.valid() )
+        {
+            // to HAE:
+            point.z() = _vdatum->msl2hae( geopoint.y(), geopoint.x(), point.z() );
+        }
+
+        // do the units conversion:
+        point.z() = inUnits.convertTo(outUnits, point.z());
+
+        if ( outVDatum )
+        {
+            // to MSL:
+            point.z() = outVDatum->hae2msl( geopoint.y(), geopoint.x(), point.z() );
+        }
+    }
+
+    return true;
 }
 
 

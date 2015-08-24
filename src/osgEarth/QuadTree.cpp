@@ -785,14 +785,16 @@ bool QuadTree::intersect(const osg::Vec3d& start, const osg::Vec3d& end, LineSeg
 //
 // QuadTreeBuilder
 QuadTreeBuilder::QuadTreeBuilder():
-    osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+    osg::NodeVisitor()
 {
+    setTraversalMode( TRAVERSE_ALL_CHILDREN );
+    this->setNodeMaskOverride( ~0 );
+
     _quadTreePrototype = new QuadTree;
 }
 
-QuadTreeBuilder::QuadTreeBuilder(const QuadTreeBuilder& rhs):
-    osg::Referenced(true),
-    osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+QuadTreeBuilder::QuadTreeBuilder(const QuadTreeBuilder& rhs) :
+    osg::NodeVisitor( rhs ),
     _buildOptions(rhs._buildOptions),
     _quadTreePrototype(rhs._quadTreePrototype)
 {

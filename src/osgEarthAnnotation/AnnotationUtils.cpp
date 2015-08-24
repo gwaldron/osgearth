@@ -220,8 +220,8 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     float s = scale * image->s();
     float t = scale * image->t();
 
-    float x0 = (float)pixelOffset.x(); // - s/2.0;
-    float y0 = (float)pixelOffset.y(); // - t/2.0;
+    float x0 = (float)pixelOffset.x() - s/2.0;
+    float y0 = (float)pixelOffset.y() - t/2.0;
 
     osg::Vec3Array* verts = new osg::Vec3Array(4);
     (*verts)[0].set( x0,     y0,     0 );

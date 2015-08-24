@@ -138,6 +138,8 @@ namespace osgEarth
 
         PolyShader(osg::Shader* shader);
 
+        void setName(const std::string& name) { _name = name; }
+
         void setLocation(ShaderComp::FunctionLocation loc);
         ShaderComp::FunctionLocation getLocation() const { return _location; }
 
@@ -152,6 +154,7 @@ namespace osgEarth
     protected:
         virtual ~PolyShader() { }
 
+        std::string                  _name;
         std::string                  _source;
         ShaderComp::FunctionLocation _location;
         osg::Shader::Type            _nominalType;

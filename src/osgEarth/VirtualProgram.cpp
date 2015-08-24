@@ -976,6 +976,7 @@ VirtualProgram::setFunction(const std::string&           functionName,
 
         // assemble the poly shader.
         PolyShader* shader = new PolyShader();
+        shader->setName( functionName );
         shader->setLocation( location );
         shader->setShaderSource( shaderSource );
         shader->prepare();
@@ -1678,6 +1679,7 @@ _nominalShader( shader )
     _dirty = shader != 0L;
     if ( shader )
     {
+        _name = shader->getName();
         ShaderPreProcessor::run( shader );
     }
 }
@@ -1754,6 +1756,8 @@ PolyShader::prepare()
         if (nominalType != osg::Shader::UNDEFINED )
         {
             _nominalShader = new osg::Shader(nominalType, _source);
+            if ( !_name.empty() )
+                _nominalShader->setName(_name);
         }
 
         ShaderPreProcessor::run( _nominalShader.get() );
@@ -1762,9 +1766,13 @@ PolyShader::prepare()
         if ( _location == ShaderComp::LOCATION_VERTEX_VIEW || _location == ShaderComp::LOCATION_VERTEX_CLIP )
         {
             _geomShader = new osg::Shader(osg::Shader::GEOMETRY, _source);
+            if ( !_name.empty() )
+                _geomShader->setName(_name);
             ShaderPreProcessor::run( _geomShader.get() );
 
             _tessevalShader = new osg::Shader(osg::Shader::TESSEVALUATION, _source);
+            if ( !_name.empty() )
+                _tessevalShader->setName(_name);
             ShaderPreProcessor::run( _tessevalShader.get() );
         }
     }

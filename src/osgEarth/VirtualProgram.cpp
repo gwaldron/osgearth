@@ -850,12 +850,6 @@ VirtualProgram::setShader(const std::string&                 shaderID,
     PolyShader* pshader = new PolyShader( shader );
     pshader->prepare();
 
-#if 0
-    // pre-processes the shader's source to include GLES uniforms as necessary
-    // (no-op on non-GLES)
-    ShaderPreProcessor::run( shader );
-#endif
-
     // lock the data model and insert the new shader.
     {
         _dataModelMutex.lock();

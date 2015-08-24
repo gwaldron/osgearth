@@ -29,6 +29,7 @@ using namespace osgEarth;
 
 //#define VERBOSE_OUTPUT
 
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // BuildQuadTree Declarartion - class used for building an single QuadTree
@@ -106,8 +107,13 @@ bool BuildQuadTree::build(QuadTree::BuildOptions& options, osg::Geometry* geomet
     if (!vertices) return false;
 
     if (vertices->size() <= options._targetNumTrianglesPerLeaf) return false;
-
+    
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
+    _bb = geometry->getBoundingBox();
+#else
     _bb = geometry->getBound();
+#endif
+
     _quadTree.setVertices(vertices);
 
     unsigned int estimatedSize = (unsigned int)(2.0*float(vertices->size())/float(options._targetNumTrianglesPerLeaf));

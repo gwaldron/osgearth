@@ -52,7 +52,7 @@ DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path)
     _entries.push_back( Entry() );
     Entry& entry = _entries.back();
     entry._node = node;
-    entry._path = path;
+    entry._path.setNodePath( path );
     entry._matrix = new osg::RefMatrix( osg::computeLocalToWorld(path) );
     _bs.expandBy( node->getBound() );
 }
@@ -84,15 +84,22 @@ DrapingCullSet::accept(osg::NodeVisitor& nv, bool remove)
                 // shared with the current visitor's path since they are already in effect.
                 // Count them so we can pop them later.
                 int numStateSets = 0;
-                for(unsigned i=0; i<entry->_path.size(); ++i)
+                osg::RefNodePath nodePath;
+                if ( entry->_path.getRefNodePath(nodePath) )
                 {
-                    if (i >= nvPath.size() || nvPath[i] != entry->_path[i])
+                    for(unsigned i=0; i<nodePath.size(); ++i)
                     {
-                        osg::StateSet* stateSet = entry->_path[i]->getStateSet();
-                        if ( stateSet )
+                        if (nodePath[i].valid())
                         {
-                            cv->pushStateSet( stateSet );
-                            ++numStateSets;
+                            if (i >= nvPath.size() || nvPath[i] != nodePath[i].get())
+                            {
+                                osg::StateSet* stateSet = nodePath[i]->getStateSet();
+                                if ( stateSet )
+                                {
+                                    cv->pushStateSet( stateSet );
+                                    ++numStateSets;
+                                }
+                            }
                         }
                     }
                 }

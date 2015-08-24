@@ -26,6 +26,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/DrapeableNode>
 #include <osg/Camera>
+#include <osg/ObserverNodePath>
 
 namespace osgEarth
 {
@@ -44,7 +45,7 @@ namespace osgEarth
         {            
             osg::ref_ptr<osg::Group>     _node;
             osg::ref_ptr<osg::RefMatrix> _matrix;
-            osg::NodePath                _path;
+            osg::ObserverNodePath        _path;
         };
 
     public:

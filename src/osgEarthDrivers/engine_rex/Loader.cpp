@@ -33,6 +33,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 Loader::Request::Request()
 {
     _uid = osgEarth::Registry::instance()->createUID();
+    _state = IDLE;
 }
 
 osg::StateSet*
@@ -83,6 +84,9 @@ SimpleLoader::clear()
 #undef  LC
 #define LC "[PagerLoader] "
 
+//#define USE_MERGE_QUEUE  1
+#define MERGES_PER_FRAME 1
+
 namespace
 {
     struct RequestResultNode : public osg::Node
@@ -112,15 +116,20 @@ _checkpoint( (osg::Timer_t)0 )
 {
     _myNodePath.push_back( this );
 
-    //this->setNumChildrenRequiringUpdateTraversal( 1u );
+#ifdef USE_MERGE_QUEUE
+    this->setNumChildrenRequiringUpdateTraversal( 1u );
+#endif
 }
 
 
 bool
 PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
 {
-    if ( request && nv.getDatabaseRequestHandler() )
+    // check that the request is not already completed but unmerged:
+    if ( request && !request->isMerging() && nv.getDatabaseRequestHandler() )
     {
+        request->setState(Request::RUNNING);
+
         // remember the last tick at which this request was submitted
         request->_lastTick = osg::Timer::instance()->tick();
 
@@ -175,15 +184,22 @@ PagerLoader::clear()
 void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
-    //NOTE: unused (experimental)
+    // only called when USE_MERGE_QUEUE is defined
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
-        for(int count=0; count<10 && !_mergeQueue.empty(); ++count)
+        int count;
+        for(count=0; count < MERGES_PER_FRAME && !_mergeQueue.empty(); ++count)
         {
             Request* req = _mergeQueue.front().get();
             if ( req && req->_lastTick >= _checkpoint )
             {
+                OE_START_TIMER(req_apply);
                 req->apply();
+                double s = OE_STOP_TIMER(req_apply);
+
+                req->setState(Request::IDLE);
+
+                //OE_INFO << "apply time = " << s << " s.\n";
             }
             _mergeQueue.pop();
         }
@@ -202,8 +218,12 @@ PagerLoader::addChild(osg::Node* node)
         Request* req = result->getRequest();
         if ( req && req->_lastTick >= _checkpoint )
         {
-            //_mergeQueue.push( req );
+          #ifdef USE_MERGE_QUEUE
+            _mergeQueue.push( req );
+          #else
             req->apply();
+            req->setState(Request::IDLE);
+          #endif
         }
     }
     return true;
@@ -227,6 +247,7 @@ PagerLoader::invokeAndRelease(UID requestUID)
     if ( request.valid() )
     {
         request->invoke();
+        request->setState(Request::MERGING);
     }
 
     return request.release();

@@ -648,7 +648,7 @@ TileNode::load(osg::NodeVisitor& nv)
             _loadRequest = new LoadTileData( this, context );
         }
     }
-        
+
     // Prioritize by LOD.
     float priority = - (float)getTileKey().getLOD();
 

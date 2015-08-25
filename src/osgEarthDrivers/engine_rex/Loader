@@ -58,12 +58,24 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             void setFrameNumber(unsigned fn) { _lastFrameSubmitted = fn; }
             unsigned getLastFrameSubmitted() const { return _lastFrameSubmitted; }
 
+            enum State {
+                IDLE,
+                RUNNING,
+                MERGING
+            };
+            void setState(State value) { _state = value; }
+            bool isIdle() const { return _state == IDLE; }
+            bool isRunning() const { return _state == RUNNING; }
+            bool isMerging() const { return _state == MERGING; }
+
             UID                           _uid;
+            State                         _state;
             float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
             unsigned                      _lastFrameSubmitted;
             osg::Timer_t                  _lastTick;
             osg::ref_ptr<osg::StateSet>   _stateSet;
+
         };
 
         class Handler : public osg::Referenced

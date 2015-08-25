@@ -18,7 +18,7 @@ osgEarth Sample - Annotations
 		<profile>spherical-mercator</profile>
     </options>
     
-    <external>
+    <extensions>
         <viewpoints>
             <viewpoint name="Annotation Samples" 
                        lat="33" long="-118" range="500000"
@@ -28,19 +28,21 @@ osgEarth Sample - Annotations
         <annotations>
         
             <label text="Los Angeles">
-                <position lat="34.051" long="-117.974" alt="100" mode="relative"/>
+                <position lat="34.052235" long="-118.243683" alt="100" mode="relative"/>
                 <style type="text/css">
                     text-align:     center_center;
                     text-size:      20;
                     text-declutter: true;
+                    text-halo:      #777;
                 </style>
             </label>
             
             <place text="San Diego">
                 <position lat="32.73" long="-117.17"/>
-                <icon>http://demo.pelicanmapping.com/icons/gmaps/yoga.png</icon>
+                <icon>../data/placemark32.png</icon>
                 <style type="text/css">
                     text-declutter: true;
+                    text-halo:      #777;
                 </style>
             </place>
             
@@ -167,5 +169,5 @@ osgEarth Sample - Annotations
             
         </annotations>
         
-    </external>
+    </extensions>
 </map>

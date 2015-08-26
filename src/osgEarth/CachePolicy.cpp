@@ -146,6 +146,13 @@ CachePolicy::usageString() const
     return "unknown";
 }
 
+bool
+CachePolicy::empty() const
+{
+    bool isSet = _usage.isSet() || _maxAge.isSet() || _minTime.isSet();
+    return !isSet;
+}
+
 void
 CachePolicy::fromConfig( const Config& conf )
 {

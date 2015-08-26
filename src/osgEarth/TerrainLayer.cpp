@@ -96,8 +96,10 @@ TerrainLayerOptions::getConfig( bool isolate ) const
 
     conf.updateIfSet   ( "cacheid",      _cacheId );
     conf.updateIfSet   ( "cache_format", _cacheFormat );
-    conf.updateObjIfSet( "cache_policy", _cachePolicy );
     conf.updateObjIfSet( "proxy",        _proxySettings );
+
+    if ( _cachePolicy.isSet() && !_cachePolicy->empty() )
+        conf.updateObjIfSet( "cache_policy", _cachePolicy );
 
     // Merge the TileSource options
     if ( !isolate && driver().isSet() )

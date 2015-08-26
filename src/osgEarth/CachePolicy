@@ -99,6 +99,8 @@ namespace osgEarth
         optional<TimeStamp>& minTime() { return _minTime; }
         const optional<TimeStamp>& minTime() const { return _minTime; }
 
+        /** Whether any of the fields are set */
+        bool empty() const;
 
     public: // convenience functions.
 

@@ -70,7 +70,8 @@ namespace osgEarth { namespace Features
         /**
          * Sets the maximum wall angle that doesn't require a new normal vector
          */
-        void setWallAngleThreshold( float angle_deg ) { _wallAngleThresh_deg = angle_deg; }
+        void setWallAngleThreshold(float value) { _wallAngleThresh_deg = value; }
+        float getWallAngleThreshold() const { return _wallAngleThresh_deg; }
 
         /**
          * Sets whether to render a bottom top. Useful for creating stencil volumes.
@@ -85,16 +86,10 @@ namespace osgEarth { namespace Features
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
 
         /**
-         * Whether or not to use vertex buffer objects
+         * Whether to merge geometry for better rendering performance
          */
-        optional<bool>& useVertexBufferObjects() { return _useVertexBufferObjects;}
-        const optional<bool>& useVertexBufferObjects() const { return _useVertexBufferObjects;}
-
-        /**
-         * Whether or not to use TextureArrays for the wall and roof skins
-         */
-        optional<bool>& useTextureArrays() { return _useTextureArrays;}
-        const optional<bool>& useTextureArrays() const { return _useTextureArrays;}
+        void setMergeGeometry(bool value) { _mergeGeometry = value; }
+        bool getMergeGeometry() const { return _mergeGeometry; }
 
 
     protected:
@@ -156,19 +151,16 @@ namespace osgEarth { namespace Features
         SortedGeodeMap                 _geodes;
         osg::ref_ptr<osg::StateSet>    _noTextureStateSet;
 
-        optional<double>               _maxAngle_deg;
-        optional<bool>                 _mergeGeometry;
+        bool                           _mergeGeometry;
         float                          _wallAngleThresh_deg;
         float                          _cosWallAngleThresh;
         StringExpression               _featureNameExpr;
         osg::ref_ptr<HeightCallback>   _heightCallback;
         optional<NumericExpression>    _heightExpr;
         bool                           _makeStencilVolume;
-        optional<bool>                 _useVertexBufferObjects;
 
         Style                          _style;
         bool                           _styleDirty;
-        optional<bool>                 _useTextureArrays;
         bool                           _gpuClamping;
 
         osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;

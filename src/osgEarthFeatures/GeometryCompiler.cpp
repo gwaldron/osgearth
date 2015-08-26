@@ -61,7 +61,7 @@ GeometryCompilerOptions::setDefaults(const GeometryCompilerOptions& defaults)
 // defaults.
 GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
 _maxGranularity_deg    ( 10.0 ),
-_mergeGeometry         ( false ),
+_mergeGeometry         ( true ),
 _clustering            ( false ),
 _instancing            ( false ),
 _ignoreAlt             ( false ),
@@ -452,17 +452,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         ExtrudeGeometryFilter extrude;
         extrude.setStyle( style );
 
-        // Activate texture arrays if the GPU supports them and if the user
-        // hasn't disabled them.        
-        extrude.useTextureArrays() =
-            Registry::capabilities().supportsTextureArrays() &&
-            _options.useTextureArrays() == true;
-
         // apply per-feature naming if requested.
         if ( _options.featureName().isSet() )
             extrude.setFeatureNameExpr( *_options.featureName() );
-        if ( _options.useVertexBufferObjects().isSet())
-            extrude.useVertexBufferObjects() = *_options.useVertexBufferObjects();
+
+        if ( _options.mergeGeometry().isSet() )
+            extrude.setMergeGeometry( *_options.mergeGeometry() );
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )

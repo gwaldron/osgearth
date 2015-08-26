@@ -38,7 +38,6 @@ FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& optio
 ModelSourceOptions ( options ),
 _lit               ( true ),
 _maxGranularity_deg( 1.0 ),
-_mergeGeometry     ( false ),
 _clusterCulling    ( true ),
 _backfaceCulling   ( true ),
 _alphaBlending     ( true ),
@@ -63,7 +62,6 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
 
     conf.getIfSet( "lighting",         _lit );
     conf.getIfSet( "max_granularity",  _maxGranularity_deg );
-    conf.getIfSet( "merge_geometry",   _mergeGeometry );
     conf.getIfSet( "cluster_culling",  _clusterCulling );
     conf.getIfSet( "backface_culling", _backfaceCulling );
     conf.getIfSet( "alpha_blending",   _alphaBlending );
@@ -90,7 +88,6 @@ FeatureModelSourceOptions::getConfig() const
 
     conf.updateIfSet( "lighting",         _lit );
     conf.updateIfSet( "max_granularity",  _maxGranularity_deg );
-    conf.updateIfSet( "merge_geometry",   _mergeGeometry );
     conf.updateIfSet( "cluster_culling",  _clusterCulling );
     conf.updateIfSet( "backface_culling", _backfaceCulling );
     conf.updateIfSet( "alpha_blending",   _alphaBlending );

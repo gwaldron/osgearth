@@ -53,24 +53,24 @@ namespace osgEarth { namespace Features
         optional<double>& maxGranularity() { return _maxGranularity_deg; }
         const optional<double>& maxGranularity() const { return _maxGranularity_deg; }
 
-        /** Whether to merge geometry from multiple features */
-        optional<bool>& mergeGeometry() { return _mergeGeometry; }
-        const optional<bool>& mergeGeometry() const { return _mergeGeometry; }
-
         /** Whether to explicity set/clear GL lighting on the result */
         optional<bool>& enableLighting() { return _lit; }
         const optional<bool>& enableLighting() const { return _lit; }
 
+        /** Information that controls paging and tiling of the dataset */
         optional<FeatureDisplayLayout>& layout() { return _layout; }
         const optional<FeatureDisplayLayout>& layout() const { return _layout; }
 
         optional<bool>& clusterCulling() { return _clusterCulling; }
         const optional<bool>& clusterCulling() const { return _clusterCulling; }
 
+        /** Expression that will assign a node name to geometry built from each feature.
+            Note; this may disable various scene graph optimizations. */
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
-        /** Whether to create feature indexes (unset = no) */
+        /** Whether to index feature data for use with the global ObjectIndex (default = yes)
+            for the purposes of search, picking, etc. */
         optional<FeatureSourceIndexOptions>& featureIndexing() { return _featureIndexing; }
         const optional<FeatureSourceIndexOptions>& featureIndexing() const { return _featureIndexing; }
 
@@ -120,7 +120,6 @@ namespace osgEarth { namespace Features
         optional<StringExpression>          _featureNameExpr;
         optional<bool>                      _lit;
         optional<double>                    _maxGranularity_deg;
-        optional<bool>                      _mergeGeometry;
         optional<bool>                      _clusterCulling;
         optional<bool>                      _backfaceCulling;
         optional<bool>                      _alphaBlending;

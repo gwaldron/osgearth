@@ -102,7 +102,7 @@ LoadTileData::invoke()
                         TerrainTileImageLayerModel* layerModel = i->get();
                         if ( layerModel && layerModel->getTexture() )
                         {
-                            mptex->setLayer( layerModel->getImageLayer(), layerModel->getTexture() );
+                            mptex->setLayer( layerModel->getImageLayer(), layerModel->getTexture(), layerModel->getOrder() );
                         }
                     }
 
@@ -184,7 +184,7 @@ LoadTileData::apply()
 
             const SamplerBinding* color = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
 
-            // Find the mptexture, and then remove it since it was only in the state set for ICO compilation.d
+            // Find the mptexture, and then remove it since it was only in the state set for ICO compilation.
             osg::ref_ptr<MPTexture> mptex = dynamic_cast<MPTexture*>(
                 getStateSet()->getTextureAttribute( color->unit(), osg::StateAttribute::TEXTURE) );
 

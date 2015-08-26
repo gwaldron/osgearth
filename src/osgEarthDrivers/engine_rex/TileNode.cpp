@@ -512,6 +512,11 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const S
             }
         }
 
+        else if ( binding->usage().isSetTo(binding->COLOR_PARENT) )
+        {
+            //nop -- this is handled as part of the COLOR binding
+        }
+
         else
         {
             osg::StateAttribute* sa = getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE);        

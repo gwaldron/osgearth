@@ -72,9 +72,11 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
 {
     OE_START_TIMER(fetch_image_layers);
 
+    int order = 0;
+
     for(ImageLayerVector::const_iterator i = frame.imageLayers().begin();
         i != frame.imageLayers().end();
-        ++i )
+        ++i, ++order )
     {
         ImageLayer* layer = i->get();
 
@@ -153,6 +155,12 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                 TerrainTileImageLayerModel* layerModel = new TerrainTileImageLayerModel();
                 layerModel->setImageLayer( layer );
 
+                // preserve layer ordering. Without this, layer draw order can get out of whack
+                // if you have a layer that doesn't appear in the model until a higher LOD. Instead
+                // of just getting appended to the draw set, the Order will make sure it gets 
+                // inserted in the correct position according to the map model.
+                layerModel->setOrder( order );
+
                 // made an image. Store as a texture with an identity matrix.
                 osg::Texture* texture;
                 if ( layer->isCoverage() )
@@ -172,6 +180,7 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
                         layerModel->setLocator( GeoLocator::createForExtent(geoImage.getExtent(), frame.getMapInfo()) );
                 }
 #endif
+
 
                 if ( layer->isShared() )
                     model->sharedLayers().push_back( layerModel );

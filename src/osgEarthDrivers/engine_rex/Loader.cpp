@@ -220,6 +220,7 @@ PagerLoader::addChild(osg::Node* node)
         {
           #ifdef USE_MERGE_QUEUE
             _mergeQueue.push( req );
+            req->setState(Request::MERGING);
           #else
             req->apply();
             req->setState(Request::IDLE);
@@ -247,7 +248,6 @@ PagerLoader::invokeAndRelease(UID requestUID)
     if ( request.valid() )
     {
         request->invoke();
-        request->setState(Request::MERGING);
     }
 
     return request.release();

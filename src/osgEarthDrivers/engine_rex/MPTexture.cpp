@@ -30,8 +30,10 @@ osg::Texture2D()
 }
 
 void
-MPTexture::setLayer(const ImageLayer* layer, osg::Texture* tex)
+MPTexture::setLayer(const ImageLayer* layer, osg::Texture* tex, int order)
 {
+    Passes::iterator insertionPoint = _passes.end();
+
     // If the layer already exists as a pass, update it
     for(Passes::iterator pass = _passes.begin(); pass != _passes.end(); ++pass)
     {
@@ -39,16 +41,21 @@ MPTexture::setLayer(const ImageLayer* layer, osg::Texture* tex)
         {
             pass->_texture = tex;
             pass->_ownsTexture = true;
-            pass->_matrix = osg::Matrixf::identity();
+            pass->_textureMatrix = osg::Matrixf::identity();
             return;
         }
+        else if ( order < pass->_order )
+        {
+            insertionPoint = pass;
+        }            
     }
 
-    // Layer didn't already exist; add it
-    _passes.push_back(Pass());
-    Pass& pass = _passes.back();
+    // Layer didn't already exist; add it (in the proper order)
+    Pass& pass = *_passes.insert( insertionPoint, Pass() );
     pass._layer   = layer;
     pass._texture = tex;
+    pass._parentTexture = tex;
+    pass._order   = order;
     pass._ownsTexture = true;
 }
 
@@ -59,7 +66,7 @@ MPTexture::merge(MPTexture* rhs)
     {
         for(Passes::const_iterator pass = rhs->getPasses().begin(); pass != rhs->getPasses().end(); ++pass)
         {
-            setLayer( pass->_layer.get(), pass->_texture.get() );
+            setLayer( pass->_layer.get(), pass->_texture.get(), pass->_order );
         }
     }
 }
@@ -69,21 +76,26 @@ MPTexture::inheritState(MPTexture* parent, const osg::Matrixf& scaleBias)
 {
     if ( parent )
     {
-        // First time around, just copy the parent's passes and sub-matrix all textures.
+        // First time around, copy the parent's data in whole, and then scale/bias
+        // the texture matrix to the appropriate quadrant
         if ( _passes.empty() )
         {
+            // copy it:
             _passes = parent->getPasses();
+
             for(Passes::iterator pass = _passes.begin(); pass != _passes.end(); ++pass)
             {
-                pass->_matrix.preMult(scaleBias);
+                // scale and bias the texture matrix; then the new parent texture just
+                // points to the main texture until the main texture gets replaced later.
+                pass->_textureMatrix.preMult( scaleBias );
+                pass->_parentTexture = pass->_texture.get();
+                pass->_parentTextureMatrix = pass->_textureMatrix;
                 pass->_ownsTexture = false;
-
-                pass->_textureParent = pass->_texture;
-                pass->_matrixWRTParent  = pass->_matrix;
             }
         }
 
-        // If we already have data, recalculate the sub-matrixing on existing textures.
+        // If this object already has data, recalculate the sub-matrixing on all
+        // existing textures and parent-textures:
         else
         {
             for(Passes::const_iterator parentPass = parent->getPasses().begin(); parentPass != parent->getPasses().end(); ++parentPass)
@@ -92,16 +104,27 @@ MPTexture::inheritState(MPTexture* parent, const osg::Matrixf& scaleBias)
                 {
                     if ( parentPass->_layer.get() == pass->_layer.get())
                     {
-                        if (!pass->_ownsTexture)
+                        // If we don't own the texture for this layer, re-copy it from the parent (in case it changed)
+                        // and recalculate the scale/bias matrix:
+                        if ( !pass->_ownsTexture )
                         {
                             pass->_texture = parentPass->_texture.get();
-                            pass->_matrix = parentPass->_matrix;
-                            pass->_matrix.preMult( scaleBias );
+                            pass->_textureMatrix = parentPass->_textureMatrix;
+                            pass->_textureMatrix.preMult( scaleBias );
                         }
                         
-                        pass->_textureParent = parentPass->_texture.get();
-                        pass->_matrixWRTParent  = parentPass->_matrix;
-                        pass->_matrixWRTParent.preMult( scaleBias );
+                        // Update the parent texture always.
+                        if ( parentPass->_texture.valid() )
+                        {
+                            pass->_parentTexture = parentPass->_texture.get();
+                            pass->_parentTextureMatrix = parentPass->_textureMatrix;
+                            pass->_parentTextureMatrix.preMult( scaleBias );
+                        }
+                        else
+                        {
+                            pass->_parentTexture = pass->_texture.get();
+                            pass->_parentTextureMatrix = pass->_textureMatrix;
+                        }
                     }
                 }
             }
@@ -114,7 +137,7 @@ MPTexture::compileGLObjects(osg::State& state) const
 {
     for(Passes::const_iterator pass = _passes.begin(); pass != _passes.end(); ++pass)
     {
-        if ( pass->_texture.valid() && pass->_ownsTexture )
+        if ( pass->_texture.valid() ) //&& pass->_ownsTexture )
         {
             pass->_texture->apply(state);
         }

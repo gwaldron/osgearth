@@ -41,14 +41,26 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** A single color layer pass. */
         struct Pass
         {
-            Pass() : _ownsTexture(false) { }
-            osg::ref_ptr<const ImageLayer> _layer;          // source image layer
-            osg::ref_ptr<osg::Texture>     _texture;        // texture object
-            bool                           _ownsTexture;    // whether this key/pass owns this texture.
-            osg::Matrixf                   _matrix;         // scale bias matrix for inherited textures.
+            Pass() : _ownsTexture(false), _order(0) { }
 
-            osg::ref_ptr<osg::Texture>     _textureParent;
-            osg::Matrixf                   _matrixWRTParent;
+            Pass(const Pass& rhs) {
+                _layer = rhs._layer.get();
+                _order = rhs._order;
+                _texture = rhs._texture.get();
+                _textureMatrix = rhs._textureMatrix;
+                _ownsTexture = false; //rhs._ownsTexture;
+                _parentTexture = rhs._parentTexture.get();
+                _parentTextureMatrix = rhs._parentTextureMatrix;
+            }
+
+            osg::ref_ptr<const ImageLayer> _layer;          // source image layer
+            int                            _order;          // rendering order
+            osg::ref_ptr<osg::Texture>     _texture;        // texture object
+            osg::Matrixf                   _textureMatrix;  // scale bias matrix for inherited textures.
+            bool                           _ownsTexture;    // whether this key/pass owns this texture.
+
+            osg::ref_ptr<osg::Texture>     _parentTexture;
+            osg::Matrixf                   _parentTextureMatrix;
         };
 
         typedef std::vector<Pass> Passes;
@@ -58,7 +70,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         MPTexture();
 
         /** Sets or adds an image layer and associated texture object as a pass. */
-        void setLayer(const ImageLayer* layer, osg::Texture* tex);
+        void setLayer(const ImageLayer* layer, osg::Texture* tex, int order);
 
         /** Passes to be drawn for this object. */
         const Passes& getPasses() const { return _passes; }

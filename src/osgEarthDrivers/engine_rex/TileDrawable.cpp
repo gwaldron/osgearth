@@ -156,28 +156,26 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 
             if ( pass._layer->getVisible() && pass._layer->getOpacity() > 0.1 )
             {
-                {
-                    // Apply the texture.
-                    state.setActiveTextureUnit( _textureImageUnit );
-                    const osg::StateAttribute* lastTex = state.getLastAppliedTextureAttribute(_textureImageUnit, osg::StateAttribute::TEXTURE);
-                    if ( lastTex != pass._texture.get() )
-                        pass._texture->apply( state );
+                // Apply the texture.
+                state.setActiveTextureUnit( _textureImageUnit );
+                const osg::StateAttribute* lastTex = state.getLastAppliedTextureAttribute(_textureImageUnit, osg::StateAttribute::TEXTURE);
+                if ( lastTex != pass._texture.get() )
+                    pass._texture->apply( state );
 
-                    // Apply the texture matrix.
-                    ext->glUniformMatrix4fv( texMatrixLocation, 1, GL_FALSE, pass._matrix.ptr() );
-                }
+                // Apply the texture matrix.
+                ext->glUniformMatrix4fv( texMatrixLocation, 1, GL_FALSE, pass._textureMatrix.ptr() );
 
-                bool texParentExists = pass._textureParent.valid();
+                bool texParentExists = pass._parentTexture.valid();
                 if ( texParentExists )
                 {
                     // Apply the parent texture.
                     state.setActiveTextureUnit( _textureParentImageUnit );
                     const osg::StateAttribute* lastTex = state.getLastAppliedTextureAttribute(_textureParentImageUnit, osg::StateAttribute::TEXTURE);
-                    if ( lastTex != pass._textureParent.get() )
-                        pass._textureParent->apply( state );
+                    if ( lastTex != pass._parentTexture.get() )
+                        pass._parentTexture->apply( state );
 
                     // Apply the parent texture matrix.
-                    ext->glUniformMatrix4fv( texMatrixParentLocation, 1, GL_FALSE, pass._matrixWRTParent.ptr() );
+                    ext->glUniformMatrix4fv( texMatrixParentLocation, 1, GL_FALSE, pass._parentTextureMatrix.ptr() );
                 }
 
                 if ( !texParentExists_lastValue.isSetTo(texParentExists) )

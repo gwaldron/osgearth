@@ -21,10 +21,6 @@ uniform vec4	  oe_tile_grid_dimensions;
 uniform vec4	  oe_tile_key;
 uniform vec4	  oe_tile_extents;
 
-
-// replaced at installation fine; see vp_define
-#define OE_REX_VERTEX_MORPHING
-
 // Morphs a vertex using a neighbor.
 void oe_rex_MorphVertex(inout vec3 position, inout vec2 uv, in vec3 neighborPosition)
 {

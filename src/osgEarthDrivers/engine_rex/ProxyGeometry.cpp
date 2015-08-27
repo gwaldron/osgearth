@@ -21,6 +21,7 @@
 
 #include <osgEarth/Locators>
 #include <osgEarth/QuadTree>
+#include <osg/KdTree>
 
 using namespace osg;
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -33,54 +34,54 @@ using namespace osgEarth;
 IndexPool ProxyGeometry::_indexPool;
 namespace 
 {
-unsigned getNumberOfVerts(unsigned tileSize)
-{
-    return (tileSize*tileSize);    
-}
-
-unsigned getNumberOfIndices(unsigned tileSize)
-{
-    return (tileSize-1) * (tileSize-1) * 6;
-}
-
-unsigned getNumTriangles(unsigned tileSize)
-{
-    return (tileSize-1)*(tileSize-1)*2;
-}
-
-void tessellate(osg::DrawElements* primSet, unsigned tileSize, bool swapOrientation)
-{
-    int i00;
-    int i01;
-    for(unsigned j=0; j<tileSize-1; ++j)
+    unsigned getNumberOfVerts(unsigned tileSize)
     {
-        for(unsigned i=0; i<tileSize-1; ++i)
-        {
-            if (swapOrientation)
-            {
-                i01 = j*tileSize + i;
-                i00 = i01+tileSize;
-            }
-            else
-            {
-                i00 = j*tileSize + i;
-                i01 = i00+tileSize;
-            }
-
-            int i10 = i00+1;
-            int i11 = i01+1;
-
-            primSet->addElement(i01);
-            primSet->addElement(i00);
-            primSet->addElement(i11);
-
-            primSet->addElement(i00);
-            primSet->addElement(i10);
-            primSet->addElement(i11);
-        }
+        return (tileSize*tileSize);    
     }
-    primSet->dirty();
-}
+
+    unsigned getNumberOfIndices(unsigned tileSize)
+    {
+        return (tileSize-1) * (tileSize-1) * 6;
+    }
+
+    unsigned getNumTriangles(unsigned tileSize)
+    {
+        return (tileSize-1)*(tileSize-1)*2;
+    }
+
+    void tessellate(osg::DrawElements* primSet, unsigned tileSize, bool swapOrientation)
+    {
+        int i00;
+        int i01;
+        for(unsigned j=0; j<tileSize-1; ++j)
+        {
+            for(unsigned i=0; i<tileSize-1; ++i)
+            {
+                if (swapOrientation)
+                {
+                    i01 = j*tileSize + i;
+                    i00 = i01+tileSize;
+                }
+                else
+                {
+                    i00 = j*tileSize + i;
+                    i01 = i00+tileSize;
+                }
+
+                int i10 = i00+1;
+                int i11 = i01+1;
+
+                primSet->addElement(i01);
+                primSet->addElement(i00);
+                primSet->addElement(i11);
+
+                primSet->addElement(i00);
+                primSet->addElement(i10);
+                primSet->addElement(i11);
+            }
+        }
+        primSet->dirty();
+    }
 }
 
 DrawElements* IndexPool::getOrCreate(unsigned tileSize, bool swapOrientation)
@@ -154,9 +155,11 @@ ProxyGeometry::getElevationTexture(void) const
 void
 ProxyGeometry::build(void)
 {
-    constructEmptyGeometry();
+    constructEmptyGeometry();    
     constructXReferenceFrame();
+    OE_START_TIMER(b1);
     makeVertices();
+    double t1 = OE_STOP_TIMER(b1);
 
     QuadTree* quadTree = new QuadTree();
     QuadTree::BuildOptions options;
@@ -166,7 +169,8 @@ ProxyGeometry::build(void)
     quadTree->build(options, this);
     this->setShape(quadTree);
 
-    OE_DEBUG << LC << "Built proxy geometry: "<<_key.str()<<std::endl;
+
+    OE_INFO << LC << "Built proxy: "<<_key.str()<<", t=" << t1*1000 << " ms\n";
 }
 
 void
@@ -222,7 +226,7 @@ ProxyGeometry::makeVertices()
             osg::Vec3d normal = (modelPlusOne*_world2local)-modelLTP;
             normal.normalize();
 
-            modelLTP = modelLTP + normal*elevationImageReader.elevationN(nx,ny);
+            //modelLTP = modelLTP + normal*elevationImageReader.elevationN(nx,ny);
             verts->push_back( modelLTP);
         }
     }

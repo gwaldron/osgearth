@@ -39,6 +39,8 @@ using namespace osgEarth;
 
 #define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
 
+#define USE_PROXY_SURFACE 0
+
 #define LC "[TileNode] "
 
 namespace
@@ -435,6 +437,7 @@ void TileNode::regularUpdate(osg::NodeVisitor& nv)
 
     else 
     {
+#if USE_PROXY_SURFACE
         osgUtil::IntersectionVisitor* iv = dynamic_cast<osgUtil::IntersectionVisitor*>( &nv );
         if (iv)
         {
@@ -444,6 +447,7 @@ void TileNode::regularUpdate(osg::NodeVisitor& nv)
             }
         }
         else
+#endif
         {
             _surface->accept( nv );
         }
@@ -580,7 +584,7 @@ TileNode::updateProxyGeometry(const SamplerBinding* elevBinding, const MapInfo& 
 }
 
 void
-TileNode::updateUpdateExtrema(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize)
+TileNode::updateElevationExtrema(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize)
 {
     const osg::Uniform* uniformScaleBiasMatrix = getStateSet()->getUniform(elevBinding->matrixName());
     if ( !uniformScaleBiasMatrix )
@@ -588,17 +592,22 @@ TileNode::updateUpdateExtrema(const SamplerBinding* elevBinding, const MapInfo& 
         OE_WARN << LC << getTileKey().str() << " : recalculateExtrema: illegal state\n";
         return;
     }
+
     osg::Matrixf matrixScaleBias;
     uniformScaleBiasMatrix->get(matrixScaleBias);
 
     // update the elevation extrema
     bool extremaOK = false;
+    osg::ref_ptr<const osg::Image> elevRaster;
     TileNode* parent = 0L;
     for(TileNode* node = this; node != 0L && !extremaOK; node = parent)
     {
         osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(elevBinding->unit(), osg::StateAttribute::TEXTURE));
         if ( elevTex )
         {
+            // remember the raster:
+            elevRaster = elevTex->getImage(0);
+           
             osg::Vec2f extrema;
             extremaOK = ElevationTexureUtils::findExtrema(elevTex, matrixScaleBias, getTileKey(), extrema);
             if ( extremaOK )
@@ -609,6 +618,11 @@ TileNode::updateUpdateExtrema(const SamplerBinding* elevBinding, const MapInfo& 
             }
         }
         parent = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
+    }
+
+    if ( elevRaster )
+    {
+        _surface->setElevationRaster( elevRaster.get(), matrixScaleBias );
     }
 
 
@@ -627,8 +641,10 @@ TileNode::updateElevationData(const RenderBindings& bindings, const MapInfo& map
     if ( !elevBinding )
         return;
 
+#if USE_PROXY_GEOMETRY
     updateProxyGeometry(elevBinding, mapInfo, tileSize);
-    updateUpdateExtrema(elevBinding, mapInfo, tileSize);
+#endif
+    updateElevationExtrema(elevBinding, mapInfo, tileSize);
 }
 
 void

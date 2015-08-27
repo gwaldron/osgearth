@@ -69,6 +69,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // underlying geometry, possible shared between this tile and other.
         osg::ref_ptr<osg::Geometry> _geom;
 
+        // tile dimensions
+        int _tileSize;
 
         // local elevation extrema
         osg::Vec2f _minmax;
@@ -81,6 +83,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         int _textureParentImageUnit;
 
         const TileKey _key;
+
+        osg::ref_ptr<const osg::Image> _elevationRaster;
+        osg::Matrixf                   _elevationScaleBias;
 
     public:
         
@@ -112,6 +117,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // Sets the min and max elevation for verts in this tile. Necessary since the elevation
         void setElevationExtrema(const osg::Vec2f& minmax);
 
+        // Sets the elevation raster for this tile
+        void setElevationRaster(const osg::Image* image, const osg::Matrixf& scaleBias);
+
         osg::BoundingBox computeBox() const;
         const osg::BoundingBox& getBox() const;
 
@@ -140,10 +148,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void accept(osg::Drawable::ConstAttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
 
         bool supports(osg::PrimitiveFunctor& f) const { return true; }
-        void accept(osg::PrimitiveFunctor& f) const {}
+        void accept(osg::PrimitiveFunctor& f) const;
         
         bool supports(osg::PrimitiveIndexFunctor& f) const { return true; }
-        void accept(osg::PrimitiveIndexFunctor& f) const {}
+        void accept(osg::PrimitiveIndexFunctor& f) const { }
         
         // recalculate the bound for the tile key uniform.
 #if OSG_VERSION_GREATER_THAN(3,3,1)

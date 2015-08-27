@@ -137,7 +137,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void updatePerFrameUniforms(const osg::NodeVisitor& nv);
 
         void updateProxyGeometry(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
-        void updateUpdateExtrema(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
+        void updateElevationExtrema(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

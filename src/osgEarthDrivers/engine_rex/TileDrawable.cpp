@@ -26,6 +26,7 @@
 #include <iterator>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/ImageUtils>
 
 using namespace osg;
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -58,6 +59,8 @@ _drawPatch   ( false )
 
     _textureImageUnit       = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR)->unit();
     _textureParentImageUnit = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR_PARENT)->unit();
+
+    _tileSize = (int)sqrt((float)_geom->getVertexArray()->getNumElements());
 }
 
 void
@@ -123,7 +126,7 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
     GLint orderLocation              = -1;
     GLint texMatrixLocation          = -1;
     GLint texMatrixParentLocation    = -1;
-    GLint texParentExistsLocation     = -1;
+    GLint texParentExistsLocation    = -1;
 
     // The PCP can change (especially in a VirtualProgram environment). So we do need to
     // requery the uni locations each time unfortunately. TODO: explore optimizations.
@@ -260,6 +263,14 @@ TileDrawable:: COMPUTE_BOUND() const
     return bbox;
 }
 
+void
+TileDrawable::setElevationRaster(const osg::Image*   image,
+                                 const osg::Matrixf& scaleBias)
+{
+    _elevationRaster = image;
+    _elevationScaleBias = scaleBias;
+}
+
 void    
 TileDrawable::setElevationExtrema(const osg::Vec2f& minmax)
 {
@@ -277,6 +288,55 @@ osg::BoundingBox
 TileDrawable::computeBox() const
 {
     return COMPUTE_BOUND();
+}
+
+void
+TileDrawable::accept(osg::PrimitiveFunctor& f) const
+{
+    if ( !_elevationRaster.valid() )
+        return;
+
+    const osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(_geom->getVertexArray());
+    const osg::Vec3Array* normals = static_cast<osg::Vec3Array*>(_geom->getNormalArray());
+
+    ImageUtils::PixelReader elevation(_elevationRaster.get());
+
+    float
+        scaleU = _elevationScaleBias(0,0),
+        scaleV = _elevationScaleBias(1,1),
+        biasU  = _elevationScaleBias(3,0),
+        biasV  = _elevationScaleBias(3,1);    
+    
+    for(int t=0; t<_tileSize-1; ++t)
+    {
+        float v  = (float)t     / (float)(_tileSize-1);
+        float v1 = (float)(t+1) / (float)(_tileSize-1);
+
+        f.begin( GL_QUAD_STRIP );
+
+        for(int s=0; s<_tileSize; ++s)
+        {
+            float u = (float)s / (float)(_tileSize-1);
+
+            int index = t*_tileSize + s;
+            {
+                const osg::Vec3f& vert   = (*verts)[index];
+                const osg::Vec3f& normal = (*normals)[index];
+                float h = elevation(u*scaleU+biasU, v*scaleV+biasV).r();
+                f.vertex( vert + normal*h );
+            }
+
+            index += _tileSize;
+            {
+                const osg::Vec3f& vert = (*verts)[index];
+                const osg::Vec3f& normal = (*normals)[index];
+                float h = elevation(u*scaleU+biasU, v1*scaleV+biasV).r();
+                f.vertex( vert + normal*h );
+            }
+        }
+
+        f.end();
+    }
 }
 
 void 

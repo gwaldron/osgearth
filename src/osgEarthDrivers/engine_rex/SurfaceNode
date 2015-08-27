@@ -51,6 +51,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void setElevationExtrema(const osg::Vec2f& minmax);
 
+        void setElevationRaster(const osg::Image* raster, const osg::Matrixf& scaleBias);
+
         const osg::BoundingBox& getWorldBoundingBox() const { return _bbox; }
 
         const osg::BoundingBox& getAlignedBoundingBox() const;

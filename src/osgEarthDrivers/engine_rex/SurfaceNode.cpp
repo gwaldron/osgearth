@@ -264,6 +264,16 @@ SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
 }
 
 void
+SurfaceNode::setElevationRaster(const osg::Image*   raster,
+                                const osg::Matrixf& scaleBias)
+{
+    if ( _drawable.valid() )
+    {
+        _drawable->setElevationRaster( raster, scaleBias );
+    }
+}
+
+void
 SurfaceNode::addDebugNode(const osg::BoundingBox& box)
 {
     _debugText = 0;

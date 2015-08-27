@@ -72,6 +72,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             unsigned uiMorphLOD,
             const MapInfo&               mapInfo,
             osg::ref_ptr<osg::Geometry>& out);
+
     protected:
         virtual ~GeometryPool() { }
 

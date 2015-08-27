@@ -208,7 +208,7 @@ SimpleOceanNode::rebuild()
 
         // trick to mitigate z-fighting..
         ss->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false) );
-        ss->setRenderBinDetails( 15, "RenderBin" );
+        ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
 
         // load up a surface texture
         osg::ref_ptr<osg::Image> surfaceImage;

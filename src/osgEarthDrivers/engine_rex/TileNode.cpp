@@ -81,7 +81,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
     osg::ref_ptr<osg::Geometry> geom;
     bool isProjected = _key.getProfile()->getSRS()->isProjected();
     unsigned lodForMorphing = context->getSelectionInfo().lodForMorphing(isProjected);
-    context->getGeometryPool()->getPooledGeometry(key, lodForMorphing, context->getMapFrame().getMapInfo(), geom);
+    context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom);
 
     TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
     surfaceDrawable->setDrawAsPatches(false);
@@ -451,8 +451,6 @@ void TileNode::regularUpdate(osg::NodeVisitor& nv)
         {
             _surface->accept( nv );
         }
-        
-        //_landCover->accept( nv );
     }
 }
 

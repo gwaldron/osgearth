@@ -59,17 +59,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 return patch != rhs.patch;
             }
 
-            int    lod;
-            double yMin;
-            bool   patch;
-            unsigned    size;
+            int      lod;
+            double   yMin;
+            bool     patch;
+            unsigned size;
         };
 
         typedef std::map<GeometryKey, osg::ref_ptr<osg::Geometry> > GeometryMap;
 
         void getPooledGeometry(
-            const TileKey&               tileKey, 
-            unsigned uiMorphLOD,
+            const TileKey&               tileKey,
             const MapInfo&               mapInfo,
             osg::ref_ptr<osg::Geometry>& out);
 
@@ -91,7 +90,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::Geometry* createGeometry(
             const TileKey& tileKey,
-            unsigned uiMorphLOD,
             const MapInfo& mapInfo,
             MaskGenerator* maskSet ) const;
 

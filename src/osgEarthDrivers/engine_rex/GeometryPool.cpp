@@ -19,7 +19,6 @@
 #include "GeometryPool"
 #include <osgEarth/Locators>
 #include <osg/Point>
-#include <osg/PatchParameter>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;

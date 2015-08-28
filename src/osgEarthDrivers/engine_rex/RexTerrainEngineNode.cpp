@@ -33,11 +33,16 @@
 #include <osgEarth/Utils>
 #include <osgEarth/ObjectIndex>
 
+#include <osg/Version>
 #include <osg/Depth>
 #include <osg/BlendFunc>
-#include <osg/PatchParameter>
 #include <osg/Multisample>
 #include <osgUtil/RenderBin>
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
+#   define HAVE_OSG_PATCH_PARAMETER
+#   include <osg/PatchParameter>
+#endif
 
 #include <cstdlib> // for getenv
 
@@ -883,7 +888,9 @@ RexTerrainEngineNode::updateState()
         // install patch param if we are tessellation on the GPU.
         if ( _terrainOptions.gpuTessellation() == true )
         {
-            terrainStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
+            #ifdef HAVE_PATCH_PARAMETER
+              terrainStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
+            #endif
         }
 
         // install shaders, if we're using them.
@@ -944,7 +951,9 @@ RexTerrainEngineNode::updateState()
                     new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
                     osg::StateAttribute::OVERRIDE );
 
-                landCoverStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
+                #ifdef HAVE_OSG_PATCH_PARAMETER
+                    landCoverStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
+                #endif
             }
 
             // assemble color filter code snippets.

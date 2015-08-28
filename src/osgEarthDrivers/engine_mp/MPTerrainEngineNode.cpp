@@ -45,7 +45,6 @@
 #include <osg/Timer>
 #include <osg/Depth>
 #include <osg/BlendFunc>
-#include <osg/PatchParameter>
 #include <osgDB/DatabasePager>
 #include <osgUtil/RenderBin>
 #include <osgUtil/RenderLeaf>

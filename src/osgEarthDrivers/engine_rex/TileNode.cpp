@@ -285,6 +285,7 @@ TileNode::getVisibilityRangeHint(unsigned firstLOD) const
     return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
 
+// 0=off, 1=on
 #define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
 
 bool

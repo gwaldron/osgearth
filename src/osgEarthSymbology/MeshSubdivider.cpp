@@ -851,6 +851,9 @@ namespace
         const osg::Matrixd&  L2W, // local=>world xform
         unsigned int         maxElementsPerEBO )
     {
+        if ( geom.getNumPrimitiveSets() == 0 )
+            return;
+
         GLenum mode = geom.getPrimitiveSet(0)->getMode();
 
         if ( mode == GL_POINTS )

@@ -1144,7 +1144,11 @@ namespace
         }
 
         // Use the existing DrawElements on the surface so we merge the skirts and the surface together.
-        osg::ref_ptr<osg::DrawElements> elements = dynamic_cast< osg::DrawElements* >(d.surface->getPrimitiveSet(0));
+        osg::ref_ptr<osg::DrawElements> elements;
+        if ( d.surface->getNumPrimitiveSets() > 0 )
+        {
+            elements = dynamic_cast< osg::DrawElements* >(d.surface->getPrimitiveSet(0));
+        }
         if (!elements)
         {
             OE_WARN << LC << "Couldn't find existing DrawElements" << std::endl;

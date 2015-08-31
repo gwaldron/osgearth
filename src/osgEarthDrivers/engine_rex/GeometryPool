@@ -32,8 +32,17 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     using namespace osgEarth;
 
     /**
-     * Pooled geometry manager.
-     * Concept adapted from OSG's osgTerrain::GeometryPool
+     * Pool of terrain tile geometries.
+     *
+     * In a geocentric map, every tile at a particular LOD and a particular latitudinal
+     * (north-south) extent shares exactly the same geometry; each tile is just shifted
+     * and rotated differently. Therefore we can use the same Geometry for all tiles that
+     * share the same LOD and same min/max latitude in a geocentric map. In a projected
+     * map, all tiles at a given LOD share the same geometry regardless of extent, so eve
+     * more sharing is possible.
+     *
+     * This object creates and returns geometries based on TileKeys, sharing instances
+     * whenever possible. Concept adapted from OSG's osgTerrain::GeometryPool.
      */
     class GeometryPool : public osg::Referenced
     {
@@ -67,6 +76,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         typedef std::map<GeometryKey, osg::ref_ptr<osg::Geometry> > GeometryMap;
 
+        /**
+         * Gets the Geometry associated with a tile key, creating a new one if
+         * necessary and storing it in the pool.
+         */
         void getPooledGeometry(
             const TileKey&               tileKey,
             const MapInfo&               mapInfo,

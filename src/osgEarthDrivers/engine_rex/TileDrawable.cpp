@@ -119,6 +119,10 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
         pcp = state.getLastAppliedProgramObject();
     }
 
+    // safely latch
+    if ( _geom->getNumPrimitiveSets() < 1 )
+        return;
+
     // cannot store these in the object since there could be multiple GCs (and multiple
     // PerContextPrograms) at large
     GLint opacityLocation            = -1;

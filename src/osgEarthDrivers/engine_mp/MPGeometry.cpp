@@ -652,7 +652,7 @@ MPGeometry::accept(osg::PrimitiveIndexFunctor& functor) const
 {
     osg::Geometry::accept(functor);
 
-    if ( getPrimitiveSet(0)->getMode() == GL_PATCHES && _patchTriangles.valid() )
+    if ( getNumPrimitiveSets() > 0 && getPrimitiveSet(0)->getMode() == GL_PATCHES && _patchTriangles.valid() )
     {
         _patchTriangles->accept( functor );
     }
@@ -663,7 +663,7 @@ MPGeometry::accept(osg::PrimitiveFunctor& functor) const
 {
     osg::Geometry::accept(functor);
 
-    if ( getPrimitiveSet(0)->getMode() == GL_PATCHES && _patchTriangles.valid() )
+    if ( getNumPrimitiveSets() > 0 && getPrimitiveSet(0)->getMode() == GL_PATCHES && _patchTriangles.valid() )
     {
         _patchTriangles->accept( functor );
     }

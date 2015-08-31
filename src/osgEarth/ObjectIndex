@@ -36,14 +36,13 @@
 
 namespace osgEarth
 {
-
-#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
+//#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
     typedef unsigned       ObjectID;
     typedef osg::UIntArray ObjectIDArray;
-#else
-    typedef int            ObjectID;
-    typedef osg::IntArray  ObjectIDArray;
-#endif
+//#else
+//    typedef int            ObjectID;
+//    typedef osg::IntArray  ObjectIDArray;
+//#endif
 
     /** 
      * Virutal interface class for building an object index.

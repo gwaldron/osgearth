@@ -1,13 +1,13 @@
 # Locate SilverLining
 # This module defines
 # SILVERLINING_LIBRARY
-# SILVERLINING_FOUND, if false, do not try to link to SilverLining 
+# SILVERLINING_FOUND, if false, do not try to link to SilverLining
 # SILVERLINING_INCLUDE_DIR, where to find the headers
 #
 # $SILVERLINING_DIR is an environment variable that would
 # correspond to the ./configure --prefix=$SILVERLINING_DIR
 #
-# Created by Robert Hauck. 
+# Created by Robert Hauck.
 
 SET(SILVERLINING_DIR "" CACHE PATH "Location of SilverLining SDK")
 
@@ -42,6 +42,22 @@ IF (MSVC11)
 		SET(SILVERLINING_ARCH "vc11/win32")
 	ENDIF (CMAKE_CL_64)
 ENDIF (MSVC11)
+
+IF (MSVC12)
+	IF (CMAKE_CL_64)
+		SET(SILVERLINING_ARCH "vc12/x64")
+	ELSE (CMAKE_CL_64)
+		SET(SILVERLINING_ARCH "vc12/win32")
+	ENDIF (CMAKE_CL_64)
+ENDIF (MSVC12)
+
+IF (MSVC14)
+	IF (CMAKE_CL_64)
+		SET(SILVERLINING_ARCH "vc14/x64")
+	ELSE (CMAKE_CL_64)
+		SET(SILVERLINING_ARCH "vc14/win32")
+	ENDIF (CMAKE_CL_64)
+ENDIF (MSVC14)
 
 IF (MSVC71)
 	SET(SILVERLINING_ARCH "vc7")

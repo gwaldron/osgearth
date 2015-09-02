@@ -156,7 +156,11 @@ TileNode::isDormant(osg::NodeVisitor& nv) const
 void
 TileNode::setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix)
 {
-    _surface->setElevationRaster( image, matrix );
+    if ( _surface.valid() )
+        _surface->setElevationRaster( image, matrix );
+
+    if ( _landCover.valid() )
+        _landCover->setElevationRaster( image, matrix );
 }
 
 const osg::Image*

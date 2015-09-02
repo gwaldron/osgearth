@@ -49,9 +49,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const RenderBindings& bindings,
             TileDrawable*         drawable);
 
-        void setElevationExtrema(const osg::Vec2f& minmax);
+        //void setElevationExtrema(const osg::Vec2f& minmax);
 
         void setElevationRaster(const osg::Image* raster, const osg::Matrixf& scaleBias);
+        const osg::Image* getElevationRaster() const;
+        const osg::Matrixf& getElevationMatrix() const;
 
         const osg::BoundingBox& getWorldBoundingBox() const { return _bbox; }
 
@@ -65,9 +67,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         float minSquaredDistanceFromPoint(const VectorPoints& points, const osg::Vec3& center, float fZoomFactor);
 
-        void setDebugNodeVisible(bool bVisible);
-        bool isDebugNodeVisible(void) const;
         void setDebugText(const std::string& strText);
+
+    public: // osg::Node
+
+        //osg::BoundingSphere computeBound() const;
 
     protected:
         virtual ~SurfaceNode() { }
@@ -79,7 +83,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         osg::ref_ptr<osg::Geode>    _debugGeode;
         osg::ref_ptr<osgText::Text> _debugText;
-        bool                        _debugNodeVisible;
         static const bool           _enableDebugNodes;
 
         void addDebugNode(const osg::BoundingBox& box);

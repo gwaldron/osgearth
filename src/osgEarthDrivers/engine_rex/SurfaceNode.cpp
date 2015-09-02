@@ -21,6 +21,7 @@
 #include "TileDrawable"
 
 #include <osgEarth/TileKey>
+#include <osgEarth/Registry>
 
 #include <osg/CullStack>
 #include <osg/Geode>
@@ -39,7 +40,7 @@ using namespace osgEarth;
 
 namespace
 {
-    osg::Geode* makeBBox(const osg::BoundingBox& bbox)
+    osg::Geode* makeBBox(const osg::BoundingBox& bbox, const TileKey& key)
     {        
         osg::Geode* geode = new osg::Geode();
         std::string sizeStr = "(empty)";
@@ -77,25 +78,27 @@ namespace
 
             geode->addDrawable(geom);
 
-            sizeStr = Stringify() << bbox.xMax()-bbox.xMin();
-            sizeStr = Stringify() << "min="<<bbox.zMin()<<"\nmax="<<bbox.zMax();
+            sizeStr = Stringify() << key.str() << "\nmin="<<bbox.zMin()<<"\nmax="<<bbox.zMax();
             zpos = bbox.zMax();
         }
 
         osgText::Text* textDrawable = new osgText::Text();
+        textDrawable->setDataVariance(osg::Object::DYNAMIC);
         textDrawable->setText( sizeStr );
-        //textDrawable->setFont( osgEarth::Registry::instance()->getDefaultFont() );
+        textDrawable->setFont( osgEarth::Registry::instance()->getDefaultFont() );
         textDrawable->setCharacterSizeMode(textDrawable->SCREEN_COORDS);
-        textDrawable->setCharacterSize(20.0f);
+        textDrawable->setCharacterSize(32.0f);
         textDrawable->setAlignment(textDrawable->CENTER_CENTER);
         textDrawable->setColor(osg::Vec4(1,1,1,1));
         textDrawable->setBackdropColor(osg::Vec4(0,0,0,1));
         textDrawable->setBackdropType(textDrawable->OUTLINE);
         textDrawable->setPosition(osg::Vec3(0,0,zpos));
+        textDrawable->setAutoRotateToScreen(true);
         geode->addDrawable(textDrawable);
 
         geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Program(),0);
         geode->getOrCreateStateSet()->setMode(GL_LIGHTING,0);
+        geode->getOrCreateStateSet()->setRenderBinDetails(INT_MAX, "DepthSortedBin");
 
         return geode;
     }
@@ -103,13 +106,12 @@ namespace
 
 //..............................................................
 
-const bool SurfaceNode::_enableDebugNodes = false; //true;
+const bool SurfaceNode::_enableDebugNodes = ::getenv("OSGEARTH_MP_DEBUG") != 0L;
 
 SurfaceNode::SurfaceNode(const TileKey&        tilekey,
                          const MapInfo&        mapinfo,
                          const RenderBindings& bindings,
                          TileDrawable*         drawable)
-: _debugNodeVisible(false)
 {
     _tileKey = tilekey;
 
@@ -136,8 +138,10 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
     {
         _childrenCorners[i].resize(8);
     }
+
     // Initialize the cached bounding box.
-    setElevationExtrema(osg::Vec2f(0, 0));
+    //setElevationExtrema(osg::Vec2f(0, 0));
+    setElevationRaster( 0L, osg::Matrixf::identity() );
 }
 
 float
@@ -167,15 +171,22 @@ SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radiusSq
     return false;
 }
 
+#if 0
 void
 SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
 {
+#if 0
     // communicate the extrema to the drawable so it can compute a proper bounding box:
     if ( minmax != osg::Vec2f(0,0) )
         _drawable->setElevationExtrema(minmax);
+#endif
 
     // bounding box in local space:
-    const osg::BoundingBox& box = _drawable->getBox();
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
+    const osg::BoundingBox& box = _drawable->getBoundingBox();
+#else
+    const osg::BoundingBox& box = _drawable->getBound();
+#endif
     
     // compute the bounding box in world space:
     const osg::Matrix& local2world = getMatrix();    
@@ -262,31 +273,130 @@ SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
         setDebugNodeVisible(false);
     }
 }
+#endif
 
 void
 SurfaceNode::setElevationRaster(const osg::Image*   raster,
                                 const osg::Matrixf& scaleBias)
 {
-    if ( _drawable.valid() )
+    if ( !_drawable.valid() )
+        return;
+
+    // communicate the raster to the drawable:
+    if ( raster )
     {
         _drawable->setElevationRaster( raster, scaleBias );
     }
+
+    // next compute the bounding box in local space:
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
+    const osg::BoundingBox& box = _drawable->getBoundingBox();
+#else
+    const osg::BoundingBox& box = _drawable->getBound();
+#endif
+    
+    // convert the bounding box in world space:
+    const osg::Matrix& local2world = getMatrix();    
+    _bbox.init();
+    for(int i=0; i<8; ++i)
+    {
+        _worldCorners[i] = (box.corner(i) * local2world);
+        _bbox.expandBy( _worldCorners[i] );
+    }
+
+    osg::Vec3 minZMedians[4];
+    osg::Vec3 maxZMedians[4];
+
+    minZMedians[0] = (box.corner(0)+box.corner(1))*0.5;
+    minZMedians[1] = (box.corner(1)+box.corner(3))*0.5;
+    minZMedians[2] = (box.corner(3)+box.corner(2))*0.5;
+    minZMedians[3] = (box.corner(0)+box.corner(2))*0.5;
+                                  
+    maxZMedians[0] = (box.corner(4)+box.corner(5))*0.5;
+    maxZMedians[1] = (box.corner(5)+box.corner(7))*0.5;
+    maxZMedians[2] = (box.corner(7)+box.corner(6))*0.5;
+    maxZMedians[3] = (box.corner(4)+box.corner(6))*0.5;
+                                  
+    // Child 0 corners
+    _childrenCorners[0][0] =  box.corner(0);
+    _childrenCorners[0][1] =  minZMedians[0];
+    _childrenCorners[0][2] =  minZMedians[3];
+    _childrenCorners[0][3] = (minZMedians[0]+minZMedians[2])*0.5;
+
+    _childrenCorners[0][4] =  box.corner(4);
+    _childrenCorners[0][5] =  maxZMedians[0];
+    _childrenCorners[0][6] =  maxZMedians[3];
+    _childrenCorners[0][7] = (maxZMedians[0]+maxZMedians[2])*0.5;
+
+    // Child 1 corners
+    _childrenCorners[1][0] =  minZMedians[0];
+    _childrenCorners[1][1] =  box.corner(1);
+    _childrenCorners[1][2] = (minZMedians[0]+minZMedians[2])*0.5;
+    _childrenCorners[1][3] =  minZMedians[1];
+                     
+    _childrenCorners[1][4] =  maxZMedians[0];
+    _childrenCorners[1][5] =  box.corner(5);
+    _childrenCorners[1][6] = (maxZMedians[0]+maxZMedians[2])*0.5;
+    _childrenCorners[1][7] =  maxZMedians[1];
+
+    // Child 2 corners
+    _childrenCorners[2][0] =  minZMedians[3];
+    _childrenCorners[2][1] = (minZMedians[0]+minZMedians[2])*0.5;
+    _childrenCorners[2][2] =  box.corner(2);
+    _childrenCorners[2][3] =  minZMedians[2];
+                     
+    _childrenCorners[2][4] =  maxZMedians[3];
+    _childrenCorners[2][5] = (maxZMedians[0]+maxZMedians[2])*0.5;
+    _childrenCorners[2][6] =  box.corner(6);
+    _childrenCorners[2][7] =  maxZMedians[2]; 
+
+    // Child 3 corners
+    _childrenCorners[3][0] = (minZMedians[0]+minZMedians[2])*0.5;
+    _childrenCorners[3][1] =  minZMedians[1];
+    _childrenCorners[3][2] =  minZMedians[2];
+    _childrenCorners[3][3] =  box.corner(3);
+                     
+    _childrenCorners[3][4] = (maxZMedians[0]+maxZMedians[2])*0.5;
+    _childrenCorners[3][5] =  maxZMedians[1];
+    _childrenCorners[3][6] =  maxZMedians[2];
+    _childrenCorners[3][7] =  box.corner(7);
+
+    // Transform to world space
+    for(size_t childIndex = 0; childIndex < _childrenCorners.size(); ++ childIndex)
+    {
+         VectorPoints& childrenCorners = _childrenCorners[childIndex];
+         for(size_t cornerIndex = 0; cornerIndex < childrenCorners.size(); ++cornerIndex)
+         {
+             osg::Vec3& childCorner = childrenCorners[cornerIndex];
+             osg::Vec3 childCornerWorldSpace = childCorner*local2world;
+             childCorner = childCornerWorldSpace;
+         }
+    }
+
+    if( _enableDebugNodes )
+    {
+        removeDebugNode();
+        addDebugNode(box);
+    }
 }
+
+const osg::Image*
+SurfaceNode::getElevationRaster() const
+{
+    return _drawable->getElevationRaster();
+}
+
+const osg::Matrixf&
+SurfaceNode::getElevationMatrix() const
+{
+    return _drawable->getElevationMatrix();
+};
 
 void
 SurfaceNode::addDebugNode(const osg::BoundingBox& box)
 {
     _debugText = 0;
-    _debugGeode = makeBBox(box);
-
-    for(size_t i = 0; i < _debugGeode->getNumDrawables(); ++i)
-    {
-        if (std::string(_debugGeode->getDrawable(i)->className())=="Text")
-        {
-            _debugText = static_cast<osgText::Text*>(_debugGeode->getDrawable(i));
-            break;
-        }
-    }
+    _debugGeode = makeBBox(box, _tileKey);
     addChild( _debugGeode.get() );
 }
 
@@ -310,25 +420,12 @@ SurfaceNode::setDebugText(const std::string& strText)
     _debugText->setText(strText);
 }
 
-void
-SurfaceNode::setDebugNodeVisible(bool bVisible)
-{
-    _debugNodeVisible = bVisible;
-    if (_enableDebugNodes && _debugGeode.valid())
-    {
-        unsigned int mask = (_debugNodeVisible)? ~0x0 : 0;
-        _debugGeode->setNodeMask(mask);
-    }
-}
-
-bool
-SurfaceNode::isDebugNodeVisible(void) const
-{
-    return _debugNodeVisible;
-}
-
 const osg::BoundingBox&
 SurfaceNode::getAlignedBoundingBox() const
 {
-    return _drawable->getBox();
+#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
+    return _drawable->getBoundingBox();
+#else
+    return _drawable->getBound();
+#endif
 }

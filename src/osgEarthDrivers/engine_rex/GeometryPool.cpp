@@ -30,6 +30,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 //// across all shared geometries.
 #define SHARE_TEX_COORDS 1
 
+#if 0
 namespace
 {
     /**
@@ -63,6 +64,7 @@ namespace
         osg::ref_ptr<osg::PrimitiveSet> _patchTriangles;
     };
 }
+#endif
 
 
 GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :
@@ -189,7 +191,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     osg::BoundingSphere tileBound;
 
     // the geometry:
-    SharedGeometry* geom = new SharedGeometry();
+    //SharedGeometry* geom = new SharedGeometry();
+    osg::Geometry* geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
     geom->setUseDisplayList(false);
 
@@ -349,6 +352,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         addSkirtTriangles( i, skirtIndex );
     }
 
+#if 0
     // if we're using patches, we must create a "proxy" primitive set that supports
     // PrimitiveFunctor et al (for intersections, bounds testing, etc.)
     if ( mode == GL_PATCHES )
@@ -357,6 +361,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         patchesAsTriangles->setMode( GL_TRIANGLES );
         geom->setPatchTriangles( patchesAsTriangles );
     }
+#endif
 
     return geom;
 }

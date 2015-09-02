@@ -115,13 +115,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void validate();
 
         // Sets the min and max elevation for verts in this tile. Necessary since the elevation
-        void setElevationExtrema(const osg::Vec2f& minmax);
+        //void setElevationExtrema(const osg::Vec2f& minmax);
 
         // Sets the elevation raster for this tile
         void setElevationRaster(const osg::Image* image, const osg::Matrixf& scaleBias);
+        const osg::Image* getElevationRaster() const;
+        const osg::Matrixf& getElevationMatrix() const;
 
-        osg::BoundingBox computeBox() const;
-        const osg::BoundingBox& getBox() const;
+        //osg::BoundingBox computeBox() const;
+        //const osg::BoundingBox& getBox() const;
 
     public: // osg::Geometry overrides
 
@@ -150,14 +152,16 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool supports(osg::PrimitiveFunctor& f) const { return true; }
         void accept(osg::PrimitiveFunctor& f) const;
         
-        bool supports(osg::PrimitiveIndexFunctor& f) const { return true; }
-        void accept(osg::PrimitiveIndexFunctor& f) const { }
+        /** indexed functor is NOT supported since we need to apply elevation dynamically */
+        bool supports(osg::PrimitiveIndexFunctor& f) const { return false; }
         
+#if 0
         // recalculate the bound for the tile key uniform.
 #if OSG_VERSION_GREATER_THAN(3,3,1)
         osg::BoundingBox computeBoundingBox() const;
 #else
         osg::BoundingBox computeBound() const;
+#endif
 #endif
 
     public:

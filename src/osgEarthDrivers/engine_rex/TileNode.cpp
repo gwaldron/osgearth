@@ -16,8 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-//#undef NDEBUG
-//#include <cassert>
 #include "TileNode"
 #include "SurfaceNode"
 #include "ProxySurfaceNode"
@@ -53,11 +51,6 @@ namespace
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.0f,0,1.0f),
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
     };
-
-    void applyScaleBias(osg::Matrix& m, unsigned quadrant)
-    {
-        m.preMult( scaleBias[quadrant] );
-    }
 }
 
 TileNode::TileNode() : 
@@ -79,27 +72,30 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
-    bool isProjected = _key.getProfile()->getSRS()->isProjected();
-    unsigned lodForMorphing = context->getSelectionInfo().lodForMorphing(isProjected);
     context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom);
 
+    // Create the drawable for the terrain surface:
     TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
     surfaceDrawable->setDrawAsPatches(false);
 
+    // Create the node to house the tile drawable:
     _surface = new SurfaceNode(
         key,
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         surfaceDrawable );
     
+    // Slot it into the proper render bin:
     osg::StateSet* surfaceSS = _surface->getOrCreateStateSet();
     surfaceSS->setRenderBinDetails(0, "oe.SurfaceBin");
     surfaceSS->setNestRenderBins(false);
 
-    // Surface node for rendering land cover geometry.
+    // Create a drawable for land cover geometry.
+    // Land cover will be rendered as patch data instead of triangles.
     TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
     patchDrawable->setDrawAsPatches(true);
 
+    // And a node to house that as well:
     _landCover = new SurfaceNode(
         key,
         context->getMapFrame().getMapInfo(),
@@ -125,10 +121,11 @@ TileNode::create(const TileKey& key, EngineContext* context)
         selectionInfo.initialize(uiFirstLOD, uiMaxLod, uiTileSize, getVisibilityRangeHint(uiFirstLOD));
     }
 
-    createTileSpecificUniforms();
-    updateTileSpecificUniforms(context->getSelectionInfo());
+    // initialize all the per-tile uniforms the shaders will need:
+    createTileUniforms();
+    updateTileUniforms(context->getSelectionInfo());
 
-    // Set up a data container for multipass layer rendering.
+    // Set up a data container for multipass layer rendering:
     _mptex = new MPTexture();
     surfaceDrawable->setMPTexture( _mptex.get() );
 
@@ -157,19 +154,25 @@ TileNode::isDormant(osg::NodeVisitor& nv) const
 }
 
 void
-TileNode::setElevationExtrema(const osg::Vec2f& value)
+TileNode::setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix)
 {
-    if ( _surface.valid() )
-        _surface->setElevationExtrema(value);
+    _surface->setElevationRaster( image, matrix );
+}
 
-    if ( _landCover.valid() )
-        _landCover->setElevationExtrema(value);
+const osg::Image*
+TileNode::getElevationRaster() const
+{
+    return _surface->getElevationRaster();
+}
 
-    _extrema = value;
+const osg::Matrixf&
+TileNode::getElevationMatrix() const
+{
+    return _surface->getElevationMatrix();
 }
 
 void
-TileNode::createTileSpecificUniforms(void)
+TileNode::createTileUniforms()
 {
     // Install the tile key uniform.
     _tileKeyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
@@ -189,7 +192,7 @@ TileNode::createTileSpecificUniforms(void)
 }
 
 void
-TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
+TileNode::updateTileUniforms(const SelectionInfo& selectionInfo)
 {
     //assert(_surface.valid());
     // update the tile key uniform
@@ -209,14 +212,14 @@ TileNode::updateTileSpecificUniforms(const SelectionInfo& selectionInfo)
     float one_by_end_minus_start = fEnd - fStart;
     one_by_end_minus_start = 1.0f/one_by_end_minus_start;
 
-    osg::Vec4f vMorphConstants(
+    osg::Vec4f morphConstants(
           fStart
         , one_by_end_minus_start
         , fEnd * one_by_end_minus_start
         , one_by_end_minus_start
         );
 
-    _tileMorphUniform->set((vMorphConstants));
+    _tileMorphUniform->set( morphConstants );
 
     // Update grid dims
     float fGridDims = selectionInfo.gridDimX()-1;
@@ -258,6 +261,8 @@ TileNode::releaseGLObjects(osg::State* state) const
         getStateSet()->releaseGLObjects(state);
     if ( _surface.valid() )
         _surface->releaseGLObjects(state);
+    if ( _landCover.valid() )
+        _landCover->releaseGLObjects(state);
 
     osg::Group::releaseGLObjects(state);
 }
@@ -289,25 +294,26 @@ TileNode::getVisibilityRangeHint(unsigned firstLOD) const
 #define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
 
 bool
-TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor)
+TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float zoomFactor)
 {
     unsigned currLOD = _key.getLOD();
     if (   currLOD <  selectionInfo.numLods()
         && currLOD != selectionInfo.numLods()-1)
     {
         osg::Vec3 cameraPos = nv.getViewPoint();
+
 #if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
         OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
         OE_INFO << LC <<"LOD Scale: "<<fZoomFactor<<std::endl;
 #endif  
-        float fRadius = (float)selectionInfo.visParameters(currLOD+1)._fVisibility;
-        bool bAnyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, fRadius*fRadius, fZoomFactor);
-        return bAnyChildVisible;
+        float radius = (float)selectionInfo.visParameters(currLOD+1)._fVisibility;
+        bool anyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, radius*radius, zoomFactor);
+        return anyChildVisible;
     }
     return false;
 }
 
-void TileNode::lodSelect(osg::NodeVisitor& nv)
+void TileNode::cull(osg::NodeVisitor& nv)
 {
     if ( nv.getFrameStamp() )
     {
@@ -316,6 +322,7 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
 
     unsigned currLOD = getTileKey().getLOD();
 
+    // TODO: rework this to make it multi-camera safe
     updatePerFrameUniforms(nv);
 
 #if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
@@ -331,10 +338,10 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
 
     const double maxCullTime = 4.0/1000.0;
 
-    bool bShouldSubDivide = shouldSubDivide(nv, selectionInfo, cull->getLODScale()); // && context->getElapsedCullTime() < maxCullTime;
+    bool subdivide = shouldSubDivide(nv, selectionInfo, cull->getLODScale()); // && context->getElapsedCullTime() < maxCullTime;
 
     // If *any* of the children are visible, subdivide.
-    if (bShouldSubDivide)
+    if (subdivide)
     {
         // We are in range of the child nodes. Either draw them or load them.
         unsigned numChildrenReady = 0;
@@ -345,7 +352,7 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
             Threading::ScopedMutexLock exclusive(_mutex);
             if ( getNumChildren() == 0 )
             {
-                createChildren( nv );
+                createChildren( context );
             }
         }
 
@@ -426,29 +433,31 @@ void TileNode::lodSelect(osg::NodeVisitor& nv)
     }
 }
 
-void TileNode::regularUpdate(osg::NodeVisitor& nv)
+void
+TileNode::traverse(osg::NodeVisitor& nv)
 {
-    if ( getNumChildren() > 0 )
+    // Cull only:
+    if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        for(unsigned i=0; i<getNumChildren(); ++i)
-        {
-            _children[i]->accept( nv );
-        }
+        cull(nv);
     }
 
-    else 
+    // Everything else: update, GL compile, intersection, compute bound, etc.
+    else
     {
-#if USE_PROXY_SURFACE
-        osgUtil::IntersectionVisitor* iv = dynamic_cast<osgUtil::IntersectionVisitor*>( &nv );
-        if (iv)
+        // If there are child nodes, traverse them:
+        int numChildren = getNumChildren();
+        if ( numChildren > 0 )
         {
-            if (_surfaceProxy.valid())
+            for(int i=0; i<numChildren; ++i)
             {
-                _surfaceProxy->accept(nv);
+                _children[i]->accept( nv );
             }
         }
-        else
-#endif
+
+        // Otherwise traverse the surface.
+        // TODO: in what situations should we traverse the landcover as well? GL compile?
+        else 
         {
             _surface->accept( nv );
         }
@@ -456,25 +465,8 @@ void TileNode::regularUpdate(osg::NodeVisitor& nv)
 }
 
 void
-TileNode::traverse(osg::NodeVisitor& nv)
+TileNode::createChildren(EngineContext* context)
 {
-    // Cull
-    if ( nv.getVisitorType() == nv.CULL_VISITOR )
-    {
-        lodSelect(nv);
-    }
-    // Update, Intersection, ComputeBounds, CompileGLObjects, etc.
-    else
-    {
-        regularUpdate(nv);
-    }
-}
-
-void
-TileNode::createChildren(osg::NodeVisitor& nv)
-{
-    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
-
     // Create the four child nodes.
     for(unsigned quadrant=0; quadrant<4; ++quadrant)
     {
@@ -483,19 +475,22 @@ TileNode::createChildren(osg::NodeVisitor& nv)
         // Build the surface geometry:
         node->create( getTileKey().createChildKey(quadrant), context );
 
-        // Inherit the samplers with new scale/bias information.
-        node->inheritState( this, context->getRenderBindings(), context->getSelectionInfo() );
-
         // Add to the scene graph.
         addChild( node );
+
+        // Inherit the samplers with new scale/bias information.
+        node->inheritState( context );
     }
     
     OE_DEBUG << LC << "Creating children of: " << getTileKey().str() << "; count = " << (++_count) << "\n";
 }
 
 bool
-TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo)
+TileNode::inheritState(EngineContext* context)
 {
+    // Find the parent node. It will only be null if this is a "first LOD" tile.
+    TileNode* parent = getNumParents() > 0 ? dynamic_cast<TileNode*>(getParent(0)) : 0L;
+
     bool changesMade = false;
 
     // which quadrant is this tile in?
@@ -503,7 +498,7 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const S
 
     // Find all the sampler matrix uniforms and scale/bias them to the current quadrant.
     // This will inherit textures and use the proper sub-quadrant until new data arrives (later).
-    for( RenderBindings::const_iterator binding = bindings.begin(); binding != bindings.end(); ++binding )
+    for( RenderBindings::const_iterator binding = context->getRenderBindings().begin(); binding != context->getRenderBindings().end(); ++binding )
     {
         if ( binding->usage().isSetTo(binding->COLOR) )
         {
@@ -522,11 +517,13 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const S
 
         else
         {
+            osg::Matrixf matrix;
             osg::StateAttribute* sa = getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE);        
+
+            // If the attribute isn't present, that means we are inheriting it from above.
+            // So construct a new scale/bias matrix.
             if ( sa == 0L )
             {
-                osg::Matrixf matrix;
-
                 // Find the parent's matrix and scale/bias it to this quadrant:
                 if ( parent && parent->getStateSet() )
                 {
@@ -545,105 +542,59 @@ TileNode::inheritState(TileNode* parent, const RenderBindings& bindings, const S
         }
     }
 
-    if ( parent )
+    // Next, propagate the elevation raster and its scale/bias matrix. Each tile needs this
+    // in order to generate a correct bounding box and to support intersections.    
+    const SamplerBinding* elevBinding = SamplerBinding::findUsage(context->getRenderBindings(), SamplerBinding::ELEVATION);
+    if ( !elevBinding )
     {
-        setElevationExtrema( parent->getElevationExtrema() );
-        _surfaceProxy = parent->getProxySurfaceNode();
+        OE_WARN << LC << getTileKey().str() << " : Illegal state - no elevation binding\n";
+        return changesMade;
     }
-    updateTileSpecificUniforms(selectionInfo);
 
-    return changesMade;
-}
-
-void
-TileNode::updateProxyGeometry(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize)
-{
-    // Update proxy geometry
-    TileNode* parent = 0L;
-    OE_DEBUG << LC << getTileKey().str() << " : attempting proxy node setting"<<std::endl;
-    for(TileNode* node = this; node != 0L; node = parent)
-    {
-        osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(elevBinding->unit(), osg::StateAttribute::TEXTURE));
-        if ( elevTex )
-        {
-            if (node==this)
-            {
-                _surfaceProxy = new ProxySurfaceNode(getTileKey(), mapInfo, tileSize, elevTex);
-                OE_DEBUG << LC << getTileKey().str() << " : made proxy node: "<<_surfaceProxy.get()<<std::endl;
-            }
-            else
-            {
-                _surfaceProxy = parent->getProxySurfaceNode();
-                OE_DEBUG << LC << getTileKey().str() << " : assigned proxy node: "<<_surfaceProxy.get()<<"tile key: "<<parent->getTileKey().str()<<std::endl;
-            }
-            break;
-        }
-        parent = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
-    }
-}
-
-void
-TileNode::updateElevationExtrema(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize)
-{
+    // pull the uniform for the elevation scale/bias.
     const osg::Uniform* uniformScaleBiasMatrix = getStateSet()->getUniform(elevBinding->matrixName());
     if ( !uniformScaleBiasMatrix )
     {
-        OE_WARN << LC << getTileKey().str() << " : recalculateExtrema: illegal state\n";
-        return;
+        OE_WARN << LC << getTileKey().str() << " : Illegal state: no uniform scale/bias matrix installed\n";
+        return changesMade;
     }
+    osg::Matrixf elevScaleBias;
+    uniformScaleBiasMatrix->get(elevScaleBias);
 
-    osg::Matrixf matrixScaleBias;
-    uniformScaleBiasMatrix->get(matrixScaleBias);
-
-    // update the elevation extrema
-    bool extremaOK = false;
+    // Locate the elevation raster corresponding to this matrix. Traverse up the tile tree
+    // until we find one on a tile's state set.
     osg::ref_ptr<const osg::Image> elevRaster;
-    TileNode* parent = 0L;
-    for(TileNode* node = this; node != 0L && !extremaOK; node = parent)
+    TileNode* ancestor = 0L;
+    for(TileNode* node = this; node != 0L; node = ancestor)
     {
         osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(elevBinding->unit(), osg::StateAttribute::TEXTURE));
         if ( elevTex )
         {
-            // remember the raster:
             elevRaster = elevTex->getImage(0);
-           
-            osg::Vec2f extrema;
-            extremaOK = ElevationTexureUtils::findExtrema(elevTex, matrixScaleBias, getTileKey(), extrema);
-            if ( extremaOK )
-            {
-                setElevationExtrema( extrema );
-                OE_DEBUG << LC << getTileKey().str() << " : found min=" << extrema[0] << ", max=" << extrema[1] << "\n";
-                break;
-            }
+            break;
         }
-        parent = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
+        ancestor = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
     }
 
-    if ( elevRaster )
+    // If we found one, communicate it to the node and its children.
+    if (elevRaster.valid())
     {
-        _surface->setElevationRaster( elevRaster.get(), matrixScaleBias );
-    }
+        if (elevRaster.get() != getElevationRaster() ||
+            elevScaleBias    != getElevationMatrix() )
+        {
+            setElevationRaster( elevRaster.get(), elevScaleBias );
+            changesMade = true;
+        }
+    }    
 
+    // finally, update the uniforms for terrain morphing
+    updateTileUniforms( context->getSelectionInfo() );
 
-    if ( !extremaOK )
+    if ( !changesMade )
     {
-        // This will happen sometimes, like when the initial levels are loading and there
-        // is no elevation texture in the graph yet. It's normal.
-        OE_DEBUG << LC << "Failed to locate the elevation texture for extrema calculation, " << getTileKey().str() << "\n";
+        OE_INFO << LC << _key.str() << ", good, no changes :)\n";
     }
-}
-
-void
-TileNode::updateElevationData(const RenderBindings& bindings, const MapInfo& mapInfo, unsigned tileSize)
-{
-    const SamplerBinding* elevBinding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
-    if ( !elevBinding )
-        return;
-
-#if USE_PROXY_GEOMETRY
-    updateProxyGeometry(elevBinding, mapInfo, tileSize);
-#endif
-    updateElevationExtrema(elevBinding, mapInfo, tileSize);
+    return changesMade;
 }
 
 void

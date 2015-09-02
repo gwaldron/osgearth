@@ -31,11 +31,8 @@ namespace
     // Visitor that recalculates the sampler inheritance matrices in a graph.
     struct UpdateInheritance : public osg::NodeVisitor
     {
-        UpdateInheritance(const RenderBindings& bindings, const SelectionInfo& selectionInfo, const MapInfo& mapInfo, unsigned tileSize)
-            : _bindings(bindings)
-            , _selectionInfo(selectionInfo)
-            , _mapInfo(mapInfo)
-            , _tileSize(tileSize)
+        UpdateInheritance(EngineContext* context) 
+            : _context(context)
         {
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
         }
@@ -45,17 +42,13 @@ namespace
             TileNode* tilenode = dynamic_cast<TileNode*>(&node);
             if ( tilenode )
             {
-                tilenode->inheritState( tilenode->getParentTile(), _bindings, _selectionInfo );
-                tilenode->updateElevationData( _bindings, _mapInfo, _tileSize );
+                tilenode->inheritState( _context );
             }
 
             traverse(node);
         }
 
-        const RenderBindings& _bindings;
-        const SelectionInfo&  _selectionInfo;
-        const MapInfo&        _mapInfo;
-        const unsigned        _tileSize;
+        EngineContext* _context;
     };
 }
 
@@ -126,7 +119,7 @@ LoadTileData::invoke()
                 
                     stateSet->addUniform(
                         new osg::Uniform(binding->matrixName().c_str(),
-                        osg::Matrixf::identity()));
+                        osg::Matrixf::identity()));                    
                 }
             }
 
@@ -197,7 +190,7 @@ LoadTileData::apply()
             tilenode->mergeStateSet( getStateSet(), mptex.get(), bindings);
 
             // Update existing inheritance matrices as necessary.
-            UpdateInheritance update( bindings, selectionInfo, mapInfo, *_context->_options.tileSize() );
+            UpdateInheritance update( _context ); //bindings, selectionInfo, mapInfo, *_context->_options.tileSize() );
             tilenode->accept( update );
 
             // Mark as complete. TODO: per-data requests will do something different.

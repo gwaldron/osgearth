@@ -16,8 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-//#undef NDEBUG
-//#include <cassert>
 #include "TileDrawable"
 #include "MPTexture"
 
@@ -238,18 +236,14 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 
 }
 
+#if 0
+
 #if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
 #    define COMPUTE_BOUND computeBoundingBox
 #    define GET_BOUNDING_BOX getBoundingBox
 #else
 #    define COMPUTE_BOUND computeBound
 #    define GET_BOUNDING_BOX getBound
-#endif
-
-#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
-#   define GET_ARRAY(a) (a)
-#else
-#   define GET_ARRAY(a) (a).array
 #endif
 
 osg::BoundingBox
@@ -265,14 +259,6 @@ TileDrawable:: COMPUTE_BOUND() const
     OE_DEBUG << LC << "zmin/max = " << bbox.zMin() << "/" << bbox.zMax() << "; minmax = " << _minmax[0] << "/" << _minmax[1] << "\n";
 
     return bbox;
-}
-
-void
-TileDrawable::setElevationRaster(const osg::Image*   image,
-                                 const osg::Matrixf& scaleBias)
-{
-    _elevationRaster = image;
-    _elevationScaleBias = scaleBias;
 }
 
 void    
@@ -293,53 +279,107 @@ TileDrawable::computeBox() const
 {
     return COMPUTE_BOUND();
 }
+#endif
+
+
+void
+TileDrawable::setElevationRaster(const osg::Image*   image,
+                                 const osg::Matrixf& scaleBias)
+{
+    _elevationRaster = image;
+    _elevationScaleBias = scaleBias;
+
+    if (osg::equivalent(0.0f, _elevationScaleBias(0,0)) ||
+        osg::equivalent(0.0f, _elevationScaleBias(1,1)))
+    {
+        OE_WARN << "("<<_key.str()<<") precision error\n";
+    }
+
+    dirtyBound();
+}
+
+const osg::Image*
+TileDrawable::getElevationRaster() const
+{
+    return _elevationRaster.get();
+}
+
+const osg::Matrixf&
+TileDrawable::getElevationMatrix() const
+{
+    return _elevationScaleBias;
+}
 
 void
 TileDrawable::accept(osg::PrimitiveFunctor& f) const
 {
-    if ( !_elevationRaster.valid() )
-        return;
-
     const osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(_geom->getVertexArray());
     const osg::Vec3Array* normals = static_cast<osg::Vec3Array*>(_geom->getNormalArray());
 
-    ImageUtils::PixelReader elevation(_elevationRaster.get());
-
-    float
-        scaleU = _elevationScaleBias(0,0),
-        scaleV = _elevationScaleBias(1,1),
-        biasU  = _elevationScaleBias(3,0),
-        biasV  = _elevationScaleBias(3,1);    
-    
-    for(int t=0; t<_tileSize-1; ++t)
+    if ( _elevationRaster.valid() )
     {
-        float v  = (float)t     / (float)(_tileSize-1);
-        float v1 = (float)(t+1) / (float)(_tileSize-1);
+        ImageUtils::PixelReader elevation(_elevationRaster.get());
+        elevation.setBilinear(true);
 
-        f.begin( GL_QUAD_STRIP );
+        float
+            scaleU = _elevationScaleBias(0,0),
+            scaleV = _elevationScaleBias(1,1),
+            biasU  = _elevationScaleBias(3,0),
+            biasV  = _elevationScaleBias(3,1);
 
-        for(int s=0; s<_tileSize; ++s)
+        if ( osg::equivalent(scaleU, 0.0f) || osg::equivalent(scaleV, 0.0f) )
         {
-            float u = (float)s / (float)(_tileSize-1);
-
-            int index = t*_tileSize + s;
-            {
-                const osg::Vec3f& vert   = (*verts)[index];
-                const osg::Vec3f& normal = (*normals)[index];
-                float h = elevation(u*scaleU+biasU, v*scaleV+biasV).r();
-                f.vertex( vert + normal*h );
-            }
-
-            index += _tileSize;
-            {
-                const osg::Vec3f& vert = (*verts)[index];
-                const osg::Vec3f& normal = (*normals)[index];
-                float h = elevation(u*scaleU+biasU, v1*scaleV+biasV).r();
-                f.vertex( vert + normal*h );
-            }
+            OE_WARN << LC << "Precision loss in tile " << _key.str() << "\n";
         }
+    
+        for(int t=0; t<_tileSize-1; ++t)
+        {
+            float v  = (float)t     / (float)(_tileSize-1);
+            float v1 = (float)(t+1) / (float)(_tileSize-1);
 
-        f.end();
+            f.begin( GL_QUAD_STRIP );
+
+            for(int s=0; s<_tileSize; ++s)
+            {
+                float u = (float)s / (float)(_tileSize-1);
+
+                int index = t*_tileSize + s;
+                {
+                    const osg::Vec3f& vert   = (*verts)[index];
+                    const osg::Vec3f& normal = (*normals)[index];
+                    float h = elevation(u*scaleU+biasU, v*scaleV+biasV).r();
+                    f.vertex( vert + normal*h );
+                }
+
+                index += _tileSize;
+                {
+                    const osg::Vec3f& vert = (*verts)[index];
+                    const osg::Vec3f& normal = (*normals)[index];
+                    float h = elevation(u*scaleU+biasU, v1*scaleV+biasV).r();
+                    f.vertex( vert + normal*h );
+                }
+            }
+
+            f.end();
+        }
+    }
+
+    // no elevation
+    else
+    {     
+        for(int t=0; t<_tileSize-1; ++t)
+        {
+            f.begin( GL_QUAD_STRIP );
+
+            for(int s=0; s<_tileSize; ++s)
+            {
+                int index = t*_tileSize + s;
+                f.vertex( (*verts)[index] );
+                f.vertex( (*verts)[index + _tileSize] );
+            }
+
+            f.end();
+        }
     }
 }
 
@@ -386,6 +426,14 @@ TileDrawable::compileGLObjects(osg::RenderInfo& renderInfo) const
     //extensions->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
     //extensions->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
 }
+
+
+#if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
+#   define GET_ARRAY(a) (a)
+#else
+#   define GET_ARRAY(a) (a).array
+#endif
+
 
 void
 TileDrawable::drawImplementation(osg::RenderInfo& renderInfo) const

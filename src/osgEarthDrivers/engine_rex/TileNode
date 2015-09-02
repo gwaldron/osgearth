@@ -71,24 +71,21 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void notifyOfArrival(TileNode* that) { } // nyi - todo
 
         /** Set inheritance matrices as necessary. Return true is changed were made. */
-        bool inheritState(TileNode* parent, const RenderBindings& bindings, const SelectionInfo& selectionInfo);
-
-        /** Compute the local min/max elevation based on this tile's inherited elevation raster and matrix. */
-        void updateElevationData(const RenderBindings& bindings, const MapInfo& mapInfo, unsigned tileSize);
+        bool inheritState(EngineContext* context);
 
         /** Returns the tile's parent; convenience function */
         TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
-
-        /** Sets the min and max elevation values for culling purposes */
-        void setElevationExtrema(const osg::Vec2f& minmax);
-        const osg::Vec2f& getElevationExtrema() const { return _extrema; }
         
         /** merge in new stuff from a state set. */
         void mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderBindings& bindings);
 
+        /** Access to the multipass texture attribute */
         MPTexture* getMPTexture() const { return _mptex.get(); }
 
-        ProxySurfaceNode* getProxySurfaceNode() const { return _surfaceProxy.get();}
+        /** Elevation data for this node along with its scale/bias matrix; needed for bounding box */
+        void setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix);
+        const osg::Image* getElevationRaster() const;
+        const osg::Matrixf& getElevationMatrix() const;
 
     public: // osg::Node
 
@@ -109,25 +106,24 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool                               _dirty;
         OpenThreads::Atomic                _lastTraversalFrame;
         unsigned                           _count;
-        osg::Vec2f                         _extrema;
         osg::ref_ptr<MPTexture>            _mptex;
 
         TileNode* getSubTile(unsigned i) { return dynamic_cast<TileNode*>(getChild(i)); }
 
-        void createChildren(osg::NodeVisitor& nv);
+        void createChildren(EngineContext* context);
 
         void expireChildren(osg::NodeVisitor& nv);
 
     private:
-        void lodSelect(osg::NodeVisitor& nv);
-        void regularUpdate(osg::NodeVisitor& nv);
+        void cull(osg::NodeVisitor& nv);
 
         bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
         float getVisibilityRangeHint(unsigned firstLOD) const;
         float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
 
-        void updateTileSpecificUniforms(const SelectionInfo& selectionInfo);
-        void createTileSpecificUniforms(void);
+        void updateTileUniforms(const SelectionInfo& selectionInfo);
+        void createTileUniforms();
+
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;
         osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
@@ -137,7 +133,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void updatePerFrameUniforms(const osg::NodeVisitor& nv);
 
         void updateProxyGeometry(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
-        void updateElevationExtrema(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

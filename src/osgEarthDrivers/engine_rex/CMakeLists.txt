@@ -7,7 +7,13 @@ set(TARGET_GLSL
     RexEngine.tcs.glsl
     RexEngine.tes.glsl
     RexEngine.gs.glsl
-    RexEngine.frag.glsl)
+    RexEngine.frag.glsl
+    RexEngine.NormalMap.vert.glsl
+    RexEngine.NormalMap.frag.glsl
+    RexEngine.Morphing.vert.glsl)
+
+set(TARGET_IN
+    Shaders.cpp.in)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -17,38 +23,51 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 SET(TARGET_SRC
+	ElevationTextureUtils.cpp
     GeometryPool.cpp
     RexTerrainEngineNode.cpp
     RexTerrainEngineDriver.cpp
+    LoadTileData.cpp
+    ExpireTiles.cpp
     MaskGenerator.cpp
+    MPTexture.cpp
+	SelectionInfo.cpp
+    SurfaceNode.cpp
     SurfaceNodeFactory.cpp
 	TileDrawable.cpp
-    TileGroup.cpp
-    TileGroupFactory.cpp
+    EngineContext.cpp
     TileNode.cpp
     TileNodeRegistry.cpp
-    TilePagedLOD.cpp
+    Loader.cpp
+	ProxyGeometry.cpp
+	ProxySurfaceNode.cpp
     ${SHADERS_CPP}
 )
 
 SET(TARGET_H
     Common
+	ElevationTextureUtils
     FileLocationCallback
     GeometryPool
     Shaders
     RexTerrainEngineNode
     RexTerrainEngineOptions
+    LoadTileData
+    ExpireTiles
     MaskGenerator
+    MPTexture
     QuickReleaseGLObjects
     RenderBindings
     SurfaceNode
 	TileDrawable
-    TileGroup
-    TileGroupFactory
+    EngineContext
     TileNode
     SurfaceNodeFactory
     TileNodeRegistry
-    TilePagedLOD
+    Loader
+	SelectionInfo
+	ProxyGeometry
+	ProxySurfaceNode
 )
 
 setup_plugin(osgearth_engine_rex)

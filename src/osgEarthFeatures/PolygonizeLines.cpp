@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -480,7 +480,7 @@ namespace
             osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
             // temporary patch to prevent uniform overwrite -gw
-            if ( nv->getFrameStamp() && nv->getFrameStamp()->getFrameNumber() > _frameNumber )
+            if ( nv->getFrameStamp() && (int)nv->getFrameStamp()->getFrameNumber() > _frameNumber )
             {
                 _pixelSizeVectorUniform->set( cv->getCurrentCullingSet().getPixelSizeVector() );    
                 _frameNumber = nv->getFrameStamp()->getFrameNumber();

@@ -1,0 +1,47 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_REX_EXPIRE_TILES
+#define OSGEARTH_REX_EXPIRE_TILES 1
+
+#include "Common"
+#include "Loader"
+#include "TileNode"
+#include "EngineContext"
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{    
+    /** Loader request that collects and deleted dormant/expired tiles and their data. */
+    class ExpireTiles : public Loader::Request
+    {
+    public:
+        ExpireTiles(TileNode* tilenode, EngineContext* context);
+
+    public: // Loader::Request
+
+        /** Collects and deletes tiles. */
+        void apply();
+
+    protected:
+        osg::observer_ptr<TileNode> _tilenode;
+        EngineContext*              _context;
+    };
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+
+#endif // OSGEARTH_REX_EXPIRE_TILES

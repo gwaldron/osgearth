@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -19,22 +19,15 @@
 #ifndef OSGEARTH_DRIVER_KML_KMZ_ARCHIVE
 #define OSGEARTH_DRIVER_KML_KMZ_ARCHIVE 1
 
-#ifdef OSGEARTH_HAVE_MINIZIP
-#    define SUPPORT_KMZ 1
-#endif
-
-#ifdef SUPPORT_KMZ
-
 #include <osgDB/Archive>
 #include <osgEarth/URI>
-#include "unzip.h"  // minizip
 
 using namespace osgEarth;
 
 
 struct KMZArchive : public osgDB::Archive
 {
-    KMZArchive( const URI& archiveURI );
+    KMZArchive(const URI& archiveURI, const Options* options);
 
     virtual ~KMZArchive();
 
@@ -45,7 +38,7 @@ struct KMZArchive : public osgDB::Archive
     std::string getArchiveFileName() const;
 
     /** Get the file name which represents the master file recorded in the Archive.*/
-    std::string getMasterFileName() const ;
+    std::string getMasterFileName() const;
 
     /** return true if file exists in archive.*/
     bool fileExists(const std::string& filename) const;
@@ -82,14 +75,11 @@ struct KMZArchive : public osgDB::Archive
 
 private:
     URI            _archiveURI;
-    unzFile        _uf;
-    void*          _buf;
-    unsigned       _bufsize;
+
+    osg::ref_ptr<osgDB::Archive> _zip;
 
     bool isAcceptable(const std::string& filename, const osgDB::Options* options) const;
 };
 
-
-#endif // SUPPORT_KMZ
 
 #endif // OSGEARTH_DRIVER_KML_KMZ_ARCHIVE

@@ -1,0 +1,50 @@
+<!--
+osgEarth Sample - OpenGL Tessellation Shaders
+
+This example injects a Tessellation Control Shader (TCS) and 
+Tessellation Evaluation Shader (TES) into the terrain rendering
+pipeline. This is EXPERIMENTAL so please be advised of the 
+following caveats:
+
+ * Terrain skirts will not render. Set "skirt_ratio" to zero or you
+   will get GL errors.
+ * Set gpu_tessellation="true" on the terrain options.
+ * EarthManipulator doesn't like GL_PATCHES (yet). Use the viewpoints.
+  
+Press 'w' for wireframe mode to see the tessellation!
+-->
+
+<map name="readymap.org" type="geocentric">
+    
+    <options>        
+        <terrain driver="rex" min_lod="15" tile_size="17" skirt_ratio="0.01" />
+    </options>
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+	<elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation> 
+  <extensions>
+
+    <viewpoints>
+<viewpoint heading="-0.673756rad" height="2463.694609582424" lat="46.95613641063451" long="-121.7620302808055" pitch="-0.545402rad" range="16414.2m" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
+<viewpoint heading="-0.673756rad" height="2463.694609590806" lat="46.95613641067459" long="-121.7620302808307" pitch="-0.545402rad" range="14137.1m" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
+	
+	<viewpoint heading="-0.0111633rad" height="2463.63338462729" lat="46.94509938539743" long="-121.7784264529069" pitch="-0.1252rad" range="14255.2m" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
+
+      <viewpoint name="San Francisco" heading="8.806974516644791" height="4465.397310772911" lat="37.55814749233749" long="-122.334535784141" pitch="-34.79540299384382" range="78142.53643278375" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
+      <viewpoint name="Mt R. Nadir 30K" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>
+	  	<viewpoint heading="-0.271177rad" height="2462.848437966779" lat="46.8358008418158" long="-121.8823059183911" pitch="-0.338073rad" range="10578.2m" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
+      <viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
+      <viewpoint name="Mt R. Closeup" heading="-109.6842970297122" height="3843.486737414263" lat="46.85528453766688" long="-121.7455004166102" pitch="-4.617466338845979" range="951.4780720092711"/>
+      <viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>
+      <viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
+      <viewpoint name="Nepal NF" heading="-49.14546953546358" height="6334.332569343038" lat="27.9421778947837" long="86.9935949004298" pitch="-3.643325527310435" range="13302.81192964212"/>
+      <viewpoint name="Matterhorn" heading="-1.429462844200832" height="2282.858508689329" lat="45.95106319557" long="7.642741711675961" pitch="-25.12269405854052" range="26690.10606054494"/>
+
+    </viewpoints>
+
+  </extensions>
+</map>

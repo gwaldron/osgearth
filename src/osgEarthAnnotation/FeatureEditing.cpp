@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,17 +8,20 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
 #include <osgEarthAnnotation/FeatureEditing>
-#include <osgEarth/Draggers>
+#include <osgEarthAnnotation/Draggers>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -59,7 +62,7 @@ AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
         GeoPoint mapPoint;
         mapPoint.fromWorld( mapNode->getMapSRS(), world );
 
-        Feature* feature = _featureNode->getFeature();
+        Feature* feature = _featureNode->getFeatures().front();
 
         if ( feature )            
         {
@@ -122,7 +125,8 @@ public:
 
       virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          (*_featureNode->getFeature()->getGeometry())[_point] =  osg::Vec3d(position.x(), position.y(), 0);
+          Feature* feature = _featureNode->getFeatures().front();
+          (*feature->getGeometry())[_point] =  osg::Vec3d(position.x(), position.y(), 0);
           _featureNode->init();
       }
 
@@ -196,9 +200,9 @@ FeatureEditor::init()
 {
     removeChildren( 0, getNumChildren() );
 
-    Feature* feature = _featureNode->getFeature();
+    Feature* feature = _featureNode->getFeatures().front();
     //Create a dragger for each point
-    for (unsigned int i = 0; i < _featureNode->getFeature()->getGeometry()->size(); i++)
+    for (unsigned int i = 0; i < feature->getGeometry()->size(); i++)
     {
         SphereDragger* dragger = new SphereDragger( _featureNode->getMapNode() );
         dragger->setColor( _color );

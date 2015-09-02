@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -26,6 +26,9 @@
 
 namespace osgEarth
 {
+    class MapInfo;
+    class TileKey;
+
     /**
      * Locator that stores the extent of its source data (which might be different
      * than the extent of the locator's transform). This locator can also automatically
@@ -46,11 +49,11 @@ namespace osgEarth
         /** dtor */
         virtual ~GeoLocator() { }
 
-        static GeoLocator* createForKey( const class TileKey& key, const class MapInfo& mapInfo );
-        static GeoLocator* createForExtent( const GeoExtent& extent, const class MapInfo& mapInfo);
+        static GeoLocator* createForKey( const TileKey& key, const MapInfo& mapInfo );
+        static GeoLocator* createForExtent( const GeoExtent& extent, const MapInfo& mapInfo);
 
-        GeoLocator* createSameTypeForKey(const class TileKey& key, const class MapInfo& mapInfo );
-        virtual GeoLocator* createSameTypeForExtent(const GeoExtent& extent, const class MapInfo& mapInfo);
+        GeoLocator* createSameTypeForKey(const TileKey& key, const MapInfo& mapInfo );
+        virtual GeoLocator* createSameTypeForExtent(const GeoExtent& extent, const MapInfo& mapInfo);
 
         void setDataExtent( const GeoExtent& extent );
         const GeoExtent& getDataExtent() const;

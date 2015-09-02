@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,12 +21,38 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/Extension>
 
+#define LC "[EarthSerializer] "
+
 using namespace osgEarth_osgearth;
 using namespace osgEarth;
+
+namespace
+{
+    void preloadExtensionLibs(const Config& conf)
+    {
+        ConfigSet extensions = conf.child("extensions").children();
+        for(ConfigSet::const_iterator i = extensions.begin(); i != extensions.end(); ++i)
+        {
+            const std::string& name = i->key();
+
+            // Load the extension library if necessary.
+            std::string libName = osgDB::Registry::instance()->createLibraryNameForExtension("osgearth_" + name);
+            osgDB::Registry::LoadStatus status = osgDB::Registry::instance()->loadLibrary(libName);
+            if ( status == osgDB::Registry::LOADED )
+            {
+                OE_INFO << LC << "Loaded extension lib \"" << libName << "\"\n";
+            }
+            // If it failed to load, just ignore it; extensions are not always in a library.
+        }
+    }
+}
 
 MapNode*
 EarthFileSerializer2::deserialize( const Config& conf, const std::string& referenceURI ) const
 {
+    // First, pre-load any extension DLLs.
+    preloadExtensionLibs(conf);
+
     MapOptions mapOptions( conf.child( "options" ) );
 
     // legacy: check for name/type in top-level attrs:
@@ -129,8 +155,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         ConfigSet extensions = ext.children();
         for(ConfigSet::const_iterator i = extensions.begin(); i != extensions.end(); ++i)
         {
-            std::string name = i->key();
-            Extension* extension = Extension::create( name, *i );
+            Extension* extension = Extension::create( i->key(), *i );
             if ( extension )
             {
                 mapNode->addExtension( extension );

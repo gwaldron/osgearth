@@ -1,0 +1,24 @@
+<!--
+osgEarth Sample - Shows an elevation-derived normal map.
+-->
+<map name="readymap.org" type="geocentric">    
+
+    <options>
+        <terrain normal_maps="true"/>
+    </options>
+    
+    <image name="readymap_imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+        
+    <elevation name="readymap_elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+    
+    <extensions>
+        <sky driver="gl"/>
+        <bumpmap>
+            <image>../data/rock_hard.jpg</image>
+        </bumpmap>
+    </extensions>
+</map>

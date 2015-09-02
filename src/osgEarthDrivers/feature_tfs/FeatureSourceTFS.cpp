@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -239,7 +239,7 @@ public:
             unsigned int tileY = key.getTileY();
             unsigned int level = key.getLevelOfDetail();
             
-#if 1
+#if 0
             unsigned int numRows, numCols;
             key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
             tileY  = numRows - tileY - 1;

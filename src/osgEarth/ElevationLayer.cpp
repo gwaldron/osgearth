@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -84,25 +84,33 @@ ElevationLayerOptions::mergeConfig( const Config& conf )
 
 namespace
 {
-    struct ElevationLayerPreCacheOperation : public TileSource::HeightFieldOperation
+    // Opeartion that replaces invalid heights with the NO_DATA_VALUE marker.
+    struct NormalizeNoDataValues : public TileSource::HeightFieldOperation
     {
-        osg::ref_ptr<CompositeValidValueOperator> _ops;
-
-        ElevationLayerPreCacheOperation( TileSource* source )
+        NormalizeNoDataValues(TileSource* source)
         {
-            _ops = new CompositeValidValueOperator;
-            _ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
-            _ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
+            _noDataValue   = source->getNoDataValue();
+            _minValidValue = source->getMinValidValue();
+            _maxValidValue = source->getMaxValidValue();
         }
 
-        void operator()( osg::ref_ptr<osg::HeightField>& hf )
+        void operator()(osg::ref_ptr<osg::HeightField>& hf)
         {
-            //Modify the heightfield data so that is contains a standard value for NO_DATA
-            ReplaceInvalidDataOperator op;
-            op.setReplaceWith(NO_DATA_VALUE);
-            op.setValidDataOperator(_ops.get());
-            op( hf.get() );
+            if ( hf.valid() )
+            {
+                osg::FloatArray* values = hf->getFloatArray();
+                for(osg::FloatArray::iterator i = values->begin(); i != values->end(); ++i)
+                {
+                    float& value = *i;
+                    if ( osg::equivalent(value, _noDataValue) || value < _minValidValue || value > _maxValidValue )
+                    {
+                        value = NO_DATA_VALUE;
+                    }
+                } 
+            }
         }
+
+        float _noDataValue, _minValidValue, _maxValidValue;
     };
 
     // perform very basic sanity-check validation on a heightfield.
@@ -192,16 +200,18 @@ ElevationLayer::fireCallback( ElevationLayerCallbackMethodPtr method )
     }
 }
 
-void
-ElevationLayer::initTileSource()
+TileSource::HeightFieldOperation*
+ElevationLayer::getOrCreatePreCacheOp()
 {
-    // call superclass first.
-    TerrainLayer::initTileSource();
-
-    if ( _tileSource.valid() )
+    if ( !_preCacheOp.valid() && getTileSource() )
     {
-        _preCacheOp = new ElevationLayerPreCacheOperation( _tileSource.get() );        
+        Threading::ScopedMutexLock lock(_mutex);
+        if ( !_preCacheOp.valid() )
+        {
+            _preCacheOp = new NormalizeNoDataValues( getTileSource() );
+        }
     }
+    return _preCacheOp.get();
 }
 
 
@@ -234,7 +244,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         }
 
         // Make it from the source:
-        result = source->createHeightField( key, _preCacheOp.get(), progress );
+        result = source->createHeightField( key, getOrCreatePreCacheOp(), progress );
    
         // If the result is good, we how have a heightfield but it's vertical values
         // are still relative to the tile source's vertical datum. Convert them.
@@ -483,7 +493,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
                 return GeoHeightField::INVALID;
             }
 
-            // Set up the heightfield so we don't have to worry about it later
+            // Set up the heightfield params.
             double minx, miny, maxx, maxy;
             key.getExtent().getBounds(minx, miny, maxx, maxy);
             hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
@@ -577,7 +587,6 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                                           ElevationInterpolation interpolation,
                                           ProgressCallback*      progress ) const
 {
-    //osg::Timer_t startTime = osg::Timer::instance()->tick();
     // heightfield must already exist.
     if ( !hf )
         return false;
@@ -680,6 +689,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     // We will load the actual heightfields on demand. We might not need them all.
     GeoHeightFieldVector heightFields(contenders.size());
     GeoHeightFieldVector offsetFields(offsets.size());
+    std::vector<bool>    heightFallback(contenders.size(), false);
     std::vector<bool>    heightFailed(contenders.size(), false);
     std::vector<bool>    offsetFailed(offsets.size(), false);
 
@@ -687,17 +697,13 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
     unsigned int maxHeightFields = 50;
     unsigned numHeightFieldsInCache = 0;
 
-    //double fallBackTime = 0;
-
     const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
 
     bool realData = false;
 
-    //unsigned int numFallback = 0;
-
-
     unsigned int total = numColumns * numRows;
     unsigned int completed = 0;
+    int nodataCount = 0;
 
     for (unsigned c = 0; c < numColumns; ++c)
     {
@@ -717,61 +723,57 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                 ElevationLayer* layer = contenders[i].first.get();
 
                 GeoHeightField& layerHF = heightFields[i];
-                if ( !layerHF.valid() )
+                TileKey actualKey = contenders[i].second;
+
+                if (!layerHF.valid())
                 {
-                    layerHF = layer->createHeightField(contenders[i].second, progress);
-                    
-                    if ( !layerHF.valid() )
+                    // We couldn't get the heightfield from the cache, so try to create it.
+                    // We also fallback on parent layers to make sure that we have data at the location even if it's fallback.
+                    while (!layerHF.valid() && actualKey.valid())
                     {
-                        // This layer potentially has data or it wouldn't have ended up in the contendors list, so try falling back on the parent
-                        TileKey parentKey = contenders[i].second.createParentKey();
-                        while (!layerHF.valid() && parentKey.valid())
-                        {
-                            //numFallback++;
-                            //osg::Timer_t fbStartTime = osg::Timer::instance()->tick();
-                            GeoHeightField parentHF = layer->createHeightField(parentKey, progress);
-                            //osg::Timer_t fbEndTime = osg::Timer::instance()->tick();
-
-                            // Only penalize time wasted actually falling back.
-                            //if (!parentHF.valid())
-                            // {
-                            //    fallBackTime += osg::Timer::instance()->delta_m(fbStartTime, fbEndTime);
-                            //}
-
-                            if (parentHF.valid())
-                            {
-                                layerHF = parentHF;
-                                numHeightFieldsInCache++;
-                                break;
-                            }
-                            else
-                            {
-                                parentKey = parentKey.createParentKey();
-                            }
-
-                        }
-
+                        layerHF = layer->createHeightField(actualKey, progress);
                         if (!layerHF.valid())
                         {
-                            heightFailed[i] = true;
-                            continue;
+                            actualKey = actualKey.createParentKey();
                         }
+                    }
+
+                    // Mark this layer as fallback if necessary.
+                    if (layerHF.valid())
+                    {
+                        heightFallback[i] = actualKey != contenders[i].second;
+                        numHeightFieldsInCache++;
                     }
                     else
                     {
-                        numHeightFieldsInCache++;
+                        heightFailed[i] = true;
+                        continue;
                     }
                 }
 
-                // If we actually got a layer then we have real data
-                realData = true;
-
-                float elevation;
-                if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) &&
-                    elevation != NO_DATA_VALUE)
+                if (layerHF.valid())
                 {
-                    resolved = true;                    
-                    hf->setHeight(c, r, elevation);
+                    bool isFallback = heightFallback[i];
+
+                    // We only have real data if this is not a fallback heightfield.
+                    if (!isFallback)
+                    {
+                        realData = true;
+                    }
+
+                    float elevation;
+                    if (layerHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation))
+                    {
+                        if ( elevation != NO_DATA_VALUE )
+                        {
+                            resolved = true;                    
+                            hf->setHeight(c, r, elevation);
+                        }
+                        else
+                        {
+                            ++nodataCount;
+                        }
+                    }
                 }
 
 
@@ -782,6 +784,7 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     for (unsigned int k = 0; k < heightFields.size(); k++)
                     {
                         heightFields[k] = GeoHeightField::INVALID;
+                        heightFallback[k] = false;
                     }
                     numHeightFieldsInCache = 0;
                 }
@@ -815,23 +818,8 @@ ElevationLayerVector::populateHeightField(osg::HeightField*      hf,
                     hf->getHeight(c, r) += elevation;
                 }
             }
-
-            completed++;
-            //OE_NOTICE << "Completed " << completed << " of " << total << std::endl;
         }
-    }   
-
-    //osg::Timer_t endTime = osg::Timer::instance()->tick();
-    //double totalTime = osg::Timer::instance()->delta_m(startTime, endTime);
-   // double fallbackPercentage = fallBackTime / totalTime;
-    //if (fallBackTime > 0)
-    //{
-    //    OE_NOTICE << "populateHeightField took " << totalTime << "ms fallbacktime=" << fallBackTime << "ms count=" << numFallback << " percentage=" << fallbackPercentage << std::endl;
-    //}
-    //else
-    //{
-    //    OE_NOTICE << "populateHeightField took " << totalTime << "ms" << std::endl;
-    //}
+    }
 
     // Return whether or not we actually read any real data
     return realData;

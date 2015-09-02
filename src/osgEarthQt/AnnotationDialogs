@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 
 #include <osgEarthQt/Common>
 
-#include <osgEarth/Draggers>
+#include <osgEarthAnnotation/Draggers>
 #include <osgEarth/GeoMath>
 #include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/EllipseNode>
@@ -395,14 +395,14 @@ namespace osgEarth { namespace QtGui
     osg::Vec3d _currentPoint;
   };
 
-  struct PointDraggerCallback : public osgEarth::Dragger::PositionChangedCallback
+  struct PointDraggerCallback : public osgEarth::Annotation::Dragger::PositionChangedCallback
   {
     PointDraggerCallback(int index, BaseAnnotationDialog* dialog)
       : _index(index), _dialog(dialog)
     {
     }
 
-    void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
+    void onPositionChanged(const osgEarth::Annotation::Dragger* sender, const osgEarth::GeoPoint& position)
     {
       _dialog->movePoint(_index, position);
     }

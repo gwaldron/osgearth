@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -49,8 +52,8 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
-    if ( arguments.read("--stencil") )
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+    float vfov = -1.0f;
+    arguments.read("--vfov", vfov);
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
@@ -59,7 +62,17 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
     // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator() );    
+    viewer.setCameraManipulator( new EarthManipulator(arguments) );
+
+    // disable the small-feature culling
+    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    if ( vfov > 0.0 )
+    {
+        double fov, ar, n, f;
+        viewer.getCamera()->getProjectionMatrixAsPerspective(fov, ar, n, f);
+        viewer.getCamera()->setProjectionMatrixAsPerspective(vfov, ar, n, f);
+    }
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
@@ -67,8 +80,6 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-
-        viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
         return viewer.run();
     }

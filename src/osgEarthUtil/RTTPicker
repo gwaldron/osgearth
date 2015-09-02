@@ -1,0 +1,144 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_UTIL_RTT_PICKER_H
+#define OSGEARTH_UTIL_RTT_PICKER_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/Picker>
+#include <osgEarth/VirtualProgram>
+#include <osg/Group>
+#include <osg/Image>
+#include <osg/Texture2D>
+#include <queue>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Picks objects using an RTT camera and Vertex Attributes.
+     */
+    class OSGEARTHUTIL_EXPORT RTTPicker : public osgEarth::Picker
+    {
+    public:
+        /**
+         * Creates a new RTT-based object picker.
+         * @param cameraSize Size of the RTT picking viewpoint.
+         */
+        RTTPicker(int cameraSize =256);
+
+        /**
+         * Number of pixels on each side of the clicked pixel to check for hits.
+         */
+        void setBuffer(int value) { _buffer = value; }
+        int getBuffer() const { return _buffer; }
+        
+        /**
+         * Sets a default callback to use when installing the Picker as an EventHandler
+         * or when calling pick() with no callback.
+         */
+        void setDefaultCallback(Callback* value) { _defaultCallback = value; }
+
+        /**
+         * Convenience function that invokes "pick" with no callback, which will cause
+         * this picker to use the default callback installed with setDefaultCallback.
+         */
+        bool pick(osg::View* view, float mouseX, float mouseY);
+
+
+    public: // osgEarth::Picker
+
+        /**
+         * Starts a pick operation. When the operation completes, invokes the callback
+         * with the results. You can use this method if you want to use the picker directly
+         * WITHOUT installing it as an EventHandler. If you use it as an EventHandler, you
+         * do NOT need to call this method directly; the Picker will call it upon handling
+         * a pick event (i.e., when Callback::accept returns true).
+         *
+         * Returns true if the pick was succesfully queued; false if not.
+         */
+        virtual bool pick(osg::View* view, float mouseX, float mouseY, Callback* callback);
+
+
+    public: // osgGA::GUIEventHandler
+
+        virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+
+
+    public: // simulate osg::Group
+
+        virtual bool addChild(osg::Node* child);
+        virtual bool insertChild(unsigned i, osg::Node* child);
+        virtual bool removeChild(osg::Node* child);
+        virtual bool replaceChild(osg::Node* oldChild, osg::Node* newChild);
+
+    public: // for debugging
+
+        /** For debugging only - creates (if nec.) and returns a texture that captures
+            the RTT image so you can display it. */
+        osg::Texture2D* getOrCreateTexture(osg::View* View);
+
+    protected:
+
+        /** dtor */
+        virtual ~RTTPicker();
+
+        // builds the shaders for rendering to the pick camera. 
+        VirtualProgram* createRTTProgram();
+        
+        int                    _rttSize;     // size of the RTT image (pixels per side)
+        int                    _buffer;      // buffer around pick point to check (pixels)
+        osg::ref_ptr<Callback> _defaultCallback;
+
+        // Associates a view and a pick camera for that view.
+        struct PickContext
+        {
+            osg::observer_ptr<osg::View> _view;
+            osg::ref_ptr<osg::Camera>    _pickCamera;
+            osg::ref_ptr<osg::Image>     _image;
+            osg::ref_ptr<osg::Texture2D> _tex;
+        };
+        typedef std::vector<PickContext> PickContextVector;
+        PickContextVector _pickContexts;
+        
+        // Creates a new pick context on demand.
+        PickContext& getOrCreatePickContext(osg::View* view);
+        
+        // A single pick operation (within a pick context).
+        struct Pick
+        {
+            float                  _u, _v;
+            osg::ref_ptr<Callback> _callback;
+            unsigned               _frame;
+            PickContext*           _context;
+        };
+        std::queue<Pick> _picks;
+
+        // Runs the queue of picks given a frame number.
+        void runPicks(unsigned frameNumber);
+
+        // Checks to see if a pick succeeded and fires approprate callback.
+        void checkForPickResult(Pick& pick);
+
+        // container for common RTT pick camera children (see addChild et al.)
+        osg::ref_ptr<osg::Group> _group;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_RTT_PICKER_H

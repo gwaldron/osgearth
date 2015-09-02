@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -243,17 +243,18 @@ FeatureSourceIndex::tagNode(osg::Node* node, Feature* feature)
     
     RefIDPair* p = 0L;
     FeatureID fid = feature->getFID();
+    ObjectID oid;
 
     FIDMap::const_iterator f = _fids.find( fid );
     if ( f != _fids.end() )
     {
-        ObjectID oid = f->second->_oid;
+        oid = f->second->_oid;
         _masterIndex->tagNode( node, oid );
         p = f->second.get();
     }
     else
     {
-        ObjectID oid = _masterIndex->tagNode( node, this );
+        oid = _masterIndex->tagNode( node, this );
         p = new RefIDPair( fid, oid );
         _fids[fid] = p;
         _oids[oid] = fid;
@@ -263,6 +264,8 @@ FeatureSourceIndex::tagNode(osg::Node* node, Feature* feature)
             _embeddedFeatures[fid] = feature;
         }
     }
+
+    OE_DEBUG << LC << "Tagging feature ID = " << fid << " => " << oid << " (" << feature->getString("name") << ")\n";
 
     return p;
 }

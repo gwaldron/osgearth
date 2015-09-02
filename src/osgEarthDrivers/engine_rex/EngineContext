@@ -1,0 +1,108 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_REX_TILE_GROUP_FACTORY
+#define OSGEARTH_DRIVERS_REX_TILE_GROUP_FACTORY 1
+
+#include "Common"
+#include "GeometryPool"
+#include "TileNode"
+#include "TileNodeRegistry"
+#include "RexTerrainEngineOptions"
+#include "RenderBindings"
+
+#include <osgEarth/TerrainTileModel>
+#include <osgEarth/MapFrame>
+#include <osgEarth/Progress>
+
+using namespace osgEarth;
+
+namespace osgEarth {
+    class TerrainEngine;
+}
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    class SelectionInfo;
+
+    class EngineContext : public osg::Referenced
+    {
+    public:
+        EngineContext(
+            const Map*                          map,
+            TerrainEngine*                      engine,
+            GeometryPool*                       geometryPool,
+            Loader*                             loader,
+            TileNodeRegistry*                   liveTiles,
+            TileNodeRegistry*                   deadTiles,
+            const LandCoverBins*                landCoverBins,
+            const RenderBindings&               renderBindings,
+            const RexTerrainEngineOptions&      options,
+            const SelectionInfo&                selectionInfo);
+        
+        Loader* getLoader() const { return _loader; }
+
+        const RenderBindings& getRenderBindings() const { return _renderBindings; }
+
+        GeometryPool* getGeometryPool() const { return _geometryPool; }
+
+        const MapFrame& getMapFrame() const { return _frame; }
+
+        TerrainEngine* getEngine() const { return _terrainEngine; }
+
+        TileNodeRegistry* liveTiles() const { return _liveTiles.get(); }
+
+        TileNodeRegistry* deadTiles() const { return _deadTiles.get(); }
+
+        const LandCoverBins* landCoverBins() const { return _landCoverBins; }
+
+        const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
+
+        const RexTerrainEngineOptions& getOptions() const { return _options; }
+
+        void startCull();
+
+        void endCull();
+
+        double getElapsedCullTime() const;
+
+        bool maxLiveTilesExceeded() const;
+
+    protected:
+
+        virtual ~EngineContext() { }
+
+    public:
+
+        MapFrame                              _frame;
+        osg::ref_ptr<TileNodeRegistry>        _liveTiles;
+        osg::ref_ptr<TileNodeRegistry>        _deadTiles;
+        const RexTerrainEngineOptions&        _options;
+        const RenderBindings&                 _renderBindings;
+        TerrainEngine*                        _terrainEngine;
+        GeometryPool*                         _geometryPool;
+        Loader*                               _loader;
+        const LandCoverBins*                  _landCoverBins;
+        const SelectionInfo&                  _selectionInfo;
+        osg::Timer_t                          _tick;
+        int                                   _tilesLastCull;
+    };
+
+} } } // namespace osgEarth::Drivers::RexTerrainEngine
+
+#endif // OSGEARTH_DRIVERS_REX_TILE_GROUP_FACTORY

@@ -20,32 +20,78 @@
 #define OSGEARTH_DRIVERS_REX_SURFACE_NODE 1
 
 #include "Common"
+#include "GeometryPool"
+#include "RenderBindings"
+#include "TileDrawable"
+
+#include <osgEarth/MapInfo>
 #include <osg/MatrixTransform>
 #include <osg/BoundingBox>
+#include <osg/Drawable>
+#include <osg/Geode>
+#include <osgText/Text>
+#include <vector>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
 
+    typedef std::vector<osg::Vec3> VectorPoints;
     /**
      * SurfaceNode holds the geometry of the terrain surface.
      */
     class SurfaceNode : public osg::MatrixTransform
     {
     public:
-        SurfaceNode() { }
+        SurfaceNode(
+            const TileKey&        tilekey,
+            const MapInfo&        mapinfo,
+            const RenderBindings& bindings,
+            TileDrawable*         drawable);
 
-        void setEngineUID(const UID& uid) { _engineUID = uid; }
-        const UID& getEngineUID() const { return _engineUID; }
+        //void setElevationExtrema(const osg::Vec2f& minmax);
 
-        void setBoundingBox(const osg::BoundingBox& bbox) { _bbox = bbox; }
-        const osg::BoundingBox& getBoundingBox() const { return _bbox; }
+        void setElevationRaster(const osg::Image* raster, const osg::Matrixf& scaleBias);
+        const osg::Image* getElevationRaster() const;
+        const osg::Matrixf& getElevationMatrix() const;
+
+        const osg::BoundingBox& getWorldBoundingBox() const { return _bbox; }
+
+        const osg::BoundingBox& getAlignedBoundingBox() const;
+        
+        TileDrawable* getDrawable() const { return _drawable.get(); }
+
+        // A box can have 4 children. 
+        // Returns true if any child box intersects the sphere of radius centered around point
+        bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared, float fZoomFactor);
+
+        float minSquaredDistanceFromPoint(const VectorPoints& points, const osg::Vec3& center, float fZoomFactor);
+
+        void setDebugText(const std::string& strText);
+
+    public: // osg::Node
+
+        //osg::BoundingSphere computeBound() const;
 
     protected:
         virtual ~SurfaceNode() { }
 
-        osg::BoundingBox _bbox;
-        UID              _engineUID;
+        TileKey                    _tileKey;
+        osg::BoundingBox           _bbox;
+        osg::ref_ptr<TileDrawable> _drawable;
+        osg::ref_ptr<osg::Geode>   _surfaceGeode;
+
+        osg::ref_ptr<osg::Geode>    _debugGeode;
+        osg::ref_ptr<osgText::Text> _debugText;
+        static const bool           _enableDebugNodes;
+
+        void addDebugNode(const osg::BoundingBox& box);
+        void removeDebugNode(void);
+
+        VectorPoints _worldCorners;
+
+        typedef std::vector< VectorPoints > ChildrenCorners;
+        ChildrenCorners _childrenCorners;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

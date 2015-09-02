@@ -27,10 +27,11 @@
 #include <osgEarth/Containers>
 
 #include "RexTerrainEngineOptions"
-#include "TileGroupFactory"
+#include "EngineContext"
 #include "TileNodeRegistry"
 #include "RenderBindings"
 #include "GeometryPool"
+#include "Loader"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -42,19 +43,14 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class SelectionInfo;
+
     class RexTerrainEngineNode : public TerrainEngineNode
     {
     public:
         RexTerrainEngineNode();
         META_Node(osgEarth,RexTerrainEngineNode);
         virtual ~RexTerrainEngineNode();
-
-    public:
-        /** Creates a tile node that is set up to page in subtiles. */
-        osg::Node* createNode(const TileKey& key, ProgressCallback* progress =0L);
-
-        /** Creates a tile node with no support for paging in subtiles. */
-        osg::Node* createStandaloneNode(const TileKey& key, ProgressCallback* progress =0L);
 
     public: // TerrainEngineNode
 
@@ -68,11 +64,18 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             unsigned         minLevel,
             unsigned         maxLevel);
 
-        /** Access the stateset used to render the terrain. */
-        osg::StateSet* getTerrainStateSet();
+        /** Get the stateset used to render the terrain surface. */
+        osg::StateSet* getSurfaceStateSet();
 
-        /** Access the stateset used to render payload data. */
-        osg::StateSet* getPayloadStateSet();
+        /** Get the stateset used to render land cover control patches. */
+        //osg::StateSet* getLandCoverStateSet();
+
+        osg::StateSet* addLandCoverGroup(const std::string& name, unsigned lod);
+
+        void removeLandCoverGroup(const std::string& name);
+
+        /** Access to the asychronous data loader */
+        Loader* getLoader() { return _loader.get(); }
 
     public: // internal TerrainEngineNode
 
@@ -116,6 +119,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         // override from TerrainEngineNode
         virtual void dirtyTerrain();
 
+        // override from TerrainEngineNode
+        virtual void dirtyState();
+
     private:
         void init();
         void syncMapModel();
@@ -135,10 +141,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         void updateState(); 
 
+        void setupRenderBindings();
+
     private:
         RexTerrainEngineOptions _terrainOptions;
 
-        osg::Group*        _terrain;
         UID                _uid;
         bool               _batchUpdateInProgress;
         bool               _refreshRequired;
@@ -152,22 +159,35 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<TileNodeRegistry> _liveTiles;      // tiles in the scene graph.
         osg::ref_ptr<TileNodeRegistry> _deadTiles;      // tiles that used to be in the scene graph.
 
-        PerThread< osg::ref_ptr<TileGroupFactory> > _perThreadTileGroupFactories;
-        TileGroupFactory* getTileGroupFactory();
+        PerThread< osg::ref_ptr<EngineContext> > _perThreadTileGroupFactories;
+        EngineContext* getEngineContext();
 
         osg::Timer _timer;
         unsigned   _tileCount;
         double     _tileCreationTime;
         RenderBindings _renderBindings;
         osg::ref_ptr<GeometryPool> _geometryPool;
+        osg::ref_ptr<LoaderGroup>  _loader;
+        
+        osg::ref_ptr<osg::Group> _surfaceGroup;
+        osg::ref_ptr<osg::Group> _landCoverGroup;
+        osg::ref_ptr<osg::Group> _terrain;
 
         osg::Uniform* _verticalScaleUniform;
 
         Threading::Mutex _renderBinMutex;
-        osg::ref_ptr<osgUtil::RenderBin> _terrainRenderBinPrototype;
-        osg::ref_ptr<osgUtil::RenderBin> _payloadRenderBinPrototype;
+        osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;
+        osg::ref_ptr<osgUtil::RenderBin> _landCoverRenderBinPrototype;
+
+        LandCoverBins _landCoverBins;
+
+        bool _quickReleaseInstalled;
 
         RexTerrainEngineNode( const RexTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
+
+        SelectionInfo* _selectionInfo;
+        void buildSelectionInfo(void);
+        void destroySelectionInfo(void);
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

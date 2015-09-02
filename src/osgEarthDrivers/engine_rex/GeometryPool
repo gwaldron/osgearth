@@ -32,8 +32,17 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     using namespace osgEarth;
 
     /**
-     * Pooled geometry manager.
-     * Concept adapted from OSG's osgTerrain::GeometryPool
+     * Pool of terrain tile geometries.
+     *
+     * In a geocentric map, every tile at a particular LOD and a particular latitudinal
+     * (north-south) extent shares exactly the same geometry; each tile is just shifted
+     * and rotated differently. Therefore we can use the same Geometry for all tiles that
+     * share the same LOD and same min/max latitude in a geocentric map. In a projected
+     * map, all tiles at a given LOD share the same geometry regardless of extent, so eve
+     * more sharing is possible.
+     *
+     * This object creates and returns geometries based on TileKeys, sharing instances
+     * whenever possible. Concept adapted from OSG's osgTerrain::GeometryPool.
      */
     class GeometryPool : public osg::Referenced
     {
@@ -51,38 +60,30 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             bool operator < (const GeometryKey& rhs) const
             {
                 if (lod < rhs.lod) return true;
-                if (lod > rhs.lod) return false;                
-                return (yMin < rhs.yMin);
+                if (lod > rhs.lod) return false;
+                if (yMin < rhs.yMin) return true;
+                if (yMin > rhs.yMin) return false;
+                if (size < rhs.size) return true;
+                if (size > rhs.size) return false;
+                return patch != rhs.patch;
             }
 
-            int    lod;
-            double yMin;
+            int      lod;
+            double   yMin;
+            bool     patch;
+            unsigned size;
         };
 
         typedef std::map<GeometryKey, osg::ref_ptr<osg::Geometry> > GeometryMap;
 
+        /**
+         * Gets the Geometry associated with a tile key, creating a new one if
+         * necessary and storing it in the pool.
+         */
         void getPooledGeometry(
-            const TileKey&               tileKey, 
+            const TileKey&               tileKey,
             const MapInfo&               mapInfo,
             osg::ref_ptr<osg::Geometry>& out);
-
-        osg::Geometry* createGeometry(
-            const TileKey& tileKey,
-            const MapInfo& mapInfo,
-            MaskGenerator* maskSet ) const;
-
-    protected:
-
-        osg::Geometry* createTriangleGeometry(
-            const TileKey& tileKey,
-            const MapInfo& mapInfo,
-            MaskGenerator* maskSet ) const;
-
-        osg::Geometry* createPatchGeometry(
-            const TileKey& tileKey,
-            const MapInfo& mapInfo,
-            MaskGenerator* maskSet ) const;
-
 
     protected:
         virtual ~GeometryPool() { }
@@ -91,12 +92,19 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         GeometryMap                    _geometryMap;
         unsigned                       _tileSize;
         const RexTerrainEngineOptions& _options; 
-        mutable osg::ref_ptr<osg::Vec3Array>   _sharedTexCoords;
+
+        mutable osg::ref_ptr<osg::Vec3Array> _sharedTexCoords;
         
         void createKeyForTileKey(
             const TileKey& tileKey, 
+            unsigned       size,
             const MapInfo& mapInfo,
             GeometryKey&   out) const;
+
+        osg::Geometry* createGeometry(
+            const TileKey& tileKey,
+            const MapInfo& mapInfo,
+            MaskGenerator* maskSet ) const;
 
         bool _debug;
     };

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -135,7 +138,8 @@ TileModel::NormalData::NormalData(const TileModel::NormalData& rhs) :
 _hf          ( rhs._hf.get() ),
 _locator     ( rhs._locator.get() ),
 _fallbackData( rhs._fallbackData ),
-_parent      ( rhs._parent )
+_parent      ( rhs._parent ),
+_unit        ( rhs._unit )
 {
     _neighbors._center = rhs._neighbors._center.get();
     for(unsigned i=0; i<8; ++i)
@@ -214,12 +218,8 @@ _fallbackData( fallbackData )
     {
         // coverages: no filtering or compression allowed.
         _texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-        //_texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST_MIPMAP_NEAREST);
         _texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST);
         _texture->setMaxAnisotropy( 1.0f );
-
-        // testing: to support upsampling.
-        //_texture->setUnRefImageDataAfterApply( false );
     }
     else
     {

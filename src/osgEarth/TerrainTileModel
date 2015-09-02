@@ -46,7 +46,7 @@ namespace osgEarth
         };
 
         void setType(Type type) { _type = type; }
-        const Type getType() const { return _type; }
+        const Type& getType() const { return _type; }
 
     protected:
         Type _type;
@@ -116,13 +116,20 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainTileImageLayerModel : public TerrainTileLayerModel
     {
     public:
+        TerrainTileImageLayerModel() : _order(0) { }
+
+    public:
         /** Source layer */
         void setImageLayer(ImageLayer* layer) { _layer = layer; }
         const ImageLayer* getImageLayer() const { return _layer.get(); }
 
+        void setOrder(int order) { _order = order; }
+        int getOrder() const { return _order; }
+
     protected:
         virtual ~TerrainTileImageLayerModel() { }
         osg::ref_ptr<ImageLayer> _layer;
+        int _order;
     };
     typedef std::vector< osg::ref_ptr<TerrainTileImageLayerModel> > TerrainTileImageLayerModelVector;
 
@@ -169,9 +176,6 @@ namespace osgEarth
 
         /** TileKey corresponding to this model */
         const TileKey& getKey() const { return _key; }
-
-        /** Whether this model contains new texture data (versus inherited data only) */
-        bool containsNewData() const;
 
         /** Color layers (rendered one at a time in order) */
         TerrainTileImageLayerModelVector& colorLayers() { return _colorLayers; }

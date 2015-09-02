@@ -36,14 +36,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         RexTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
-            _skirtRatio        ( 0.05 ),
-            _normalizeEdges    ( false ),
-            _rangeMode         ( osg::LOD::DISTANCE_FROM_EYE_POINT ),
-            _tilePixelSize     ( 256 ),
-            _color             ( Color::White ),
-            _enableLODBlending ( false ),
-            _lodBlendDelay     ( 0.0f ),
-            _lodBlendDuration  ( 0.25f )
+            _skirtRatio             ( 0.001 ),
+            _color                  ( Color::White ),
+            _quickRelease           ( true ),
+            _expirationThreshold    ( 0 ),
+            _highResolutionFirst    ( false ),
+            _normalMaps             ( true ),
+            _morphTerrain           ( true ),
+            _morphImagery           ( true )
         {
             setDriver( "rex" );
             fromConfig( _conf );
@@ -57,48 +57,46 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<float>& heightFieldSkirtRatio() { return _skirtRatio; }
         const optional<float>& heightFieldSkirtRatio() const { return _skirtRatio; }
 
-        /** Whether to average normal vectors on tile boundaries */
-        optional<bool>& normalizeEdges() { return _normalizeEdges; }
-        const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
-
-        /** Mode to use when calculating LOD switching distances */
-        optional<osg::LOD::RangeMode>& rangeMode() { return _rangeMode;}
-        const optional<osg::LOD::RangeMode>& rangeMode() const { return _rangeMode;}
-
-        /** The size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN */
-        optional<float>& tilePixelSize() { return _tilePixelSize; }
-        const optional<float>& tilePixelSize() const { return _tilePixelSize; }
-
         /** The color of the globe surface where no images are applied */
         optional<Color>& color() { return _color; }
         const optional<Color>& color() const { return _color; }
 
-        /**
-         * Whether to enable LOD blending. Default is false.
-         */
-        optional<bool>& enableLODBlending() { return _enableLODBlending; }
-        const optional<bool>& enableLODBlending() const { return _enableLODBlending; }
+        /** Whether to run a post-render process that releases GL objects as quickly as
+          * possible, freeing up memory faster */
+        optional<bool>& quickReleaseGLObjects() { return _quickRelease; }
+        const optional<bool>& quickReleaseGLObjects() const { return _quickRelease; }
 
-        /** The time delay for LOD blending */
-        optional<float>& lodBlendDelay() { return _lodBlendDelay; }
-        const optional<float>& lodBlendDelay() const { return _lodBlendDelay; }
+        /** Number of terrain tiles to keep in memory before expiring usused tiles. */
+        optional<unsigned>& expirationThreshold() { return _expirationThreshold; }
+        const optional<unsigned>& expirationThreshold() const { return _expirationThreshold; }
 
-        /** The length of time over which LOD blending occurs */
-        optional<float>& lodBlendDuration() { return _lodBlendDuration; }
-        const optional<float>& lodBlendDuration() const { return _lodBlendDuration; }
+        /** Whether to load higher-resolution data first. */
+        optional<bool>& highResolutionFirst() { return _highResolutionFirst; }
+        const optional<bool>& highResolutionFirst() const { return _highResolutionFirst; } 
+
+        /** Whether to generate normal map textures. Default is true. */
+        optional<bool>& normalMaps() { return _normalMaps; }
+        const optional<bool>& normalMaps() const { return _normalMaps; }
+
+        /** Whether to morph terrain data between terrain tile LODs. */
+        optional<bool>& morphTerrain() { return _morphTerrain; }
+        const optional<bool>& morphTerrain() const { return _morphTerrain; }
+
+        /** Whether to morph imagery between terrain tile LODs. */
+        optional<bool>& morphImagery() { return _morphImagery; }
+        const optional<bool>& morphImagery() const { return _morphImagery; }
 
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
             conf.updateIfSet( "skirt_ratio", _skirtRatio );
-            conf.updateIfSet( "normalize_edges", _normalizeEdges);
-            conf.updateIfSet( "tile_pixel_size", _tilePixelSize );
-            conf.updateIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
-            conf.updateIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.updateIfSet( "color", _color );
-            conf.updateIfSet( "lod_blending", _enableLODBlending );
-            conf.updateIfSet( "lod_blending_delay", _lodBlendDelay );
-            conf.updateIfSet( "lod_blending_duration", _lodBlendDuration );
+            conf.updateIfSet( "quick_release_gl_objects", _quickRelease );
+            conf.updateIfSet( "expiration_threshold", _expirationThreshold );
+            conf.updateIfSet( "high_resolution_first", _highResolutionFirst );
+            conf.updateIfSet( "normal_maps", _normalMaps );
+            conf.updateIfSet( "morph_terrain", _morphTerrain );
+            conf.updateIfSet( "morph_imagery", _morphImagery );
 
             return conf;
         }
@@ -111,24 +109,23 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "skirt_ratio", _skirtRatio );
-            conf.getIfSet( "normalize_edges", _normalizeEdges );
-            conf.getIfSet( "tile_pixel_size", _tilePixelSize );
-            conf.getIfSet( "range_mode", "PIXEL_SIZE_ON_SCREEN", _rangeMode, osg::LOD::PIXEL_SIZE_ON_SCREEN );
-            conf.getIfSet( "range_mode", "DISTANCE_FROM_EYE_POINT", _rangeMode, osg::LOD::DISTANCE_FROM_EYE_POINT);
             conf.getIfSet( "color", _color );
-            conf.getIfSet( "lod_blending", _enableLODBlending );
-            conf.getIfSet( "lod_blending_delay", _lodBlendDelay );
-            conf.getIfSet( "lod_blending_duration", _lodBlendDuration );
+            conf.getIfSet( "quick_release_gl_objects", _quickRelease );
+            conf.getIfSet( "expiration_threshold", _expirationThreshold );
+            conf.getIfSet( "high_resolution_first", _highResolutionFirst );
+            conf.getIfSet( "normal_maps", _normalMaps );
+            conf.getIfSet( "morph_terrain", _morphTerrain );
+            conf.getIfSet( "morph_imagery", _morphImagery );
         }
 
-        optional<float>               _skirtRatio;
-        optional<bool>                _normalizeEdges;
-        optional<osg::LOD::RangeMode> _rangeMode;
-        optional<float>               _tilePixelSize;
-        optional<Color>               _color;
-        optional<bool>                _enableLODBlending;
-        optional<float>               _lodBlendDelay;
-        optional<float>               _lodBlendDuration;
+        optional<float>    _skirtRatio;
+        optional<Color>    _color;
+        optional<bool>     _quickRelease;
+        optional<unsigned> _expirationThreshold;
+        optional<bool>     _highResolutionFirst;
+        optional<bool>     _normalMaps;
+        optional<bool>     _morphTerrain;
+        optional<bool>     _morphImagery;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

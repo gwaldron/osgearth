@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -59,6 +62,24 @@ struct ToggleGraticuleHandler : public ControlEventHandler
         _graticule->setVisible( value );
     }
 
+    GraticuleNode* _graticule;
+};
+
+struct OffsetGraticuleHandler : public ControlEventHandler
+{
+    OffsetGraticuleHandler( GraticuleNode* graticule, const osg::Vec2f& offset ) :
+        _graticule( graticule ),
+        _offset(offset)
+    {
+        //nop
+    }
+
+    void onClick( Control* control, const osg::Vec2f& pos, int mouseButtonMask )
+    {
+        _graticule->setCenterOffset( _graticule->getCenterOffset() + _offset );
+    }
+
+    osg::Vec2f _offset;
     GraticuleNode* _graticule;
 };
 
@@ -130,14 +151,43 @@ main(int argc, char** argv)
 
     if (graticuleNode)
     {
-        HBox* box = vbox->addControl( new HBox() );
-        box->setChildSpacing( 5 );
+        HBox* toggleBox = vbox->addControl( new HBox() );
+        toggleBox->setChildSpacing( 5 );
         CheckBoxControl* toggleCheckBox = new CheckBoxControl( true );
         toggleCheckBox->addEventHandler( new ToggleGraticuleHandler( graticuleNode ) );
-        box->addControl( toggleCheckBox );
+        toggleBox->addControl( toggleCheckBox );
         LabelControl* labelControl = new LabelControl( "Show Graticule" );
         labelControl->setFontSize( 24.0f );
-        box->addControl( labelControl  );
+        toggleBox->addControl( labelControl  );
+
+        HBox* offsetBox = vbox->addControl( new HBox() );
+        offsetBox->setChildSpacing( 5 );
+        osg::Vec4 activeColor(1,.3,.3,1);
+
+        offsetBox->addControl(new LabelControl("Adjust Labels"));
+
+        double adj = 10.0;
+        LabelControl* left = new LabelControl("Left");
+        left->addEventHandler(new OffsetGraticuleHandler(graticuleNode, osg::Vec2f(-adj, 0.0)) );
+        offsetBox->addControl(left);
+        left->setActiveColor(activeColor);
+
+        LabelControl* right = new LabelControl("Right");
+        right->addEventHandler(new OffsetGraticuleHandler(graticuleNode, osg::Vec2f(adj, 0.0)) );
+        offsetBox->addControl(right);
+        right->setActiveColor(activeColor);
+
+        LabelControl* down = new LabelControl("Down");
+        down->addEventHandler(new OffsetGraticuleHandler(graticuleNode, osg::Vec2f(0.0, -adj)) );
+        offsetBox->addControl(down);
+        down->setActiveColor(activeColor);
+
+        LabelControl* up = new LabelControl("Up");
+        up->addEventHandler(new OffsetGraticuleHandler(graticuleNode, osg::Vec2f(0.0, adj)) );
+        offsetBox->addControl(up);
+        up->setActiveColor(activeColor);
+
+
     }
 
     MouseCoordsTool* tool = new MouseCoordsTool( mapNode );

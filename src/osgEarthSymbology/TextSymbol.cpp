@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -187,7 +190,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<TextSymbol>()->halo()->color() = htmlColorToVec4f( c.value() );
     }
     else if ( match(c.key(), "text-halo-offset") ) {
-        style.getOrCreate<TextSymbol>()->haloOffset() = as<float>(c.value(), 0.07f);
+        style.getOrCreate<TextSymbol>()->haloOffset() = as<float>(c.value(), 0.0625f);
     }
     else if ( match(c.key(), "text-remove-duplicate-labels") ) {
         if ( c.value() == "true" )
@@ -269,5 +272,11 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "text-script") ) {
         style.getOrCreate<TextSymbol>()->script() = StringExpression(c.value());
+    }
+    else if ( match(c.key(), "text-offset-x") ) {
+        style.getOrCreate<TextSymbol>()->pixelOffset()->x() = as<double>(c.value(), 0.0);
+    }
+    else if ( match(c.key(), "text-offset-y") ) {
+        style.getOrCreate<TextSymbol>()->pixelOffset()->y() = as<double>(c.value(), 0.0);
     }
 }

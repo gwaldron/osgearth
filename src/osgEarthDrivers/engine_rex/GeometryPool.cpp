@@ -19,7 +19,6 @@
 #include "GeometryPool"
 #include <osgEarth/Locators>
 #include <osg/Point>
-#include <osg/PatchParameter>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;
@@ -31,6 +30,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 //// across all shared geometries.
 #define SHARE_TEX_COORDS 1
 
+#if 0
 namespace
 {
     /**
@@ -64,6 +64,7 @@ namespace
         osg::ref_ptr<osg::PrimitiveSet> _patchTriangles;
     };
 }
+#endif
 
 
 GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :
@@ -85,7 +86,7 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
 {
     // convert to a unique-geometry key:
     GeometryKey geomKey;
-    createKeyForTileKey( tileKey, mapInfo, geomKey );
+    createKeyForTileKey( tileKey, _tileSize, mapInfo, geomKey );
 
     // Look it up in the pool:
     Threading::ScopedMutexLock exclusive( _geometryMapMutex );
@@ -111,11 +112,24 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
 
 void
 GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
+                                  unsigned                   size,
                                   const MapInfo&             mapInfo,
                                   GeometryPool::GeometryKey& out) const
 {
     out.lod  = tileKey.getLOD();
     out.yMin = mapInfo.isGeocentric()? tileKey.getExtent().yMin() : 0.0;
+    out.size = size;
+}
+
+namespace
+{
+    int getMorphNeighborIndexOffset(unsigned col, unsigned row, int rowSize)
+    {
+        if ( (col & 0x1)==1 && (row & 0x1)==1 ) return rowSize+2;
+        if ( (row & 0x1)==1 )                   return rowSize+1;
+        if ( (col & 0x1)==1 )                   return 2;
+        return 1;            
+    }
 }
 
 #define addSkirtDataForIndex(INDEX, HEIGHT) \
@@ -123,9 +137,11 @@ GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
     verts->push_back( (*verts)[INDEX] ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
+    neighbors->push_back( (*neighbors)[INDEX] ); \
     verts->push_back( (*verts)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
+    neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
 }
 
 #define addSkirtTriangles(INDEX0, INDEX1) \
@@ -145,9 +161,7 @@ osg::Geometry*
 GeometryPool::createGeometry(const TileKey& tileKey,
                              const MapInfo& mapInfo,
                              MaskGenerator* maskSet) const
-{
-    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
-    
+{    
     // Establish a local reference frame for the tile:
     osg::Vec3d centerWorld;
     GeoPoint centroid;
@@ -167,20 +181,18 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     unsigned numIndiciesInSurface = (_tileSize-1) * (_tileSize-1) * 6;
     unsigned numIncidesInSkirt    = createSkirt ? (_tileSize-1) * 4 * 6 : 0;
     
-    GLenum mode = _options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
+    GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
 
     // Pre-allocate enough space for all triangles.
-    osg::DrawElements* primSet = 
-        numVerts > 0xFFFF ? (osg::DrawElements*)(new osg::DrawElementsUInt(mode)) :
-        numVerts > 0xFF   ? (osg::DrawElements*)(new osg::DrawElementsUShort(mode)) :
-                            (osg::DrawElements*)(new osg::DrawElementsUByte(mode));
+    osg::DrawElements* primSet = new osg::DrawElementsUShort(mode);
 
     primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 
     osg::BoundingSphere tileBound;
 
     // the geometry:
-    SharedGeometry* geom = new SharedGeometry();
+    //SharedGeometry* geom = new SharedGeometry();
+    osg::Geometry* geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
     geom->setUseDisplayList(false);
 
@@ -196,6 +208,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     normals->reserve( numVerts );
     geom->setNormalArray( normals );
     geom->setNormalBinding( geom->BIND_PER_VERTEX );
+
+    osg::Vec3Array* neighbors = 0;
+    neighbors = new osg::Vec3Array();
+    neighbors->reserve( numVerts );
+    geom->setTexCoordArray(1, neighbors );
 
     // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
     // vert is masked: 0=yes, 1=no
@@ -216,6 +233,13 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
     geom->setTexCoordArray( 0, texCoords );
     
+    float delta = 1.0/(_tileSize-1);
+    osg::Vec3d tdelta(delta,0,0);
+    tdelta.normalize();
+    osg::Vec3d vZero(0,0,0);
+
+    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( tileKey, mapInfo );
+
     for(unsigned row=0; row<_tileSize; ++row)
     {
         float ny = (float)row/(float)(_tileSize-1);
@@ -238,9 +262,13 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
             osg::Vec3d modelPlusOne;
             locator->unitToModel(osg::Vec3d(nx, ny, 1.0f), modelPlusOne);
-            osg::Vec3f normal = (modelPlusOne*world2local)-modelLTP;
+            osg::Vec3d normal = (modelPlusOne*world2local)-modelLTP;
             normal.normalize();
             normals->push_back( normal );
+
+            // neighbor:
+            osg::Vec3d modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, _tileSize)];
+            neighbors->push_back(modelNeighborLTP);
         }
     }
 
@@ -324,6 +352,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         addSkirtTriangles( i, skirtIndex );
     }
 
+#if 0
     // if we're using patches, we must create a "proxy" primitive set that supports
     // PrimitiveFunctor et al (for intersections, bounds testing, etc.)
     if ( mode == GL_PATCHES )
@@ -332,6 +361,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
         patchesAsTriangles->setMode( GL_TRIANGLES );
         geom->setPatchTriangles( patchesAsTriangles );
     }
+#endif
 
     return geom;
 }

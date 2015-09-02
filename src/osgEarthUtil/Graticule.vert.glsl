@@ -1,12 +1,12 @@
-#version 110
+#version $GLSL_VERSION_STR
+
 #pragma vp_entryPoint "oe_graticule_vertex"
 #pragma vp_location   "vertex_view"
 #pragma vp_order      "0.5"
 
 uniform vec4 oe_tile_key;
-varying vec4 oe_layer_tilec;
-
-varying vec2 oe_graticule_coord;
+out vec4 oe_layer_tilec;
+out vec2 oe_graticule_coord;
 
 void oe_graticule_vertex(inout vec4 vertex)
 {

@@ -67,7 +67,9 @@ This example shows how to use the TFS driver.
     
     <external>
         <sky hours="20.0"/>
-        <viewpoint name="Mexico Buildings" height="0" lat="19.42" long="-99.163" pitch="-89" range="5000"/>
+        <viewpoints>
+            <viewpoint name="Mexico Buildings" height="0" lat="19.42" long="-99.163" pitch="-89" range="5000"/>
+        </viewpoints>
     </external>
   
 </map>

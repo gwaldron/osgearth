@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -77,7 +77,6 @@ namespace osgEarth
         virtual TerrainTileModel* createTileModel(
             const MapFrame&              frame,
             const TileKey&               key,
-            const TerrainTileModelStore* modelStore,
             ProgressCallback*            progress ) =0;
 
         
@@ -149,17 +148,20 @@ namespace osgEarth
         void requireParentTextures();
 
         /** Access the stateset used to render the terrain. */
-        virtual osg::StateSet* getTerrainStateSet() { return getOrCreateStateSet(); }
+        virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
 
-        /** Access the stateset used to render payload data. */
-        virtual osg::StateSet* getPayloadStateSet() { return getOrCreateStateSet(); }
+        virtual osg::StateSet* addLandCoverGroup(const std::string& name, unsigned lod) { return 0L; }
+
+        virtual void removeLandCoverGroup(const std::string& name) { }
+
+        /** Access the stateset used to render the control surface (if implemented). */
+        //virtual osg::StateSet* getLandCoverStateSet() { return getOrCreateStateSet(); }
 
     public: // TerrainEngine
 
         TerrainTileModel* createTileModel(
             const MapFrame&              frame,
             const TileKey&               key,
-            const TerrainTileModelStore* modelStore,
             ProgressCallback*            progress );
 
         void notifyOfTerrainTileNodeCreation(
@@ -243,6 +245,10 @@ namespace osgEarth
 
         // Request that the terrain tiles be rebuilt.
         virtual void dirtyTerrain();
+
+        // Request the state setup be refreshed because something has changed that requires new
+        // shaders, state, etc.
+        virtual void dirtyState() { }
 
         // allow subclasses direct access for convenience.
         osg::ref_ptr<TextureCompositor> _texCompositor;

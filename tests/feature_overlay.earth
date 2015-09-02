@@ -14,9 +14,9 @@ Drawing simple lines at a set altitude.
         <cache_policy usage="no_cache"/>
     </image>
     
+    
     <model name="world_boundaries" driver="feature_geom">
-
-        <!-- Configure the OGR feature driver to read the shapefile. -->             
+           
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
             <build_spatial_index>true</build_spatial_index>
@@ -25,10 +25,10 @@ Drawing simple lines at a set altitude.
         <styles>
             <style type="text/css">
                 world {
-                   stroke:             #ffff00;
-                   stroke-opacity:     1.0;
-                   stroke-width:       3.0;
-				   altitude-offset:    1000.0;
+                   stroke:                   #ffff00;
+                   stroke-width:             2.0;
+                   stroke-tessellation-size: 100km;
+                   altitude-offset:          1000.0;
                 }            
             </style>
         </styles>

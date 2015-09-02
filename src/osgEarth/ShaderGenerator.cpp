@@ -1,7 +1,7 @@
 
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -774,6 +774,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
         "void " FRAGMENT_FUNCTION "(inout vec4 color)\n"
         "{ \n"
         INDENT MEDIUMP "vec4 texel = texture2D(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy);\n"
+        //INDENT MEDIUMP "vec4 texel = texture2DLod(" SAMPLER_TEXT ", " TEX_COORD_TEXT ".xy, 0.0);\n"
         INDENT "color.a *= texel.a; \n"
         "}\n";
 
@@ -879,7 +880,7 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
 
     if ( needNewStateSet )
     {
-        std::string version = Stringify() << buf._version;
+        std::string version = GLSL_VERSION_STR;
 
         std::string vertHeadSource;
         vertHeadSource = buf._vertHead.str();

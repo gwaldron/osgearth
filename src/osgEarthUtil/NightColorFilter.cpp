@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -37,19 +40,16 @@ namespace
         "varying vec3 atmos_lightDir;\n"    // light direction (view coords)
         "varying vec3 atmos_up;\n"          // earth up vector at fragment (in view coords)
 
-        "float remap( float val, float vmin, float vmax, float r0, float r1 )\n"
-        "{\n"
-        "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin);\n" 
-        "    return r0 + vr * (r1-r0); \n"
-        "}\n"
-        
         "void __ENTRY_POINT__(inout vec4 color)\n"
         "{\n"
         "    vec3 L = normalize(atmos_lightDir);\n"
         "    vec3 N = normalize(atmos_up);\n"
         "    float NdotL = dot(N,L);\n"
-        "    float day = remap( NdotL, -0.25, 0.0, 0.0, 1.0);\n"
-        "    color.a = 1.0 - day;\n"
+        "    float vmin = -0.25;\n"
+        "    float vmax = 0.0;\n"
+        //   Remap the -0.25 to 0 to 0 to 1.0
+        "    float day = (clamp( NdotL, vmin, vmax) - vmin)/(vmax-vmin);\n"
+        "    color.a *= (1.0 - day);\n"
         "} \n";
 }
 

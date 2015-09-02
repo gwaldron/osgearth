@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -50,7 +50,21 @@ namespace
         {
             if ( !engine ) return;
 
-            VirtualProgram* vp = VirtualProgram::getOrCreate(engine->getOrCreateStateSet());
+            osg::StateSet* stateSet = 0L;
+
+            if ( _options.landCoverGroup().isSet() )
+            {                
+                stateSet = engine->addLandCoverGroup(
+                    _options.landCoverGroup().get(),
+                    _options.landCoverLOD().get() );
+            }
+
+            else
+            {
+                stateSet = engine->getSurfaceStateSet();
+            }
+            
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             _package.loadAll( vp, _dbOptions.get() );
 
             const std::vector<TerrainShaderOptions::Sampler>& samplers = _options.samplers();
@@ -74,25 +88,36 @@ namespace
                             tex->setMaxAnisotropy( 4.0 );
                             tex->setResizeNonPowerOfTwoHint( false );
 
-                            engine->getOrCreateStateSet()->setTextureAttribute(unit, tex);
-                            engine->getOrCreateStateSet()->addUniform(new osg::Uniform(samplers[i]._name.c_str(), unit));
+                            stateSet->setTextureAttribute(unit, tex);
+                            stateSet->addUniform(new osg::Uniform(samplers[i]._name.c_str(), unit));
                         }
                     }
+                    else
+                    {
+                        OE_WARN << LC << "Failed to allocate a texture image unit for this terrain shader sampler!\n";
+                    }
+                }
+            }
+
+            const std::vector<TerrainShaderOptions::Uniform>& uniforms = _options.uniforms();
+            for(int i=0; i<uniforms.size(); ++i)
+            {
+                if ( !uniforms[i]._name.empty() && uniforms[i]._value.isSet() )
+                {
+                    osg::Uniform* u = new osg::Uniform(uniforms[i]._name.c_str(), (float)uniforms[i]._value.get());
+                    stateSet->addUniform( u );
                 }
             }
         }
 
         void onUninstall(TerrainEngineNode* engine)
         {
-            if ( engine && engine->getStateSet() )
+            if ( engine )
             {
-                VirtualProgram* vp = VirtualProgram::get(engine->getStateSet());
-                if ( vp )
+                if ( _options.landCoverGroup().isSet() )
                 {
-                    _package.unloadAll( vp, _dbOptions.get() );
+                    engine->removeLandCoverGroup( _options.landCoverGroup().get() );
                 }
-
-                // TODO : remove samplers.
             }
         }
 

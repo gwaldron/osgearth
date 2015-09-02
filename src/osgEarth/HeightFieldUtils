@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2014 Pelican Mapping
+* Copyright 2015 Pelican Mapping
 * http://osgearth.org
 *
 * osgEarth is free software; you can redistribute it and/or modify
@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -24,7 +27,6 @@
 #include <osg/Shape>
 #include <osg/CoordinateSystemNode>
 #include <osg/ClusterCullingCallback>
-#include <osgTerrain/ValidDataOperator>
 
 namespace osgEarth
 {
@@ -196,8 +198,17 @@ namespace osgEarth
         static osg::Image* convertToNormalMap(
             const HeightFieldNeighborhood& hood,
             const SpatialReference*        hoodSRS);
+
+
+        /**
+         * Utility function that will take sample points used for interpolation and copy valid values into any of the samples that are NO_DATA_VALUE.
+         * Returns false if all values are NO_DATA_VALUE.
+         * Returns true if all the values are valid or if we were able to replace NO_DATA_VALUE samples with valid values.
+         **/
+        static bool validateSamples(float &a, float &b, float &c, float &d);
     };
 
+#if 0
     /**
     * A collection of ValidDataOperators.  All operators must pass to be considered valid.
     */
@@ -256,6 +267,7 @@ namespace osgEarth
 
         float _defaultValue;
     };
+#endif
 }
 
 #endif //OSGEARTH_HEIGHTFIELDUTILS_H

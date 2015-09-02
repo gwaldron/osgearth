@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -70,7 +70,8 @@ AtlasBuilder::AtlasBuilder(const osgDB::Options* options) :
 _options( options ),
 _width  ( 1024 ),
 _height ( 1024 ),
-_debug  ( false )
+_debug  ( false ),
+_rgb    ( false )
 {
     //nop
     if (::getenv("OSGEARTH_ATLAS_DEBUG"))
@@ -270,7 +271,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             maxS,
             maxT,
             atlasList.size(),
-            GL_RGBA,
+            _rgb ? GL_RGB : GL_RGBA,
             GL_UNSIGNED_BYTE);
 
         // initialize to all zeros

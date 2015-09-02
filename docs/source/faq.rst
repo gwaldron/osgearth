@@ -17,19 +17,8 @@ Common Usage
 How do I place a 3D model on the map?
 .....................................
 
-    The most basic approach is to make a ``osg::Matrix`` so you can position
-    a model using your own ``osg::MatrixTransform``. You can use the ``GeoPoint``
-    class like so::
-    
-        GeoPoint point(latLong, -121.0, 34.0, 1000.0, ALTMODE_ABSOLUTE);
-        osg::Matrix matrix;
-        point.createLocalToWorld( matrix );
-        myMatrixTransform->setMatrix( matrix );
-
-    Another option is the ``osgEarth::GeoTransform`` class. It inherits from
-    ``osg::Transform`` so you can add your own nodes as children. ``GeoTransform``
-    can automatically convert coordinates as well, as long as you tell it 
-    about your map's terrain::
+    The ``osgEarth::GeoTransform`` class inherits from ``osg::Transform``
+    and will convert map coordinates into OSG world coordinates for you::
 
         GeoTransform* xform = new GeoTransform();
         ...
@@ -38,31 +27,13 @@ How do I place a 3D model on the map?
         GeoPoint point(srs, -121.0, 34.0, 1000.0, ALTMODE_ABSOLUTE);
         xform->setPosition(point);
 
-    Finally, you can position a node by using the ``ModelNode`` from the
-    osgEarth::Annotation namespace. This is more complicated, but lets you
-    take advantage of symbology::
-
-        using namespace osgEarth;
-        using namespace osgEarth::Symbology;
-        ...
-
-        // load your model:
-        osg::Node* myModel = osgDB::readNodeFile(...);
-        
-        // establish the coordinate system you wish to use:
-        const SpatialReference* latLong = SpatialReference::get("wgs84");
-        
-        // construct your symbology:
-        Style style;
-        style.getOrCreate<ModelSymbol>()->setModel( myModel );
-        
-        // make a ModelNode:
-        ModelNode* model = new ModelNode( mapNode, style );
-        
-        // Set its location.
-        model->setPosition( GeoPoint(latLong, -121.0, 34.0, 1000.0, ALTMODE_ABSOLUTE) );
-
-    Look at the ``osgearth_annotation.cpp`` sample for more inspiration.
+    A lower-level approach is to make a ``osg::Matrix`` so you can position
+    a model using your own ``osg::MatrixTransform``::
+    
+        GeoPoint point(latLong, -121.0, 34.0, 1000.0, ALTMODE_ABSOLUTE);
+        osg::Matrix matrix;
+        point.createLocalToWorld( matrix );
+        myMatrixTransform->setMatrix( matrix );
     
 
 How do make the terrain transparent?
@@ -111,8 +82,9 @@ How do I set the resolution of terrain tiles?
 
         <map>
             <options>
-                <elevation_tile_size>31</elevation_tile_size>
-                ...
+                <terrain>
+                    <tile_size>32</tile_size> 
+                    ...
 
 
 ----
@@ -150,7 +122,7 @@ Does osgEarth work with VirtualPlanetBuilder?
 Can osgEarth load TerraPage or MetaFlight?
 ..........................................
 
-	osgEarth cannot natively load TerraPage (TXP) or MetaFlight. However, osgEarth does have a
+	osgEarth cannot load TerraPage (TXP) or MetaFlight. However, osgEarth does have a
 	"bring your own terrain" plugin that allows you to load an external model and use it as your
 	terrain. The caveat is that since osgEarth doesn't know anything about your terrain model, you
 	will not be able to use some of the features of osgEarth (like being able to add or remove layers).

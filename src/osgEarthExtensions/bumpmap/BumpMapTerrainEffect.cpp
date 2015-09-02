@@ -8,10 +8,13 @@
 * the Free Software Foundation; either version 2 of the License, or
 * (at your option) any later version.
 *
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
 *
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
@@ -40,6 +43,7 @@ BumpMapTerrainEffect::BumpMapTerrainEffect(const osgDB::Options* dbOptions)
     BumpMapOptions defaults;
     _octaves = defaults.octaves().get();
     _maxRange = defaults.maxRange().get();
+    _baseLOD  = defaults.baseLOD().get();
 
     _scaleUniform     = new osg::Uniform("oe_bumpmap_scale", defaults.scale().get());
     _intensityUniform = new osg::Uniform("oe_bumpmap_intensity", defaults.intensity().get());
@@ -70,7 +74,7 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
 {
     if ( engine && _bumpMapTex.valid() )
     {
-        osg::StateSet* stateset = engine->getTerrainStateSet();
+        osg::StateSet* stateset = engine->getSurfaceStateSet();
 
         // install the NormalMap texture array:
         if ( engine->getResources()->reserveTextureImageUnit(_bumpMapUnit, "BumpMap") )
@@ -78,25 +82,31 @@ BumpMapTerrainEffect::onInstall(TerrainEngineNode* engine)
             // NormalMap sampler
             _bumpMapTexUniform = stateset->getOrCreateUniform(BUMP_SAMPLER, osg::Uniform::SAMPLER_2D);
             _bumpMapTexUniform->set( _bumpMapUnit );
-            stateset->setTextureAttribute( _bumpMapUnit, _bumpMapTex.get(), osg::StateAttribute::ON );
+            stateset->setTextureAttribute( _bumpMapUnit, _bumpMapTex.get() );
 
             // configure shaders
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
             Shaders package;            
-            package.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
+            package.define( "OE_USE_NORMAL_MAP", false ); //engine->normalTexturesRequired() );
 
-            package.loadFunction( vp, package.VertexModel );
-            package.loadFunction( vp, package.VertexView );
-            package.loadFunction( vp, _octaves <= 1? package.FragmentSimple : package.FragmentProgressive );
+            //package.load( vp, package.VertexModel );
+            package.load( vp, package.VertexView );
+            package.load( vp, _octaves <= 1? package.FragmentSimple : package.FragmentProgressive );
 
             if ( _octaves > 1 )
                 stateset->addUniform(new osg::Uniform("oe_bumpmap_octaves", _octaves));
 
             stateset->addUniform(new osg::Uniform("oe_bumpmap_maxRange", _maxRange));
+            stateset->addUniform(new osg::Uniform("oe_bumpmap_slopeFactor", 1.0f));
+            stateset->addUniform(new osg::Uniform("oe_bumpmap_baseLOD", (float)_baseLOD));
 
             stateset->addUniform( _scaleUniform.get() );
             stateset->addUniform( _intensityUniform.get() );
+        }
+        else
+        {
+            OE_WARN << LC << "Failed to allocation a texture image unit!\n";
         }
     }
 }
@@ -122,10 +132,7 @@ BumpMapTerrainEffect::onUninstall(TerrainEngineNode* engine)
         if ( vp )
         {
             Shaders pkg;
-            pkg.unloadFunction( vp, pkg.VertexModel );
-            pkg.unloadFunction( vp, pkg.VertexView );
-            pkg.unloadFunction( vp, pkg.FragmentSimple );
-            pkg.unloadFunction( vp, pkg.FragmentProgressive );
+            pkg.unloadAll( vp );
         }
     }
     

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -75,13 +75,10 @@ namespace
 //------------------------------------------------------------------------
 
 ExtrudeGeometryFilter::ExtrudeGeometryFilter() :
-_maxAngle_deg          ( 5.0 ),
 _mergeGeometry         ( true ),
 _wallAngleThresh_deg   ( 60.0 ),
 _styleDirty            ( true ),
 _makeStencilVolume     ( false ),
-_useVertexBufferObjects( true ),
-_useTextureArrays      ( true ),
 _gpuClamping           ( false )
 {
     //NOP
@@ -272,7 +269,10 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
         if ( srs && srs->isGeographic() )
         {
             osg::Vec2d geogCenter = roofBounds.center2d();
-            roofProjSRS = srs->createUTMFromLonLat( Angle(geogCenter.x()), Angle(geogCenter.y()) );
+
+            // This sometimes fails with the aerodrom stuff. No idea why -gw.
+            //roofProjSRS = srs->createUTMFromLonLat( Angle(geogCenter.x()), Angle(geogCenter.y()) );
+            roofProjSRS = SpatialReference::create("spherical-mercator");
             if ( roofProjSRS.valid() )
             {
                 roofBounds.transform( srs, roofProjSRS.get() );
@@ -947,7 +947,6 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             Geometry* part = iter.next();
 
             osg::ref_ptr<osg::Geometry> walls = new osg::Geometry();
-            //walls->setUseVertexBufferObjects( _useVertexBufferObjects.get() );
             
             osg::ref_ptr<osg::Geometry> rooflines = 0L;
             osg::ref_ptr<osg::Geometry> baselines = 0L;
@@ -1114,22 +1113,22 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             FeatureIndexBuilder* index = context.featureIndex();
 
-            if ( walls.valid() && walls->getVertexArray()->getNumElements() > 0 )
+            if ( walls.valid() && walls->getVertexArray() && walls->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( walls.get(), wallStateSet.get(), name, input, index );
             }
 
-            if ( rooflines.valid() && rooflines->getVertexArray()->getNumElements() > 0 )
+            if ( rooflines.valid() && rooflines->getVertexArray() && rooflines->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( rooflines.get(), roofStateSet.get(), name, input, index );
             }
 
-            if ( baselines.valid() && baselines->getVertexArray()->getNumElements() > 0 )
+            if ( baselines.valid() && baselines->getVertexArray() && baselines->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( baselines.get(), 0L, name, input, index );
             }
 
-            if ( outlines.valid() && outlines->getVertexArray()->getNumElements() > 0 )
+            if ( outlines.valid() && outlines->getVertexArray() && outlines->getVertexArray()->getNumElements() > 0 )
             {
                 addDrawable( outlines.get(), 0L, name, input, index );
             }

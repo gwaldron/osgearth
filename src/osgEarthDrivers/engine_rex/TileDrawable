@@ -23,6 +23,7 @@
 #include "TileNode"
 #include "TileNodeRegistry"
 #include "RenderBindings"
+#include "MPTexture"
 
 #include <osg/Geometry>
 #include <osg/buffered_value>
@@ -41,48 +42,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class TileDrawable : public osg::Drawable
     {
     public:
-        /**
-         * Per-tile attribution for use with the RexGeometry.
-         */
-        struct Layer
-        {
-            Layer()
-            {
-                _texMatrixUniformID = ~0;
-                _parentTexMatrixUniformID = ~0;
-            }
-
-            osgEarth::UID                   _layerID;
-            osg::ref_ptr<const ImageLayer>  _imageLayer;
-
-            osg::ref_ptr<osg::Texture>      _tex;
-            osg::ref_ptr<osg::RefMatrixf>   _texMatrix;
-            unsigned                        _texMatrixUniformID;
-
-            osg::ref_ptr<osg::Texture>      _parentTex;
-            osg::ref_ptr<osg::RefMatrixf>   _parentTexMatrix;
-            unsigned                        _parentTexMatrixUniformID;
-
-            float                           _alphaThreshold;
-            bool                            _opaque;
-
-            // in support of std::find
-            inline bool operator == (const osgEarth::UID& rhs) const {
-                return _layerID == rhs;
-            }
-        };
-
-    public:
-        mutable std::vector<Layer> _layers;
-        mutable Threading::Mutex   _frameSyncMutex;
-
         // uniform name IDs.
         unsigned _uidUniformNameID;
         unsigned _orderUniformNameID;
         unsigned _opacityUniformNameID;
         unsigned _tileKeyUniformNameID;
         unsigned _texMatrixUniformNameID;
-        unsigned _parentTexMatrixUniformNameID;
+        unsigned _texMatrixParentUniformNameID;
+        unsigned _texParentExistsUniformNameID;
 
         // Data stored for each graphics context:
         struct PerContextData {
@@ -92,13 +59,33 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         };
         mutable osg::buffered_object<PerContextData> _pcd;
 
-        mutable osg::Vec4f _tileKeyValue;
+        mutable osg::Vec4f _tileMorphCValue;
+        mutable osg::Vec4f _tileGridDimsValue;
+        mutable osg::Vec4f _tileExtentsValue;
         RenderBindings _bindings;
 
         bool _supportsGLSL;
 
         // underlying geometry, possible shared between this tile and other.
         osg::ref_ptr<osg::Geometry> _geom;
+
+        // tile dimensions
+        int _tileSize;
+
+        // local elevation extrema
+        osg::Vec2f _minmax;
+
+        bool _drawPatch;
+
+        osg::ref_ptr<MPTexture> _mptex;
+
+        int _textureImageUnit;
+        int _textureParentImageUnit;
+
+        const TileKey _key;
+
+        osg::ref_ptr<const osg::Image> _elevationRaster;
+        osg::Matrixf                   _elevationScaleBias;
 
     public:
         
@@ -108,12 +95,35 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const RenderBindings& bindings,
             osg::Geometry*        geometry);
 
+        // whether to draw this as a multi-image geometry or as a tesselation patch.
+        void setDrawAsPatches(bool value) { _drawPatch = value; }
+
+        /** Sets the multipass texture to use when rendering geometry. */
+        void setMPTexture(MPTexture* tex) { _mptex = tex; }
+
+    public:
+
         void drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const;
 
         void drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const;
 
+        void drawPatches(osg::RenderInfo& renderInfo) const;
+
+        void drawSurface(osg::RenderInfo& renderInfo) const;
+
         // validate the geometry is OK.
         void validate();
+
+        // Sets the min and max elevation for verts in this tile. Necessary since the elevation
+        //void setElevationExtrema(const osg::Vec2f& minmax);
+
+        // Sets the elevation raster for this tile
+        void setElevationRaster(const osg::Image* image, const osg::Matrixf& scaleBias);
+        const osg::Image* getElevationRaster() const;
+        const osg::Matrixf& getElevationMatrix() const;
+
+        //osg::BoundingBox computeBox() const;
+        //const osg::BoundingBox& getBox() const;
 
     public: // osg::Geometry overrides
 
@@ -140,23 +150,25 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void accept(osg::Drawable::ConstAttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
 
         bool supports(osg::PrimitiveFunctor& f) const { return true; }
-        void accept(osg::PrimitiveFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+        void accept(osg::PrimitiveFunctor& f) const;
         
-        bool supports(osg::PrimitiveIndexFunctor& f) const { return true; }
-        void accept(osg::PrimitiveIndexFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+        /** indexed functor is NOT supported since we need to apply elevation dynamically */
+        bool supports(osg::PrimitiveIndexFunctor& f) const { return false; }
         
+#if 0
         // recalculate the bound for the tile key uniform.
 #if OSG_VERSION_GREATER_THAN(3,3,1)
         osg::BoundingBox computeBoundingBox() const;
 #else
         osg::BoundingBox computeBound() const;
 #endif
+#endif
 
     public:
         META_Object(osgEarth, TileDrawable);
-        TileDrawable() : osg::Drawable() { }
-        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop) { }
-        virtual ~TileDrawable() { }
+        TileDrawable() : osg::Drawable(){}
+        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop) {}
+        virtual ~TileDrawable() {}
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

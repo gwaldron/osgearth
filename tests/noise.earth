@@ -4,16 +4,18 @@ osgEarth Sample
 
 <map version="2">
 
+    <options>
+        <terrain normal_maps="true"/>
+    </options>
+
     <elevation name="readymap_elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
     
-    <external>
+    <extensions>
         <noise size="1024" num_channels="1"/>
         
         <contour_map/>
-        
-        <normalmap/>
         
         <sky hours="20.0"/>
         
@@ -72,5 +74,5 @@ osgEarth Sample
             <viewpoint name="Nepal NF" heading="-49.14546953546358" height="6334.332569343038" lat="27.9421778947837" long="86.9935949004298" pitch="-3.643325527310435" range="13302.81192964212"/>
             <viewpoint name="Matterhorn" heading="-1.429462844200832" height="2282.858508689329" lat="45.95106319557" long="7.642741711675961" pitch="-25.12269405854052" range="26690.10606054494"/>
         </viewpoints>
-    </external>
+    </extensions>
 </map>

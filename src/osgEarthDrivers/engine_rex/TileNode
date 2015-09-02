@@ -20,120 +20,122 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE 1
 
 #include "Common"
-#include "TileModel"
 #include "RenderBindings"
+#include "Loader"
+#include "MPTexture"
+#include "ProxySurfaceNode"
+
+#include <OpenThreads/Atomic>
 #include <osgEarth/TerrainTileNode>
+#include <vector>
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class EngineContext;
+    class SurfaceNode;
+    class ProxySurfaceNode;
+    class SelectionInfo;
+
     /**
-     * Node that represents a single tile in the terrain.
+     * TileNode represents a single tile. TileNode has 5 children:
+     * one SurfaceNode that renders the actual tile content under a MatrixTransform;
+     * and four TileNodes representing the LOD+1 quadtree tiles under this tile.
      */
-    class TileNode : public osg::Group, 
-                     public osgEarth::TerrainTileNode
+    class TileNode : public osg::Group
     {
     public:
-        const TerrainTileModel* getModel() const { return _model.get(); }
-
-        const TileKey& getKey() const { return _model->getKey(); }
-
-    public:
-
-        void notifyOfArrival(TileNode* that);
-
-
-    public:
-        /**
-         * Constructs an empty tile node.
-         */
         TileNode();
 
-        /**
-         * Constructs a new tile node.
-         *
-         * @param model  Data model containing the data to render
-         * @param matrix Localization matrix for node geometry
-         */
-        TileNode(const TerrainTileModel* model);
+        /** TileKey of the key representing the data in this node. */
+        const TileKey& getTileKey() const { return _key; }
 
-        /**
-         * Assigned the UID of the engine that created this tile.
-         */
-        void setEngineUID(UID uid) { _engineUID = uid; }
+        /** Sets the map revision that this tile should be using. */
+        void setMapRevision(Revision rev) { } // nyi - check for need
 
-        /**
-         * True if this is a valid tile node.
-         * Subclass may override (see InvalidTileNode)
-         */
-        virtual bool isValid() const { return true; }
+        /** Tells this tile that it needs to request data. */
+        void setDirty(bool value);
 
-        /**
-         * Sets the last traversal frame manually. A parent TileGroup
-         * will call this to prevent the born-time from resetting 
-         * when traversing the tile's children.
-         */
-        void setLastTraversalFrame(unsigned frame);
+        /** Creates the geometry and state for this tilenode. */
+        void create(const TileKey& key, EngineContext* context);
 
-        /**
-         * Tells the tile node the current map revision, which is turn
-         * will determine whether the tile is dirty and needs updating.
-         */
-        void setMapRevision( const Revision& value ) { _mapRevision = value; }
+        /** Whether this node has enough data to traverse. */
+        bool isReadyToTraverse() const;
 
-        /**
-         * Flags this Tile as dirty, regardless of whether the revisions are in sync.
-         */
-        void setDirty() { _dirty = true; }
+        /** Whether the tile is expired; i.e. has not been visited in some time. */
+        bool isDormant(osg::NodeVisitor& nv) const;
 
-        /**
-         * Whether the tile is dirty and was traversed (and if therefore ready for
-         * a dynamic update)
-         */
-        bool isOutOfDate() const { return _outOfDate; }
+        /** Load (or continue loading) content for the tiles in this quad. */
+        void load(osg::NodeVisitor& nv);
 
-        /**
-         * The tile-aligned bounding box of the terrain geometry.
-         */
-        void setTerrainBoundingBox(const osg::BoundingBox& bbox) { _terrainBBox = bbox; }
-        const osg::BoundingBox& getTerrainBoundingBox() const { return _terrainBBox; }
+        /** Notifies this tile that another tile has come into existence. */
+        void notifyOfArrival(TileNode* that) { } // nyi - todo
+
+        /** Set inheritance matrices as necessary. Return true is changed were made. */
+        bool inheritState(EngineContext* context);
+
+        /** Returns the tile's parent; convenience function */
+        TileNode* getParentTile() { return dynamic_cast<TileNode*>(getParent(0)); }
+        
+        /** merge in new stuff from a state set. */
+        void mergeStateSet(osg::StateSet* stateSet, MPTexture* mptex, const RenderBindings& bindings);
+
+        /** Access to the multipass texture attribute */
+        MPTexture* getMPTexture() const { return _mptex.get(); }
+
+        /** Elevation data for this node along with its scale/bias matrix; needed for bounding box */
+        void setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix);
+        const osg::Image* getElevationRaster() const;
+        const osg::Matrixf& getElevationMatrix() const;
+
+    public: // osg::Node
+
+        osg::BoundingSphere computeBound() const;
+
+        void traverse(osg::NodeVisitor& nv);
+
+        void releaseGLObjects(osg::State* state) const;
 
     protected:
+        TileKey                            _key;
+        osg::ref_ptr<SurfaceNode>          _surface;
+        osg::ref_ptr<SurfaceNode>          _landCover;
+        osg::ref_ptr<ProxySurfaceNode>     _surfaceProxy;
+        osg::ref_ptr<Loader::Request>      _loadRequest;
+        osg::ref_ptr<Loader::Request>      _expireRequest;
+        Threading::Mutex                   _mutex;
+        bool                               _dirty;
+        OpenThreads::Atomic                _lastTraversalFrame;
+        unsigned                           _count;
+        osg::ref_ptr<MPTexture>            _mptex;
 
-        virtual ~TileNode() { }
+        TileNode* getSubTile(unsigned i) { return dynamic_cast<TileNode*>(getChild(i)); }
 
-        osg::ref_ptr<const TerrainTileModel> _model;
+        void createChildren(EngineContext* context);
 
-        UID                                  _engineUID;
-        Revision                             _mapRevision;
-        unsigned                             _lastTraversalFrame;
-        bool                                 _outOfDate;
-        bool                                 _dirty;
-        osg::BoundingBox                     _terrainBBox;
+        void expireChildren(osg::NodeVisitor& nv);
 
-        osg::ref_ptr<osg::Texture>           _elevationTexture;
-        osg::ref_ptr<osg::RefMatrixf>        _elevationTextureMatrix;
-        osg::ref_ptr<osg::Texture>           _normalTexture;
-        osg::ref_ptr<osg::RefMatrixf>        _normalTextureMatrix;
+    private:
+        void cull(osg::NodeVisitor& nv);
+
+        bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
+        float getVisibilityRangeHint(unsigned firstLOD) const;
+        float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
+
+        void updateTileUniforms(const SelectionInfo& selectionInfo);
+        void createTileUniforms();
+
+        osg::ref_ptr<osg::Uniform> _tileKeyUniform;
+        osg::ref_ptr<osg::Uniform> _tileMorphUniform;
+        osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
+        osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
+        osg::ref_ptr<osg::Uniform> _tileCenterToCameraDistUniform;
+
+        void updatePerFrameUniforms(const osg::NodeVisitor& nv);
+
+        void updateProxyGeometry(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
     };
-
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;
-
-#if 0
-    /**
-     * Marker class - the engine will return one of these when a TileNode
-     * load fails permanently. It will also blacklist the TileKey.
-     */
-    class InvalidTileNode : public TileNode
-    {
-    public:
-        InvalidTileNode(const TileKey& key) : TileNode() { }
-        bool isValid() const { return false; }
-    protected:
-        virtual ~InvalidTileNode() { }
-    };
-#endif
-
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine
 

@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
+#include <osgDB/ObjectWrapper>
 
 #include <sys/stat.h>
 #ifndef _WIN32
@@ -45,6 +46,12 @@ osgEarth::Cache( options ),
 _options       ( options ),
 _active        ( true )
 {
+    // Force OSG to initialize the image wrapper. Failure to do this can result
+    // in a race condition within OSG when the cache is accessed from multiple threads.
+    osgDB::ObjectWrapperManager* owm = osgDB::Registry::instance()->getObjectWrapperManager();
+    owm->findWrapper("osg::Image");
+    owm->findWrapper("osg::HeightField");
+
     if ( _options.rootPath().isSet() )
     {
         _rootPath = URI( *_options.rootPath(), options.referrer() ).full();

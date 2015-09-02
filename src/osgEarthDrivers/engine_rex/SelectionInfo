@@ -1,0 +1,74 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_SELECTION_INFO
+#define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_SELECTION_INFO 1
+
+#include "Common"
+#include <vector>
+
+
+namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
+{
+    struct VisParameters
+    {
+        double _fVisibility;
+        double _fMorphStart;
+        double _fMorphEnd;
+    };
+    class SelectionInfo
+    {
+    public:
+        bool initialized(void) const;
+        void initialize(unsigned uiFirstLOD, unsigned uiMaxLod, unsigned uiTileSize, double fLodFar);
+
+        unsigned numLods(void) const;
+
+        // Dimensions of the skeleton grid in X
+        unsigned gridDimX(void) const;
+
+        // Dimensions of the skeleton grid in Y
+        unsigned gridDimY(void) const;
+
+        // Morph start ratio
+        static double   morphStartRatio(void);
+
+        // LOD at which morphing should start
+        static unsigned lodForMorphing(bool isProjected);
+
+        VisParameters visParameters(unsigned lod) const;
+    private:
+        unsigned                        _numLods;
+        std::pair<unsigned, unsigned>   _uiGridDimensions; 
+        std::vector<VisParameters>      _vecVisParams;
+        unsigned                        _uiFirstLOD;
+
+        static const double             _fMorphStartRatio; 
+
+        // This is the lod at which morphing should start (used by shader)
+        static const unsigned           _uiLODForMorphingRoundEarth;
+        
+        // This is used to determine _numLods given a fLodFar during initialize
+        // initialize. This is the distance beyond which further lods (and 
+        // hence VisParameters) are not generated
+        static const double             _fLodLowerBound;
+    };
+}
+}
+}
+#endif

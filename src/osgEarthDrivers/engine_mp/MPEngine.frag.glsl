@@ -14,7 +14,7 @@ uniform int oe_layer_order;
 uniform float oe_layer_opacity;
 
 varying vec4 oe_layer_texc;
-varying float oe_terrain_rangeOpacity;
+varying float oe_layer_rangeOpacity;
 
 void oe_mp_apply_coloring(inout vec4 color)
 {
@@ -22,16 +22,17 @@ void oe_mp_apply_coloring(inout vec4 color)
 
     float applyImagery = oe_layer_uid >= 0 ? 1.0 : 0.0;
     vec4 texel = mix(color, texture2D(oe_layer_tex, oe_layer_texc.st), applyImagery);
-    texel.a = mix(texel.a, texel.a*oe_layer_opacity*oe_terrain_rangeOpacity, applyImagery);
+    texel.a = mix(texel.a, texel.a*oe_layer_opacity*oe_layer_rangeOpacity, applyImagery);
 
 #ifdef MP_USE_BLENDING
     float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0;
-    color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer);
+    color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer);    
 #else
     color = texel;
 #endif
 
-    // disable primary coloring for pick cameras.
+    // disable primary coloring for pick cameras. Necessary to support picking of
+    // draped geometry.
     float pick = oe_isPickCamera ? 1.0 : 0.0;
     color = mix(color, vec4(0), pick);
 }

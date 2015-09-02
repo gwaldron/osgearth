@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -72,6 +72,19 @@ ShaderFactory::ShaderFactory()
 #define SPACE_MODEL 0
 #define SPACE_VIEW  1
 #define SPACE_CLIP  2
+
+namespace
+{
+    struct Variable
+    {
+        std::string interp;      // interpolation qualifer (flat, etc.)
+        std::string type;        // float, vec4, etc.
+        std::string name;        // name without any array specifiers, etc.
+        std::string declaration; // name including array specifiers (for decl)
+    };
+
+    typedef std::vector<Variable> Variables;
+}
 
 
 ShaderComp::StageMask
@@ -149,21 +162,13 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     // parse the vp_varyings (which were injected by the ShaderLoader)
     for(VirtualProgram::ShaderMap::const_iterator s = in_shaders.begin(); s != in_shaders.end(); ++s )
     {
-        osg::Shader* shader = s->second._shader->getNominalShader();
+        osg::Shader* shader = s->data()._shader->getNominalShader();
         if ( shader )
         {
             ShaderLoader::getAllQuotedPragmaValues(shader->getShaderSource(), "vp_varying", varDefs);
         }
     }
 
-    struct Variable {
-        std::string interp;     // interpolation qualifer (flat, etc.)
-        std::string type;       // float, vec4, etc.
-        std::string name;       // name without any array specifiers, etc.
-        std::string declaration;   // name including array specifiers (for decl)
-    };
-
-    typedef std::vector<Variable> Variables;
     Variables vars;
     for(VarDefs::iterator i = varDefs.begin(); i != varDefs.end(); ++i) 
     {
@@ -248,7 +253,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
 
         buf <<
-            "#version 120\n"
+            "#version " GLSL_VERSION_STR "\n"
             "#pragma name \"VP Vertex Shader Main\" \n"
             "#extension GL_ARB_gpu_shader5 : enable \n";
 
@@ -540,10 +545,13 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 << "{ \n";            
             for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
             {
-                buf << INDENT << i->name << " = VP_Interpolate3"
-                    << "( vp_in[0]." << i->name
-                    << ", vp_in[1]." << i->name
-                    << ", vp_in[2]." << i->name << " ); \n";
+                if ( i->interp != "flat" )
+                {
+                    buf << INDENT << i->name << " = VP_Interpolate3"
+                        << "( vp_in[0]." << i->name
+                        << ", vp_in[1]." << i->name
+                        << ", vp_in[2]." << i->name << " ); \n";
+                }
             }
             buf << "} \n";
 
@@ -853,7 +861,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version 120\n"
+        buf << "#version " GLSL_VERSION_STR "\n"
             << "#pragma name \"VP Fragment Shader Main\" \n"
             << "#extension GL_ARB_gpu_shader5 : enable \n";
 

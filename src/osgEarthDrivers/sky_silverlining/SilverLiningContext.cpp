@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -220,11 +220,12 @@ SilverLiningContext::updateLocation()
 
         ::SilverLining::Location loc;
         loc.SetAltitude ( latLonAlt.z() );
-        loc.SetLongitude( osg::DegreesToRadians(latLonAlt.x()) );
-        loc.SetLatitude ( osg::DegreesToRadians(latLonAlt.y()) );
+        loc.SetLongitude( latLonAlt.x() ); //osg::DegreesToRadians(latLonAlt.x()) );
+        loc.SetLatitude ( latLonAlt.y() ); //osg::DegreesToRadians(latLonAlt.y()) );
 
         _atmosphere->GetConditions()->SetLocation( loc );
 
+#if 0
         if ( _clouds )
         {
 #if 1 //TODO: figure out why we need to call this a couple times before
@@ -235,6 +236,7 @@ SilverLiningContext::updateLocation()
                 _clouds->SetLayerPosition(0, 0);
             }
         }
+#endif
 #endif
     }
 }

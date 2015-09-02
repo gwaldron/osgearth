@@ -1,0 +1,74 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2015 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_DRAPING_CULL_SET
+#define OSGEARTH_DRAPING_CULL_SET
+
+#include <osgEarth/Common>
+#include <osgEarth/Containers>
+#include <osgEarth/DrapeableNode>
+#include <osg/Camera>
+#include <osg/ObserverNodePath>
+
+namespace osgEarth
+{
+    /**
+     * Culling set for tracking groups whose contents should be "draped",
+     * i.e. rendered to a texture and projected onto the terrain.
+     */
+    class OSGEARTH_EXPORT DrapingCullSet
+    {
+    public:
+        /** Gets the per-thread cull set associated with a camera. */
+        static DrapingCullSet& get(const osg::Camera*);
+
+    public:
+        struct Entry
+        {            
+            osg::ref_ptr<osg::Group>     _node;
+            osg::ref_ptr<osg::RefMatrix> _matrix;
+            osg::ObserverNodePath        _path;
+        };
+
+    public:
+        DrapingCullSet();
+        ~DrapingCullSet() { } // not virtual
+
+        /** Pushes a node and its matrix into the cull set */
+        void push(DrapeableNode* node, const osg::NodePath& path);
+
+        /** Runs a node visitor on the cull set, optionally popping as it goes along. */
+        void accept(osg::NodeVisitor& nv, bool remove);
+
+        /** Bounds of this set */
+        const osg::BoundingSphere& getBound() const { return _bs; }
+
+        /** Number of elements in the set */
+        unsigned size() const { return _entries.size(); }
+
+    private:
+        std::vector<Entry>  _entries;
+        osg::BoundingSphere _bs;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_DRAPING_CULL_SET

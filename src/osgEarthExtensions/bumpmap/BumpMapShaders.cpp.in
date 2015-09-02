@@ -7,9 +7,6 @@ using namespace osgEarth::BumpMap;
 
 Shaders::Shaders()
 {
-    VertexModel = "BumpMap.vert.model.glsl";
-    _sources[VertexModel] = MULTILINE(@BumpMap.vert.model.glsl@);
-
     VertexView = "BumpMap.vert.view.glsl";
     _sources[VertexView] = MULTILINE(@BumpMap.vert.view.glsl@);
 

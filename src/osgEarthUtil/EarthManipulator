@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 #include <osgEarth/Terrain>
 #include <osgEarth/MapNode>
 #include <osg/Timer>
+#include <osg/ArgumentParser>
 #include <osgGA/CameraManipulator>
 #include <map>
 #include <list>
@@ -210,6 +211,9 @@ namespace osgEarth { namespace Util
 
             /** dtor */
             virtual ~Settings() { }
+
+            // look for settings in an AP
+            void apply(osg::ArgumentParser& args);
 
             /**
              * Assigns behavior to the action of dragging the mouse while depressing one or
@@ -559,7 +563,8 @@ namespace osgEarth { namespace Util
 
     public:
         EarthManipulator();
-        EarthManipulator( const EarthManipulator& rhs );
+        EarthManipulator(osg::ArgumentParser& args);
+        EarthManipulator(const EarthManipulator& rhs);
 
         /**
          * Applies a new settings object to the manipulator, which takes effect immediately.
@@ -773,6 +778,9 @@ namespace osgEarth { namespace Util
         // react to a tile-added event from the Terrain
         virtual void handleTileAdded(const TileKey& key, osg::Node* tile, TerrainCallbackContext& context);
 
+        // returns the absoulte Euler angles composited from the composite rotation matrix.
+        void getCompositeEulerAngles( double* out_azim, double* out_pitch =0L ) const;
+
     protected:
 
         virtual ~EarthManipulator();
@@ -830,8 +838,11 @@ namespace osgEarth { namespace Util
         // movements.
         bool serviceTask();
 
-        //void recalculateLocalPitchAndAzimuth();
-        void getLocalEulerAngles( double* out_azim, double* out_pitch =0L ) const;
+        // returns the Euler Angles baked into _rotation, the local frame's rotation quaternion.
+        void getEulerAngles(const osg::Quat& quat, double* azim, double* pitch) const;
+
+        // Makes a quaternion from an azimuth and pitch.
+        osg::Quat getQuaternion(double azim, double pitch) const;
 
         /**
          * Fire a ray from the current eyepoint along the current look vector,
@@ -843,10 +854,7 @@ namespace osgEarth { namespace Util
         void recalculateCenter(const osg::CoordinateFrame& frame);
 
         osg::Matrixd getRotation(const osg::Vec3d& center) const;
-        osg::Quat makeCenterRotation(const osg::Vec3d& center) const
-        {
-            return getRotation(center).getRotate().inverse();
-        }
+        osg::Quat computeCenterRotation(const osg::Vec3d& center) const;
 
         void updateTether();
 
@@ -942,17 +950,34 @@ namespace osgEarth { namespace Util
         // local2world matrix for the center point.
         osg::CoordinateFrame    _centerLocalToWorld;
 
+        // Rotation offset to _rotation when tethering.
+        osg::Quat               _tetherRotation;
+
+        // The initial offset applied to the tether rotation when orientation-tethering begins.
+        // This is usually just the inverse of the first-calculated _tetherRotation.
+        optional<osg::Quat>     _tetherRotationOffset;
+
         // The rotation (heading and pitch) of the camera in the
-        // earth-local frame.
+        // earth-local frame defined by _centerRotation.
         osg::Quat               _rotation;
 
         // The rotation that makes the camera look down on the focal
         // point on the earth. This is equivalent to a rotation by
         // latitude, longitude.
         osg::Quat               _centerRotation;
+
+        // distance from camera to center of rotation.
         double                  _distance;
-        double                  _offset_x;
-        double                  _offset_y;
+
+        // XYZ offsets of the focal point in the local tangent plane coordinate system
+        // of the focal point.
+        osg::Vec3d              _posOffset;
+
+        // XY offsets (left/right, down/up) of the focal point in the plane normal to
+        // the view heading.
+        osg::Vec2d              _viewOffset;
+
+
         osg::Vec3d              _previousUp;
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;
@@ -977,9 +1002,17 @@ namespace osgEarth { namespace Util
         double                  _setVPAccel, _setVPAccel2;  // Acceleration factors for setViewpoint
         double                  _setVPArcHeight;            // Altitude arcing height for setViewpoint
 
-        bool setViewpointFrame(double time_s);
-        void setLookAt(const osg::Vec3d& center, double azim, double pitch, double range);
+        osg::Quat               _tetherRotationVP0;         // saves _tetherRotation at the start of a transition
+        osg::Quat               _tetherRotationVP1;         // target _tetherRotation if not tethered
+
+        TetherMode              _lastTetherMode;
+
+        // returns "t", the parametric coefficient of a timed transition. 1=finished.
+        double setViewpointFrame(double time_s);
+
+        void setLookAt(const osg::Vec3d& center, double azim, double pitch, double range, const osg::Vec3d& posoffset);
         void resetLookAt();
+        void collapseTetherRotationIntoRotation();
 
         unsigned _frameCount;
 

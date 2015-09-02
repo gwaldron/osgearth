@@ -63,7 +63,9 @@ TileNodeRegistry::setMapRevision(const Revision& rev,
                 {
                     i->second->setMapRevision( _maprev );
                     if ( setToDirty )
-                        i->second->setDirty();
+                    {
+                        i->second->setDirty( true );
+                    }
                 }
             }
         }
@@ -88,7 +90,7 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
             maxLevel >= key.getLOD() &&
             extent.intersects(i->first.getExtent(), checkSRS) )
         {
-            i->second->setDirty();
+            i->second->setDirty( true );
         }
     }
 }
@@ -96,12 +98,12 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
 void
 TileNodeRegistry::addSafely(TileNode* tile)
 {
-    _tiles[ tile->getKey() ] = tile;
+    _tiles[ tile->getTileKey() ] = tile;
     if ( _revisioningEnabled )
         tile->setMapRevision( _maprev );
 
     // check for tiles that are waiting on this tile, and notify them!
-    TileKeyOneToMany::iterator notifier = _notifiers.find( tile->getKey() );
+    TileKeyOneToMany::iterator notifier = _notifiers.find( tile->getTileKey() );
     if ( notifier != _notifiers.end() )
     {
         TileKeySet& listeners = notifier->second;
@@ -133,7 +135,7 @@ TileNodeRegistry::removeSafely(const TileKey& key)
         i->second.erase( key );
 
         if ( i->second.size() == 0 )
-            i = _notifiers.erase( i );
+            _notifiers.erase( i++ ); // http://stackoverflow.com/a/8234813/4218920
         else
             ++i;
     }
@@ -170,10 +172,16 @@ TileNodeRegistry::remove( TileNode* tile )
     if ( tile )
     {
         Threading::ScopedWriteLock exclusive( _tilesMutex );
-        removeSafely( tile->getKey() );
+        removeSafely( tile->getTileKey() );
     }
 }
 
+void
+TileNodeRegistry::clear()
+{
+    Threading::ScopedWriteLock exclusive( _tilesMutex );
+    _tiles.clear();
+}
 
 void
 TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
@@ -188,6 +196,23 @@ TileNodeRegistry::move(TileNode* tile, TileNodeRegistry* destination)
     }
 }
 
+void
+TileNodeRegistry::moveAll(TileNodeRegistry* destination)
+{
+    Threading::ScopedWriteLock exclusive( _tilesMutex );
+
+    if ( destination )
+    {
+        for( TileNodeMap::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+        {
+            if ( i->second.valid() )
+                destination->add( i->second.get() );
+        }
+    }
+
+    _tiles.clear();
+}
+    
 
 bool
 TileNodeRegistry::get( const TileKey& key, osg::ref_ptr<TileNode>& out_tile )
@@ -254,16 +279,16 @@ TileNodeRegistry::listenFor(const TileKey& tileToWaitFor, TileNode* waiter)
     TileNodeMap::iterator i = _tiles.find( tileToWaitFor );
     if ( i != _tiles.end() )
     {
-        OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str()
+        OE_DEBUG << LC << waiter->getTileKey().str() << " listened for " << tileToWaitFor.str()
             << ", but it was already in the repo.\n";
 
         waiter->notifyOfArrival( i->second.get() );
     }
     else
     {
-        OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
+        OE_DEBUG << LC << waiter->getTileKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
         //_notifications[tileToWaitFor].push_back( waiter->getKey() );
-        _notifiers[tileToWaitFor].insert( waiter->getKey() );
+        _notifiers[tileToWaitFor].insert( waiter->getTileKey() );
     }
 }
         
@@ -272,20 +297,6 @@ TileNodeRegistry::takeAny()
 {
     Threading::ScopedWriteLock exclusive( _tilesMutex );
     osg::ref_ptr<TileNode> tile = _tiles.begin()->second.get();
-    removeSafely( tile->getKey() );
+    removeSafely( tile->getTileKey() );
     return tile.release();
-}
-
-bool
-TileNodeRegistry::get(const TileKey& key, osg::ref_ptr<const TerrainTileModel>& out_model) const
-{
-    Threading::ScopedReadLock shared( _tilesMutex );
-
-    TileNodeMap::const_iterator i = _tiles.find(key);
-    if ( i != _tiles.end() )
-    {
-        out_model = i->second->getModel();
-        return true;
-    }
-    return false;
 }

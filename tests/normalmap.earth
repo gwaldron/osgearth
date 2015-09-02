@@ -1,10 +1,10 @@
 <!--
 osgEarth Sample - Shows an elevation-derived normal map.
 -->
-<map name="readymap.org" type="geocentric">
-    
+<map name="readymap.org" type="geocentric">    
+
     <options>
-        <terrain first_lod="1"/>
+        <terrain normal_maps="true"/>
     </options>
     
     <image name="readymap_imagery" driver="tms">
@@ -16,7 +16,6 @@ osgEarth Sample - Shows an elevation-derived normal map.
     </elevation>
     
     <extensions>
-        <normalmap/>
-        <sky/>
+        <sky driver="gl"/>
     </extensions>
 </map>

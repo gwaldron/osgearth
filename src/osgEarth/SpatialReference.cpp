@@ -1,6 +1,6 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2014 Pelican Mapping
+ * Copyright 2015 Pelican Mapping
  * http://osgearth.org
  *
  * osgEarth is free software; you can redistribute it and/or modify
@@ -783,16 +783,10 @@ SpatialReference::createUTMFromLonLat( const Angular& lon, const Angular& lat ) 
     return create( horiz, getVertInitString() );
 }
 
-const SpatialReference* 
-SpatialReference::createPlateCarreGeographicSRS() const
+const SpatialReference*
+SpatialReference::createEquirectangularSRS() const
 {
-    SpatialReference* pc = create( getKey(), false );
-    if ( pc ) 
-    {
-        pc->_is_plate_carre = true;
-        pc->_is_geographic  = false;
-    }
-    return pc;
+    return SpatialReference::create("+proj=eqc +units=m +no_defs", getVertInitString());
 }
 
 bool
@@ -951,17 +945,12 @@ SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_lo
     }
     else
     {
-        // convert MSL to HAE if necessary:
-        osg::Vec3d geodetic;
-        if ( !transform(xyz, getGeodeticSRS(), geodetic) )
-            return false;
-
-        // then to ECEF:
+        // convert to ECEF:
         osg::Vec3d ecef;
-        if ( !transform(geodetic, getGeodeticSRS()->getECEF(), ecef) )
+        if ( !transform(xyz, getECEF(), ecef) )
             return false;
 
-        //out_local2world = ECEF::createLocalToWorld(ecef);        
+        // and create the matrix.
         _ellipsoid->computeLocalToWorldTransformFromXYZ(ecef.x(), ecef.y(), ecef.z(), out_local2world);
     }
     return true;
@@ -1363,7 +1352,6 @@ SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
     v.push_back( osg::Vec3d(in_out_xmin, in_out_ymax, 0) ); // ul
     v.push_back( osg::Vec3d(in_out_xmax, in_out_ymax, 0) ); // ur
     v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin, 0) ); // lr
-
     if ( transform(v, to_srs) )
     {
         in_out_xmin = std::min( v[0].x(), v[1].x() );

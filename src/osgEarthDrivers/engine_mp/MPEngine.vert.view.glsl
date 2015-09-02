@@ -7,22 +7,21 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 
 uniform float oe_layer_minRange;
 uniform float oe_layer_maxRange;
+uniform float oe_layer_attenuationRange;
 
-varying float oe_terrain_rangeOpacity;
+varying float oe_layer_rangeOpacity;
 
 void oe_mp_vertView(inout vec4 vertexView)
 {
-    float range = -vertexView.z;
+    float range = max(-vertexView.z, 0.0);
 
-    float rangeSpanSlice = 0.1*(oe_layer_maxRange-oe_layer_minRange);
-    float maxFadeSpan    = min(rangeSpanSlice, oe_layer_maxRange*0.1);
-    float minFadeSpan    = min(rangeSpanSlice, oe_layer_minRange*0.1);
+    float attenMin    = oe_layer_minRange - oe_layer_attenuationRange;
+    float attenMax    = oe_layer_maxRange + oe_layer_attenuationRange;
 
-    oe_terrain_rangeOpacity =  
-        oe_layer_minRange >= oe_layer_maxRange  ? 1.0 : // disabled
-        range > oe_layer_maxRange + maxFadeSpan ? 0.0 :
-        range > oe_layer_maxRange               ? 1.0-(range-oe_layer_maxRange)/maxFadeSpan :
-        range > oe_layer_minRange + minFadeSpan ? 1.0 :
-        range > oe_layer_minRange               ? (range-oe_layer_minRange)/minFadeSpan :
+    oe_layer_rangeOpacity =
+        oe_layer_minRange >= oe_layer_maxRange                   ? 1.0 :
+        range >= oe_layer_minRange && range < oe_layer_maxRange  ? 1.0 :
+        range < oe_layer_minRange                                ? clamp((range-attenMin)/oe_layer_attenuationRange, 0.0, 1.0) :
+        range > oe_layer_maxRange                                ? clamp((attenMax-range)/oe_layer_attenuationRange, 0.0, 1.0) :
         0.0;
 }

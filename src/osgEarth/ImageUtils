@@ -339,6 +339,9 @@ namespace osgEarth
              */
             PixelReader(const osg::Image* image);
 
+            /** Sets the interpolation type (default=nearest) */
+            void setBilinear(bool value) { _bilinear = value; }
+
             /** Whether PixelReader supports a given format/datatype combiniation. */
             static bool supports( GLenum pixelFormat, GLenum dataType );
 
@@ -358,12 +361,7 @@ namespace osgEarth
             }
 
             /** Reads a color from the image by unit coords [0..1] */
-            osg::Vec4 operator()(float s, float t, int r=0, int m=0) const {
-                return (*_reader)(this,
-                    (int)(s * (float)(_image->s()-1)),
-                    (int)(t * (float)(_image->t()-1)),
-                    r, m);
-            }
+            osg::Vec4 operator()(float u, float v, int r=0, int m=0) const;
 
             // internals:
             const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
@@ -379,6 +377,7 @@ namespace osgEarth
             unsigned _rowMult;
             unsigned _imageSize;
             bool     _normalized;
+            bool     _bilinear;
         };
         
         /**

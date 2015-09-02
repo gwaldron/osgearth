@@ -1699,7 +1699,8 @@ namespace
 }
     
 ImageUtils::PixelReader::PixelReader(const osg::Image* image) :
-_image     (image)
+_image     (image),
+_bilinear  (true)
 {
     _normalized = ImageUtils::isNormalized(image);
     _colMult = _image->getPixelSizeInBits() / 8;
@@ -1712,6 +1713,42 @@ _image     (image)
         OE_WARN << "[PixelReader] No reader found for pixel format " << std::hex << _image->getPixelFormat() << std::endl; 
         _reader = &ColorReader<0,GLbyte>::read;
     }
+}
+
+osg::Vec4
+ImageUtils::PixelReader::operator()(float u, float v, int r, int m) const
+ {
+     if ( _bilinear )
+     {
+         // u, v => [0..1]
+         float s = u * (float)(_image->s()-1);
+         float t = v * (float)(_image->t()-1);
+
+         float s0 = floor(s);
+         float s1 = std::min(ceil(s), (float)(_image->s()-1));
+         float smix = s0 < s1 ? (s-s0)/(s1-s0) : 0.0f;
+
+         float t0 = floor(t);
+         float t1 = std::min(ceil(t), (float)(_image->t()-1));
+         float tmix = t0 < t1 ? (t-t0)/(t1-t0) : 0.0f;
+
+         osg::Vec4 UL = (*_reader)(this, (int)s0, (int)t0, r, m); // upper left
+         osg::Vec4 UR = (*_reader)(this, (int)s1, (int)t0, r, m); // upper right
+         osg::Vec4 LL = (*_reader)(this, (int)s0, (int)t1, r, m); // lower left
+         osg::Vec4 LR = (*_reader)(this, (int)s1, (int)t1, r, m); // lower right
+
+         osg::Vec4 TOP = UL*(1.0f-smix) + UR*smix;
+         osg::Vec4 BOT = LL*(1.0f-smix) + LR*smix;
+
+         return TOP*(1.0f-tmix) + BOT*tmix;
+     }
+     else
+     {
+         return (*_reader)(this,
+             (int)(u * (float)(_image->s()-1)),
+             (int)(v * (float)(_image->t()-1)),
+             r, m);
+     }
 }
 
 bool

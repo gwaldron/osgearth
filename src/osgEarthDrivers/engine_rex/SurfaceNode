@@ -55,8 +55,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const osg::Image* getElevationRaster() const;
         const osg::Matrixf& getElevationMatrix() const;
 
-        const osg::BoundingBox& getWorldBoundingBox() const { return _bbox; }
-
         const osg::BoundingBox& getAlignedBoundingBox() const;
         
         TileDrawable* getDrawable() const { return _drawable.get(); }

@@ -57,22 +57,31 @@ namespace
             geom->setVertexArray(v);
 
             osg::DrawElementsUByte* de = new osg::DrawElementsUByte(GL_LINES);
+
+#if 0
+            // bottom:
             de->push_back(0); de->push_back(1);
             de->push_back(1); de->push_back(3);
             de->push_back(3); de->push_back(2);
             de->push_back(2); de->push_back(0);
+#endif
+            // top:
             de->push_back(4); de->push_back(5);
             de->push_back(5); de->push_back(7);
             de->push_back(7); de->push_back(6);
             de->push_back(6); de->push_back(4);
+
+#if 0
+            // corners:
             de->push_back(0); de->push_back(4);
             de->push_back(1); de->push_back(5);
             de->push_back(3); de->push_back(7);
             de->push_back(2); de->push_back(6);
+#endif
             geom->addPrimitiveSet(de);
 
             osg::Vec4Array* c= new osg::Vec4Array();
-            c->push_back(osg::Vec4(0,1,1,1));
+            c->push_back(osg::Vec4(1,0,0,1));
             geom->setColorArray(c);
             geom->setColorBinding(geom->BIND_OVERALL);
 
@@ -171,110 +180,6 @@ SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radiusSq
     return false;
 }
 
-#if 0
-void
-SurfaceNode::setElevationExtrema(const osg::Vec2f& minmax)
-{
-#if 0
-    // communicate the extrema to the drawable so it can compute a proper bounding box:
-    if ( minmax != osg::Vec2f(0,0) )
-        _drawable->setElevationExtrema(minmax);
-#endif
-
-    // bounding box in local space:
-#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
-    const osg::BoundingBox& box = _drawable->getBoundingBox();
-#else
-    const osg::BoundingBox& box = _drawable->getBound();
-#endif
-    
-    // compute the bounding box in world space:
-    const osg::Matrix& local2world = getMatrix();    
-    _bbox.init();
-    for(int i=0; i<8; ++i)
-    {
-        _worldCorners[i] = (box.corner(i) * local2world);
-        _bbox.expandBy( _worldCorners[i] );
-    }
-
-    osg::Vec3 minZMedians[4];
-    osg::Vec3 maxZMedians[4];
-
-    minZMedians[0] = (box.corner(0)+box.corner(1))*0.5;
-    minZMedians[1] = (box.corner(1)+box.corner(3))*0.5;
-    minZMedians[2] = (box.corner(3)+box.corner(2))*0.5;
-    minZMedians[3] = (box.corner(0)+box.corner(2))*0.5;
-                                  
-    maxZMedians[0] = (box.corner(4)+box.corner(5))*0.5;
-    maxZMedians[1] = (box.corner(5)+box.corner(7))*0.5;
-    maxZMedians[2] = (box.corner(7)+box.corner(6))*0.5;
-    maxZMedians[3] = (box.corner(4)+box.corner(6))*0.5;
-                                  
-    // Child 0 corners
-    _childrenCorners[0][0] =  box.corner(0);
-    _childrenCorners[0][1] =  minZMedians[0];
-    _childrenCorners[0][2] =  minZMedians[3];
-    _childrenCorners[0][3] = (minZMedians[0]+minZMedians[2])*0.5;
-
-    _childrenCorners[0][4] =  box.corner(4);
-    _childrenCorners[0][5] =  maxZMedians[0];
-    _childrenCorners[0][6] =  maxZMedians[3];
-    _childrenCorners[0][7] = (maxZMedians[0]+maxZMedians[2])*0.5;
-
-    // Child 1 corners
-    _childrenCorners[1][0] =  minZMedians[0];
-    _childrenCorners[1][1] =  box.corner(1);
-    _childrenCorners[1][2] = (minZMedians[0]+minZMedians[2])*0.5;
-    _childrenCorners[1][3] =  minZMedians[1];
-                     
-    _childrenCorners[1][4] =  maxZMedians[0];
-    _childrenCorners[1][5] =  box.corner(5);
-    _childrenCorners[1][6] = (maxZMedians[0]+maxZMedians[2])*0.5;
-    _childrenCorners[1][7] =  maxZMedians[1];
-
-    // Child 2 corners
-    _childrenCorners[2][0] =  minZMedians[3];
-    _childrenCorners[2][1] = (minZMedians[0]+minZMedians[2])*0.5;
-    _childrenCorners[2][2] =  box.corner(2);
-    _childrenCorners[2][3] =  minZMedians[2];
-                     
-    _childrenCorners[2][4] =  maxZMedians[3];
-    _childrenCorners[2][5] = (maxZMedians[0]+maxZMedians[2])*0.5;
-    _childrenCorners[2][6] =  box.corner(6);
-    _childrenCorners[2][7] =  maxZMedians[2]; 
-
-    // Child 3 corners
-    _childrenCorners[3][0] = (minZMedians[0]+minZMedians[2])*0.5;
-    _childrenCorners[3][1] =  minZMedians[1];
-    _childrenCorners[3][2] =  minZMedians[2];
-    _childrenCorners[3][3] =  box.corner(3);
-                     
-    _childrenCorners[3][4] = (maxZMedians[0]+maxZMedians[2])*0.5;
-    _childrenCorners[3][5] =  maxZMedians[1];
-    _childrenCorners[3][6] =  maxZMedians[2];
-    _childrenCorners[3][7] =  box.corner(7);
-
-    // Transform to world space
-    for(size_t childIndex = 0; childIndex < _childrenCorners.size(); ++ childIndex)
-    {
-         VectorPoints& childrenCorners = _childrenCorners[childIndex];
-         for(size_t cornerIndex = 0; cornerIndex < childrenCorners.size(); ++cornerIndex)
-         {
-             osg::Vec3& childCorner = childrenCorners[cornerIndex];
-             osg::Vec3 childCornerWorldSpace = childCorner*local2world;
-             childCorner = childCornerWorldSpace;
-         }
-    }
-
-    if(_enableDebugNodes)
-    {
-        removeDebugNode();
-        addDebugNode(box);
-        setDebugNodeVisible(false);
-    }
-}
-#endif
-
 void
 SurfaceNode::setElevationRaster(const osg::Image*   raster,
                                 const osg::Matrixf& scaleBias)
@@ -294,15 +199,8 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
 #else
     const osg::BoundingBox& box = _drawable->getBound();
 #endif
-    
-    // convert the bounding box in world space:
-    const osg::Matrix& local2world = getMatrix();    
-    _bbox.init();
-    for(int i=0; i<8; ++i)
-    {
-        _worldCorners[i] = (box.corner(i) * local2world);
-        _bbox.expandBy( _worldCorners[i] );
-    }
+
+    // Compute the medians of each potential child node:
 
     osg::Vec3 minZMedians[4];
     osg::Vec3 maxZMedians[4];
@@ -361,7 +259,9 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
     _childrenCorners[3][6] =  maxZMedians[2];
     _childrenCorners[3][7] =  box.corner(7);
 
-    // Transform to world space
+    // Transform the child corners to world space
+    
+    const osg::Matrix& local2world = getMatrix();
     for(size_t childIndex = 0; childIndex < _childrenCorners.size(); ++ childIndex)
     {
          VectorPoints& childrenCorners = _childrenCorners[childIndex];

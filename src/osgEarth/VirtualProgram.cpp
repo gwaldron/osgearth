@@ -136,7 +136,8 @@ namespace
         }
         std::string r;
         r = buf.str();
-        return trim(r);
+        trim2(r);
+        return r;
     }
 
 

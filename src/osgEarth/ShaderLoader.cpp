@@ -50,12 +50,10 @@ ShaderLoader::getQuotedPragmaValue(const std::string& source, const std::string&
 
     std::string statement = source.substr( includePos, (closeQuotePos-includePos)+1 );
 
-    std::string value = source.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
-
-    return value;
+    return source.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
 }
 
-void 
+void
 ShaderLoader::getAllQuotedPragmaValues(const std::string&     source,
                                        const std::string&     key,
                                        std::set<std::string>& output)
@@ -72,10 +70,9 @@ ShaderLoader::getAllQuotedPragmaValues(const std::string&     source,
                 std::string::size_type closeQuotePos = source.find('\"', openQuotePos+1);
                 if ( closeQuotePos != std::string::npos )
                 {
-                    std::string statement = source.substr( includePos, (closeQuotePos-includePos)+1 );
-                    std::string value = source.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
-                    if ( !value.empty() )
-                        output.insert( value );
+                    const size_t len = (closeQuotePos - openQuotePos) - 1;
+                    if ( len )
+                        output.insert( source.substr( openQuotePos+1, len ) );
 
                     includePos = closeQuotePos;
                 }
@@ -91,7 +88,7 @@ ShaderLoader::load(const std::string&    filename,
 {
     std::string output;
     bool useInlineSource = false;
-    
+
     std::string inlineSource;
     ShaderPackage::SourceMap::const_iterator source = package._sources.find(filename); //.context().find(filename);
     if ( source != package._sources.end() ) //.context().end() )
@@ -125,7 +122,7 @@ ShaderLoader::load(const std::string&    filename,
     // replace common tokens:
     osgEarth::replaceIn(output, "$GLSL_VERSION_STR", GLSL_VERSION_STR);
     osgEarth::replaceIn(output, "$GLSL_DEFAULT_PRECISION_FLOAT", GLSL_DEFAULT_PRECISION_FLOAT);
-    
+
     // If we're using inline source, we have to post-process the string.
     if ( useInlineSource )
     {
@@ -152,7 +149,7 @@ ShaderLoader::load(const std::string&    filename,
         std::string includeStatement = output.substr( includePos, (closeQuotePos-includePos)+1 );
 
         std::string fileToInclude = output.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
-        
+
         // load the source of the included file, and append a newline so we
         // don't break the MULTILINE macro if the last line of the include
         // file is a comment.
@@ -168,7 +165,7 @@ ShaderLoader::load(const std::string&    filename,
     {
         std::string::size_type definePos = output.find("#pragma vp_define");
         if ( definePos == std::string::npos )
-            break;        
+            break;
 
         std::string::size_type openQuotePos = output.find('\"', definePos);
         if ( openQuotePos == std::string::npos )
@@ -177,7 +174,7 @@ ShaderLoader::load(const std::string&    filename,
         std::string::size_type closeQuotePos = output.find('\"', openQuotePos+1);
         if ( closeQuotePos == std::string::npos )
             break;
-        
+
         std::string defineStatement = output.substr( definePos, (closeQuotePos-definePos)+1 );
 
         std::string varName = output.substr( openQuotePos+1, (closeQuotePos-openQuotePos)-1 );
@@ -238,7 +235,7 @@ ShaderLoader::load(const std::string&    filename,
     // replace common tokens:
     osgEarth::replaceIn(output, "$GLSL_VERSION_STR", GLSL_VERSION_STR);
     osgEarth::replaceIn(output, "$GLSL_DEFAULT_PRECISION_FLOAT", GLSL_DEFAULT_PRECISION_FLOAT);
-    
+
     // If we're using inline source, we have to post-process the string.
     if ( useInlineSource )
     {
@@ -268,7 +265,7 @@ ShaderLoader::load(VirtualProgram*       vp,
         OE_WARN << LC << "Failed to load shader source from \"" << filename << "\"\n";
         return false;
     }
-    
+
     std::string loc = getQuotedPragmaValue(source, "vp_location");
     if ( loc.empty() )
     {
@@ -297,7 +294,7 @@ ShaderLoader::load(VirtualProgram*       vp,
         location = ShaderComp::LOCATION_FRAGMENT_LIGHTING;
     else if ( ciEquals(loc, "fragment_output") )
         location = ShaderComp::LOCATION_FRAGMENT_OUTPUT;
-    else 
+    else
     {
         OE_WARN << LC << "Illegal: shader \"" << filename << "\" has invalid #pragma vp_location \"" << loc << "\"\n";
         return false;

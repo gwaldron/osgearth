@@ -204,7 +204,7 @@ namespace
                 break;
 
             std::string statement(source, pos, end-pos);
-            statement = trim(statement);
+            trim2(statement);
 
             //OE_NOTICE << "Statement: " << statement << "\n";
 
@@ -248,7 +248,7 @@ ShaderPreProcessor::run(osg::Shader* shader)
         std::string source = shader->getShaderSource();
 
         // find the first legal insertion point for replacement declarations. GLSL requires that nothing
-        // precede a "#verson" compiler directive, so we must insert new declarations after it.
+        // precede a "#version" compiler directive, so we must insert new declarations after it.
         std::string::size_type declPos = source.rfind( "#version " );
         if ( declPos != std::string::npos )
         {

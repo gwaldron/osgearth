@@ -57,6 +57,11 @@ namespace osgEarth
     extern OSGEARTH_EXPORT std::string trim( const std::string& in );
 
     /**
+     * Trims whitespace from the ends of a string; in-place modification on the string to reduce string copies.
+     */
+    extern OSGEARTH_EXPORT void trim2( std::string& str );
+
+    /**
      * True is "ref" starts with "pattern"
      */
     extern OSGEARTH_EXPORT bool startsWith( 

@@ -111,16 +111,19 @@ namespace
 
 
 PagerLoader::PagerLoader(UID engineUID) :
-_engineUID ( engineUID ),
-_checkpoint( (osg::Timer_t)0 )
+_engineUID     ( engineUID ),
+_checkpoint    ( (osg::Timer_t)0 ),
+_mergesPerFrame( 0 )
 {
     _myNodePath.push_back( this );
-
-#ifdef USE_MERGE_QUEUE
-    this->setNumChildrenRequiringUpdateTraversal( 1u );
-#endif
 }
 
+void
+PagerLoader::setMergesPerFrame(int value)
+{
+    _mergesPerFrame = std::max(value, 0);
+    this->setNumChildrenRequiringUpdateTraversal( _mergesPerFrame > 0 ? 1 : 0 );
+}
 
 bool
 PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv)
@@ -184,11 +187,11 @@ PagerLoader::clear()
 void
 PagerLoader::traverse(osg::NodeVisitor& nv)
 {
-    // only called when USE_MERGE_QUEUE is defined
+    // only called when _mergesPerFrame > 0
     if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
     {
         int count;
-        for(count=0; count < MERGES_PER_FRAME && !_mergeQueue.empty(); ++count)
+        for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
         {
             Request* req = _mergeQueue.front().get();
             if ( req && req->_lastTick >= _checkpoint )
@@ -218,13 +221,16 @@ PagerLoader::addChild(osg::Node* node)
         Request* req = result->getRequest();
         if ( req && req->_lastTick >= _checkpoint )
         {
-          #ifdef USE_MERGE_QUEUE
-            _mergeQueue.push( req );
-            req->setState(Request::MERGING);
-          #else
-            req->apply();
-            req->setState(Request::IDLE);
-          #endif
+            if ( _mergesPerFrame > 0 )
+            {
+                _mergeQueue.push( req );
+                req->setState( Request::MERGING );
+            }
+            else
+            {
+                req->apply();
+                req->setState( Request::IDLE );
+            }
         }
     }
     return true;

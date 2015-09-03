@@ -43,7 +43,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _highResolutionFirst    ( false ),
             _normalMaps             ( true ),
             _morphTerrain           ( true ),
-            _morphImagery           ( true )
+            _morphImagery           ( true ),
+            _mergesPerFrame         ( 0 )
         {
             setDriver( "rex" );
             fromConfig( _conf );
@@ -86,6 +87,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>& morphImagery() { return _morphImagery; }
         const optional<bool>& morphImagery() const { return _morphImagery; }
 
+        /** Maximum number of tile data merges permitted per frame. 0 = infinity. */
+        optional<int>& mergesPerFrame() { return _mergesPerFrame; }
+        const optional<int>& mergesPerFrame() const { return _mergesPerFrame; }
+
     protected:
         virtual Config getConfig() const {
             Config conf = TerrainOptions::getConfig();
@@ -97,6 +102,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.updateIfSet( "normal_maps", _normalMaps );
             conf.updateIfSet( "morph_terrain", _morphTerrain );
             conf.updateIfSet( "morph_imagery", _morphImagery );
+            conf.updateIfSet( "merges_per_frame", _mergesPerFrame );
 
             return conf;
         }
@@ -116,6 +122,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             conf.getIfSet( "normal_maps", _normalMaps );
             conf.getIfSet( "morph_terrain", _morphTerrain );
             conf.getIfSet( "morph_imagery", _morphImagery );
+            conf.getIfSet( "merges_per_frame", _mergesPerFrame );
         }
 
         optional<float>    _skirtRatio;
@@ -126,6 +133,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         optional<bool>     _normalMaps;
         optional<bool>     _morphTerrain;
         optional<bool>     _morphImagery;
+        optional<int>      _mergesPerFrame;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

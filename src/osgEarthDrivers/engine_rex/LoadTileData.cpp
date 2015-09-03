@@ -201,7 +201,7 @@ LoadTileData::apply()
         }
         else
         {
-            OE_WARN << LC << "LoadTileData failed; TileNode disappeared\n";
+            OE_DEBUG << LC << "LoadTileData failed; TileNode disappeared\n";
         }
     }
 }

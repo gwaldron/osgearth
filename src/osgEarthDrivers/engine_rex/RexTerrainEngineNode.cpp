@@ -52,7 +52,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
 
-// TODO: bins don't work with SSDK. No idea why. Disable until further notice.
+// TODO: bins don't work with SSDK. No idea why.
 #define USE_RENDER_BINS 1
 
 //------------------------------------------------------------------------
@@ -306,7 +306,12 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     }
 
     // Make a tile loader
-    _loader = new PagerLoader( getUID() );
+    PagerLoader* loader = new PagerLoader( getUID() );    
+    if ( _terrainOptions.mergesPerFrame().isSet() )
+    {
+        loader->setMergesPerFrame( _terrainOptions.mergesPerFrame().get() );
+    }
+    _loader = loader;
     //_loader = new SimpleLoader();
     this->addChild( _loader.get() );
     

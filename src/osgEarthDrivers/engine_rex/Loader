@@ -116,6 +116,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         PagerLoader(UID engineUID);
 
+        /** Sets the maximum number of requests to merge per frame. 0=infinity */
+        void setMergesPerFrame(int);
+
     public: // Loader
 
         /** Asks the loader to begin or continue loading something.
@@ -145,6 +148,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         Threading::Mutex _requestsMutex;
         MergeQueue       _mergeQueue;  
         osg::Timer_t     _checkpoint;
+        int              _mergesPerFrame;
     };
 
 } } }

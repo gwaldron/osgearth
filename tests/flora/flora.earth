@@ -56,7 +56,16 @@
         </terrainshader>
         
         <viewpoints>
-            <viewpoint name="Oahu" heading="-0.316509rad" height="0.05537051614373922" lat="21.36485463831751" long="-157.8517958313442" pitch="-0.156294rad" range="2282.41m"/>
+            <viewpoint name="Oahu">
+              <heading>-18.2063</heading>
+              <pitch>-9.06689</pitch>
+              <range>2282.41m</range>
+              <long>-157.8517958313442</long>
+              <lat>21.36485463831752</lat>
+              <height>0.05537051614373922</height>
+              <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+            </viewpoint>
+            
             <viewpoint name="Boston" heading="-0.531961rad" height="1.1395663022995e-005" lat="42.3545651464811" long="-71.06809017885439" pitch="-0.274288rad" range="36.0636m"/>
             <viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
             <viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>

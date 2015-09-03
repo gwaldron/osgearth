@@ -1720,16 +1720,19 @@ ImageUtils::PixelReader::operator()(float u, float v, int r, int m) const
  {
      if ( _bilinear )
      {
-         // u, v => [0..1]
-         float s = u * (float)(_image->s()-1);
-         float t = v * (float)(_image->t()-1);
+         float sizeS = (float)(_image->s()-1);
+         float sizeT = (float)(_image->t()-1);
 
-         float s0 = floor(s);
-         float s1 = std::min(ceil(s), (float)(_image->s()-1));
+         // u, v => [0..1]
+         float s = u * sizeS;
+         float t = v * sizeT;
+
+         float s0 = std::max(floor(s), 0.0f);
+         float s1 = std::min(s0+1.0f, sizeS);
          float smix = s0 < s1 ? (s-s0)/(s1-s0) : 0.0f;
 
-         float t0 = floor(t);
-         float t1 = std::min(ceil(t), (float)(_image->t()-1));
+         float t0 = std::max(floor(t), 0.0f);
+         float t1 = std::min(t0+1.0f, sizeT);
          float tmix = t0 < t1 ? (t-t0)/(t1-t0) : 0.0f;
 
          osg::Vec4 UL = (*_reader)(this, (int)s0, (int)t0, r, m); // upper left

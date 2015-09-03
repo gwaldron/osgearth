@@ -65,12 +65,13 @@ namespace
             de->push_back(3); de->push_back(2);
             de->push_back(2); de->push_back(0);
 #endif
+#if 1
             // top:
             de->push_back(4); de->push_back(5);
             de->push_back(5); de->push_back(7);
             de->push_back(7); de->push_back(6);
             de->push_back(6); de->push_back(4);
-
+#endif
 #if 0
             // corners:
             de->push_back(0); de->push_back(4);
@@ -87,7 +88,7 @@ namespace
 
             geode->addDrawable(geom);
 
-            sizeStr = Stringify() << key.str() << "\nmin="<<bbox.zMin()<<"\nmax="<<bbox.zMax();
+            sizeStr = Stringify() << key.str() << "\nmax="<<bbox.zMax()<<"\nmin="<<bbox.zMin()<<"\n";
             zpos = bbox.zMax();
         }
 
@@ -278,6 +279,8 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
         removeDebugNode();
         addDebugNode(box);
     }
+
+    dirtyBound();
 }
 
 const osg::Image*

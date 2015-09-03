@@ -191,7 +191,6 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     osg::BoundingSphere tileBound;
 
     // the geometry:
-    //SharedGeometry* geom = new SharedGeometry();
     osg::Geometry* geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
     geom->setUseDisplayList(false);
@@ -209,10 +208,10 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     geom->setNormalArray( normals );
     geom->setNormalBinding( geom->BIND_PER_VERTEX );
 
-    osg::Vec3Array* neighbors = 0;
-    neighbors = new osg::Vec3Array();
+    // neighbor positions (for morphing)
+    osg::Vec3Array* neighbors = new osg::Vec3Array();
     neighbors->reserve( numVerts );
-    geom->setTexCoordArray(1, neighbors );
+    geom->setTexCoordArray( 1, neighbors );
 
     // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
     // vert is masked: 0=yes, 1=no
@@ -262,7 +261,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
 
             osg::Vec3d modelPlusOne;
             locator->unitToModel(osg::Vec3d(nx, ny, 1.0f), modelPlusOne);
-            osg::Vec3d normal = (modelPlusOne*world2local)-modelLTP;
+            osg::Vec3d normal = (modelPlusOne*world2local)-modelLTP;                
             normal.normalize();
             normals->push_back( normal );
 

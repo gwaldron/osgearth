@@ -51,6 +51,13 @@ namespace
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.0f,0,1.0f),
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
     };
+    //const osg::Vec3f scaleBias[4] =
+    //{
+    //    osg::Vec3f(0.5f, 0.0f, 0.5f),
+    //    osg::Vec3f(0.5f, 0.5f, 0.5f),
+    //    osg::Vec3f(0.5f, 0.0f, 0.0f),
+    //    osg::Vec3f(0.5f, 0.5f, 0.0f)
+    //};
 }
 
 TileNode::TileNode() : 
@@ -75,7 +82,12 @@ TileNode::create(const TileKey& key, EngineContext* context)
     context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom);
 
     // Create the drawable for the terrain surface:
-    TileDrawable* surfaceDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
+    TileDrawable* surfaceDrawable = new TileDrawable(
+        key, 
+        context->getRenderBindings(), 
+        geom.get(),
+        context->getOptions().tileSize().get() );
+
     surfaceDrawable->setDrawAsPatches(false);
 
     // Create the node to house the tile drawable:
@@ -92,7 +104,12 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     // Create a drawable for land cover geometry.
     // Land cover will be rendered as patch data instead of triangles.
-    TileDrawable* patchDrawable = new TileDrawable(key, context->getRenderBindings(), geom.get());
+    TileDrawable* patchDrawable = new TileDrawable(
+        key, 
+        context->getRenderBindings(),
+        geom.get(),
+        context->getOptions().tileSize().get() );
+
     patchDrawable->setDrawAsPatches(true);
 
     // And a node to house that as well:
@@ -227,12 +244,22 @@ TileNode::updateTileUniforms(const SelectionInfo& selectionInfo)
 
     // Update grid dims
     float fGridDims = selectionInfo.gridDimX()-1;
-    _tileGridDimsUniform->set(osg::Vec4f(fGridDims, fGridDims*0.5f, 2.0/fGridDims, selectionInfo.lodForMorphing(_key.getProfile()->getSRS()->isProjected())));
+    _tileGridDimsUniform->set(osg::Vec4f(
+        fGridDims,
+        fGridDims*0.5f,
+        2.0/fGridDims,
+        selectionInfo.lodForMorphing(_key.getProfile()->getSRS()->isProjected())));
 
     // update tile extents
     float fXExtents = fabs(bbox.xMax()-bbox.xMin());
     float fYExtents = fabs(bbox.yMax()-bbox.yMin());
     _tileExtentsUniform->set(osg::Vec4f(fXExtents,fYExtents,0,0));
+
+    const osg::Image* er = getElevationRaster();
+    if ( er )
+    {
+        getOrCreateStateSet()->getOrCreateUniform("oe_tile_elevationSize", osg::Uniform::FLOAT)->set( (float)er->s() );
+    }
 }
 
 void
@@ -381,31 +408,18 @@ void TileNode::cull(osg::NodeVisitor& nv)
             _children[3]->accept( nv );
         }
 
-#if OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG
-        else if ( _surfaceProxy.valid() )
-        {
-            _surfaceProxy->accept( nv );
-        }
-#else
         // Not all children are ready, so cull the current payload.
         else if ( _surface.valid() )
         {
             _surface->accept( nv );
         }
-#endif
     }
 
     // If children are outside camera range, draw the payload and expire the children.
     else if ( _surface.valid() )
     {
-#if OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG
-        if (_surfaceProxy.valid())
-        {
-            _surfaceProxy->accept(nv);
-        }
-#else
         _surface->accept( nv );
-#endif
+
         if ( getNumChildren() > 0 && context->maxLiveTilesExceeded() )
         {
             if (getSubTile(0)->isDormant( nv ) &&
@@ -500,6 +514,16 @@ TileNode::inheritState(EngineContext* context)
     // which quadrant is this tile in?
     unsigned quadrant = getTileKey().getQuadrant();
 
+    // default inheritance of the elevation data for bounding purposes:
+    osg::ref_ptr<const osg::Image> elevRaster;
+    osg::Matrixf                   elevMatrix;
+    if ( parent )
+    {
+        elevRaster = parent->getElevationRaster();
+        elevMatrix = parent->getElevationMatrix();
+        elevMatrix.preMult( scaleBias[quadrant] );
+    }
+
     // Find all the sampler matrix uniforms and scale/bias them to the current quadrant.
     // This will inherit textures and use the proper sub-quadrant until new data arrives (later).
     for( RenderBindings::const_iterator binding = context->getRenderBindings().begin(); binding != context->getRenderBindings().end(); ++binding )
@@ -521,13 +545,14 @@ TileNode::inheritState(EngineContext* context)
 
         else
         {
-            osg::Matrixf matrix;
             osg::StateAttribute* sa = getStateSet()->getTextureAttribute(binding->unit(), osg::StateAttribute::TEXTURE);        
 
             // If the attribute isn't present, that means we are inheriting it from above.
             // So construct a new scale/bias matrix.
             if ( sa == 0L )
             {
+                osg::Matrixf matrix;
+
                 // Find the parent's matrix and scale/bias it to this quadrant:
                 if ( parent && parent->getStateSet() )
                 {
@@ -543,53 +568,38 @@ TileNode::inheritState(EngineContext* context)
                 getOrCreateStateSet()->addUniform( new osg::Uniform(binding->matrixName().c_str(), matrix) );
                 changesMade = true;
             }
+
+            // If this is elevation data, record the new raster so we can apply it to the node.
+            else if ( binding->usage().isSetTo(binding->ELEVATION) )
+            {
+                osg::Texture* t = static_cast<osg::Texture*>(sa);
+                elevRaster = t->getImage(0);
+                elevMatrix = osg::Matrixf::identity();
+            }
         }
-    }
-
-    // Next, propagate the elevation raster and its scale/bias matrix. Each tile needs this
-    // in order to generate a correct bounding box and to support intersections.    
-    const SamplerBinding* elevBinding = SamplerBinding::findUsage(context->getRenderBindings(), SamplerBinding::ELEVATION);
-    if ( !elevBinding )
-    {
-        OE_WARN << LC << getTileKey().str() << " : Illegal state - no elevation binding\n";
-        return changesMade;
-    }
-
-    // pull the uniform for the elevation scale/bias.
-    const osg::Uniform* uniformScaleBiasMatrix = getStateSet()->getUniform(elevBinding->matrixName());
-    if ( !uniformScaleBiasMatrix )
-    {
-        OE_WARN << LC << getTileKey().str() << " : Illegal state: no uniform scale/bias matrix installed\n";
-        return changesMade;
-    }
-    osg::Matrixf elevScaleBias;
-    uniformScaleBiasMatrix->get(elevScaleBias);
-
-    // Locate the elevation raster corresponding to this matrix. Traverse up the tile tree
-    // until we find one on a tile's state set.
-    osg::ref_ptr<const osg::Image> elevRaster;
-    TileNode* ancestor = 0L;
-    for(TileNode* node = this; node != 0L; node = ancestor)
-    {
-        osg::Texture* elevTex = dynamic_cast<osg::Texture*>(node->getStateSet()->getTextureAttribute(elevBinding->unit(), osg::StateAttribute::TEXTURE));
-        if ( elevTex )
-        {
-            elevRaster = elevTex->getImage(0);
-            break;
-        }
-        ancestor = node->getNumParents() > 0 ? dynamic_cast<TileNode*>(node->getParent(0)) : 0L;
     }
 
     // If we found one, communicate it to the node and its children.
     if (elevRaster.valid())
     {
-        if (elevRaster.get() != getElevationRaster() ||
-            elevScaleBias    != getElevationMatrix() )
+//        if (elevRaster.get() != getElevationRaster() ||
+//            elevScaleBias    != getElevationMatrix() )
         {
-            setElevationRaster( elevRaster.get(), elevScaleBias );
+            setElevationRaster( elevRaster.get(), elevMatrix );
             changesMade = true;
         }
     }    
+
+#if 0 // debugging
+    // validate that the elevation rasters are the same. --debugging--
+    const SamplerBinding* eb = SamplerBinding::findUsage(context->getRenderBindings(), SamplerBinding::ELEVATION);
+    osg::Uniform* uu = getStateSet()->getUniform(eb->matrixName());
+    osg::Matrixf mm;
+    uu->get(mm);
+    if ( elevScaleBias != mm ) {
+        OE_WARN << LC << "key = " << _key.str() << "; matrices don't match\n";
+    }
+#endif
 
     // finally, update the uniforms for terrain morphing
     updateTileUniforms( context->getSelectionInfo() );
@@ -598,6 +608,11 @@ TileNode::inheritState(EngineContext* context)
     {
         OE_INFO << LC << _key.str() << ", good, no changes :)\n";
     }
+    else
+    {
+        dirtyBound();
+    }
+
     return changesMade;
 }
 

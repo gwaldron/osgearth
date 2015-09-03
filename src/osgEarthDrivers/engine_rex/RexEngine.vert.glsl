@@ -16,7 +16,6 @@ out vec3 vp_Normal;
 out vec4 oe_layer_texc;
 out vec4 oe_layer_tilec;
 out vec3 oe_UpVectorView;
-out vec3 oe_TangentVectorView;
 
 out float oe_rex_morphFactor;
 
@@ -30,7 +29,6 @@ void oe_rexEngine_vert(inout vec4 vertexModel)
 #endif
 	
 	oe_UpVectorView = normalize(gl_NormalMatrix*vp_Normal);
-	oe_TangentVectorView = normalize(gl_NormalMatrix*(gl_MultiTexCoord1.xyz));
 
     // initialize:
     oe_rex_morphFactor = 0.0;

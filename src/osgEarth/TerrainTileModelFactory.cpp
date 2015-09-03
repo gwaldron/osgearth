@@ -405,7 +405,7 @@ TerrainTileModelFactory::createElevationTexture(osg::Image* image) const
     tex->setInternalFormat(GL_LUMINANCE32F_ARB);
     tex->setSourceFormat(GL_LUMINANCE);
     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
     tex->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
     tex->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
     tex->setResizeNonPowerOfTwoHint( false );

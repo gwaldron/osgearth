@@ -34,12 +34,13 @@ using namespace osgEarth;
 
 TileDrawable::TileDrawable(const TileKey&        key,
                            const RenderBindings& bindings,
-                           osg::Geometry*        geometry) :
+                           osg::Geometry*        geometry,
+                           int                   tileSize) :
 osg::Drawable( ),
 _key         ( key ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
-_minmax      ( 0, 0 ),
+_tileSize    ( tileSize ),
 _drawPatch   ( false )
 {
     setUseVertexBufferObjects( true );
@@ -57,8 +58,6 @@ _drawPatch   ( false )
 
     _textureImageUnit       = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR)->unit();
     _textureParentImageUnit = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR_PARENT)->unit();
-
-    _tileSize = (int)sqrt((float)_geom->getVertexArray()->getNumElements());
 }
 
 void
@@ -87,6 +86,22 @@ TileDrawable::drawPatches(osg::RenderInfo& renderInfo) const
     else
         glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, &de->front());
 }
+
+struct StateHack : public osg::State {
+    void check() const {
+        const UniformMap::const_iterator i = _uniformMap.find("oe_tile_elevationTexMatrix");
+        if ( i != _uniformMap.end() ) {
+            const UniformStack& s = i->second;
+            const UniformStack::UniformPair& p = s.uniformVec.back();
+            osg::Matrixf mat;
+            p.first->get(mat);
+            OE_INFO << "scale=" << mat(0,0) << " x " << mat(1,1) << "; u=" << mat(3,0) << ", " << mat(3,1) << "\n";
+        }
+        else {
+            OE_WARN << "ETEXMAT NOT FOUND!\n";
+        }
+    }
+};
 
 
 void
@@ -141,6 +156,12 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
         texMatrixParentLocation     = pcp->getUniformLocation( _texMatrixParentUniformNameID );
         texParentExistsLocation     = pcp->getUniformLocation( _texParentExistsUniformNameID );
     }
+    
+    //if ( _key.str() == "22/2538301/1110225" )
+    //{
+    //    const StateHack* hack = reinterpret_cast<const StateHack*>(renderInfo.getState());
+    //    hack->check();
+    //}
 
     float prevOpacity = -1.0f;
     if ( _mptex.valid() && !_mptex->getPasses().empty() )
@@ -236,52 +257,6 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
 
 }
 
-#if 0
-
-#if OSG_VERSION_GREATER_OR_EQUAL(3,3,2)
-#    define COMPUTE_BOUND computeBoundingBox
-#    define GET_BOUNDING_BOX getBoundingBox
-#else
-#    define COMPUTE_BOUND computeBound
-#    define GET_BOUNDING_BOX getBound
-#endif
-
-osg::BoundingBox
-TileDrawable:: COMPUTE_BOUND() const
-{
-    osg::BoundingBox bbox = _geom->COMPUTE_BOUND();
-
-    // Replace the min/max Z with our computes extrema.
-    // Offset the zmin to account for cuvature.
-    bbox.zMin() = bbox.zMin() + _minmax[0];
-    bbox.zMax() = _minmax[1];
-
-    OE_DEBUG << LC << "zmin/max = " << bbox.zMin() << "/" << bbox.zMax() << "; minmax = " << _minmax[0] << "/" << _minmax[1] << "\n";
-
-    return bbox;
-}
-
-void    
-TileDrawable::setElevationExtrema(const osg::Vec2f& minmax)
-{
-    _minmax = minmax;
-    dirtyBound();
-}
-
-const osg::BoundingBox&
-TileDrawable::getBox() const
-{
-    return GET_BOUNDING_BOX();
-}
-
-osg::BoundingBox
-TileDrawable::computeBox() const
-{
-    return COMPUTE_BOUND();
-}
-#endif
-
-
 void
 TileDrawable::setElevationRaster(const osg::Image*   image,
                                  const osg::Matrixf& scaleBias)
@@ -327,6 +302,10 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
             biasU  = _elevationScaleBias(3,0),
             biasV  = _elevationScaleBias(3,1);
 
+        //float
+        //    texelScale = (float)(_elevationRaster->s()-1)/(float)_elevationRaster->s(),
+        //    texelBias  = 0.5f/(float)(_elevationRaster->s());
+
         if ( osg::equivalent(scaleU, 0.0f) || osg::equivalent(scaleV, 0.0f) )
         {
             OE_WARN << LC << "Precision loss in tile " << _key.str() << "\n";
@@ -334,20 +313,25 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
     
         for(int t=0; t<_tileSize-1; ++t)
         {
-            float v  = (float)t     / (float)(_tileSize-1);
+            float v0 = (float)t     / (float)(_tileSize-1);
             float v1 = (float)(t+1) / (float)(_tileSize-1);
+
+            v0 = v0*scaleV + biasV;
+            v1 = v1*scaleV + biasV;
 
             f.begin( GL_QUAD_STRIP );
 
             for(int s=0; s<_tileSize; ++s)
             {
                 float u = (float)s / (float)(_tileSize-1);
+                
+                u = u*scaleU + biasU;
 
                 int index = t*_tileSize + s;
                 {
                     const osg::Vec3f& vert   = (*verts)[index];
                     const osg::Vec3f& normal = (*normals)[index];
-                    float h = elevation(u*scaleU+biasU, v*scaleV+biasV).r();
+                    float h = elevation(u, v0).r();
                     f.vertex( vert + normal*h );
                 }
 
@@ -355,7 +339,7 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
                 {
                     const osg::Vec3f& vert = (*verts)[index];
                     const osg::Vec3f& normal = (*normals)[index];
-                    float h = elevation(u*scaleU+biasU, v1*scaleV+biasV).r();
+                    float h = elevation(u, v1).r();
                     f.vertex( vert + normal*h );
                 }
             }
@@ -366,7 +350,7 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
 
     // no elevation
     else
-    {     
+    {
         for(int t=0; t<_tileSize-1; ++t)
         {
             f.begin( GL_QUAD_STRIP );

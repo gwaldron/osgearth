@@ -23,6 +23,7 @@ uniform float oe_grass_maxDistance;     // distance at which flora disappears
 
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
+uniform float     oe_tile_elevationSize;
 
 uniform sampler2D oe_noise_tex;
 
@@ -47,11 +48,19 @@ in vec3 oe_UpVectorView;
 void
 oe_grass_clamp(inout vec4 vert_view, in vec3 up, vec2 UV)
 {
-    vec4 elevc = oe_tile_elevationTexMatrix * vec4(UV, 0.0, 1.0);
-    float elev = texture(oe_tile_elevationTex, elevc.st).r;
+    // Sample elevation data on texel-center.
+    float texelScale = (oe_tile_elevationSize-1.0)/oe_tile_elevationSize;
+    float texelBias  = 0.5/oe_tile_elevationSize;
+    
+    // Apply the scale and bias.
+    vec2 elevc = UV
+        * texelScale * oe_tile_elevationTexMatrix[0][0]
+        + texelScale * oe_tile_elevationTexMatrix[3].st
+        + texelBias;
+    
+    float elev = texture(oe_tile_elevationTex, elevc).r;
     vert_view.xyz += up*elev;
 }
-
 
 // Generate a pseudo-random value in the specified range:
 float

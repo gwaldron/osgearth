@@ -234,24 +234,59 @@ XmlElement::addSubElement(const std::string& tag, const Properties& attrs, const
 Config
 XmlElement::getConfig() const
 {
-    Config conf( name );
+	if (isInclude())
+	{
+		std::string href = getAttr("href");
 
-    for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
-    {
-        conf.set( a->first, a->second );
-    }
+        /*
+        if (href.empty())
+        {
+            OE_WARN << "Missing href with xi:include" << std::endl;
+            return Config();
+        }
+        */
 
-    for( XmlNodeList::const_iterator c = children.begin(); c != children.end(); c++ )
-    {
-        XmlNode* n = c->get();
-        if ( n->isElement() )
-            conf.add( static_cast<const XmlElement*>(n)->getConfig() );
-    }
+        /*
+        URIContext uriContext(sourceURI);
+        URI uri(href, uriContext);
+        std::string fullURI = uri.full();
+        */
+        std::string fullURI = href;
 
-    conf.value() = getText();
-        //else 
-        //    conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
-    return conf;
+        OE_NOTICE << "Loading href from " << fullURI << std::endl;
+
+        osg::ref_ptr< XmlDocument > doc = XmlDocument::load(fullURI);
+        if (doc && doc->getChildren().size() > 0)
+        {
+            return static_cast<XmlElement*>(doc->children.front().get())->getConfig();
+        }
+        else
+        {
+            OE_WARN << "Failed to load xi:include from " << fullURI << std::endl;
+            return Config();
+        }        
+	}
+	else
+	{
+		Config conf( name );
+
+		for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
+		{
+			conf.set( a->first, a->second );
+		}
+
+		for( XmlNodeList::const_iterator c = children.begin(); c != children.end(); c++ )
+		{
+			XmlNode* n = c->get();
+			if ( n->isElement() )
+				conf.add( static_cast<const XmlElement*>(n)->getConfig() );
+		}
+
+		conf.value() = getText();
+		//else 
+		//    conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
+		return conf;
+	}
 }
 
 XmlText::XmlText( const std::string& _value )
@@ -318,7 +353,6 @@ namespace
                     attrs[name] = value;
                     attr = attr->Next();
                 }
-
                 //All the element to the stack
                 new_element = new XmlElement( tag, attrs );
                 parent->getChildren().push_back( new_element );
@@ -395,7 +429,9 @@ XmlDocument::load( const URI& uri, const osgDB::Options* dbOptions )
         std::stringstream buf( r.getString() );
         result = load( buf );
         if ( result )
+        {
             result->_sourceURI = uri;
+        }
     }
 
     return result;

@@ -232,33 +232,27 @@ XmlElement::addSubElement(const std::string& tag, const Properties& attrs, const
 }
 
 Config
-XmlElement::getConfig() const
+XmlElement::getConfig(const std::string& sourceURI) const
 {
 	if (isInclude())
 	{
 		std::string href = getAttr("href");
 
-        /*
         if (href.empty())
         {
             OE_WARN << "Missing href with xi:include" << std::endl;
             return Config();
         }
-        */
-
-        /*
+ 
         URIContext uriContext(sourceURI);
         URI uri(href, uriContext);
         std::string fullURI = uri.full();
-        */
-        std::string fullURI = href;
-
-        OE_NOTICE << "Loading href from " << fullURI << std::endl;
+        OE_INFO << "Loading href from " << fullURI << std::endl;
 
         osg::ref_ptr< XmlDocument > doc = XmlDocument::load(fullURI);
         if (doc && doc->getChildren().size() > 0)
         {
-            return static_cast<XmlElement*>(doc->children.front().get())->getConfig();
+            return static_cast<XmlElement*>(doc->children.front().get())->getConfig( fullURI );
         }
         else
         {
@@ -279,7 +273,7 @@ XmlElement::getConfig() const
 		{
 			XmlNode* n = c->get();
 			if ( n->isElement() )
-				conf.add( static_cast<const XmlElement*>(n)->getConfig() );
+				conf.add( static_cast<const XmlElement*>(n)->getConfig("") );
 		}
 
 		conf.value() = getText();
@@ -477,7 +471,7 @@ XmlDocument::load( std::istream& in, const URIContext& uriContext )
 Config
 XmlDocument::getConfig() const
 {
-    Config conf = XmlElement::getConfig();
+    Config conf = XmlElement::getConfig(_sourceURI.full());
     conf.setReferrer( _sourceURI.full() );
     return conf;
 }

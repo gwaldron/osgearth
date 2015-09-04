@@ -102,6 +102,8 @@ namespace osgEarth
 
         virtual bool isText() const { return false; }
 
+        virtual bool isInclude() const { return toLower(name) == "xi:include"; }
+
     private:
         std::string name;
         XmlAttributes attrs;

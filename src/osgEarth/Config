@@ -63,7 +63,7 @@ namespace osgEarth
             : _key( key ), _defaultValue( value ) { }
 
         Config( const Config& rhs ) 
-            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _refMap(rhs._refMap) { }
+            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _refMap(rhs._refMap), _externalRef(rhs._externalRef) { }
 
         virtual ~Config();
 
@@ -71,6 +71,9 @@ namespace osgEarth
         void setReferrer( const std::string& value );
         void inheritReferrer( const std::string& value );
         const std::string& referrer() const { return _referrer; }
+
+        const std::string& externalRef() const { return _externalRef;}
+        void setExternalRef(const std::string& externalRef) { _externalRef = externalRef; }
 
         bool fromXML( std::istream& in );
 
@@ -378,6 +381,8 @@ namespace osgEarth
         std::string _defaultValue;
         ConfigSet   _children;   
         std::string _referrer;        
+
+        std::string _externalRef;
 
         RefMap _refMap;
     };

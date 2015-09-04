@@ -49,21 +49,30 @@ XmlElement::XmlElement( const std::string& _name, const XmlAttributes& _attrs )
 
 XmlElement::XmlElement( const Config& conf )
 {
-    name = conf.key();
-
-    if ( !conf.value().empty() )
+    if (!conf.externalRef().empty())
     {
-        children.push_back( new XmlText(conf.value()) );
+        attrs["href"] = conf.externalRef();
+        name = "xi:include";
     }
-
-    for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
+    else
     {
-        //if ( j->isSimple() )
-        //{
-        //    attrs[j->key()] = j->value();
-        //}
 
-        children.push_back( new XmlElement(*j) );
+        name = conf.key();
+
+        if ( !conf.value().empty() )
+        {
+            children.push_back( new XmlText(conf.value()) );
+        }
+
+        for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
+        {
+            //if ( j->isSimple() )
+            //{
+            //    attrs[j->key()] = j->value();
+            //}
+
+            children.push_back( new XmlElement(*j) );
+        }
     }
 }
 
@@ -252,7 +261,9 @@ XmlElement::getConfig(const std::string& sourceURI) const
         osg::ref_ptr< XmlDocument > doc = XmlDocument::load(fullURI);
         if (doc && doc->getChildren().size() > 0)
         {
-            return static_cast<XmlElement*>(doc->children.front().get())->getConfig( fullURI );
+            Config conf = static_cast<XmlElement*>(doc->children.front().get())->getConfig( fullURI );
+            conf.setExternalRef( fullURI );
+            return conf;
         }
         else
         {

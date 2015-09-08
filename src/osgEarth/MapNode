@@ -26,8 +26,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/MapNodeOptions>
-//#include <osgEarth/SpatialReference>
-//#include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Extension>
 
 namespace osgEarth
@@ -116,6 +114,12 @@ namespace osgEarth
          */
         static MapNode* findMapNode( osg::Node* graph, unsigned travMask =~0 );
         static MapNode* get( osg::Node* graph, unsigned travMask =~0 ) { return findMapNode(graph, travMask); }
+
+        /**
+         * Accesses the MapNode that is active in a NodeVisitor, if available. It is usually only
+         * available during an update traversal.
+         */
+        static MapNode* get(osg::NodeVisitor& nv);
 
         /**
          * Returns true if the realized terrain model is geocentric, false if

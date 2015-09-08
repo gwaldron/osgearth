@@ -119,11 +119,13 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getRenderBindings(),
         patchDrawable );
 
+#if 0
     // add a cluster-culling callback:
     if ( context->getMapFrame().getMapInfo().isGeocentric() )
     {
         addCullCallback( ClusterCullingFactory::create(key.getExtent()) );
     }
+#endif
 
     // PPP: Better way to do this rather than here?
     // Can't do it at RexTerrainEngineNode level, because the SurfaceNode is not valid yet
@@ -207,9 +209,6 @@ TileNode::createTileUniforms()
 
     _tileExtentsUniform = new osg::Uniform("oe_tile_extents", osg::Vec4f(0,0,0,0));
     getStateSet()->addUniform( _tileExtentsUniform.get() );
-
-    _tileCenterToCameraDistUniform = new osg::Uniform("oe_tile_camera_to_tilecenter", osg::Vec4f(0,0,0,0));
-    getStateSet()->addUniform( _tileCenterToCameraDistUniform.get() );
 }
 
 void
@@ -259,16 +258,6 @@ TileNode::updateTileUniforms(const SelectionInfo& selectionInfo)
     if ( er )
     {
         getOrCreateStateSet()->getOrCreateUniform("oe_tile_elevationSize", osg::Uniform::FLOAT)->set( (float)er->s() );
-    }
-}
-
-void
-TileNode::updatePerFrameUniforms(const osg::NodeVisitor& nv)
-{
-    if (_tileCenterToCameraDistUniform.get())
-    {
-        osg::Vec4f vPerFrameUniform(getTileCenterToCameraDistance(nv),0,0,0);
-        _tileCenterToCameraDistUniform->set((vPerFrameUniform));
     }
 }
 
@@ -352,9 +341,6 @@ void TileNode::cull(osg::NodeVisitor& nv)
     }
 
     unsigned currLOD = getTileKey().getLOD();
-
-    // TODO: rework this to make it multi-camera safe
-    updatePerFrameUniforms(nv);
 
 #if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
     if (currLOD==0)
@@ -582,24 +568,12 @@ TileNode::inheritState(EngineContext* context)
     // If we found one, communicate it to the node and its children.
     if (elevRaster.valid())
     {
-//        if (elevRaster.get() != getElevationRaster() ||
-//            elevScaleBias    != getElevationMatrix() )
+        if (elevRaster.get() != getElevationRaster() || elevMatrix != getElevationMatrix() )
         {
             setElevationRaster( elevRaster.get(), elevMatrix );
             changesMade = true;
         }
-    }    
-
-#if 0 // debugging
-    // validate that the elevation rasters are the same. --debugging--
-    const SamplerBinding* eb = SamplerBinding::findUsage(context->getRenderBindings(), SamplerBinding::ELEVATION);
-    osg::Uniform* uu = getStateSet()->getUniform(eb->matrixName());
-    osg::Matrixf mm;
-    uu->get(mm);
-    if ( elevScaleBias != mm ) {
-        OE_WARN << LC << "key = " << _key.str() << "; matrices don't match\n";
     }
-#endif
 
     // finally, update the uniforms for terrain morphing
     updateTileUniforms( context->getSelectionInfo() );

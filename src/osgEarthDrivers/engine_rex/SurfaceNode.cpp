@@ -22,11 +22,13 @@
 
 #include <osgEarth/TileKey>
 #include <osgEarth/Registry>
+#include <osgEarth/Horizon>
 
 #include <osg/CullStack>
 #include <osg/Geode>
 
 #include <osg/Geometry>
+#include <osg/TriangleFunctor>
 #include <osgText/Text>
 
 #include <numeric>
@@ -39,7 +41,66 @@ using namespace osgEarth;
 //..............................................................
 
 namespace
-{
+{    
+    
+    struct HorizonTileCuller : public osg::NodeCallback
+    {
+        double      _radiusPolar, _radiusEquator;
+        Horizon     _horizonProto;
+        osg::Vec3d  _points[4];
+        osg::Matrix _local2world;
+
+        HorizonTileCuller(const SpatialReference* srs, const osg::Matrix& local2world)
+        {
+            _horizonProto.setEllipsoid(*srs->getEllipsoid());
+            _radiusPolar = srs->getEllipsoid()->getRadiusPolar();
+            _radiusEquator = srs->getEllipsoid()->getRadiusEquator();
+            _local2world = local2world;
+        }
+
+        void set(const osg::BoundingBox& bbox)
+        {
+            // Adjust the horizon ellipsoid based on the minimum Z value of the tile;
+            // necessary because a tile that's below the ellipsoid (ocean floor, e.g.)
+            // may be visible even if it doesn't pass the horizon-cone test. In such
+            // cases we need a more conservative ellipsoid.
+            double zMin = bbox.corner(0).z();
+            if ( zMin < 0.0 )
+            {
+                _horizonProto.setEllipsoid( osg::EllipsoidModel(_radiusEquator + zMin, _radiusPolar + zMin) );
+            }            
+
+            // consider the uppermost 4 points of the tile-aligned bounding box.
+            // (the last four corners of the bbox are the "zmax" corners.)
+            for(unsigned i=0; i<4; ++i)
+            {
+                _points[i] = bbox.corner(4+i) * _local2world;
+            }
+        }
+
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            // Clone the horizon object to support multiple cull threads
+            // (since we call setEye with the current node visitor eye point)
+            Horizon horizon(_horizonProto);
+
+            // Since each terrain tile has an aboslute reference frame, 
+            // there is no need to transform the eyepoint:
+            osg::Vec3d vpWorld = osg::Vec3d(nv->getViewPoint()) * _local2world;
+            horizon.setEye( vpWorld );
+            //horizon.setEye(nv->getViewPoint());
+            
+            for(unsigned i=0; i<4; ++i)
+            {                   
+                if ( !horizon.occludes(_points[i]) )
+                {
+                    traverse(node, nv);
+                    break;
+                }
+            }
+        }
+    };
+
     osg::Geode* makeBBox(const osg::BoundingBox& bbox, const TileKey& key)
     {        
         osg::Geode* geode = new osg::Geode();
@@ -132,12 +193,11 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
     
     // Create the final node.
     addChild( _surfaceGeode.get() );
-        
+
     // Establish a local reference frame for the tile:
-    osg::Vec3d centerWorld;
     GeoPoint centroid;
     tilekey.getExtent().getCentroid(centroid);
-    centroid.toWorld(centerWorld);
+
     osg::Matrix local2world;
     centroid.createLocalToWorld( local2world );
     setMatrix( local2world );
@@ -150,7 +210,6 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
     }
 
     // Initialize the cached bounding box.
-    //setElevationExtrema(osg::Vec2f(0, 0));
     setElevationRaster( 0L, osg::Matrixf::identity() );
 }
 
@@ -280,6 +339,18 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
         addDebugNode(box);
     }
 
+    // Update the horizon culling callback.
+    HorizonTileCuller* culler = dynamic_cast<HorizonTileCuller*>(_horizonCuller.get());
+    if ( !culler )
+    {
+        culler = new HorizonTileCuller( _tileKey.getProfile()->getSRS(), getMatrix() );
+        this->addCullCallback( culler );
+        _horizonCuller = culler;
+    }
+
+    culler->set( box );
+
+    // need this?
     dirtyBound();
 }
 

@@ -2,7 +2,7 @@
     
     <options>        
         <!-- note: skirt=0 or you will get seam-trees. -->
-        <terrain driver="rex" skirt_ratio="0" normal_maps="true"/>
+        <terrain driver="rex" skirt_ratio="0" normal_maps="true" high_resolution_first="true"/>
     </options>
     
     <image name="readymap_imagery" driver="tms" shared="true">

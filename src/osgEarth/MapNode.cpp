@@ -536,6 +536,13 @@ MapNode::findMapNode( osg::Node* graph, unsigned travmask )
     return findRelativeNodeOfType<MapNode>( graph, travmask );
 }
 
+MapNode*
+MapNode::get(osg::NodeVisitor& nv)
+{
+    MapNode* mapNode = dynamic_cast<MapNode*>(nv.getUserData());
+    return mapNode;
+}
+
 bool
 MapNode::isGeocentric() const
 {
@@ -718,6 +725,14 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
         // traverse:
         std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+    }
+
+    else if ( nv.getVisitorType() == nv.UPDATE_VISITOR )
+    {
+        osg::ref_ptr<osg::Referenced> oldUserData = nv.getUserData();
+        nv.setUserData( this );
+        std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+        nv.setUserData( oldUserData.get() );
     }
 
     else if ( nv.getVisitorType() == nv.CULL_VISITOR )

@@ -49,21 +49,30 @@ XmlElement::XmlElement( const std::string& _name, const XmlAttributes& _attrs )
 
 XmlElement::XmlElement( const Config& conf )
 {
-    name = conf.key();
-
-    if ( !conf.value().empty() )
+    if (!conf.externalRef().empty())
     {
-        children.push_back( new XmlText(conf.value()) );
+        attrs["href"] = conf.externalRef();
+        name = "xi:include";
     }
-
-    for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
+    else
     {
-        //if ( j->isSimple() )
-        //{
-        //    attrs[j->key()] = j->value();
-        //}
 
-        children.push_back( new XmlElement(*j) );
+        name = conf.key();
+
+        if ( !conf.value().empty() )
+        {
+            children.push_back( new XmlText(conf.value()) );
+        }
+
+        for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
+        {
+            //if ( j->isSimple() )
+            //{
+            //    attrs[j->key()] = j->value();
+            //}
+
+            children.push_back( new XmlElement(*j) );
+        }
     }
 }
 
@@ -232,26 +241,57 @@ XmlElement::addSubElement(const std::string& tag, const Properties& attrs, const
 }
 
 Config
-XmlElement::getConfig() const
+XmlElement::getConfig(const std::string& sourceURI) const
 {
-    Config conf( name );
+	if (isInclude())
+	{
+		std::string href = getAttr("href");
 
-    for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
-    {
-        conf.set( a->first, a->second );
-    }
+        if (href.empty())
+        {
+            OE_WARN << "Missing href with xi:include" << std::endl;
+            return Config();
+        }
+ 
+        URIContext uriContext(sourceURI);
+        URI uri(href, uriContext);
+        std::string fullURI = uri.full();
+        OE_INFO << "Loading href from " << fullURI << std::endl;
 
-    for( XmlNodeList::const_iterator c = children.begin(); c != children.end(); c++ )
-    {
-        XmlNode* n = c->get();
-        if ( n->isElement() )
-            conf.add( static_cast<const XmlElement*>(n)->getConfig() );
-    }
+        osg::ref_ptr< XmlDocument > doc = XmlDocument::load(fullURI);
+        if (doc && doc->getChildren().size() > 0)
+        {
+            Config conf = static_cast<XmlElement*>(doc->children.front().get())->getConfig( fullURI );
+            conf.setExternalRef( fullURI );
+            return conf;
+        }
+        else
+        {
+            OE_WARN << "Failed to load xi:include from " << fullURI << std::endl;
+            return Config();
+        }        
+	}
+	else
+	{
+		Config conf( name );
 
-    conf.value() = getText();
-        //else 
-        //    conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
-    return conf;
+		for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
+		{
+			conf.set( a->first, a->second );
+		}
+
+		for( XmlNodeList::const_iterator c = children.begin(); c != children.end(); c++ )
+		{
+			XmlNode* n = c->get();
+			if ( n->isElement() )
+				conf.add( static_cast<const XmlElement*>(n)->getConfig("") );
+		}
+
+		conf.value() = getText();
+		//else 
+		//    conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
+		return conf;
+	}
 }
 
 XmlText::XmlText( const std::string& _value )
@@ -318,7 +358,6 @@ namespace
                     attrs[name] = value;
                     attr = attr->Next();
                 }
-
                 //All the element to the stack
                 new_element = new XmlElement( tag, attrs );
                 parent->getChildren().push_back( new_element );
@@ -395,7 +434,9 @@ XmlDocument::load( const URI& uri, const osgDB::Options* dbOptions )
         std::stringstream buf( r.getString() );
         result = load( buf );
         if ( result )
+        {
             result->_sourceURI = uri;
+        }
     }
 
     return result;
@@ -441,7 +482,7 @@ XmlDocument::load( std::istream& in, const URIContext& uriContext )
 Config
 XmlDocument::getConfig() const
 {
-    Config conf = XmlElement::getConfig();
+    Config conf = XmlElement::getConfig(_sourceURI.full());
     conf.setReferrer( _sourceURI.full() );
     return conf;
 }

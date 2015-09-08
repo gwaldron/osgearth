@@ -1727,11 +1727,11 @@ ImageUtils::PixelReader::operator()(float u, float v, int r, int m) const
          float s = u * sizeS;
          float t = v * sizeT;
 
-         float s0 = std::max(floor(s), 0.0f);
+         float s0 = std::max(floorf(s), 0.0f);
          float s1 = std::min(s0+1.0f, sizeS);
          float smix = s0 < s1 ? (s-s0)/(s1-s0) : 0.0f;
 
-         float t0 = std::max(floor(t), 0.0f);
+         float t0 = std::max(floorf(t), 0.0f);
          float t1 = std::min(t0+1.0f, sizeT);
          float tmix = t0 < t1 ? (t-t0)/(t1-t0) : 0.0f;
 

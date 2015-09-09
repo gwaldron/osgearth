@@ -221,8 +221,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         gl_FrontColor                = "gl_FrontColor",
         gl_FragColor                 = "gl_FragColor";
 
-    #define VS_GLSL_VERSION  "120"
-    #define FS_GLSL_VERSION  "120"
+    #define VS_GLSL_VERSION  "330 compatibility"
+    #define FS_GLSL_VERSION  "330 compatibility"
     #define GS_GLSL_VERSION  "330 compatibility"
     #define TCS_GLSL_VERSION "400 compatibility"
     #define TES_GLSL_VERSION "400 compatibility"

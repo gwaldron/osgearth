@@ -54,12 +54,26 @@ namespace osgEarth
          * Sets the eye position to use when testing for occlusion.
          */
         void setEye(const osg::Vec3d& eyeECEF);
+        
+        /**
+         * Whether a point is visible over the horizon.
+         * Specify an optional radius to test a sphere.
+         */
+        bool isVisible(const osg::Vec3d& point, double radius =0.0) const;
+                
+        /**
+         * Whether a bounding sphere is visible over the horizon.
+         */
+        bool isVisible(const osg::BoundingSphere& bs) const {
+            return isVisible(bs.center(), bs.radius());
+        }
 
         /**
-         * Whether a world point is occluded by the horizon. You can
-         * optionally pass in a radius to test against a sphere.
+         * Whether the horizon occludes a point/sphere.
          */
-        bool occludes(const osg::Vec3d& pointECEF, double radius =0.0) const;
+        bool occludes(const osg::Vec3d& point, double radius =0.0) const {
+            return !isVisible(point, radius);
+        }
 
         /**
          * Sets the output variable to the horizon plane plane with its
@@ -69,8 +83,15 @@ namespace osgEarth
         
     protected:
 
-        osg::Vec3d _cv;
-        double     _vhMag2;
+        osg::Vec3d _eye;
+        osg::Vec3d _eyeUnit;
+        osg::Vec3d _VC;       
+        double     _VCmag;    // distance from eye to center (scaled)
+        double     _VCmag2;   // distance from eye to center squared (scaled)
+        double     _VHmag2;   // distance from eye to horizon squared (scaled)
+        double     _coneCos;  // cosine of half-cone
+        double     _coneTan;  // tangent of half-cone
+
         osg::Vec3d _scale;
         osg::Vec3d _scaleInv;
         osg::Vec3d _scaleToMinHAE;

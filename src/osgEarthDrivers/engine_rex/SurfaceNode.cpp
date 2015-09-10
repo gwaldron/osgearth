@@ -88,11 +88,10 @@ namespace
             // there is no need to transform the eyepoint:
             osg::Vec3d vpWorld = osg::Vec3d(nv->getViewPoint()) * _local2world;
             horizon.setEye( vpWorld );
-            //horizon.setEye(nv->getViewPoint());
             
             for(unsigned i=0; i<4; ++i)
             {                   
-                if ( !horizon.occludes(_points[i]) )
+                if ( horizon.isVisible(_points[i]) )
                 {
                     traverse(node, nv);
                     break;

@@ -579,6 +579,7 @@ Registry::startActivity(const std::string& activity,
                         const std::string& value)
 {
     Threading::ScopedMutexLock lock(_activityMutex);
+    _activities.erase(Activity(activity,std::string()));
     _activities.insert(Activity(activity,value));
 }
 

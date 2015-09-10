@@ -23,7 +23,6 @@ configure_shaders(
     ${TARGET_GLSL} )
 
 SET(TARGET_SRC
-	ElevationTextureUtils.cpp
     GeometryPool.cpp
     RexTerrainEngineNode.cpp
     RexTerrainEngineDriver.cpp
@@ -39,14 +38,11 @@ SET(TARGET_SRC
     TileNode.cpp
     TileNodeRegistry.cpp
     Loader.cpp
-	ProxyGeometry.cpp
-	ProxySurfaceNode.cpp
     ${SHADERS_CPP}
 )
 
 SET(TARGET_H
     Common
-	ElevationTextureUtils
     FileLocationCallback
     GeometryPool
     Shaders
@@ -66,8 +62,6 @@ SET(TARGET_H
     TileNodeRegistry
     Loader
 	SelectionInfo
-	ProxyGeometry
-	ProxySurfaceNode
 )
 
 setup_plugin(osgearth_engine_rex)

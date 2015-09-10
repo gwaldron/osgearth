@@ -221,12 +221,12 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         gl_FrontColor                = "gl_FrontColor",
         gl_FragColor                 = "gl_FragColor";
 
-    int version = 120;
+    #define VS_GLSL_VERSION  "330 compatibility"
+    #define FS_GLSL_VERSION  "330 compatibility"
+    #define GS_GLSL_VERSION  "330 compatibility"
+    #define TCS_GLSL_VERSION "400 compatibility"
+    #define TES_GLSL_VERSION "400 compatibility"
 
-    std::string
-        varying_in  = version <= 110 ? "varying" : version <= 120? "varying in"  : "in",
-        varying_out = version <= 110 ? "varying" : version <= 120? "varying out" : "out";
-    
     // build the vertex data interface block definition:
     std::string vertdata;
     {
@@ -238,12 +238,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         vertdata = buf.str();
     }
 
-
+    // TODO: perhaps optimize later to not include things we don't need in the FS
     std::string fragdata = vertdata;
-        //"VP_FragData { \n"
-        //"    vec4 vp_Color; \n"
-        //"    vec3 vp_Normal; \n"
-        //"}";
 
     // Build the vertex shader.
     if ( hasVS )
@@ -253,7 +249,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         std::stringstream buf;
 
         buf <<
-            "#version " GLSL_VERSION_STR "\n"
+            "#version " VS_GLSL_VERSION "\n"
             "#pragma name \"VP Vertex Shader Main\" \n"
             "#extension GL_ARB_gpu_shader5 : enable \n";
 
@@ -394,7 +390,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         stages |= ShaderComp::STAGE_TESSCONTROL;
         std::stringstream buf;
 
-        buf << "#version 400\n"
+        buf << "#version " TCS_GLSL_VERSION "\n"
             << "#pragma name \"VP Tessellation Control Shader (TCS) Main\" \n";
 
         if ( hasVS )
@@ -469,7 +465,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version 400 compatibility\n"
+        buf << "#version " TES_GLSL_VERSION "\n"
             << "#pragma name \"VP Tessellation Evaluation (TES) Shader MAIN\" \n";
 
         buf << "\n// TES stage inputs (required):\n"
@@ -671,7 +667,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version 330 compatibility\n"
+        buf << "#version " GS_GLSL_VERSION "\n"
             << "#pragma name \"VP Geometry Shader Main\" \n";
 
         if ( hasVS || hasTCS || hasTES )
@@ -859,7 +855,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version " GLSL_VERSION_STR "\n"
+        buf << "#version " FS_GLSL_VERSION "\n"
             << "#pragma name \"VP Fragment Shader Main\" \n"
             << "#extension GL_ARB_gpu_shader5 : enable \n";
 

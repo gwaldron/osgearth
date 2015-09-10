@@ -86,11 +86,11 @@ namespace
 
             // Since each terrain tile has an aboslute reference frame, 
             // there is no need to transform the eyepoint:
-            horizon.setEye(nv->getViewPoint()); // * osg::computeLocalToWorld(nv->getNodePath()));
+            horizon.setEye(nv->getViewPoint()); 
             
             for(unsigned i=0; i<4; ++i)
             {                   
-                if ( !horizon.occludes(_points[i]) )
+                if ( horizon.isVisible(_points[i]) )
                 {
                     traverse(node, nv);
                     break;

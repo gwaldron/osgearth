@@ -49,8 +49,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const RenderBindings& bindings,
             TileDrawable*         drawable);
 
-        //void setElevationExtrema(const osg::Vec2f& minmax);
-
         void setElevationRaster(const osg::Image* raster, const osg::Matrixf& scaleBias);
         const osg::Image* getElevationRaster() const;
         const osg::Matrixf& getElevationMatrix() const;
@@ -82,6 +80,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::Geode>    _debugGeode;
         osg::ref_ptr<osgText::Text> _debugText;
         static const bool           _enableDebugNodes;
+        
+        osg::ref_ptr<osg::NodeCallback> _horizonCuller;
 
         void addDebugNode(const osg::BoundingBox& box);
         void removeDebugNode(void);

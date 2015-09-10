@@ -31,42 +31,6 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 /// JB:  Disabled to fix issues with ATI.
 //#define SHARE_TEX_COORDS 1
 
-#if 0
-namespace
-{
-    /**
-     * Geometry class that adds support for PrimitiveFunctors when using GL_PATCHES.
-     */
-    class SharedGeometry : public osg::Geometry
-    {
-    public:
-        SharedGeometry() : osg::Geometry() { }
-        virtual ~SharedGeometry() { }
-        
-        /** Set the proxy primitive set that will "sit in" for GL_PATCHES. */
-        void setPatchTriangles(osg::PrimitiveSet* primSet) { _patchTriangles = primSet; }
-
-    public: // osg::Geometry
-        
-        // override to correctly process GL_PATCHES (if necessary)
-        void accept(osg::PrimitiveFunctor& functor) const {
-            osg::Geometry::accept(functor);
-            if ( _patchTriangles.valid() )
-                _patchTriangles->accept( functor );
-        }
-
-        void accept(osg::PrimitiveIndexFunctor& functor) const {
-            osg::Geometry::accept(functor);
-            if ( _patchTriangles.valid() )
-                _patchTriangles->accept( functor );
-        }
-
-    private:
-        osg::ref_ptr<osg::PrimitiveSet> _patchTriangles;
-    };
-}
-#endif
-
 
 GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :
 _options ( options ),

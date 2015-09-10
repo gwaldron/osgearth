@@ -20,6 +20,9 @@
 #include <osg/Transform>
 #include <osgEarth/Registry>
 
+#define LC "[Horizon] "
+
+
 using namespace osgEarth;
 
 Horizon::Horizon()
@@ -33,13 +36,18 @@ Horizon::Horizon(const osg::EllipsoidModel& e)
 }
 
 Horizon::Horizon(const Horizon& rhs) :
-_scale        ( rhs._scale ),
-_scaleInv     ( rhs._scaleInv ),
-_cv           ( rhs._cv ),
-_vhMag2       ( rhs._vhMag2 ),
-_scaleToMinHAE( rhs._scaleToMinHAE )
+_scale   ( rhs._scale ),
+_scaleInv( rhs._scaleInv ),
+_eye     ( rhs._eye ),
+_eyeUnit ( rhs._eyeUnit ),
+_VC      ( rhs._VC ),
+_VCmag   ( rhs._VCmag ),
+_VCmag2  ( rhs._VCmag2 ),
+_VHmag2  ( rhs._VHmag2 ),
+_coneCos ( rhs._coneCos ),
+_coneTan ( rhs._coneTan )
 {
-    //nop
+    // nop
 }
 
 void
@@ -55,107 +63,93 @@ Horizon::setEllipsoid(const osg::EllipsoidModel& e)
         1.0 / e.getRadiusEquator(),
         1.0 / e.getRadiusPolar() );
 
-    // Minimum allowable HAE for calculating horizon distance.
-    const double minHAE = 100.0;
-
-    //double maxRadius = std::max(e.getRadiusEquator(), e.getRadiusPolar());
-    //double minHAEScaled = 1.0 + minHAE/maxRadius;
-    //_minHAEScaled2 = minHAEScaled * minHAEScaled;
-
-    _scaleToMinHAE = (_scale*minHAE) + osg::Vec3d(1,1,1);
+    // just so we don't have gargabe values
+    setEye( osg::Vec3d(1e7, 0, 0) );
 }
 
 void
-Horizon::setEye(const osg::Vec3d& eyeECEF)
+Horizon::setEye(const osg::Vec3d& eye)
 {
-    _cv = osg::componentMultiply(eyeECEF, _scale);
-
-    double cvMag2 = _cv*_cv;
-
-    osg::Vec3d minCV = _cv;
-    minCV.normalize();
-    minCV = osg::componentMultiply(minCV, _scaleToMinHAE);
-    double min_cvMag2 = minCV*minCV;
-
-#if 0 // debugging
-    osg::Vec3d msl = _cv;
-    msl.normalize();
-    msl = osg::componentMultiply(msl, _scale+osg::Vec3d(1,1,1));
-    msl = osg::componentMultiply(msl, _scaleInv);
-    double alt = eyeECEF.length() - msl.length();
-#endif
-
-    if ( cvMag2 >= min_cvMag2 )
+    if ( eye != _eye )
     {
-        _vhMag2 = cvMag2-1.0;
-    }
-    else
-    {
-        _cv = minCV;
-        _vhMag2 = (_cv*_cv)-1.0;
-    }
-    
-#if 0 // debugging
-    osg::Vec3d vh = _cv;
-    vh.normalize();
-    vh = osg::componentMultiply(vh, (_scale*sqrt(_vhMag2))+osg::Vec3d(1,1,1));
-    vh = _scaleInv * sqrt(_vhMag2);
+        _eye = eye;
+        _eyeUnit = eye;
+        _eyeUnit.normalize();
 
-    static int count=0;
-    if (count++ %60 == 0) {
-        OE_NOTICE << "cvmag2="<< cvMag2 << "; minMag2="<< min_cvMag2 << "; vhMag2=" << _vhMag2 << "; alt=" << alt << "; vh=" << vh.length() << "\n";
+        _VC     = osg::componentMultiply( -_eye, _scale );  // viewer->center (scaled)
+        _VCmag  = _VC.length();
+        _VCmag2 = _VCmag*_VCmag;
+        _VHmag2 = _VCmag2 - 1.0;  // viewer->horizon line (scaled)
+
+        double VCmag = sqrt(_VCmag2);
+        double VPmag = VCmag - 1.0/VCmag; // viewer->horizon plane dist (scaled)
+        double VHmag = sqrtf( _VHmag2 );
+
+        _coneCos = VPmag / VHmag; // cos of half-angle of horizon cone
+        _coneTan = tan(acos(_coneCos));
     }
-#endif
 }
 
 bool
-Horizon::occludes(const osg::Vec3d& targetECEF,
-                  double            radius) const
+Horizon::isVisible(const osg::Vec3d& target,
+                   double            radius) const
 {
+    if ( radius >= _scaleInv.x() || radius >= _scaleInv.y() || radius >= _scaleInv.z() )
+        return true;
+    
     // ref: https://cesiumjs.org/2013/04/25/Horizon-culling/
 
-    osg::Vec3d tc = targetECEF;
+    // Viewer-to-target vector
+    osg::Vec3d VT;
 
-    if ( radius > 0.0 )
+    // move the target closer to the horizon plane by "radius".
+     //(target + CVunit*radius) - eye;
+
+    VT = osg::componentMultiply( VT, _scale );
+    double VTdotVC = VT*_VC;
+
+    // If the point is in front of the horizon plane, it's visible and we're done
+    if ( VTdotVC <= _VHmag2 )
     {
-        // shift the target point outward to account for its bounding radius.
-        double targetLen2 = tc.length2();
-        osg::Vec3d targetUnit = tc;
-        targetUnit.normalize();
-        tc += targetUnit * radius;
+        return true;
     }
-    
-    tc = osg::componentMultiply(tc, _scale);
 
-    osg::Vec3d vt = tc - _cv;
-    double vtMag2 = vt.length2();
-    double vtDotVc = -(vt*_cv);
+    // Next, intersect the bounding sphere with the horizon cone.
+    // If the sphere is entirely within the cone, it is occluded
+    // ref: http://www.cbloom.com/3d/techdocs/culling.txt
+    VT = target - _eye;
 
-    bool behindHorizonPlane = (vtDotVc > _vhMag2);
-    bool insideHorizonCone  = (vtDotVc*vtDotVc / vtMag2) > _vhMag2;
+    double a = VT * -_eyeUnit;
+    double b = a * _coneTan;
+    double c = sqrt( VT*VT - a*a );
+    double d = c - b;
+    double e = d * _coneCos;
 
-    return behindHorizonPlane && insideHorizonCone;
+    if ( e > -radius )
+    {
+        return true;
+    }
+
+    // occluded.
+    return false;
 }
+
 
 bool
 Horizon::getPlane(osg::Plane& out_plane) const
 {
     // calculate scaled distance from center to viewer:
-    double magVC = _cv.length();
-    if ( magVC == 0.0 )
+    if ( _VCmag2 == 0.0 )
         return false;
 
     // calculate scaled distance from center to horizon plane:
-    double magPC = 1.0/magVC;
+    double PCmag = 1.0/_VCmag;
 
-    osg::Vec3d normal = _cv;
-    normal.normalize();
-
-    osg::Vec3d pcWorld = osg::componentMultiply(normal*magPC, _scaleInv);
+    osg::Vec3d pcWorld = osg::componentMultiply(_eyeUnit*PCmag, _scaleInv);
     double dist = pcWorld.length();
 
     // compute a new clip plane:
-    out_plane.set(normal, -dist);
+    out_plane.set(_eyeUnit, -dist);
     return true;
 }
 
@@ -189,7 +183,7 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
         const osg::BoundingSphere& bs = node->getBound();
 
-        visible = !horizon.occludes( bs.center() * local2world, bs.radius() );
+        visible = horizon.isVisible( bs.center() * local2world, bs.radius() );
     }
 
     if ( visible )

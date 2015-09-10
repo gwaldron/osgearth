@@ -128,11 +128,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;
         osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
         osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
-        osg::ref_ptr<osg::Uniform> _tileCenterToCameraDistUniform;
-
-        void updatePerFrameUniforms(const osg::NodeVisitor& nv);
-
-        void updateProxyGeometry(const SamplerBinding* elevBinding, const MapInfo& mapInfo, unsigned tileSize);
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

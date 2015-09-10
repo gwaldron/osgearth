@@ -103,8 +103,9 @@ Horizon::isVisible(const osg::Vec3d& target,
     osg::Vec3d VT;
 
     // move the target closer to the horizon plane by "radius".
-     //(target + CVunit*radius) - eye;
+    VT = (target + _eyeUnit*radius) - _eye;
 
+    // transform into unit space:
     VT = osg::componentMultiply( VT, _scale );
     double VTdotVC = VT*_VC;
 

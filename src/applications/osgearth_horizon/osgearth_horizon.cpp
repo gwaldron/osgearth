@@ -130,7 +130,7 @@ main(int argc, char** argv)
 
             horizon.setEye( eye );
 
-            if ( horizon.isVisible( item->getBound().center(), item->getBound().radius()) )
+            if ( horizon.isVisible( item->getBound() ) )
             {
                 Registry::instance()->endActivity( "horizon" );
                 Registry::instance()->startActivity( "horizon", "VISIBLE" );

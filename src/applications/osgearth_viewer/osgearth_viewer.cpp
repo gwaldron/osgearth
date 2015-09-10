@@ -67,6 +67,9 @@ main(int argc, char** argv)
     // disable the small-feature culling
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
+    // configure the near/far so we don't clip things that are up close
+    viewer.getCamera()->setNearFarRatio(0.00002);
+
     if ( vfov > 0.0 )
     {
         double fov, ar, n, f;

@@ -93,6 +93,12 @@ namespace osgEarth { namespace Splat
          */
         osg::Uniform* getScaleLevelOffsetUniform() { return _scaleOffsetUniform.get(); }
 
+        /**
+         * Gets the list of Biomes.
+         */
+        const BiomeVector& getBiomes() const { return _biomes; }
+
+
 
     public: // TerrainEffect interface
 

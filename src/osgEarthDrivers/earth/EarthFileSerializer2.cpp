@@ -20,6 +20,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/MapFrame>
 #include <osgEarth/Extension>
+#include <osgEarth/StringUtils>
 #include <stdio.h>
 #include <ctype.h>
 
@@ -60,6 +61,31 @@ namespace
                 }
             }
         }
+
+        // Preload any libraries
+        Config libraries = conf.child("libraries");
+        if (!libraries.value().empty())
+        {
+            StringTokenizer izer( ";" );
+            StringVector libs;
+            izer.tokenize( libraries.value(), libs );
+            for (StringVector::iterator itr = libs.begin(); itr != libs.end(); ++itr)
+            {
+                std::string lib = *itr;
+                trim2(lib);
+                std::string libName = osgDB::Registry::instance()->createLibraryNameForNodeKit(lib);
+                osgDB::Registry::LoadStatus status = osgDB::Registry::instance()->loadLibrary(libName);
+                if (status == osgDB::Registry::LOADED)
+                {
+                    OE_INFO << LC << "Loaded library \"" << libName << "\"\n";
+                }
+                else
+                {
+                    OE_WARN << LC << "Failed to load library \"" << libName << "\"\n";
+                }
+            }
+        }
+        
     }
 }
 

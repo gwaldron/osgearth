@@ -107,16 +107,24 @@ namespace osgEarth
     public:
         /** Construct the callback with a default Horizon model. */
         HorizonCullCallback();
-        
-        /** Construct a cull callback with the specified horizon */
-        HorizonCullCallback(const Horizon& horizon);
 
-        /** Enable/disable */
+        /**
+         * Whether to cull by the center point only, or by the bounding sphere.
+         */
+        void setCullByCenterPointOnly(bool value) { _centerOnly = value; }
+        bool getCullByCenterPointOnly() const { return _centerOnly; }
+
+        /**
+         * Enable or disable the culler
+         */
         void setEnabled(bool value) { _enabled = value; }
+        bool getEnabled() const { return _enabled; }
 
-        /** The horizon to use for culling. */
+        /**
+         * Horizon to cull againts
+         */
         void setHorizon(const Horizon& horizon) { _horizon = horizon; }
-        const Horizon& getHorizon() const       { return _horizon; }
+        const Horizon& getHorizon() const { return _horizon; }
 
     public: // osg::NodeCallback
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
@@ -125,6 +133,7 @@ namespace osgEarth
         virtual ~HorizonCullCallback() { }
 
     private:
+        bool    _centerOnly;
         bool    _enabled;
         Horizon _horizon;
     };

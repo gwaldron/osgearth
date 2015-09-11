@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Horizon>
+#include <osgUtil/CullVisitor>
 #include <osg/Transform>
 #include <osgEarth/Registry>
 
@@ -162,14 +163,8 @@ Horizon::getPlane(osg::Plane& out_plane) const
 //........................................................................
 
 HorizonCullCallback::HorizonCullCallback() :
-_enabled( true )
-{
-    //nop
-}
-
-HorizonCullCallback::HorizonCullCallback(const Horizon& horizon) :
-_horizon( horizon ),
-_enabled( true )
+_enabled   ( true ),
+_centerOnly( false )
 {
     //nop
 }
@@ -181,15 +176,25 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
     if ( _enabled && node && nv && nv->getVisitorType() == nv->CULL_VISITOR )
     {
-        osg::Matrix local2world = osg::computeLocalToWorld(nv->getNodePath());
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+        
+        osg::NodePath np = nv->getNodePath();
+        osg::Matrix local2world = osg::computeLocalToWorld(np);
 
         // make a local copy to support multi-threaded cull
+        osg::Vec3d eye = osg::Vec3d(nv->getViewPoint()) * local2world;
         Horizon horizon(_horizon);
-        horizon.setEye( osg::Vec3d(nv->getViewPoint()) * local2world );
+        horizon.setEye( eye );
 
+        // pop the last node in the path (which is the node this callback is on)
+        // to prevent double-transforming the bounding sphere's center point
+        np.pop_back();
+        local2world = osg::computeLocalToWorld(np);
         const osg::BoundingSphere& bs = node->getBound();
 
-        visible = horizon.isVisible( bs.center() * local2world, bs.radius() );
+        double radius = _centerOnly ? 0.0 : bs.radius();
+
+        visible = horizon.isVisible( bs.center()*local2world, radius );
     }
 
     if ( visible )
@@ -197,4 +202,3 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
         traverse(node, nv);
     }
 }
-

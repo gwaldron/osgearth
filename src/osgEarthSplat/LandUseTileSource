@@ -23,13 +23,14 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarthUtil/SimplexNoise>
 #include <osgDB/FileNameUtils>
+#include "Export"
 
 namespace osgEarth { namespace Splat
 {
     /**
      * Configuration options for the land use tile source
      */
-    class LandUseOptions : public osgEarth::TileSourceOptions    
+    class OSGEARTHSPLAT_EXPORT LandUseOptions : public osgEarth::TileSourceOptions    
     {
     public:
         LandUseOptions(const osgEarth::TileSourceOptions& options)
@@ -136,7 +137,7 @@ namespace osgEarth { namespace Splat
      * Tile source that will read from ANOTHER tile source and perform
      * various pre-processing syntheses operations like warping and detailing.
      */
-    class LandUseTileSource : public osgEarth::TileSource
+    class OSGEARTHSPLAT_EXPORT LandUseTileSource : public osgEarth::TileSource
     {
     public:
         LandUseTileSource(const LandUseOptions& options);
@@ -163,7 +164,7 @@ namespace osgEarth { namespace Splat
     /**
      * Driver plugin used to load a land use tile source.
      */
-    class LandUseDriver : public osgEarth::TileSourceDriver
+    class OSGEARTHSPLAT_EXPORT LandUseDriver : public osgEarth::TileSourceDriver
     {
     public:
         LandUseDriver()

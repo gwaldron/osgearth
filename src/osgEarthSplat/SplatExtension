@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_SPLAT_SPLAT_EXTENSION
 #define OSGEARTH_SPLAT_SPLAT_EXTENSION 1
 
-#include "SplatExport"
+#include "Export"
 #include "SplatOptions"
 #include "SplatTerrainEffect"
 #include <osgEarth/Extension>
@@ -34,9 +34,9 @@ namespace osgEarth { namespace Splat
     /**
      * Extension for loading the splatting effect on demand.
      */
-    class SplatExtension : public Extension,
-                           public ExtensionInterface<MapNode>,
-                           public ExtensionInterface<Control>
+    class OSGEARTHSPLAT_EXPORT SplatExtension : public Extension,
+                                                public ExtensionInterface<MapNode>,
+                                                public ExtensionInterface<Control>
     {
     public:
         META_Object(osgearth_ext_splat, SplatExtension);

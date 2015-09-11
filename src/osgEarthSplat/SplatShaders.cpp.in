@@ -1,6 +1,6 @@
 // CMake will compile this file into AutoGenShaders.cpp
 
-#include <osgEarthExtensions/splat/SplatShaders>
+#include <osgEarthSplat/SplatShaders>
 
 #define MULTILINE(...) #__VA_ARGS__
 

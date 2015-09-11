@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/URI>
+#include "Export"
 
 namespace osgEarth { namespace Splat
 {
@@ -29,7 +30,7 @@ namespace osgEarth { namespace Splat
     /**
      * Options governing the classification splatting engine.
      */
-    class /*header-only*/ SplatOptions : public DriverConfigOptions
+    class OSGEARTHSPLAT_EXPORT SplatOptions : public DriverConfigOptions
     {
     public:
         /** URI of the splat texture catalog description file;

@@ -20,6 +20,8 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/MapFrame>
 #include <osgEarth/Extension>
+#include <stdio.h>
+#include <ctype.h>
 
 #define LC "[EarthSerializer] "
 
@@ -42,7 +44,21 @@ namespace
             {
                 OE_INFO << LC << "Loaded extension lib \"" << libName << "\"\n";
             }
-            // If it failed to load, just ignore it; extensions are not always in a library.
+            else
+            {
+                // If it failed to load, try loading an extension from an osgEarth library with the same name.
+                // Capitalize the name of the extension,.
+                std::string capName = name;
+                capName[0] = ::toupper(capName[0]);
+                std::stringstream buf;
+                buf << "osgEarth" << capName;
+                libName = osgDB::Registry::instance()->createLibraryNameForNodeKit(buf.str());
+                status = osgDB::Registry::instance()->loadLibrary(libName);
+                if (status == osgDB::Registry::LOADED)
+                {
+                    OE_INFO << LC << "Loaded extension lib \"" << libName << "\"\n";
+                }
+            }
         }
     }
 }

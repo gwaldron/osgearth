@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Horizon>
+#include <osgUtil/CullVisitor>
 #include <osg/Transform>
 #include <osgEarth/Registry>
 
@@ -97,25 +98,30 @@ Horizon::isVisible(const osg::Vec3d& target,
     if ( radius >= _scaleInv.x() || radius >= _scaleInv.y() || radius >= _scaleInv.z() )
         return true;
     
+    // First check the object against the horizon plane, a plane that intersects the 
+    // ellipsoid, whose normal is the vector from the eyepoint to the center of the 
+    // ellipsoid.
     // ref: https://cesiumjs.org/2013/04/25/Horizon-culling/
 
     // Viewer-to-target vector
     osg::Vec3d VT;
 
     // move the target closer to the horizon plane by "radius".
-     //(target + CVunit*radius) - eye;
+    VT = (target + _eyeUnit*radius) - _eye;
 
+    // transform into unit space:
     VT = osg::componentMultiply( VT, _scale );
-    double VTdotVC = VT*_VC;
 
     // If the point is in front of the horizon plane, it's visible and we're done
-    if ( VTdotVC <= _VHmag2 )
+    if ( VT*_VC <= _VHmag2 )
     {
         return true;
     }
 
-    // Next, intersect the bounding sphere with the horizon cone.
-    // If the sphere is entirely within the cone, it is occluded
+    // The sphere is completely behind the horizon plane. So now intersect the 
+    // sphere with the horizon cone, a cone eminating from the eyepoint along the 
+    // eye->center vetor. If the sphere is entirely within the cone, it is occluded
+    // by the spheroid (not ellipsoid, sorry)
     // ref: http://www.cbloom.com/3d/techdocs/culling.txt
     VT = target - _eye;
 
@@ -127,6 +133,7 @@ Horizon::isVisible(const osg::Vec3d& target,
 
     if ( e > -radius )
     {
+        // sphere is at least partially outside the cone (visible)
         return true;
     }
 
@@ -156,14 +163,8 @@ Horizon::getPlane(osg::Plane& out_plane) const
 //........................................................................
 
 HorizonCullCallback::HorizonCullCallback() :
-_enabled( true )
-{
-    //nop
-}
-
-HorizonCullCallback::HorizonCullCallback(const Horizon& horizon) :
-_horizon( horizon ),
-_enabled( true )
+_enabled   ( true ),
+_centerOnly( false )
 {
     //nop
 }
@@ -175,15 +176,25 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
     if ( _enabled && node && nv && nv->getVisitorType() == nv->CULL_VISITOR )
     {
-        osg::Matrix local2world = osg::computeLocalToWorld(nv->getNodePath());
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+        
+        osg::NodePath np = nv->getNodePath();
+        osg::Matrix local2world = osg::computeLocalToWorld(np);
 
         // make a local copy to support multi-threaded cull
+        osg::Vec3d eye = osg::Vec3d(nv->getViewPoint()) * local2world;
         Horizon horizon(_horizon);
-        horizon.setEye( osg::Vec3d(nv->getViewPoint()) * local2world );
+        horizon.setEye( eye );
 
+        // pop the last node in the path (which is the node this callback is on)
+        // to prevent double-transforming the bounding sphere's center point
+        np.pop_back();
+        local2world = osg::computeLocalToWorld(np);
         const osg::BoundingSphere& bs = node->getBound();
 
-        visible = horizon.isVisible( bs.center() * local2world, bs.radius() );
+        double radius = _centerOnly ? 0.0 : bs.radius();
+
+        visible = horizon.isVisible( bs.center()*local2world, radius );
     }
 
     if ( visible )
@@ -191,4 +202,3 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
         traverse(node, nv);
     }
 }
-

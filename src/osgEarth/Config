@@ -63,7 +63,7 @@ namespace osgEarth
             : _key( key ), _defaultValue( value ) { }
 
         Config( const Config& rhs ) 
-            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _refMap(rhs._refMap), _externalRef(rhs._externalRef) { }
+            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
 
         virtual ~Config();
 

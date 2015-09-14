@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_SPLAT_BIOME_H
 #define OSGEARTH_SPLAT_BIOME_H 1
 
-#include "SplatExport"
+#include "Export"
 #include "SplatCatalog"
 #include <osgEarth/GeoData>
 #include <vector>
@@ -30,7 +30,7 @@ namespace osgEarth { namespace Splat
      * Defines a set of geospatial extents under which to apply a particular
      * procedural catalog.
      */
-    class Biome
+    class OSGEARTHSPLAT_EXPORT Biome
     {
     public: // types        
         struct Region

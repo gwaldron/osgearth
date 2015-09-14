@@ -20,6 +20,7 @@
 #define OSGEARTH_SPLAT_BIOME_SELECTOR_CALLBACK 1
 
 #include "Biome"
+#include "Export"
 #include <osg/NodeCallback>
 #include <osg/Polytope>
 
@@ -29,7 +30,7 @@ namespace osgEarth { namespace Splat
      * Cull callback that applies the approprate stateset based on what
      * it determines to be the active Biome.
      */
-    class BiomeSelector : public osg::NodeCallback
+    class OSGEARTHSPLAT_EXPORT BiomeSelector : public osg::NodeCallback
     {
     public:
         BiomeSelector(

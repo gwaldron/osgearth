@@ -27,6 +27,7 @@
 #include "Biome"
 #include "BiomeSelector"
 #include "SplatShaders"
+#include "Export"
 
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/ImageLayer>
@@ -41,7 +42,7 @@ namespace osgEarth { namespace Splat
     /**
      * Effect that applies texture splatting to the terrain.
      */
-    class SplatTerrainEffect : public TerrainEffect
+    class OSGEARTHSPLAT_EXPORT SplatTerrainEffect : public TerrainEffect
     {
     public:
         /** construct a new terrain effect. */
@@ -91,6 +92,12 @@ namespace osgEarth { namespace Splat
          * splat textures.
          */
         osg::Uniform* getScaleLevelOffsetUniform() { return _scaleOffsetUniform.get(); }
+
+        /**
+         * Gets the list of Biomes.
+         */
+        const BiomeVector& getBiomes() const { return _biomes; }
+
 
 
     public: // TerrainEffect interface

@@ -5,6 +5,7 @@ FOREACH( lib
          osgEarthFeatures
          osgEarthUtil
          osgEarthSymbology
+         osgEarthSplat
  )
 
     ADD_SUBDIRECTORY(${lib})

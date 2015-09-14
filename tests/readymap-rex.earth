@@ -11,7 +11,8 @@ osgEarth Sample - REX Engine.
                  merges_per_frame="25"
                  morph_terrain="true"
                  morph_imagery="true"
-                 high_resolution_first="true">
+                 high_resolution_first="true"
+                 normal_maps="false">
         </terrain>
     </options>
     

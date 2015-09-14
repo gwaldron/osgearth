@@ -290,6 +290,28 @@ MPTerrainEngineNode::~MPTerrainEngineNode()
     }
 }
 
+bool
+MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
+{
+    static const char* getHeight =
+        "#version 110\n"
+        "#pragma vp_name \"oe_terrain_getHeight\"\n"
+        "attribute vec4 oe_terrain_attr; \n"
+        "float oe_terrain_getHeight() { \n"
+        "    return oe_terrain_attr[3]; \n"
+        "} \n";
+
+    if ( vp )
+    {
+        osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, getHeight);
+        shader->setName( "oe_terrain_getHeight" );
+        vp->setShader( shader );
+        vp->addBindAttribLocation( "oe_terrain_attr", osg::Drawable::ATTRIBUTE_6 );
+    }
+
+    return (vp != 0L);
+}
+
 void
 MPTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {

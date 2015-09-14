@@ -73,6 +73,9 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
         /** Access the stateset used to render payload data. */
         osg::StateSet* getPayloadStateSet();
 
+        /** Install and MP-specific shader library. */
+        bool includeShaderLibrary(VirtualProgram* vp);
+
     public: // internal TerrainEngineNode
 
         virtual void preInitialize( const Map* map, const TerrainOptions& options );

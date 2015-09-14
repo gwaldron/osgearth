@@ -73,9 +73,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::StateSet* addLandCoverGroup(const std::string& name, unsigned lod);
 
         void removeLandCoverGroup(const std::string& name);
-
-        /** Access to the asychronous data loader */
-        Loader* getLoader() { return _loader.get(); }
+        
+        bool includeShaderLibrary(VirtualProgram* vp);
 
     public: // internal TerrainEngineNode
 
@@ -99,6 +98,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         static void registerEngine( RexTerrainEngineNode* engineNode );
         static void unregisterEngine( UID uid );
         static void getEngineByUID( UID uid, osg::ref_ptr<RexTerrainEngineNode>& output );
+
+        /** Access to the asychronous data loader */
+        Loader* getLoader() { return _loader.get(); }
 
     public:
         class ElevationChangedCallback : public ElevationLayerCallback

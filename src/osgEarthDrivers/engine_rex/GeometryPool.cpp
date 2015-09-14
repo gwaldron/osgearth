@@ -29,7 +29,7 @@ using namespace osgEarth::Drivers::RexTerrainEngine;
 // TODO: experiment with sharing a single texture coordinate array 
 //// across all shared geometries.
 /// JB:  Disabled to fix issues with ATI.
-//#define SHARE_TEX_COORDS 1
+#define SHARE_TEX_COORDS 1
 
 
 GeometryPool::GeometryPool(const RexTerrainEngineOptions& options) :

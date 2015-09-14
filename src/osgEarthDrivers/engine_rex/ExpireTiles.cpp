@@ -85,7 +85,7 @@ ExpireTiles::apply()
         // Remove them from the node.
         tilenode->removeChildren( 0, tilenode->getNumChildren() );
 
-        OE_DEBUG << LC << "Expired " << count << " children; live = "
+        OE_DEBUG << LC << "Expired " << count << " children under " << tilenode->getTileKey().str() << "; live = "
             << _context->liveTiles()->size()
             << "\n";
     }

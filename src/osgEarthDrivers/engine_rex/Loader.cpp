@@ -47,6 +47,15 @@ Loader::Request::getStateSet()
     return _stateSet.get();
 }
 
+void
+Loader::Request::addToChangeSet(osg::Node* node)
+{
+    if ( node )
+    {
+        _nodesChanged.push_back( node );
+    }
+}
+
 //...............................................
 
 #undef  LC
@@ -84,9 +93,6 @@ SimpleLoader::clear()
 #undef  LC
 #define LC "[PagerLoader] "
 
-//#define USE_MERGE_QUEUE  1
-#define MERGES_PER_FRAME 1
-
 namespace
 {
     struct RequestResultNode : public osg::Node
@@ -110,12 +116,13 @@ namespace
 }
 
 
-PagerLoader::PagerLoader(UID engineUID) :
-_engineUID     ( engineUID ),
+PagerLoader::PagerLoader(TerrainEngine* engine) :
+_engineUID     ( engine->getUID() ),
 _checkpoint    ( (osg::Timer_t)0 ),
 _mergesPerFrame( 0 )
 {
     _myNodePath.push_back( this );
+    //engine->notifyOfTileAdd();
 }
 
 void
@@ -135,6 +142,9 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
 
         // remember the last tick at which this request was submitted
         request->_lastTick = osg::Timer::instance()->tick();
+
+        // update the priority
+        request->_priority = priority;
 
         osgDB::Options* dboptions = 0L;
 
@@ -193,7 +203,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
         int count;
         for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
         {
-            Request* req = _mergeQueue.front().get();
+            Request* req = _mergeQueue.begin()->get();
             if ( req && req->_lastTick >= _checkpoint )
             {
                 OE_START_TIMER(req_apply);
@@ -201,11 +211,11 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                 double s = OE_STOP_TIMER(req_apply);
 
                 req->setState(Request::IDLE);
-
-                //OE_INFO << "apply time = " << s << " s.\n";
+                
+                //OE_NOTICE << "req = " << req->getName() << "; PRI = " << req->_priority << "; time = " << s << " s\n";
             }
-            _mergeQueue.pop();
-        }
+            _mergeQueue.erase( _mergeQueue.begin() );
+       }
     }
 
     LoaderGroup::traverse( nv );
@@ -223,7 +233,7 @@ PagerLoader::addChild(osg::Node* node)
         {
             if ( _mergesPerFrame > 0 )
             {
-                _mergeQueue.push( req );
+                _mergeQueue.insert( req );
                 req->setState( Request::MERGING );
             }
             else

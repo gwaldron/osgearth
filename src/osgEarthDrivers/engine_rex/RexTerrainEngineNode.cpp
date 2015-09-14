@@ -238,6 +238,29 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
     destroySelectionInfo();
 }
 
+bool
+RexTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
+{
+    static const char* getHeight =
+        "#version 330\n"
+        "#pragma vp_name \"oe_terrain_getHeight\"\n"
+        "uniform sampler2D oe_tile_elevationTex; \n"
+        "uniform mat4 oe_tile_elevationTexMatrix; \n"
+        "vec4 oe_layer_tilec; \n"
+        "float oe_terrain_getHeight() { \n"
+        "    return texture(oe_tile_elevationTex, (oe_tile_elevationTexMatrix*oe_layer_tilec).st).r; \n"
+        "} \n";
+
+    if ( vp )
+    {
+        osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, getHeight);
+        shader->setName( "oe_terrain_getHeight" );
+        vp->setShader( shader );
+    }
+
+    return (vp != 0L);
+}
+
 void
 RexTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
@@ -306,11 +329,9 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     }
 
     // Make a tile loader
-    PagerLoader* loader = new PagerLoader( getUID() );    
-    if ( _terrainOptions.mergesPerFrame().isSet() )
-    {
-        loader->setMergesPerFrame( _terrainOptions.mergesPerFrame().get() );
-    }
+    PagerLoader* loader = new PagerLoader( this );
+    loader->setMergesPerFrame( _terrainOptions.mergesPerFrame().get() );
+
     _loader = loader;
     //_loader = new SimpleLoader();
     this->addChild( _loader.get() );
@@ -915,7 +936,10 @@ RexTerrainEngineNode::updateState()
             }
 
             bool useBlending = _terrainOptions.enableBlending().get();
-            package.define("OE_REX_USE_BLENDING", useBlending);
+            package.define("OE_REX_GL_BLENDING", useBlending);
+
+            bool morphImagery = _terrainOptions.morphImagery().get();
+            package.define("OE_REX_MORPH_IMAGERY", morphImagery);
 
             // Funtions that affect only the terrain surface:
             VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);

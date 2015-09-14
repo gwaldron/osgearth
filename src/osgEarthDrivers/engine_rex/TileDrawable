@@ -107,7 +107,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void drawPatches(osg::RenderInfo& renderInfo) const;
 
-        void drawSurface(osg::RenderInfo& renderInfo) const;
+        void drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const;
 
         // validate the geometry is OK.
         void validate();

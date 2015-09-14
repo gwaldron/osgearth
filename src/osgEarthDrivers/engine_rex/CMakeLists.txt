@@ -43,7 +43,6 @@ SET(TARGET_SRC
 
 SET(TARGET_H
     Common
-    FileLocationCallback
     GeometryPool
     Shaders
     RexTerrainEngineNode

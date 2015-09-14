@@ -22,8 +22,10 @@
 #include "Common"
 #include <osg/ref_ptr>
 #include <osg/Group>
+#include <osgDB/Options>
 #include <osgEarth/IOTypes>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/TileKey>
 #include <set>
 
 namespace osgEarth {
@@ -49,6 +51,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             /** Name the request */
             void setName(const std::string& name) { _name = name; }
             const std::string& getName() const { return _name; }
+
+            /** TileKey associated with this request */
+            void setTileKey(const TileKey& key) { _key = key; }
+            const TileKey& getTileKey() const { return _key; }
 
             /** Invoke the operation - not safe to alter the graph */
             virtual void invoke() { }
@@ -86,6 +92,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
             UID                           _uid;
             std::string                   _name;
+            TileKey                       _key;
             State                         _state;
             float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
@@ -149,6 +156,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Internal method to invoke a request that was previously queued with load(). */
         Request* invokeAndRelease(UID requestUID);
 
+        /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
+        TileKey getTileKeyForRequest(UID requestUID) const;
+
     public: // osg::Group
 
         bool addChild(osg::Node*);
@@ -174,10 +184,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         UID              _engineUID;
         osg::NodePath    _myNodePath;
         Requests         _requests;
-        Threading::Mutex _requestsMutex;
         MergeQueue       _mergeQueue;  
         osg::Timer_t     _checkpoint;
         int              _mergesPerFrame;
+
+        osg::ref_ptr<osgDB::Options> _dboptions;
+        mutable Threading::Mutex     _requestsMutex;
     };
 
 } } }

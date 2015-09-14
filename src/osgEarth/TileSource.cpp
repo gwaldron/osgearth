@@ -551,6 +551,9 @@ TileSource::hasData(const osgEarth::TileKey& key) const
 {
     //sematics: "might have data"
 
+    if ( !key.valid() )
+        return false;
+
     // If no data extents are provided, and there's no data level override,
     // return true because there might be data but there's no way to tell.
     if (_dataExtents.size() == 0 && !_options.maxDataLevel().isSet())
@@ -599,6 +602,10 @@ bool
 TileSource::getBestAvailableTileKey(const osgEarth::TileKey& key,
                                     osgEarth::TileKey&       output) const
 {
+    // trivial reject
+    if ( !key.valid() )
+        return false;
+
     // trivial accept: no data extents = not enough info.
     if (_dataExtents.size() == 0)
     {
@@ -670,6 +677,9 @@ bool
 TileSource::hasDataForFallback(const osgEarth::TileKey& key) const
 {
     //sematics: might have data.
+
+    if ( !key.valid() )
+        return false;
 
     //If no data extents are provided, just return true
     if (_dataExtents.size() == 0) 

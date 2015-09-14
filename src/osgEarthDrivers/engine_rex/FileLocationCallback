@@ -70,8 +70,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 }
             }
 
-            //OE_NOTICE << (result?"REMOTE":"LOCAL") << " - " << filename << std::endl;
-
             return result;
         }
 

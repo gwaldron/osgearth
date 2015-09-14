@@ -622,6 +622,7 @@ TileNode::load(osg::NodeVisitor& nv)
         {
             _loadRequest = new LoadTileData( this, context );
             _loadRequest->setName( _key.str() );
+            _loadRequest->setTileKey( _key );
         }
     }
 
@@ -634,7 +635,10 @@ TileNode::load(osg::NodeVisitor& nv)
     // then sort by distance within each LOD.
     float distance = nv.getDistanceToViewPoint( getBound().center(), true );
     priority = 10.0f*priority - log10(distance);
-    //OE_NOTICE << "key=" << _key.str() << "; " << "p=" << priority << "; d=" << distance << "\n";
+
+    // testing intermediate loading idea...
+    //if ( getTileKey().getLOD() == 5 )
+    //    priority += 100.0f;
 
     // Submit to the loader.
     context->getLoader()->load( _loadRequest.get(), priority, nv );
@@ -653,6 +657,7 @@ TileNode::expireChildren(osg::NodeVisitor& nv)
         {
             _expireRequest = new ExpireTiles(this, context);
             _expireRequest->setName( "expire" );
+            _expireRequest->setTileKey( _key );
         }
     }
        

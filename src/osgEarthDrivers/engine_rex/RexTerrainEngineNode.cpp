@@ -566,11 +566,6 @@ RexTerrainEngineNode::dirtyTerrain()
     // create a root node for each root tile key.
     OE_INFO << LC << "Creating " << keys.size() << " root keys.." << std::endl;
 
-    //TilePagedLOD* root = new TilePagedLOD( _uid, _liveTiles, _deadTiles );
-    //_terrain->addChild( root );
-
-    osg::ref_ptr<osgDB::Options> dbOptions = Registry::instance()->cloneOrCreateOptions();
-
     unsigned child = 0;
     for( unsigned i=0; i<keys.size(); ++i )
     {

@@ -91,6 +91,51 @@ SimpleLoader::clear()
 //...............................................
 
 #undef  LC
+#define LC "[PagerLoader.FileLocationCallback] "
+
+namespace
+{ 
+    class FileLocationCallback : public osgDB::FileLocationCallback
+    {
+    public:
+        FileLocationCallback() { }
+
+        /** dtor */
+        virtual ~FileLocationCallback() { }
+
+        Location fileLocation(const std::string& filename, const osgDB::Options* dboptions)
+        {
+            Location result = REMOTE_FILE;
+
+            osgEarth::UID requestUID, engineUID;
+
+            sscanf(filename.c_str(), "%d.%d", &requestUID, &engineUID);
+
+            osg::ref_ptr<RexTerrainEngineNode> engine;
+            RexTerrainEngineNode::getEngineByUID( (UID)engineUID, engine );
+
+            if ( engine.valid() )
+            {
+                PagerLoader* loader = static_cast<PagerLoader*>( engine->getLoader() );
+                TileKey key = loader->getTileKeyForRequest(requestUID);
+
+                MapFrame frame(engine->getMap());
+                if ( frame.isCached(key) )
+                {
+                    result = LOCAL_FILE;
+                }
+
+                //OE_NOTICE << "key=" << key.str() << " : " << (result==LOCAL_FILE?"local":"remote") << "\n";
+            }
+
+            return result;
+        }
+
+        bool useFileCache() const { return false; }
+    };
+}
+
+#undef  LC
 #define LC "[PagerLoader] "
 
 namespace
@@ -122,7 +167,9 @@ _checkpoint    ( (osg::Timer_t)0 ),
 _mergesPerFrame( 0 )
 {
     _myNodePath.push_back( this );
-    //engine->notifyOfTileAdd();
+
+    _dboptions = new osgDB::Options();
+    _dboptions->setFileLocationCallback( new FileLocationCallback() );
 }
 
 void
@@ -146,8 +193,6 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
         // update the priority
         request->_priority = priority;
 
-        osgDB::Options* dboptions = 0L;
-
         std::string filename = Stringify() << request->_uid << "." << _engineUID << ".osgearth_rex_loader";
 
         nv.getDatabaseRequestHandler()->requestNodeFile(
@@ -156,7 +201,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             priority,
             nv.getFrameStamp(),
             request->_internalHandle,
-            dboptions );
+            _dboptions.get() );
 
         unsigned fn = 0;
         if ( nv.getFrameStamp() )
@@ -246,6 +291,18 @@ PagerLoader::addChild(osg::Node* node)
     return true;
 }
 
+TileKey
+PagerLoader::getTileKeyForRequest(UID requestUID) const
+{
+    Threading::ScopedMutexLock lock( _requestsMutex );
+    Requests::const_iterator i = _requests.find( requestUID );
+    if ( i != _requests.end() )
+    {
+        return i->second->getTileKey();
+    }
+
+    return TileKey::INVALID;
+}
 
 Loader::Request*
 PagerLoader::invokeAndRelease(UID requestUID)

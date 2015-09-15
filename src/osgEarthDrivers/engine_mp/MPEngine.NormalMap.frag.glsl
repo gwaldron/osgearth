@@ -4,21 +4,24 @@
 #pragma vp_location   "fragment_coloring"
 #pragma vp_order      "0.2"
 
-in vec3 vp_Normal;
-
 uniform sampler2D oe_tile_normalTex;
 
-in vec2 oe_mp_NormalMap_coords;
-flat in mat3 oe_mp_NormalMap_TBN;
+in vec3 vp_Normal;
+in vec2 oe_normalMapCoords;
+in vec3 oe_normalMapBinormal;
 
 void oe_mp_NormalMap_fragment(inout vec4 color)
 {
     //const vec3 B = vec3(0,1,0);
 
-    vec4 encodedNormal = texture2D(oe_tile_normalTex, oe_mp_NormalMap_coords);
-    vec3 normalTangent = normalize(encodedNormal.xyz*2.0-1.0);
+    vec4 encodedNormal = texture2D(oe_tile_normalTex, oe_normalMapCoords);
+    vec3 normal        = normalize(encodedNormal.xyz*2.0-1.0);
 
-    vp_Normal = normalize(oe_mp_NormalMap_TBN * normalTangent);
+    //vp_Normal = normalize(oe_mp_NormalMap_TBN * normalTangent);
+
+    vec3 tangent = normalize(cross(oe_normalMapBinormal, vp_Normal));
+
+    vp_Normal = normalize(mat3(tangent, oe_normalMapBinormal, vp_Normal) * normal);
 
     // visualize curvature gradient:
     //color.rgb = vec3(0,0,0);

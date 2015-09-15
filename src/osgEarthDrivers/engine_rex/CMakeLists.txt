@@ -32,7 +32,6 @@ SET(TARGET_SRC
     MPTexture.cpp
 	SelectionInfo.cpp
     SurfaceNode.cpp
-    SurfaceNodeFactory.cpp
 	TileDrawable.cpp
     EngineContext.cpp
     TileNode.cpp
@@ -57,7 +56,6 @@ SET(TARGET_H
 	TileDrawable
     EngineContext
     TileNode
-    SurfaceNodeFactory
     TileNodeRegistry
     Loader
 	SelectionInfo

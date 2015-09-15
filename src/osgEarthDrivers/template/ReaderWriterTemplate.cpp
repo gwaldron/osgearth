@@ -1,0 +1,77 @@
+#include <osg/Notify>
+#include <osgDB/ReaderWriter>
+#include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
+
+#include "NLTemplate.h"
+
+using namespace NL::Template;
+
+class TemplateReaderWriter: public osgDB::ReaderWriter
+{
+    public:
+        TemplateReaderWriter()
+        {
+            supportsExtension("template","Template");
+        }
+
+        virtual const char* className() { return "TemplateReaderWriter"; }
+
+        virtual bool acceptsExtension(const std::string& extension) const
+        {
+            return osgDB::equalCaseInsensitive(extension,"template");
+        }
+
+        virtual ReadResult readObject(const std::string& file_name, const osgDB::Options* options) const
+        {
+            return readNode( file_name, options );
+        }
+
+        virtual ReadResult readNode(const std::string& fileName, const osgDB::Options* options) const
+        {         
+            std::string ext = osgDB::getFileExtension( fileName );
+            if ( !acceptsExtension( ext ) )
+                return ReadResult::FILE_NOT_HANDLED;
+
+            std::string realName = osgDB::getNameLessExtension( fileName );
+            if (!osgDB::fileExists(realName))
+            {
+                return ReadResult::FILE_NOT_FOUND;
+            }
+
+            std::string realExt = osgDB::getFileExtension( realName );
+            osg::ref_ptr< osgDB::ReaderWriter > driver = osgDB::Registry::instance()->getReaderWriterForExtension(realExt);
+            if (!driver.valid())
+            {
+                return ReadResult::FILE_NOT_HANDLED;
+            }
+
+            LoaderFile loader;
+            Template t(loader);
+            t.load( realName.c_str() );
+
+            // Populate a list of key value pairs from the options string.
+            if (options)
+            {
+                std::istringstream iss(options->getOptionString());
+                std::string opt;
+                while (iss >> opt) {
+                    opt = osgDB::convertToLowerCase(opt);
+                    std::size_t eqInd = opt.find("=");
+                    std::string key = opt.substr(0, eqInd);
+                    std::string value = opt.substr(eqInd + 1);
+                    t.set(key, value);
+                }
+            }
+
+            OutputString output;
+            t.render( output );
+
+            OSG_DEBUG << "Processed template " << std::endl << output.buf.str() << std::endl;
+
+            return driver->readNode( output.buf, options );                       
+        }        
+};
+
+REGISTER_OSGPLUGIN(template, TemplateReaderWriter)

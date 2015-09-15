@@ -290,6 +290,28 @@ MPTerrainEngineNode::~MPTerrainEngineNode()
     }
 }
 
+bool
+MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
+{
+    static const char* getHeight =
+        "#version 110\n"
+        "#pragma vp_name \"oe_terrain_getHeight\"\n"
+        "attribute vec4 oe_terrain_attr; \n"
+        "float oe_terrain_getHeight() { \n"
+        "    return oe_terrain_attr[3]; \n"
+        "} \n";
+
+    if ( vp )
+    {
+        osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, getHeight);
+        shader->setName( "oe_terrain_getHeight" );
+        vp->setShader( shader );
+        vp->addBindAttribLocation( "oe_terrain_attr", osg::Drawable::ATTRIBUTE_6 );
+    }
+
+    return (vp != 0L);
+}
+
 void
 MPTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
@@ -591,28 +613,6 @@ MPTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-
-#if 0 // believe this is now unnecessary
-
-        // since the root tiles are manually added, the pager never has a chance to 
-        // register the PagedLODs in their children. So we have to do it manually here.
-        if ( !_rootTilesRegistered )
-        {
-            Threading::ScopedMutexLock lock(_rootTilesRegisteredMutex);
-
-            if ( !_rootTilesRegistered )
-            {
-                osgDB::DatabasePager* pager = dynamic_cast<osgDB::DatabasePager*>(nv.getDatabaseRequestHandler());
-                if ( pager )
-                {
-                    //OE_WARN << "Registering plods." << std::endl;
-                    pager->registerPagedLODs( _terrain );
-                    _rootTilesRegistered = true;
-                }
-            }
-        }
-#endif
-
         // Inform the registry of the current frame so that Tiles have access
         // to the information.
         if ( _liveTiles.valid() && nv.getFrameStamp() )

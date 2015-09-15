@@ -34,6 +34,9 @@ using namespace osgEarth;
 //#define OE_TEST OE_INFO
 #define OE_TEST OE_NULL
 
+// whether a camera with an ABSOLUTE_RF_INHERIT_VIEWPOINT reference frame can trigger tile subdivision.
+#define INHERIT_VIEWPOINT_CAMERAS_CANNOT_SUBDIVIDE 1
+
 namespace
 {
     // traverses a node graph and moves any TileNodes from the LIVE
@@ -277,6 +280,16 @@ TilePagedLOD::traverse(osg::NodeVisitor& nv)
                     }
                 }
             }
+
+#ifdef INHERIT_VIEWPOINT_CAMERAS_CANNOT_SUBDIVIDE
+            // Prevents an INHERIT_VIEWPOINT camera from invoking tile subdivision
+            if (needToLoadChild)
+            {
+                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+                if ( cv && cv->getCurrentCamera() && cv->getCurrentCamera()->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
+                    needToLoadChild = false;
+            }
+#endif
 
             if (needToLoadChild)
             {

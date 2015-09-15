@@ -7,11 +7,13 @@ osgEarth Sample - REX Engine.
     <options>        
         <terrain driver="rex"
                  skirt_ratio="0.001"
-                 tile_size="33"
-                 merges_per_frame="2"
+                 tile_size="17"
+                 merges_per_frame="25"
                  morph_terrain="true"
                  morph_imagery="true"
-                 high_resolution_first="true" />
+                 high_resolution_first="true"
+                 normal_maps="false">
+        </terrain>
     </options>
     
     <image name="readymap_imagery" driver="tms">
@@ -23,28 +25,7 @@ osgEarth Sample - REX Engine.
     </elevation>
     
     <extensions>
-        <viewpoints>
-            <viewpoint name="San Francisco, California" heading="8.806974516644791" height="4465.397310772911" lat="37.55814749233749" long="-122.334535784141" pitch="-34.79540299384382" range="78142.53643278375" srs="+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs " />
-            <viewpoint name="Mt Rainier, Washington" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
-            <viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
-            <viewpoint name="The Matterhorn" heading="-1.429462844200832" height="2282.858508689329" lat="45.95106319557" long="7.642741711675961" pitch="-25.12269405854052" range="26690.10606054494"/>
-            <viewpoint name="Hallstatt, Austria">
-              <heading>-21.36</heading>
-              <pitch>-35.0965</pitch>
-              <range>14786m</range>
-              <long>13.65444893405288</long>
-              <lat>47.56470451831095</lat>
-              <height>502.9998890347779</height>
-            </viewpoint>
-            <viewpoint name="Anchorage, Alaska">
-              <heading>-6.513</heading>
-              <pitch>-14.4413</pitch>
-              <range>21030.5m</range>
-              <long>-149.9001345817515</long>
-              <lat>61.16407743963008</lat>
-              <height>30.04646527767181</height>
-            </viewpoint>
-        </viewpoints>               
+        <xi:include href="viewpoints.xml"/>
     </extensions>
     
 </map>

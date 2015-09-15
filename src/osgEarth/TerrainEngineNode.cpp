@@ -389,6 +389,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     osg::CoordinateSystemNode::traverse( nv );
 }
 
+#if 0
 void
 TerrainEngineNode::addTileNodeCallback(TerrainEngine::NodeCallback* cb)
 {
@@ -410,7 +411,9 @@ TerrainEngineNode::removeTileNodeCallback(TerrainEngine::NodeCallback* cb)
         }
     }
 }
+#endif
 
+//todo: remove?
 void
 TerrainEngineNode::notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node* node)
 {

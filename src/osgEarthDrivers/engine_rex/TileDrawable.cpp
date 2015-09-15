@@ -64,9 +64,19 @@ void
 TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 {
     if ( _drawPatch )
+    {
         drawPatches( renderInfo );
+    }
     else
-        drawSurface( renderInfo );
+    {
+        const osg::Camera* camera = renderInfo.getCurrentCamera();
+
+        bool renderColor =
+            (camera->getRenderOrder() != osg::Camera::PRE_RENDER) ||
+            ((camera->getClearMask() & GL_COLOR_BUFFER_BIT) != 0L);
+
+        drawSurface( renderInfo, renderColor );
+    }
 }
 
 
@@ -105,7 +115,7 @@ struct StateHack : public osg::State {
 
 
 void
-TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
+TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
 {
     unsigned layersDrawn = 0;
 
@@ -156,15 +166,9 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
         texMatrixParentLocation     = pcp->getUniformLocation( _texMatrixParentUniformNameID );
         texParentExistsLocation     = pcp->getUniformLocation( _texParentExistsUniformNameID );
     }
-    
-    //if ( _key.str() == "22/2538301/1110225" )
-    //{
-    //    const StateHack* hack = reinterpret_cast<const StateHack*>(renderInfo.getState());
-    //    hack->check();
-    //}
 
     float prevOpacity = -1.0f;
-    if ( _mptex.valid() && !_mptex->getPasses().empty() )
+    if ( renderColor && _mptex.valid() && !_mptex->getPasses().empty() )
     {
         float prevOpacity = -1.0f;
 
@@ -550,9 +554,9 @@ TileDrawable::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
     arrayDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
 
     arrayDispatchers.activateNormalArray(_geom->getNormalArray());
-    arrayDispatchers.activateColorArray(_geom->getColorArray());
-    arrayDispatchers.activateSecondaryColorArray(_geom->getSecondaryColorArray());
-    arrayDispatchers.activateFogCoordArray(_geom->getFogCoordArray());
+    //arrayDispatchers.activateColorArray(_geom->getColorArray());
+    //arrayDispatchers.activateSecondaryColorArray(_geom->getSecondaryColorArray());
+    //arrayDispatchers.activateFogCoordArray(_geom->getFogCoordArray());
 
     if (handleVertexAttributes)
     {
@@ -574,14 +578,14 @@ TileDrawable::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
     if (_geom->getNormalArray() && _geom->getNormalArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
         state.setNormalPointer(_geom->getNormalArray());
 
-    if (_geom->getColorArray() && _geom->getColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setColorPointer(_geom->getColorArray());
+    //if (_geom->getColorArray() && _geom->getColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+    //    state.setColorPointer(_geom->getColorArray());
 
-    if (_geom->getSecondaryColorArray() && _geom->getSecondaryColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setSecondaryColorPointer(_geom->getSecondaryColorArray());
+    //if (_geom->getSecondaryColorArray() && _geom->getSecondaryColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+    //    state.setSecondaryColorPointer(_geom->getSecondaryColorArray());
 
-    if (_geom->getFogCoordArray() && _geom->getFogCoordArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setFogCoordPointer(_geom->getFogCoordArray());
+    //if (_geom->getFogCoordArray() && _geom->getFogCoordArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+    //    state.setFogCoordPointer(_geom->getFogCoordArray());
 
     for(unsigned int unit=0;unit<_geom->getTexCoordArrayList().size();++unit)
     {
@@ -613,7 +617,7 @@ TileDrawable::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
             }
         }
     }
-
+    
     state.applyDisablingOfVertexAttributes();
 }
 

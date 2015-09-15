@@ -382,16 +382,7 @@ MapNodeHelper::load(osg::ArgumentParser& args,
 #endif
 
     // read in the Earth file:
-    osg::Node* node = 0L;
-    for( int i=0; i<args.argc(); ++i )
-    {
-        if ( osgDB::getLowerCaseFileExtension(args[i]) == "earth" )
-        {
-            node = osgDB::readNodeFile( args[i], options );
-            args.remove(i);
-            break;
-        }
-    }
+    osg::Node* node = osgDB::readNodeFiles(args);
 
     osg::ref_ptr<MapNode> mapNode;
     if ( !node )
@@ -429,7 +420,7 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     // a root node to hold everything:
     osg::Group* root = new osg::Group();
     
-    root->addChild( mapNode.get() );
+    root->addChild( node );
 
     // parses common cmdline arguments.
     if ( view )

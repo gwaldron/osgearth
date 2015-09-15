@@ -8,6 +8,20 @@
 
 using namespace NL::Template;
 
+/**
+* OpenSceneGraph psuedoloader that runs a node through the NLTemplate (https://github.com/catnapgames/NLTemplate)
+* templating library before actually loading it. The original goal of this plugin was to simplify 
+* the management of complicated earth files but it can be used to process any text based format.
+* 
+* To run your file through the template processor, simply append .template to your filename.
+* osgviewer map.earth.template
+* 
+* This will process any {% include file.xml %} snippits in the text.
+*
+* To provide context variables to the templating engine provide an Options string with a list of key value pairs
+* separated by the equal sign.
+* osgviewer map.earth.template -O "layer=123 max_range=1e6 shapefile=world.shp"
+*/
 class TemplateReaderWriter: public osgDB::ReaderWriter
 {
     public:

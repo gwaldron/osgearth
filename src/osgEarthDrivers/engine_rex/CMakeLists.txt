@@ -56,7 +56,6 @@ SET(TARGET_H
 	TileDrawable
     EngineContext
     TileNode
-    SurfaceNodeFactory
     TileNodeRegistry
     Loader
 	SelectionInfo

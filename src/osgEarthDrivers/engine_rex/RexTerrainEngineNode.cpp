@@ -243,18 +243,18 @@ RexTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 {
     static const char* getHeight =
         "#version 330\n"
-        "#pragma vp_name \"oe_terrain_getHeight\"\n"
+        "#pragma vp_name \"oe_terrain_getElevation\"\n"
         "uniform sampler2D oe_tile_elevationTex; \n"
         "uniform mat4 oe_tile_elevationTexMatrix; \n"
         "vec4 oe_layer_tilec; \n"
-        "float oe_terrain_getHeight() { \n"
+        "float oe_terrain_getElevation() { \n"
         "    return texture(oe_tile_elevationTex, (oe_tile_elevationTexMatrix*oe_layer_tilec).st).r; \n"
         "} \n";
 
     if ( vp )
     {
         osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, getHeight);
-        shader->setName( "oe_terrain_getHeight" );
+        shader->setName( "oe_terrain_getElevation" );
         vp->setShader( shader );
     }
 

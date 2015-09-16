@@ -330,21 +330,6 @@ namespace
         osg::Matrix _viewMatrix, _projectionMatrix;
         unsigned int _contextID;
     };
-
-    //const char* vertexShaderREX =
-    //    "#version 330\n"
-
-    //    "uniform sampler2D oe_tile_elevationTex; \n"
-    //    "uniform mat4 oe_tile_elevationTexMatrix; \n"
-    //    
-    //    "vec4 oe_layer_tilec; \n"
-    //    
-    //    "out float oe_triton_height;\n"
-
-    //    "void setupContour(inout vec4 VertexModel) \n"
-    //    "{ \n"
-    //    "    oe_triton_height = texture(oe_tile_elevationTex, (oe_tile_elevationTexMatrix*oe_layer_tilec).st).r; \n"
-    //    "} \n";
     
 
     const char* vertexShader =
@@ -352,26 +337,14 @@ namespace
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
         "// terrain library:\n"
-        "float oe_terrain_getHeight(); \n"
+        "float oe_terrain_getElevation(); \n"
 
-        "varying float oe_triton_height;\n"
+        "varying float oe_triton_elev;\n"
 
         "void setupContour(inout vec4 VertexModel) \n"
         "{ \n"
-        "    oe_triton_height = oe_terrain_getHeight(); \n"
+        "    oe_triton_elev = oe_terrain_getElevation(); \n"
         "} \n";
-
-    //const char* vertexShader =
-    //    "#version " GLSL_VERSION_STR "\n"
-    //    GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
-    //    "attribute vec4 oe_terrain_attr; \n"
-    //    "varying float oe_triton_height;\n"
-
-    //    "void setupContour(inout vec4 VertexModel) \n"
-    //    "{ \n"
-    //    "    oe_triton_height = oe_terrain_attr[3]; \n"
-    //    "} \n";
 
     // The fragment shader simply takes the texture index that we generated
     // in the vertex shader and does a texture lookup. In this case we're
@@ -382,15 +355,15 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "varying float oe_triton_height;\n"
+        "varying float oe_triton_elev;\n"
 
         "void colorContour( inout vec4 color ) \n"
         "{ \n"
 #ifdef DEBUG_HEIGHTMAP
           // Map to black = -500m, white = +500m
-          "   float nHeight = clamp(oe_triton_height / 1000.0 + 0.5, 0.0, 1.0);\n"
+          "   float nHeight = clamp(oe_triton_elev / 1000.0 + 0.5, 0.0, 1.0);\n"
 #else
-          "   float nHeight = oe_triton_height;\n"
+          "   float nHeight = oe_triton_elev;\n"
 #endif
         "    gl_FragColor = vec4( nHeight, 0.0, 0.0, 1.0 ); \n"
         "} \n";

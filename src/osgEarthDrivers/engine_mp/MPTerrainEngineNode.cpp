@@ -295,16 +295,16 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 {
     static const char* getHeight =
         "#version 110\n"
-        "#pragma vp_name \"oe_terrain_getHeight\"\n"
+        "#pragma vp_name \"oe_terrain_getElevation\"\n"
         "attribute vec4 oe_terrain_attr; \n"
-        "float oe_terrain_getHeight() { \n"
+        "float oe_terrain_getElevation() { \n"
         "    return oe_terrain_attr[3]; \n"
         "} \n";
 
     if ( vp )
     {
         osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, getHeight);
-        shader->setName( "oe_terrain_getHeight" );
+        shader->setName( "oe_terrain_getElevation" );
         vp->setShader( shader );
         vp->addBindAttribLocation( "oe_terrain_attr", osg::Drawable::ATTRIBUTE_6 );
     }

@@ -155,7 +155,7 @@ public:
                         {
                             result = new FeatureProfile(featureType->getExtent());
 
-                            bool disableTiling = _options.disableTiling().isSet() && *_options.disableTiling();
+                            bool disableTiling = _options.disableTiling().isSetTo(true);
 
                             if (featureType->getTiled() && !disableTiling)
                             {                        

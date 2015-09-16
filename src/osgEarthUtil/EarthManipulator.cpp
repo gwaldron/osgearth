@@ -1514,6 +1514,11 @@ EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack 
 void
 EarthManipulator::updateCamera( osg::Camera* eventCamera )
 {
+    // Take a temporary ref to the observer pointers to keep them around.
+    osg::ref_ptr< osg::Camera > viewCamera = _viewCamera.get();
+    osg::ref_ptr< osg::NodeCallback > cameraUpdateCB = _cameraUpdateCB.get();
+    
+
     // check to see if the camera has changed, and update the callback if necessary
     if ( _viewCamera.get() != eventCamera )
     {

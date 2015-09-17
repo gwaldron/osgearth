@@ -163,6 +163,13 @@ namespace
 
 //............................................................................
 
+EarthFileSerializer2::EarthFileSerializer2() :
+_rewritePaths        ( true ),
+_rewriteAbsolutePaths( false )
+{
+    // nop
+}
+
 
 MapNode*
 EarthFileSerializer2::deserialize( const Config& conf, const std::string& referrer ) const
@@ -337,10 +344,11 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         mapConf.add( ext );
     }
 
-    // visit the Config to find nodes with a referrer set.
-    if ( !referrer.empty() )
+    // Re-write pathnames in the Config so they are relative to the new referrer.
+    if ( _rewritePaths && !referrer.empty() )
     {
         RewritePaths rewritePaths( referrer );
+        rewritePaths.setRewriteAbsolutePaths( _rewriteAbsolutePaths );
         rewritePaths.apply( mapConf );
     }
 

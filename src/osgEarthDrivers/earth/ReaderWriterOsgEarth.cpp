@@ -31,7 +31,7 @@
 using namespace osgEarth_osgearth;
 using namespace osgEarth;
 
-#define LC "[ReaderWriterEarth] "
+#define LC "[Earth Plugin] "
 
 // Macros to determine the filename for dependent libs.
 #define Q2(x) #x
@@ -56,6 +56,18 @@ using namespace osgEarth;
 #       define LIBNAME_UTIL_EXTENSION ".so"
 #   endif
 #endif
+
+
+// OSG OPTIONS
+
+// By default the writer will re-write relative pathnames so they are relative to the new
+// save location. This option will disable that.
+#define EARTH_DO_NOT_REWRITE_PATHS   "DoNotRewritePaths"
+
+// By default the writer will skip absolute paths and leave them as-is. This option will
+// cause the writer to try making absolute paths relative to the new save location.
+#define EARTH_REWRITE_ABSOLUTE_PATHS "RewriteAbsolutePaths"
+
 
 namespace
 {
@@ -139,6 +151,25 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             // serialize the map node to a generic Config object:
             EarthFileSerializer2 ser;
+
+            // check for writer options
+            if ( options )
+            {
+                std::string ostr = osgEarth::toLower(options->getOptionString());
+
+                if ( ostr.find(toLower(EARTH_DO_NOT_REWRITE_PATHS)) != std::string::npos )
+                {
+                    OE_INFO << LC << "path re-writing disabled\n";
+                    ser.setRewritePaths( false );
+                }
+
+                if ( ostr.find(toLower(EARTH_REWRITE_ABSOLUTE_PATHS)) != std::string::npos )
+                {
+                    OE_INFO << LC << "absolute path re-writing enabled\n";
+                    ser.setRewriteAbsolutePaths( true );
+                }
+            }
+
             Config conf = ser.serialize( mapNode, uriContext.referrer() );
 
             // dump that Config out as XML.

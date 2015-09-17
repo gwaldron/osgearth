@@ -48,27 +48,29 @@ namespace
         for(ConfigSet::const_iterator i = extensions.begin(); i != extensions.end(); ++i)
         {
             const std::string& name = i->key();
-
-            // Load the extension library if necessary.
-            std::string libName = osgDB::Registry::instance()->createLibraryNameForExtension("osgearth_" + name);
-            osgDB::Registry::LoadStatus status = osgDB::Registry::instance()->loadLibrary(libName);
-            if ( status == osgDB::Registry::LOADED )
+            if ( !name.empty() )
             {
-                OE_INFO << LC << "Loaded extension lib \"" << libName << "\"\n";
-            }
-            else
-            {
-                // If it failed to load, try loading an extension from an osgEarth library with the same name.
-                // Capitalize the name of the extension,.
-                std::string capName = name;
-                capName[0] = ::toupper(capName[0]);
-                std::stringstream buf;
-                buf << "osgEarth" << capName;
-                libName = osgDB::Registry::instance()->createLibraryNameForNodeKit(buf.str());
-                status = osgDB::Registry::instance()->loadLibrary(libName);
-                if (status == osgDB::Registry::LOADED)
+                // Load the extension library if necessary.
+                std::string libName = osgDB::Registry::instance()->createLibraryNameForExtension("osgearth_" + name);
+                osgDB::Registry::LoadStatus status = osgDB::Registry::instance()->loadLibrary(libName);
+                if ( status == osgDB::Registry::LOADED )
                 {
                     OE_INFO << LC << "Loaded extension lib \"" << libName << "\"\n";
+                }
+                else
+                {
+                    // If it failed to load, try loading an extension from an osgEarth library with the same name.
+                    // Capitalize the name of the extension,.
+                    std::string capName = name;
+                    capName[0] = ::toupper(capName[0]);
+                    std::stringstream buf;
+                    buf << "osgEarth" << capName;
+                    libName = osgDB::Registry::instance()->createLibraryNameForNodeKit(buf.str());
+                    status = osgDB::Registry::instance()->loadLibrary(libName);
+                    if (status == osgDB::Registry::LOADED)
+                    {
+                        OE_INFO << LC << "Loaded extension lib \"" << libName << "\"\n";
+                    }
                 }
             }
         }
@@ -123,32 +125,29 @@ namespace
         void apply(Config& input)
         {
             // only consider "simple" values (no children) with a set referrer:
-            if ( !input.referrer().empty() && input.isSimple() )
+            if ( !input.referrer().empty() ) //&& input.isSimple() )
             {
                 // If the input has a referrer set, it might be a path. Rewrite the path
                 // to be relative to the new referrer that was passed into this visitor.
 
                 // resolve the absolute path of the input:
                 URI inputURI( input.value(), URIContext(input.referrer()) );
-                std::string inputAbsPath = osgDB::convertFileNameToUnixStyle( inputURI.full() );
-
-                // see whether the file exists (this is how we verify that it's actually a path)
-                if ( osgDB::fileExists(inputAbsPath) )
+                
+                std::string newValue = resolve(inputURI);
+                if ( newValue != input.value() )
                 {
-                    if ( !osgDB::isAbsolutePath(input.value()) || _rewriteAbsolutePaths )
-                    {
-                        std::string inputNewRelPath = osgDB::getPathRelative( _newReferrerFolder, inputAbsPath );
-                    
-                        OE_DEBUG << LC << "\n"
-                            "   Rewriting \"" << input.value() << "\" as \"" << inputNewRelPath << "\"\n"
-                            "   Absolute = " << inputAbsPath << "\n"
-                            "   ReferrerFolder = " << _newReferrerFolder << "\n";
+                    input.value() = newValue;
+                    input.setReferrer( _newReferrerAbsPath );
+                }
 
-                        if ( input.value() != inputNewRelPath )
-                        {
-                            input.value() = inputNewRelPath;
-                            input.setReferrer( _newReferrerAbsPath );
-                        }
+                if ( !input.externalRef().empty() )
+                {
+                    URI xrefURI( input.externalRef(), URIContext(input.referrer()) );
+                    std::string newXRef = resolve(xrefURI);
+                    if ( newXRef != input.externalRef() )
+                    {
+                        input.setExternalRef( newXRef );
+                        input.setReferrer( _newReferrerAbsPath );
                     }
                 }
             }
@@ -157,6 +156,29 @@ namespace
             {
                 apply( *i );
             }
+        }
+
+        std::string resolve(const URI& inputURI )
+        {
+            std::string inputAbsPath = osgDB::convertFileNameToUnixStyle( inputURI.full() );
+
+            // see whether the file exists (this is how we verify that it's actually a path)
+            if ( osgDB::fileExists(inputAbsPath) )
+            {
+                if ( !osgDB::isAbsolutePath(inputURI.base()) || _rewriteAbsolutePaths )
+                {
+                    std::string inputNewRelPath = osgDB::getPathRelative( _newReferrerFolder, inputAbsPath );
+                    
+                    //OE_DEBUG << LC << "\n"
+                    //    "   Rewriting \"" << input.value() << "\" as \"" << inputNewRelPath << "\"\n"
+                    //    "   Absolute = " << inputAbsPath << "\n"
+                    //    "   ReferrerFolder = " << _newReferrerFolder << "\n";
+
+                    return inputNewRelPath;
+                }
+            }
+
+            return inputURI.base();
         }
     };
 }

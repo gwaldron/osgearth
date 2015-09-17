@@ -103,13 +103,21 @@ namespace
      */
     struct RewritePaths
     {
+        bool        _rewriteAbsolutePaths;
         std::string _newReferrerAbsPath;
         std::string _newReferrerFolder;
 
         RewritePaths(const std::string& referrer)
         {
+            _rewriteAbsolutePaths = false;
             _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
             _newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
+        }
+
+        /** Whether to make absolute paths into relative paths if possible */
+        void setRewriteAbsolutePaths(bool value)
+        {
+            _rewriteAbsolutePaths = value;
         }
 
         void apply(Config& input)
@@ -127,17 +135,20 @@ namespace
                 // see whether the file exists (this is how we verify that it's actually a path)
                 if ( osgDB::fileExists(inputAbsPath) )
                 {
-                    std::string inputNewRelPath = osgDB::getPathRelative( _newReferrerFolder, inputAbsPath );
-                    
-                    OE_DEBUG << LC << "\n"
-                        "   Rewriting \"" << input.value() << "\" as \"" << inputNewRelPath << "\"\n"
-                        "   Absolute = " << inputAbsPath << "\n"
-                        "   ReferrerFolder = " << _newReferrerFolder << "\n";
-
-                    if ( input.value() != inputNewRelPath )
+                    if ( !osgDB::isAbsolutePath(input.value()) || _rewriteAbsolutePaths )
                     {
-                        input.value() = inputNewRelPath;
-                        input.setReferrer( _newReferrerAbsPath );
+                        std::string inputNewRelPath = osgDB::getPathRelative( _newReferrerFolder, inputAbsPath );
+                    
+                        OE_DEBUG << LC << "\n"
+                            "   Rewriting \"" << input.value() << "\" as \"" << inputNewRelPath << "\"\n"
+                            "   Absolute = " << inputAbsPath << "\n"
+                            "   ReferrerFolder = " << _newReferrerFolder << "\n";
+
+                        if ( input.value() != inputNewRelPath )
+                        {
+                            input.value() = inputNewRelPath;
+                            input.setReferrer( _newReferrerAbsPath );
+                        }
                     }
                 }
             }

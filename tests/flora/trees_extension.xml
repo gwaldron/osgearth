@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<terrainshader land_cover_group="trees" land_cover_lod="14">
+    <code url="FloraTES.glsl" />
+    <code url="FloraTCS.glsl" />
+    <code url="FloraGS.glsl" />
+    <code url="FloraFS.glsl" />
+    <sampler name="oe_flora_tex" url="cypress.png"/>
+    <uniform name="oe_flora_width"          value="15.0"/>
+    <uniform name="oe_flora_height"         value="20.0"/>
+    <uniform name="oe_flora_maxDistance"    value="6400.0"/>
+    <uniform name="oe_flora_windFactor"     value="0.0"/>
+    <uniform name="oe_flora_noise"          value="1.5"/>
+    <uniform name="oe_flora_density"        value="1.5"/>
+    <uniform name="oe_flora_coverage"       value="2.0"/>
+    <uniform name="oe_flora_ao"             value="0.5"/>
+    <uniform name="oe_flora_colorVariation" value="1.0"/>
+    <uniform name="oe_flora_exposure"       value="2.4"/>
+</terrainshader>

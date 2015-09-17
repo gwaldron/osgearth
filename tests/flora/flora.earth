@@ -2,7 +2,12 @@
     
     <options>        
         <!-- note: skirt=0 or you will get seam-trees. -->
-        <terrain driver="rex" skirt_ratio="0" normal_maps="true" high_resolution_first="true"/>
+        <terrain
+            driver="rex" 
+            skirt_ratio="0" 
+            normal_maps="true" 
+            merges_per_frame="25"
+            high_resolution_first="true" />
     </options>
     
     <image name="readymap_imagery" driver="tms" shared="true">
@@ -17,43 +22,10 @@
 
     <extensions>  
      
-        <noise/>          
-      
-        <terrainshader land_cover_group="grass" land_cover_lod="22">
-            <code url="GrassTES.glsl" />
-            <code url="GrassTCS.glsl" />
-            <code url="GrassGS.glsl" />
-            <code url="GrassFS.Imagery.glsl" />
-            <sampler name="oe_grass_tex" url="grass1.png"/>
-            <uniform name="oe_grass_width"          value="0.5"/>
-            <uniform name="oe_grass_height"         value="0.25"/>
-            <uniform name="oe_grass_maxDistance"    value="25.0"/>
-            <uniform name="oe_grass_windFactor"     value="0.15"/>
-            <uniform name="oe_grass_noise"          value="1.0"/>
-            <uniform name="oe_grass_density"        value="1.0"/>
-            <uniform name="oe_grass_coverage"       value="0.5"/>
-            <uniform name="oe_grass_ao"             value="0.0"/>
-            <uniform name="oe_grass_colorVariation" value="0.3"/>
-            <uniform name="oe_grass_exposure"       value="1.0"/>
-        </terrainshader>
-  
-        <terrainshader land_cover_group="trees" land_cover_lod="14">
-            <code url="GrassTES.glsl" />
-            <code url="GrassTCS.glsl" />
-            <code url="GrassGS.glsl" />
-            <code url="GrassFS.glsl" />
-            <sampler name="oe_grass_tex" url="pine.png"/>
-            <uniform name="oe_grass_width"          value="10.0"/>
-            <uniform name="oe_grass_height"         value="20.0"/>
-            <uniform name="oe_grass_maxDistance"    value="6400.0"/>
-            <uniform name="oe_grass_windFactor"     value="0.0"/>
-            <uniform name="oe_grass_noise"          value="1.5"/>
-            <uniform name="oe_grass_density"        value="1.5"/>
-            <uniform name="oe_grass_coverage"       value="2.0"/>
-            <uniform name="oe_grass_ao"             value="0.5"/>
-            <uniform name="oe_grass_colorVariation" value="1.0"/>
-            <uniform name="oe_grass_exposure"       value="2.4"/>
-        </terrainshader>
+        <noise/>
+        
+        <xi:include href="grass_extension.xml"/>
+        <xi:include href="trees_extension.xml"/>
         
         <viewpoints>
             <viewpoint name="Oahu">

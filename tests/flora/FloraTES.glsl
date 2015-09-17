@@ -1,7 +1,7 @@
 #version 410
 
 #pragma vp_name       "Terrain TES Shader"
-#pragma vp_entryPoint "oe_grass_tessellate"
+#pragma vp_entryPoint "oe_flora_tessellate"
 #pragma vp_location   "tess_eval"
 
 // osgEarth terrain is always CCW winding
@@ -43,7 +43,7 @@ vec4 VP_Interpolate3(vec4 a, vec4 b, vec4 c)
 vec3 vp_Normal;
 
 // simplest possible pass-though:
-void oe_grass_tessellate()
+void oe_flora_tessellate()
 {
     VP_Interpolate3();
     // Must re-normalize the normal vector since interpolation was linear?

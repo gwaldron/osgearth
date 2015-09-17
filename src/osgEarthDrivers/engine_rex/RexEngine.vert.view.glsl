@@ -25,19 +25,6 @@ void oe_rex_elevateVertexAndSetTexCoords(inout vec4 vertexView)
     float texelScale = (oe_tile_elevationSize-1.0)/oe_tile_elevationSize;
     float texelBias  = 0.5/oe_tile_elevationSize;
 
-#if 0    
-    vec2 elevc = oe_layer_tilec.st;
-
-    // scale:
-    elevc.st *= oe_tile_elevationTexMatrix[0][0] * texelScale;
-
-    // bias:
-    elevc.st += oe_tile_elevationTexMatrix[3].st*texelScale;
-
-    // offset:
-    elevc.st += 0.5/texelBias;
-#endif
-
     // Apply the scale and bias.
     vec2 elevc = oe_layer_tilec.st
         * texelScale * oe_tile_elevationTexMatrix[0][0]     // scale

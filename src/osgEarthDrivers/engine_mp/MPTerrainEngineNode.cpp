@@ -296,15 +296,36 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
     static const char* getHeight =
         "#version 110\n"
         "#pragma vp_name \"oe_terrain_getElevation\"\n"
+
         "attribute vec4 oe_terrain_attr; \n"
-        "float oe_terrain_getElevation() { \n"
+        "uniform vec4 oe_tile_key; \n"
+
+        "float oe_terrain_getElevation() \n"
+        "{ \n"
         "    return oe_terrain_attr[3]; \n"
+        "} \n"
+
+        "vec2 oe_terrain_getCoordsAtLOD(in vec2 tc, in float lod) \n"
+        "{ \n"
+        "    float dL = oe_tile_key.z - lod; \n"
+        "    float factor = exp2(dL); \n"
+        "    float invFactor = 1.0/factor; \n"
+        "    vec2 scale = vec2(invFactor); \n"
+        "    vec2 result = tc * scale; \n"
+        "    if ( factor >= 1.0 ) { \n"
+        "        vec2 a = floor(oe_tile_key.xy * invFactor); \n"
+        "        vec2 b = a * factor; \n"
+        "        vec2 c = (a+1.0) * factor; \n"
+        "        vec2 offset = (oe_tile_key.xy-b)/(c-b); \n"
+        "        result += offset; \n"
+        "    } \n"
+        "    return result; \n"
         "} \n";
 
     if ( vp )
     {
         osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, getHeight);
-        shader->setName( "oe_terrain_getElevation" );
+        shader->setName( "oe_terrain_library_mp" );
         vp->setShader( shader );
         vp->addBindAttribLocation( "oe_terrain_attr", osg::Drawable::ATTRIBUTE_6 );
     }

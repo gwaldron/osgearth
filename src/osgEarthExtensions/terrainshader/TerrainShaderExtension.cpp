@@ -65,7 +65,10 @@ namespace
             }
             
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+            // shader sdk:
+            engine->includeShaderLibrary( vp );
             _package.loadAll( vp, _dbOptions.get() );
+
 
             const std::vector<TerrainShaderOptions::Sampler>& samplers = _options.samplers();
             for(int i=0; i<samplers.size(); ++i)
@@ -82,8 +85,8 @@ namespace
                             osg::Texture2D* tex = new osg::Texture2D(image);
                             tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
                             tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
-                            tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
-                            tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
+                            tex->setWrap  (tex->WRAP_S, tex->REPEAT);
+                            tex->setWrap  (tex->WRAP_T, tex->REPEAT);
                             tex->setUnRefImageDataAfterApply( true );
                             tex->setMaxAnisotropy( 4.0 );
                             tex->setResizeNonPowerOfTwoHint( false );

@@ -26,6 +26,7 @@
         
         <xi:include href="grass_extension.xml"/>
         <xi:include href="trees_extension.xml"/>
+        <xi:include href="forestfloor_extension.xml"/>
         
         <viewpoints>
             <viewpoint name="Oahu">

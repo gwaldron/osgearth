@@ -809,7 +809,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     {
         std::string oldURL = url;
         url = rewriter->rewrite( oldURL );
-        OE_INFO << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
+        OE_DEBUG << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
     }
 
     const osgDB::AuthenticationDetails* details = authenticationMap ?

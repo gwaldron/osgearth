@@ -53,7 +53,7 @@ Config::inheritReferrer( const std::string& referrer )
     {
         setReferrer( referrer );
     }
-    else if ( !referrer.empty() )
+    else if ( !referrer.empty() && referrer.compare(referrer) != 0 )
     {
         setReferrer( osgDB::concatPaths(_referrer, referrer) );
     }

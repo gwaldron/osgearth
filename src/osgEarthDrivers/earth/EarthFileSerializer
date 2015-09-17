@@ -29,15 +29,25 @@ namespace osgEarth_osgearth
     class EarthFileSerializer1
     {
     public:
-        MapNode* deserialize( const Config& conf, const std::string& referenceURI ) const;
+        MapNode* deserialize( const Config& conf, const std::string& referrer ) const;
     };
 
     class EarthFileSerializer2
     {
     public:
-        MapNode* deserialize( const Config& conf, const std::string& referenceURI ) const;
-
-        Config serialize( MapNode* mapNode ) const;
+        /**
+         * Parse data in a Config structure into a new MapNode.
+         * referrer = the location from which the Config was created; typically this
+         * is the pathname of the .earth file.
+         */
+        MapNode* deserialize( const Config& conf, const std::string& referrer ) const;
+        
+        /**
+         * Create a Config structure representing a MapNode.
+         * referrer = the location to which the Config will be stored, typically this
+         * is the pathname of the .earth file.
+         */
+        Config serialize( const MapNode* mapNode, const std::string& referrer ) const;
     };
 
 } // namespace osgEarth_osgearth

@@ -117,7 +117,12 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             std::ofstream out( fileName.c_str());
             if ( out.is_open() )
-                return writeNode( node, out, options );
+            {
+                osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
+                URIContext( fileName ).apply( myOptions.get() );
+
+                return writeNode( node, out, myOptions.get() );
+            }
 
             return WriteResult::ERROR_IN_WRITING_FILE;            
         }
@@ -128,10 +133,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             MapNode* mapNode = MapNode::findMapNode( searchNode );
             if ( !mapNode )
                 return WriteResult::ERROR_IN_WRITING_FILE; // i.e., no MapNode found in the graph.
+            
+            // decode the context from the options (might be there, might not)
+            URIContext uriContext( options );
 
             // serialize the map node to a generic Config object:
             EarthFileSerializer2 ser;
-            Config conf = ser.serialize( mapNode );
+            Config conf = ser.serialize( mapNode, uriContext.referrer() );
 
             // dump that Config out as XML.
             osg::ref_ptr<XmlDocument> xml = new XmlDocument( conf );

@@ -21,16 +21,27 @@
 #include <osgEarth/MapFrame>
 #include <osgEarth/Extension>
 #include <osgEarth/StringUtils>
+#include <osgEarth/FileUtils>
+#include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
 #include <stdio.h>
 #include <ctype.h>
-
-#define LC "[EarthSerializer] "
 
 using namespace osgEarth_osgearth;
 using namespace osgEarth;
 
+#undef  LC
+#define LC "[EarthSerializer2] "
+
 namespace
 {
+    /**
+     * Looks at each key in a Config and tries to match that key to a shared library name;
+     * loads the shared library associated with the name. This will "pre-load" all the DLLs
+     * associated with extensions in the earth file even if they weren't linked.
+     *
+     * Will also pre-load any expressly indicated shared libraries in the "libraries" element.
+     */
     void preloadExtensionLibs(const Config& conf)
     {
         ConfigSet extensions = conf.child("extensions").children();
@@ -84,13 +95,66 @@ namespace
                     OE_WARN << LC << "Failed to load library \"" << libName << "\"\n";
                 }
             }
-        }
-        
+        }        
     }
+
+    /**
+     * Visits a Config hierarchy and rewrites relative pathnames to be relative to a new referrer.
+     */
+    struct RewritePaths
+    {
+        std::string _newReferrerAbsPath;
+        std::string _newReferrerFolder;
+
+        RewritePaths(const std::string& referrer)
+        {
+            _newReferrerAbsPath = osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(referrer) );
+            _newReferrerFolder  = osgDB::getFilePath( osgDB::findDataFile(_newReferrerAbsPath) );
+        }
+
+        void apply(Config& input)
+        {
+            // only consider "simple" values (no children) with a set referrer:
+            if ( !input.referrer().empty() && input.isSimple() )
+            {
+                // If the input has a referrer set, it might be a path. Rewrite the path
+                // to be relative to the new referrer that was passed into this visitor.
+
+                // resolve the absolute path of the input:
+                URI inputURI( input.value(), URIContext(input.referrer()) );
+                std::string inputAbsPath = osgDB::convertFileNameToUnixStyle( inputURI.full() );
+
+                // see whether the file exists (this is how we verify that it's actually a path)
+                if ( osgDB::fileExists(inputAbsPath) )
+                {
+                    std::string inputNewRelPath = osgDB::getPathRelative( _newReferrerFolder, inputAbsPath );
+                    
+                    OE_DEBUG << LC << "\n"
+                        "   Rewriting \"" << input.value() << "\" as \"" << inputNewRelPath << "\"\n"
+                        "   Absolute = " << inputAbsPath << "\n"
+                        "   ReferrerFolder = " << _newReferrerFolder << "\n";
+
+                    if ( input.value() != inputNewRelPath )
+                    {
+                        input.value() = inputNewRelPath;
+                        input.setReferrer( _newReferrerAbsPath );
+                    }
+                }
+            }
+
+            for(ConfigSet::iterator i = input.children().begin(); i != input.children().end(); ++i)
+            {
+                apply( *i );
+            }
+        }
+    };
 }
 
+//............................................................................
+
+
 MapNode*
-EarthFileSerializer2::deserialize( const Config& conf, const std::string& referenceURI ) const
+EarthFileSerializer2::deserialize( const Config& conf, const std::string& referrer ) const
 {
     // First, pre-load any extension DLLs.
     preloadExtensionLibs(conf);
@@ -121,7 +185,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
 
         ImageLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value("name");
-        //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
         map->addImageLayer( new ImageLayer(layerOpt) );
     }
@@ -175,7 +238,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     ConfigSet urls = osg_file_paths.children("url");
     for (ConfigSet::const_iterator i = urls.begin(); i != urls.end(); i++) 
     {
-        std::string path = osgEarth::getFullPath( referenceURI, (*i).value());
+        std::string path = osgEarth::getFullPath( referrer, (*i).value());
         OE_DEBUG << "Adding OSG file path " << path << std::endl;
         osgDB::Registry::instance()->getDataFilePathList().push_back( path );
     }
@@ -210,7 +273,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
 
 
 Config
-EarthFileSerializer2::serialize( MapNode* input ) const
+EarthFileSerializer2::serialize(const MapNode* input, const std::string& referrer) const
 {
     Config mapConf("map");
     mapConf.set("version", "2");
@@ -218,7 +281,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     if ( !input || !input->getMap() )
         return mapConf;
 
-    Map* map = input->getMap();
+    const Map* map = input->getMap();
     MapFrame mapf( map, Map::ENTIRE_MODEL );
 
     // the map and node options:
@@ -259,8 +322,15 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     Config ext = input->externalConfig();
     if ( !ext.empty() )
     {
-        ext.key() = "external";
+        ext.key() = "extensions";
         mapConf.add( ext );
+    }
+
+    // visit the Config to find nodes with a referrer set.
+    if ( !referrer.empty() )
+    {
+        RewritePaths rewritePaths( referrer );
+        rewritePaths.apply( mapConf );
     }
 
     return mapConf;

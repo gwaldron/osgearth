@@ -21,6 +21,10 @@ uniform vec4	  oe_tile_grid_dimensions;
 uniform vec4	  oe_tile_key;
 uniform vec4	  oe_tile_extents;
 
+// SDK functions:
+float oe_terrain_getElevation(in vec2 uv);
+
+
 // Morphs a vertex using a neighbor.
 void oe_rex_MorphVertex(inout vec3 position, inout vec2 uv, in vec3 neighborPosition)
 {
@@ -41,8 +45,9 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 	vec4 wouldBePosition = position;
 
 	#ifdef OE_REX_VERTEX_MORPHING
-	    vec4 elevc = oe_tile_elevationTexMatrix * oe_layer_tilec;
-	    float elev = textureLod(oe_tile_elevationTex, elevc.st,0).r;
+        float elev = oe_terrain_getElevation( oe_layer_tilec.st );
+	    //vec4 elevc = oe_tile_elevationTexMatrix * oe_layer_tilec;
+	    //float elev = textureLod(oe_tile_elevationTex, elevc.st,0).r;
 		wouldBePosition.xyz += up*elev;
 	#endif
 

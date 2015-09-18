@@ -5,7 +5,7 @@
             #version 330
             #pragma vp_entryPoint "oe_flora_forestFloor_vert"
             #pragma vp_location   "vertex_view"
-            vec2 oe_terrain_getCoordsAtLOD(in vec2 tc, in float lod);
+            vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float lod);
             uniform float oe_flora_floorMaxDistance;
             uniform vec4 oe_layer_tilec;
             out float oe_forestfloor_mix;
@@ -13,7 +13,7 @@
             void oe_flora_forestFloor_vert(inout vec4 view)
             {
                 oe_forestfloor_mix = clamp(1.0 - (-view.z/oe_flora_floorMaxDistance), 0.0, 0.7);
-                oe_forestfloor_coords = oe_terrain_getCoordsAtLOD(oe_layer_tilec.st, 20.0);
+                oe_forestfloor_coords = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, 20.0);
             }
         ]]>
     </code>
@@ -39,6 +39,6 @@
     
     <sampler name="oe_flora_floorTex" url="forest_floor2.jpg"/>
     
-    <uniform name="oe_flora_floorMaxDistance" value="6400.0" />
+    <uniform name="oe_flora_floorMaxDistance" value="350.0" />
     
 </terrainshader>

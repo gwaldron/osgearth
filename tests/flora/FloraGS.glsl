@@ -43,22 +43,15 @@ out vec3 vp_Normal;
 // Up vector for clamping.
 in vec3 oe_UpVectorView;  
 
+// SDK import
+float oe_terrain_getElevation(in vec2);
+
 
 // Sample the elevation texture and move the vertex accordingly.
 void
 oe_flora_clamp(inout vec4 vert_view, in vec3 up, vec2 UV)
 {
-    // Sample elevation data on texel-center.
-    float texelScale = (oe_tile_elevationSize-1.0)/oe_tile_elevationSize;
-    float texelBias  = 0.5/oe_tile_elevationSize;
-    
-    // Apply the scale and bias.
-    vec2 elevc = UV
-        * texelScale * oe_tile_elevationTexMatrix[0][0]
-        + texelScale * oe_tile_elevationTexMatrix[3].st
-        + texelBias;
-    
-    float elev = texture(oe_tile_elevationTex, elevc).r;
+    float elev = oe_terrain_getElevation( UV );
     vert_view.xyz += up*elev;
 }
 

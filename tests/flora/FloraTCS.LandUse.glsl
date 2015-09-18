@@ -1,4 +1,4 @@
-#version 400 compatibility
+#version 400
 
 /**
  * Flora TCS that distributes data based on a Land Use code sampler.

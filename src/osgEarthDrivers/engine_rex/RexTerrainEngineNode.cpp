@@ -238,6 +238,7 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
     destroySelectionInfo();
 }
 
+#if 0
 bool
 RexTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 {
@@ -247,12 +248,26 @@ RexTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 
         "uniform sampler2D oe_tile_elevationTex; \n"
         "uniform mat4 oe_tile_elevationTexMatrix; \n"
+        "uniform float oe_tile_elevationSize; \n"
         "uniform vec4 oe_tile_key; \n"
         "vec4 oe_layer_tilec; \n"
 
         "float oe_terrain_getElevation() \n"
         "{ \n"
-        "    return texture(oe_tile_elevationTex, (oe_tile_elevationTexMatrix*oe_layer_tilec).st).r; \n"
+        //"    return texture(oe_tile_elevationTex, (oe_tile_elevationTexMatrix*oe_layer_tilec).st).r; \n"
+
+        "    // Sample elevation data on texel-center. \n"
+        "    float texelScale = (oe_tile_elevationSize-1.0)/oe_tile_elevationSize; \n"
+        "    float texelBias  = 0.5/oe_tile_elevationSize; \n"
+    
+        "    // Apply the scale and bias. \n"
+        "    vec2 elevc = UV \n"
+        "        * texelScale * oe_tile_elevationTexMatrix[0][0] \n"
+        "        + texelScale * oe_tile_elevationTexMatrix[3].st \n"
+        "        + texelBias; \n"
+    
+        "    float elev = texture(oe_tile_elevationTex, elevc).r; \n"
+        "    vert_view.xyz += up*elev; \n"
         "} \n"
 
         "vec2 oe_terrain_getCoordsAtLOD(in vec2 tc, in float lod) \n"
@@ -281,6 +296,7 @@ RexTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 
     return (vp != 0L);
 }
+#endif
 
 void
 RexTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
@@ -942,7 +958,8 @@ RexTerrainEngineNode::updateState()
 
             VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
             terrainVP->setName( "Rex Terrain" );
-            package.load(terrainVP, package.ENGINE_VERT_MODEL);            
+            package.load(terrainVP, package.ENGINE_VERT_MODEL);
+            package.load(terrainVP, package.SDK);
             
             bool useTerrainColor = _terrainOptions.color().isSet();
             package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);

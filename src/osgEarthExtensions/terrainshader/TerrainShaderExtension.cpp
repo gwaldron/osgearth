@@ -65,8 +65,6 @@ namespace
             }
             
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-            // shader sdk:
-            engine->includeShaderLibrary( vp );
             _package.loadAll( vp, _dbOptions.get() );
 
 

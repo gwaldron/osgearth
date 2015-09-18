@@ -97,22 +97,6 @@ TileDrawable::drawPatches(osg::RenderInfo& renderInfo) const
         glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, &de->front());
 }
 
-struct StateHack : public osg::State {
-    void check() const {
-        const UniformMap::const_iterator i = _uniformMap.find("oe_tile_elevationTexMatrix");
-        if ( i != _uniformMap.end() ) {
-            const UniformStack& s = i->second;
-            const UniformStack::UniformPair& p = s.uniformVec.back();
-            osg::Matrixf mat;
-            p.first->get(mat);
-            OE_INFO << "scale=" << mat(0,0) << " x " << mat(1,1) << "; u=" << mat(3,0) << ", " << mat(3,1) << "\n";
-        }
-        else {
-            OE_WARN << "ETEXMAT NOT FOUND!\n";
-        }
-    }
-};
-
 
 void
 TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const

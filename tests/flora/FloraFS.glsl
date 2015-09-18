@@ -3,9 +3,7 @@
 #pragma vp_entryPoint "oe_flora_fragment"
 #pragma vp_location   "fragment_coloring"
                      
-uniform bool      oe_terrain_hasMultiSamples;
-//uniform sampler2D floraColor;
-//uniform mat4      floraMatrix;
+uniform bool oe_terrain_hasMultiSamples;
 
 uniform sampler2D oe_flora_tex;
 uniform float oe_flora_exposure;
@@ -27,8 +25,4 @@ void oe_flora_fragment(inout vec4 color)
     // if multisampling is off, use alpha-discard.
     if ( !oe_terrain_hasMultiSamples && color.a < 0.15 )
         discard;
-        
-    // sample and mix in the green channel of the main color texture
-    //vec3 groundColor = texture(floraColor, (floraMatrix*oe_layer_tilec).st).rgb;
-    //color.rgb = mix(color.rgb, groundColor, oe_flora_falloff);
 }

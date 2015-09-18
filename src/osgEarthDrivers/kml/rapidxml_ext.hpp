@@ -33,8 +33,19 @@ inline std::string getChildValue(xml_node<>* node, const std::string& key)
 		xml_node<>* child = node->first_node(key.c_str(), 0, false);
 		if (child)
 		{
-			return child->value();
-		}
+            if (child->value_size() > 0)
+            {
+                return child->value();
+            }
+            else //Try to read CDATA node
+            {
+                child = child->first_node();
+                if (child)
+                {
+                    return child->value();
+                }
+            }
+		}                
 	}
 	return "";
 }

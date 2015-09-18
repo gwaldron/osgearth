@@ -151,6 +151,9 @@ namespace osgEarth
 
         void prepare();
 
+        virtual void resizeGLObjectBuffers(unsigned maxSize);
+
+
     protected:
         virtual ~PolyShader() { }
 

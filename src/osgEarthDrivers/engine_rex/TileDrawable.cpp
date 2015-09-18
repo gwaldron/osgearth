@@ -502,8 +502,8 @@ void
 TileDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     State& state = *renderInfo.getState();
-    bool checkForGLErrors = state.getCheckForGLErrors() == osg::State::ONCE_PER_ATTRIBUTE;
-    if ( checkForGLErrors ) state.checkGLErrors("start of TileDrawable::drawImplementation()");
+    //bool checkForGLErrors = state.getCheckForGLErrors() == osg::State::ONCE_PER_ATTRIBUTE;
+    //if ( checkForGLErrors ) state.checkGLErrors("start of TileDrawable::drawImplementation()");
 
 #if OSG_MIN_VERSION_REQUIRED(3,3,1)
     _geom->drawVertexArraysImplementation( renderInfo );
@@ -513,7 +513,7 @@ TileDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
     drawPrimitivesImplementation( renderInfo );
 
-    if ( checkForGLErrors ) state.checkGLErrors("end of TileDrawable::drawImplementation()");
+    //if ( checkForGLErrors ) state.checkGLErrors("end of TileDrawable::drawImplementation()");
     
     // unbind the VBO's if any are used.
     state.unbindVertexBufferObject();

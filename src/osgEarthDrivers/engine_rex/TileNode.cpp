@@ -193,14 +193,8 @@ TileNode::createTileUniforms()
     _tileKeyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
     _payloadStateSet->addUniform( _tileKeyUniform.get() );
 
-    _tileMorphUniform = new osg::Uniform("oe_tile_morph_constants", osg::Vec4f(0,0,0,0));
+    _tileMorphUniform = new osg::Uniform("oe_tile_morph", osg::Vec2f(0,0));
     _payloadStateSet->addUniform( _tileMorphUniform.get() );
-
-    _tileGridDimsUniform = new osg::Uniform("oe_tile_grid_dimensions", osg::Vec4f(0,0,0,0));
-    _payloadStateSet->addUniform( _tileGridDimsUniform.get() );
-
-    _tileExtentsUniform = new osg::Uniform("oe_tile_extents", osg::Vec4f(0,0,0,0));
-    _payloadStateSet->addUniform( _tileExtentsUniform.get() );
 }
 
 void
@@ -218,33 +212,13 @@ TileNode::updateTileUniforms(const SelectionInfo& selectionInfo)
 
     // update the morph constants
 
-    float fStart = (float)selectionInfo.visParameters(_key.getLOD())._fMorphStart;
-    float fEnd   = (float)selectionInfo.visParameters(_key.getLOD())._fMorphEnd;
+    float start = (float)selectionInfo.visParameters(_key.getLOD())._fMorphStart;
+    float end   = (float)selectionInfo.visParameters(_key.getLOD())._fMorphEnd;
 
-    float one_by_end_minus_start = fEnd - fStart;
+    float one_by_end_minus_start = end - start;
     one_by_end_minus_start = 1.0f/one_by_end_minus_start;
-
-    osg::Vec4f morphConstants(
-          fStart
-        , one_by_end_minus_start
-        , fEnd * one_by_end_minus_start
-        , one_by_end_minus_start
-        );
-
+    osg::Vec2f morphConstants( end * one_by_end_minus_start, one_by_end_minus_start );
     _tileMorphUniform->set( morphConstants );
-
-    // Update grid dims
-    float fGridDims = selectionInfo.gridDimX()-1;
-    _tileGridDimsUniform->set(osg::Vec4f(
-        fGridDims,
-        fGridDims*0.5f,
-        2.0/fGridDims,
-        selectionInfo.lodForMorphing(_key.getProfile()->getSRS()->isProjected())));
-
-    // update tile extents
-    float fXExtents = fabs(bbox.xMax()-bbox.xMin());
-    float fYExtents = fabs(bbox.yMax()-bbox.yMin());
-    _tileExtentsUniform->set(osg::Vec4f(fXExtents,fYExtents,0,0));
 
     const osg::Image* er = getElevationRaster();
     if ( er )
@@ -281,8 +255,7 @@ TileNode::releaseGLObjects(osg::State* state) const
 
 float
 TileNode::getVisibilityRangeHint(unsigned firstLOD) const
-{
-    
+{    
     if (getTileKey().getLOD()!=firstLOD)
     {
         OE_INFO << LC <<"Error: Visibility Range hint can be computed only using the first LOD"<<std::endl;

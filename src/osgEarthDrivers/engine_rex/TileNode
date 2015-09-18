@@ -132,7 +132,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;
         osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
-        osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
+        //osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

@@ -554,6 +554,7 @@ void RexTerrainEngineNode::buildSelectionInfo()
 {
     _selectionInfo = new SelectionInfo;
 }
+
 void
 RexTerrainEngineNode::dirtyTerrain()
 {
@@ -1115,6 +1116,8 @@ RexTerrainEngineNode::updateState()
             terrainStateSet->getOrCreateUniform(
                 "oe_min_tile_range_factor",
                 osg::Uniform::FLOAT)->set( *_terrainOptions.minTileRangeFactor() );
+
+            terrainStateSet->addUniform(new osg::Uniform("oe_tile_size", (float)_terrainOptions.tileSize().get()));
 
             // special object ID that denotes the terrain surface.
             surfaceStateSet->addUniform( new osg::Uniform(

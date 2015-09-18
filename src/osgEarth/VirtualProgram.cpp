@@ -801,6 +801,9 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
         i->second._program->resizeGLObjectBuffers(maxSize);
     }
 
+    // Resize the buffered_object
+    _apply.resize(maxSize);
+
     _programCacheMutex.unlock();
 }
 

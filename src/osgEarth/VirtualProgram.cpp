@@ -801,8 +801,19 @@ VirtualProgram::resizeGLObjectBuffers(unsigned maxSize)
         i->second._program->resizeGLObjectBuffers(maxSize);
     }
 
+    // Resize shaders in the PolyShader
+    for( ShaderMap::iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
+    {
+        if (i->data()._shader.valid())
+        {
+            i->data()._shader->resizeGLObjectBuffers(maxSize );
+        }
+    }
+
     // Resize the buffered_object
     _apply.resize(maxSize);
+
+    _vpStackMemory._item.resize(maxSize);
 
     _programCacheMutex.unlock();
 }
@@ -1775,4 +1786,23 @@ PolyShader::prepare()
         }
     }
     _dirty = false;
+}
+
+void PolyShader::resizeGLObjectBuffers(unsigned maxSize)
+{
+    OE_NOTICE << "PolyShader::resizeGLObjectBuffers " << maxSize << std::endl;
+    if (_nominalShader.valid())
+    {
+        _nominalShader->resizeGLObjectBuffers(maxSize);
+    }
+
+    if (_geomShader.valid())
+    {
+        _geomShader->resizeGLObjectBuffers(maxSize);
+    }
+
+    if (_tessevalShader.valid())
+    {
+        _tessevalShader->resizeGLObjectBuffers(maxSize);
+    }
 }

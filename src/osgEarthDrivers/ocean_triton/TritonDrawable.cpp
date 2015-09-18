@@ -336,7 +336,7 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "// terrain library:\n"
+        "// terrain SDK:\n"
         "float oe_terrain_getElevation(); \n"
 
         "varying float oe_triton_elev;\n"
@@ -548,7 +548,7 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_OUTPUT);
 
     // Link with the terrain SDK
-    mapNode->getTerrainEngine()->includeShaderLibrary( heightProgram );
+    //mapNode->getTerrainEngine()->includeShaderLibrary( heightProgram );
 
     osg::StateSet *stateSet = _heightCamera->getOrCreateStateSet();
     stateSet->setAttribute(heightProgram, osg::StateAttribute::ON);

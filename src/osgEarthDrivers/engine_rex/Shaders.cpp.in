@@ -25,4 +25,7 @@ Shaders::Shaders()
 
     NORMAL_MAP_FRAG = "RexEngine.NormalMap.frag.glsl";
     _sources[NORMAL_MAP_FRAG] = OE_MULTILINE(@RexEngine.NormalMap.frag.glsl@);
+
+    SDK = "RexEngine.SDK.vert.glsl";
+    _sources[SDK] = OE_MULTILINE(@RexEngine.SDK.vert.glsl@);
 }

@@ -27,6 +27,11 @@
 namespace osgEarth
 {
     /**
+     * Converts a filename to an absolute path.
+     */
+    extern OSGEARTH_EXPORT std::string getAbsolutePath(const std::string& input);
+
+    /**
      * Determines whether a given filename is a relative path
      */
     extern OSGEARTH_EXPORT bool isRelativePath(const std::string& fileName);

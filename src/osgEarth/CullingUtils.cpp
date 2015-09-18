@@ -1058,10 +1058,8 @@ LODScaleGroup::traverse(osg::NodeVisitor& nv)
 ClipToGeocentricHorizon::ClipToGeocentricHorizon(const osgEarth::SpatialReference* srs,
                                                  osg::ClipPlane*                   clipPlane)
 {
-    _radii.set(
-        srs->getEllipsoid()->getRadiusEquator(),
-        srs->getEllipsoid()->getRadiusEquator(),
-        srs->getEllipsoid()->getRadiusPolar() );
+    if ( srs )
+        _horizon.setEllipsoid( *srs->getEllipsoid() );
 
     _clipPlane = clipPlane;
 }
@@ -1072,26 +1070,13 @@ ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
     osg::ref_ptr<osg::ClipPlane> clipPlane;
     if ( _clipPlane.lock(clipPlane) )
     {
-        osg::Vec3d eye = nv->getEyePoint();
+        Horizon horizon(_horizon);
+        horizon.setEye( nv->getViewPoint() );
 
-        // viewer in ellipsoidal unit space:
-        osg::Vec3d unitEye( eye.x()/_radii.x(), eye.y()/_radii.y(), eye.z()/_radii.z());
+        osg::Plane horizonPlane;
+        horizon.getPlane( horizonPlane );
 
-        // calculate scaled distance from center to viewer:
-        double unitEyeLen = unitEye.length();
-
-        // calculate scaled distance from center to horizon plane:
-        double unitHorizonPlaneLen = 1.0/unitEyeLen;
-
-        // convert back to real space:
-        double eyeLen = eye.length();
-        double horizonPlaneLen = eyeLen * unitHorizonPlaneLen/unitEyeLen;
-
-        // normalize the eye vector:
-        eye /= eyeLen;
-
-        // compute a new clip plane:
-        clipPlane->setClipPlane(osg::Plane(eye, eye*horizonPlaneLen));
+        _clipPlane->setClipPlane( horizonPlane );
     }
     traverse(node, nv);
 }

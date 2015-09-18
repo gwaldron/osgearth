@@ -26,6 +26,8 @@
 #include <osgEarthAnnotation/ModelNode>
 #include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarth/Decluttering>
+#include <osgEarth/ObjectIndex>
+#include <osgEarth/Registry>
 
 #include <osg/Depth>
 #include <osgDB/WriteFile>
@@ -181,6 +183,21 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
 
                     Feature* feature = new Feature(geom, cx._srs.get(), style);
                     featureNode = new FeatureNode( cx._mapNode, feature );
+                }
+
+                if ( iconNode )
+                {
+                    Registry::objectIndex()->tagNode( iconNode, iconNode );
+                }
+
+                if ( modelNode )
+                {
+                    Registry::objectIndex()->tagNode( modelNode, modelNode );
+                }
+
+                if ( featureNode )
+                {
+                    Registry::objectIndex()->tagNode( featureNode, featureNode );
                 }
 
 

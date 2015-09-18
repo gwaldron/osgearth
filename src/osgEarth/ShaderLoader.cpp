@@ -90,8 +90,8 @@ ShaderLoader::load(const std::string&    filename,
     bool useInlineSource = false;
 
     std::string inlineSource;
-    ShaderPackage::SourceMap::const_iterator source = package._sources.find(filename); //.context().find(filename);
-    if ( source != package._sources.end() ) //.context().end() )
+    ShaderPackage::SourceMap::const_iterator source = package._sources.find(filename);
+    if ( source != package._sources.end() )
         inlineSource = source->second;
 
     std::string path = osgDB::findDataFile(filename, dbOptions);
@@ -267,13 +267,9 @@ ShaderLoader::load(VirtualProgram*       vp,
     }
 
     std::string loc = getQuotedPragmaValue(source, "vp_location");
-    if ( loc.empty() )
-    {
-        OE_WARN << LC << "Illegal: shader \"" << filename << "\" missing required #pragma vp_location\n";
-        return false;
-    }
-
     ShaderComp::FunctionLocation location;
+    bool locationSet = true;
+
     if      ( ciEquals(loc, "vertex_model") )
         location = ShaderComp::LOCATION_VERTEX_MODEL;
     else if ( ciEquals(loc, "vertex_view") )
@@ -296,14 +292,19 @@ ShaderLoader::load(VirtualProgram*       vp,
         location = ShaderComp::LOCATION_FRAGMENT_OUTPUT;
     else
     {
-        OE_WARN << LC << "Illegal: shader \"" << filename << "\" has invalid #pragma vp_location \"" << loc << "\"\n";
-        return false;
+        locationSet = false;
     }
 
     // If entry point is set, this is a function; otherwise a simple library.
     std::string entryPoint = getQuotedPragmaValue(source, "vp_entryPoint");
     if ( !entryPoint.empty() )
     {
+        if ( !locationSet )
+        {
+            OE_WARN << LC << "Illegal: shader \"" << filename << "\" has invalid #pragma vp_location when vp_entryPoint is set\n";
+            return false;
+        }
+
         // order is optional.
         std::string orderStr = getQuotedPragmaValue(source, "vp_order");
         float order;
@@ -321,13 +322,30 @@ ShaderLoader::load(VirtualProgram*       vp,
     else
     {
         // install as a simple shader.
-        osg::Shader::Type type =
-            location == ShaderComp::LOCATION_VERTEX_MODEL || location == ShaderComp::LOCATION_VERTEX_VIEW || location == ShaderComp::LOCATION_VERTEX_CLIP ? osg::Shader::VERTEX :
-            osg::Shader::FRAGMENT;
+        if ( locationSet )
+        {
+            // If a location is set, install in that location only
+            osg::Shader::Type type =
+                location == ShaderComp::LOCATION_VERTEX_MODEL || location == ShaderComp::LOCATION_VERTEX_VIEW || location == ShaderComp::LOCATION_VERTEX_CLIP ? osg::Shader::VERTEX :
+                osg::Shader::FRAGMENT;
 
-        osg::Shader* shader = new osg::Shader(type, source);
-        shader->setName( filename );
-        vp->setShader( filename, shader );
+            osg::Shader* shader = new osg::Shader(type, source);
+            shader->setName( filename );
+            vp->setShader( filename, shader );
+        }
+
+        else
+        {
+            // If no location was set, install in all stages.
+            osg::Shader::Type types[5] = { osg::Shader::VERTEX, osg::Shader::FRAGMENT, osg::Shader::GEOMETRY, osg::Shader::TESSCONTROL, osg::Shader::TESSEVALUATION };
+            for(int i=0; i<5; ++i)
+            {
+                osg::Shader* shader = new osg::Shader(types[i], source);
+                std::string name = Stringify() << filename + "_" + shader->getTypename();
+                shader->setName( name );
+                vp->setShader( name, shader );
+            }
+        }
     }
 
     return true;

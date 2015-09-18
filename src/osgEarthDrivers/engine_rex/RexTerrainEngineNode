@@ -73,8 +73,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::StateSet* addLandCoverGroup(const std::string& name, unsigned lod);
 
         void removeLandCoverGroup(const std::string& name);
-        
-        bool includeShaderLibrary(VirtualProgram* vp);
 
     public: // internal TerrainEngineNode
 

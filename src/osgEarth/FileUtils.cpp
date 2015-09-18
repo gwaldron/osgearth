@@ -128,6 +128,13 @@
 
 using namespace osgEarth;
 
+
+std::string
+osgEarth::getAbsolutePath(const std::string& path)
+{
+    return osgDB::convertFileNameToUnixStyle( osgDB::getRealPath(path) );
+}
+
 bool osgEarth::isRelativePath(const std::string& fileName)
 {
     //If it is a URL, it is not relative

@@ -241,7 +241,7 @@ XmlElement::addSubElement(const std::string& tag, const Properties& attrs, const
 }
 
 Config
-XmlElement::getConfig(const std::string& sourceURI) const
+XmlElement::getConfig(const std::string& referrer) const
 {
 	if (isInclude())
 	{
@@ -252,8 +252,8 @@ XmlElement::getConfig(const std::string& sourceURI) const
             OE_WARN << "Missing href with xi:include" << std::endl;
             return Config();
         }
- 
-        URIContext uriContext(sourceURI);
+
+        URIContext uriContext(referrer);
         URI uri(href, uriContext);
         std::string fullURI = uri.full();
         OE_INFO << "Loading href from " << fullURI << std::endl;
@@ -262,7 +262,8 @@ XmlElement::getConfig(const std::string& sourceURI) const
         if (doc && doc->getChildren().size() > 0)
         {
             Config conf = static_cast<XmlElement*>(doc->children.front().get())->getConfig( fullURI );
-            conf.setExternalRef( fullURI );
+            conf.setExternalRef( href ); //fullURI );
+            conf.setReferrer( fullURI );
             return conf;
         }
         else
@@ -274,6 +275,7 @@ XmlElement::getConfig(const std::string& sourceURI) const
 	else
 	{
 		Config conf( name );
+        conf.setReferrer( referrer );
 
 		for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
 		{
@@ -284,7 +286,7 @@ XmlElement::getConfig(const std::string& sourceURI) const
 		{
 			XmlNode* n = c->get();
 			if ( n->isElement() )
-				conf.add( static_cast<const XmlElement*>(n)->getConfig("") );
+				conf.add( static_cast<const XmlElement*>(n)->getConfig(referrer) );
 		}
 
 		conf.value() = getText();
@@ -432,7 +434,8 @@ XmlDocument::load( const URI& uri, const osgDB::Options* dbOptions )
     if ( r.succeeded() )
     {
         std::stringstream buf( r.getString() );
-        result = load( buf );
+        URIContext context( uri.full() );
+        result = load( buf, context );
         if ( result )
         {
             result->_sourceURI = uri;

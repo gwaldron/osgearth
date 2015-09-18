@@ -8,12 +8,12 @@ osgearth_viewer flora.earth ^
     --sky ^
     --vfov 45 ^
     --manip-terrain-avoidance false ^
-    --uniform oe_grass_windFactor 0 1.0 ^
-    --uniform oe_grass_noise 1.0 0.0 ^
-    --uniform oe_grass_exposure 1.0 3.0 ^
-    --uniform oe_grass_width 0.5 1.0 ^
-    --uniform oe_grass_height 0.25 1.5 ^
-    --uniform oe_grass_density 1.0 3.0 ^
+    --uniform oe_flora_windFactor 0 1.0 ^
+    --uniform oe_flora_noise 1.0 0.0 ^
+    --uniform oe_flora_exposure 1.0 3.0 ^
+    --uniform oe_flora_width 0.5 1.0 ^
+    --uniform oe_flora_height 0.25 1.5 ^
+    --uniform oe_flora_density 1.0 3.0 ^
     %*
     
 endlocal

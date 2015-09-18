@@ -31,7 +31,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             ENGINE_FRAG,
             NORMAL_MAP_VERT,
             NORMAL_MAP_FRAG,
-            MORPHING_VERT;
+            MORPHING_VERT,
+            SDK;
 	};
 	
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -86,10 +86,7 @@ KML_Feature::build( xml_node<>* node, KMLContext& cx, osg::Node* working )
             xml_node<>* data = extdata->first_node("data", 0, false);
             if ( data )
             {
-			    for (xml_node<>* n = data->first_node(); n; n = n->next_sibling())
-			    {
-    				working->setUserValue(getValue(n, "name"), getValue(n, "value"));
-			    }
+                working->setUserValue(getValue(data, "name"), getValue(data, "value"));			    
             }
         }
     }

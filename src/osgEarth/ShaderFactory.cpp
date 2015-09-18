@@ -461,7 +461,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
     if ( hasTES )
     {
-        stages |= ShaderComp::STAGE_TESSEVALULATION;
+        stages |= ShaderComp::STAGE_TESSEVALUATION;
 
         std::stringstream buf;
 

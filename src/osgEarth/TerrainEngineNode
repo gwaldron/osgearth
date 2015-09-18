@@ -155,11 +155,6 @@ namespace osgEarth
 
         virtual void removeLandCoverGroup(const std::string& name) { }
 
-        /**
-         * Installs an engine-dependent library of shader functions that other VP components can call.
-         */
-        virtual bool includeShaderLibrary(VirtualProgram* vp) { return false; }
-
 
     public: // TerrainEngine
 

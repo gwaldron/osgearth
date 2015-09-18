@@ -279,13 +279,25 @@ namespace
         }
     };
 
+    bool shaderInStageMask(osg::Shader* shader, const ShaderComp::StageMask& mask)
+    {
+        if ( shader->getType() == shader->VERTEX && (mask & STAGE_VERTEX) ) return true;
+        if ( shader->getType() == shader->GEOMETRY && (mask & STAGE_GEOMETRY) ) return true;
+        if ( shader->getType() == shader->TESSCONTROL && (mask & STAGE_TESSCONTROL) ) return true;
+        if ( shader->getType() == shader->TESSEVALUATION && (mask & STAGE_TESSEVALUATION) ) return true;
+        if ( shader->getType() == shader->FRAGMENT && (mask & STAGE_FRAGMENT) ) return true;
+        if ( shader->getType() == shader->COMPUTE && (mask & STAGE_COMPUTE) ) return true;
+        return false;
+    }
+
     /**
     * Populates the specified Program with passed-in shaders.
     */
     void addShadersToProgram(const VirtualProgram::ShaderVector&      shaders, 
                              const VirtualProgram::AttribBindingList& attribBindings,
                              const VirtualProgram::AttribAliasMap&    attribAliases,
-                             osg::Program*                            program )
+                             osg::Program*                            program,
+                             ShaderComp::StageMask                    stages)
     {
 #ifdef USE_ATTRIB_ALIASES
         // apply any vertex attribute aliases. But first, sort them from longest to shortest 
@@ -317,13 +329,16 @@ namespace
             for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
             {
                 osg::Shader* s = i->get();
-                if ( s->getType() == osg::Shader::VERTEX )
+                if ( shaderInStageMask(s, stages) )
                 {
-                    parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody );
-                }
-                else if ( s->getType() == osg::Shader::FRAGMENT )
-                {
-                    parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody );
+                    if ( s->getType() == osg::Shader::VERTEX )
+                    {
+                        parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody );
+                    }
+                    else if ( s->getType() == osg::Shader::FRAGMENT )
+                    {
+                        parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody );
+                    }
                 }
             }
 
@@ -348,7 +363,7 @@ namespace
             fragShaderBuf << fragBodyText << "\n";
             fragBodyText = fragShaderBuf.str();
 
-            // add them to the program.
+            // add them to the program.            
             program->addShader( new osg::Shader(osg::Shader::VERTEX, vertBodyText) );
             program->addShader( new osg::Shader(osg::Shader::FRAGMENT, fragBodyText) );
 
@@ -365,9 +380,13 @@ namespace
             {
                 for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
                 {
-                    program->addShader( i->get() );
+                    if ( shaderInStageMask(i->get(), stages) )
+                    {
+                        program->addShader( i->get() );
+                    }
                 }
             }
+
             else
             {
                 VirtualProgram::ShaderVector copy(shaders);
@@ -377,11 +396,14 @@ namespace
 
                 for( VirtualProgram::ShaderVector::const_iterator i = copy.begin(); i != copy.end(); ++i )
                 {
-                    program->addShader( i->get() );
+                    if ( shaderInStageMask(i->get(), stages) )
+                    {
+                        program->addShader( i->get() );
 
-                    OE_NOTIFY(osg::NOTICE,"")
-                        << "--- [ " << (c++) << "/" << shaders.size() << " " << i->get()->getTypename() << " ] ------------------\n\n"
-                        << i->get()->getShaderSource() << std::endl;
+                        OE_NOTIFY(osg::NOTICE,"")
+                            << "--- [ " << (c++) << "/" << shaders.size() << " " << i->get()->getTypename() << " ] ------------------\n\n"
+                            << i->get()->getShaderSource() << std::endl;
+                    }
                 }
             }
         }
@@ -482,7 +504,7 @@ namespace
         // Create the new program.
         osg::Program* program = new osg::Program();
         program->setName( programName );
-        addShadersToProgram( buildVector, accumAttribBindings, accumAttribAliases, program );
+        addShadersToProgram( buildVector, accumAttribBindings, accumAttribAliases, program, stages );
         addTemplateDataToProgram( templateProgram, program );
 
         return program;
@@ -1707,7 +1729,7 @@ PolyShader::getShader(ShaderComp::StageMask mask) const
             return _geomShader.get();
         }
 
-        else if ( mask & ShaderComp::STAGE_TESSEVALULATION )
+        else if ( mask & ShaderComp::STAGE_TESSEVALUATION )
         {
             OE_DEBUG << "Installing TES for VIEW/CLIP shader!\n";
             return _tessevalShader.get();

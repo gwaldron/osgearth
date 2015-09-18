@@ -221,7 +221,7 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 CustomProjClamper* c = static_cast<CustomProjClamper*>(clamper.get());
 
                 osg::Vec3d eye, center, up;
-                cam->getViewMatrixAsLookAt( eye, center, up );
+                cv->getModelViewMatrix()->getLookAt( eye, center, up );
 
                 // clamp the far clipping plane to the approximate horizon distance
                 if ( _autoFarPlaneClamping )

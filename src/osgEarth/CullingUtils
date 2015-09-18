@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/optional>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/Horizon>
 #include <osg/NodeCallback>
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
@@ -274,7 +275,7 @@ namespace osgEarth
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
     protected:
-        osg::Vec3d                        _radii;
+        Horizon                           _horizon;
         osg::observer_ptr<osg::ClipPlane> _clipPlane;
     };
 }

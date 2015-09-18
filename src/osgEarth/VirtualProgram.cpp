@@ -1812,7 +1812,6 @@ PolyShader::prepare()
 
 void PolyShader::resizeGLObjectBuffers(unsigned maxSize)
 {
-    OE_NOTICE << "PolyShader::resizeGLObjectBuffers " << maxSize << std::endl;
     if (_nominalShader.valid())
     {
         _nominalShader->resizeGLObjectBuffers(maxSize);

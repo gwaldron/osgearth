@@ -223,7 +223,11 @@ TileNode::updateTileUniforms(const SelectionInfo& selectionInfo)
     const osg::Image* er = getElevationRaster();
     if ( er )
     {
-        getOrCreateStateSet()->getOrCreateUniform("oe_tile_elevationSize", osg::Uniform::FLOAT)->set( (float)er->s() );
+        // pre-calculate texel-sampling scale and bias coefficients that allow us to sample
+        // elevation textures on texel-center instead of edge:
+        float size = (float)er->s();
+        osg::Vec2f elevTexelOffsets( (size-1.0f)/size, 0.5/size );
+        getOrCreateStateSet()->getOrCreateUniform("oe_tile_elevTexelCoeff", osg::Uniform::FLOAT_VEC2)->set(elevTexelOffsets);
     }
 }
 

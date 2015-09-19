@@ -26,21 +26,6 @@ void oe_rex_elevateVertexAndSetTexCoords(inout vec4 vertexView)
 {
     float elev = oe_terrain_getElevation( oe_layer_tilec.st );
 
-#if 0
-    // Texel-level scale and bias allow us to sample the elevation texture
-    // on texel center instead of edge.
-    float texelScale = (oe_tile_elevationSize-1.0)/oe_tile_elevationSize;
-    float texelBias  = 0.5/oe_tile_elevationSize;
-
-    // Apply the scale and bias.
-    vec2 elevc = oe_layer_tilec.st
-        * texelScale * oe_tile_elevationTexMatrix[0][0]     // scale
-        + texelScale * oe_tile_elevationTexMatrix[3].st     // bias
-        + texelBias;
-
-    float elev = texture(oe_tile_elevationTex, elevc).r;
-#endif
-
     vertexView.xyz += normalize(oe_UpVectorView) * elev;
 
     // calculate the texture coordinates:

@@ -1700,7 +1700,7 @@ namespace
     
 ImageUtils::PixelReader::PixelReader(const osg::Image* image) :
 _image     (image),
-_bilinear  (true)
+_bilinear  (false)
 {
     _normalized = ImageUtils::isNormalized(image);
     _colMult = _image->getPixelSizeInBits() / 8;

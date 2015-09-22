@@ -293,27 +293,9 @@ MPTerrainEngineNode::~MPTerrainEngineNode()
 bool
 MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 {
-    static const char* libModel =
+    static const char* libVS =
         "#version 330\n"
-        "#pragma vp_name \"MP Terrain SDK (model)\"\n"
-        "#pragma vp_location \"vertex_model\"\n"
-
-        "vec3 vp_Normal; \n"
-
-        "vec4 oe_terrain_getNormalAndCurvature(in vec2 uv) \n"
-        "{ \n"
-        "    return vec4(vp_Normal, 0.0); \n"
-        "} \n";
-
-        "vec4 oe_terrain_getNormalAndCurvature() \n"
-        "{ \n"
-        "    return vec4(vp_Normal, 0.0); \n"
-        "} \n";
-
-    static const char* libView =
-        "#version 330\n"
-        "#pragma vp_name \"MP Terrain SDK (view)\"\n"
-        "#pragma vp_location \"vertex_view\"\n"
+        "#pragma vp_name \"MP Terrain SDK (VS)\"\n"
 
         "in vec4 oe_terrain_attr; \n"
         "uniform vec4 oe_tile_key; \n"
@@ -327,6 +309,51 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
         "float oe_terrain_getElevation() \n"
         "{ \n"
         "    return oe_terrain_attr[3]; \n"
+        "} \n"
+
+        "vec4 oe_terrain_getNormalAndCurvature(in vec2 uv) \n"
+        "{ \n"
+        "    return vec4(vp_Normal, 0.0); \n"
+        "} \n"
+
+        //"vec4 oe_terrain_getNormalAndCurvature() \n"
+        //"{ \n"
+        //"    return vec4(vp_Normal, 0.0); \n"
+        //"} \n"
+
+        "vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 uv, in float refLOD) \n"
+        "{ \n"
+        "    float dL = oe_tile_key.z - refLOD; \n"
+        "    float factor = exp2(dL); \n"
+        "    float invFactor = 1.0/factor; \n"
+        "    vec2 scale = vec2(invFactor); \n"
+        "    vec2 result = uv * scale; \n"
+        "    if ( factor >= 1.0 ) \n"
+        "    { \n"
+        "        vec2 a = floor(oe_tile_key.xy * invFactor); \n"
+        "        vec2 b = a * factor; \n"
+        "        vec2 c = (a+1.0) * factor; \n"
+        "        vec2 offset = (oe_tile_key.xy-b)/(c-b); \n"
+        "        result += offset; \n"
+        "    } \n"
+        "    return result; \n"
+        "} \n";
+
+    static const char* libFS =
+        "#version 330\n"
+        "#pragma vp_name \"MP Terrain SDK (FS)\"\n"
+
+        "uniform vec4 oe_tile_key; \n"
+        "vec3 vp_Normal; \n"
+
+        "vec4 oe_terrain_getNormalAndCurvature(in vec2 uv) \n"
+        "{ \n"
+        "    return vec4(vp_Normal, 0.0); \n"
+        "} \n"
+
+        "vec4 oe_terrain_getNormalAndCurvature() \n"
+        "{ \n"
+        "    return vec4(vp_Normal, 0.0); \n"
         "} \n"
 
         "vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 uv, in float refLOD) \n"
@@ -349,13 +376,13 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 
     if ( vp )
     {
-        osg::Shader* shaderModel = new osg::Shader(osg::Shader::VERTEX, libModel);
-        shaderModel->setName( "oe_terrain_library_mp_model" );
-        vp->setShader( shaderModel );
-
-        osg::Shader* shaderView = new osg::Shader(osg::Shader::VERTEX, libView);
-        shaderView->setName( "oe_terrain_library_mp_view" );
-        vp->setShader( shaderView );
+        osg::Shader* VS = new osg::Shader(osg::Shader::VERTEX, libVS);
+        VS->setName( "oe_terrain_SDK_mp_VS" );
+        vp->setShader( VS );
+        
+        osg::Shader* FS = new osg::Shader(osg::Shader::FRAGMENT, libFS);
+        FS->setName( "oe_terrain_SDK_mp_FS" );
+        vp->setShader( FS );
 
         vp->addBindAttribLocation( "oe_terrain_attr",  osg::Drawable::ATTRIBUTE_6 );
         vp->addBindAttribLocation( "oe_terrain_attr2", osg::Drawable::ATTRIBUTE_7 );

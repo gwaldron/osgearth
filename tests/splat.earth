@@ -16,15 +16,7 @@
     <elevation name="readymap_elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
-   
-    <image name="CLASSMAP" driver="gdal" coverage="true" shared="true" visible="false">
-        <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-        <cache_policy usage="none"/>
-        <shared_sampler> landUseTex       </shared_sampler>
-        <shared_matrix>  landUseTexMatrix </shared_matrix>
-    </image>
-    
-    <!-- 
+     
     <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="13">
         <base_lod>12</base_lod>
         <tile_size>256</tile_size>
@@ -32,13 +24,12 @@
         <images>
             <image name="ESA" driver="gdal" coverage="true">
                 <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-                <warp>0.00</warp>
+                <warp>0.01</warp>
             </image>
         </images>
         <shared_sampler> landUseTex       </shared_sampler>
         <shared_matrix>  landUseTexMatrix </shared_matrix>
     </image>
-    -->
 
     <extensions>   
 

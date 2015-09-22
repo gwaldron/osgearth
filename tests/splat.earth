@@ -20,19 +20,26 @@
         <url>H:/data/ned/ned19_n47x00_w121x75_wa_mounttrainier_2008/ned19_n47x00_w121x75_wa_mounttrainier_2008.tif</url>
     </elevation>
     
-    <image name="CLASSMAP" driver="gdal" shared="true" visible="false" coverage="true" enabled="true">
-        <url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
-        <cache_policy usage="none"/>
-        <shared_sampler>landUseTex</shared_sampler>
-        <shared_matrix>landUseTexMatrix</shared_matrix>
+    <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="13">
+        <warp>0.01</warp>
+        <base_lod>12</base_lod>
+        <tile_size>256</tile_size>
+        
+        <image name="ESA" driver="gdal" coverage="true">
+            <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+            <cache_policy usage="none"/>
+        </image>
+        
+        <shared_sampler> landUseTex       </shared_sampler>
+        <shared_matrix>  landUseTexMatrix </shared_matrix>
     </image>
 
     <extensions>   
 
         <bumpmap>
             <image>../data/rock_hard.jpg</image>
-            <octaves>12</octaves>
-            <intensity>1.0</intensity>
+            <octaves>8</octaves>
+            <intensity>1.1</intensity>
         </bumpmap>
     
         <splat>
@@ -42,7 +49,11 @@
         </splat>
         
         <noise/>
-        <xi:include href="flora/trees_classmap_extension.xml"/>
+        
+        <xi:include href="flora/trees_GLOBCOVER.xml"/>
+        
+        <xi:include href="flora/grass_GLOBCOVER.xml"/>
+        
         <xi:include href="flora/forestfloor_extension.xml"/>
         
         <viewpoints>

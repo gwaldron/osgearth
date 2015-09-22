@@ -305,6 +305,10 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& referr
             {
                 mapNode->addExtension( extension );
             }
+            else
+            {
+                OE_WARN << LC << "Failed to load an extension for \"" << i->key() << "\"\n";
+            }
         }
     }
 

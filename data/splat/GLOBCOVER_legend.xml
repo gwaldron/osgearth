@@ -20,7 +20,7 @@
 			
 		<mapping value="40"
 		         class="forest1"
-				 name="Closed to open (>15%) broadleaved evergreen or semi-deciduous forest (>5m)"/>
+				 name="Closed to open (<15%) broadleaved evergreen or semi-deciduous forest (>5m)"/>
 			
 		<mapping value="50"
 		         class="forest2"

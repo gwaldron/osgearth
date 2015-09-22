@@ -31,7 +31,7 @@
 
 #define LC "[Noise] "
 
-#define SAMPLER_NAME "oe_noiseTex"
+#define SAMPLER_NAME "oe_noise_tex"
 //#define MATRIX_NAME  "oe_nmap_normalTexMatrix"
 
 using namespace osgEarth;

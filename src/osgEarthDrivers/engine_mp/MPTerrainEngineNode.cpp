@@ -293,13 +293,31 @@ MPTerrainEngineNode::~MPTerrainEngineNode()
 bool
 MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 {
-    static const char* getHeight =
+    static const char* libModel =
         "#version 330\n"
-        "#pragma vp_name \"MP Terrain SDK\"\n"
+        "#pragma vp_name \"MP Terrain SDK (model)\"\n"
+        "#pragma vp_location \"vertex_model\"\n"
+
+        "vec3 vp_Normal; \n"
+
+        "vec4 oe_terrain_getNormalAndCurvature(in vec2 uv) \n"
+        "{ \n"
+        "    return vec4(vp_Normal, 0.0); \n"
+        "} \n";
+
+        "vec4 oe_terrain_getNormalAndCurvature() \n"
+        "{ \n"
+        "    return vec4(vp_Normal, 0.0); \n"
+        "} \n";
+
+    static const char* libView =
+        "#version 330\n"
+        "#pragma vp_name \"MP Terrain SDK (view)\"\n"
         "#pragma vp_location \"vertex_view\"\n"
 
         "in vec4 oe_terrain_attr; \n"
         "uniform vec4 oe_tile_key; \n"
+        "vec3 vp_Normal; \n"
 
         "float oe_terrain_getElevation(in vec2 uv) \n"
         "{ \n"
@@ -331,9 +349,14 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 
     if ( vp )
     {
-        osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, getHeight);
-        shader->setName( "oe_terrain_library_mp" );
-        vp->setShader( shader );
+        osg::Shader* shaderModel = new osg::Shader(osg::Shader::VERTEX, libModel);
+        shaderModel->setName( "oe_terrain_library_mp_model" );
+        vp->setShader( shaderModel );
+
+        osg::Shader* shaderView = new osg::Shader(osg::Shader::VERTEX, libView);
+        shaderView->setName( "oe_terrain_library_mp_view" );
+        vp->setShader( shaderView );
+
         vp->addBindAttribLocation( "oe_terrain_attr",  osg::Drawable::ATTRIBUTE_6 );
         vp->addBindAttribLocation( "oe_terrain_attr2", osg::Drawable::ATTRIBUTE_7 );
     }

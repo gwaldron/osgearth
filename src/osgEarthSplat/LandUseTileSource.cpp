@@ -97,15 +97,6 @@ LandUseTileSource::initialize(const osgDB::Options* dbOptions)
         setProfile( profile );
     }
 
-    // load the image layer:
-    if ( _options.imageLayerOptions().isSet() )
-    {
-        ImageLayerOptions ilo = _options.imageLayerOptions().get();
-        ilo.cachePolicy() = CachePolicy::NO_CACHE;
-        _imageLayer = new ImageLayer( ilo );
-        _imageLayer->setTargetProfileHint( profile );
-    }
-
     // load all the image layers:
     _imageLayers.assign( _options.imageLayerOptionsVector().size(), 0L );
     _warps.assign( _options.imageLayerOptionsVector().size(), 0.0f );
@@ -175,6 +166,9 @@ namespace
                 bias.y() = (key.getExtent().yMin() - image.getExtent().yMin()) / image.getExtent().height();
 
                 read = new ImageUtils::PixelReader(image.getImage());
+
+                // cannot interpolate coverage data:
+                read->setBilinear( false );
 
                 warp = sourceWarp;
             }

@@ -45,11 +45,8 @@ namespace osgEarth { namespace Splat
     public:
         
         /**
-         * Image layer from which to read source coverage data.
+         * Images layer from which to read source coverage data.
          */
-        optional<ImageLayerOptions>& imageLayerOptions() { return _imageLayerOptions; }
-        const optional<ImageLayerOptions>& imageLayerOptions() const { return _imageLayerOptions; }
-
         std::vector<ImageLayerOptions>& imageLayerOptionsVector() { return _imageLayerOptionsVec; }
         const std::vector<ImageLayerOptions>& imageLayerOptionsVector() const { return _imageLayerOptionsVec; }
 
@@ -82,9 +79,6 @@ namespace osgEarth { namespace Splat
             conf.addIfSet("base_lod",  _baseLOD);
             conf.addIfSet("bits",      _bits);
 
-            // single
-            conf.addObjIfSet( "image", _imageLayerOptions );
-
             // multiple
             if ( _imageLayerOptionsVec.size() > 0 )
             {
@@ -113,11 +107,7 @@ namespace osgEarth { namespace Splat
             conf.getIfSet("warp", _warp);
             conf.getIfSet("base_lod", _baseLOD);
             conf.getIfSet("bits",      _bits);
-
-            // single:
-            conf.getObjIfSet( "image", _imageLayerOptions );
             
-            // multi:
             ConfigSet layerConfs = conf.child("images").children("image");
             for(ConfigSet::const_iterator i = layerConfs.begin(); i != layerConfs.end(); ++i)
             {
@@ -126,10 +116,9 @@ namespace osgEarth { namespace Splat
         }
         
     private:
-        optional<float>             _warp;
-        optional<unsigned>          _baseLOD;
-        optional<unsigned>          _bits;
-        optional<ImageLayerOptions> _imageLayerOptions;
+        optional<float>                _warp;
+        optional<unsigned>             _baseLOD;
+        optional<unsigned>             _bits;
         std::vector<ImageLayerOptions> _imageLayerOptionsVec;
     };
 

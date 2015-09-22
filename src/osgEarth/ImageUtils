@@ -339,7 +339,7 @@ namespace osgEarth
              */
             PixelReader(const osg::Image* image);
 
-            /** Sets the interpolation type (default=nearest) */
+            /** Whether to use bilinear interpolation when reading with u,v coords (default=true) */
             void setBilinear(bool value) { _bilinear = value; }
 
             /** Whether PixelReader supports a given format/datatype combiniation. */

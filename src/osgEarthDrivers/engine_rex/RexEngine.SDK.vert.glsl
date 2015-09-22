@@ -10,6 +10,10 @@
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4 oe_tile_elevationTexMatrix;
 uniform vec2 oe_tile_elevTexelCoeff;
+
+uniform sampler2D oe_tile_normalTex;
+uniform mat4 oe_tile_normalTexMatrix;
+
 uniform vec4 oe_tile_key;
 
 // Stage global
@@ -31,7 +35,6 @@ float oe_terrain_getElevation(in vec2 uv)
     return texture(oe_tile_elevationTex, elevc).r;
 }
 
-
 /**
  * Read the elevation at the build-in tile coordinates (convenience)
  */
@@ -40,6 +43,19 @@ float oe_terrain_getElevation()
     return oe_terrain_getElevation(oe_layer_tilec.st);
 }
 
+/**
+ * Read the normal vector and curvature at resolved UV tile coordinates.
+ */
+vec4 oe_terrain_getNormalAndCurvature(in vec2 uv_scaledBiased)
+{
+    return texture(oe_tile_normalTex, uv_scaledBiased);
+}
+
+vec4 oe_terrain_getNormalAndCurvature()
+{
+    vec2 uv_scaledBiased = oe_layer_tilec.st * oe_tile_normalTexMatrix[0][0] + oe_tile_normalTexMatrix[3].st;
+    return texture(oe_tile_normalTex, uv_scaledBiased);
+}
 
 /**
  * Scales repeating texture coordinate such that they are [0..1]

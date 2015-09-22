@@ -41,8 +41,8 @@ namespace osgEarth { namespace TerrainShader
 
         struct Sampler
         {
-            std::string   _name;
-            optional<URI> _uri;
+            std::string      _name;
+            std::vector<URI> _uris;
         };
 
         struct Uniform
@@ -90,7 +90,16 @@ namespace osgEarth { namespace TerrainShader
             for(unsigned i=0; i<_samplers.size(); ++i) {
                 Config c("sampler");
                 c.add("name", _samplers[i]._name);
-                c.addIfSet("url", _samplers[i]._uri);
+                if ( _samplers[i]._uris.size() > 1 ) {
+                    Config urlarray("array");
+                    c.add( urlarray );
+                    for( std::vector<URI>::const_iterator j = _samplers[i]._uris.begin(); j != _samplers[i]._uris.end(); ++j) {
+                        urlarray.add( j->getConfig() );
+                    }
+                }
+                else if ( _samplers[i]._uris.size() == 1 ) {
+                    c.add( _samplers[i]._uris.back().getConfig() );
+                }
                 conf.add( c );
             }
 
@@ -127,7 +136,20 @@ namespace osgEarth { namespace TerrainShader
             for(ConfigSet::const_iterator i = s.begin(); i != s.end(); ++i) {
                 _samplers.push_back(Sampler());
                 _samplers.back()._name = i->value("name");
-                i->getIfSet("url", _samplers.back()._uri);
+                const Config* urlarray = i->find("array");
+                if ( urlarray ) {
+                    ConfigSet uris = urlarray->children("url");
+                    for(ConfigSet::const_iterator j = uris.begin(); j != uris.end(); ++j) {
+                        URI uri( j->value(), URIContext(conf.referrer()) );
+                        _samplers.back()._uris.push_back( uri );
+                    }
+                }
+                else {
+                   optional<URI> uri;
+                   i->getIfSet("url", uri);
+                   if ( uri.isSet() )
+                       _samplers.back()._uris.push_back( uri.get() );
+                }
             }
 
             s = conf.children("uniform");

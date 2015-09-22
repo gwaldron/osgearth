@@ -89,12 +89,15 @@ ShaderLoader::load(const std::string&    filename,
     std::string output;
     bool useInlineSource = false;
 
+    URIContext context( dbOptions );
+    URI uri(filename, context);
+
     std::string inlineSource;
     ShaderPackage::SourceMap::const_iterator source = package._sources.find(filename);
     if ( source != package._sources.end() )
         inlineSource = source->second;
 
-    std::string path = osgDB::findDataFile(filename, dbOptions);
+    std::string path = osgDB::findDataFile(uri.full(), dbOptions);
     if ( path.empty() )
     {
         output = inlineSource;
@@ -106,7 +109,7 @@ ShaderLoader::load(const std::string&    filename,
     }
     else
     {
-        std::string externalSource = URI(path).getString(dbOptions);
+        std::string externalSource = URI(path, context).getString(dbOptions);
         if (!externalSource.empty())
         {
             OE_DEBUG << LC << "Loaded external shader " << filename << " from " << path << "\n";
@@ -211,6 +214,9 @@ ShaderLoader::load(const std::string&    filename,
     std::string output;
     bool useInlineSource = false;
 
+    URIContext context( dbOptions );
+    URI uri(filename, context );
+
     std::string path = osgDB::findDataFile(filename, dbOptions);
     if ( path.empty() )
     {
@@ -219,7 +225,7 @@ ShaderLoader::load(const std::string&    filename,
     }
     else
     {
-        std::string externalSource = URI(path).getString(dbOptions);
+        std::string externalSource = URI(path, context).getString(dbOptions);
         if (!externalSource.empty())
         {
             OE_DEBUG << LC << "Loaded external shader " << filename << " from " << path << "\n";

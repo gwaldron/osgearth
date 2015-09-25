@@ -149,8 +149,6 @@ namespace osgEarth { namespace Splat
 
         osg::Texture* createNoiseTexture() const;
 
-        void gogolandcover(TerrainEngineNode* engine);
-
         // index-aligned with the surface biome region vector:
         SplatTextureDefVector               _textureDefs;
 

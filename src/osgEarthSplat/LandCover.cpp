@@ -1,6 +1,9 @@
 #include "LandCover"
+#include "Coverage"
 #include "SplatCatalog"
+#include "SplatCoverageLegend"
 
+#include <osgEarth/ImageLayer>
 #include <osgEarthSymbology/BillboardSymbol>
 #include <osgEarthSymbology/BillboardResource>
 
@@ -46,6 +49,8 @@ LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
     return true;
 }
 
+//............................................................................
+
 bool
 LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 {
@@ -74,13 +79,15 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
     return true;
 }
 
+//............................................................................
+
 bool
 LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 {
     LandCoverBiomeOptions in( conf );
 
-    if ( in.biomeClass().isSet() )
-        setClass( in.biomeClass().get() );
+    if ( in.biomeClasses().isSet() )
+        setClasses( in.biomeClasses().get() );
 
     for(SymbolVector::const_iterator i = in.symbols().begin(); i != in.symbols().end(); ++i)
     {
@@ -111,3 +118,82 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
     return true;
 }
 
+osg::Shader*
+LandCoverBiome::createPredicateShader(const Coverage* coverage, osg::Shader::Type type) const
+{
+    const char* defaultCode = "bool oe_landcover_passesCoverage(in vec4 coords) { return true; }\n";
+
+    std::stringstream buf;
+    buf << "#version 330\n";
+    
+    osg::ref_ptr<ImageLayer> layer;
+
+    if ( !coverage )
+    {
+        buf << defaultCode;
+        OE_INFO << LC << "No coverage; generating default coverage predicate\n";
+    }
+    else if ( !coverage->getLegend() )
+    {
+        buf << defaultCode;
+        OE_INFO << LC << "No legend; generating default coverage predicate\n";
+    }
+    else if ( !coverage->lockLayer(layer) )
+    {
+        buf << defaultCode;
+        OE_INFO << LC << "No classification layer; generating default coverage predicate\n";
+    }
+    else
+    {
+        const std::string& sampler = layer->shareTexUniformName().get();
+        const std::string& matrix  = layer->shareTexMatUniformName().get();
+
+        buf << "uniform sampler2D " << sampler << ";\n"
+            << "uniform mat4 " << matrix << ";\n"
+            << "bool oe_landcover_passesCoverage(in vec4 coords) { \n";
+    
+        if ( !getClasses().empty() )
+        {
+            buf << "    float value = textureLod(" << sampler << ", (" << matrix << " * coords).st, 0).r;\n";
+
+            StringVector classes;
+            StringTokenizer(getClasses(), classes, " ", "\"", false);
+
+            for(int i=0; i<classes.size(); ++i)
+            {
+                const CoverageValuePredicate* p = coverage->getLegend()->getPredicateForClass( classes[i] );
+                if ( p )
+                {
+                    if ( p->_exactValue.isSet() )
+                    {
+                        buf << "    if (value == " << p->_exactValue.get() << ") return true;\n";
+                    }
+                    else 
+                    {
+                        OE_WARN << LC << "Class \"" << classes[i] << "\" found, but no exact value is set....\n";
+                    }
+                }
+                else
+                {
+                    OE_WARN << LC << "Class \"" << classes[i] << "\" not found in the legend!\n";
+                }
+            }
+
+            buf << "    return false; \n";
+        }
+
+        else
+        {
+            // no classes defined; accept all.
+            buf << "    return true;\n";
+        }
+
+        buf << "}\n";
+    }
+    
+    osg::Shader* shader = new osg::Shader(type);
+    shader->setName("oe Landcover predicate function");
+    shader->setShaderSource( buf.str() );
+
+    return shader;
+}

@@ -195,13 +195,26 @@ ShaderLoader::load(const std::string&    filename,
         osgEarth::replaceIn( output, defineStatement, newStatement );
     }
 
-    // Finally, do any replacements.
+    // Finally, process any replacements.
     for(ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();
         i != package._replaces.end();
         ++i)
     {
         osgEarth::replaceIn( output, i->first, i->second );
     }
+
+#if 0
+    // And remove all quotation marks since they are illegal in GLSL.
+    std::string::size_type pos = 0;
+    while(true)
+    {
+        pos = output.find('\"', pos);
+        if ( pos != std::string::npos )
+            output[pos] = ' ';
+        else
+            break;
+    }
+#endif
 
     return output;
 }

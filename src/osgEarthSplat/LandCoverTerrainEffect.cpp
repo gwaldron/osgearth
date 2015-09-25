@@ -81,6 +81,10 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                             LandCoverShaders shaders;
                             shaders.loadAll( vp, _dbo.get() );
 
+                            // Generate the coverage acceptor
+                            osg::Shader* covTest = biome->createPredicateShader( getCoverage(), osg::Shader::TESSCONTROL );
+                            vp->setShader( covTest );
+
                             // Install the uniforms
                             stateset->addUniform( new osg::Uniform("oe_landcover_windFactor", layer->getWind()) );
                             stateset->addUniform( new osg::Uniform("oe_landcover_noise", 1.0f) );

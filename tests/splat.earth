@@ -59,12 +59,12 @@
                 <library name="flora" url="../data/resouces/textures_us/flora/flora.xml"/>
                 
                 <layers>
-                    <layer name="trees" lod="14" max_distance="6400" density="1.0">   
+                    <layer name="trees" lod="14" max_distance="6400" density="2.0">   
                         <biomes>
-                            <biome class="forest1" name="Deciduous Forest with 50%+ coverage">
+                            <biome classes="forest forest1 forest2 forest3 forest4 forest5">
                                 <billboard url="../data/splat/pine.png" width="15.0" height="20.0"/>
                             </biome>
-                            <biome class="forest4" name="Mixed Forest with 50%+ coverage">
+                            <biome classes="forest4">
                                 <billboard url="../data/splat/cypress.png" width="10.0" height="13"/>
                             </biome>
                         </biomes>
@@ -72,7 +72,7 @@
                 
                     <layer name="grass" lod="19" max_distance="200" density="3.0" wind="0.15">
                         <biomes>
-                            <biome class="grassland1" name="Grass">
+                            <biome name="Grass" classes="grassland grassland2 forest forest2 forest3 forest4 forest5">
                                 <billboard url="../data/splat/grass1.png" width="0.6" height="0.35"/>
                             </biome>
                         </biomes>

@@ -23,6 +23,7 @@
 #include <osgEarth/Config>
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarthSymbology/Symbol>
+#include <osg/Shader>
 
 namespace osgDB {
     class Options;
@@ -35,6 +36,9 @@ namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+
+    class Coverage;
+    class SplatCoverageLegend;
 
 
     class OSGEARTHSPLAT_EXPORT LandCoverBillboard
@@ -56,21 +60,23 @@ namespace osgEarth { namespace Splat
     public:
         LandCoverBiome() : _code(0) { }
 
-        /** classification name for this biome */
-        void setClass( const std::string& value ) { _className = value; }
-        const std::string& getClass() const { return _className; }
-
-        void setClassificationCode(int code) { _code = code; }
-        int getClassificationCode() const { return _code; }
+        /** classification names for this biome (space separated) */
+        void setClasses( const std::string& value ) { _classNames = value; }
+        const std::string& getClasses() const { return _classNames; }
 
         /** Resources that may be used to render land cover in this biome */
         LandCoverBillboards& getBillboards() { return _billboards; }
         const LandCoverBillboards& getBillboards() const { return _billboards; }
 
+        /** Build a shader that tests against the classes for this biome. */
+        osg::Shader* createPredicateShader(
+            const Coverage* coverage, 
+            osg::Shader::Type stage) const;
+
     protected:
         virtual ~LandCoverBiome() { }
 
-        std::string    _className;
+        std::string    _classNames;
         int            _code;
         LandCoverBillboards _billboards;
 
@@ -209,22 +215,22 @@ namespace osgEarth { namespace Splat
         }
 
         /** Name of the biome class to use */
-        optional<std::string>& biomeClass() { return _biomeClass; }
-        const optional<std::string>& biomeClass() const { return _biomeClass; }
+        optional<std::string>& biomeClasses() { return _biomeClasses; }
+        const optional<std::string>& biomeClasses() const { return _biomeClasses; }
 
         /** Symbology used to conigure rendering in this biome */
         SymbolVector& symbols() { return _symbols; }
         const SymbolVector& symbols() const { return _symbols; }
 
     protected:
-        optional<std::string> _biomeClass;
+        optional<std::string> _biomeClasses;
         SymbolVector _symbols;
 
     public:        
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "biome";
-            conf.updateIfSet( "class", _biomeClass );
+            conf.updateIfSet( "classes", _biomeClasses );
             for(int i=0; i<_symbols.size(); ++i) {
                 Config symbolConf = _symbols[i]->getConfig();
                 if ( !symbolConf.empty() ) {
@@ -235,7 +241,7 @@ namespace osgEarth { namespace Splat
         }
 
         void fromConfig(const Config& conf) {
-            conf.getIfSet( "class", _biomeClass );
+            conf.getIfSet( "classes", _biomeClasses );
             const ConfigSet& symbols = conf.children();
             for(ConfigSet::const_iterator i = symbols.begin(); i != symbols.end(); ++i) {
                 Symbol* s = SymbolRegistry::instance()->create(*i);

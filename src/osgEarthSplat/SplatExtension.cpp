@@ -121,6 +121,7 @@ SplatExtension::connect(MapNode* mapNode)
     {
         _landCoverEffect = new LandCoverTerrainEffect();
         _landCoverEffect->setDBOptions( _dbo.get() );
+        _landCoverEffect->setCoverage( coverage.get() );
         _landCoverEffect->setLandCover( landCover.get() );
 
         mapNode->getTerrainEngine()->addEffect( _landCoverEffect.get() );

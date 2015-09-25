@@ -74,73 +74,6 @@ SplatTerrainEffect::setDBOptions(const osgDB::Options* dbo)
 }
 
 void
-SplatTerrainEffect::gogolandcover(TerrainEngineNode* engine)
-{
-    if ( !_landCover.valid() )
-        return;
-
-    if ( engine )
-    {
-        for(LandCoverLayers::const_iterator i = _landCover->getLayers().begin();
-            i != _landCover->getLayers().end();
-            ++i)
-        {
-            const LandCoverLayer* layer = i->get();
-            if ( layer )
-            {
-                OE_INFO << LC << "Adding land cover group: " << layer->getName() << " at LOD " << layer->getLOD() << "\n";
-
-                osg::StateSet* stateset = engine->addLandCoverGroup( layer->getName(), layer->getLOD() );
-                if ( stateset )
-                {
-                    // Install the land cover shaders on the state set
-                    VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-                    LandCoverShaders shaders;
-                    shaders.loadAll( vp, _dbo.get() );
-
-                    // Install the uniforms
-                    stateset->addUniform( new osg::Uniform("oe_landcover_maxDistance", 6400.0f) );
-                    stateset->addUniform( new osg::Uniform("oe_landcover_windFactor", 0.0f) );
-                    stateset->addUniform( new osg::Uniform("oe_landcover_noise", 1.5f) );
-                    stateset->addUniform( new osg::Uniform("oe_landcover_density", 1.0f) );
-                    stateset->addUniform( new osg::Uniform("oe_landcover_ao", 0.5f) );
-                    stateset->addUniform( new osg::Uniform("oe_landcover_colorVariation", 1.0f) );
-                    stateset->addUniform( new osg::Uniform("oe_landcover_exposure", 1.8f) );
-
-                    // TODO: move elsewhere
-                    stateset->addUniform( new osg::Uniform("oe_landcover_width", 15.0f) );
-                    stateset->addUniform( new osg::Uniform("oe_landcover_height", 20.0f) );
-
-                    int unit;
-                    if ( engine->getResources()->reserveTextureImageUnit(unit, "LandCover") )
-                    {
-                        osg::Image* image = URI("h:/devel/osgearth/repo/tests/flora/pine.png").getImage(_dbo.get());
-                        if ( image )
-                        {
-                            osg::Texture2D* tex = new osg::Texture2D(image);
-                            tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
-                            tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
-                            tex->setWrap  (tex->WRAP_S, tex->REPEAT);
-                            tex->setWrap  (tex->WRAP_T, tex->REPEAT);
-                            tex->setUnRefImageDataAfterApply( true );
-                            tex->setMaxAnisotropy( 4.0 );
-                            tex->setResizeNonPowerOfTwoHint( false );
-
-                            stateset->setTextureAttribute(unit, tex);
-                            stateset->addUniform(new osg::Uniform("oe_landcover_tex", unit) );
-                        }
-                        else
-                        {
-                            OE_WARN << LC << "Failed to load the tree!!!\n";
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-void
 SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 {
     if ( engine )
@@ -274,11 +207,6 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 
                     engine->addCullCallback( _biomeRegionSelector.get() );
                 }
-            }
-
-            if ( _landCover.valid() )
-            {
-                //gogolandcover( engine );
             }
         }
     }

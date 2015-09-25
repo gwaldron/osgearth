@@ -35,9 +35,6 @@ namespace osgEarth { namespace Symbology
     /** 
      * ResourceLibrary manages a collection of external resources that a
      * build system can use the construct geometries.
-     *
-     * TODO: This class PROBABLY NEEDS the ability to share a mutex with
-     * whatever session is using it... like in osgGIS...
      */
     class OSGEARTHSYMBOLOGY_EXPORT ResourceLibrary : public osg::Referenced
     {

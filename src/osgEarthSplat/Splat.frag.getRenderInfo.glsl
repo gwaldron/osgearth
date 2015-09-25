@@ -12,7 +12,7 @@ oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env)
     float threshold = 0.0;  // default noise function threshold
     float slope = 0.0;      // default minimum slope
 
-    $CODE_INJECTION_POINT
+    $COVERAGE_SAMPLING_FUNCTION
 
     return oe_SplatRenderInfo(primary, detail, brightness, contrast, threshold, slope);
 }

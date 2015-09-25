@@ -21,6 +21,7 @@
 #include "Biome"
 #include "SplatCoverageLegend"
 #include "SplatTerrainEffect"
+#include "LandCoverTerrainEffect"
 
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
@@ -58,7 +59,7 @@ SplatExtension::~SplatExtension()
 void
 SplatExtension::setDBOptions(const osgDB::Options* dbOptions)
 {
-    _dbOptions = dbOptions;
+    _dbo = dbOptions;
 }
 
 bool
@@ -72,137 +73,57 @@ SplatExtension::connect(MapNode* mapNode)
 
     OE_INFO << LC << "Connecting to MapNode.\n";
 
-    if ( !_options.catalogURI().isSet() && !_options.biomesURI().isSet() )
+    // Coverage source data
+    osg::ref_ptr<Coverage> coverage;
+    if ( _options.coverage().isSet() )
     {
-        OE_WARN << LC << "Illegal: either a catalog URI or a biomes URI is required.\n";
-        return false;
-    }
-
-    if ( !_options.legendURI().isSet() )
-    {
-        OE_WARN << LC << "Illegal: a legend URI is required.\n";
-        return false;
-    }
-
-    if ( !_options.coverageLayerName().isSet() )
-    {
-        OE_WARN << LC << "Illegal: a coverage layer name is required.\n";
-        return false;
-    }
-
-    // Locate the coverage layer in the map.
-    const Map* map = mapNode->getMap();
-    const ImageLayer* coverageLayer = map->getImageLayerByName( _options.coverageLayerName().get() );
-    if ( !coverageLayer )
-    {
-        OE_WARN << LC << "Coverage layer \""
-            << _options.coverageLayerName().get()
-            << "\" not found in map.\n";
-        return false;
-    }
-
-    // Read in the legend.
-    osg::ref_ptr<SplatCoverageLegend> legend = new SplatCoverageLegend();
-    {
-        osg::ref_ptr<XmlDocument> doc = XmlDocument::load(
-            _options.legendURI().get(),
-            _dbOptions.get() );
-
-        if ( doc.valid() )
+        coverage = new Coverage();
+        if ( !coverage->configure( _options.coverage().get(), mapNode->getMap(), _dbo.get() ) )
         {
-            legend->fromConfig( doc->getConfig().child("legend") );
-        }
-
-        if ( legend->empty() )
-        {
-            OE_WARN << LC
-                << "Failed to read required legend from \""
-                << _options.legendURI()->full() << "\"\n";
+            OE_WARN << LC << "Coverage is not properly configured; aborting\n";
             return false;
         }
-        else
+    }
+
+    osg::ref_ptr<Surface> surface;
+    if ( _options.surface().isSet() )
+    {
+        surface = new Surface();
+        if ( !surface->configure( _options.surface().get(), mapNode->getMap(), _dbo.get() ) )
         {
-            OE_INFO << LC << "Legend: found " << legend->getPredicates().size() << " mappings \n";
+            OE_WARN << LC << "Surface data is not properly configured; aborting\n";
+            return false;
         }
     }
 
-    BiomeVector biomes;
-
-    // If there is a biome file, read it; it will point to one or more catalog files.
-    if ( _options.biomesURI().isSet() )
+    osg::ref_ptr<LandCover> landCover;
+    if ( _options.landCover().isSet() )
     {
-        osg::ref_ptr<XmlDocument> doc = XmlDocument::load(
-            _options.biomesURI().get(),
-            _dbOptions.get() );
-
-        if ( doc.valid() )
+        landCover = new LandCover();
+        if ( !landCover->configure( _options.landCover().get(), _dbo.get() ) )
         {
-            Config conf = doc->getConfig().child("biomes");
-            if ( !conf.empty() )
-            {
-                for(ConfigSet::const_iterator i = conf.children().begin();
-                    i != conf.children().end();
-                    ++i)
-                {
-                    Biome biome( *i );
-                    if ( biome.catalogURI().isSet() )
-                    {
-                        SplatCatalog* catalog = SplatCatalog::read( biome.catalogURI().get(), _dbOptions.get() );
-                        if ( catalog )
-                        {
-                            biome.setCatalog( catalog );
-                            biomes.push_back( biome );
-                        }
-                    }
-                }
-            }
+            OE_WARN << LC << "Land cover is not properly configured; aborting. \n";
+            return false;
         }
     }
 
-    // Otherwise, no biome file, so read a single catalog directly:
-    if ( biomes.empty() )
+    if ( surface.valid() )
     {
-        // Read in the catalog.
-        SplatCatalog* catalog = SplatCatalog::read(
-            _options.catalogURI().get(),
-            _dbOptions.get() );
+        _splatEffect = new SplatTerrainEffect();
+        _splatEffect->setDBOptions( _dbo.get() );
+        _splatEffect->setCoverage( coverage.get() );
+        _splatEffect->setSurface( surface.get() );
 
-        if ( catalog )
-        {
-            biomes.push_back( Biome() );
-            biomes.back().setCatalog( catalog );
-        }
+        mapNode->getTerrainEngine()->addEffect( _splatEffect.get() );
     }
 
-    if ( !biomes.empty() )
+    if ( landCover.valid() )
     {
-        // Terrain effect that implements splatting.
-        _effect = new SplatTerrainEffect( biomes, legend, _dbOptions.get() );
+        _landCoverEffect = new LandCoverTerrainEffect();
+        _landCoverEffect->setDBOptions( _dbo.get() );
+        _landCoverEffect->setLandCover( landCover.get() );
 
-        // set the coverage layer (mandatory)
-        _effect->setCoverageLayer( coverageLayer );
-
-        // set the render order (optional)
-        if ( _options.drawAfterImageLayers() == true )
-            _effect->setRenderOrder( 1.0f );
-
-        // set the various rendering options.
-        if ( _options.coverageWarp().isSet() )
-            _effect->getCoverageWarpUniform()->set( _options.coverageWarp().get() );
-    
-        if ( _options.coverageBlur().isSet() )
-            _effect->getCoverageBlurUniform()->set( _options.coverageBlur().get() );
-
-        if ( _options.scaleLevelOffset().isSet() )
-            _effect->getScaleLevelOffsetUniform()->set( (float)_options.scaleLevelOffset().get() );
-
-        // add it to the terrain.
-        mapNode->getTerrainEngine()->addEffect( _effect.get() );
-    }
-
-    else
-    {
-        OE_WARN << LC << "Extension not installed become there are no valid biomes.\n";
+        mapNode->getTerrainEngine()->addEffect( _landCoverEffect.get() );
     }
 
     return true;
@@ -211,11 +132,21 @@ SplatExtension::connect(MapNode* mapNode)
 bool
 SplatExtension::disconnect(MapNode* mapNode)
 {
-    if ( mapNode && _effect.valid() )
+    if ( mapNode )
     {
-        mapNode->getTerrainEngine()->removeEffect( _effect.get() );
+        if ( _splatEffect.valid() )
+        {
+            mapNode->getTerrainEngine()->removeEffect( _splatEffect.get() );
+            _splatEffect = 0L;
+        }
+
+        if ( _landCoverEffect.valid() )
+        {
+            mapNode->getTerrainEngine()->removeEffect( _landCoverEffect.get() );
+            _landCoverEffect = 0L;
+        }
     }
-    _effect = 0L;
+
     return true;
 }
 
@@ -226,7 +157,7 @@ SplatExtension::connect(Control* control)
     Container* container = dynamic_cast<Container*>(control);
     if ( container )
     {
-        container->addControl( new LabelControl("Splatting is on!") );
+        container->addControl( new LabelControl("Prodecural Terrain Extension Active") );
     }
     return true;
 }

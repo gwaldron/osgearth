@@ -27,21 +27,21 @@ using namespace osgEarth::Splat;
 
 #define LC "[BiomeSelector] "
 
-BiomeSelector::BiomeSelector(const BiomeVector&           biomes,
-                             const SplatTextureDefVector& textureDefs,
-                             osg::StateSet*               stateSet,
-                             int                          textureImageUnit) :
-_biomes( biomes )
+BiomeRegionSelector::BiomeRegionSelector(const BiomeRegionVector&     biomeRegions,
+                                         const SplatTextureDefVector& textureDefs,
+                                         osg::StateSet*               stateSet,
+                                         int                          textureImageUnit) :
+_biomeRegions( biomeRegions )
 {
-    for(unsigned i=0; i<_biomes.size(); ++i)
+    for(unsigned i=0; i<_biomeRegions.size(); ++i)
     {
-        Biome& biome = _biomes[i];
+        BiomeRegion& biomeRegion = _biomeRegions[i];
 
         // pre-calculate optimized values for each biome region.
-        std::vector<Biome::Region>& regions = biome.getRegions();
+        std::vector<BiomeRegion::Region>& regions = biomeRegion.getRegions();
         for(unsigned r=0; r<regions.size(); ++r)
         {
-            Biome::Region& region = regions[r];
+            BiomeRegion::Region& region = regions[r];
             region.extent.createPolytope( region.tope );
             region.zmin2 = region.zmin > -DBL_MAX ? region.zmin*region.zmin : region.zmin;
             region.zmax2 = region.zmax < DBL_MAX ? region.zmax*region.zmax : region.zmax;
@@ -76,7 +76,7 @@ _biomes( biomes )
 }
 
 void
-BiomeSelector::operator()(osg::Node* node, osg::NodeVisitor* nv)
+BiomeRegionSelector::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
 
@@ -85,12 +85,12 @@ BiomeSelector::operator()(osg::Node* node, osg::NodeVisitor* nv)
     
     osg::StateSet* stateSet = 0L;
 
-    for(unsigned b=0; b<_biomes.size() && stateSet == 0L; ++b)
+    for(unsigned b=0; b<_biomeRegions.size() && stateSet == 0L; ++b)
     {
-        const Biome& biome = _biomes[b];        
+        const BiomeRegion& biomeRegion = _biomeRegions[b];        
         bool match = false;
             
-        if ( biome.getRegions().size() == 0 )
+        if ( biomeRegion.getRegions().size() == 0 )
         {
             // empty biome is a match.
             //OE_INFO << "matched " << b << "b/c biome has no regions\n";
@@ -99,9 +99,9 @@ BiomeSelector::operator()(osg::Node* node, osg::NodeVisitor* nv)
         else
         {
             // check each region of the biome:
-            for(unsigned r=0; r<biome.getRegions().size() && !match; ++r)
+            for(unsigned r=0; r<biomeRegion.getRegions().size() && !match; ++r)
             {
-                const Biome::Region& region = biome.getRegions()[r];
+                const BiomeRegion::Region& region = biomeRegion.getRegions()[r];
 
                 // empty extent/tope is a match:
                 if ( region.tope.empty() )

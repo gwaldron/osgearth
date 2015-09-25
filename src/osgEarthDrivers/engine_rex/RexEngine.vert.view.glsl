@@ -14,10 +14,6 @@ vec3 oe_UpVectorView;
 uniform mat4 oe_layer_texMatrix;
 uniform mat4 oe_layer_texParentMatrix;
 
-//uniform sampler2D oe_tile_elevationTex;
-//uniform mat4      oe_tile_elevationTexMatrix;
-//uniform float     oe_tile_elevationSize;
-
 // SDK functions:
 float oe_terrain_getElevation(in vec2 uv);
 

@@ -22,6 +22,8 @@
 #include "Export"
 #include "SplatOptions"
 #include "SplatTerrainEffect"
+#include "LandCoverTerrainEffect"
+
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/Controls>
@@ -30,6 +32,7 @@ namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
     using namespace osgEarth::Util::Controls;
+    
 
     /**
      * Extension for loading the splatting effect on demand.
@@ -72,10 +75,14 @@ namespace osgEarth { namespace Splat
         SplatExtension(const SplatExtension& rhs, const osg::CopyOp& op) { }
 
     private:
-        const SplatOptions                 _options;
-        osg::ref_ptr<const osgDB::Options> _dbOptions;
-        osg::ref_ptr<SplatTerrainEffect>   _effect;
-        osg::ref_ptr<ImageLayer>           _coverageLayer;
+        const SplatOptions                   _options;
+        osg::ref_ptr<const osgDB::Options>   _dbo;
+        osg::ref_ptr<SplatTerrainEffect>     _splatEffect;
+        osg::ref_ptr<LandCoverTerrainEffect> _landCoverEffect;
+
+        //osg::ref_ptr<Coverage>  _coverage;
+        //osg::ref_ptr<Surface>   _surface;
+        //osg::ref_ptr<LandCover> _landCover;
     };
 
 } } // namespace osgEarth::Splat

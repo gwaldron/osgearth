@@ -1,15 +1,16 @@
 #version 400
+#pragma vp_name "Flora tessellation control shader"
 
 /**
- * Flora TCS that distributes data based on a Land Use code sampler.
+ * TCS that distributes data based on a Land Use code sampler.
  */
  
-#pragma vp_entryPoint "oe_flora_configureTess"
+#pragma vp_entryPoint "oe_landcover_configureTess"
 #pragma vp_location   "tess_control"
 
 layout(vertices = 3) out;
 
-uniform float oe_flora_density;
+uniform float oe_landcover_density;
 
 // Land Use Codes from the GLOBCOVER ESA dataset
 
@@ -47,7 +48,7 @@ in vec4 oe_layer_tilec;
 
 
 // MAIN ENTRY POINT                
-void oe_flora_configureTess()
+void oe_landcover_configureTess()
 {
 	if (gl_InvocationID == 0)
 	{
@@ -55,12 +56,12 @@ void oe_flora_configureTess()
         
         float code = textureLod(landUseTex, (landUseTexMatrix * oe_layer_tilec).st, 0).r;
         
-        if ( code >= GC_FOREST_DECIDUOUS_SPARSE && code <= GC_FOREST_MIXED )
+        if ( true ) //code >= GC_FOREST_DECIDUOUS_SPARSE && code <= GC_FOREST_MIXED )
         {
-            gl_TessLevelOuter[0] = oe_flora_density;
-            gl_TessLevelOuter[1] = oe_flora_density;
-            gl_TessLevelOuter[2] = oe_flora_density;
-            gl_TessLevelInner[0] = oe_flora_density;
+            gl_TessLevelOuter[0] = oe_landcover_density;
+            gl_TessLevelOuter[1] = oe_landcover_density;
+            gl_TessLevelOuter[2] = oe_landcover_density;
+            gl_TessLevelInner[0] = oe_landcover_density;
         }
         else
         {

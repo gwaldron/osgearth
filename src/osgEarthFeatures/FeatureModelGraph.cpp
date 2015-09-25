@@ -383,7 +383,7 @@ FeatureModelGraph::ctor()
                 //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
                 tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
                 OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
-                _options.layout()->tileSizeFactor() = tileSizeFactor * 1.5; // approx sqrt(2)
+                _options.layout()->tileSizeFactor() = tileSizeFactor;
             }
         }
     }

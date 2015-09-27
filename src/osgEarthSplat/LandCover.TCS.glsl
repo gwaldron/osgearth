@@ -14,33 +14,6 @@ uniform float oe_landcover_density;
 
 vec2 oe_terrain_scaleCoordsToRefLOD(in vec2, in float);
 
-// Land Use Codes from the GLOBCOVER ESA dataset
-
-#define GC_FOREST_DECIDUOUS_SPARSE 40
-#define GC_FOREST_DECIDUOUS_MEDIUM 50
-#define GC_FOREST_DECIDUOUS_DENSE  60
-#define GC_FOREST_NEEDLED_SPARSE   70
-#define GC_FOREST_NEEDLED_MEDIUM   90
-#define GC_FOREST_NEEDLED_DENSE    80
-#define GC_FOREST_MIXED           100
-
-#define GC_GRASSLAND_SPARSE       110
-#define GC_GRASSLAND_DENSE        120
-
-#define GC_SHRUBLAND_DENSE        130
-#define GC_SHRUBLAND_MEDIUM       140
-#define GC_SHURBLAND_SPARSE       150
-
-#define GC_SWAMPLAND_SPARSE       160
-#define GC_SWAMPLAND_DENSE        170
-#define GC_SWAMPLAND_MEDIUM       180
-
-#define GC_URBAN                  190
-#define GC_DESERT                 200
-#define GC_WATER                  210
-#define GC_TUNDRA                 220
-#define GC_NODATA                 230
-
 
 // Land Use sampler+matrix (set these in your earth file)
 uniform sampler2D landUseTex;
@@ -70,7 +43,6 @@ void oe_landcover_configureTess()
         //float code = textureLod(landUseTex, (landUseTexMatrix * oe_layer_tilec).st, 0).r;
         //float rrr = texture(oe_noise_tex, oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, 12.0)).g;
         
-        //if ( rrr >= shmoo ) //code >= GC_FOREST_DECIDUOUS_SPARSE && code <= GC_FOREST_MIXED )
         if ( oe_landcover_passesCoverage(oe_layer_tilec) )
         {
             float d = oe_landcover_density * r0;

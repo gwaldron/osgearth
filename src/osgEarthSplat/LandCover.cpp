@@ -161,16 +161,36 @@ LandCoverBiome::createPredicateShader(const Coverage* coverage, osg::Shader::Typ
 
             for(int i=0; i<classes.size(); ++i)
             {
-                const CoverageValuePredicate* p = coverage->getLegend()->getPredicateForClass( classes[i] );
-                if ( p )
+                std::vector<const CoverageValuePredicate*> predicates;
+                if ( coverage->getLegend()->getPredicatesForClass(classes[i], predicates) )
                 {
-                    if ( p->_exactValue.isSet() )
+                    for(std::vector<const CoverageValuePredicate*>::const_iterator p = predicates.begin();
+                        p != predicates.end(); 
+                        ++p)
                     {
-                        buf << "    if (value == " << p->_exactValue.get() << ") return true;\n";
-                    }
-                    else 
-                    {
-                        OE_WARN << LC << "Class \"" << classes[i] << "\" found, but no exact value is set....\n";
+                        const CoverageValuePredicate* predicate = *p;
+
+                        if ( predicate->_exactValue.isSet() )
+                        {
+                            buf << "    if (value == " << predicate->_exactValue.get() << ") return true;\n";
+                        }
+                        else if ( predicate->_minValue.isSet() && predicate->_maxValue.isSet() )
+                        {
+                            buf << "    if (value >= " << predicate->_minValue.get() << " && value <= " << predicate->_maxValue.get() << ") return true;\n";
+                        }
+                        else if ( predicate->_minValue.isSet() )
+                        {
+                            buf << "    if (value >= " << predicate->_minValue.get() << ") return true;\n";
+                        }
+                        else if ( predicate->_maxValue.isSet() )
+                        {
+                            buf << "    if (value <= " << predicate->_maxValue.get() << ") return true;\n";
+                        }
+
+                        else 
+                        {
+                            OE_WARN << LC << "Class \"" << classes[i] << "\" found, but no exact/min/max value was set in the legend\n";
+                        }
                     }
                 }
                 else

@@ -29,11 +29,15 @@
 #include "SplatShaders"
 #include "Export"
 
+#include "Coverage"
+#include "Surface"
+#include "LandCover"
+
 #include <osgEarth/TerrainEffect>
-#include <osgEarth/ImageLayer>
 #include <osg/Image>
 #include <osg/Uniform>
 #include <osg/Texture2DArray>
+#include <osgDB/Options>
 
 using namespace osgEarth;
 
@@ -45,11 +49,34 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT SplatTerrainEffect : public TerrainEffect
     {
     public:
-        /** construct a new terrain effect. */
-        SplatTerrainEffect(
-            const BiomeVector&    biomes,
-            SplatCoverageLegend*  legend,
-            const osgDB::Options* dbOptions);
+        /** constructor */
+        SplatTerrainEffect();
+
+        /**
+         * Sets the OSG DB options to use when performing I/O
+         */
+        void setDBOptions(const osgDB::Options* dbo);
+
+        /**
+         * Sets the coverage source
+         */
+        void setCoverage(Coverage* coverage) { _coverage = coverage; }
+        Coverage* getCoverage() const { return _coverage.get(); }
+
+        /**
+         * Set the surface rendering configuration
+         */
+        void setSurface(Surface* surface ) { _surface = surface; }
+        Surface* getSurface() const { return _surface; }
+
+        /**
+         * Sets the land cover configuration to use
+         */
+        void setLandCover(LandCover* landCover) { _landCover = landCover; }
+        LandCover* getLandCover() const { return _landCover.get(); }
+
+
+#if 0
 
         /**
          * Sets the image layer that supplies the coverage values. This value
@@ -96,7 +123,8 @@ namespace osgEarth { namespace Splat
         /**
          * Gets the list of Biomes.
          */
-        const BiomeVector& getBiomes() const { return _biomes; }
+        const BiomeRegionVector& getBiomeRegions() const { return _biomeRegions; }
+#endif
 
 
 
@@ -110,22 +138,28 @@ namespace osgEarth { namespace Splat
     protected:
         virtual ~SplatTerrainEffect() { }
 
-        void installCoverageSamplingFunction(SplatTextureDef& textureDef);
+        bool createSplattingTextures(
+            const Coverage* coverage, 
+            const Surface*  surface, 
+            SplatTextureDefVector& output) const;
+
+        bool createSplattingSamplingFunction(
+            const Coverage*  coverage,
+            SplatTextureDef& textureDef) const;
+
         osg::Texture* createNoiseTexture() const;
 
-        // these 2 vectors are index-aligned:
-        BiomeVector                         _biomes;
+        // index-aligned with the surface biome region vector:
         SplatTextureDefVector               _textureDefs;
 
-        bool                                _ok;
         int                                 _splatTexUnit;
         osg::ref_ptr<osg::Uniform>          _splatTexUniform;
         osg::ref_ptr<osg::Uniform>          _coverageTexUniform;
         osg::ref_ptr<osg::Uniform>          _scaleOffsetUniform;
         osg::ref_ptr<osg::Uniform>          _warpUniform;
         osg::ref_ptr<osg::Uniform>          _blurUniform;
-        osg::ref_ptr<SplatCoverageLegend>   _legend;
-        osg::observer_ptr<const ImageLayer> _coverageLayer;
+        //osg::ref_ptr<SplatCoverageLegend>   _legend;
+        //osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;
         int                                 _noiseTexUnit;
         osg::ref_ptr<osg::Texture>          _noiseTex;
@@ -133,10 +167,16 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Uniform>          _noiseScaleUniform;
         osg::ref_ptr<osg::Uniform>          _useBilinearUniform;
 
-        osg::ref_ptr<BiomeSelector>         _biomeSelector;
+        osg::ref_ptr<BiomeRegionSelector>   _biomeRegionSelector;
 
         bool                                _editMode;
         bool                                _gpuNoise;
+
+        osg::ref_ptr<const osgDB::Options>  _dbo;
+
+        osg::ref_ptr<Coverage>  _coverage;
+        osg::ref_ptr<Surface>   _surface;
+        osg::ref_ptr<LandCover> _landCover;
 
     };
 

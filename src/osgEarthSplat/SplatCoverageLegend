@@ -58,9 +58,6 @@ namespace osgEarth { namespace Splat
 
     typedef CoverageValuePredicateT<std::string> CoverageValuePredicate;
 
-    /**
-     * Collection of coverage value predicates.
-     */
 
     /**
      * Legend that maps coverage values (or value predicates) to splat
@@ -72,6 +69,7 @@ namespace osgEarth { namespace Splat
         SplatCoverageLegend();
 
     public:
+        // Collection of coverage value predicated
         typedef std::vector< osg::ref_ptr<CoverageValuePredicate> > Predicates;
 
         /**
@@ -83,6 +81,13 @@ namespace osgEarth { namespace Splat
          * Whether this legend is empty.
          */
         bool empty() const { return _predicates.empty(); }
+
+        /**
+         * Looks up a precidate for the given class name, or returns NULL
+         * if there isn't one.
+         */
+        bool getPredicatesForClass(const std::string& className, std::vector<const CoverageValuePredicate*>& output) const;
+        //const CoverageValuePredicate* getPredicateForClass(const std::string& className) const;
 
     public: // serialization
 

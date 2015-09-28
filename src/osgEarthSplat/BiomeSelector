@@ -30,11 +30,11 @@ namespace osgEarth { namespace Splat
      * Cull callback that applies the approprate stateset based on what
      * it determines to be the active Biome.
      */
-    class OSGEARTHSPLAT_EXPORT BiomeSelector : public osg::NodeCallback
+    class OSGEARTHSPLAT_EXPORT BiomeRegionSelector : public osg::NodeCallback
     {
     public:
-        BiomeSelector(
-            const BiomeVector&           biomes,
+        BiomeRegionSelector(
+            const BiomeRegionVector&     biomeRegions,
             const SplatTextureDefVector& textureDefs,
             osg::StateSet*               basicStateSet,
             int                          textureImageUnit);
@@ -44,7 +44,7 @@ namespace osgEarth { namespace Splat
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
     protected:
-        BiomeVector                                _biomes;
+        BiomeRegionVector                          _biomeRegions;
         std::vector< osg::ref_ptr<osg::StateSet> > _stateSets;
         std::vector< osg::Polytope >               _topes;
     };

@@ -21,19 +21,20 @@
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
-#define LC "[Biome] "
+#define LC "[BiomeRegion] "
 
 #define SPLAT_BIOME_CURRENT_VERSION 1
 
 
 //............................................................................
 
-Biome::Biome()
+BiomeRegion::BiomeRegion()
 {
     //nop
 }
 
-Biome::Biome(const Config& conf)
+bool
+BiomeRegion::configure(const Config& conf)
 {
     conf.getIfSet( "name", _name );
     conf.getIfSet( "catalog", _catalogURI );
@@ -58,10 +59,12 @@ Biome::Biome(const Config& conf)
         _regions.back().zmin  = zmin;
         _regions.back().zmax  = zmax;
     }
+
+    return true;
 }
 
 Config
-Biome::getConfig() const
+BiomeRegion::getConfig() const
 {
     Config conf("biome");
     conf.addIfSet( "name",    _name );

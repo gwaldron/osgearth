@@ -31,6 +31,21 @@ SplatCoverageLegend::SplatCoverageLegend()
     //nop
 }
 
+bool
+SplatCoverageLegend::getPredicatesForClass(const std::string& className,
+                                           std::vector<const CoverageValuePredicate*>& output) const
+{
+    output.clear();
+    for(Predicates::const_iterator i = _predicates.begin(); i != _predicates.end(); ++i)
+    {
+        if ( i->get()->_mappedClassName == className )
+        {
+            output.push_back( i->get() );
+        }
+    }
+    return output.size() > 0;
+}
+
 void
 SplatCoverageLegend::fromConfig(const Config& conf)
 {

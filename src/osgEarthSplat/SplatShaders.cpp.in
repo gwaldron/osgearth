@@ -6,7 +6,7 @@
 
 using namespace osgEarth::Splat;
 
-Shaders::Shaders()
+SplattingShaders::SplattingShaders()
 {
     Types = "Splat.types.glsl";
     _sources[Types] = MULTILINE(@Splat.types.glsl@);
@@ -31,4 +31,20 @@ Shaders::Shaders()
 
     Util = "Splat.util.glsl";
     _sources[Util] = MULTILINE(@Splat.util.glsl@);
+}
+
+
+LandCoverShaders::LandCoverShaders()
+{
+    LandCover_TCS = "LandCover.TCS.glsl";
+    _sources[LandCover_TCS] = MULTILINE(@LandCover.TCS.glsl@);
+
+    LandCover_TES = "LandCover.TES.glsl";
+    _sources[LandCover_TES] = MULTILINE(@LandCover.TES.glsl@);
+
+    LandCover_GS = "LandCover.GS.glsl";
+    _sources[LandCover_GS] = MULTILINE(@LandCover.GS.glsl@);
+
+    LandCover_FS = "LandCover.FS.glsl";
+    _sources[LandCover_FS] = MULTILINE(@LandCover.FS.glsl@);
 }

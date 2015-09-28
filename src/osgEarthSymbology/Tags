@@ -21,6 +21,7 @@
 #define OSGEARTHSYMBOLOGY_TAGS_H 1
 
 #include <osgEarthSymbology/Common>
+#include <osgEarth/Config>
 #include <osgEarth/StringUtils>
 #include <osg/CopyOp>
 #include <vector>
@@ -36,9 +37,9 @@ namespace osgEarth { namespace Symbology
     class Taggable : public T
     {
     public:
-        Taggable()
-        {
-        }
+        Taggable() { }
+
+        //Taggable(const osgEarth::Config& conf) : T(conf) { }
         
         Taggable(const Taggable& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY):
         T(rhs, copyop)

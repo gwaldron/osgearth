@@ -26,9 +26,9 @@
 
 namespace osgEarth { namespace Splat
 {
-    struct Shaders : public osgEarth::ShaderPackage
+    struct SplattingShaders : public osgEarth::ShaderPackage
 	{
-        Shaders();
+        SplattingShaders();
 
         std::string
             Types,
@@ -39,6 +39,17 @@ namespace osgEarth { namespace Splat
             FragCommon,
             FragGetRenderInfo,
             Util;
+	};
+
+    struct LandCoverShaders : public osgEarth::ShaderPackage
+	{
+        LandCoverShaders();
+
+        std::string
+            LandCover_TCS,
+            LandCover_TES,
+            LandCover_GS,
+            LandCover_FS;
 	};
 	
 } } // namespace osgEarth::Splat

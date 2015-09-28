@@ -21,6 +21,7 @@
 */
 #include "SplatTerrainEffect"
 #include "SplatOptions"
+#include "Biome"
 
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -45,188 +46,167 @@
 using namespace osgEarth;
 using namespace osgEarth::Splat;
 
-SplatTerrainEffect::SplatTerrainEffect(const BiomeVector&    biomes,
-                                       SplatCoverageLegend*  legend,
-                                       const osgDB::Options* dbOptions) :
-_biomes     ( biomes ),
-_legend     ( legend ),
-_renderOrder( -1.0f ),
-_ok         ( false ),
-_editMode   ( false ),
-_gpuNoise   ( false )
+SplatTerrainEffect::SplatTerrainEffect() :
+_renderOrder ( -1.0f ),
+_editMode    ( false ),
+_gpuNoise    ( false )
 {
-    if ( biomes.size() == 0 )
-    {
-        OE_WARN << LC << "Internal: no biomes.\n";
-    }
+    _scaleOffsetUniform = new osg::Uniform("oe_splat_scaleOffsetInt", 0 );
+    _warpUniform        = new osg::Uniform("oe_splat_warp",           0.0f );
+    _blurUniform        = new osg::Uniform("oe_splat_blur",           1.0f );
+    _useBilinearUniform = new osg::Uniform("oe_splat_useBilinear",    1.0f );
+    _noiseScaleUniform  = new osg::Uniform("oe_splat_noiseScale",    12.0f );
 
-    // Create a texture def for each biome.
-    for(unsigned b = 0; b < biomes.size(); ++b)
-    {
-        const Biome& biome = biomes[b];
-        SplatTextureDef def;
-
-        if ( biome.getCatalog() )
-        {
-            if ( biome.getCatalog()->createSplatTextureDef(dbOptions, def) )
-            {
-                // install the sampling function.
-                installCoverageSamplingFunction( def );
-            }
-            else
-            {
-                OE_WARN << LC << "Failed to create a texture for a catalog (" 
-                    << biome.getCatalog()->name().get() << ")\n";
-            }
-
-        }
-        else
-        {
-            OE_WARN << LC << "Biome \""
-                << biome.name().get() << "\"" 
-                << " has an empty catalog and will be ignored.\n";
-        }
-
-        // put it on the list either way, since the vector indicies of biomes
-        // and texturedefs need to line up
-        _textureDefs.push_back( def );
-
-        if ( !_ok )
-        {
-            _ok = def._texture.valid();
-        }
-    }
-
-    SplatOptions def;
-
-    _scaleOffsetUniform    = new osg::Uniform("oe_splat_scaleOffsetInt",   *def.scaleLevelOffset());
-    _warpUniform           = new osg::Uniform("oe_splat_warp",             *def.coverageWarp());
-    _blurUniform           = new osg::Uniform("oe_splat_blur",             *def.coverageBlur());
-    _useBilinearUniform    = new osg::Uniform("oe_splat_useBilinear",      (def.bilinearSampling()==true?1.0f:0.0f));
-    _noiseScaleUniform     = new osg::Uniform("oe_splat_noiseScale",       12.0f);
+    //_scaleOffsetUniform    = new osg::Uniform("oe_splat_scaleOffsetInt",   *def.scaleLevelOffset());
+    //_warpUniform           = new osg::Uniform("oe_splat_warp",             *def.coverageWarp());
+    //_blurUniform           = new osg::Uniform("oe_splat_blur",             *def.coverageBlur());
+    //_useBilinearUniform    = new osg::Uniform("oe_splat_useBilinear",      (def.bilinearSampling()==true?1.0f:0.0f));
+    //_noiseScaleUniform     = new osg::Uniform("oe_splat_noiseScale",       12.0f);
 
     _editMode = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L);
     _gpuNoise = (::getenv("OSGEARTH_SPLAT_GPU_NOISE") != 0L);
 }
 
 void
+SplatTerrainEffect::setDBOptions(const osgDB::Options* dbo)
+{
+    _dbo = dbo;
+}
+
+void
 SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 {
-    if ( engine && _ok )
+    if ( engine )
     {
-        if ( !_coverageLayer.valid() )
+        // Check that we have coverage data (required for now - later masking data will be an option)
+        if ( !_coverage.valid() || !_coverage->hasLayer() )
         {
-            OE_WARN << LC << "No coverage layer set\n";
+            OE_WARN << LC << "ILLEGAL: coverage data is required\n";
             return;
         }
 
-        // Do not need this until/unless the splatting algorithm uses elevation.
-        //engine->requireElevationTextures();
-
-        // install the splat texture array:
-        if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage") )
+        if ( !_surface.valid() )
         {
-            osg::StateSet* stateset;
+            OE_WARN << LC << "Note: no surface information available\n";
+        }
 
-            if ( _biomes.size() == 1 )
-                stateset = engine->getSurfaceStateSet();
-            else
-                stateset = new osg::StateSet();
+        // First, create a surface splatting texture array for each biome region.
+        if ( _coverage.valid() && _surface.valid() )
+        {
+            if ( createSplattingTextures(_coverage.get(), _surface.get(), _textureDefs) == false )
+            {
+                OE_WARN << LC << "Failed to create any valid splatting textures\n";
+                return;
+            }
 
-            // TODO: reinstate "biomes"
-            //osg::StateSet* stateset = new osg::StateSet();
+            // Set up surface splatting:
+            if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage Data") )
+            {
+                osg::StateSet* stateset;
 
-            // splat sampler
-            _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
-            _splatTexUniform->set( _splatTexUnit );
-            stateset->setTextureAttribute( _splatTexUnit, _textureDefs[0]._texture.get() );
+                if ( _surface->getBiomeRegions().size() == 1 )
+                    stateset = engine->getSurfaceStateSet();
+                else
+                    stateset = new osg::StateSet();
 
-            // coverage sampler
-            _coverageTexUniform = stateset->getOrCreateUniform( COVERAGE_SAMPLER, osg::Uniform::SAMPLER_2D );
-            _coverageTexUniform->set( _coverageLayer->shareImageUnit().get() );
+                // TODO: reinstate "biomes"
+                //osg::StateSet* stateset = new osg::StateSet();
 
-            // control uniforms
-            stateset->addUniform( _scaleOffsetUniform.get() );
-            stateset->addUniform( _warpUniform.get() );
-            stateset->addUniform( _blurUniform.get() );
-            stateset->addUniform( _noiseScaleUniform.get() );
-            stateset->addUniform( _useBilinearUniform.get() );
+                // surface splatting texture array:
+                _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
+                _splatTexUniform->set( _splatTexUnit );
+                stateset->setTextureAttribute( _splatTexUnit, _textureDefs[0]._texture.get() );
 
-            stateset->addUniform(new osg::Uniform("oe_splat_detailRange",  1000000.0f));
+                // coverage code sampler:
+                osg::ref_ptr<ImageLayer> coverageLayer;
+                _coverage->lockLayer( coverageLayer );
+
+                _coverageTexUniform = stateset->getOrCreateUniform( COVERAGE_SAMPLER, osg::Uniform::SAMPLER_2D );
+                _coverageTexUniform->set( coverageLayer->shareImageUnit().get() );
+
+                // control uniforms (TODO: simplify and deprecate unneeded uniforms)
+                stateset->addUniform( _scaleOffsetUniform.get() );
+                stateset->addUniform( _warpUniform.get() );
+                stateset->addUniform( _blurUniform.get() );
+                stateset->addUniform( _noiseScaleUniform.get() );
+                stateset->addUniform( _useBilinearUniform.get() );
+
+                stateset->addUniform(new osg::Uniform("oe_splat_detailRange",  1000000.0f));
 
 
-            Shaders package;
+                SplattingShaders splatting;
 
-            package.define( "SPLAT_EDIT",        _editMode );
-            package.define( "SPLAT_GPU_NOISE",   _gpuNoise );
-            package.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
+                splatting.define( "SPLAT_EDIT",        _editMode );
+                splatting.define( "SPLAT_GPU_NOISE",   _gpuNoise );
+                splatting.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
 
-            package.replace( "$COVERAGE_TEXMAT_UNIFORM", _coverageLayer->shareTexMatUniformName().get() );
+                splatting.replace( "$COVERAGE_TEXTURE_MATRIX", coverageLayer->shareTexMatUniformName().get() );
             
-            VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-            package.load( vp, package.VertModel );
-            package.load( vp, package.VertView );
-            package.load( vp, package.Frag );
-            package.load( vp, package.Util );
+                VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+                splatting.load( vp, splatting.VertModel );
+                splatting.load( vp, splatting.VertView );
+                splatting.load( vp, splatting.Frag );
+                splatting.load( vp, splatting.Util );
 
-            // GPU noise is expensive, so only use it to tweak noise function values that you
-            // can later bake into the noise texture generator.
-            if ( _gpuNoise )
-            {                
-                //osgEarth::replaceIn( fragmentShader, "#undef SPLAT_GPU_NOISE", "#define SPLAT_GPU_NOISE" );
+                // GPU noise is expensive, so only use it to tweak noise function values that you
+                // can later bake into the noise texture generator.
+                if ( _gpuNoise )
+                {                
+                    //osgEarth::replaceIn( fragmentShader, "#undef SPLAT_GPU_NOISE", "#define SPLAT_GPU_NOISE" );
 
-                // Use --uniform on the command line to tweak these values:
-                stateset->addUniform(new osg::Uniform("oe_splat_freq",   32.0f));
-                stateset->addUniform(new osg::Uniform("oe_splat_pers",    0.8f));
-                stateset->addUniform(new osg::Uniform("oe_splat_lac",     2.2f));
-                stateset->addUniform(new osg::Uniform("oe_splat_octaves", 8.0f));
-            }
-            else // use a noise texture (the default)
-            {
-                if (engine->getResources()->reserveTextureImageUnit(_noiseTexUnit, "Splat Noise"))
-                {
-                    _noiseTex = createNoiseTexture();
-                    stateset->setTextureAttribute( _noiseTexUnit, _noiseTex.get() );
-                    _noiseTexUniform = stateset->getOrCreateUniform( NOISE_SAMPLER, osg::Uniform::SAMPLER_2D );
-                    _noiseTexUniform->set( _noiseTexUnit );
+                    // Use --uniform on the command line to tweak these values:
+                    stateset->addUniform(new osg::Uniform("oe_splat_freq",   32.0f));
+                    stateset->addUniform(new osg::Uniform("oe_splat_pers",    0.8f));
+                    stateset->addUniform(new osg::Uniform("oe_splat_lac",     2.2f));
+                    stateset->addUniform(new osg::Uniform("oe_splat_octaves", 8.0f));
                 }
-            }
+                else // use a noise texture (the default)
+                {
+                    if (engine->getResources()->reserveTextureImageUnit(_noiseTexUnit, "Splat Noise"))
+                    {
+                        _noiseTex = createNoiseTexture();
+                        stateset->setTextureAttribute( _noiseTexUnit, _noiseTex.get() );
+                        _noiseTexUniform = stateset->getOrCreateUniform( NOISE_SAMPLER, osg::Uniform::SAMPLER_2D );
+                        _noiseTexUniform->set( _noiseTexUnit );
+                    }
+                }
 
-            if ( _gpuNoise )
-            {
-                // support shaders
-                std::string noiseShaderSource = ShaderLoader::load( package.Noise, package );
-                osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
-                vp->setShader( "oe_splat_noiseshaders", noiseShader );
-            }
+                if ( _gpuNoise )
+                {
+                    // support shaders
+                    std::string noiseShaderSource = ShaderLoader::load( splatting.Noise, splatting );
+                    osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
+                    vp->setShader( "oe_splat_noiseshaders", noiseShader );
+                }
 
-            // TODO: I disabled BIOMES temporarily because the callback impl applies the splatting shader
-            // to the land cover bin as well as the surface bin, which we do not want -- find another way!
-            if ( _biomes.size() == 1 )
-            {
-                // install his biome's texture set:
-                stateset->setTextureAttribute(_splatTexUnit, _textureDefs[0]._texture.get());
+                // TODO: disabled biome selection temporarily because the callback impl applies the splatting shader
+                // to the land cover bin as well as the surface bin, which we do not want -- find another way
+                if ( _surface->getBiomeRegions().size() == 1 )
+                {
+                    // install his biome's texture set:
+                    stateset->setTextureAttribute(_splatTexUnit, _textureDefs[0]._texture.get());
 
-                // install this biome's sampling function. Use cloneOrCreate since each
-                // stateset needs a different shader set in its VP.
-                VirtualProgram* vp = VirtualProgram::cloneOrCreate( stateset );
-                osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, _textureDefs[0]._samplingFunction);
-                vp->setShader( "oe_splat_getRenderInfo", shader );
-            }
+                    // install this biome's sampling function. Use cloneOrCreate since each
+                    // stateset needs a different shader set in its VP.
+                    VirtualProgram* vp = VirtualProgram::cloneOrCreate( stateset );
+                    osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, _textureDefs[0]._samplingFunction);
+                    vp->setShader( "oe_splat_getRenderInfo", shader );
+                }
 
-            else
-            {
-                OE_WARN << LC << "Multi-biome setup needs re-implementing (reminder)\n";
+                else
+                {
+                    OE_WARN << LC << "Multi-biome setup needs re-implementing (reminder)\n";
 
-                // install the cull callback that will select the appropriate
-                // state based on the position of the camera.
-                _biomeSelector = new BiomeSelector(
-                    _biomes,
-                    _textureDefs,
-                    stateset,
-                    _splatTexUnit );
+                    // install the cull callback that will select the appropriate
+                    // state based on the position of the camera.
+                    _biomeRegionSelector = new BiomeRegionSelector(
+                        _surface->getBiomeRegions(),
+                        _textureDefs,
+                        stateset,
+                        _splatTexUnit );
 
-                engine->addCullCallback( _biomeSelector.get() );
+                    engine->addCullCallback( _biomeRegionSelector.get() );
+                }
             }
         }
     }
@@ -250,23 +230,81 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
             _splatTexUnit = -1;
         }
 
-        if ( _biomeSelector.valid() )
+        if ( _biomeRegionSelector.valid() )
         {
-            engine->removeCullCallback( _biomeSelector.get() );
-            _biomeSelector = 0L;
+            engine->removeCullCallback( _biomeRegionSelector.get() );
+            _biomeRegionSelector = 0L;
         }
     }
 }
 
+bool
+SplatTerrainEffect::createSplattingTextures(const Coverage*        coverage,
+                                            const Surface*         surface,
+                                            SplatTextureDefVector& output) const
+{
+    int numValidTextures = 0;
+
+    if ( coverage == 0L || surface == 0L )
+        return false;
+
+    const BiomeRegionVector& biomeRegions = surface->getBiomeRegions();
+
+    OE_INFO << LC << "Creating splatting textures for " << biomeRegions.size() << " biome regions\n";
+
+    // Create a texture def for each biome region.
+    for(unsigned b = 0; b < biomeRegions.size(); ++b)
+    {
+        const BiomeRegion& biomeRegion = biomeRegions[b];
+
+        // Create a texture array and lookup table for this region:
+        SplatTextureDef def;
+
+        if ( biomeRegion.getCatalog() )
+        {
+            if ( biomeRegion.getCatalog()->createSplatTextureDef(_dbo.get(), def) )
+            {
+                // install the sampling function.
+                createSplattingSamplingFunction( coverage, def );
+                numValidTextures++;
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to create a texture for a catalog (" 
+                    << biomeRegion.getCatalog()->name().get() << ")\n";
+            }
+        }
+        else
+        {
+            OE_WARN << LC << "Biome Region \""
+                << biomeRegion.name().get() << "\"" 
+                << " has an empty catalog and will be ignored.\n";
+        }
+
+        // put it on the list either way, since the vector indicies of biomes
+        // and texturedefs need to line up
+        output.push_back( def );
+    }
+
+    return numValidTextures > 0;
+}
+
 #define IND "    "
 
-void
-SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
+bool
+SplatTerrainEffect::createSplattingSamplingFunction(const Coverage*  coverage,
+                                                    SplatTextureDef& textureDef) const
 {
+    if ( !coverage || !coverage->getLegend() )
+    {
+        OE_WARN << LC << "Sampling function: illegal state (no coverage or legend); \n";
+        return false;
+    }
+
     if ( !textureDef._texture.valid() )
     {
         OE_WARN << LC << "Internal: texture is not set; cannot create a sampling function\n";
-        return;
+        return false;
     }
 
     std::stringstream
@@ -286,7 +324,7 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
         thresholdCount  = 0,
         slopeCount      = 0;
 
-    const SplatCoverageLegend::Predicates& preds = _legend->getPredicates();
+    const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
     for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p)
     {
         const CoverageValuePredicate* pred = p->get();
@@ -401,10 +439,10 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
     if ( slopeCount > 0 )
         slopeBuf << ";\n";
 
-    Shaders package;
+    SplattingShaders splatting;
     std::string code = ShaderLoader::load(
-        package.FragGetRenderInfo,
-        package);
+        splatting.FragGetRenderInfo,
+        splatting);
 
     std::string codeToInject = Stringify()
         << IND
@@ -416,11 +454,13 @@ SplatTerrainEffect::installCoverageSamplingFunction(SplatTextureDef& textureDef)
         << thresholdBuf.str()
         << slopeBuf.str();
 
-    osgEarth::replaceIn(code, "$CODE_INJECTION_POINT", codeToInject);
+    osgEarth::replaceIn(code, "$COVERAGE_SAMPLING_FUNCTION", codeToInject);
 
     textureDef._samplingFunction = code;
 
     OE_DEBUG << LC << "Sampling function = \n" << code << "\n\n";
+
+    return true;
 }
 
 osg::Texture*

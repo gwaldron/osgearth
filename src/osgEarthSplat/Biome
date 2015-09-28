@@ -30,7 +30,7 @@ namespace osgEarth { namespace Splat
      * Defines a set of geospatial extents under which to apply a particular
      * procedural catalog.
      */
-    class OSGEARTHSPLAT_EXPORT Biome
+    class OSGEARTHSPLAT_EXPORT BiomeRegion
     {
     public: // types        
         struct Region
@@ -44,10 +44,7 @@ namespace osgEarth { namespace Splat
 
     public:
         /** Construct an empty biome. */
-        Biome();
-
-        /** Deserialize a biome. */
-        Biome(const Config& conf);
+        BiomeRegion();
 
         /** Get the list of bounding boxes enclosing this biome. */
         std::vector<Region>& getRegions() { return _regions; }
@@ -65,8 +62,12 @@ namespace osgEarth { namespace Splat
         void setCatalog(SplatCatalog* catalog) { _catalog = catalog; }
         SplatCatalog* getCatalog() const { return _catalog.get(); }
 
+
+    public:
         /** Serialize this biome's primitive members. */
         Config getConfig() const;
+
+        bool configure(const Config& conf);
 
     protected:
 
@@ -76,7 +77,7 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<SplatCatalog> _catalog;
     };
 
-    typedef std::vector<Biome> BiomeVector;
+    typedef std::vector<BiomeRegion> BiomeRegionVector;
 
 } } // namespace osgEarth::Splat
 

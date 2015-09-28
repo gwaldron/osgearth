@@ -87,11 +87,13 @@ namespace osgEarth { namespace Splat
     typedef std::vector< osg::ref_ptr<LandCoverBiome> > LandCoverBiomes;
 
 
-
+    /**
+     * A layer of land cover data.
+     */
     class OSGEARTHSPLAT_EXPORT LandCoverLayer : public osg::Referenced
     {
     public:
-        LandCoverLayer() : _lod(14), _maxDistance(1000.0f), _density(1.0f), _wind(0.0f) { }
+        LandCoverLayer() : _lod(14), _maxDistance(1000.0f), _density(1.0f), _fill(1.0f), _wind(0.0f) { }
 
         /** Name of this layer */
         void setName(const std::string& name) { _name = name; }
@@ -105,9 +107,13 @@ namespace osgEarth { namespace Splat
         void setMaxDistance(float value) { _maxDistance = value; }
         float getMaxDistance() const { return _maxDistance; }
 
-        /** Density of land cover (render value) */
+        /** Density of land cover; i.e. instances per unit of area [1..5+] */
         void setDensity(float value) { _density = value; }
         float getDensity() const { return _density; }
+
+        /** Fill percentage of land cover instances [0..1] */
+        void setFill(float value) { _fill = value; }
+        float getFill() const { return _fill; }
 
         /** Wind effect (0..1) */
         void setWind(float value) { _wind = value; }
@@ -124,6 +130,7 @@ namespace osgEarth { namespace Splat
         unsigned        _lod;
         float           _maxDistance;
         float           _density;
+        float           _fill;
         float           _wind;
         LandCoverBiomes _biomes;
 
@@ -163,46 +170,8 @@ namespace osgEarth { namespace Splat
     typedef std::vector< osg::ref_ptr<LandCover> > LandCovers;
 
 
-    /**
-     * Conigures a rendering resource for a biome.
-     */
-    class LandCoverResourceOptions : public ConfigOptions
-    {
-    public:
-        LandCoverResourceOptions() : ConfigOptions() { }
+    //........................................................................
 
-        LandCoverResourceOptions(const Config& conf) : ConfigOptions(conf) {
-            fromConfig( _conf );
-        }
-
-    protected:
-        optional<std::string> _name;
-        optional<std::string> _library;
-        optional<std::string> _type;
-        optional<std::string> _tags;
-
-    public:
-        void fromConfig(const Config& conf) {
-            conf.getIfSet( "name",    _name );
-            conf.getIfSet( "library", _library );
-            conf.getIfSet( "type",    _type );
-            conf.getIfSet( "tags",    _tags );
-        }
-        
-        Config getConfig() const {
-            Config conf = ConfigOptions::getConfig();
-            conf.addIfSet( "name",    _name );
-            conf.addIfSet( "library", _library );
-            conf.addIfSet( "type",    _type );
-            conf.addIfSet( "tags",    _tags );
-            return conf;
-        }
-
-        void mergeConfig( const Config& conf ) {
-            ConfigOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
-    };
 
     /**
      * Configures one biome within a land cover layer.
@@ -214,7 +183,8 @@ namespace osgEarth { namespace Splat
             fromConfig( _conf );
         }
 
-        /** Name of the biome class to use */
+        /** Name of the biome classes to use. This is one or more class names from the legend,
+          * separated by whitespace. e.g.: "forest grassland swamp" */
         optional<std::string>& biomeClasses() { return _biomeClasses; }
         const optional<std::string>& biomeClasses() const { return _biomeClasses; }
 
@@ -267,21 +237,33 @@ namespace osgEarth { namespace Splat
             fromConfig( _conf );
         }
 
+        /** Name of the land cover layer */
         optional<std::string>& name() { return _name; }
         const optional<std::string>& name() const { return _name; }
 
+        /** Equivalent terrain LOD at which this layer will render */
         optional<unsigned>& lod() { return _lod; }
         const optional<unsigned>& lod() const { return _lod; }
 
+        /** Maximum viewing distance from camera */
         optional<float>& maxDistance() { return _maxDistance; }
         const optional<float>& maxDistance() const { return _maxDistance; }
 
+        /** Wind speed [0..1] */
         optional<float>& wind() { return _wind; }
         const optional<float>& wind() const { return _wind; }
 
+        /** Metric that controls the number of land cover instances will render
+          * in a given area. [1..5] */
         optional<float>& density() { return _density; }
         const optional<float>& density() const { return _density; }
 
+        /** Percentage of land that this layer's instances will cover [0..1]. Lower
+          * values will result is more "patchiness" of placement. */
+        optional<float>& fill() { return _fill; }
+        const optional<float>& fill() const { return _fill; }
+
+        /** Biomes comprising this layer. */
         std::vector<LandCoverBiomeOptions>& biomes() { return _biomes; }
         const std::vector<LandCoverBiomeOptions>& biomes() const { return _biomes; }
 
@@ -290,6 +272,7 @@ namespace osgEarth { namespace Splat
         optional<unsigned>                 _lod;
         optional<float>                    _maxDistance;
         optional<float>                    _density;
+        optional<float>                    _fill;
         optional<float>                    _wind;
         std::vector<LandCoverBiomeOptions> _biomes;
 
@@ -299,6 +282,7 @@ namespace osgEarth { namespace Splat
             conf.getIfSet( "lod",  _lod  );
             conf.getIfSet( "max_distance", _maxDistance );
             conf.getIfSet( "density", _density );
+            conf.getIfSet( "fill", _fill );
             conf.getIfSet( "wind", _wind );
             const Config* biomes = conf.child_ptr("biomes");
             if ( biomes ) {
@@ -316,6 +300,7 @@ namespace osgEarth { namespace Splat
             conf.updateIfSet( "lod",  _lod );
             conf.updateIfSet( "max_distance", _maxDistance );
             conf.updateIfSet( "density", _density );
+            conf.updateIfSet( "fill", _fill );
             conf.updateIfSet( "wind", _wind );
             if ( _biomes.size() > 0 ) {
                 Config biomes("biomes");

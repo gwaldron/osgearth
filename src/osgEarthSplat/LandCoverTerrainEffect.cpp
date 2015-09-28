@@ -95,6 +95,7 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                             stateset->addUniform( new osg::Uniform("oe_landcover_exposure", 1.0f) );
                     
                             stateset->addUniform( new osg::Uniform("oe_landcover_density",     layer->getDensity()) );
+                            stateset->addUniform( new osg::Uniform("oe_landcover_fill",        layer->getFill()) );
                             stateset->addUniform( new osg::Uniform("oe_landcover_maxDistance", layer->getMaxDistance()) );
 
                             int unit;

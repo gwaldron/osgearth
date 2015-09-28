@@ -64,6 +64,8 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
         setMaxDistance( in.maxDistance().get() );
     if ( in.density().isSet() )
         setDensity( in.density().get() );
+    if ( in.fill().isSet() )
+        setFill( in.fill().get() );
     if ( in.wind().isSet() )
         setWind( in.wind().get() );
 

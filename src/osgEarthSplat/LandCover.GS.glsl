@@ -18,6 +18,7 @@ uniform float oe_landcover_height;          // height of each billboard
 uniform float oe_landcover_ao;              // fake ambient occlusion of ground verts (0=full)
 uniform float oe_landcover_colorVariation;  // so they don't all look the same
 
+uniform float oe_landcover_fill;            // percentage of points that make it through, based on noise function
 uniform float oe_landcover_windFactor;      // wind blowing the foliage
 uniform float oe_landcover_maxDistance;     // distance at which flora disappears
 
@@ -27,7 +28,7 @@ uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
 uniform float     oe_tile_elevationSize;
 
-uniform sampler2D oe_noise_tex;
+uniform sampler2D oe_noise_tex;             // from the Noise extension. TODO.
 
 // Input tile coordinates [0..1]
 in vec4 oe_layer_tilec;
@@ -128,6 +129,10 @@ oe_landcover_geom()
     
     // sample the noise texture.
     float n = texture(oe_noise_tex, tileUV).r;
+
+    // discard instances based on noise value threshold (coverage).
+    if ( n > oe_landcover_fill )
+        return;
 	
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);

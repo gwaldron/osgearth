@@ -62,10 +62,9 @@
                     <layer name="trees" lod="14" max_distance="6400" density="2.0">   
                         <biomes>
                             <biome classes="forest forest1 forest2 forest3 forest4">
-                                <billboard url="../data/splat/pine.png" width="15.0" height="20.0"/>
-                            </biome>
-                            <biome classes="forest4">
+                                <billboard url="../data/splat/pine.png" width="12.0" height="20.0"/>
                                 <billboard url="../data/splat/cypress.png" width="10.0" height="13"/>
+                                <billboard url="../data/splat/pine2.png" width="10.0" height="13"/>
                             </biome>
                         </biomes>
                     </layer>

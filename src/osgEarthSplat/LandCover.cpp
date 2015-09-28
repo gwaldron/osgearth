@@ -106,7 +106,7 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
             }
             else
             {
-                OE_WARN << LC << "Failed to load billboard image from \"" << bs->url() << "\"\n";
+                OE_WARN << LC << "Failed to load billboard image from \"" << bs->url()->eval() << "\"\n";
             }
         } 
         else

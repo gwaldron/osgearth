@@ -20,7 +20,6 @@ uniform sampler2D landUseTex;
 uniform mat4      landUseTexMatrix;
 
 uniform sampler2D oe_noise_tex;
-uniform float     shmoo;
 
 // stage global: tile coordinates
 vec4 oe_layer_tilec;

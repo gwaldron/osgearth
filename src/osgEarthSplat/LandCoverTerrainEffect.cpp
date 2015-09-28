@@ -28,8 +28,10 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/URI>
 #include <osgEarth/ShaderLoader>
+#include <osgEarth/ImageUtils>
 
 #include <osg/Texture2D>
+#include <osgUtil/Optimizer>
 
 #include "SplatShaders"
 
@@ -98,30 +100,83 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                             int unit;
                             if ( engine->getResources()->reserveTextureImageUnit(unit, "LandCover") )
                             {
-                                // For now, one texture per biome.
-                                const LandCoverBillboard& bb = biome->getBillboards().front();
-                                if ( bb._image.valid() )
+                                osg::Texture* tex = 0L;
+                                if ( true ) //biome->getBillboards().size() > 1 )
                                 {
-                                    osg::Texture2D* tex = new osg::Texture2D( bb._image.get() );
+                                    int s=-1, t=-1;
+                                    osg::Texture2DArray* tex = new osg::Texture2DArray();
+                                    for(int i=0; i<biome->getBillboards().size(); ++i)
+                                    {
+                                        const LandCoverBillboard& bb = biome->getBillboards().at(i);
 
+                                        osg::ref_ptr<osg::Image> im;
+
+                                        if ( s < 0 )
+                                        {
+                                            s  = bb._image->s();
+                                            t  = bb._image->t();
+                                            im = bb._image.get();
+                                            tex->setTextureSize(s, t, biome->getBillboards().size());         
+
+                                            // Billboard parameters:
+                                            // TODO: per-billboard settings
+                                            stateset->addUniform( new osg::Uniform("oe_landcover_width",  bb._width) );
+                                            stateset->addUniform( new osg::Uniform("oe_landcover_height", bb._height) );                                   
+                                        }
+                                        else
+                                        {
+                                            if ( bb._image->s() != s || bb._image->t() != t )
+                                            {
+                                                ImageUtils::resizeImage( bb._image.get(), s, t, im );
+                                            }
+                                            else
+                                            {
+                                                im = bb._image.get();
+                                            }
+                                        }
+
+                                        tex->setImage( i, im.get() );
+                                    }
+                                    
                                     tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
                                     tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
-                                    tex->setWrap  (tex->WRAP_S, tex->REPEAT);
-                                    tex->setWrap  (tex->WRAP_T, tex->REPEAT);
+                                    tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
+                                    tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
                                     tex->setUnRefImageDataAfterApply( true );
                                     tex->setMaxAnisotropy( 4.0 );
                                     tex->setResizeNonPowerOfTwoHint( false );
 
                                     stateset->setTextureAttribute(unit, tex);
-                                    stateset->addUniform(new osg::Uniform("oe_landcover_tex", unit) );
-
-                                    // Billboard parameters:
-                                    stateset->addUniform( new osg::Uniform("oe_landcover_width",  bb._width) );
-                                    stateset->addUniform( new osg::Uniform("oe_landcover_height", bb._height) );
+                                    stateset->addUniform(new osg::Uniform("oe_landcover_texArray", unit) );
+                                    stateset->addUniform(new osg::Uniform("oe_landcover_arraySize", (float)tex->getNumImages()));
                                 }
                                 else
                                 {
-                                    OE_WARN << LC << "ILLEGAL: null image for a land cover biome billboard\n";
+                                    // For now, one texture per biome.
+                                    const LandCoverBillboard& bb = biome->getBillboards().front();
+                                    if ( bb._image.valid() )
+                                    {
+                                        osg::Texture2D* tex = new osg::Texture2D( bb._image.get() );
+
+                                        tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
+                                        tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+                                        tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
+                                        tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
+                                        tex->setUnRefImageDataAfterApply( true );
+                                        tex->setMaxAnisotropy( 4.0 );
+                                        tex->setResizeNonPowerOfTwoHint( false );
+
+                                        stateset->setTextureAttribute(unit, tex);
+                                        stateset->addUniform(new osg::Uniform("oe_landcover_tex", unit) );
+
+                                        // Billboard parameters:
+                                        stateset->addUniform( new osg::Uniform("oe_landcover_width",  bb._width) );
+                                        stateset->addUniform( new osg::Uniform("oe_landcover_height", bb._height) );
+                                    }
+                                    else
+                                    {
+                                        OE_WARN << LC << "ILLEGAL: null image for a land cover biome billboard\n";
+                                    }
                                 }
                             }
                             else

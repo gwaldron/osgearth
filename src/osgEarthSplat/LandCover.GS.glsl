@@ -21,6 +21,8 @@ uniform float oe_landcover_colorVariation;  // so they don't all look the same
 uniform float oe_landcover_windFactor;      // wind blowing the foliage
 uniform float oe_landcover_maxDistance;     // distance at which flora disappears
 
+uniform float oe_landcover_arraySize;       // number of textures in the texture array
+
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
 uniform float     oe_tile_elevationSize;
@@ -36,6 +38,9 @@ out vec2 oe_landcover_texCoord;
 // Output a falloff metric to the fragment shader for distance blending
 out float oe_landcover_falloff;
 
+// Output that selects the land cover texture from the texture array (non interpolated)
+flat out float oe_landcover_arrayIndex;
+
 // Output colors/normals:
 out vec4 vp_Color;
 out vec3 vp_Normal;
@@ -45,6 +50,7 @@ in vec3 oe_UpVectorView;
 
 // SDK import
 float oe_terrain_getElevation(in vec2);
+
 
 
 // Sample the elevation texture and move the vertex accordingly.
@@ -137,19 +143,23 @@ oe_landcover_geom()
     // Tell the fragment shader to blend into the distance.
     oe_landcover_falloff = nRange;
 
+    // select a billboard to use based on the noise value.
+    oe_landcover_arrayIndex = floor(n * oe_landcover_arraySize);
+
 	// compute the grass vertices in view space.
-    vec4 newVerts[4];
+    //vec4 newVerts[4];
+    vec4 LL, LR, UL, UR;
     
     const vec3 tangent_view = vec3(1,0,0); // assuming no roll.
     
-    newVerts[0] = vec4(center_view.xyz - tangent_view*width*0.5, 1.0);
-    newVerts[1] = vec4(center_view.xyz + tangent_view*width*0.5, 1.0);
-    newVerts[2] = vec4(newVerts[0].xyz + up_view*height, 1.0);
-    newVerts[3] = vec4(newVerts[1].xyz + up_view*height, 1.0);
+    LL = vec4(center_view.xyz - tangent_view*width*0.5, 1.0);
+    LR = vec4(center_view.xyz + tangent_view*width*0.5, 1.0);
+    UL = vec4(LL.xyz + up_view*height, 1.0);
+    UR = vec4(LR.xyz + up_view*height, 1.0);
                       
     // TODO: animate based on wind parameters.
-    newVerts[2].xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1+n), oe_landcover_width*oe_landcover_windFactor*n, newVerts[2].x);
-    newVerts[3].xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1-n), oe_landcover_width*oe_landcover_windFactor*n, tileUV.t);
+    UL.xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1+n), oe_landcover_width*oe_landcover_windFactor*n, UL.x);
+    UR.xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1-n), oe_landcover_width*oe_landcover_windFactor*n, tileUV.t);
     
     // Color variation
     float cv = clamp(n, 1.0-oe_landcover_colorVariation, 1.0);
@@ -158,22 +168,22 @@ oe_landcover_geom()
     normal.xy += vec2(oe_landcover_rangeRand(-0.25, 0.25, vec2(n)));
     vp_Normal = normalize(gl_NormalMatrix * normal);
     
-    vp_Color = vec4(cv*oe_landcover_ao, cv*oe_landcover_ao, cv*oe_landcover_ao, falloff);
-    gl_Position = newVerts[0];
+    vp_Color = vec4(vec3(cv*oe_landcover_ao), falloff);
+    gl_Position = LL;
     oe_landcover_texCoord = vec2(0,0);
     VP_EmitViewVertex();
     
-    gl_Position = newVerts[1];
+    gl_Position = LR;
     oe_landcover_texCoord = vec2(1,0);
     VP_EmitViewVertex();
 
     vp_Color = vec4(cv,cv,cv,falloff);      
-    gl_Position = newVerts[2];
+    gl_Position = UL;
     oe_landcover_texCoord = vec2(0,1);
     VP_EmitViewVertex();
 
     oe_landcover_texCoord = vec2(1,1);
-    gl_Position = newVerts[3];
+    gl_Position = UR;
     VP_EmitViewVertex();
                     
     EndPrimitive();

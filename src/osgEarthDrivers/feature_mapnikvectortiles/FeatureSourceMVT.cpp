@@ -117,9 +117,7 @@ public:
         }
 
 
-        // We use the max level for the first level as well since we don't really support
-        // non-additive feature sources yet.  Use the proper min level in the future.
-        result->setFirstLevel(_maxLevel);
+        result->setFirstLevel(_minLevel);
         result->setMaxLevel(_maxLevel);
         result->setProfile(profile);
         result->geoInterp() = osgEarth::GEOINTERP_RHUMB_LINE;

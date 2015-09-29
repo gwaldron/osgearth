@@ -7,12 +7,12 @@ osgEarth Sample - REX Engine.
     <options>        
         <terrain driver="rex"
                  skirt_ratio="0.001"
-                 tile_size="17"
+                 tile_size="33"
                  merges_per_frame="25"
                  morph_terrain="true"
                  morph_imagery="true"
                  high_resolution_first="true"
-                 normal_maps="false">
+                 normal_maps="true">
         </terrain>
     </options>
     

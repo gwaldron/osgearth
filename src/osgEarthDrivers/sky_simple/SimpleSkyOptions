@@ -35,7 +35,7 @@ namespace osgEarth { namespace Drivers { namespace SimpleSky
         SimpleSkyOptions(const ConfigOptions& options =ConfigOptions()) :
           SkyOptions(options),
           _atmosphericLighting(true),
-          _exposure           (3.0f),
+          _exposure           (3.8f),
           _allowWireframe     (false)
         {
             setDriver( "simple" );

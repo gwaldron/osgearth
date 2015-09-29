@@ -246,6 +246,12 @@ namespace osgEarth
         optional<bool>& unRefImageDataAfterApply() { return _unRefImageDataAfterApply; }
         const optional<bool>& unRefImageDataAfterApply() const { return _unRefImageDataAfterApply; }
 
+        /**
+         * Adds a texture image unit number that osgEarth should never use.
+         */
+        void setTextureImageUnitOffLimits(int unit);
+        const std::set<int> getOffLimitsTextureImageUnits() const;
+
     protected:
         virtual ~Registry();
         Registry();
@@ -260,7 +266,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _spherical_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
-        Threading::ReadWriteMutex _regMutex;  
+        mutable Threading::ReadWriteMutex _regMutex;  
         int _numGdalMutexGets;
 
         osg::ref_ptr<Cache> _cache;
@@ -313,6 +319,8 @@ namespace osgEarth
         optional<bool> _unRefImageDataAfterApply;
 
         osg::ref_ptr<ObjectIndex> _objectIndex;
+
+        std::set<int> _offLimitsTextureImageUnits;
     };
 }
 

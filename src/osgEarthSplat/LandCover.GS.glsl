@@ -22,13 +22,21 @@ uniform float oe_landcover_fill;            // percentage of points that make it
 uniform float oe_landcover_windFactor;      // wind blowing the foliage
 uniform float oe_landcover_maxDistance;     // distance at which flora disappears
 
-uniform float oe_landcover_arraySize;       // number of textures in the texture array
+uniform float oe_landcover_contrast;
+uniform float oe_landcover_brightness;
 
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
 uniform float     oe_tile_elevationSize;
 
-uniform sampler2D oe_noise_tex;             // from the Noise extension. TODO.
+// Noise texture:
+uniform sampler2D oe_splat_noiseTex;
+
+// different noise texture channels:
+#define NOISE_SMOOTH   0
+#define NOISE_RANDOM   1
+#define NOISE_RANDOM_2 2
+#define NOISE_CLUMPY   3
 
 // Input tile coordinates [0..1]
 in vec4 oe_layer_tilec;
@@ -36,18 +44,35 @@ in vec4 oe_layer_tilec;
 // Output grass texture coordinates to the fragment shader
 out vec2 oe_landcover_texCoord;
 
-// Output a falloff metric to the fragment shader for distance blending
-out float oe_landcover_falloff;
+// Input from the TCS that 
+flat in int oe_landcover_biomeIndex;
+
 
 // Output that selects the land cover texture from the texture array (non interpolated)
 flat out float oe_landcover_arrayIndex;
+
+struct oe_landcover_Biome {
+    int firstBillboardIndex;
+    int numBillboards;
+    float density;
+    float fill;
+};
+void oe_landcover_getBiome(in int biomeIndex, out oe_landcover_Biome biome);
+
+struct oe_landcover_Billboard {
+    int arrayIndex;
+    float width;
+    float height;
+};
+void oe_landcover_getBillboard(in int billboardIndex, out oe_landcover_Billboard bb);
+
 
 // Output colors/normals:
 out vec4 vp_Color;
 out vec3 vp_Normal;
 
 // Up vector for clamping.
-in vec3 oe_UpVectorView;  
+in vec3 oe_UpVectorView;
 
 // SDK import
 float oe_terrain_getElevation(in vec2);
@@ -128,28 +153,38 @@ oe_landcover_geom()
     float nRange = clamp(-center_view.z/oe_landcover_maxDistance, 0.0, 1.0);
     
     // sample the noise texture.
-    float n = texture(oe_noise_tex, tileUV).r;
+    vec4 noise = texture(oe_splat_noiseTex, tileUV);
 
-    // discard instances based on noise value threshold (coverage).
-    if ( n > oe_landcover_fill )
+    // discard instances based on noise value threshold (coverage). If it passes,
+    // scale the noise value back up to [0..1]
+    if ( noise[NOISE_SMOOTH] > oe_landcover_fill )
         return;
+    else
+        noise[NOISE_SMOOTH] /= oe_landcover_fill;
+
+    // look up biome:
+    oe_landcover_Biome biome;
+    oe_landcover_getBiome(oe_landcover_biomeIndex, biome);
+
+    // select a billboard seemingly at random. Need to scale n to account for the fill limit first though.
+    int billboardIndex = biome.firstBillboardIndex + int( floor(noise[NOISE_RANDOM] * float(biome.numBillboards) ) );
+    oe_landcover_Billboard billboard;
+    oe_landcover_getBillboard(billboardIndex, billboard);
+    
+    // pass the billboard's array index along to the fragment shader.
+    oe_landcover_arrayIndex = float(billboard.arrayIndex);
+    
 	
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
 
-    float width = oe_landcover_width;
+    float width = billboard.width; //oe_landcover_width;
     width *= falloff;
     
     // vary the height of each instance and shrink it as it disappears into the distance.
-    float height = oe_landcover_height;
-    height *= abs(1.0+n);
+    float height = billboard.height; //oe_landcover_height;
+    height *= abs(1.0 + noise[NOISE_RANDOM_2]);
     height *= falloff;
-    
-    // Tell the fragment shader to blend into the distance.
-    oe_landcover_falloff = nRange;
-
-    // select a billboard to use based on the noise value.
-    oe_landcover_arrayIndex = floor(n * oe_landcover_arraySize);
 
 	// compute the grass vertices in view space.
     //vec4 newVerts[4];
@@ -163,17 +198,21 @@ oe_landcover_geom()
     UR = vec4(LR.xyz + up_view*height, 1.0);
                       
     // TODO: animate based on wind parameters.
-    UL.xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1+n), oe_landcover_width*oe_landcover_windFactor*n, UL.x);
-    UR.xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1-n), oe_landcover_width*oe_landcover_windFactor*n, tileUV.t);
+    float nw = noise[NOISE_SMOOTH];
+    float wind = width*oe_landcover_windFactor*nw;
+    UL.xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1+nw), wind, UL.x);
+    UR.xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1-nw), wind, tileUV.t);
     
-    // Color variation
-    float cv = clamp(n, 1.0-oe_landcover_colorVariation, 1.0);
+    // Color variation, brightness, and contrast:
+    vec3 color = vec3( noise[NOISE_RANDOM_2] );
+    color = ( ((color - 0.5) * oe_landcover_contrast + 0.5) * oe_landcover_brightness);
 
     vec3 normal = vec3(0,0,1);
-    normal.xy += vec2(oe_landcover_rangeRand(-0.25, 0.25, vec2(n)));
+    normal.xy += vec2(oe_landcover_rangeRand(-0.25, 0.25, vec2(noise[NOISE_CLUMPY])));
     vp_Normal = normalize(gl_NormalMatrix * normal);
     
-    vp_Color = vec4(vec3(cv*oe_landcover_ao), falloff);
+    vp_Color = vec4(color*oe_landcover_ao, falloff);
+
     gl_Position = LL;
     oe_landcover_texCoord = vec2(0,0);
     VP_EmitViewVertex();
@@ -182,7 +221,8 @@ oe_landcover_geom()
     oe_landcover_texCoord = vec2(1,0);
     VP_EmitViewVertex();
 
-    vp_Color = vec4(cv,cv,cv,falloff);      
+    vp_Color = vec4(color,falloff);      
+
     gl_Position = UL;
     oe_landcover_texCoord = vec2(0,1);
     VP_EmitViewVertex();

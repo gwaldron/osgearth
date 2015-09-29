@@ -69,9 +69,7 @@ namespace osgEarth { namespace Splat
         const LandCoverBillboards& getBillboards() const { return _billboards; }
 
         /** Build a shader that tests against the classes for this biome. */
-        osg::Shader* createPredicateShader(
-            const Coverage* coverage, 
-            osg::Shader::Type stage) const;
+        osg::Shader* createPredicateShader(const Coverage* coverage) const;
 
     protected:
         virtual ~LandCoverBiome() { }
@@ -93,7 +91,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT LandCoverLayer : public osg::Referenced
     {
     public:
-        LandCoverLayer() : _lod(14), _maxDistance(1000.0f), _density(1.0f), _fill(1.0f), _wind(0.0f) { }
+        LandCoverLayer() : _lod(14), _maxDistance(1000.0f), _density(1.0f), _fill(1.0f), _wind(0.0f), _brightness(1.0f), _contrast(0.5f) { }
 
         /** Name of this layer */
         void setName(const std::string& name) { _name = name; }
@@ -119,9 +117,25 @@ namespace osgEarth { namespace Splat
         void setWind(float value) { _wind = value; }
         float getWind() const { return _wind; }
 
+        /** Brightness [0..2+] .. 1 = default */
+        void setBrightness(float value) { _brightness = value; }
+        float getBrightness() const { return _brightness; }
+
+        /** Contrast [0..1] .. 0 = default */
+        void setContrast(float value) { _contrast = value; }
+        float getContrast() const { return _contrast; }
+
         /** Biomes comprising this layer. */
         LandCoverBiomes& getBiomes() { return _biomes; }
         const LandCoverBiomes& getBiomes() const { return _biomes; }
+
+    public:
+
+        int getTotalNumBillboards() const;
+
+        osg::Shader* createShader() const;
+
+        osg::Shader* createPredicateShader(const Coverage*) const;
 
     protected:
         virtual ~LandCoverLayer() { }
@@ -132,6 +146,8 @@ namespace osgEarth { namespace Splat
         float           _density;
         float           _fill;
         float           _wind;
+        float           _brightness;
+        float           _contrast;
         LandCoverBiomes _biomes;
 
     public:
@@ -198,8 +214,7 @@ namespace osgEarth { namespace Splat
 
     public:        
         Config getConfig() const {
-            Config conf = ConfigOptions::getConfig();
-            conf.key() = "biome";
+            Config conf("biome");
             conf.updateIfSet( "classes", _biomeClasses );
             for(int i=0; i<_symbols.size(); ++i) {
                 Config symbolConf = _symbols[i]->getConfig();
@@ -263,6 +278,14 @@ namespace osgEarth { namespace Splat
         optional<float>& fill() { return _fill; }
         const optional<float>& fill() const { return _fill; }
 
+        /** Brightness factor for rendering [1..], 1 = default */
+        optional<float>& brightness() { return _brightness; }
+        const optional<float>& brightness() const { return _brightness; }
+
+        /** Contrast factor for rendering [0..], 0 = default */
+        optional<float>& contrast() { return _contrast; }
+        const optional<float>& contrast() const { return _contrast; }
+
         /** Biomes comprising this layer. */
         std::vector<LandCoverBiomeOptions>& biomes() { return _biomes; }
         const std::vector<LandCoverBiomeOptions>& biomes() const { return _biomes; }
@@ -274,6 +297,8 @@ namespace osgEarth { namespace Splat
         optional<float>                    _density;
         optional<float>                    _fill;
         optional<float>                    _wind;
+        optional<float>                    _brightness;
+        optional<float>                    _contrast;
         std::vector<LandCoverBiomeOptions> _biomes;
 
     public:
@@ -284,6 +309,8 @@ namespace osgEarth { namespace Splat
             conf.getIfSet( "density", _density );
             conf.getIfSet( "fill", _fill );
             conf.getIfSet( "wind", _wind );
+            conf.getIfSet( "brightness", _brightness );
+            conf.getIfSet( "contrast", _contrast );
             const Config* biomes = conf.child_ptr("biomes");
             if ( biomes ) {
                 const ConfigSet& biomesVec = biomes->children();
@@ -302,6 +329,8 @@ namespace osgEarth { namespace Splat
             conf.updateIfSet( "density", _density );
             conf.updateIfSet( "fill", _fill );
             conf.updateIfSet( "wind", _wind );
+            conf.updateIfSet( "brightness", _brightness );
+            conf.updateIfSet( "contrast", _contrast );
             if ( _biomes.size() > 0 ) {
                 Config biomes("biomes");
                 for(int i=0; i<_biomes.size(); ++i) {

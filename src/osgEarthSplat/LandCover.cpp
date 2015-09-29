@@ -68,6 +68,10 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
         setFill( in.fill().get() );
     if ( in.wind().isSet() )
         setWind( in.wind().get() );
+    if ( in.brightness().isSet() )
+        setBrightness( in.brightness().get() );
+    if ( in.contrast().isSet() )
+        setContrast( in.contrast().get() );
 
     for(int i=0; i<in.biomes().size(); ++i)
     {
@@ -79,6 +83,198 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
     }
 
     return true;
+}
+
+int
+LandCoverLayer::getTotalNumBillboards() const
+{
+    int count = 0;
+    for(int i=0; i<getBiomes().size(); ++i)
+    {
+        count += getBiomes().at(i)->getBillboards().size();
+    }
+    return count;
+}
+
+osg::Shader*
+LandCoverLayer::createShader() const
+{
+    std::stringstream biomeBuf;
+    std::stringstream billboardBuf;
+
+    int totalBillboards = getTotalNumBillboards();
+
+    // encode all the biome data.
+    biomeBuf << 
+        "struct oe_landcover_Biome { \n"
+        "    int firstBillboardIndex; \n"
+        "    int numBillboards; \n"
+        "    float density; \n"
+        "    float fill; \n"
+        "}; \n"
+
+        "const oe_landcover_Biome oe_landcover_biomes[" << getBiomes().size() << "] = oe_landcover_Biome[" << getBiomes().size() << "] ( \n";
+
+    billboardBuf <<
+        "struct oe_landcover_Billboard { \n"
+        "    int arrayIndex; \n"
+        "    float width; \n"
+        "    float height; \n"
+        "}; \n"
+
+        "const oe_landcover_Billboard oe_landcover_billboards[" << totalBillboards << "] = oe_landcover_Billboard[" << totalBillboards << "](\n";
+    
+    int index = 0;
+    for(int i=0; i<getBiomes().size(); ++i)
+    {
+        const LandCoverBiome* biome = getBiomes().at(i).get();
+
+        biomeBuf << "    oe_landcover_Biome(" 
+            << index << ", "
+            << biome->getBillboards().size() 
+            << ", float(" << getDensity() << ")"
+            << ", float(" << getFill() << ") )";
+        
+        for(int j=0; j<biome->getBillboards().size(); ++j)
+        {
+            const LandCoverBillboard& bb = biome->getBillboards().at(j);
+
+            billboardBuf
+                << "    oe_landcover_Billboard("
+                << index 
+                << ", float(" << bb._width << ")"
+                << ", float(" << bb._height << ")"
+                << ")";
+            
+            ++index;
+            if ( index < totalBillboards )
+                billboardBuf << ",\n";
+        }
+
+        if ( (i+1) < getBiomes().size() )
+            biomeBuf << ",\n";
+    }
+
+    biomeBuf
+        << "\n);\n";
+
+    billboardBuf
+        << "\n); \n";
+
+    biomeBuf 
+        << "void oe_landcover_getBiome(in int biomeIndex, out oe_landcover_Biome biome) { \n"
+        << "    biome = oe_landcover_biomes[biomeIndex]; \n"
+        << "} \n";
+        
+    billboardBuf
+        << "void oe_landcover_getBillboard(in int billboardIndex, out oe_landcover_Billboard billboard) { \n"
+        << "    billboard = oe_landcover_billboards[billboardIndex]; \n"
+        << "} \n";
+    
+    osg::ref_ptr<ImageLayer> layer;
+
+    osg::Shader* shader = new osg::Shader();
+    shader->setName( "LandCoverLayer" );
+    shader->setShaderSource( Stringify() << "#version 330\n" << biomeBuf.str() << "\n" << billboardBuf.str() );
+    return shader;
+}
+
+osg::Shader*
+LandCoverLayer::createPredicateShader(const Coverage* coverage) const
+{
+    const char* defaultCode = "int oe_landcover_getBiomeIndex(in vec4 coords) { return -1; }\n";
+
+    std::stringstream buf;
+    buf << "#version 330\n";
+    
+    osg::ref_ptr<ImageLayer> layer;
+
+    if ( !coverage )
+    {
+        buf << defaultCode;
+        OE_INFO << LC << "No coverage; generating default coverage predicate\n";
+    }
+    else if ( !coverage->getLegend() )
+    {
+        buf << defaultCode;
+        OE_INFO << LC << "No legend; generating default coverage predicate\n";
+    }
+    else if ( !coverage->lockLayer(layer) )
+    {
+        buf << defaultCode;
+        OE_INFO << LC << "No classification layer; generating default coverage predicate\n";
+    }
+    else
+    {
+        const std::string& sampler = layer->shareTexUniformName().get();
+        const std::string& matrix  = layer->shareTexMatUniformName().get();
+
+        buf << "uniform sampler2D " << sampler << ";\n"
+            << "uniform mat4 " << matrix << ";\n"
+            << "int oe_landcover_getBiomeIndex(in vec4 coords) { \n"
+            << "    float value = textureLod(" << sampler << ", (" << matrix << " * coords).st, 0).r;\n";
+
+        for(int biomeIndex=0; biomeIndex<getBiomes().size(); ++biomeIndex)
+        {
+            const LandCoverBiome* biome = getBiomes().at(biomeIndex).get();
+
+            if ( !biome->getClasses().empty() )
+            {
+                StringVector classes;
+                StringTokenizer(biome->getClasses(), classes, " ", "\"", false);
+
+                for(int i=0; i<classes.size(); ++i)
+                {
+                    std::vector<const CoverageValuePredicate*> predicates;
+                    if ( coverage->getLegend()->getPredicatesForClass(classes[i], predicates) )
+                    {
+                        for(std::vector<const CoverageValuePredicate*>::const_iterator p = predicates.begin();
+                            p != predicates.end(); 
+                            ++p)
+                        {
+                            const CoverageValuePredicate* predicate = *p;
+
+                            if ( predicate->_exactValue.isSet() )
+                            {
+                                buf << "    if (value == " << predicate->_exactValue.get() << ") return " << biomeIndex << "; \n";
+                            }
+                            else if ( predicate->_minValue.isSet() && predicate->_maxValue.isSet() )
+                            {
+                                buf << "    if (value >= " << predicate->_minValue.get() << " && value <= " << predicate->_maxValue.get() << ") return " << biomeIndex << "; \n";
+                            }
+                            else if ( predicate->_minValue.isSet() )
+                            {
+                                buf << "    if (value >= " << predicate->_minValue.get() << ")  return " << biomeIndex << "; \n";
+                            }
+                            else if ( predicate->_maxValue.isSet() )
+                            {
+                                buf << "    if (value <= " << predicate->_maxValue.get() << ") return " << biomeIndex << "; \n";
+                            }
+
+                            else 
+                            {
+                                OE_WARN << LC << "Class \"" << classes[i] << "\" found, but no exact/min/max value was set in the legend\n";
+                            }
+                        }
+                    }
+                    else
+                    {
+                        OE_WARN << LC << "Class \"" << classes[i] << "\" not found in the legend!\n";
+                    }
+                }
+            }
+
+            buf << "    return -1; \n";
+        }
+
+        buf << "}\n";
+    }
+    
+    osg::Shader* shader = new osg::Shader();
+    shader->setName("oe Landcover predicate function");
+    shader->setShaderSource( buf.str() );
+
+    return shader;
 }
 
 //............................................................................
@@ -121,7 +317,7 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 }
 
 osg::Shader*
-LandCoverBiome::createPredicateShader(const Coverage* coverage, osg::Shader::Type type) const
+LandCoverBiome::createPredicateShader(const Coverage* coverage) const
 {
     const char* defaultCode = "bool oe_landcover_passesCoverage(in vec4 coords) { return true; }\n";
 
@@ -213,9 +409,10 @@ LandCoverBiome::createPredicateShader(const Coverage* coverage, osg::Shader::Typ
         buf << "}\n";
     }
     
-    osg::Shader* shader = new osg::Shader(type);
+    osg::Shader* shader = new osg::Shader();
     shader->setName("oe Landcover predicate function");
     shader->setShaderSource( buf.str() );
 
     return shader;
 }
+

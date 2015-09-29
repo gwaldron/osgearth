@@ -339,8 +339,7 @@ public:
                   style = itr->second;
               }
 
-
-              FeatureNode* featureNode = new FeatureNode(_mapNode, features, style);
+              FeatureNode* featureNode = new FeatureNode(_mapNode, features, style, GeometryCompilerOptions(), _styleSheet.get() );
               return featureNode;
           }
           else
@@ -350,15 +349,28 @@ public:
           }
       }
 
-      void setStyle(unsigned int lod, const Style& style)
+
+      // Set a style per lod
+      void setLODStyle(unsigned int lod, const Style& style)
       {
           _styleMap[lod] = style;
+      }
+
+      StyleSheet* getStyleSheet() const
+      {
+          return _styleSheet;
+      }
+
+      void setStyleSheet(StyleSheet* styleSheet)
+      {
+          _styleSheet = styleSheet;
       }
 
       typedef std::map<unsigned int, Style > StyleLODMap;
       StyleLODMap _styleMap;
 
       osg::ref_ptr < FeatureSource > _features;
+      osg::ref_ptr < StyleSheet > _styleSheet;
       Style _style;
       osg::ref_ptr< MapNode > _mapNode;
 };
@@ -448,12 +460,58 @@ int main(int argc, char** argv)
         FeaturePager* featurePager = new FeaturePager(features, getStyle(randomColor(), 0.0), mapNode);
 
         // setup styles per level.
-        featurePager->setStyle(9, getStyle(randomColor(), 0.0));
-        featurePager->setStyle(10, getStyle(randomColor(), 0.0));
-        featurePager->setStyle(11, getStyle(randomColor(), 0.0));
-        featurePager->setStyle(12, getStyle(randomColor(), 0.0));
-        // Only extrude once we get to the highest level
-        featurePager->setStyle(13, getStyle(randomColor(), 50.0));
+        featurePager->setLODStyle(9, getStyle(randomColor(), 0.0));
+        featurePager->setLODStyle(10, getStyle(randomColor(), 0.0));
+        featurePager->setLODStyle(11, getStyle(randomColor(), 0.0));
+
+        // Start extruding at level, 12, but only do a simple extrusion with no textures.
+        featurePager->setLODStyle(12, getStyle(randomColor(), 50.0));
+
+       
+        // Style 13 is where the full resolution data comes, in so use a fancy textured and extruded style
+        // a style for the building data:
+        Style buildingStyle;
+        buildingStyle.setName( "buildings" );
+
+        // Extrude the shapes into 3D buildings.
+        ExtrusionSymbol* extrusion = buildingStyle.getOrCreate<ExtrusionSymbol>();
+        extrusion->heightExpression() = 50.0;
+        extrusion->flatten() = true;
+        extrusion->wallStyleName() = "building-wall";
+        extrusion->roofStyleName() = "building-roof";
+
+        // a style for the wall textures:
+        Style wallStyle;
+        wallStyle.setName( "building-wall" );
+        SkinSymbol* wallSkin = wallStyle.getOrCreate<SkinSymbol>();
+        wallSkin->library() = "us_resources";
+        wallSkin->addTag( "building" );
+        wallSkin->randomSeed() = 1;
+
+        // a style for the rooftop textures:
+        Style roofStyle;
+        roofStyle.setName( "building-roof" );
+        SkinSymbol* roofSkin = roofStyle.getOrCreate<SkinSymbol>();
+        roofSkin->library() = "us_resources";
+        roofSkin->addTag( "rooftop" );
+        roofSkin->randomSeed() = 1;
+        roofSkin->isTiled() = true;
+
+        // assemble a stylesheet and add our styles to it:
+        StyleSheet* styleSheet = new StyleSheet();
+        styleSheet->addStyle( buildingStyle );
+        styleSheet->addStyle( wallStyle );
+        styleSheet->addStyle( roofStyle );
+
+        // load a resource library that contains the building textures.
+        ResourceLibrary* reslib = new ResourceLibrary( "us_resources", "../data/resources/textures_us/catalog.xml" );
+        styleSheet->addResourceLibrary( reslib );
+
+
+        // Give the FeaturePager it's overall stylesheet.
+        featurePager->setStyleSheet( styleSheet );
+
+        featurePager->setLODStyle(13, buildingStyle );
 
         pager = featurePager;
     }

@@ -18,7 +18,7 @@
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
      
-    <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="13">
+    <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
         <base_lod>12</base_lod>
         <tile_size>256</tile_size>
         <cache_policy usage="none"/>

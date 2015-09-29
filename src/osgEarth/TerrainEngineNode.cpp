@@ -194,8 +194,11 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     if ( !_map->isGeocentric() )
         this->setEllipsoidModel( NULL );
     
-    // install the proper layer composition technique:
+    // install an object to manage texture image unit usage:
     _texCompositor = new TextureCompositor();
+    std::set<int> offLimits = osgEarth::Registry::instance()->getOffLimitsTextureImageUnits();
+    for(std::set<int>::const_iterator i = offLimits.begin(); i != offLimits.end(); ++i)
+        _texCompositor->setTextureImageUnitOffLimits( *i );
 
     // then register the callback so we can process further map model changes
     _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );

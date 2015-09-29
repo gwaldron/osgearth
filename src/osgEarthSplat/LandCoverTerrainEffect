@@ -79,6 +79,7 @@ namespace osgEarth { namespace Splat
 
         osg::ref_ptr<Coverage>  _coverage;
         osg::ref_ptr<LandCover> _landCover;
+        int _noiseTexUnit;
     };
 
 } } // namespace osgEarth::Splat

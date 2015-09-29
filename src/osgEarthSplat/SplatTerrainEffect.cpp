@@ -22,6 +22,7 @@
 #include "SplatTerrainEffect"
 #include "SplatOptions"
 #include "Biome"
+#include "NoiseTextureFactory"
 
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
@@ -41,7 +42,7 @@
 
 #define COVERAGE_SAMPLER "oe_splat_coverageTex"
 #define SPLAT_SAMPLER    "oe_splatTex"
-#define NOISE_SAMPLER    "oe_splat_noiseTex"
+#define NOISE_SAMPLER    "oe_noise_tex"
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -56,12 +57,6 @@ _gpuNoise    ( false )
     _blurUniform        = new osg::Uniform("oe_splat_blur",           1.0f );
     _useBilinearUniform = new osg::Uniform("oe_splat_useBilinear",    1.0f );
     _noiseScaleUniform  = new osg::Uniform("oe_splat_noiseScale",    12.0f );
-
-    //_scaleOffsetUniform    = new osg::Uniform("oe_splat_scaleOffsetInt",   *def.scaleLevelOffset());
-    //_warpUniform           = new osg::Uniform("oe_splat_warp",             *def.coverageWarp());
-    //_blurUniform           = new osg::Uniform("oe_splat_blur",             *def.coverageBlur());
-    //_useBilinearUniform    = new osg::Uniform("oe_splat_useBilinear",      (def.bilinearSampling()==true?1.0f:0.0f));
-    //_noiseScaleUniform     = new osg::Uniform("oe_splat_noiseScale",       12.0f);
 
     _editMode = (::getenv("OSGEARTH_SPLAT_EDIT") != 0L);
     _gpuNoise = (::getenv("OSGEARTH_SPLAT_GPU_NOISE") != 0L);
@@ -98,6 +93,22 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 OE_WARN << LC << "Failed to create any valid splatting textures\n";
                 return;
             }
+            
+            // First install a shared noise texture.
+            if ( _gpuNoise == false )
+            {
+                osg::StateSet* terrainStateSet = engine->getOrCreateStateSet();
+                if ( terrainStateSet->getUniform("oe_splat_noiseTex") == 0L )
+                {
+                    // reserve a texture unit:
+                    if (engine->getResources()->reserveTextureImageUnit(_noiseTexUnit, "Splat Noise"))
+                    {
+                        NoiseTextureFactory noise;
+                        terrainStateSet->setTextureAttribute( _noiseTexUnit, noise.create(256u, 4u) );
+                        terrainStateSet->addUniform( new osg::Uniform("oe_splat_noiseTex", _noiseTexUnit) );
+                    }
+                }
+            }
 
             // Set up surface splatting:
             if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage Data") )
@@ -108,9 +119,6 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                     stateset = engine->getSurfaceStateSet();
                 else
                     stateset = new osg::StateSet();
-
-                // TODO: reinstate "biomes"
-                //osg::StateSet* stateset = new osg::StateSet();
 
                 // surface splatting texture array:
                 _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
@@ -159,20 +167,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                     stateset->addUniform(new osg::Uniform("oe_splat_pers",    0.8f));
                     stateset->addUniform(new osg::Uniform("oe_splat_lac",     2.2f));
                     stateset->addUniform(new osg::Uniform("oe_splat_octaves", 8.0f));
-                }
-                else // use a noise texture (the default)
-                {
-                    if (engine->getResources()->reserveTextureImageUnit(_noiseTexUnit, "Splat Noise"))
-                    {
-                        _noiseTex = createNoiseTexture();
-                        stateset->setTextureAttribute( _noiseTexUnit, _noiseTex.get() );
-                        _noiseTexUniform = stateset->getOrCreateUniform( NOISE_SAMPLER, osg::Uniform::SAMPLER_2D );
-                        _noiseTexUniform->set( _noiseTexUnit );
-                    }
-                }
 
-                if ( _gpuNoise )
-                {
                     // support shaders
                     std::string noiseShaderSource = ShaderLoader::load( splatting.Noise, splatting );
                     osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
@@ -461,87 +456,4 @@ SplatTerrainEffect::createSplattingSamplingFunction(const Coverage*  coverage,
     OE_DEBUG << LC << "Sampling function = \n" << code << "\n\n";
 
     return true;
-}
-
-osg::Texture*
-SplatTerrainEffect::createNoiseTexture() const
-{
-    const int size = 1024;
-    const int slices = 1;
-
-    GLenum type = slices > 2 ? GL_RGBA : GL_LUMINANCE;
-    
-    osg::Image* image = new osg::Image();
-    image->allocateImage(size, size, 1, type, GL_UNSIGNED_BYTE);
-
-    // 0 = rocky mountains..
-    // 1 = warping...
-    const float F[4] = { 4.0f, 16.0f, 4.0f, 8.0f };
-    const float P[4] = { 0.8f,  0.6f, 0.8f, 0.9f };
-    const float L[4] = { 2.2f,  1.7f, 3.0f, 4.0f };
-    
-    for(int k=0; k<slices; ++k)
-    {
-        // Configure the noise function:
-        osgEarth::Util::SimplexNoise noise;
-        noise.setNormalize( true );
-        noise.setRange( 0.0, 1.0 );
-        noise.setFrequency( F[k] );
-        noise.setPersistence( P[k] );
-        noise.setLacunarity( L[k] );
-        noise.setOctaves( 8 );
-
-        float nmin = 10.0f;
-        float nmax = -10.0f;
-
-        // write repeating noise to the image:
-        ImageUtils::PixelReader read ( image );
-        ImageUtils::PixelWriter write( image );
-        for(int t=0; t<size; ++t)
-        {
-            double rt = (double)t/size;
-            for(int s=0; s<size; ++s)
-            {
-                double rs = (double)s/(double)size;
-
-                double n = noise.getTiledValue(rs, rt);
-
-                n = osg::clampBetween(n, 0.0, 1.0);
-
-                if ( n < nmin ) nmin = n;
-                if ( n > nmax ) nmax = n;
-                osg::Vec4f v = read(s, t);
-                v[k] = n;
-                write(v, s, t);
-            }
-        }
-   
-        // histogram stretch to [0..1]
-        for(int x=0; x<size*size; ++x)
-        {
-            int s = x%size, t = x/size;
-            osg::Vec4f v = read(s, t);
-            v[k] = osg::clampBetween((v[k]-nmin)/(nmax-nmin), 0.0f, 1.0f);
-            write(v, s, t);
-        }
-
-        OE_INFO << LC << "Noise: MIN = " << nmin << "; MAX = " << nmax << "\n";
-    }
-
-#if 0
-    std::string filename("noise.png");
-    osgDB::writeImageFile(*image, filename);
-    OE_NOTICE << LC << "Wrote noise texture to " << filename << "\n";
-#endif
-
-    // make a texture:
-    osg::Texture2D* tex = new osg::Texture2D( image );
-    tex->setWrap(tex->WRAP_S, tex->REPEAT);
-    tex->setWrap(tex->WRAP_T, tex->REPEAT);
-    tex->setFilter(tex->MIN_FILTER, tex->LINEAR_MIPMAP_LINEAR);
-    tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
-    tex->setMaxAnisotropy( 1.0f );
-    tex->setUnRefImageDataAfterApply( true );
-
-    return tex;
 }

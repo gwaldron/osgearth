@@ -41,6 +41,7 @@ set(TARGET_SRC
     LandCover.cpp
     LandCoverTerrainEffect.cpp
     LandUseTileSource.cpp
+    NoiseTextureFactory.cpp
 	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
@@ -57,6 +58,7 @@ set(LIB_PUBLIC_HEADERS
     LandCover
     LandCoverTerrainEffect
     LandUseTileSource
+    NoiseTextureFactory
 	SplatCoverageLegend
 	SplatCatalog
 	SplatExtension

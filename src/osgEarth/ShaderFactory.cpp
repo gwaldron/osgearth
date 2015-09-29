@@ -546,6 +546,10 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                         << ", vp_in[1]." << i->name
                         << ", vp_in[2]." << i->name << " ); \n";
                 }
+                else
+                {
+                    buf << INDENT << i->name << " = vp_in[0]." << i->name << "; \n";
+                }
             }
             buf << "} \n";
 

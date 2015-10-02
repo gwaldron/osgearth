@@ -172,12 +172,11 @@ ViewpointsExtension::ViewpointsExtension(const ConfigOptions& options)
     {
         for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
         {
-
             viewpoints.push_back( Viewpoint(*i) );
         }
     }
 
-    OE_INFO << LC << "Read " << _viewpoints.size() << " viewpoints\n";
+    OE_INFO << LC << "Read " << viewpoints.size() << " viewpoints\n";
 
     _handler = new ViewpointsHandler(viewpoints);
 }

@@ -35,6 +35,7 @@
 #include <osg/TextureBuffer>
 #include <osg/VertexAttribDivisor>
 #include <osgDB/ReadFile>
+#include <osgUtil/Optimizer>
 
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
@@ -55,17 +56,55 @@ const char* IG_VS =
     "    vertex.xyz += xfb_position.xyz; \n"
     "} \n";
 
+static int s_numInstancesToDraw = 0;
+
+/**
+ * Draw callback that goes on the instanced geometry, and draws exactly the number of 
+ * instances required (instead of reading the information from PrimitiveSet::getNumInstances)
+ */
+struct InstanceDrawCallback : public osg::Drawable::DrawCallback
+{
+    void drawImplementation(osg::RenderInfo& renderInfo, const osg::Drawable* drawable) const
+    {
+        const osg::Geometry* geom = static_cast<const osg::Geometry*>(drawable);
+        geom->drawVertexArraysImplementation(renderInfo);
+        for(int i=0; i<geom->getNumPrimitiveSets(); ++i)
+        {
+            const osg::PrimitiveSet* pset = geom->getPrimitiveSet(i);
+            const osg::DrawArrays* da = dynamic_cast<const osg::DrawArrays*>(pset);
+            if ( da )
+            {
+                renderInfo.getState()->glDrawArraysInstanced( da->getMode(), da->getFirst(), da->getCount(), s_numInstancesToDraw);
+            }
+            else
+            {
+                const osg::DrawElements* de = dynamic_cast<const osg::DrawElements*>(pset);
+                if ( de )
+                {
+                    GLenum dataType = const_cast<osg::DrawElements*>(de)->getDataType();
+                    renderInfo.getState()->glDrawElementsInstanced( de->getMode(), de->getNumIndices(), dataType, de->getDataPointer(), s_numInstancesToDraw );
+                }
+            }
+        }
+    }
+};
+
+
 struct InstanceGroup : public osg::Group
 {
     InstanceGroup()
     {
         osg::StateSet* ss = getOrCreateStateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-        //ShaderLoader::load( "", IG_VS, 0L );
         vp->setFunction("oe_instancing_setPos", IG_VS, ShaderComp::LOCATION_VERTEX_MODEL, -FLT_MAX);
 
         _xfb = new osg::Vec4Array();
         _xfb->resizeArray( 1u );
+
+        _drawCallback = new InstanceDrawCallback();
+
+        // In practice, we will pre-set a bounding sphere/box for a tile
+        this->setCullingActive(false);
     }
 
     void configure(int slot, unsigned numInstances)
@@ -79,11 +118,18 @@ struct InstanceGroup : public osg::Group
 
         VirtualProgram* vp = VirtualProgram::get(ss);
         
-        //vp->removeBindAttribLocation( "xfb_position" );
+        vp->removeBindAttribLocation( "xfb_position" );
         vp->addBindAttribLocation( "xfb_position", _slot );
 
         ss->setAttribute( new osg::VertexAttribDivisor(_slot, 1) );
         
+        osgUtil::Optimizer optimizer;
+        optimizer.optimize( this,
+            osgUtil::Optimizer::FLATTEN_STATIC_TRANSFORMS |
+            osgUtil::Optimizer::INDEX_MESH |
+            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
         Setup setup(this);
         this->accept( setup );
     }
@@ -91,6 +137,22 @@ struct InstanceGroup : public osg::Group
     osg::Array* getControlPoints() const
     {
         return _xfb.get();
+    }
+
+    osg::BoundingSphere computeBound() const
+    {
+        osg::BoundingSphere bs;
+
+        const osg::Vec4Array* points = static_cast<const osg::Vec4Array*>(_xfb.get());
+        osg::BoundingSphere instanceBS = osg::Group::computeBound();
+        for(int i=0; i<points->getNumElements(); ++i)
+        {
+            osg::Vec3f center( (*points)[i].x(), (*points)[i].y(), (*points)[i].z() );
+            bs.expandBy( osg::BoundingSphere(center + instanceBS.center(), instanceBS.radius()) );
+        }
+
+        OE_WARN << "BS = " << bs.center().x() << ", " << bs.center().y() << ", " << bs.center().z() << ", r=" << bs.radius() << "\n";
+        return bs;
     }
 
     struct Setup : public osg::NodeVisitor 
@@ -109,15 +171,18 @@ struct InstanceGroup : public osg::Group
                 osg::Geometry* g = geode.getDrawable(i)->asGeometry();
                 if ( g )
                 {
-                    osg::Geometry::PrimitiveSetList& prims = g->getPrimitiveSetList();
-                    for(int p=0; p<prims.size(); ++p)
-                    {
-                        prims[p]->setNumInstances( _ig->_numInstances );
-                    }
+                    // Must ensure that VBOs are used:
+                    g->setUseVertexBufferObjects(true);
+                    g->setUseDisplayList(false);
 
+                    // Bind our transform feedback buffer to the geometry:
                     g->setVertexAttribArray    ( _ig->_slot, _ig->_xfb.get() );
                     g->setVertexAttribBinding  ( _ig->_slot, g->BIND_PER_VERTEX );
                     g->setVertexAttribNormalize( _ig->_slot, false );
+
+                    // Set up a draw callback to intecept draw calls so we can vary 
+                    // the instance count per frame.
+                    g->setDrawCallback( _ig->_drawCallback.get() );
 
                     ++_count;
                 }
@@ -129,8 +194,9 @@ struct InstanceGroup : public osg::Group
     };
     
     unsigned _numInstances;
-    int      _slot;
+    int _slot;
     osg::ref_ptr<osg::Array> _xfb;
+    osg::ref_ptr<osg::Drawable::DrawCallback> _drawCallback;
 };
 
 
@@ -139,17 +205,40 @@ struct InstanceGroup : public osg::Group
 // Generator that just writes each incoming vertex to the XFB.
 const char* VS_XF =
     "#version 330 compatibility\n"
+    "out vec4 position; \n"
+    "void main(void) { \n"
+    "    position = gl_Vertex; \n"
+    "} \n";
+
+// Geometry shader perform GPU culling on the control point set.
+// The "cullingRadius" bit isn't working quite right; not sure why atm.
+const char* GS_XF =
+    "#version 330 compatibility\n"
+    "layout(points) in; \n"
+    "layout(points, max_vertices=1) out; \n"
+    "uniform float cullingRadius; \n"
+    "in vec4 position[1]; \n"
     "out vec4 xfb_output; \n"
     "void main(void) { \n"
-    "    xfb_output = gl_Vertex; \n"
+    "    vec4 vertView = gl_ModelViewMatrix * position[0]; \n"
+    "    vertView.xy -= cullingRadius*sign(vertView.xy); \n"
+    "    vec4 vertClip = gl_ProjectionMatrix * vertView; \n"
+    "    float w = abs(vertClip.w); \n"
+    "    if ( abs(vertClip.x) <= w && abs(vertClip.y) <= w && abs(vertClip.z) <= w ) { \n"
+    "        xfb_output = position[0]; \n"
+    "        EmitVertex(); \n"
+    "        EndPrimitive(); \n"
+    "    } \n"
     "} \n";
 
 osg::Program* makeXFProgram()
 {
     osg::Program* program = new osg::Program();
     program->addShader( new osg::Shader(osg::Shader::VERTEX, VS_XF) );
+    program->addShader( new osg::Shader(osg::Shader::GEOMETRY, GS_XF) );
     program->addTransformFeedBackVarying( "xfb_output" );
     program->setTransformFeedBackMode( GL_INTERLEAVED_ATTRIBS );
+
     return program;
 }
 
@@ -212,6 +301,7 @@ struct XFBDrawCallback : public osg::Drawable::DrawCallback
         GLuint& query = _queries[contextID];
         if ( query == INT_MAX )
             ext->glGenQueries(1, &query);
+
         ext->glBeginQuery(TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, query);
 
         ext->glBeginTransformFeedback(GL_POINTS); // get from input geom?
@@ -225,12 +315,14 @@ struct XFBDrawCallback : public osg::Drawable::DrawCallback
         if ( renderInfo.getState()->checkGLErrors("POST:glEndTransformFeedback") ) exit(0);
         
         // Query the number of generated points so we can use it to draw instances.
-        // NOTE: THIS IS SLOW! Can we frame-defer this, or detect when it may need to change??
+        // NOTE: THIS IS SLOW! Can we frame-defer this, or detect when it may need to change??        
         GLuint numPrims = 0;
         ext->glEndQuery(TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN);
         ext->glGetQueryObjectuiv(query, GL_QUERY_RESULT, &numPrims);
         
-        if ( (renderInfo.getState()->getFrameStamp()->getFrameNumber() % 300) == 0 )
+        s_numInstancesToDraw = numPrims;
+
+        //if ( (renderInfo.getState()->getFrameStamp()->getFrameNumber() % 300) == 0 )
         {
             OE_NOTICE << "num prims = " << numPrims << std::endl;
         }
@@ -272,6 +364,7 @@ osg::Geometry* makeXFGeometry(osg::Array* xfb, int dim, float width)
     return geom;
 }
 
+#if 0
 osg::Geometry* makeVisibleGeometry()
 {
     const int numInstances = 2;
@@ -305,6 +398,7 @@ osg::Geometry* makeVisibleGeometry()
 
     return geom;
 }
+#endif
 
 osg::Node* makeSceneGraph()
 {
@@ -313,26 +407,27 @@ osg::Node* makeSceneGraph()
     root->getOrCreateStateSet()->setAttributeAndModes(new osg::Point(10.0f));
     
     // Mode to instance:
-    osg::Node* instancedModel = osgDB::readNodeFile("../data/red_flag.osg"); //.osgearth_shadergen");
-    float width = instancedModel->getBound().radius();
+    osg::Node* instancedModel = osgDB::readNodeFile("../data/loopix/tree4.osgb.osgearth_shadergen");
+    float radius = instancedModel->getBound().radius();
 
     // Reference axis.
-    std::string axis = Stringify() << "../data/axes.osgt.(" << width << ").scale";
+    std::string axis = Stringify() << "../data/axes.osgt.(" << radius << ").scale";
     root->addChild( osgDB::readNodeFile(axis) );
 
-    const int dim = 8;
-    const int numInstances = dim*dim;
+    const int dim = 128;
+    const int maxNumInstances = dim*dim;
 
     InstanceGroup* ig = new InstanceGroup();
     ig->addChild( instancedModel );
-    ig->configure( XFB_SLOT, numInstances );
+    ig->configure( XFB_SLOT, maxNumInstances );
     root->addChild( ig );
 
     // construct the geometry that will generate the instancing control points:
-    osg::Geometry* xfGeom = makeXFGeometry( ig->getControlPoints(), dim, width );
+    osg::Geometry* xfGeom = makeXFGeometry( ig->getControlPoints(), dim, radius );
     xfGeom->getOrCreateStateSet()->setAttribute( makeXFProgram() );
+    xfGeom->getOrCreateStateSet()->addUniform( new osg::Uniform("cullingRadius", radius*2.0f) ); // since we don't know where the cente rpoint it
     osg::Geode* xfGeode = new osg::Geode();
-    xfGeode->addDrawable( xfGeom );
+    xfGeode->addDrawable( xfGeom );    
     
     root->addChild( ig );
     root->addChild( xfGeode );

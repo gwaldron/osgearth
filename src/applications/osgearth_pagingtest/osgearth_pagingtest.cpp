@@ -308,7 +308,7 @@ public:
 class FeaturePager : public SimplePager
 {
 public:
-    FeaturePager( FeatureSource* features, Style& style, MapNode* mapNode):
+    FeaturePager( FeatureSource* features, const Style& style, MapNode* mapNode):
       SimplePager( features->getFeatureProfile()->getProfile() ),
           _features( features ),
           _style( style ),
@@ -450,7 +450,7 @@ int main(int argc, char** argv)
     else if (features)
     {
         MVTFeatureOptions featureOpt;
-        featureOpt.url() = "D:/geodata/osm_buildings_us/osm_buildings_us.mbtiles";      
+        featureOpt.url() = "D:/geodata/osm_buildings_us/na_v2.mbtiles";
 
         osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
         features->initialize();
@@ -458,16 +458,7 @@ int main(int argc, char** argv)
 
 
         FeaturePager* featurePager = new FeaturePager(features, getStyle(randomColor(), 0.0), mapNode);
-
-        // setup styles per level.
-        featurePager->setLODStyle(9, getStyle(randomColor(), 0.0));
-        featurePager->setLODStyle(10, getStyle(randomColor(), 0.0));
-        featurePager->setLODStyle(11, getStyle(randomColor(), 0.0));
-
-        // Start extruding at level, 12, but only do a simple extrusion with no textures.
-        featurePager->setLODStyle(12, getStyle(randomColor(), 50.0));
-
-       
+      
         // Style 13 is where the full resolution data comes, in so use a fancy textured and extruded style
         // a style for the building data:
         Style buildingStyle;
@@ -511,7 +502,7 @@ int main(int argc, char** argv)
         // Give the FeaturePager it's overall stylesheet.
         featurePager->setStyleSheet( styleSheet );
 
-        featurePager->setLODStyle(13, buildingStyle );
+        featurePager->setLODStyle(14, buildingStyle );
 
         pager = featurePager;
     }

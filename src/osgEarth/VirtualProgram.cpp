@@ -291,6 +291,25 @@ namespace
     }
 
     /**
+     * As mentioned in parseShaderForMerging(), double quotes in pragmas are illegal.  This
+     * eliminates the issue by turning the pragma lines into a comment.
+     */
+    bool discardPragmas(std::string& shaderSource)
+    {
+        bool changed = false;
+        std::string::size_type pos = 0;
+        static const std::string POUND_PRAGMA = "#pragma ";
+        while ((pos = shaderSource.find(POUND_PRAGMA, pos)) != std::string::npos)
+        {
+            // Just replace with a comment
+            shaderSource.insert(pos, "// ");
+            changed = true;
+            pos += POUND_PRAGMA.size();
+        }
+        return changed;
+    }
+
+    /**
     * Populates the specified Program with passed-in shaders.
     */
     void addShadersToProgram(const VirtualProgram::ShaderVector&      shaders, 
@@ -299,6 +318,16 @@ namespace
                              osg::Program*                            program,
                              ShaderComp::StageMask                    stages)
     {
+        // Remove the pragmas before going to OSG
+        for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
+        {
+            std::string source = (*i)->getShaderSource();
+            if ( discardPragmas( source ) )
+            {
+                (*i)->setShaderSource(source);
+            }
+        }
+
 #ifdef USE_ATTRIB_ALIASES
         // apply any vertex attribute aliases. But first, sort them from longest to shortest 
         // so we don't get any overlap and bad replacements.

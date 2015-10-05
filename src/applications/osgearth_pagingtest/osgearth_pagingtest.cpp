@@ -308,7 +308,7 @@ public:
 class FeaturePager : public SimplePager
 {
 public:
-    FeaturePager( FeatureSource* features, Style& style, MapNode* mapNode):
+    FeaturePager( FeatureSource* features, const Style& style, MapNode* mapNode):
       SimplePager( features->getFeatureProfile()->getProfile() ),
           _features( features ),
           _style( style ),

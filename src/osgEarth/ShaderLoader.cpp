@@ -203,19 +203,6 @@ ShaderLoader::load(const std::string&    filename,
         osgEarth::replaceIn( output, i->first, i->second );
     }
 
-#if 0
-    // And remove all quotation marks since they are illegal in GLSL.
-    std::string::size_type pos = 0;
-    while(true)
-    {
-        pos = output.find('\"', pos);
-        if ( pos != std::string::npos )
-            output[pos] = ' ';
-        else
-            break;
-    }
-#endif
-
     return output;
 }
 
@@ -316,6 +303,14 @@ ShaderLoader::load(VirtualProgram*       vp,
 
     // If entry point is set, this is a function; otherwise a simple library.
     std::string entryPoint = getQuotedPragmaValue(source, "vp_entryPoint");
+
+    // order is optional.
+    std::string orderStr = getQuotedPragmaValue(source, "vp_order");
+
+
+    // Now that we've read all of our #pragmas, remove the quotation marks from the source since they are illegal in GLSL
+    replaceIn( source, "\"", " ");        
+
     if ( !entryPoint.empty() )
     {
         if ( !locationSet )
@@ -324,8 +319,6 @@ ShaderLoader::load(VirtualProgram*       vp,
             return false;
         }
 
-        // order is optional.
-        std::string orderStr = getQuotedPragmaValue(source, "vp_order");
         float order;
         if ( ciEquals(orderStr, "FLT_MAX") || ciEquals(orderStr, "last") )
             order = FLT_MAX;
@@ -340,6 +333,9 @@ ShaderLoader::load(VirtualProgram*       vp,
 
     else
     {
+        // Replace all quotation marks with spaces since they are illegal in GLSL
+        replaceIn( source, "\"", " ");        
+ 
         // install as a simple shader.
         if ( locationSet )
         {

@@ -111,6 +111,7 @@ LandCoverLayer::createShader() const
         "    int numBillboards; \n"
         "    float density; \n"
         "    float fill; \n"
+        "    vec2 maxWidthHeight; \n"
         "}; \n"
 
         "const oe_landcover_Biome oe_landcover_biomes[" << getBiomes().size() << "] = oe_landcover_Biome[" << getBiomes().size() << "] ( \n";
@@ -129,12 +130,10 @@ LandCoverLayer::createShader() const
     {
         const LandCoverBiome* biome = getBiomes().at(i).get();
 
-        biomeBuf << "    oe_landcover_Biome(" 
-            << index << ", "
-            << biome->getBillboards().size() 
-            << ", float(" << getDensity() << ")"
-            << ", float(" << getFill() << ") )";
+        float maxWidth = 0.0f, maxHeight = 0.0f;
         
+        int firstIndex = index;
+
         for(int j=0; j<biome->getBillboards().size(); ++j)
         {
             const LandCoverBillboard& bb = biome->getBillboards().at(j);
@@ -149,7 +148,17 @@ LandCoverLayer::createShader() const
             ++index;
             if ( index < totalBillboards )
                 billboardBuf << ",\n";
+
+            maxWidth = std::max(maxWidth, bb._width);
+            maxHeight = std::max(maxHeight, bb._height);
         }
+
+        biomeBuf << "    oe_landcover_Biome(" 
+            << firstIndex << ", "
+            << biome->getBillboards().size() 
+            << ", float(" << getDensity() << ")"
+            << ", float(" << getFill() << ")"
+            << ", vec2(float(" << maxWidth << "),float(" << maxHeight << ")))";
 
         if ( (i+1) < getBiomes().size() )
             biomeBuf << ",\n";

@@ -16,7 +16,6 @@ uniform float osg_FrameTime;            // Frame time (seconds) used for wind an
 uniform float oe_landcover_width;           // width of each billboard
 uniform float oe_landcover_height;          // height of each billboard
 uniform float oe_landcover_ao;              // fake ambient occlusion of ground verts (0=full)
-uniform float oe_landcover_colorVariation;  // so they don't all look the same
 
 uniform float oe_landcover_fill;            // percentage of points that make it through, based on noise function
 uniform float oe_landcover_windFactor;      // wind blowing the foliage
@@ -56,6 +55,7 @@ struct oe_landcover_Biome {
     int numBillboards;
     float density;
     float fill;
+    vec2 maxWidthHeight;
 };
 void oe_landcover_getBiome(in int biomeIndex, out oe_landcover_Biome biome);
 
@@ -117,7 +117,9 @@ oe_landcover_getRandomBarycentricPoint(vec2 seed)
     b[2] = 1.0 - b[0] - b[1];
     return b;
 }
-  
+
+uniform float oe_landcover_noise;
+
 // MAIN ENTRY POINT  
 void
 oe_landcover_geom()
@@ -148,12 +150,31 @@ oe_landcover_geom()
     
     // Clamp the center point to the elevation.
     oe_landcover_clamp(center_view, up_view, tileUV);
-    
-    // calculate the normalized camera range:
+
+    // Calculate the normalized camera range:
     float nRange = clamp(-center_view.z/oe_landcover_maxDistance, 0.0, 1.0);
+
+    // Distance culling:
+    if ( nRange == 1.0 )
+        return;
+
+    // look up biome:
+    oe_landcover_Biome biome;
+    oe_landcover_getBiome(oe_landcover_biomeIndex, biome);
     
+    // Viewpoint culling:
+    // TODO: remove hard-coded max width/height and replace with a vp_define or a uniform.
+    // Note: this value must account for the height variation introduced by the noise function
+    // later in this shader!
+    vec4 cullPoint = center_view;
+    cullPoint.xy -= sign(cullPoint.xy) * min(biome.maxWidthHeight, abs(cullPoint.xy));
+    cullPoint = gl_ProjectionMatrix * cullPoint;
+    float absw = abs(cullPoint.w);
+    if ( abs(cullPoint.x) > absw || abs(cullPoint.y) > absw ) // || cullPoint.z > absw )
+        return;
+
     // sample the noise texture.
-    vec4 noise = texture(oe_splat_noiseTex, tileUV);
+    vec4 noise = mix( vec4(0,0,0,0), texture(oe_splat_noiseTex, tileUV), oe_landcover_noise );
 
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
@@ -161,10 +182,6 @@ oe_landcover_geom()
         return;
     else
         noise[NOISE_SMOOTH] /= oe_landcover_fill;
-
-    // look up biome:
-    oe_landcover_Biome biome;
-    oe_landcover_getBiome(oe_landcover_biomeIndex, biome);
 
     // select a billboard seemingly at random. Need to scale n to account for the fill limit first though.
     int billboardIndex = biome.firstBillboardIndex + int( floor(noise[NOISE_RANDOM] * float(biome.numBillboards) ) );
@@ -178,30 +195,30 @@ oe_landcover_geom()
     // push the falloff closer to the max distance.
     float falloff = 1.0-(nRange*nRange*nRange);
 
-    float width = billboard.width; //oe_landcover_width;
-    width *= falloff;
+    // billboard width, which shrinks into the distance
+    float width = billboard.width * falloff;
     
     // vary the height of each instance and shrink it as it disappears into the distance.
-    float height = billboard.height; //oe_landcover_height;
+    float height = billboard.height;
     height *= abs(1.0 + noise[NOISE_RANDOM_2]);
     height *= falloff;
 
-	// compute the grass vertices in view space.
-    //vec4 newVerts[4];
+	// compute the billboard corners in view space.
     vec4 LL, LR, UL, UR;
     
-    const vec3 tangent_view = vec3(1,0,0); // assuming no roll.
+    vec3 halfTangentWidth = vec3(0.5*width,0,0); // assuming no roll.
+    vec3 heightVector = up_view*height;
     
-    LL = vec4(center_view.xyz - tangent_view*width*0.5, 1.0);
-    LR = vec4(center_view.xyz + tangent_view*width*0.5, 1.0);
-    UL = vec4(LL.xyz + up_view*height, 1.0);
-    UR = vec4(LR.xyz + up_view*height, 1.0);
+    LL = vec4(center_view.xyz - halfTangentWidth, 1.0);
+    LR = vec4(center_view.xyz + halfTangentWidth, 1.0);
+    UL = vec4(LL.xyz + heightVector, 1.0);
+    UR = vec4(LR.xyz + heightVector, 1.0);
                       
     // TODO: animate based on wind parameters.
     float nw = noise[NOISE_SMOOTH];
     float wind = width*oe_landcover_windFactor*nw;
-    UL.xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1+nw), wind, UL.x);
-    UR.xyz += tangent_view * oe_landcover_applyWind(osg_FrameTime*(1-nw), wind, tileUV.t);
+    UL.x += oe_landcover_applyWind(osg_FrameTime*(1+nw), wind, UL.x);
+    UR.x += oe_landcover_applyWind(osg_FrameTime*(1-nw), wind, tileUV.t);
     
     // Color variation, brightness, and contrast:
     vec3 color = vec3( noise[NOISE_RANDOM_2] );

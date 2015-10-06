@@ -107,7 +107,6 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                         stateset->addUniform( new osg::Uniform("oe_landcover_windFactor", layer->getWind()) );
                         stateset->addUniform( new osg::Uniform("oe_landcover_noise", 1.0f) );
                         stateset->addUniform( new osg::Uniform("oe_landcover_ao", 0.5f) );
-                        stateset->addUniform( new osg::Uniform("oe_landcover_colorVariation", 0.3f) );
                         stateset->addUniform( new osg::Uniform("oe_landcover_exposure", 1.0f) );
                     
                         stateset->addUniform( new osg::Uniform("oe_landcover_density",     layer->getDensity()) );
@@ -116,6 +115,8 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
 
                         stateset->addUniform( new osg::Uniform("oe_landcover_brightness",  layer->getBrightness()) );
                         stateset->addUniform( new osg::Uniform("oe_landcover_contrast",    layer->getContrast()) );
+
+                        stateset->addUniform( new osg::Uniform("oe_landcover_noise", 0.75f) );
 
                         int unit;
                         if ( engine->getResources()->reserveTextureImageUnit(unit, "LandCover") )

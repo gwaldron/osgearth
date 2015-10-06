@@ -24,8 +24,8 @@
 
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
-#include "Biome"
-#include "BiomeSelector"
+#include "BiomeRegion"
+#include "BiomeRegionSelector"
 #include "SplatShaders"
 #include "Export"
 

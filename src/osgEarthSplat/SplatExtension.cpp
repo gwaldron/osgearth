@@ -18,7 +18,7 @@
  */
 #include "SplatExtension"
 #include "SplatCatalog"
-#include "Biome"
+#include "BiomeRegion"
 #include "SplatCoverageLegend"
 #include "SplatTerrainEffect"
 #include "LandCoverTerrainEffect"

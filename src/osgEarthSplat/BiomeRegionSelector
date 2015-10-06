@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_SPLAT_BIOME_SELECTOR_CALLBACK
 #define OSGEARTH_SPLAT_BIOME_SELECTOR_CALLBACK 1
 
-#include "Biome"
+#include "BiomeRegion"
 #include "Export"
 #include <osg/NodeCallback>
 #include <osg/Polytope>

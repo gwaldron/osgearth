@@ -8,15 +8,9 @@
 #pragma vp_entryPoint "oe_landcover_configureTess"
 #pragma vp_location   "tess_control"
 
-layout(vertices = 3) out;
-
+layout(vertices=3) out;
 
 uniform float oe_landcover_density;
-
-
-// Land Use sampler+matrix (set these in your earth file)
-uniform sampler2D landUseTex;
-uniform mat4      landUseTexMatrix;
 
 // stage global: tile coordinates
 vec4 oe_layer_tilec;

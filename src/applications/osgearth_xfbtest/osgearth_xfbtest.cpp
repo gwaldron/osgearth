@@ -377,7 +377,7 @@ osg::Node* makeSceneGraph()
     //std::string axis = Stringify() << "../data/axes.osgt.(" << radius << ").scale";
     //root->addChild( osgDB::readNodeFile(axis) );
 
-    const int dim = 128;
+    const int dim = 256;
     const int maxNumInstances = dim*dim;
 
     InstanceGroup* ig = new InstanceGroup();

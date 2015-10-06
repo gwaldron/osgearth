@@ -29,10 +29,8 @@
 #include <osgGA/StateSetManipulator>
 
 #include <osg/Geometry>
-#include <osg/Camera>
-#include <osg/BufferIndexBinding>
+#include <osg/Depth>
 #include <osg/Point>
-#include <osg/TextureBuffer>
 #include <osg/VertexAttribDivisor>
 #include <osgDB/ReadFile>
 #include <osgUtil/Optimizer>
@@ -42,8 +40,14 @@
 #include <osgEarth/ShaderGenerator>
 #include <osgEarth/ShaderLoader>
 
+
+
+#ifndef GL_TRANSFORM_FEEDBACK_BUFFER
+    #define GL_TRANSFORM_FEEDBACK_BUFFER      0x8C8E
+#endif
+
 #ifndef TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN
-#define TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN 0x8c88
+    #define TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN 0x8c88
 #endif
 
 
@@ -64,6 +68,8 @@ static int s_numInstancesToDraw = 0;
  */
 struct InstanceDrawCallback : public osg::Drawable::DrawCallback
 {
+    InstanceDrawCallback() { }
+
     void drawImplementation(osg::RenderInfo& renderInfo, const osg::Drawable* drawable) const
     {
         const osg::Geometry* geom = static_cast<const osg::Geometry*>(drawable);
@@ -101,8 +107,6 @@ struct InstanceGroup : public osg::Group
         _xfb = new osg::Vec4Array();
         _xfb->resizeArray( 1u );
 
-        _drawCallback = new InstanceDrawCallback();
-
         // In practice, we will pre-set a bounding sphere/box for a tile
         this->setCullingActive(false);
     }
@@ -122,13 +126,8 @@ struct InstanceGroup : public osg::Group
         vp->addBindAttribLocation( "xfb_position", _slot );
 
         ss->setAttribute( new osg::VertexAttribDivisor(_slot, 1) );
-        
-        osgUtil::Optimizer optimizer;
-        optimizer.optimize( this,
-            osgUtil::Optimizer::FLATTEN_STATIC_TRANSFORMS |
-            osgUtil::Optimizer::INDEX_MESH |
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+
+        _drawCallback = new InstanceDrawCallback();
 
         Setup setup(this);
         this->accept( setup );
@@ -291,47 +290,46 @@ struct XFBDrawCallback : public osg::Drawable::DrawCallback
         GLuint objID = bo->getGLObjectID();
 
         osg::GLExtensions* ext = renderInfo.getState()->get<osg::GLExtensions>();
-
-        ext->glBindBufferRange(GL_TRANSFORM_FEEDBACK_BUFFER, 0, objID, _offset, _size);
-        if ( renderInfo.getState()->checkGLErrors("PRE:glBindBufferBase") ) exit(0);
-
-        glEnable(GL_RASTERIZER_DISCARD);
-        if ( renderInfo.getState()->checkGLErrors("PRE:glEnable(GL_RASTERIZER_DISCARD)") ) exit(0);
-
+           
+        GLuint numPrims = 0;
         GLuint& query = _queries[contextID];
         if ( query == INT_MAX )
+        {
             ext->glGenQueries(1, &query);
+        }
+        else
+        {     
+        
+            ext->glGetQueryObjectuiv(query, GL_QUERY_RESULT, &numPrims);        
+            s_numInstancesToDraw = numPrims;
+        }
+
+
+        ext->glBindBufferRange(GL_TRANSFORM_FEEDBACK_BUFFER, 0, objID, _offset, _size);
+        //if ( renderInfo.getState()->checkGLErrors("PRE:glBindBufferBase") ) exit(0);
+
+        glEnable(GL_RASTERIZER_DISCARD);
+        //if ( renderInfo.getState()->checkGLErrors("PRE:glEnable(GL_RASTERIZER_DISCARD)") ) exit(0);
+
 
         ext->glBeginQuery(TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, query);
 
         ext->glBeginTransformFeedback(GL_POINTS); // get from input geom?
-        if ( renderInfo.getState()->checkGLErrors("PRE:glBeginTransformFeedback(GL_POINTS)") ) exit(0);
+        //if ( renderInfo.getState()->checkGLErrors("PRE:glBeginTransformFeedback(GL_POINTS)") ) exit(0);
         
 
         drawable->drawImplementation(renderInfo);
 
         
         ext->glEndTransformFeedback();
-        if ( renderInfo.getState()->checkGLErrors("POST:glEndTransformFeedback") ) exit(0);
-        
-        // Query the number of generated points so we can use it to draw instances.
-        // NOTE: THIS IS SLOW! Can we frame-defer this, or detect when it may need to change??        
-        GLuint numPrims = 0;
+        //if ( renderInfo.getState()->checkGLErrors("POST:glEndTransformFeedback") ) exit(0);
         ext->glEndQuery(TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN);
-        ext->glGetQueryObjectuiv(query, GL_QUERY_RESULT, &numPrims);
-        
-        s_numInstancesToDraw = numPrims;
-
-        //if ( (renderInfo.getState()->getFrameStamp()->getFrameNumber() % 300) == 0 )
-        {
-            OE_NOTICE << "num prims = " << numPrims << std::endl;
-        }
 
         glDisable(GL_RASTERIZER_DISCARD);
-        if ( renderInfo.getState()->checkGLErrors("POST:glDisable(GL_RASTERIZER_DISCARD)") ) exit(0);
+        //if ( renderInfo.getState()->checkGLErrors("POST:glDisable(GL_RASTERIZER_DISCARD)") ) exit(0);
 
         ext->glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, 0);
-        if ( renderInfo.getState()->checkGLErrors("POST:glBindBufferBase") ) exit(0);
+        //if ( renderInfo.getState()->checkGLErrors("POST:glBindBufferBase") ) exit(0);
 
     }
     osg::ref_ptr<osg::BufferObject> _vbo;
@@ -364,55 +362,20 @@ osg::Geometry* makeXFGeometry(osg::Array* xfb, int dim, float width)
     return geom;
 }
 
-#if 0
-osg::Geometry* makeVisibleGeometry()
-{
-    const int numInstances = 2;
-
-    osg::Geometry* geom = new osg::Geometry();
-    geom->setUseVertexBufferObjects(true);
-
-    osg::Vec4Array* controlPoints = new osg::Vec4Array();
-    controlPoints->resize( numInstances );
-    geom->setVertexAttribArray    ( XFB_SLOT, controlPoints );
-    geom->setVertexAttribBinding  ( XFB_SLOT, geom->BIND_PER_VERTEX );
-    geom->setVertexAttribNormalize( XFB_SLOT, false );
-
-    // geometry to render at each control point:
-    osg::Vec3Array* verts = new osg::Vec3Array();
-    verts->push_back( osg::Vec3(-1, 0, -1) );
-    verts->push_back( osg::Vec3( 1, 0, -1) );
-    verts->push_back( osg::Vec3( 1, 0,  1) );
-    verts->push_back( osg::Vec3(-1, 0,  1) );
-    geom->setVertexArray( verts );
-
-    osg::DrawArrays* da = new osg::DrawArrays(GL_QUADS, 0, 4);
-    da->setNumInstances( numInstances );
-    geom->addPrimitiveSet( da );
-
-    //(*controlPoints)[0].set( -6, 0, 0, 1 );
-    //(*controlPoints)[1].set(  6, 0, 0, 1 );
-    
-    osg::StateSet* ss = geom->getOrCreateStateSet();
-    ss->setAttribute( new osg::VertexAttribDivisor(XFB_SLOT, 1u) );
-
-    return geom;
-}
-#endif
-
 osg::Node* makeSceneGraph()
 {
     osg::Group* root = new osg::Group();
     root->getOrCreateStateSet()->setRenderBinDetails(0, "TraversalOrderBin");
-    root->getOrCreateStateSet()->setAttributeAndModes(new osg::Point(10.0f));
+    //root->getOrCreateStateSet()->setAttributeAndModes(new osg::Point(10.0f));
+    //root->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LESS, 0, 1, false));
     
     // Mode to instance:
-    osg::Node* instancedModel = osgDB::readNodeFile("../data/loopix/tree4.osgb.osgearth_shadergen");
+    osg::Node* instancedModel = osgDB::readNodeFile("../data/tree.ive.osgearth_shadergen");
     float radius = instancedModel->getBound().radius();
 
     // Reference axis.
-    std::string axis = Stringify() << "../data/axes.osgt.(" << radius << ").scale";
-    root->addChild( osgDB::readNodeFile(axis) );
+    //std::string axis = Stringify() << "../data/axes.osgt.(" << radius << ").scale";
+    //root->addChild( osgDB::readNodeFile(axis) );
 
     const int dim = 128;
     const int maxNumInstances = dim*dim;
@@ -425,7 +388,7 @@ osg::Node* makeSceneGraph()
     // construct the geometry that will generate the instancing control points:
     osg::Geometry* xfGeom = makeXFGeometry( ig->getControlPoints(), dim, radius );
     xfGeom->getOrCreateStateSet()->setAttribute( makeXFProgram() );
-    xfGeom->getOrCreateStateSet()->addUniform( new osg::Uniform("cullingRadius", radius*2.0f) ); // since we don't know where the cente rpoint it
+    xfGeom->getOrCreateStateSet()->addUniform( new osg::Uniform("cullingRadius", radius) ); // since we don't know where the cente rpoint it
     osg::Geode* xfGeode = new osg::Geode();
     xfGeode->addDrawable( xfGeom );    
     

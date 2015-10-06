@@ -10,7 +10,7 @@
                  tile_size="17"
                  high_resolution_first="true" 
                  merges_per_frame="50"
-                 skirt_ratio="0"
+                 skirt_ratio="0.01"
                  normal_maps="true" />
     </options>
     

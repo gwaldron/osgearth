@@ -72,7 +72,9 @@ TileNode::create(const TileKey& key, EngineContext* context)
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
-    context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom);
+    context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom);   
+
+    int skirtSize = context->getGeometryPool()->getSkirtSize();
 
     // Create the drawable for the terrain surface:
     TileDrawable* surfaceDrawable = new TileDrawable(
@@ -103,7 +105,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
         geom.get(),
         context->getOptions().tileSize().get() );
 
-    patchDrawable->setDrawAsPatches(true);
+    patchDrawable->setDrawAsPatches(true, skirtSize);
 
     // And a node to house that as well:
     _landCover = new SurfaceNode(

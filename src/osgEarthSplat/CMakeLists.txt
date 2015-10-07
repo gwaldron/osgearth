@@ -35,12 +35,13 @@ set(TARGET_IN
     SplatShaders.cpp.in)
 
 set(TARGET_SRC
-    Biome.cpp
-	BiomeSelector.cpp
+    BiomeRegion.cpp
+	BiomeRegionSelector.cpp
     Coverage.cpp
     LandCover.cpp
     LandCoverTerrainEffect.cpp
     LandUseTileSource.cpp
+    NoiseTextureFactory.cpp
 	SplatPlugin.cpp
 	SplatExtension.cpp
 	SplatCatalog.cpp
@@ -50,13 +51,14 @@ set(TARGET_SRC
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
-    Biome
-	BiomeSelector
+    BiomeRegion
+	BiomeRegionSelector
     Coverage
 	Export
     LandCover
     LandCoverTerrainEffect
     LandUseTileSource
+    NoiseTextureFactory
 	SplatCoverageLegend
 	SplatCatalog
 	SplatExtension

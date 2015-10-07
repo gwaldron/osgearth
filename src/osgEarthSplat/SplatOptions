@@ -48,54 +48,6 @@ namespace osgEarth { namespace Splat
         optional<LandCoverOptions>& landCover() { return _landCover; }
         const optional<LandCoverOptions>& landCover() const { return _landCover; }
 
-        /** URI of the splat texture catalog description file;
-            If you set a biomesURI, this will be ignored. */
-        //optional<URI>& catalogURI() { return _catalogURI; }
-        //const optional<URI>& catalogURI() const { return _catalogURI; }
-
-        /** URI of a biomes definition file.
-            Required is you do not specify a catalogURI. */
-        //optional<URI>& biomesURI() { return _biomesURI; }
-        //const optional<URI>& biomesURI() const { return _biomesURI; }
-        
-        /** URI of the legend that describes the values in the coverage layer
-            and maps them to the catalog. Required. */
-        //optional<URI>& legendURI() { return _legendURI; }
-        //const optional<URI>& legendURI() const { return _legendURI; }
-
-        /** Name of the coverage layer. The layer should be installed in the Map and
-            should be marked as shared. */
-        //optional<std::string>& coverageLayerName() { return _coverageLayerName; }
-        //const optional<std::string>& coverageLayerName() const { return _coverageLayerName; }
-
-        /** Whether to splat the terrain after drawing the map's image layers. The default
-            setting is to splat first and then draw imagery. */
-        //optional<bool>& drawAfterImageLayers() { return _drawAfterImageLayers; }
-        //const optional<bool>& drawAfterImageLayers() const { return _drawAfterImageLayers; }
-
-        /** Warping factor for coverage sampling. Please refer to
-            SplatTerrainEffect::getCoverageWarpUniform() for details. */
-        //optional<float>& coverageWarp() { return _coverageWarp; }
-        //const optional<float>& coverageWarp() const { return _coverageWarp; }
-
-        /** Blurring factor for coverage sampling. Please refer to
-            SplatTerrainEffect::getCoverageBlurUniform() for details. */
-        //optional<float>& coverageBlur() { return _coverageBlur; }
-        //const optional<float>& coverageBlur() const { return _coverageBlur; }
-
-        /** Level-of-detail offset for scaling the splat textures. */
-        //optional<int>& scaleLevelOffset() { return _scaleLevelOffset; }
-        //const optional<int>& scaleLevelOffset() const { return _scaleLevelOffset; }
-
-        /** Whether to use bilinear sampling to smooth the coverage data.
-            Default is true; set to false for higher performance. */
-        //optional<bool>& bilinearSampling() { return _bilinearSampling; }
-        //const optional<bool>& bilinearSampling() const { return _bilinearSampling; }
-
-        /** Maximum distance from the camera at which to render detail splats. */
-        //optional<float>& detailMaxRange() { return _detailMaxRange; }
-        //const optional<float>& detailMaxRange() const { return _detailMaxRange; }
-
     public:
         SplatOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt ) {
             setDriver( "splat" );

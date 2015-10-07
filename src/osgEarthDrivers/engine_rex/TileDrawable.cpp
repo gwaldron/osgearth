@@ -41,7 +41,8 @@ _key         ( key ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
 _tileSize    ( tileSize ),
-_drawPatch   ( false )
+_drawPatch   ( false ),
+_skirtSize   ( 0 )
 {
     setUseVertexBufferObjects( true );
     setUseDisplayList( false );
@@ -92,9 +93,9 @@ TileDrawable::drawPatches(osg::RenderInfo& renderInfo) const
     osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
     state.bindElementBufferObject(ebo);
     if (ebo)
-        glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
+        glDrawElements(GL_PATCHES, de->size()-_skirtSize, GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
     else
-        glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, &de->front());
+        glDrawElements(GL_PATCHES, de->size()-_skirtSize, GL_UNSIGNED_SHORT, &de->front());
 }
 
 

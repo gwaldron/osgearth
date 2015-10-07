@@ -86,7 +86,8 @@ namespace osgEarth { namespace Splat
          * Looks up a precidate for the given class name, or returns NULL
          * if there isn't one.
          */
-        const CoverageValuePredicate* getPredicateForClass(const std::string& className) const;
+        bool getPredicatesForClass(const std::string& className, std::vector<const CoverageValuePredicate*>& output) const;
+        //const CoverageValuePredicate* getPredicateForClass(const std::string& className) const;
 
     public: // serialization
 

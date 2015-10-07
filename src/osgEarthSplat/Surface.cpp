@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "Surface"
-#include "Biome"
+#include "BiomeRegion"
 #include <osgEarth/Map>
 #include <osgEarth/XmlUtils>
 #include <osgDB/Options>
@@ -94,7 +94,14 @@ Surface::configure(const ConfigOptions& conf, const Map* map, const osgDB::Optio
         {
             _biomeRegions.push_back( BiomeRegion() );
             _biomeRegions.back().setCatalog( catalog );
+
+            OE_INFO << LC << "Read biome data from catalog file\n";
         }
+    }
+
+    else
+    {
+        OE_INFO << LC << "Read " << _biomeRegions.size() << " biome regions from biomes file\n";
     }
     
     return true;

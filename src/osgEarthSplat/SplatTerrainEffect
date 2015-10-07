@@ -24,8 +24,8 @@
 
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
-#include "Biome"
-#include "BiomeSelector"
+#include "BiomeRegion"
+#include "BiomeRegionSelector"
 #include "SplatShaders"
 #include "Export"
 
@@ -147,8 +147,6 @@ namespace osgEarth { namespace Splat
             const Coverage*  coverage,
             SplatTextureDef& textureDef) const;
 
-        osg::Texture* createNoiseTexture() const;
-
         // index-aligned with the surface biome region vector:
         SplatTextureDefVector               _textureDefs;
 
@@ -158,8 +156,6 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Uniform>          _scaleOffsetUniform;
         osg::ref_ptr<osg::Uniform>          _warpUniform;
         osg::ref_ptr<osg::Uniform>          _blurUniform;
-        //osg::ref_ptr<SplatCoverageLegend>   _legend;
-        //osg::observer_ptr<const ImageLayer> _coverageLayer;
         float                               _renderOrder;
         int                                 _noiseTexUnit;
         osg::ref_ptr<osg::Texture>          _noiseTex;

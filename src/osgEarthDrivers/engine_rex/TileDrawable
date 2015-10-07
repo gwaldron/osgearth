@@ -84,6 +84,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<const osg::Image> _elevationRaster;
         osg::Matrixf                   _elevationScaleBias;
 
+        int _skirtSize;
+
     public:
         
         // construct a new TileDrawable that fronts an osg::Geometry
@@ -94,7 +96,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             int                   tileSize);
 
         // whether to draw this as a multi-image geometry or as a tesselation patch.
-        void setDrawAsPatches(bool value) { _drawPatch = value; }
+        void setDrawAsPatches(bool value, int skirtSize =0) { _drawPatch = value; _skirtSize = skirtSize; }
 
         /** Sets the multipass texture to use when rendering geometry. */
         void setMPTexture(MPTexture* tex) { _mptex = tex; }

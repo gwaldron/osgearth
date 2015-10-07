@@ -74,7 +74,6 @@ namespace osgEarth { namespace Viewpoints
 
     private:
         osg::ref_ptr<const osgDB::Options>   _dbOptions;
-        std::vector<Viewpoint>               _viewpoints;
         osg::ref_ptr<osgGA::GUIEventHandler> _handler;
     };
 

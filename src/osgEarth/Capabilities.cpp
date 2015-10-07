@@ -308,7 +308,11 @@ _maxTextureBufferSize   ( 0 )
         if ( _supportsTextureBuffer )
         {
             OE_INFO << LC << "  Texture buffer max size = " << _maxTextureBufferSize << std::endl;
-        }            
+        }       
+
+        bool supportsTransformFeedback =
+            osg::isGLExtensionSupported( id, "GL_ARB_transform_feedback2" );
+        OE_INFO << LC << "  Transform feedback = " << SAYBOOL(supportsTransformFeedback) << "\n";
 
 
         // Writing to gl_FragDepth is not supported under GLES:

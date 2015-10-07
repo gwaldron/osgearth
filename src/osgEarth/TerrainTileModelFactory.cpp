@@ -187,6 +187,9 @@ TerrainTileModelFactory::addImageLayers(TerrainTileModel*            model,
 
                 if ( layer->getVisible() )
                     model->colorLayers().push_back( layerModel );
+
+                if ( layer->isDynamic() )
+                    model->setRequiresUpdateTraverse( true );
             }
         }
     }

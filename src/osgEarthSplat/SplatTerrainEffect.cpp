@@ -21,7 +21,7 @@
 */
 #include "SplatTerrainEffect"
 #include "SplatOptions"
-#include "Biome"
+#include "BiomeRegion"
 #include "NoiseTextureFactory"
 
 #include <osgEarth/Registry>

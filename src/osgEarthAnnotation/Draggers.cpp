@@ -70,6 +70,8 @@ _verticalMinimum(0.0)
     _projector = new osgManipulator::LineProjector;
 
     setMapNode( mapNode );
+
+    this->getOrCreateStateSet()->setRenderBinDetails(50, "RenderBin");
 }
 
 Dragger::~Dragger()

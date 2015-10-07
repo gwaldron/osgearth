@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "BiomeSelector"
+#include "BiomeRegionSelector"
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/VirtualProgram>
@@ -93,7 +93,7 @@ BiomeRegionSelector::operator()(osg::Node* node, osg::NodeVisitor* nv)
         if ( biomeRegion.getRegions().size() == 0 )
         {
             // empty biome is a match.
-            //OE_INFO << "matched " << b << "b/c biome has no regions\n";
+            //OE_INFO << "matched " <<biomeRegion.name().get() << " b/c biome has no regions\n";
             match = true;
         }
         else
@@ -106,7 +106,7 @@ BiomeRegionSelector::operator()(osg::Node* node, osg::NodeVisitor* nv)
                 // empty extent/tope is a match:
                 if ( region.tope.empty() )
                 {
-                    //OE_INFO << "matched " << b << "b/c tope is empty\n";
+                    //OE_INFO << "matched " << biomeRegion.name().get() << " b/c tope is empty\n";
                     match = true;
                 }
 
@@ -116,7 +116,7 @@ BiomeRegionSelector::operator()(osg::Node* node, osg::NodeVisitor* nv)
                     double hat2 = z2 - region.meanRadius2;
                     if ( hat2 >= region.zmin2 && hat2 <= region.zmax2 )
                     {
-                        //OE_INFO << "matched " << b << "b/c eyepoint intersects\n";
+                        //OE_INFO << "matched " << biomeRegion.name().get() << " b/c eyepoint intersects\n";
                         match = true;
                     }
                 }

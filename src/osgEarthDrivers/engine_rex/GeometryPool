@@ -85,6 +85,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const MapInfo&               mapInfo,
             osg::ref_ptr<osg::Geometry>& out);
 
+        /**
+         * The number of elements (incides) in the terrain skirt, if applicable
+         */
+        int getSkirtSize() const;
+
     protected:
         virtual ~GeometryPool() { }
 

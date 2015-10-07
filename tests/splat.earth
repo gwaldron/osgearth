@@ -9,8 +9,8 @@
         <terrain driver="rex" 
                  tile_size="17"
                  high_resolution_first="true" 
-                 merges_per_frame="25"
-                 skirt_ratio="0"
+                 merges_per_frame="50"
+                 skirt_ratio="0.01"
                  normal_maps="true" />
     </options>
     
@@ -53,7 +53,7 @@
             <land_cover>
                 
                 <layers>
-                    <layer name="trees" lod="14" max_distance="6400" density="3.0" fill="0.60" brightness="2.0" contrast="0.5">
+                    <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5">
                         <biomes>
                             <biome classes="forest forest1 forest2 forest3 forest4">
                                 <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
@@ -63,7 +63,7 @@
                         </biomes>
                     </layer>
                 
-                    <layer name="grass" lod="19" max_distance="200" density="4.0" fill="0.60" wind="0.15">
+                    <layer name="grass" lod="19" max_distance="200" density="3.0" fill="0.40" wind="0.15">
                         <biomes>
                             <biome name="Grass" classes="grassland grassland2 forest forest1 forest2 forest3 forest4">
                                 <billboard url="../data/splat/grass1.png" width="0.6" height="0.35"/>

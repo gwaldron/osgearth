@@ -26,6 +26,7 @@
 #include <osg/Referenced>
 #include <osgEarth/Viewpoint>
 #include <osgEarth/Decluttering>
+#include <osgEarth/DateTimeRange>
 
 namespace osgEarth { namespace Annotation
 {	
@@ -75,6 +76,12 @@ namespace osgEarth { namespace Annotation
             return _viewpoint;
         }
 
+        /**
+        * DateTime range of the annotation
+        */
+        void setDateTimeRange(const DateTimeRange& value) { _dateTimeRange = value; }
+        const DateTimeRange& getDateTimeRange() const { return _dateTimeRange; }
+
     public: // PriorityProvider interface
 
         /**
@@ -93,10 +100,11 @@ namespace osgEarth { namespace Annotation
         virtual ~AnnotationData();
 
     protected:
-        std::string _name;
-        std::string _description;
-        float       _priority;
-        Viewpoint*  _viewpoint;
+        std::string   _name;
+        std::string   _description;
+        float         _priority;
+        Viewpoint*    _viewpoint;
+        DateTimeRange _dateTimeRange;
     };
 
 } } // namespace osgEarth::Annotation

@@ -80,6 +80,26 @@ KML_Feature::build( xml_node<>* node, KMLContext& cx, osg::Node* working )
             anno->setViewpoint( vp );
         }
 
+        xml_node<>* timespan = node->first_node("timespan", 0, false);
+        if ( timespan )
+        {
+            DateTimeRange range;
+
+            std::string begin = getValue(timespan, "begin");
+            if ( !begin.empty() )
+            {
+                range.begin() = DateTime(begin);
+            }
+
+            std::string end = getValue(timespan, "end");
+            if ( !end.empty() )
+            {
+                range.end() = DateTime(end);
+            }
+
+            anno->setDateTimeRange( range );
+        }
+
         xml_node<>* extdata = node->first_node("extendeddata", 0, false);
         if ( extdata )
         {

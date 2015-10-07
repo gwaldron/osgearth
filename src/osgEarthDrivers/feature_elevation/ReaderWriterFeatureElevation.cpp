@@ -57,7 +57,8 @@ public:
     FeatureElevationTileSource( const TileSourceOptions& options ) :
       TileSource( options ),
       _options(options),
-      _maxDataLevel(23)
+      _maxDataLevel(23),
+      _offset(-0.05)
     {
     }
 
@@ -135,6 +136,12 @@ public:
 
 				setProfile( profile );
 			}
+
+            // transform matrices to do in and out of a feature-local tangent plane.
+            GeoPoint centroid;
+            _extents.getCentroid(centroid);
+            centroid.createLocalToWorld(_localToWorld);
+            _worldToLocal.invert(_localToWorld);
         }
         else
         {
@@ -218,13 +225,39 @@ public:
 							}
 							else
 							{
-								GeoPoint geo(key.getProfile()->getSRS(), geoX, geoY);
-								if (!key.getProfile()->getSRS()->isEquivalentTo(getProfile()->getSRS()))
-									geo.transform(getProfile()->getSRS());
+								GeoPoint geo(key.getProfile()->getSRS(), geoX, geoY, 0.0, ALTMODE_ABSOLUTE);
+
+								if (!key.getProfile()->getSRS()->isHorizEquivalentTo(getProfile()->getSRS()))
+                                {
+									geo = geo.transform(getProfile()->getSRS());
+                                }
 
 								if (p->contains2D(geo.x(), geo.y()))
 								{
-									h = (*f)->getDouble(_options.attr().value());
+                                    h = (*f)->getDouble(_options.attr().value());
+
+                                    if ( key.getExtent().getSRS()->isGeographic() )
+                                    {                              
+                                        // for a round earth, must adjust the final elevation accounting for the
+                                        // curvature of the earth; so we have to adjust it in the feature boundary's
+                                        // local tangent plane.
+                                        Bounds bounds = featureList.front()->getGeometry()->getBounds();
+                                        GeoPoint anchor(featureSRS, bounds.center().x(), bounds.center().y(), h, ALTMODE_ABSOLUTE);
+                                        GeoPoint anchorGeo = anchor.transform( key.getExtent().getSRS() );
+
+                                        osg::Matrix localToWorld, worldToLocal;
+                                        anchorGeo.createLocalToWorld(localToWorld);
+                                        worldToLocal.invert( localToWorld );
+
+                                        osg::Vec3d ecef;
+                                        geo.toWorld( ecef );
+                                        osg::Vec3d local = ecef * worldToLocal;
+                                        local.z() = _offset;
+                                        ecef = local * localToWorld;
+                                        geo.fromWorld( geo.getSRS(), ecef);
+
+                                        h = geo.z();
+                                    }
 									break;
 								}
 							}
@@ -256,7 +289,11 @@ private:
     osg::ref_ptr< CacheBin > _cacheBin;
     osg::ref_ptr< osgDB::Options > _dbOptions;
 
+    osg::Matrixd _localToWorld, _worldToLocal;
+
     unsigned int _maxDataLevel;
+
+    double _offset;
 };
 
 

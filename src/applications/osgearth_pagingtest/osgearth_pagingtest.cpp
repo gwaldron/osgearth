@@ -379,10 +379,14 @@ Style getStyle(const osg::Vec4& color, double extrusionHeight)
 {
     Style style;
     style.getOrCreate<PolygonSymbol>()->fill()->color() = color;
+    style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    style.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+    /*
     if (extrusionHeight > 0)
     {
         style.getOrCreate<ExtrusionSymbol>()->height() = extrusionHeight;
     }
+    */
     return style;
 }
 
@@ -442,76 +446,100 @@ int main(int argc, char** argv)
     if (spheres)
     {
         pager = new SimplePager( mapNode->getMap()->getProfile() );
+        pager->setAdditive( additive );    
+        pager->build();    
+        root->addChild( pager );
+
     }
     else if (boxes)
     {
         pager = new BoxSimplePager( mapNode->getMap()->getProfile() );
+        pager->setAdditive( additive );    
+        pager->build();    
+        root->addChild( pager );
+
     }
     else if (features)
     {
-        MVTFeatureOptions featureOpt;
-        featureOpt.url() = "D:/geodata/osm_buildings_us/na_v2.mbtiles";
+        std::vector< std::string > filenames;
+        for(int pos=1;pos<arguments.argc();++pos)
+        {
+            if (!arguments.isOption(pos))
+            {
+                std::string filename = arguments[ pos ];
+                if (osgDB::getFileExtension( filename ) == "mbtiles")
+                {
+                    filenames.push_back( filename );                
+                }
+            }
+        }
 
-        osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
-        features->initialize();
-        features->getFeatureProfile();
-
-
-        FeaturePager* featurePager = new FeaturePager(features, getStyle(randomColor(), 0.0), mapNode);
-      
-        // Style 13 is where the full resolution data comes, in so use a fancy textured and extruded style
-        // a style for the building data:
-        Style buildingStyle;
-        buildingStyle.setName( "buildings" );
-
-        // Extrude the shapes into 3D buildings.
-        ExtrusionSymbol* extrusion = buildingStyle.getOrCreate<ExtrusionSymbol>();
-        extrusion->heightExpression() = 50.0;
-        extrusion->flatten() = true;
-        extrusion->wallStyleName() = "building-wall";
-        extrusion->roofStyleName() = "building-roof";
-
-        // a style for the wall textures:
-        Style wallStyle;
-        wallStyle.setName( "building-wall" );
-        SkinSymbol* wallSkin = wallStyle.getOrCreate<SkinSymbol>();
-        wallSkin->library() = "us_resources";
-        wallSkin->addTag( "building" );
-        wallSkin->randomSeed() = 1;
-
-        // a style for the rooftop textures:
-        Style roofStyle;
-        roofStyle.setName( "building-roof" );
-        SkinSymbol* roofSkin = roofStyle.getOrCreate<SkinSymbol>();
-        roofSkin->library() = "us_resources";
-        roofSkin->addTag( "rooftop" );
-        roofSkin->randomSeed() = 1;
-        roofSkin->isTiled() = true;
-
-        // assemble a stylesheet and add our styles to it:
-        StyleSheet* styleSheet = new StyleSheet();
-        styleSheet->addStyle( buildingStyle );
-        styleSheet->addStyle( wallStyle );
-        styleSheet->addStyle( roofStyle );
-
-        // load a resource library that contains the building textures.
-        ResourceLibrary* reslib = new ResourceLibrary( "us_resources", "../data/resources/textures_us/catalog.xml" );
-        styleSheet->addResourceLibrary( reslib );
+        for (unsigned int i = 0; i < filenames.size(); i++)
+        {
+            OE_NOTICE << "Loading " << filenames[i] << std::endl;
 
 
-        // Give the FeaturePager it's overall stylesheet.
-        featurePager->setStyleSheet( styleSheet );
+            MVTFeatureOptions featureOpt;
+            featureOpt.url() = filenames[i];
 
-        featurePager->setLODStyle(14, buildingStyle );
+            osg::ref_ptr< FeatureSource > features = FeatureSourceFactory::create( featureOpt );
+            features->initialize();
+            features->getFeatureProfile();
 
-        pager = featurePager;
+
+            FeaturePager* featurePager = new FeaturePager(features, getStyle(randomColor(), 0.0), mapNode);
+
+            // Style 13 is where the full resolution data comes, in so use a fancy textured and extruded style
+            // a style for the building data:
+            Style buildingStyle;
+            buildingStyle.setName( "buildings" );
+
+            // Extrude the shapes into 3D buildings.
+            ExtrusionSymbol* extrusion = buildingStyle.getOrCreate<ExtrusionSymbol>();
+            extrusion->heightExpression() = 50.0;
+            extrusion->flatten() = true;
+            extrusion->wallStyleName() = "building-wall";
+            extrusion->roofStyleName() = "building-roof";
+
+            // a style for the wall textures:
+            Style wallStyle;
+            wallStyle.setName( "building-wall" );
+            SkinSymbol* wallSkin = wallStyle.getOrCreate<SkinSymbol>();
+            wallSkin->library() = "us_resources";
+            wallSkin->addTag( "building" );
+            wallSkin->randomSeed() = 1;
+
+            // a style for the rooftop textures:
+            Style roofStyle;
+            roofStyle.setName( "building-roof" );
+            SkinSymbol* roofSkin = roofStyle.getOrCreate<SkinSymbol>();
+            roofSkin->library() = "us_resources";
+            roofSkin->addTag( "rooftop" );
+            roofSkin->randomSeed() = 1;
+            roofSkin->isTiled() = true;
+
+            // assemble a stylesheet and add our styles to it:
+            StyleSheet* styleSheet = new StyleSheet();
+            styleSheet->addStyle( buildingStyle );
+            styleSheet->addStyle( wallStyle );
+            styleSheet->addStyle( roofStyle );
+
+            // load a resource library that contains the building textures.
+            ResourceLibrary* reslib = new ResourceLibrary( "us_resources", "../data/resources/textures_us/catalog.xml" );
+            styleSheet->addResourceLibrary( reslib );
+
+
+            // Give the FeaturePager it's overall stylesheet.
+            featurePager->setStyleSheet( styleSheet );
+
+            featurePager->setLODStyle(14, buildingStyle );
+
+            featurePager->setAdditive( additive );    
+            featurePager->build();    
+            root->addChild( featurePager );
+
+        }
     }
-
-
-    pager->setAdditive( additive );    
-    pager->build();    
-    root->addChild( pager );
-
 
     viewer.setSceneData( root );
        

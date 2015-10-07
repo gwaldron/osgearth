@@ -44,7 +44,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _normalMaps             ( true ),
             _morphTerrain           ( true ),
             _morphImagery           ( true ),
-            _mergesPerFrame         ( 1 )
+            _mergesPerFrame         ( 20 )
         {
             setDriver( "rex" );
             fromConfig( _conf );

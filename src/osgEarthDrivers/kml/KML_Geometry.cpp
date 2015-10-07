@@ -73,14 +73,11 @@ KML_Geometry::buildChild( xml_node<>* node, KMLContext& cx, Style& style)
         KML_MultiGeometry g;
         g.parseCoords(node, cx);
         _geom = g._geom.get();
-        g.parseStyle(node, cx, style);
         
         for( xml_node<>* n = node->first_node(); n; n = n->next_sibling())
         {
-            Style subStyle = style;
             KML_Geometry subGeom;
-            subGeom.parseStyle( n, cx, subStyle );
-            subGeom.buildChild( n, cx, style );
+            subGeom.buildChild( n, cx, style ); //use single style for all subgeometries
             if ( subGeom._geom.valid() )
                 dynamic_cast<MultiGeometry*>(g._geom.get())->getComponents().push_back( subGeom._geom.get() );
         }
@@ -147,7 +144,7 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
 
     double maxElevation = -DBL_MAX;
 
-    if ( isPoly )
+    //if ( isPoly ) //compute maxElevation also for line strings for extrusion height
     {
         bool first = true;
         double e = 0.0;

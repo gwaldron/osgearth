@@ -85,6 +85,7 @@ ADD_SUBDIRECTORY(osgearth_clipplane)
 ADD_SUBDIRECTORY(osgearth_cache_test)
 ADD_SUBDIRECTORY(osgearth_pick)
 ADD_SUBDIRECTORY(osgearth_wfs)
+ADD_SUBDIRECTORY(osgearth_datetime)
 ADD_SUBDIRECTORY(osgearth_pagingtest)
 ADD_SUBDIRECTORY(osgearth_xfbtest)
 

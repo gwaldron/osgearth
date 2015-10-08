@@ -37,7 +37,7 @@
         <bumpmap>
             <image>../data/rock_hard.jpg</image>
             <octaves>8</octaves>
-            <intensity>1.2</intensity>
+            <intensity>2.2</intensity>
         </bumpmap>
    
         <splat>        
@@ -63,10 +63,10 @@
                         </biomes>
                     </layer>
                 
-                    <layer name="grass" lod="19" max_distance="200" density="3.0" fill="0.40" wind="0.15">
+                    <layer name="grass" lod="19" max_distance="150" density="3.8" fill="0.50" wind="0.15">
                         <biomes>
                             <biome name="Grass" classes="grassland grassland2 forest forest1 forest2 forest3 forest4">
-                                <billboard url="../data/splat/grass1.png" width="0.6" height="0.35"/>
+                                <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
                             </biome>
                         </biomes>
                     </layer>

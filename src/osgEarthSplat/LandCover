@@ -212,7 +212,18 @@ namespace osgEarth { namespace Splat
         optional<std::string> _biomeClasses;
         SymbolVector _symbols;
 
-    public:        
+    public:    
+        void fromConfig(const Config& conf) {
+            conf.getIfSet( "classes", _biomeClasses );
+            const ConfigSet& symbols = conf.children();
+            for(ConfigSet::const_iterator i = symbols.begin(); i != symbols.end(); ++i) {
+                Symbol* s = SymbolRegistry::instance()->create(*i);
+                if ( s ) { 
+                    _symbols.push_back( s );
+                }
+            }
+        }
+
         Config getConfig() const {
             Config conf("biome");
             conf.updateIfSet( "classes", _biomeClasses );
@@ -223,17 +234,6 @@ namespace osgEarth { namespace Splat
                 }
             }
             return conf;
-        }
-
-        void fromConfig(const Config& conf) {
-            conf.getIfSet( "classes", _biomeClasses );
-            const ConfigSet& symbols = conf.children();
-            for(ConfigSet::const_iterator i = symbols.begin(); i != symbols.end(); ++i) {
-                Symbol* s = SymbolRegistry::instance()->create(*i);
-                if ( s ) { 
-                    _symbols.push_back( s );
-                }
-            }
         }
 
         void mergeConfig( const Config& conf ) {

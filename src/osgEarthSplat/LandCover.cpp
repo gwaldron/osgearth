@@ -38,6 +38,7 @@ LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
         for(int i=0; i<in.layers().size(); ++i)
         {
             osg::ref_ptr<LandCoverLayer> layer = new LandCoverLayer();
+
             if ( layer->configure( in.layers().at(i), dbo ) )
             {
                 _layers.push_back( layer.get() );
@@ -76,6 +77,7 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
     for(int i=0; i<in.biomes().size(); ++i)
     {
         osg::ref_ptr<LandCoverBiome> biome = new LandCoverBiome();
+
         if ( biome->configure( in.biomes().at(i), dbo ) )
         {
             _biomes.push_back( biome.get() );
@@ -301,10 +303,12 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
         const BillboardSymbol* bs = dynamic_cast<BillboardSymbol*>( i->get() );
         if ( bs )
         {
+            URI imageURI = bs->url()->evalURI();
+
             osg::Image* image = const_cast<osg::Image*>( bs->getImage() );
             if ( !image )
             {
-                image = URI(bs->url()->eval()).getImage(dbo);
+                image = imageURI.getImage(dbo);
             }
 
             if ( image )
@@ -313,7 +317,7 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
             }
             else
             {
-                OE_WARN << LC << "Failed to load billboard image from \"" << bs->url()->eval() << "\"\n";
+                OE_WARN << LC << "Failed to load billboard image from \"" << imageURI.full() << "\"\n";
             }
         } 
         else

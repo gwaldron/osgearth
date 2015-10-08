@@ -924,6 +924,7 @@ RexTerrainEngineNode::updateState()
             // Functions that affect the terrain surface only:
             package.load(surfaceVP, package.ENGINE_VERT_VIEW);
             package.load(surfaceVP, package.ENGINE_FRAG);
+            package.load(surfaceVP, package.ENGINE_GEOM);
 
             // Normal mapping shaders:
             if ( this->normalTexturesRequired() )

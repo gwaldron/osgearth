@@ -44,6 +44,7 @@ void oe_rex_elevateVertexAndSetTexCoords(inout vec4 vertexView)
         + texelScale * oe_tile_elevationTexMatrix[3].st     // bias
         + texelBias;
 
+    //float elev = vertexView.z > 0.0f ? 0.0f : texture(oe_tile_elevationTex, elevc).r;
     float elev = texture(oe_tile_elevationTex, elevc).r;
 
     vertexView.xyz += normalize(oe_UpVectorView) * elev;

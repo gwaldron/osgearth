@@ -18,12 +18,469 @@
 */
 #include "MaskGenerator"
 
+#include <osgEarth/Locators>
+#include <osgEarthSymbology/Geometry>
+
+#include <osgUtil/DelaunayTriangulator>
+
+
 using namespace osgEarth::Drivers::RexTerrainEngine;
+using namespace osgEarth::Symbology;
+
 
 #define LC "[MaskGenerator] "
 
-MaskGenerator::MaskGenerator(const TileKey& key) :
+#define MATCH_TOLERANCE 0.000001
+
+
+MaskGenerator::MaskGenerator(const TileKey& key, const MapFrame& mapFrame) :
 _key( key )
 {
-    //NOP
+    const osgEarth::MaskLayerVector maskLayers = mapFrame.terrainMaskLayers();
+    for(MaskLayerVector::const_iterator it = maskLayers.begin();
+        it != maskLayers.end(); 
+        ++it)
+    {
+        MaskLayer* layer = it->get();
+        if ( layer->getMinLevel() <= key.getLevelOfDetail() )
+        {
+            setupMaskRecord( mapFrame, layer->getOrCreateMaskBoundary( 1.0, key.getExtent().getSRS(), (ProgressCallback*)0L ) );
+        }
+    }
+}
+
+void
+MaskGenerator::setupMaskRecord(const MapFrame& mapFrame, osg::Vec3dArray* boundary)
+{
+    osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapFrame.getMapInfo());
+    if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
+        geoLocator = geoLocator->getGeographicFromGeocentric();
+
+    if ( boundary )
+    {
+        osg::Vec3d min, max;
+        min = max = boundary->front();
+
+        for (osg::Vec3dArray::iterator it = boundary->begin(); it != boundary->end(); ++it)
+        {
+            if (it->x() < min.x())
+            min.x() = it->x();
+
+            if (it->y() < min.y())
+            min.y() = it->y();
+
+            if (it->x() > max.x())
+            max.x() = it->x();
+
+            if (it->y() > max.y())
+            max.y() = it->y();
+        }
+
+        osg::Vec3d min_ndc, max_ndc;
+        geoLocator->modelToUnit(min, min_ndc);
+        geoLocator->modelToUnit(max, max_ndc);
+
+        bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
+                        (min_ndc.x() <= 0.0 && max_ndc.x() > 0.0) ||
+                        (min_ndc.x() < 1.0 && max_ndc.x() >= 1.0));
+
+        bool y_match = ((min_ndc.y() >= 0.0 && max_ndc.y() <= 1.0) ||
+                        (min_ndc.y() <= 0.0 && max_ndc.y() > 0.0) ||
+                        (min_ndc.y() < 1.0 && max_ndc.y() >= 1.0));
+
+        if (x_match && y_match)
+        {
+            //MPGeometry* stitchGeom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
+            //stitchGeom->setName("stitchGeom");
+            //OE_WARN << "min_ndc: " << min_ndc.x() << ", " << min_ndc.y() << ", " << min_ndc.z() << "  max_ndc: " << max_ndc.x() << ", " << max_ndc.y() << ", " << max_ndc.z() << std::endl;
+            _maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, 0L) );
+        }
+    }
+}
+
+osg::DrawElementsUInt*
+MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, osg::Vec3Array* verts, osg::Vec3Array* texCoords, osg::Vec3Array* normals, osg::Vec3Array* neighbors)
+{
+    if (_maskRecords.size() <= 0)
+      return 0L;
+
+    osg::ref_ptr<osgEarth::GeoLocator> geoLocator = GeoLocator::createForKey(_key, mapInfo);
+    if (geoLocator->getCoordinateSystemType() == GeoLocator::GEOCENTRIC)
+        geoLocator = geoLocator->getGeographicFromGeocentric();
+
+    GeoPoint centroid;
+    _key.getExtent().getCentroid( centroid );
+
+    osg::Matrix world2local, local2world;
+    centroid.createWorldToLocal( world2local );
+    local2world.invert( world2local );
+
+    osg::ref_ptr<osgUtil::DelaunayTriangulator> trig=new osgUtil::DelaunayTriangulator();
+
+    std::vector<osg::ref_ptr<osgUtil::DelaunayConstraint> > alldcs;
+
+    osg::ref_ptr<osg::Vec3Array> coordsArray = new osg::Vec3Array;
+
+    double minndcx = _maskRecords[0]._ndcMin.x();
+    double minndcy = _maskRecords[0]._ndcMin.y();
+    double maxndcx = _maskRecords[0]._ndcMax.x();
+    double maxndcy = _maskRecords[0]._ndcMax.y();
+    for (int mrs = 1; mrs < _maskRecords.size(); ++mrs)
+    {
+        if ( _maskRecords[mrs]._ndcMin.x()< minndcx)
+        {
+            minndcx = _maskRecords[mrs]._ndcMin.x();
+        }
+        if ( _maskRecords[mrs]._ndcMin.y()< minndcy)
+        {
+            minndcy = _maskRecords[mrs]._ndcMin.y();
+        }
+        if ( _maskRecords[mrs]._ndcMax.x()> maxndcx)
+        {
+            maxndcx = _maskRecords[mrs]._ndcMax.x();
+        }
+        if ( _maskRecords[mrs]._ndcMax.y()> maxndcy)
+        {
+            maxndcy = _maskRecords[mrs]._ndcMax.y();
+        }			
+    }
+
+    int min_i = (int)floor(minndcx * (double)(tileSize-1));
+    if (min_i < 0) min_i = 0;
+    if (min_i >= (int)tileSize) min_i = tileSize - 1;
+
+    int min_j = (int)floor(minndcy * (double)(tileSize-1));
+    if (min_j < 0) min_j = 0;
+    if (min_j >= (int)tileSize) min_j = tileSize - 1;
+
+    int max_i = (int)ceil(maxndcx * (double)(tileSize-1));
+    if (max_i < 0) max_i = 0;
+    if (max_i >= (int)tileSize) max_i = tileSize - 1;
+
+    int max_j = (int)ceil(maxndcy * (double)(tileSize-1));
+    if (max_j < 0) max_j = 0;
+    if (max_j >= (int)tileSize) max_j = tileSize - 1;
+
+    if (min_i >= 0 && max_i >= 0 && min_j >= 0 && max_j >= 0)
+    {
+        int num_i = max_i - min_i + 1;
+        int num_j = max_j - min_j + 1;
+
+        osg::ref_ptr<Polygon> maskSkirtPoly = new Polygon();
+        maskSkirtPoly->resize(num_i * 2 + num_j * 2 - 4);
+
+        for (int i = 0; i < num_i; i++)
+        {
+            {
+                osg::Vec3d ndc( ((double)(i + min_i))/(double)(tileSize-1), ((double)min_j)/(double)(tileSize-1), 0.0);
+                (*maskSkirtPoly)[i] = ndc;
+            }
+
+            {
+                osg::Vec3d ndc( ((double)(i + min_i))/(double)(tileSize-1), ((double)max_j)/(double)(tileSize-1), 0.0);
+                (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
+            }
+        }
+        for (int j = 0; j < num_j - 2; j++)
+        {
+            {
+                osg::Vec3d ndc( ((double)max_i)/(double)(tileSize-1), ((double)(min_j + j + 1))/(double)(tileSize-1), 0.0);
+                (*maskSkirtPoly)[j + num_i] = ndc;
+            }
+
+            {
+                osg::Vec3d ndc( ((double)min_i)/(double)(tileSize-1), ((double)(min_j + j + 1))/(double)(tileSize-1), 0.0);
+                (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
+            }
+        }
+
+        for (int j = 0; j < num_j; j++)
+        {
+            for (int i = 0; i < num_i; i++)
+            {
+                {
+                    osg::Vec3d ndc( ((double)(i + min_i))/(double)(tileSize-1), ((double)(j+min_j))/(double)(tileSize-1), 0.0);
+                    coordsArray->push_back(ndc) ;
+                }						
+            }
+        }
+
+
+        // Use delaunay triangulation for stitching:
+        for (MaskRecordVector::iterator mr = _maskRecords.begin();mr != _maskRecords.end();mr++)
+        {
+            //Create local polygon representing mask
+            osg::ref_ptr<Polygon> maskPoly = new Polygon();
+            for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
+            {
+                osg::Vec3d local;
+                geoLocator->convertModelToLocal(*it, local);
+                maskPoly->push_back(local);
+            }
+
+            // Add mask bounds as a triangulation constraint
+            osg::ref_ptr<osgUtil::DelaunayConstraint> newdc=new osgUtil::DelaunayConstraint;
+            osg::Vec3Array* maskConstraint = new osg::Vec3Array();
+            newdc->setVertexArray(maskConstraint);
+
+            //Crop the mask to the stitching poly (for case where mask crosses tile edge)
+            osg::ref_ptr<Geometry> maskCrop;
+            maskPoly->crop(maskSkirtPoly.get(), maskCrop);
+
+            GeometryIterator i( maskCrop.get(), false );
+            while( i.hasMore() )
+            {
+                Geometry* part = i.next();
+                if (!part)
+                    continue;
+
+                if (part->getType() == Geometry::TYPE_POLYGON)
+                {
+                    osg::Vec3Array* partVerts = part->toVec3Array();
+                    maskConstraint->insert(maskConstraint->end(), partVerts->begin(), partVerts->end());
+                    newdc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - partVerts->size(), partVerts->size()));
+                }
+            }
+
+            // Cropping strips z-values so need reassign
+            std::vector<int> isZSet;
+            for (osg::Vec3Array::iterator it = maskConstraint->begin(); it != maskConstraint->end(); ++it)
+            {
+                int zSet = 0;
+
+                //Look for verts that belong to the original mask skirt polygon
+                for (Polygon::iterator mit = maskSkirtPoly->begin(); mit != maskSkirtPoly->end(); ++mit)
+                {
+                    if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+                    {
+                        //(*it).z() = (*mit).z();
+                        zSet += 1;
+
+                        // Remove duplicate point from coordsArray to avoid duplicate point warnings
+                        osg::Vec3Array::iterator caIt;
+                        for (caIt = coordsArray->begin(); caIt != coordsArray->end(); ++caIt)
+                        {
+                            if (osg::absolute((*caIt).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*caIt).y() - (*it).y()) < MATCH_TOLERANCE)
+                                break;
+                        }
+                        if (caIt != coordsArray->end())
+                            coordsArray->erase(caIt);
+
+                        break;
+                    }
+                }
+
+                //Look for verts that belong to the mask polygon
+                for (Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+                {
+                    if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+                    {
+                        (*it).z() = (*mit).z();
+                        zSet += 2;
+                        break;
+                    }
+                }
+
+                isZSet.push_back(zSet);
+            }
+
+            //Any mask skirt verts that are still unset are newly created verts where the skirt
+            //meets the mask. Find the mask segment the point lies along and calculate the
+            //appropriate z value for the point.
+            int count = 0;
+            for (osg::Vec3Array::iterator it = maskConstraint->begin(); it != maskConstraint->end(); ++it)
+            {
+                //If the z-value was set from a mask vertex there is no need to change it.  If
+                //it was set from a vertex from the stitching polygon it may need overriden if
+                //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
+                //if (isZSet[count] < 2)
+                if (!isZSet[count])
+                {
+                    osg::Vec3d p2 = *it;
+                    double closestZ = 0.0;
+                    double closestRatio = DBL_MAX;
+                    for (Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+                    {
+                        osg::Vec3d p1 = *mit;
+                        osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
+
+                        //Truncated vales to compensate for accuracy issues
+                        double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;
+                        double p3x = ((int)(p3.x() * 1000000)) / 1000000.0L;
+                        double p2x = ((int)(p2.x() * 1000000)) / 1000000.0L;
+
+                        double p1y = ((int)(p1.y() * 1000000)) / 1000000.0L;
+                        double p3y = ((int)(p3.y() * 1000000)) / 1000000.0L;
+                        double p2y = ((int)(p2.y() * 1000000)) / 1000000.0L;
+
+                        if ((p1x < p3x ? p2x >= p1x && p2x <= p3x : p2x >= p3x && p2x <= p1x) &&
+                            (p1y < p3y ? p2y >= p1y && p2y <= p3y : p2y >= p3y && p2y <= p1y))
+                        {
+                            double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                            double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                            double zmag = p3.z() - p1.z();
+
+                            double foundZ = (l1 / lt) * zmag + p1.z();
+
+                            double mRatio = 1.0;
+                            if (osg::absolute(p1x - p3x) < MATCH_TOLERANCE)
+                            {
+                                if (osg::absolute(p1x-p2x) < MATCH_TOLERANCE)
+                                    mRatio = 0.0;
+                            }
+                            else
+                            {
+                                double m1 = p1x == p2x ? 0.0 : (p2y - p1y) / (p2x - p1x);
+                                double m2 = p1x == p3x ? 0.0 : (p3y - p1y) / (p3x - p1x);
+                                mRatio = m2 == 0.0 ? m1 : osg::absolute(1.0L - m1 / m2);
+                            }
+
+                            if (mRatio < 0.01)
+                            {
+                                (*it).z() = foundZ;
+                                isZSet[count] = 2;
+                                break;
+                            }
+                            else if (mRatio < closestRatio)
+                            {
+                                closestRatio = mRatio;
+                                closestZ = foundZ;
+                            }
+                        }
+                    }
+
+                    if (!isZSet[count] && closestRatio < DBL_MAX)
+                    {
+                        (*it).z() = closestZ;
+                        isZSet[count] = 2;
+                    }
+                }
+
+                if (!isZSet[count])
+                    OE_WARN << LC << "Z-value not set for mask constraint vertex" << std::endl;
+
+                count++;
+            }
+
+            alldcs.push_back(newdc);
+        }
+
+
+        trig->setInputPointArray(coordsArray.get());
+
+        for (int dcnum =0; dcnum < alldcs.size();dcnum++)
+        {
+            trig->addInputConstraint(alldcs[dcnum].get());
+        }
+
+        // Create array to hold vertex normals
+        osg::Vec3Array *norms=new osg::Vec3Array;
+        trig->setOutputNormalArray(norms);
+
+
+        // Triangulate vertices and remove triangles that lie within the contraint loop
+        trig->triangulate();
+        for (int dcnum =0; dcnum < alldcs.size();dcnum++)
+        {
+            trig->removeInternalTriangles(alldcs[dcnum].get());
+        }
+
+        verts->reserve(verts->size() + trig->getInputPointArray()->size());
+        texCoords->reserve(texCoords->size() + trig->getInputPointArray()->size());
+        normals->reserve(normals->size() + trig->getInputPointArray()->size());
+        neighbors->reserve(neighbors->size() + trig->getInputPointArray()->size());
+
+        // Iterate through point to convert to model coords, calculate normals, and set up tex coords
+        osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( _key, mapInfo );
+
+        //int norm_i = -1;
+        unsigned vertsOffset = verts->size();
+
+        for (osg::Vec3Array::iterator it = trig->getInputPointArray()->begin(); it != trig->getInputPointArray()->end(); ++it)
+        {
+            // get model coords
+            osg::Vec3d model;
+            //locator->convertLocalToModel(*it, model);
+            //locator->unitToModel(*it, model);
+            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 0.0f), model);
+            model = model * world2local;
+            verts->push_back(model);
+
+            // use same vert for neighbor to prevent morphing
+            neighbors->push_back( model );
+
+            // calc normals
+            osg::Vec3d local_one(*it);
+            local_one.z() += 1.0;
+            osg::Vec3d model_one;
+            locator->convertLocalToModel( local_one, model_one );
+            model_one = (model_one*world2local) - model;
+            model_one.normalize();
+            model_one.z() = 0.0;
+            normals->push_back(model_one);
+
+            // set up text coords
+            texCoords->push_back( osg::Vec3f(it->x(), it->y(), 1.0f) );
+        }
+
+        // Get triangles from triangulator and add as primative set to the geometry
+        osg::DrawElementsUInt* tris = trig->getTriangles();
+        if ( tris && tris->getNumIndices() >= 3 )
+        {
+            osg::ref_ptr<osg::DrawElementsUInt> elems = new osg::DrawElementsUInt(tris->getMode());
+            elems->reserve(tris->size());
+
+            const osg::MixinVector<GLuint> ins = tris->asVector();
+            for (osg::MixinVector<GLuint>::const_iterator it = ins.begin(); it != ins.end(); ++it)
+            {
+                elems->push_back((*it) + vertsOffset);
+            }
+
+            return elems.release();
+        }
+    }
+
+    return 0L;
+}
+
+void
+MaskGenerator::getMinMax(osg::Vec3d& min, osg::Vec3d& max)
+{
+    if (_maskRecords.size() > 0)
+    {
+        min.x() = _maskRecords[0]._ndcMin.x();
+        min.y() = _maskRecords[0]._ndcMin.y();
+        min.z() = _maskRecords[0]._ndcMin.z();
+
+        max.x() = _maskRecords[0]._ndcMax.x();
+        max.y() = _maskRecords[0]._ndcMax.y();
+        max.z() = _maskRecords[0]._ndcMax.z();
+
+        for (MaskRecordVector::const_iterator it = _maskRecords.begin(); it != _maskRecords.end(); ++it)
+        {
+            if (it->_ndcMin.x() < min.x()) min.x() = it->_ndcMin.x();
+            if (it->_ndcMin.y() < min.y()) min.y() = it->_ndcMin.y();
+            if (it->_ndcMin.z() < min.z()) min.z() = it->_ndcMin.z();
+
+            if (it->_ndcMax.x() > max.x()) max.x() = it->_ndcMax.x();
+            if (it->_ndcMax.y() > max.y()) max.y() = it->_ndcMax.y();
+            if (it->_ndcMax.z() > max.z()) max.z() = it->_ndcMax.z();
+        }
+    }
+}
+
+bool
+MaskGenerator::contains(float nx, float ny) const
+{
+    bool contained = false;
+    for (MaskRecordVector::const_iterator it = _maskRecords.begin(); it != _maskRecords.end(); ++it)
+    {
+        if ( nx >= it->_ndcMin.x() && nx <= it->_ndcMax.x() && ny >= it->_ndcMin.y() && ny <= it->_ndcMax.y())
+        {
+            contained = true;
+            break;
+        }
+    }
+
+    return contained;
 }

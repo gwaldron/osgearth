@@ -233,7 +233,8 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
                     }
                 }
 
-                _geom->getPrimitiveSet(0)->draw(state, true);
+                for (int i=0; i < _geom->getNumPrimitiveSets(); i++)
+                    _geom->getPrimitiveSet(i)->draw(state, true);
 
                 ++layersDrawn;
             }
@@ -252,7 +253,8 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
         if ( orderLocation >= 0 )
             ext->glUniform1i( orderLocation, (GLint)0 );
         
-        _geom->getPrimitiveSet(0)->draw(state, true);
+        for (int i=0; i < _geom->getNumPrimitiveSets(); i++)
+            _geom->getPrimitiveSet(i)->draw(state, true);
     }
 
 }

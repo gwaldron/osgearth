@@ -47,7 +47,8 @@ _debug   ( false )
 void
 GeometryPool::getPooledGeometry(const TileKey&               tileKey,
                                 const MapInfo&               mapInfo,
-                                osg::ref_ptr<osg::Geometry>& out)
+                                osg::ref_ptr<osg::Geometry>& out,
+                                MaskGenerator*               maskSet)
 {
     // convert to a unique-geometry key:
     GeometryKey geomKey;
@@ -56,8 +57,10 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
     // Look it up in the pool:
     Threading::ScopedMutexLock exclusive( _geometryMapMutex );
 
+    bool masking = maskSet && maskSet->hasMasks();
+
     GeometryMap::iterator i = _geometryMap.find( geomKey );
-    if ( i != _geometryMap.end() )
+    if ( !masking && i != _geometryMap.end() )
     {
         // Found. return it.
         out = i->second.get();
@@ -65,8 +68,10 @@ GeometryPool::getPooledGeometry(const TileKey&               tileKey,
     else
     {
         // Not found. Create it.
-        out = createGeometry( tileKey, mapInfo, 0L );
-        _geometryMap[ geomKey ] = out.get();
+        out = createGeometry( tileKey, mapInfo, maskSet );
+
+        if (!masking)
+            _geometryMap[ geomKey ] = out.get();
 
         if ( _debug )
         {
@@ -217,11 +222,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             verts->push_back( modelLTP );
             tileBound.expandBy( verts->back() );
 
-            // no masking in the geometry pool, so always write a z=1.0 -gw
-            //bool masked = _maskSet.contains(nx, ny);     
             if ( populateTexCoords )
             {
-                texCoords->push_back( osg::Vec3f(nx, ny, 1.0f) );
+                // if masked then set textCoord z-value to 0.0
+                bool masked = maskSet ? maskSet->contains(nx, ny) : false;
+                texCoords->push_back( osg::Vec3f(nx, ny, masked ? 0.0f : 1.0f) );
             }
 
             osg::Vec3d modelPlusOne;
@@ -314,6 +319,14 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             addSkirtTriangles( i, i+2 );
 
         addSkirtTriangles( i, skirtIndex );
+    }
+
+    // create mask geometry
+    if (maskSet)
+    {
+        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, _tileSize, verts, texCoords, normals, neighbors);
+        if (maskPrim)
+            geom->addPrimitiveSet( maskPrim );
     }
 
 #if 0

@@ -137,6 +137,10 @@ namespace osgEarth { namespace Symbology
         /** Evaluate the expression. */
         const std::string& eval() const;
 
+        /** Evaluate the expression as a URI. 
+            TODO: it would be better to have a whole new subclass URIExpression */
+        URI evalURI() const;
+
         /** Gets the expression string. */
         const std::string& expr() const { return _src; }
 
@@ -164,6 +168,7 @@ namespace osgEarth { namespace Symbology
 
         void init();
     };
+
 
 } } // namespace osgEarth::Symbology
 

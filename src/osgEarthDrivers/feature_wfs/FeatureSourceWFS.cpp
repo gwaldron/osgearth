@@ -155,7 +155,7 @@ public:
                         {
                             result = new FeatureProfile(featureType->getExtent());
 
-                            bool disableTiling = _options.disableTiling().isSet() && *_options.disableTiling();
+                            bool disableTiling = _options.disableTiling().isSetTo(true);
 
                             if (featureType->getTiled() && !disableTiling)
                             {                        
@@ -328,11 +328,12 @@ public:
             unsigned int tileX = query.tileKey().get().getTileX();
             unsigned int tileY = query.tileKey().get().getTileY();
             unsigned int level = query.tileKey().get().getLevelOfDetail();
-#if 0
+            
+            // Tiled WFS follows the same protocol as TMS, with the origin in the lower left of the profile.
+            // osgEarth TileKeys are upper left origin, so we need to invert the tilekey to request the correct key.
             unsigned int numRows, numCols;
             query.tileKey().get().getProfile()->getNumTiles(level, numCols, numRows);
             tileY  = numRows - tileY - 1;
-#endif
 
             buf << "&Z=" << level << 
                    "&X=" << tileX <<

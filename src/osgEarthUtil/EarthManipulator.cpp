@@ -1514,6 +1514,11 @@ EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack 
 void
 EarthManipulator::updateCamera( osg::Camera* eventCamera )
 {
+    // Take a temporary ref to the observer pointers to keep them around.
+    osg::ref_ptr< osg::Camera > viewCamera = _viewCamera.get();
+    osg::ref_ptr< osg::NodeCallback > cameraUpdateCB = _cameraUpdateCB.get();
+    
+
     // check to see if the camera has changed, and update the callback if necessary
     if ( _viewCamera.get() != eventCamera )
     {
@@ -2013,20 +2018,7 @@ EarthManipulator::updateTether()
                 double azim = atan2(-localToFrame(0,1),localToFrame(0,0));
 
                 newTetherRotation.makeRotate(-azim, 0.0, 0.0, 1.0);
-
                 newTetherRotation.slerp(t, _tetherRotationVP0, newTetherRotation);
-
-                //osg::Quat final;
-                //final.makeRotate(-azim, 0, 0, 1);
-                //newTetherRotation.slerp(t, osg::Quat(), final);
-            
-                // Recalculate rotation to compensate, making for a smooth transition:
-                if ( !_tetherRotationOffset.isSet() )
-                {
-                    //_tetherRotationOffset = newTetherRotation.inverse();
-                    //_tetherRotationOffset = osg::Quat();
-                    //_rotation = osg::Quat();
-                }
             }
 
             // Track all rotations

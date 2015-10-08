@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Tags>
 #include <osgEarth/Config>
+#include <vector>
 
 namespace osgEarth { namespace Symbology
 {
@@ -60,6 +61,8 @@ namespace osgEarth { namespace Symbology
     private:
         std::string _name;
     };
+
+    typedef std::vector< osg::ref_ptr<Resource> > ResourceVector;
 
 } } // namespace osgEarth::Symbology
 

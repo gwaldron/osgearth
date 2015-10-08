@@ -57,7 +57,8 @@ public:
     FeatureElevationTileSource( const TileSourceOptions& options ) :
       TileSource( options ),
       _options(options),
-      _maxDataLevel(23)
+      _maxDataLevel(23),
+      _offset(-0.05)
     {
     }
 
@@ -119,13 +120,17 @@ public:
         if (_features->getFeatureProfile())
         {
 			if (getProfile() && !getProfile()->getSRS()->isEquivalentTo(_features->getFeatureProfile()->getSRS()))
+            {
                 OE_WARN << LC << "Specified profile does not match feature profile, ignoring specified profile." << std::endl;
+            }
 
             _extents = _features->getFeatureProfile()->getExtent();
 
 			// If you didn't specify a profile (hint, you should have), use the feature profile.
-			if (!getProfile())
+			if ( !getProfile() )
 			{
+                OE_WARN << LC << "No profile specified; falling back on feature profile." << std::endl;
+
 				const Profile* profile = Profile::create(
 					_extents.getSRS(),
 					_extents.bounds().xMin(),
@@ -176,10 +181,12 @@ public:
             double xmin, ymin, xmax, ymax;
             key.getExtent().getBounds(xmin, ymin, xmax, ymax);
 
-            // populate feature list
             const SpatialReference* featureSRS = _features->getFeatureProfile()->getSRS();
             GeoExtent extentInFeatureSRS = key.getExtent().transform( featureSRS );
 
+            const SpatialReference* keySRS = key.getProfile()->getSRS();
+            
+            // populate feature list
             // assemble a spatial query. It helps if your features have a spatial index.
             Query query;
             query.bounds() = extentInFeatureSRS.bounds();
@@ -192,6 +199,10 @@ public:
                 if ( f && f->getGeometry() )
                     featureList.push_back(f);
             }
+
+            // We now have a feature list in feature SRS.
+
+            bool transformRequired = !keySRS->isHorizEquivalentTo(featureSRS);
 		    
 			if (!featureList.empty())
 			{
@@ -210,27 +221,62 @@ public:
 
 						for (FeatureList::iterator f = featureList.begin(); f != featureList.end(); ++f)
 						{
-							osgEarth::Symbology::Polygon* p = dynamic_cast<osgEarth::Symbology::Polygon*>((*f)->getGeometry());
+							osgEarth::Symbology::Polygon* boundary = dynamic_cast<osgEarth::Symbology::Polygon*>((*f)->getGeometry());
 
-							if (!p)
+							if (!boundary)
 							{
 								OE_WARN << LC << "NOT A POLYGON" << std::endl;
 							}
 							else
 							{
-								GeoPoint geo(key.getProfile()->getSRS(), geoX, geoY);
-								if (!key.getProfile()->getSRS()->isEquivalentTo(getProfile()->getSRS()))
-									geo.transform(getProfile()->getSRS());
+								GeoPoint geo(keySRS, geoX, geoY, 0.0, ALTMODE_ABSOLUTE);
 
-								if (p->contains2D(geo.x(), geo.y()))
+                                if ( transformRequired )
+                                    geo = geo.transform(featureSRS);
+
+								if ( boundary->contains2D(geo.x(), geo.y()) )
 								{
-									h = (*f)->getDouble(_options.attr().value());
+                                    h = (*f)->getDouble(_options.attr().value());
+
+                                    if ( keySRS->isGeographic() )
+                                    {                              
+                                        // for a round earth, must adjust the final elevation accounting for the
+                                        // curvature of the earth; so we have to adjust it in the feature boundary's
+                                        // local tangent plane.
+                                        Bounds bounds = boundary->getBounds();
+                                        GeoPoint anchor( featureSRS, bounds.center().x(), bounds.center().y(), h, ALTMODE_ABSOLUTE );
+                                        if ( transformRequired )
+                                            anchor = anchor.transform(keySRS);
+
+                                        // For transforming between ECEF and local tangent plane:
+                                        osg::Matrix localToWorld, worldToLocal;
+                                        anchor.createLocalToWorld(localToWorld);
+                                        worldToLocal.invert( localToWorld );
+
+                                        // Get the ECEF location of the anchor point:
+                                        osg::Vec3d ecef;
+                                        geo.toWorld( ecef );
+
+                                        // Move it into Local Tangent Plane coordinates:
+                                        osg::Vec3d local = ecef * worldToLocal;
+
+                                        // Reset the Z to zero, since the LTP is centered on the "h" elevation:
+                                        local.z() = 0.0;
+
+                                        // Back into ECEF:
+                                        ecef = local * localToWorld;
+
+                                        // And back into lat/long/alt:
+                                        geo.fromWorld( geo.getSRS(), ecef);
+
+                                        h = geo.z();
+                                    }
 									break;
 								}
 							}
 						}
 
-						hf->setHeight(c, r, h);
+						hf->setHeight(c, r, h-0.1);
 					}
 				}
 			}	
@@ -257,6 +303,8 @@ private:
     osg::ref_ptr< osgDB::Options > _dbOptions;
 
     unsigned int _maxDataLevel;
+
+    double _offset;
 };
 
 

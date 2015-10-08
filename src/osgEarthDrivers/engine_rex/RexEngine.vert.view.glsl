@@ -14,38 +14,13 @@ vec3 oe_UpVectorView;
 uniform mat4 oe_layer_texMatrix;
 uniform mat4 oe_layer_texParentMatrix;
 
-uniform sampler2D oe_tile_elevationTex;
-uniform mat4      oe_tile_elevationTexMatrix;
-uniform float     oe_tile_elevationSize;
+// SDK functions:
+float oe_terrain_getElevation(in vec2 uv);
+
 
 void oe_rex_elevateVertexAndSetTexCoords(inout vec4 vertexView)
 {
-    // Texel-level scale and bias allow us to sample the elevation texture
-    // on texel center instead of edge.
-    float texelScale = (oe_tile_elevationSize-1.0)/oe_tile_elevationSize;
-    float texelBias  = 0.5/oe_tile_elevationSize;
-
-#if 0    
-    vec2 elevc = oe_layer_tilec.st;
-
-    // scale:
-    elevc.st *= oe_tile_elevationTexMatrix[0][0] * texelScale;
-
-    // bias:
-    elevc.st += oe_tile_elevationTexMatrix[3].st*texelScale;
-
-    // offset:
-    elevc.st += 0.5/texelBias;
-#endif
-
-    // Apply the scale and bias.
-    vec2 elevc = oe_layer_tilec.st
-        * texelScale * oe_tile_elevationTexMatrix[0][0]     // scale
-        + texelScale * oe_tile_elevationTexMatrix[3].st     // bias
-        + texelBias;
-
-    //float elev = vertexView.z > 0.0f ? 0.0f : texture(oe_tile_elevationTex, elevc).r;
-    float elev = texture(oe_tile_elevationTex, elevc).r;
+    float elev = oe_terrain_getElevation( oe_layer_tilec.st );
 
     vertexView.xyz += normalize(oe_UpVectorView) * elev;
 

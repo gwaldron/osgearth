@@ -62,6 +62,7 @@ SET(LIB_PUBLIC_HEADERS
     Cube
     CullingUtils
     DateTime
+	DateTimeRange
     Decluttering
     DepthOffset
     DPLineSegmentIntersector
@@ -219,6 +220,7 @@ set(TARGET_SRC
     Cube.cpp
     CullingUtils.cpp
     DateTime.cpp
+	DateTimeRange.cpp
     Decluttering.cpp
     DepthOffset.cpp
     DPLineSegmentIntersector.cpp

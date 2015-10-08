@@ -316,8 +316,8 @@ HTTPResponse::getPartStream( unsigned int n ) const {
 
 std::string
 HTTPResponse::getPartAsString( unsigned int n ) const {
-     std::string streamStr;
-     streamStr = _parts[n]->_stream.str();
+    std::string streamStr;
+    streamStr = _parts[n]->_stream.str();    
     return streamStr;
 }
 
@@ -435,6 +435,10 @@ HTTPClient::initializeImpl()
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
     curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //0=enable.
     curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
+
+    // Enable automatic CURL decompression of known types. An empty string will automatically add all supported encoding types that are built into curl.
+    // Note that you must have curl built against zlib to support gzip or deflate encoding.
+    curl_easy_setopt( _curl_handle, CURLOPT_ENCODING, "");
 
     osg::ref_ptr< CurlConfigHandler > curlConfigHandler = getCurlConfigHandler();
     if (curlConfigHandler.valid()) {
@@ -805,7 +809,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     {
         std::string oldURL = url;
         url = rewriter->rewrite( oldURL );
-        OE_INFO << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
+        OE_DEBUG << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
     }
 
     const osgDB::AuthenticationDetails* details = authenticationMap ?

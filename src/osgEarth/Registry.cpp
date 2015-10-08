@@ -637,6 +637,20 @@ Registry::getMimeTypeForExtension(const std::string& ext)
     return std::string();
 }
 
+void
+Registry::setTextureImageUnitOffLimits(int unit)
+{
+    Threading::ScopedWriteLock exclusive(_regMutex);
+    _offLimitsTextureImageUnits.insert(unit);
+}
+
+const std::set<int>
+Registry::getOffLimitsTextureImageUnits() const
+{
+    Threading::ScopedReadLock exclusive(_regMutex);
+    return _offLimitsTextureImageUnits;
+}
+
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin
 class RegisterEarthTileExtension

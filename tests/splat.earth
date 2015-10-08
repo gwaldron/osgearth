@@ -1,69 +1,82 @@
 <!--
-|  Texture splatting test.
-|
+|  Procedural terrain splatting.
 |  Run with splat.bat, (or splat-edit.bat for tweakery)
 -->
 
 <map>
         
-	<options>
-		<terrain normalize_edges="true"/>
-	</options>
-	
-    <elevation name="readymap-elevation-257" driver="tms" enabled="true">
+    <options>
+        <terrain driver="rex" 
+                 tile_size="17"
+                 high_resolution_first="true" 
+                 merges_per_frame="50"
+                 skirt_ratio="0.01"
+                 normal_maps="true" />
+    </options>
+    
+    <elevation name="readymap_elevation" driver="tms" enabled="true">
         <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
     </elevation>
+     
+    <image name="CLASSMAP" driver="landuse" shared="true" visible="false" coverage="true" max_data_level="15">
+        <base_lod>12</base_lod>
+        <tile_size>256</tile_size>
+        <cache_policy usage="none"/>
+        <images>
+            <image name="ESA" driver="gdal" coverage="true">
+                <url>H:/data/esa/GLOBCOVER_L4_200901_200912_V2.3_Ant_tiled.tif</url>
+                <warp>0.01</warp>
+            </image>
+        </images>
+        <shared_sampler> landUseTex       </shared_sampler>
+        <shared_matrix>  landUseTexMatrix </shared_matrix>
+    </image>
 
-    <extensions>	
-	    <splat>
-			<legend>../data/splat/GLOBCOVER_legend.json</legend>
-            <catalog>../data/splat/splat_catalog.json</catalog>
-			
-			<coverages>				
-				<image name="g1" driver="gdal" coverage="true">
-					<url>H:/data/ESA/GLOBCOVER_L4_200901_200912_V2.3_tiled.tif</url>
-					<cache_policy usage="none"/>
-				</image>
-			
-				<!--
-				<image name="GLOBCOVER2" driver="agglite" coverage="true">
-					<features driver="ogr" build_spatial_index="true">
-						<url>H:/data/naturalearth/vector-10m/ne_10m_rivers_lake_centerlines_scale_rank.shp</url>
-					</features>
-					<gamma>1.0</gamma>
-					<styles>
-						<style type="text/css">
-							default {
-								stroke: #d2d2d2ff;
-								stroke-width: 100m;
-							}
-						</style>
-					</styles>
-				</image>
-				-->
-			</coverages>
+    <extensions>   
+
+        <bumpmap>
+            <image>../data/rock_hard.jpg</image>
+            <octaves>8</octaves>
+            <intensity>2.2</intensity>
+        </bumpmap>
+   
+        <splat>        
+            <coverage>
+                <layer> CLASSMAP </layer>
+                <legend> ../data/splat/GLOBCOVER_legend.xml </legend>
+            </coverage>
+            
+            <surface>
+                <catalog> ../data/splat/splat_catalog.xml </catalog>
+            </surface>
+
+            <land_cover>
+                
+                <layers>
+                    <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5">
+                        <biomes>
+                            <biome classes="forest forest1 forest2 forest3 forest4">
+                                <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
+                                <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
+                                <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
+                            </biome>
+                        </biomes>
+                    </layer>
+                
+                    <layer name="grass" lod="19" max_distance="150" density="3.8" fill="0.50" wind="0.15">
+                        <biomes>
+                            <biome name="Grass" classes="grassland grassland2 forest forest1 forest2 forest3 forest4">
+                                <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
+                            </biome>
+                        </biomes>
+                    </layer>
+                </layers>
+                
+            </land_cover>            
         </splat>
-		
-		<!--
-		<normalmap>
-		</normalmap>
-		-->
-
-		<bumpmap>
-			<image>../data/rock_hard.jpg</image>
-		</bumpmap>
-		
-		<viewpoints>
-			<viewpoint name="Wash St. 430K" heading="-1.002577141807595" height="3694.875054217875" lat="46.85393268075167" long="-121.7764141794478" pitch="-89.85464953482169" range="426454.3850159062"/>
-			<viewpoint name="Mt R. Nadir 30K" heading="0.5013023037097585" height="4101.627114404924" lat="46.85909894548915" long="-121.7598368518208" pitch="-89.43249895879129" range="29029.34246828893"/>
-			<viewpoint name="Mt R. Oblique 30K" heading="17.33521725357022" height="2462.60273069609" lat="46.82181702111031" long="-121.7814936386096" pitch="-21.29241356548601" range="23926.75258864516"/>
-			<viewpoint name="Mt R. Trees" heading="-98.36122712710565" height="1639.304918398149" lat="46.78673277044066" long="-121.743286318636" pitch="-10.85365380742088" range="257.5853045645545"/>
-			<viewpoint name="Nepal" heading="-72.70835146844568" height="6334.845537136309" lat="27.94213038800919" long="86.9936567556778" pitch="-18.63803872963365" range="13611.24948464565"/>
-			<viewpoint name="Nepal NF" heading="-49.14546953546358" height="6334.332569343038" lat="27.9421778947837" long="86.9935949004298" pitch="-3.643325527310435" range="13302.81192964212"/>
-			<viewpoint name="Matterhorn" heading="-1.429462844200832" height="2282.858508689329" lat="45.95106319557" long="7.642741711675961" pitch="-25.12269405854052" range="26690.10606054494"/>
-		</viewpoints>
-		
-		
+            
+        <xi:include href="viewpoints.xml"/>
+        
     </extensions>
 
 </map>

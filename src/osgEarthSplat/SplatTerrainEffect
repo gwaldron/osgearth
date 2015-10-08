@@ -1,0 +1,181 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H
+#define OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H
+
+#include "SplatCatalog"
+#include "SplatCoverageLegend"
+#include "BiomeRegion"
+#include "BiomeRegionSelector"
+#include "SplatShaders"
+#include "Export"
+
+#include "Coverage"
+#include "Surface"
+#include "LandCover"
+
+#include <osgEarth/TerrainEffect>
+#include <osg/Image>
+#include <osg/Uniform>
+#include <osg/Texture2DArray>
+#include <osgDB/Options>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Splat
+{
+    /**
+     * Effect that applies texture splatting to the terrain.
+     */
+    class OSGEARTHSPLAT_EXPORT SplatTerrainEffect : public TerrainEffect
+    {
+    public:
+        /** constructor */
+        SplatTerrainEffect();
+
+        /**
+         * Sets the OSG DB options to use when performing I/O
+         */
+        void setDBOptions(const osgDB::Options* dbo);
+
+        /**
+         * Sets the coverage source
+         */
+        void setCoverage(Coverage* coverage) { _coverage = coverage; }
+        Coverage* getCoverage() const { return _coverage.get(); }
+
+        /**
+         * Set the surface rendering configuration
+         */
+        void setSurface(Surface* surface ) { _surface = surface; }
+        Surface* getSurface() const { return _surface; }
+
+        /**
+         * Sets the land cover configuration to use
+         */
+        void setLandCover(LandCover* landCover) { _landCover = landCover; }
+        LandCover* getLandCover() const { return _landCover.get(); }
+
+
+#if 0
+
+        /**
+         * Sets the image layer that supplies the coverage values. This value
+         * is mandatory, and you must call it prior to installing the effect.
+         */
+        void setCoverageLayer(const ImageLayer* layer) { _coverageLayer = layer; }
+        const ImageLayer* getCoverageLayer() { return _coverageLayer.get(); }
+
+        /**
+         * Sets the draw priority of the splat effect. Default is -1.0, which means
+         * the splat will render before the terrain engine renders any image layers.
+         * You can set it to 1.0 to splat after drawing image layers.
+         *
+         * This is options, but if you call it you must do so prior to installing
+         * the effect.
+         */
+        void setRenderOrder(float value) { _renderOrder = value; }
+        float getRenderOrder() const { return _renderOrder; }
+
+        /**
+         * Uniform that governs coverage sample warping. The value is type FLOAT.
+         * This warps the texture coordinates used to sample the coverage data
+         * using a simplex noise function. This can help to mitigate the "blockiness"
+         * that somes from low resolution coverage data.
+         * Reasonable values are in the range [0 .. 0.01]
+         */
+        osg::Uniform* getCoverageWarpUniform() { return _warpUniform.get(); }
+
+        /**
+         * Uniform that governs the bilinear sampling of the coverage texture.
+         * The default is 1.0, at which normal bilinear sampling occurs.
+         * Higher values will blur the splatting, and lower values will sharpen it.
+         */
+        osg::Uniform* getCoverageBlurUniform() { return _blurUniform.get(); }
+
+        /**
+         * Uniform that governs the scale level-of-detail offset when sampling 
+         * splat textures. Defaults to 0. This is an integer such that for a
+         * value of N, the texture coordinates are scaled by 2^N when sampling
+         * splat textures.
+         */
+        osg::Uniform* getScaleLevelOffsetUniform() { return _scaleOffsetUniform.get(); }
+
+        /**
+         * Gets the list of Biomes.
+         */
+        const BiomeRegionVector& getBiomeRegions() const { return _biomeRegions; }
+#endif
+
+
+
+    public: // TerrainEffect interface
+
+        void onInstall(TerrainEngineNode* engine);
+
+        void onUninstall(TerrainEngineNode* engine);
+
+
+    protected:
+        virtual ~SplatTerrainEffect() { }
+
+        bool createSplattingTextures(
+            const Coverage* coverage, 
+            const Surface*  surface, 
+            SplatTextureDefVector& output) const;
+
+        bool createSplattingSamplingFunction(
+            const Coverage*  coverage,
+            SplatTextureDef& textureDef) const;
+
+        // index-aligned with the surface biome region vector:
+        SplatTextureDefVector               _textureDefs;
+
+        int                                 _splatTexUnit;
+        osg::ref_ptr<osg::Uniform>          _splatTexUniform;
+        osg::ref_ptr<osg::Uniform>          _coverageTexUniform;
+        osg::ref_ptr<osg::Uniform>          _scaleOffsetUniform;
+        osg::ref_ptr<osg::Uniform>          _warpUniform;
+        osg::ref_ptr<osg::Uniform>          _blurUniform;
+        float                               _renderOrder;
+        int                                 _noiseTexUnit;
+        osg::ref_ptr<osg::Texture>          _noiseTex;
+        osg::ref_ptr<osg::Uniform>          _noiseTexUniform;
+        osg::ref_ptr<osg::Uniform>          _noiseScaleUniform;
+        osg::ref_ptr<osg::Uniform>          _useBilinearUniform;
+
+        osg::ref_ptr<BiomeRegionSelector>   _biomeRegionSelector;
+
+        bool                                _editMode;
+        bool                                _gpuNoise;
+
+        osg::ref_ptr<const osgDB::Options>  _dbo;
+
+        osg::ref_ptr<Coverage>  _coverage;
+        osg::ref_ptr<Surface>   _surface;
+        osg::ref_ptr<LandCover> _landCover;
+
+    };
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_SPLAT_SPLAT_TERRAIN_EFFECT_H

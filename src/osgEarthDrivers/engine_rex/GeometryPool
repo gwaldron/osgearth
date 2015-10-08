@@ -86,6 +86,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             osg::ref_ptr<osg::Geometry>& out,
             MaskGenerator*               maskSet=0L);
 
+        /**
+         * The number of elements (incides) in the terrain skirt, if applicable
+         */
+        int getSkirtSize() const;
+
     protected:
         virtual ~GeometryPool() { }
 

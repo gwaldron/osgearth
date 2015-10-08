@@ -205,10 +205,14 @@ _fallbackData( fallbackData )
         _texture = tex;
     }
 
-
+    // First check the unref globel policy:
     const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
     if ( unRefPolicy.isSet() )
         _texture->setUnRefImageDataAfterApply( unRefPolicy.get() );
+
+    // dynamic layer? Need to keep it around
+    if ( layer->isDynamic() )
+        _texture->setUnRefImageDataAfterApply( false );
 
     _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
     _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE );

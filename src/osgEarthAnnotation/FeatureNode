@@ -52,7 +52,8 @@ namespace osgEarth { namespace Annotation
             MapNode* mapNode, 
             Feature* feature,
             const Style& style = Style(),
-            const GeometryCompilerOptions& options = GeometryCompilerOptions() );
+            const GeometryCompilerOptions& options = GeometryCompilerOptions(),
+            StyleSheet* styleSheet = 0);
 
         /**
          * Constructs a new FeatureNode from a FeatureList
@@ -61,7 +62,8 @@ namespace osgEarth { namespace Annotation
             MapNode* mapNode, 
             FeatureList& features,
             const Style& style = Style(),
-            const GeometryCompilerOptions& options = GeometryCompilerOptions() );
+            const GeometryCompilerOptions& options = GeometryCompilerOptions(), 
+            StyleSheet* styleSheet = 0);
 
         virtual ~FeatureNode() { }
 
@@ -89,6 +91,16 @@ namespace osgEarth { namespace Annotation
          * Sets whether cluster culling is enabled on this FeatureNode.
          */
         void setClusterCulling( bool clusterCulling );
+
+        /**
+         * Gets the StyleSheet for the session.
+         */
+        StyleSheet* getStyleSheet() const;
+
+        /**
+         * Sets the StyleSheet for the session.
+         */
+        void setStyleSheet(StyleSheet* styleSheet);
 
 
         /**
@@ -135,6 +147,8 @@ namespace osgEarth { namespace Annotation
         osg::NodeCallback*           _clusterCullingCallback;
 
         osg::ref_ptr< osg::Node >    _compiled;
+
+        osg::ref_ptr< StyleSheet >   _styleSheet;
 
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }

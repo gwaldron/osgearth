@@ -35,6 +35,11 @@ KML_LineStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
         if ( !width.empty() )
         {
             line->stroke()->width() = as<float>( width, 1.0f );
+
+            if ( line->stroke()->width() == 0.0f )
+            {
+                line->stroke()->width() = 1.0f;
+            }
         }
     }
 }

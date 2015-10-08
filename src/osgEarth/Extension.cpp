@@ -33,7 +33,7 @@ Extension::create(const std::string& name, const ConfigOptions& options)
 {
     if ( name.empty() )
     {
-        OE_WARN << LC << "ILLEGAL- no driver set for tile source" << std::endl;
+        OE_WARN << LC << "ILLEGAL- Extension::create requires a plugin name" << std::endl;
         return 0L;
     }
 

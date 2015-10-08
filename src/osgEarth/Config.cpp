@@ -32,6 +32,8 @@
 
 using namespace osgEarth;
 
+#define LC "[Config] "
+
 Config::~Config()
 {
 }
@@ -39,23 +41,36 @@ Config::~Config()
 void
 Config::setReferrer( const std::string& referrer )
 {
-    _referrer = referrer;
+    if ( referrer.empty() )
+        return;
+
+    std::string absReferrer = osgEarth::getAbsolutePath(referrer);
+
+    if ( osgEarth::isRelativePath(absReferrer) )
+    {
+        OE_WARN << LC << "ILLEGAL: call to setReferrer with relative path:  "
+            "key=" << key() << "; referrer=" << referrer << "\n";
+        return;
+    }
+
+    // Don't overwrite an existing referrer:
+    if ( _referrer.empty() )
+    {
+        _referrer = absReferrer;
+    }
+
     for( ConfigSet::iterator i = _children.begin(); i != _children.end(); i++ )
     { 
-        i->setReferrer( osgEarth::getFullPath(_referrer, i->_referrer) );
+        i->setReferrer( absReferrer );
     }
 }
 
 void
 Config::inheritReferrer( const std::string& referrer )
 {
-    if ( _referrer.empty() || !osgEarth::isRelativePath(referrer) )
+    if ( !referrer.empty() )
     {
         setReferrer( referrer );
-    }
-    else if ( !referrer.empty() )
-    {
-        setReferrer( osgDB::concatPaths(_referrer, referrer) );
     }
 }
 

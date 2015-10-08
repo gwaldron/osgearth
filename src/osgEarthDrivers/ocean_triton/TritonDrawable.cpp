@@ -315,7 +315,6 @@ namespace
             _mapNode->getParent(0)->removeChild(0 ,1);
             _mapNode->getParent(0)->insertChild(0, makeFrustumFromCamera(_heightCam));
     #endif /* DEBUG_HEIGHTMAP */
-
         }
 
         void setViewMatrix(const osg::Matrix& viewMatrix) { _viewMatrix = viewMatrix; };
@@ -331,18 +330,20 @@ namespace
         osg::Matrix _viewMatrix, _projectionMatrix;
         unsigned int _contextID;
     };
-
+    
 
     const char* vertexShader =
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "attribute vec4 oe_terrain_attr; \n"
-        "varying float oe_triton_height;\n"
+        "// terrain SDK:\n"
+        "float oe_terrain_getElevation(); \n"
+
+        "varying float oe_triton_elev;\n"
 
         "void setupContour(inout vec4 VertexModel) \n"
         "{ \n"
-        "    oe_triton_height = oe_terrain_attr[3]; \n"
+        "    oe_triton_elev = oe_terrain_getElevation(); \n"
         "} \n";
 
     // The fragment shader simply takes the texture index that we generated
@@ -354,15 +355,15 @@ namespace
         "#version " GLSL_VERSION_STR "\n"
         GLSL_DEFAULT_PRECISION_FLOAT "\n"
 
-        "varying float oe_triton_height;\n"
+        "varying float oe_triton_elev;\n"
 
         "void colorContour( inout vec4 color ) \n"
         "{ \n"
 #ifdef DEBUG_HEIGHTMAP
           // Map to black = -500m, white = +500m
-          "   float nHeight = clamp(oe_triton_height / 1000.0 + 0.5, 0.0, 1.0);\n"
+          "   float nHeight = clamp(oe_triton_elev / 1000.0 + 0.5, 0.0, 1.0);\n"
 #else
-          "   float nHeight = oe_triton_height;\n"
+          "   float nHeight = oe_triton_elev;\n"
 #endif
         "    gl_FragColor = vec4( nHeight, 0.0, 0.0, 1.0 ); \n"
         "} \n";
@@ -518,7 +519,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
 {
     int textureUnit = 0;
-    int textureSize = 1024;
+    int textureSize = 512;
     // Create our height map texture
     _heightMap = new osg::Texture2D;
     _heightMap->setTextureSize(textureSize, textureSize);
@@ -544,12 +545,14 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     // terrain engine automatically generates at the specified location.
     osgEarth::VirtualProgram* heightProgram = new osgEarth::VirtualProgram();
     heightProgram->setFunction( "setupContour", vertexShader,   osgEarth::ShaderComp::LOCATION_VERTEX_MODEL);
-    heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_OUTPUT);//, -1.0 );
-    heightProgram->addBindAttribLocation( "oe_terrain_attr", osg::Drawable::ATTRIBUTE_6 );
+    heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_OUTPUT);
+
+    // Link with the terrain SDK
+    //mapNode->getTerrainEngine()->includeShaderLibrary( heightProgram );
 
     osg::StateSet *stateSet = _heightCamera->getOrCreateStateSet();
-    stateSet->setAttributeAndModes(heightProgram, osg::StateAttribute::ON);// | osg::StateAttribute::OVERRIDE);
-    stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);// | osg::StateAttribute::OVERRIDE);
+    stateSet->setAttribute(heightProgram, osg::StateAttribute::ON);
+    stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     
     if( mapNode && _heightCamera )
     {

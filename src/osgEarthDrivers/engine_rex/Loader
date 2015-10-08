@@ -22,10 +22,15 @@
 #include "Common"
 #include <osg/ref_ptr>
 #include <osg/Group>
+#include <osgDB/Options>
 #include <osgEarth/IOTypes>
 #include <osgEarth/ThreadingUtils>
-#include <map>
-#include <queue>
+#include <osgEarth/TileKey>
+#include <set>
+
+namespace osgEarth {
+    class TerrainEngine;
+}
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
@@ -38,13 +43,30 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         class Request : public osg::Referenced
         {
         public:
+            typedef std::vector<osg::Node*> ChangeSet;
+
+        public:
             Request();
+
+            /** Name the request */
+            void setName(const std::string& name) { _name = name; }
+            const std::string& getName() const { return _name; }
+
+            /** TileKey associated with this request */
+            void setTileKey(const TileKey& key) { _key = key; }
+            const TileKey& getTileKey() const { return _key; }
 
             /** Invoke the operation - not safe to alter the graph */
             virtual void invoke() { }
 
             /** Apply the results of the invoke operation - runs safely in update stage */
             virtual void apply() { }
+
+            /** Request apply() should call this to mark a node as "changed" */
+            void addToChangeSet(osg::Node* Node);
+            
+            /** Loader calls this to process and reset the change set */
+            ChangeSet& getChangeSet() { return _nodesChanged; }
 
             bool operator()(const Request& lhs, const Request& rhs) const {
                 return lhs._uid < rhs._uid;
@@ -69,6 +91,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             bool isMerging() const { return _state == MERGING; }
 
             UID                           _uid;
+            std::string                   _name;
+            TileKey                       _key;
             State                         _state;
             float                         _priority;
             osg::ref_ptr<osg::Referenced> _internalHandle;
@@ -76,6 +100,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             osg::Timer_t                  _lastTick;
             osg::ref_ptr<osg::StateSet>   _stateSet;
 
+            ChangeSet                     _nodesChanged;
         };
 
         class Handler : public osg::Referenced
@@ -114,7 +139,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class PagerLoader : public LoaderGroup
     {
     public:
-        PagerLoader(UID engineUID);
+        PagerLoader(TerrainEngine* engine); //UID engineUID);
 
         /** Sets the maximum number of requests to merge per frame. 0=infinity */
         void setMergesPerFrame(int);
@@ -131,6 +156,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Internal method to invoke a request that was previously queued with load(). */
         Request* invokeAndRelease(UID requestUID);
 
+        /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
+        TileKey getTileKeyForRequest(UID requestUID) const;
+
     public: // osg::Group
 
         bool addChild(osg::Node*);
@@ -138,17 +166,30 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void traverse(osg::NodeVisitor& nv);
 
     protected:
+        
+        void processChangeSet(Loader::Request* req);
+
         typedef std::map<UID, osg::ref_ptr<Loader::Request> > Requests;
 
-        typedef std::queue< osg::ref_ptr<Loader::Request> > MergeQueue;
+        typedef osg::ref_ptr<Loader::Request> RefRequest;
+
+        struct SortRequest {
+            bool operator()(const RefRequest& lhs, const RefRequest& rhs) const {
+                return lhs->_priority > rhs->_priority;
+            }
+        };
+
+        typedef std::multiset<RefRequest, SortRequest> MergeQueue;
 
         UID              _engineUID;
         osg::NodePath    _myNodePath;
         Requests         _requests;
-        Threading::Mutex _requestsMutex;
         MergeQueue       _mergeQueue;  
         osg::Timer_t     _checkpoint;
         int              _mergesPerFrame;
+
+        osg::ref_ptr<osgDB::Options> _dboptions;
+        mutable Threading::Mutex     _requestsMutex;
     };
 
 } } }

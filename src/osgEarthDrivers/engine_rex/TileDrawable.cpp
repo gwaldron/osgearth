@@ -41,7 +41,8 @@ _key         ( key ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
 _tileSize    ( tileSize ),
-_drawPatch   ( false )
+_drawPatch   ( false ),
+_skirtSize   ( 0 )
 {
     setUseVertexBufferObjects( true );
     setUseDisplayList( false );
@@ -64,9 +65,19 @@ void
 TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
 {
     if ( _drawPatch )
+    {
         drawPatches( renderInfo );
+    }
     else
-        drawSurface( renderInfo );
+    {
+        const osg::Camera* camera = renderInfo.getCurrentCamera();
+
+        bool renderColor =
+            (camera->getRenderOrder() != osg::Camera::PRE_RENDER) ||
+            ((camera->getClearMask() & GL_COLOR_BUFFER_BIT) != 0L);
+
+        drawSurface( renderInfo, renderColor );
+    }
 }
 
 
@@ -82,30 +93,14 @@ TileDrawable::drawPatches(osg::RenderInfo& renderInfo) const
     osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
     state.bindElementBufferObject(ebo);
     if (ebo)
-        glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
+        glDrawElements(GL_PATCHES, de->size()-_skirtSize, GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
     else
-        glDrawElements(GL_PATCHES, de->size(), GL_UNSIGNED_SHORT, &de->front());
+        glDrawElements(GL_PATCHES, de->size()-_skirtSize, GL_UNSIGNED_SHORT, &de->front());
 }
-
-struct StateHack : public osg::State {
-    void check() const {
-        const UniformMap::const_iterator i = _uniformMap.find("oe_tile_elevationTexMatrix");
-        if ( i != _uniformMap.end() ) {
-            const UniformStack& s = i->second;
-            const UniformStack::UniformPair& p = s.uniformVec.back();
-            osg::Matrixf mat;
-            p.first->get(mat);
-            OE_INFO << "scale=" << mat(0,0) << " x " << mat(1,1) << "; u=" << mat(3,0) << ", " << mat(3,1) << "\n";
-        }
-        else {
-            OE_WARN << "ETEXMAT NOT FOUND!\n";
-        }
-    }
-};
 
 
 void
-TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
+TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
 {
     unsigned layersDrawn = 0;
 
@@ -156,15 +151,9 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo) const
         texMatrixParentLocation     = pcp->getUniformLocation( _texMatrixParentUniformNameID );
         texParentExistsLocation     = pcp->getUniformLocation( _texParentExistsUniformNameID );
     }
-    
-    //if ( _key.str() == "22/2538301/1110225" )
-    //{
-    //    const StateHack* hack = reinterpret_cast<const StateHack*>(renderInfo.getState());
-    //    hack->check();
-    //}
 
     float prevOpacity = -1.0f;
-    if ( _mptex.valid() && !_mptex->getPasses().empty() )
+    if ( renderColor && _mptex.valid() && !_mptex->getPasses().empty() )
     {
         float prevOpacity = -1.0f;
 
@@ -516,8 +505,8 @@ void
 TileDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     State& state = *renderInfo.getState();
-    bool checkForGLErrors = state.getCheckForGLErrors() == osg::State::ONCE_PER_ATTRIBUTE;
-    if ( checkForGLErrors ) state.checkGLErrors("start of TileDrawable::drawImplementation()");
+    //bool checkForGLErrors = state.getCheckForGLErrors() == osg::State::ONCE_PER_ATTRIBUTE;
+    //if ( checkForGLErrors ) state.checkGLErrors("start of TileDrawable::drawImplementation()");
 
 #if OSG_MIN_VERSION_REQUIRED(3,3,1)
     _geom->drawVertexArraysImplementation( renderInfo );
@@ -527,7 +516,7 @@ TileDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
     drawPrimitivesImplementation( renderInfo );
 
-    if ( checkForGLErrors ) state.checkGLErrors("end of TileDrawable::drawImplementation()");
+    //if ( checkForGLErrors ) state.checkGLErrors("end of TileDrawable::drawImplementation()");
     
     // unbind the VBO's if any are used.
     state.unbindVertexBufferObject();
@@ -552,9 +541,9 @@ TileDrawable::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
     arrayDispatchers.setUseVertexAttribAlias(state.getUseVertexAttributeAliasing());
 
     arrayDispatchers.activateNormalArray(_geom->getNormalArray());
-    arrayDispatchers.activateColorArray(_geom->getColorArray());
-    arrayDispatchers.activateSecondaryColorArray(_geom->getSecondaryColorArray());
-    arrayDispatchers.activateFogCoordArray(_geom->getFogCoordArray());
+    //arrayDispatchers.activateColorArray(_geom->getColorArray());
+    //arrayDispatchers.activateSecondaryColorArray(_geom->getSecondaryColorArray());
+    //arrayDispatchers.activateFogCoordArray(_geom->getFogCoordArray());
 
     if (handleVertexAttributes)
     {
@@ -576,14 +565,14 @@ TileDrawable::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
     if (_geom->getNormalArray() && _geom->getNormalArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
         state.setNormalPointer(_geom->getNormalArray());
 
-    if (_geom->getColorArray() && _geom->getColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setColorPointer(_geom->getColorArray());
+    //if (_geom->getColorArray() && _geom->getColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+    //    state.setColorPointer(_geom->getColorArray());
 
-    if (_geom->getSecondaryColorArray() && _geom->getSecondaryColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setSecondaryColorPointer(_geom->getSecondaryColorArray());
+    //if (_geom->getSecondaryColorArray() && _geom->getSecondaryColorArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+    //    state.setSecondaryColorPointer(_geom->getSecondaryColorArray());
 
-    if (_geom->getFogCoordArray() && _geom->getFogCoordArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
-        state.setFogCoordPointer(_geom->getFogCoordArray());
+    //if (_geom->getFogCoordArray() && _geom->getFogCoordArray()->getBinding()==osg::Array::BIND_PER_VERTEX)
+    //    state.setFogCoordPointer(_geom->getFogCoordArray());
 
     for(unsigned int unit=0;unit<_geom->getTexCoordArrayList().size();++unit)
     {
@@ -615,7 +604,7 @@ TileDrawable::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) const
             }
         }
     }
-
+    
     state.applyDisablingOfVertexAttributes();
 }
 

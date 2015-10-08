@@ -113,11 +113,6 @@ namespace
         geode->addDrawable( geometry );
 
         return geode;
-        //osg::AutoTransform* at = new osg::AutoTransform;
-        //at->setAutoScaleToScreen( true );
-        //at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
-        //at->addChild( geode );
-        //return at;
     }
 }
 

@@ -30,6 +30,10 @@
 #include <osgEarth/TerrainTileNode>
 #include <vector>
 
+namespace osgUtil {
+    class CullVisitor;
+}
+
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     class EngineContext;
@@ -108,6 +112,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         OpenThreads::Atomic                _lastTraversalFrame;
         unsigned                           _count;
         osg::ref_ptr<MPTexture>            _mptex;
+        osg::ref_ptr<osg::StateSet>        _payloadStateSet;
 
         TileNode* getSubTile(unsigned i) { return dynamic_cast<TileNode*>(getChild(i)); }
 
@@ -117,10 +122,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     private:
         void cull(osg::NodeVisitor& nv);
+        void cullSurface(osgUtil::CullVisitor* nv);
 
         bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
         float getVisibilityRangeHint(unsigned firstLOD) const;
-        float getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const;
 
         void updateTileUniforms(const SelectionInfo& selectionInfo);
         void createTileUniforms();
@@ -128,7 +133,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;
         osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
-        osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
+        //osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

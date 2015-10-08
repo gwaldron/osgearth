@@ -23,29 +23,28 @@ Get the Source Code
 
     To download a tarball or ZIP archive of the source code, visit the
     `osgEarth Tags`_ and select the one you want. The latest official release
-    will be at the top.
+    will be at or near the top.
 
 
 Get the Dependencies
 --------------------
 
-**Required dependencies**:
+**Required dependencies**
 
-    * OpenSceneGraph_ 3.0.1 or later, with the CURL plugin enabled.
-    * GDAL_ 1.6 or later - Geospatial Data Abstraction Layer
+    * OpenSceneGraph_ 3.2.1 or later
+    * GDAL_ 1.9.2 or later - Geospatial Data Abstraction Layer
     * CURL_ - HTTP transfer library (comes with OpenSceneGraph_ 3rd party library distros)
+      
+**Recommended pre-built dependencies**
+
+    * AlphaPixel_ has pre-built OSG_ and 3rd-party dependencies for various architectures.
+    * Pre-built `GDAL binaries`_ for various architectures.
     
-**Optional depedencies**: osgEarth will compile without them, but some functionality
-will be missing:
+**Optional depedencies**: osgEarth will compile without them. Look and decide what you need
 
     * GEOS_ 3.2.0 or later - C++ library for topological operations.
       osgEarth uses GEOS to perform various geometry operations like buffering and intersections.
       If you plan to use vector feature data in osgEarth, you probably want this.
-    
-    * Minizip_ - ZIP file extractor; include this if you want to read KMZ files.
-      
-    * QT_ - Cross-platform UI framework. Point the ``QT_QMAKE_EXECUTABLE`` CMake variable
-      to the ``qmake.exe`` you want to use and CMake will populate all the other QT variables.
 
     * LevelDB_ - Google's embedded key/value store. Include this if you want to build
       osgEarth's optional "leveldb" cache driver.
@@ -54,23 +53,12 @@ will be missing:
 	  Used for accessing sqlite/mbtiles datasets. You may need these tips to create the necessary
 	  .lib file from the .def and .dll files included in the Windows binaries:
 	  http://eli.thegreenplace.net/2009/09/23/compiling-sqlite-on-windows
-    
-**Deprecated dependencies**: osgEarth can still use these, but they will probably go away
-in the future:
-
-    * V8_ - Google's JavaScript engine. Include this if you're a Windows user and you want
-      to embed JavaScript code in your earth files. We recommend you use Duktape instead.
       
-    * JavaScriptCore_ - Apple's JavaScript engine. Include this if you're an OSX or IOS user
-      and you want to embed JavaScript code in your earth files. We receommend you use
-      Duktape instead.
-      
-**Optional: get pre-built dependencies**
+    * QT_ - Cross-platform UI framework. Used to built the osgEarthQt support library, which is
+      useful (though not required) for building Qt applications that us osgEarth.  Point the
+      ``QT_QMAKE_EXECUTABLE`` CMake variable to the ``qmake.exe`` you want to use and CMake will
+      populate all the other QT variables.
 
-    * AlphaPixel_ has pre-built OSG_ and 3rd-party dependencies for various architectures.
-    * `Mike Weiblen`_ has some pre-built OSG_ binaries and dependencies too.
-    * FWTools_ has pre-built GDAL binaries with all the fixins.
-    * Pre-built `GDAL binaries`_ for various architectures.
     
 Build it
 --------
@@ -108,10 +96,8 @@ Here are a few tips.
 .. _CURL:           http://curl.haxx.se/libcurl/
 .. _GEOS:           http://trac.osgeo.org/geos/ 
 .. _GDAL:           http://www.gdal.org/
-.. _GDAL binaries:  http://vbkto.dyndns.org:1280/sdk/Default.aspx
+.. _GDAL binaries:  http://www.gisinternals.com/
 .. _FWTools:        http://fwtools.maptools.org/
-.. _Minizip:        http://www.winimage.com/zLibDll/minizip.html
-.. _V8:             http://code.google.com/p/v8/
 .. _AlphaPixel:     http://openscenegraph.alphapixel.com/osg/downloads/openscenegraph-third-party-library-downloads
 .. _Mike Weiblen:   http://mew.cx/osg/
 .. _the forum:      http://forum.osgearth.org

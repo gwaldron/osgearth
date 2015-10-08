@@ -259,6 +259,7 @@ namespace osgEarth
         {
             Config conf("uri", base());
             conf.addIfSet("option_string", _optionString);
+            conf.setReferrer( context().referrer() );
             return conf;
         }
 
@@ -410,21 +411,18 @@ namespace osgEarth
     template <> inline
     void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
-            add(key, opt->getConfig());
-            //Config conf(key, opt->base());
-            //conf.setReferrer(opt->context().referrer());
-            //add( conf );
+            Config c = opt->getConfig();
+            c.key() = key;
+            // setting the referrer is a hint that this may be a relative path requiring resolution
+            //c.setReferrer( opt->context().referrer() );
+            add( c );
         }
     }
 
     template<> inline
     void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
         if ( opt.isSet() ) {
-            //remove(key);
             update(key, opt->getConfig());
-            //Config conf(key, opt->base());
-            //conf.setReferrer(opt->context().referrer());
-            //add( conf );
         }
     }
 

@@ -545,3 +545,9 @@ StringExpression::eval() const
 
     return _value;
 }
+
+URI
+StringExpression::evalURI() const
+{
+    return URI(eval(), _uriContext);
+}

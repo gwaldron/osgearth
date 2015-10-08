@@ -61,6 +61,8 @@ main(int argc, char** argv)
     // Tell the database pager to not modify the unref settings
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
+    osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
+
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator(arguments) );
 

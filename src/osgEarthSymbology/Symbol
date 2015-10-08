@@ -64,6 +64,8 @@ namespace osgEarth { namespace Symbology
 
         virtual ~Symbol() { }
     };
+
+    typedef std::vector<osg::ref_ptr<Symbol> > SymbolVector;
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
 
 

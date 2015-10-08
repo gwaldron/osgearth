@@ -38,6 +38,7 @@
 namespace osgEarth
 {
     class TerrainEffect;
+    class VirtualProgram;
 
     /**
      * Interface for and object that can create a new terrain tile models
@@ -154,8 +155,6 @@ namespace osgEarth
 
         virtual void removeLandCoverGroup(const std::string& name) { }
 
-        /** Access the stateset used to render the control surface (if implemented). */
-        //virtual osg::StateSet* getLandCoverStateSet() { return getOrCreateStateSet(); }
 
     public: // TerrainEngine
 
@@ -198,8 +197,8 @@ namespace osgEarth
     public:
         // adds a callback that will be fired while the terrain engine is building
         // a tile node in a background thread.
-        void addTileNodeCallback(TerrainEngine::NodeCallback* cb);
-        void removeTileNodeCallback(TerrainEngine::NodeCallback* cb);
+        //void addTileNodeCallback(TerrainEngine::NodeCallback* cb);
+        //void removeTileNodeCallback(TerrainEngine::NodeCallback* cb);
             
 
     public: // Runtime properties

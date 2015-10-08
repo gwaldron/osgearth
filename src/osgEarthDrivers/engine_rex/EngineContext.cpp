@@ -17,8 +17,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "EngineContext"
-#include "FileLocationCallback"
-#include "SurfaceNodeFactory"
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;

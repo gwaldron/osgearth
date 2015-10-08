@@ -17,11 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "TerrainShaderExtension"
+
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderLoader>
+#include <osgEarth/ImageUtils>
+
+#include <osg/Texture2D>
+#include <osg/Texture2DArray>
 
 using namespace osgEarth;
 using namespace osgEarth::TerrainShader;
@@ -67,34 +72,83 @@ namespace
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             _package.loadAll( vp, _dbOptions.get() );
 
+
             const std::vector<TerrainShaderOptions::Sampler>& samplers = _options.samplers();
             for(int i=0; i<samplers.size(); ++i)
             {
-                if ( !samplers[i]._name.empty() && samplers[i]._uri.isSet() )
+                if ( !samplers[i]._name.empty() )
                 {
-                    int unit;    
-                    engine->getResources()->reserveTextureImageUnit(unit, "TerrainShader sampler");
-                    if ( unit >= 0 )
+                    if ( samplers[i]._uris.size() == 1 ) // Texture2D
                     {
-                        osg::Image* image = samplers[i]._uri->getImage(_dbOptions.get());
-                        if ( image )
+                        int unit;    
+                        engine->getResources()->reserveTextureImageUnit(unit, "TerrainShader sampler");
+                        if ( unit >= 0 )
                         {
-                            osg::Texture2D* tex = new osg::Texture2D(image);
-                            tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
-                            tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
-                            tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
-                            tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
-                            tex->setUnRefImageDataAfterApply( true );
-                            tex->setMaxAnisotropy( 4.0 );
-                            tex->setResizeNonPowerOfTwoHint( false );
+                            osg::Image* image = samplers[i]._uris[0].getImage(_dbOptions.get());
+                            if ( image )
+                            {
+                                osg::Texture2D* tex = new osg::Texture2D(image);
+                                tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
+                                tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+                                tex->setWrap  (tex->WRAP_S, tex->REPEAT);
+                                tex->setWrap  (tex->WRAP_T, tex->REPEAT);
+                                tex->setUnRefImageDataAfterApply( true );
+                                tex->setMaxAnisotropy( 4.0 );
+                                tex->setResizeNonPowerOfTwoHint( false );
 
-                            stateSet->setTextureAttribute(unit, tex);
-                            stateSet->addUniform(new osg::Uniform(samplers[i]._name.c_str(), unit));
+                                stateSet->setTextureAttribute(unit, tex);
+                                stateSet->addUniform(new osg::Uniform(samplers[i]._name.c_str(), unit));
+                            }
+                        }
+                        else
+                        {
+                            OE_WARN << LC << "Failed to allocate a texture image unit for this terrain shader sampler!\n";
                         }
                     }
-                    else
+
+                    else if ( samplers[i]._uris.size() > 1 ) // Texture2DArray
                     {
-                        OE_WARN << LC << "Failed to allocate a texture image unit for this terrain shader sampler!\n";
+                        int unit;    
+                        engine->getResources()->reserveTextureImageUnit(unit, "TerrainShader sampler array");
+                        if ( unit >= 0 )
+                        {
+                            osg::Texture2DArray* tex = new osg::Texture2DArray();
+                            tex->setTextureSize(512, 512, samplers[i]._uris.size());
+                            tex->setTextureDepth( samplers[i]._uris.size() );
+
+                            for( int j=0; j<samplers[i]._uris.size(); ++j )
+                            {
+                                const URI& uri = samplers[i]._uris[j];
+
+                                osg::ref_ptr<osg::Image> image = uri.getImage(_dbOptions.get());
+                                if ( image )
+                                {
+                                    if ( image->s() != 512 || image->t() != 512 )
+                                    {
+                                        osg::ref_ptr<osg::Image> resizedImage;
+                                        ImageUtils::resizeImage(image.get(), 512, 512, resizedImage);
+                                        image = resizedImage.get();
+                                    }
+
+                                    OE_INFO << LC << "   Added image from \"" << uri.full() << "\"\n";
+                                    tex->setImage(i, image);
+                                    tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
+                                    tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+                                    tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
+                                    tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
+                                    tex->setUnRefImageDataAfterApply( true );
+                                    //tex->setMaxAnisotropy( 4.0 );
+                                    tex->setResizeNonPowerOfTwoHint( false );
+
+                                    stateSet->setTextureAttribute(unit, tex);
+                                    stateSet->addUniform(new osg::Uniform(samplers[i]._name.c_str(), unit));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            OE_WARN << LC << "Failed to allocate a texture image unit for this terrain shader sampler!\n";
+                        }
                     }
                 }
             }

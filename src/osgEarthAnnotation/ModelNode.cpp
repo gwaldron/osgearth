@@ -100,7 +100,7 @@ ModelNode::init()
             // Try to get a model from URI
             if (node.valid() == false)
             {
-                URI uri( sym->url()->eval(), sym->url()->uriContext() );
+                URI uri = sym->url()->evalURI();
 
                 if ( sym->uriAliasMap()->empty() )
                 {

@@ -51,17 +51,10 @@ namespace
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.0f,0.0f,0,1.0f),
         osg::Matrixf(0.5f,0,0,0, 0,0.5f,0,0, 0,0,1.0f,0, 0.5f,0.0f,0,1.0f)
     };
-    //const osg::Vec3f scaleBias[4] =
-    //{
-    //    osg::Vec3f(0.5f, 0.0f, 0.5f),
-    //    osg::Vec3f(0.5f, 0.5f, 0.5f),
-    //    osg::Vec3f(0.5f, 0.0f, 0.0f),
-    //    osg::Vec3f(0.5f, 0.5f, 0.0f)
-    //};
 }
 
 TileNode::TileNode() : 
-_dirty      ( false )
+_dirty( false )
 {
     osg::StateSet* stateSet = getOrCreateStateSet();
 
@@ -83,6 +76,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<osg::Geometry> geom;
     context->getGeometryPool()->getPooledGeometry(key, context->getMapFrame().getMapInfo(), geom, masks.get());
+
 
     // Create the drawable for the terrain surface:
     TileDrawable* surfaceDrawable = new TileDrawable(
@@ -112,8 +106,9 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getRenderBindings(),
         geom.get(),
         context->getOptions().tileSize().get() );
-
-    patchDrawable->setDrawAsPatches(true);
+    
+    int skirtSize = context->getGeometryPool()->getSkirtSize();
+    patchDrawable->setDrawAsPatches(true, skirtSize);
 
     // And a node to house that as well:
     _landCover = new SurfaceNode(
@@ -122,25 +117,22 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getRenderBindings(),
         patchDrawable );
 
-#if 0
-    // add a cluster-culling callback:
-    if ( context->getMapFrame().getMapInfo().isGeocentric() )
-    {
-        addCullCallback( ClusterCullingFactory::create(key.getExtent()) );
-    }
-#endif
-
     // PPP: Better way to do this rather than here?
     // Can't do it at RexTerrainEngineNode level, because the SurfaceNode is not valid yet
     if (context->getSelectionInfo().initialized()==false)
     {
-        SelectionInfo& selectionInfo = const_cast<SelectionInfo&>(context->getSelectionInfo());
+        static Threading::Mutex s_selInfoMutex;
+        Threading::ScopedMutexLock lock(s_selInfoMutex);
+        if ( context->getSelectionInfo().initialized()==false)
+        {
+            SelectionInfo& selectionInfo = const_cast<SelectionInfo&>(context->getSelectionInfo());
 
-        unsigned uiFirstLOD = *(context->_options.firstLOD());
-        unsigned uiMaxLod   = *(context->_options.maxLOD());
-        unsigned uiTileSize = *(context->_options.tileSize());
+            unsigned uiFirstLOD = *(context->_options.firstLOD());
+            unsigned uiMaxLod   = std::min( context->_options.maxLOD().get(), 19u ); // beyond LOD 19 or 20, morphing starts to lose precision.
+            unsigned uiTileSize = *(context->_options.tileSize());
 
-        selectionInfo.initialize(uiFirstLOD, uiMaxLod, uiTileSize, getVisibilityRangeHint(uiFirstLOD));
+            selectionInfo.initialize(uiFirstLOD, uiMaxLod, uiTileSize, getVisibilityRangeHint(uiFirstLOD));
+        }
     }
 
     // initialize all the per-tile uniforms the shaders will need:
@@ -200,18 +192,14 @@ TileNode::getElevationMatrix() const
 void
 TileNode::createTileUniforms()
 {
+    _payloadStateSet = new osg::StateSet();
+
     // Install the tile key uniform.
     _tileKeyUniform = new osg::Uniform("oe_tile_key", osg::Vec4f(0,0,0,0));
-    getStateSet()->addUniform( _tileKeyUniform.get() );
+    _payloadStateSet->addUniform( _tileKeyUniform.get() );
 
-    _tileMorphUniform = new osg::Uniform("oe_tile_morph_constants", osg::Vec4f(0,0,0,0));
-    getStateSet()->addUniform( _tileMorphUniform.get() );
-
-    _tileGridDimsUniform = new osg::Uniform("oe_tile_grid_dimensions", osg::Vec4f(0,0,0,0));
-    getStateSet()->addUniform( _tileGridDimsUniform.get() );
-
-    _tileExtentsUniform = new osg::Uniform("oe_tile_extents", osg::Vec4f(0,0,0,0));
-    getStateSet()->addUniform( _tileExtentsUniform.get() );
+    _tileMorphUniform = new osg::Uniform("oe_tile_morph", osg::Vec2f(0,0));
+    _payloadStateSet->addUniform( _tileMorphUniform.get() );
 }
 
 void
@@ -229,38 +217,22 @@ TileNode::updateTileUniforms(const SelectionInfo& selectionInfo)
 
     // update the morph constants
 
-    float fStart = (float)selectionInfo.visParameters(_key.getLOD())._fMorphStart;
-    float fEnd   = (float)selectionInfo.visParameters(_key.getLOD())._fMorphEnd;
+    float start = (float)selectionInfo.visParameters(_key.getLOD())._fMorphStart;
+    float end   = (float)selectionInfo.visParameters(_key.getLOD())._fMorphEnd;
 
-    float one_by_end_minus_start = fEnd - fStart;
+    float one_by_end_minus_start = end - start;
     one_by_end_minus_start = 1.0f/one_by_end_minus_start;
-
-    osg::Vec4f morphConstants(
-          fStart
-        , one_by_end_minus_start
-        , fEnd * one_by_end_minus_start
-        , one_by_end_minus_start
-        );
-
+    osg::Vec2f morphConstants( end * one_by_end_minus_start, one_by_end_minus_start );
     _tileMorphUniform->set( morphConstants );
-
-    // Update grid dims
-    float fGridDims = selectionInfo.gridDimX()-1;
-    _tileGridDimsUniform->set(osg::Vec4f(
-        fGridDims,
-        fGridDims*0.5f,
-        2.0/fGridDims,
-        selectionInfo.lodForMorphing(_key.getProfile()->getSRS()->isProjected())));
-
-    // update tile extents
-    float fXExtents = fabs(bbox.xMax()-bbox.xMin());
-    float fYExtents = fabs(bbox.yMax()-bbox.yMin());
-    _tileExtentsUniform->set(osg::Vec4f(fXExtents,fYExtents,0,0));
 
     const osg::Image* er = getElevationRaster();
     if ( er )
     {
-        getOrCreateStateSet()->getOrCreateUniform("oe_tile_elevationSize", osg::Uniform::FLOAT)->set( (float)er->s() );
+        // pre-calculate texel-sampling scale and bias coefficients that allow us to sample
+        // elevation textures on texel-center instead of edge:
+        float size = (float)er->s();
+        osg::Vec2f elevTexelOffsets( (size-1.0f)/size, 0.5/size );
+        getOrCreateStateSet()->getOrCreateUniform("oe_tile_elevTexelCoeff", osg::Uniform::FLOAT_VEC2)->set(elevTexelOffsets);
     }
 }
 
@@ -291,16 +263,8 @@ TileNode::releaseGLObjects(osg::State* state) const
 }
 
 float
-TileNode::getTileCenterToCameraDistance(const osg::NodeVisitor& nv) const
-{
-    const osg::Vec3& vTileCenter = getBound().center();
-    return nv.getDistanceToViewPoint( vTileCenter, true );
-}
-
-float
 TileNode::getVisibilityRangeHint(unsigned firstLOD) const
-{
-    
+{    
     if (getTileKey().getLOD()!=firstLOD)
     {
         OE_INFO << LC <<"Error: Visibility Range hint can be computed only using the first LOD"<<std::endl;
@@ -351,23 +315,30 @@ void TileNode::cull(osg::NodeVisitor& nv)
         OE_INFO << LC <<"Traversing: "<<"\n";    
     }
 #endif
-    osgUtil::CullVisitor* cull = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
 
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
-    const double maxCullTime = 4.0/1000.0;
+    // determine whether we can and should subdivide to a higher resolution:
+    bool subdivide = shouldSubDivide(nv, selectionInfo, cv->getLODScale());
 
-    bool subdivide = shouldSubDivide(nv, selectionInfo, cull->getLODScale()); // && context->getElapsedCullTime() < maxCullTime;
+    // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
+    // because we want only the tiles loaded by the true viewpoint.
+    bool canCreateChildren = subdivide;
+    const osg::Camera* cam = cv->getCurrentCamera();
+    if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
+    {
+        canCreateChildren = false;
+    }
 
     // If *any* of the children are visible, subdivide.
     if (subdivide)
     {
         // We are in range of the child nodes. Either draw them or load them.
-        unsigned numChildrenReady = 0;
 
         // If the children don't exist, create them and inherit the parent's data.
-        if ( getNumChildren() == 0 )
+        if ( getNumChildren() == 0 && canCreateChildren )
         {
             Threading::ScopedMutexLock exclusive(_mutex);
             if ( getNumChildren() == 0 )
@@ -377,11 +348,15 @@ void TileNode::cull(osg::NodeVisitor& nv)
         }
 
         // All 4 children must be ready before we can traverse any of them:
-        for(unsigned i = 0; i < 4; ++i)
-        {                
-            if ( getSubTile(i)->isReadyToTraverse() )
-            {
-                ++numChildrenReady;
+        unsigned numChildrenReady = 0;
+        if ( getNumChildren() == 4 )
+        {
+            for(unsigned i = 0; i < 4; ++i)
+            {                
+                if ( getSubTile(i)->isReadyToTraverse() )
+                {
+                    ++numChildrenReady;
+                }
             }
         }
 
@@ -389,7 +364,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
         if ( numChildrenReady == 4 )
         {
             // TODO:
-            // If we do thing, we need to quite sure that all 4 children will be accepted into
+            // When we do this, we need to quite sure that all 4 children will be accepted into
             // the draw set. Perhaps isReadyToTraverse() needs to check that.
             _children[0]->accept( nv );
             _children[1]->accept( nv );
@@ -397,19 +372,19 @@ void TileNode::cull(osg::NodeVisitor& nv)
             _children[3]->accept( nv );
         }
 
-        // Not all children are ready, so cull the current payload.
+        // If we don't traverse the children, traverse this node's payload.
         else if ( _surface.valid() )
         {
-            _surface->accept( nv );
+            cullSurface( cv );
         }
     }
 
     // If children are outside camera range, draw the payload and expire the children.
     else if ( _surface.valid() )
     {
-        _surface->accept( nv );
+        cullSurface( cv );
 
-        if ( getNumChildren() > 0 && context->maxLiveTilesExceeded() )
+        if ( getNumChildren() >= 4 && context->maxLiveTilesExceeded() )
         {
             if (getSubTile(0)->isDormant( nv ) &&
                 getSubTile(1)->isDormant( nv ) &&
@@ -424,12 +399,24 @@ void TileNode::cull(osg::NodeVisitor& nv)
     // Traverse land cover bins at this LOD.
     for(int i=0; i<context->landCoverBins()->size(); ++i)
     {
+        bool first = true;
         const LandCoverBin& bin = context->landCoverBins()->at(i);
         if ( bin._lod == getTileKey().getLOD() )
         {
-            cull->pushStateSet( bin._stateSet.get() );
+            if ( first )
+            {
+                cv->pushStateSet( _payloadStateSet.get() );
+            }
+
+            cv->pushStateSet( bin._stateSet.get() );
             _landCover->accept( nv );
-            cull->popStateSet();
+            cv->popStateSet();
+
+            if ( first )
+            {
+                cv->popStateSet();
+                first = false;
+            }
         }
     }
 
@@ -438,6 +425,14 @@ void TileNode::cull(osg::NodeVisitor& nv)
     {
         load( nv );
     }
+}
+
+void
+TileNode::cullSurface(osgUtil::CullVisitor* cv)
+{
+    cv->pushStateSet( _payloadStateSet.get() );
+    _surface->accept( *cv );
+    cv->popStateSet();
 }
 
 void
@@ -613,14 +608,24 @@ TileNode::load(osg::NodeVisitor& nv)
         if ( !_loadRequest.valid() )
         {
             _loadRequest = new LoadTileData( this, context );
+            _loadRequest->setName( _key.str() );
+            _loadRequest->setTileKey( _key );
         }
     }
 
-    // Prioritize by LOD.
+    // Prioritize by LOD. (negated because lower order gets priority)
     float priority = - (float)getTileKey().getLOD();
 
     if ( context->getOptions().highResolutionFirst() == true )
         priority = -priority;
+
+    // then sort by distance within each LOD.
+    float distance = nv.getDistanceToViewPoint( getBound().center(), true );
+    priority = 10.0f*priority - log10(distance);
+
+    // testing intermediate loading idea...
+    //if ( getTileKey().getLOD() == 5 )
+    //    priority += 100.0f;
 
     // Submit to the loader.
     context->getLoader()->load( _loadRequest.get(), priority, nv );
@@ -638,6 +643,8 @@ TileNode::expireChildren(osg::NodeVisitor& nv)
         if ( !_expireRequest.valid() )
         {
             _expireRequest = new ExpireTiles(this, context);
+            _expireRequest->setName( "expire" );
+            _expireRequest->setTileKey( _key );
         }
     }
        

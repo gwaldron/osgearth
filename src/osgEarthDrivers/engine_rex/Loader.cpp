@@ -47,6 +47,15 @@ Loader::Request::getStateSet()
     return _stateSet.get();
 }
 
+void
+Loader::Request::addToChangeSet(osg::Node* node)
+{
+    if ( node )
+    {
+        _nodesChanged.push_back( node );
+    }
+}
+
 //...............................................
 
 #undef  LC
@@ -82,10 +91,52 @@ SimpleLoader::clear()
 //...............................................
 
 #undef  LC
-#define LC "[PagerLoader] "
+#define LC "[PagerLoader.FileLocationCallback] "
 
-//#define USE_MERGE_QUEUE  1
-#define MERGES_PER_FRAME 1
+namespace
+{ 
+    class FileLocationCallback : public osgDB::FileLocationCallback
+    {
+    public:
+        FileLocationCallback() { }
+
+        /** dtor */
+        virtual ~FileLocationCallback() { }
+
+        Location fileLocation(const std::string& filename, const osgDB::Options* dboptions)
+        {
+            Location result = REMOTE_FILE;
+
+            osgEarth::UID requestUID, engineUID;
+
+            sscanf(filename.c_str(), "%d.%d", &requestUID, &engineUID);
+
+            osg::ref_ptr<RexTerrainEngineNode> engine;
+            RexTerrainEngineNode::getEngineByUID( (UID)engineUID, engine );
+
+            if ( engine.valid() )
+            {
+                PagerLoader* loader = static_cast<PagerLoader*>( engine->getLoader() );
+                TileKey key = loader->getTileKeyForRequest(requestUID);
+
+                MapFrame frame(engine->getMap());
+                if ( frame.isCached(key) )
+                {
+                    result = LOCAL_FILE;
+                }
+
+                //OE_NOTICE << "key=" << key.str() << " : " << (result==LOCAL_FILE?"local":"remote") << "\n";
+            }
+
+            return result;
+        }
+
+        bool useFileCache() const { return false; }
+    };
+}
+
+#undef  LC
+#define LC "[PagerLoader] "
 
 namespace
 {
@@ -110,12 +161,15 @@ namespace
 }
 
 
-PagerLoader::PagerLoader(UID engineUID) :
-_engineUID     ( engineUID ),
+PagerLoader::PagerLoader(TerrainEngine* engine) :
+_engineUID     ( engine->getUID() ),
 _checkpoint    ( (osg::Timer_t)0 ),
 _mergesPerFrame( 0 )
 {
     _myNodePath.push_back( this );
+
+    _dboptions = new osgDB::Options();
+    _dboptions->setFileLocationCallback( new FileLocationCallback() );
 }
 
 void
@@ -136,7 +190,8 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
         // remember the last tick at which this request was submitted
         request->_lastTick = osg::Timer::instance()->tick();
 
-        osgDB::Options* dboptions = 0L;
+        // update the priority
+        request->_priority = priority;
 
         std::string filename = Stringify() << request->_uid << "." << _engineUID << ".osgearth_rex_loader";
 
@@ -146,7 +201,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             priority,
             nv.getFrameStamp(),
             request->_internalHandle,
-            dboptions );
+            _dboptions.get() );
 
         unsigned fn = 0;
         if ( nv.getFrameStamp() )
@@ -193,7 +248,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
         int count;
         for(count=0; count < _mergesPerFrame && !_mergeQueue.empty(); ++count)
         {
-            Request* req = _mergeQueue.front().get();
+            Request* req = _mergeQueue.begin()->get();
             if ( req && req->_lastTick >= _checkpoint )
             {
                 OE_START_TIMER(req_apply);
@@ -201,11 +256,11 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                 double s = OE_STOP_TIMER(req_apply);
 
                 req->setState(Request::IDLE);
-
-                //OE_INFO << "apply time = " << s << " s.\n";
+                
+                //OE_NOTICE << "req = " << req->getName() << "; PRI = " << req->_priority << "; time = " << s << " s\n";
             }
-            _mergeQueue.pop();
-        }
+            _mergeQueue.erase( _mergeQueue.begin() );
+       }
     }
 
     LoaderGroup::traverse( nv );
@@ -223,7 +278,7 @@ PagerLoader::addChild(osg::Node* node)
         {
             if ( _mergesPerFrame > 0 )
             {
-                _mergeQueue.push( req );
+                _mergeQueue.insert( req );
                 req->setState( Request::MERGING );
             }
             else
@@ -236,6 +291,18 @@ PagerLoader::addChild(osg::Node* node)
     return true;
 }
 
+TileKey
+PagerLoader::getTileKeyForRequest(UID requestUID) const
+{
+    Threading::ScopedMutexLock lock( _requestsMutex );
+    Requests::const_iterator i = _requests.find( requestUID );
+    if ( i != _requests.end() )
+    {
+        return i->second->getTileKey();
+    }
+
+    return TileKey::INVALID;
+}
 
 Loader::Request*
 PagerLoader::invokeAndRelease(UID requestUID)

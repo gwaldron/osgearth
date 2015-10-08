@@ -28,4 +28,7 @@ Shaders::Shaders()
 
     ENGINE_GEOM = "RexEngine.gs.glsl";
     _sources[ENGINE_GEOM] = OE_MULTILINE(@RexEngine.gs.glsl@);
+
+    SDK = "RexEngine.SDK.vert.glsl";
+    _sources[SDK] = OE_MULTILINE(@RexEngine.SDK.vert.glsl@);
 }

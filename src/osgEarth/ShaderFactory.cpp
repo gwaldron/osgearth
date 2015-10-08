@@ -461,7 +461,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
     if ( hasTES )
     {
-        stages |= ShaderComp::STAGE_TESSEVALULATION;
+        stages |= ShaderComp::STAGE_TESSEVALUATION;
 
         std::stringstream buf;
 
@@ -482,12 +482,21 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         else
             buf << "out " << fragdata << " vp_out; \n";
 
-        buf <<
-            "\n// TES user-supplied interpolators: \n"
-            "float VP_Interpolate3(float,float,float); \n"
-            "vec2  VP_Interpolate3(vec2,vec2,vec2); \n"
-            "vec3  VP_Interpolate3(vec3,vec3,vec3); \n"
-            "vec4  VP_Interpolate3(vec4,vec4,vec4); \n";
+        std::set<std::string> types;
+        for(Variables::const_iterator i=vars.begin(); i != vars.end(); ++i)
+            types.insert(i->type);
+
+        for(std::set<std::string>::const_iterator i = types.begin(); i != types.end(); ++i)
+        {
+            buf << *i << " VP_Interpolate3(" << *i << "," << *i << "," << *i << ");\n";
+        }       
+
+        //buf <<
+        //    "\n// TES user-supplied interpolators: \n"
+        //    "float VP_Interpolate3(float,float,float); \n"
+        //    "vec2  VP_Interpolate3(vec2,vec2,vec2); \n"
+        //    "vec3  VP_Interpolate3(vec3,vec3,vec3); \n"
+        //    "vec4  VP_Interpolate3(vec4,vec4,vec4); \n";
 
 #if 0
         buf <<
@@ -545,6 +554,10 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                         << "( vp_in[0]." << i->name
                         << ", vp_in[1]." << i->name
                         << ", vp_in[2]." << i->name << " ); \n";
+                }
+                else
+                {
+                    buf << INDENT << i->name << " = vp_in[0]." << i->name << "; \n";
                 }
             }
             buf << "} \n";

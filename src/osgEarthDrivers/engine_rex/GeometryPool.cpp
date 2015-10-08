@@ -91,6 +91,12 @@ GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
     out.size = size;
 }
 
+int
+GeometryPool::getSkirtSize() const
+{
+    return _options.heightFieldSkirtRatio().get() > 0.0 ? (_tileSize-1) * 4 * 6 : 0;
+}
+
 namespace
 {
     int getMorphNeighborIndexOffset(unsigned col, unsigned row, int rowSize)
@@ -149,7 +155,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     unsigned numVertsInSkirt      = createSkirt ? _tileSize*4u - 4u : 0;
     unsigned numVerts             = numVertsInSurface + numVertsInSkirt;    
     unsigned numIndiciesInSurface = (_tileSize-1) * (_tileSize-1) * 6;
-    unsigned numIncidesInSkirt    = createSkirt ? (_tileSize-1) * 4 * 6 : 0;
+    unsigned numIncidesInSkirt    = getSkirtSize();
     
     GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
 

@@ -1,24 +1,27 @@
 #version 330 compatibility
 
-#pragma vp_entryPoint "oe_mp_NormalMap_fragment"
+#pragma vp_entryPoint "oe_normalMapFragment"
 #pragma vp_location   "fragment_coloring"
 #pragma vp_order      "0.2"
 
-in vec3 vp_Normal;
+// import terrain SDK
+vec4 oe_terrain_getNormalAndCurvature(in vec2);
 
 uniform sampler2D oe_tile_normalTex;
 
-in vec2 oe_mp_NormalMap_coords;
-flat in mat3 oe_mp_NormalMap_TBN;
+in vec3 vp_Normal;
+in vec3 oe_UpVectorView;
+in vec2 oe_normalMapCoords;
+in vec3 oe_normalMapBinormal;
 
-void oe_mp_NormalMap_fragment(inout vec4 color)
+void oe_normalMapFragment(inout vec4 color)
 {
-    //const vec3 B = vec3(0,1,0);
+    vec4 encodedNormal = oe_terrain_getNormalAndCurvature(oe_normalMapCoords);
+    //vec4 encodedNormal = texture2D(oe_tile_normalTex, oe_normalMapCoords);
+    vec3 normal = normalize(encodedNormal.xyz*2.0-1.0);
 
-    vec4 encodedNormal = texture2D(oe_tile_normalTex, oe_mp_NormalMap_coords);
-    vec3 normalTangent = normalize(encodedNormal.xyz*2.0-1.0);
-
-    vp_Normal = normalize(oe_mp_NormalMap_TBN * normalTangent);
+    vec3 tangent = normalize(cross(oe_normalMapBinormal, oe_UpVectorView));
+    vp_Normal = normalize( mat3(tangent, oe_normalMapBinormal, oe_UpVectorView) * normal );
 
     // visualize curvature gradient:
     //color.rgb = vec3(0,0,0);

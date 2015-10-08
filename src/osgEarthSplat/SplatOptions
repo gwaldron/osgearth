@@ -1,0 +1,88 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_SPLAT_OPTIONS
+#define OSGEARTH_DRIVER_SPLAT_OPTIONS 1
+
+#include <osgEarth/Common>
+#include "Export"
+#include "Coverage"
+#include "Surface"
+#include "LandCover"
+
+namespace osgEarth { namespace Splat
+{
+    using namespace osgEarth;
+
+
+    /**
+     * Options governing the classification splatting engine.
+     */
+    class OSGEARTHSPLAT_EXPORT SplatOptions : public DriverConfigOptions
+    {
+    public:
+        /** Classification coverage options */
+        optional<CoverageOptions>& coverage() { return _coverage; }
+        const optional<CoverageOptions>& coverage() const { return _coverage; }
+
+        /** Surface rendering options */
+        optional<SurfaceOptions>& surface() { return _surface; }
+        const optional<SurfaceOptions>& surface() const { return _surface; }
+
+        /** Land Cover rendering options */
+        optional<LandCoverOptions>& landCover() { return _landCover; }
+        const optional<LandCoverOptions>& landCover() const { return _landCover; }
+
+    public:
+        SplatOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt ) {
+            setDriver( "splat" );
+            fromConfig( _conf );
+        }
+
+        virtual ~SplatOptions() { }
+
+    public:
+        Config getConfig() const {
+            Config conf = DriverConfigOptions::getConfig();
+            conf.updateObjIfSet( "coverage",   _coverage );
+            conf.updateObjIfSet( "surface",    _surface );
+            conf.updateObjIfSet( "land_cover", _landCover );
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            DriverConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getObjIfSet( "coverage",   _coverage );
+            conf.getObjIfSet( "surface",    _surface );
+            conf.getObjIfSet( "land_cover", _landCover );
+        }
+
+        optional<CoverageOptions>  _coverage;
+        optional<SurfaceOptions>   _surface;
+        optional<LandCoverOptions> _landCover;
+    };
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_DRIVER_SPLAT_OPTIONS

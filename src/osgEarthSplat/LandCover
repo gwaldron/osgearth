@@ -1,0 +1,406 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_PROCEDURAL_LANDCOVER
+#define OSGEARTH_PROCEDURAL_LANDCOVER 1
+
+#include "Export"
+#include <osgEarth/Config>
+#include <osgEarthSymbology/ResourceLibrary>
+#include <osgEarthSymbology/Symbol>
+#include <osg/Shader>
+
+namespace osgDB {
+    class Options;
+}
+namespace osgEarth {
+    class Map;
+}
+
+namespace osgEarth { namespace Splat
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    class Coverage;
+    class SplatCoverageLegend;
+
+
+    class OSGEARTHSPLAT_EXPORT LandCoverBillboard
+    {
+    public:
+        LandCoverBillboard(osg::Image* image, float width, float height)
+            : _image(image), _width(width), _height(height) { }
+
+        osg::ref_ptr<osg::Image> _image;
+        float                    _width;
+        float                    _height;
+    };
+
+    typedef std::vector<LandCoverBillboard> LandCoverBillboards;
+
+
+    class OSGEARTHSPLAT_EXPORT LandCoverBiome : public osg::Referenced
+    {
+    public:
+        LandCoverBiome() : _code(0) { }
+
+        /** classification names for this biome (space separated) */
+        void setClasses( const std::string& value ) { _classNames = value; }
+        const std::string& getClasses() const { return _classNames; }
+
+        /** Resources that may be used to render land cover in this biome */
+        LandCoverBillboards& getBillboards() { return _billboards; }
+        const LandCoverBillboards& getBillboards() const { return _billboards; }
+
+        /** Build a shader that tests against the classes for this biome. */
+        osg::Shader* createPredicateShader(const Coverage* coverage) const;
+
+    protected:
+        virtual ~LandCoverBiome() { }
+
+        std::string    _classNames;
+        int            _code;
+        LandCoverBillboards _billboards;
+
+    public:
+        bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);
+    };
+
+    typedef std::vector< osg::ref_ptr<LandCoverBiome> > LandCoverBiomes;
+
+
+    /**
+     * A layer of land cover data.
+     */
+    class OSGEARTHSPLAT_EXPORT LandCoverLayer : public osg::Referenced
+    {
+    public:
+        LandCoverLayer() : _lod(14), _maxDistance(1000.0f), _density(1.0f), _fill(1.0f), _wind(0.0f), _brightness(1.0f), _contrast(0.5f) { }
+
+        /** Name of this layer */
+        void setName(const std::string& name) { _name = name; }
+        const std::string& getName() const { return _name; }
+
+        /** Terrain LOD at which this layer should render */
+        void setLOD(unsigned lod) { _lod = lod; }
+        unsigned getLOD() const { return _lod; }
+
+        /** Maximum visibility distance from camera */
+        void setMaxDistance(float value) { _maxDistance = value; }
+        float getMaxDistance() const { return _maxDistance; }
+
+        /** Density of land cover; i.e. instances per unit of area [1..5+] */
+        void setDensity(float value) { _density = value; }
+        float getDensity() const { return _density; }
+
+        /** Fill percentage of land cover instances [0..1] */
+        void setFill(float value) { _fill = value; }
+        float getFill() const { return _fill; }
+
+        /** Wind effect (0..1) */
+        void setWind(float value) { _wind = value; }
+        float getWind() const { return _wind; }
+
+        /** Brightness [0..2+] .. 1 = default */
+        void setBrightness(float value) { _brightness = value; }
+        float getBrightness() const { return _brightness; }
+
+        /** Contrast [0..1] .. 0 = default */
+        void setContrast(float value) { _contrast = value; }
+        float getContrast() const { return _contrast; }
+
+        /** Biomes comprising this layer. */
+        LandCoverBiomes& getBiomes() { return _biomes; }
+        const LandCoverBiomes& getBiomes() const { return _biomes; }
+
+    public:
+
+        int getTotalNumBillboards() const;
+
+        osg::Shader* createShader() const;
+
+        osg::Shader* createPredicateShader(const Coverage*) const;
+
+    protected:
+        virtual ~LandCoverLayer() { }
+
+        std::string     _name;
+        unsigned        _lod;
+        float           _maxDistance;
+        float           _density;
+        float           _fill;
+        float           _wind;
+        float           _brightness;
+        float           _contrast;
+        LandCoverBiomes _biomes;
+
+    public:
+        bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);
+    };
+
+    typedef std::vector< osg::ref_ptr<LandCoverLayer> > LandCoverLayers;
+
+
+    /**
+     * Describes all land cover for the scene.
+     */
+    class OSGEARTHSPLAT_EXPORT LandCover : public osg::Referenced
+    {
+    public:
+        LandCover() { }
+
+        /** Resource library containing resources for the land cover assets */
+        void setLibrary(ResourceLibrary* lib) { _lib = lib; }
+        const ResourceLibrary* getLibrary() const { return _lib.get(); }
+
+        /** Land cover layers (bins) */
+        LandCoverLayers& getLayers() { return _layers; }
+        const LandCoverLayers& getLayers() const { return _layers; }
+
+    protected:
+        virtual ~LandCover() { }
+
+        osg::ref_ptr<ResourceLibrary> _lib;
+        LandCoverLayers _layers;
+
+    public:
+        bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);
+    };
+
+    typedef std::vector< osg::ref_ptr<LandCover> > LandCovers;
+
+
+    //........................................................................
+
+
+    /**
+     * Configures one biome within a land cover layer.
+     */
+    class LandCoverBiomeOptions : public ConfigOptions
+    {
+    public:
+        LandCoverBiomeOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
+            fromConfig( _conf );
+        }
+
+        /** Name of the biome classes to use. This is one or more class names from the legend,
+          * separated by whitespace. e.g.: "forest grassland swamp" */
+        optional<std::string>& biomeClasses() { return _biomeClasses; }
+        const optional<std::string>& biomeClasses() const { return _biomeClasses; }
+
+        /** Symbology used to conigure rendering in this biome */
+        SymbolVector& symbols() { return _symbols; }
+        const SymbolVector& symbols() const { return _symbols; }
+
+    protected:
+        optional<std::string> _biomeClasses;
+        SymbolVector _symbols;
+
+    public:    
+        void fromConfig(const Config& conf) {
+            conf.getIfSet( "classes", _biomeClasses );
+            const ConfigSet& symbols = conf.children();
+            for(ConfigSet::const_iterator i = symbols.begin(); i != symbols.end(); ++i) {
+                Symbol* s = SymbolRegistry::instance()->create(*i);
+                if ( s ) { 
+                    _symbols.push_back( s );
+                }
+            }
+        }
+
+        Config getConfig() const {
+            Config conf("biome");
+            conf.updateIfSet( "classes", _biomeClasses );
+            for(int i=0; i<_symbols.size(); ++i) {
+                Config symbolConf = _symbols[i]->getConfig();
+                if ( !symbolConf.empty() ) {
+                    conf.add( symbolConf );
+                }
+            }
+            return conf;
+        }
+
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+    };
+
+    /**
+     * Configures one layer of land cover data. 
+     */
+    class LandCoverLayerOptions : public ConfigOptions
+    {
+    public:
+        LandCoverLayerOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
+            fromConfig( _conf );
+        }
+
+        /** Name of the land cover layer */
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
+
+        /** Equivalent terrain LOD at which this layer will render */
+        optional<unsigned>& lod() { return _lod; }
+        const optional<unsigned>& lod() const { return _lod; }
+
+        /** Maximum viewing distance from camera */
+        optional<float>& maxDistance() { return _maxDistance; }
+        const optional<float>& maxDistance() const { return _maxDistance; }
+
+        /** Wind speed [0..1] */
+        optional<float>& wind() { return _wind; }
+        const optional<float>& wind() const { return _wind; }
+
+        /** Metric that controls the number of land cover instances will render
+          * in a given area. [1..5] */
+        optional<float>& density() { return _density; }
+        const optional<float>& density() const { return _density; }
+
+        /** Percentage of land that this layer's instances will cover [0..1]. Lower
+          * values will result is more "patchiness" of placement. */
+        optional<float>& fill() { return _fill; }
+        const optional<float>& fill() const { return _fill; }
+
+        /** Brightness factor for rendering [1..], 1 = default */
+        optional<float>& brightness() { return _brightness; }
+        const optional<float>& brightness() const { return _brightness; }
+
+        /** Contrast factor for rendering [0..], 0 = default */
+        optional<float>& contrast() { return _contrast; }
+        const optional<float>& contrast() const { return _contrast; }
+
+        /** Biomes comprising this layer. */
+        std::vector<LandCoverBiomeOptions>& biomes() { return _biomes; }
+        const std::vector<LandCoverBiomeOptions>& biomes() const { return _biomes; }
+
+    protected:
+        optional<std::string>              _name;
+        optional<unsigned>                 _lod;
+        optional<float>                    _maxDistance;
+        optional<float>                    _density;
+        optional<float>                    _fill;
+        optional<float>                    _wind;
+        optional<float>                    _brightness;
+        optional<float>                    _contrast;
+        std::vector<LandCoverBiomeOptions> _biomes;
+
+    public:
+        void fromConfig(const Config& conf) {
+            conf.getIfSet( "name", _name );
+            conf.getIfSet( "lod",  _lod  );
+            conf.getIfSet( "max_distance", _maxDistance );
+            conf.getIfSet( "density", _density );
+            conf.getIfSet( "fill", _fill );
+            conf.getIfSet( "wind", _wind );
+            conf.getIfSet( "brightness", _brightness );
+            conf.getIfSet( "contrast", _contrast );
+            const Config* biomes = conf.child_ptr("biomes");
+            if ( biomes ) {
+                const ConfigSet& biomesVec = biomes->children();
+                for( ConfigSet::const_iterator i = biomesVec.begin(); i != biomesVec.end(); ++i ) {
+                    _biomes.push_back( LandCoverBiomeOptions(*i) );
+                }
+            }
+        }
+        
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.key() = "layer";
+            conf.updateIfSet( "name", _name );
+            conf.updateIfSet( "lod",  _lod );
+            conf.updateIfSet( "max_distance", _maxDistance );
+            conf.updateIfSet( "density", _density );
+            conf.updateIfSet( "fill", _fill );
+            conf.updateIfSet( "wind", _wind );
+            conf.updateIfSet( "brightness", _brightness );
+            conf.updateIfSet( "contrast", _contrast );
+            if ( _biomes.size() > 0 ) {
+                Config biomes("biomes");
+                for(int i=0; i<_biomes.size(); ++i) {
+                    biomes.add( "biome", _biomes[i].getConfig() );
+                }
+                conf.update( biomes );
+            }
+            return conf;
+        }
+
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+    };
+
+    /**
+     * Options for rendering land cover (environmental features that sit on the terrain
+     * surface like trees, rocks, grass, etc.)
+     */
+    class LandCoverOptions : public ConfigOptions
+    {
+    public:
+        LandCoverOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
+            fromConfig( _conf );
+        }
+
+        /** URI of an resource library to use for land cover data */
+        optional<URI>& library() { return _resourceLibURI; }
+        const optional<URI>& library() const { return _resourceLibURI; }
+
+        /** Layers of land cover data */
+        std::vector<LandCoverLayerOptions>& layers() { return _layers; }
+        const std::vector<LandCoverLayerOptions>& layers() const { return _layers; }
+
+    protected:        
+        optional<URI>                      _resourceLibURI;        
+        std::vector<LandCoverLayerOptions> _layers;
+
+    public:
+        void fromConfig(const Config& conf) {
+            conf.getIfSet( "library", _resourceLibURI );
+            const Config* layers = conf.child_ptr("layers");
+            if ( layers ) {
+                const ConfigSet& layerVec = layers->children();
+                for(ConfigSet::const_iterator i = layerVec.begin(); i != layerVec.end(); ++i ) {
+                    _layers.push_back( LandCoverLayerOptions(*i) );
+                }
+            }
+        }
+        
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.key() = "land_cover";
+            conf.updateIfSet( "library", _resourceLibURI );
+            if ( !_layers.empty() ) {
+                Config layers("layers");
+                for(int i=0; i<_layers.size(); ++i) {
+                    layers.add("layer", _layers[i].getConfig());
+                }
+            }
+            return conf;
+        }
+
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+    };
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_PROCEDURAL_LANDCOVER

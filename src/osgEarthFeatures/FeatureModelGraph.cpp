@@ -383,7 +383,7 @@ FeatureModelGraph::ctor()
                 //The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere. 
                 tileSizeFactor = osg::maximum( tileSizeFactor, 1.0f);
                 OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " <<  userMaxRange << std::endl;
-                _options.layout()->tileSizeFactor() = tileSizeFactor * 1.5; // approx sqrt(2)
+                _options.layout()->tileSizeFactor() = tileSizeFactor;
             }
         }
     }
@@ -711,14 +711,19 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
             //OE_NOTICE << "  extent = " << tileExtent.width() << "x" << tileExtent.height() << std::endl;
             //OE_NOTICE << "  tileFactor = " << tileFactor << " maxRange=" << maxRange << " radius=" << tileBound.radius() << std::endl;
             
-            // Construct a tile key that will be used to query the source for this tile.
-#if 0
+
+#if 1
+            // Construct a tile key that will be used to query the source for this tile.            
+            // The tilekey x, y, z that is computed in the FeatureModelGraph uses a lower left origin,
+            // osgEarth tilekeys use a lower left so we need to invert it.
             unsigned int w, h;
             featureProfile->getProfile()->getNumTiles(lod, w, h);
-            tileY = h - tileY - 1;
-#endif
+            int invertedTileY = h - tileY - 1;
 
+            TileKey key(lod, tileX, invertedTileY, featureProfile->getProfile());
+#else
             TileKey key(lod, tileX, tileY, featureProfile->getProfile());
+#endif
             geometry = buildLevel( level, tileExtent, &key );
             result = geometry;
         }

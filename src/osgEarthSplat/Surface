@@ -1,0 +1,116 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2015 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_PROCEDURAL_SURFACE
+#define OSGEARTH_PROCEDURAL_SURFACE 1
+
+#include "Export"
+#include "BiomeRegion"
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/URI>
+
+namespace osgEarth {
+    class Map;
+}
+
+namespace osgEarth { namespace Splat
+{
+    using namespace osgEarth;
+
+    class SplatCatalog;
+    class SplatCoverageLegend;
+
+    /**
+     * Options pertaining to the terrain surface raster splatting.
+     */
+    class SurfaceOptions : public ConfigOptions
+    {
+    public:
+        SurfaceOptions(const ConfigOptions& conf = ConfigOptions()) : ConfigOptions(conf) {
+            fromConfig( _conf );
+        }
+
+        /** URI of the catalog file that describes the classification codes in the coverage data.
+            Define either this OR biomesURI. */
+        optional<URI>& catalogURI() { return _catalogURI; }
+        const optional<URI>& catalogURI() const { return _catalogURI; }
+
+        /** URI of the optional file defining biome-specific catalogs.
+            Define either this OR catalogURI. */
+        optional<URI>& biomesURI() { return _biomesURI; }
+        const optional<URI>& biomesURI() const { return _biomesURI; }
+
+    protected:
+        optional<URI> _catalogURI;
+        optional<URI> _biomesURI;
+
+    public:
+        void fromConfig(const Config& conf) {
+            conf.getIfSet("catalog", _catalogURI);
+            conf.getIfSet("biomes",  _biomesURI);
+        }
+        
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.key() = "surface";
+            conf.updateIfSet("catalog", _catalogURI);
+            conf.updateIfSet("biomes",  _biomesURI);
+            return conf;
+        }
+
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+    };
+
+    /**
+     * Surface splatting configuration.
+     */
+    class OSGEARTHSPLAT_EXPORT Surface : public osg::Referenced
+    {
+    public:
+        /** Construct and empty data model */
+        Surface();
+
+    public:
+        /** Catalog that maps coverage codes to textures */
+        void setCatalog(SplatCatalog* catalog);
+        SplatCatalog* getCatalog() const;
+        
+        /** List of biome regions, each of which points to a SplatCatalog.
+          * Use this OR the single catalog above. */
+        BiomeRegionVector& getBiomeRegions() { return _biomeRegions; }
+        const BiomeRegionVector& getBiomeRegions() const { return _biomeRegions; }
+
+    protected:
+        virtual ~Surface() { }
+
+    protected:
+        std::vector<BiomeRegion> _biomeRegions;
+
+    public:
+
+        /** Initialize this Surface from a config. */
+        bool configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo);
+    };
+
+} } // namespace osgEarth::Splat
+
+#endif // OSGEARTH_PROCEDURAL_SURFACE

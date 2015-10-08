@@ -29,15 +29,50 @@ namespace osgEarth_osgearth
     class EarthFileSerializer1
     {
     public:
-        MapNode* deserialize( const Config& conf, const std::string& referenceURI ) const;
+        MapNode* deserialize( const Config& conf, const std::string& referrer ) const;
     };
 
     class EarthFileSerializer2
     {
     public:
-        MapNode* deserialize( const Config& conf, const std::string& referenceURI ) const;
+        EarthFileSerializer2();
 
-        Config serialize( MapNode* mapNode ) const;
+        /**
+         * Relative pathnames in the earth file are relative to the earth file itself.
+         * When storing a MapNode, the serializer will rewrite those relative paths
+         * so they are relative to the new save location.
+         *
+         * Set this to false to disable this feature.
+         */
+        void setRewritePaths(bool value) { _rewritePaths = value; }
+
+        /**
+         * By default, when rewriting paths (see above), absolute paths in the earth
+         * file will be skipped (not rewritten). Set this to true to tell the 
+         * serializer to attempt to re-write absolute paths and make then relative
+         * to the new save location.
+         */
+        void setRewriteAbsolutePaths(bool value) { _rewriteAbsolutePaths = value; }
+
+    public:
+        /**
+         * Parse data in a Config structure into a new MapNode.
+         * referrer = the location from which the Config was created; typically this
+         * is the pathname of the .earth file.
+         */
+        MapNode* deserialize( const Config& conf, const std::string& referrer ) const;
+        
+        /**
+         * Create a Config structure representing a MapNode.
+         * referrer = the location to which the Config will be stored, typically this
+         * is the pathname of the .earth file.
+         */
+        Config serialize( const MapNode* mapNode, const std::string& referrer ) const;
+
+    private:
+
+        bool _rewritePaths;
+        bool _rewriteAbsolutePaths;
     };
 
 } // namespace osgEarth_osgearth

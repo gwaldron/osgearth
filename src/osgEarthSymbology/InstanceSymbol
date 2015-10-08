@@ -24,6 +24,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/Tags>
 #include <osgEarthSymbology/Expression>
 #include <osg/Vec3f>
 
@@ -37,7 +38,7 @@ namespace osgEarth { namespace Symbology
      * Base class for symbols that represent an instance of an external resource
      * like an icon or a model and can be placed at a location.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT InstanceSymbol : public Symbol
+    class OSGEARTHSYMBOLOGY_EXPORT InstanceSymbol : public Taggable<Symbol>
     {
     public:
         /**

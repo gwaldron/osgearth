@@ -1,0 +1,50 @@
+// CMake will compile this file into AutoGenShaders.cpp
+
+#include <osgEarthSplat/SplatShaders>
+
+#define MULTILINE(...) #__VA_ARGS__
+
+using namespace osgEarth::Splat;
+
+SplattingShaders::SplattingShaders()
+{
+    Types = "Splat.types.glsl";
+    _sources[Types] = MULTILINE(@Splat.types.glsl@);
+
+    Noise = "Splat.Noise.glsl";
+    _sources[Noise] = MULTILINE(@Splat.Noise.glsl@);
+
+    VertModel = "Splat.vert.model.glsl";
+    _sources[VertModel] = MULTILINE(@Splat.vert.model.glsl@);
+
+    VertView = "Splat.vert.view.glsl";
+    _sources[VertView] = MULTILINE(@Splat.vert.view.glsl@);
+
+    Frag = "Splat.frag.glsl";
+    _sources[Frag] = MULTILINE(@Splat.frag.glsl@);
+
+    FragCommon = "Splat.frag.common.glsl";
+    _sources[FragCommon] = MULTILINE(@Splat.frag.common.glsl@);
+
+    FragGetRenderInfo = "Splat.frag.getRenderInfo.glsl";
+    _sources[FragGetRenderInfo] = MULTILINE(@Splat.frag.getRenderInfo.glsl@);
+
+    Util = "Splat.util.glsl";
+    _sources[Util] = MULTILINE(@Splat.util.glsl@);
+}
+
+
+LandCoverShaders::LandCoverShaders()
+{
+    LandCover_TCS = "LandCover.TCS.glsl";
+    _sources[LandCover_TCS] = MULTILINE(@LandCover.TCS.glsl@);
+
+    LandCover_TES = "LandCover.TES.glsl";
+    _sources[LandCover_TES] = MULTILINE(@LandCover.TES.glsl@);
+
+    LandCover_GS = "LandCover.GS.glsl";
+    _sources[LandCover_GS] = MULTILINE(@LandCover.GS.glsl@);
+
+    LandCover_FS = "LandCover.FS.glsl";
+    _sources[LandCover_FS] = MULTILINE(@LandCover.FS.glsl@);
+}

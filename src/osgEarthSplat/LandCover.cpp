@@ -274,10 +274,8 @@ LandCoverLayer::createPredicateShader(const Coverage* coverage) const
                     }
                 }
             }
-
-            buf << "    return -1; \n";
         }
-
+        buf << "    return -1; \n";
         buf << "}\n";
     }
     

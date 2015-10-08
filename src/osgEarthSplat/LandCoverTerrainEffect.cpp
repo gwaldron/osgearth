@@ -125,11 +125,12 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
 
                             osg::Texture2DArray* tex = new osg::Texture2DArray();
                             
+                            int arrayIndex = 0;
                             for(int b=0; b<layer->getBiomes().size(); ++b)
                             {
                                 const LandCoverBiome* biome = layer->getBiomes().at(b);
                                 
-                                for(int i=0; i<biome->getBillboards().size(); ++i)
+                                for(int i=0; i<biome->getBillboards().size(); ++i, ++arrayIndex)
                                 {
                                     const LandCoverBillboard& bb = biome->getBillboards().at(i);
 
@@ -154,7 +155,7 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                                         }
                                     }
 
-                                    tex->setImage( i, im.get() );
+                                    tex->setImage( arrayIndex, im.get() );
                                 }
                             }
                                     

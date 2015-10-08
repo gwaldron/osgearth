@@ -185,6 +185,8 @@ oe_landcover_geom()
 
     // select a billboard seemingly at random. Need to scale n to account for the fill limit first though.
     int billboardIndex = biome.firstBillboardIndex + int( floor(noise[NOISE_RANDOM] * float(biome.numBillboards) ) );
+    billboardIndex = min(billboardIndex, biome.firstBillboardIndex + biome.numBillboards - 1);
+
     oe_landcover_Billboard billboard;
     oe_landcover_getBillboard(billboardIndex, billboard);
     

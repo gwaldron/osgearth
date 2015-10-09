@@ -27,7 +27,7 @@ using namespace osgEarth;
 
 
 EngineContext::EngineContext(const Map*                     map,
-                             TerrainEngine*                 terrainEngine,
+                             TerrainEngineNode*             terrainEngine,
                              GeometryPool*                  geometryPool,
                              Loader*                        loader,
                              TileNodeRegistry*              liveTiles,

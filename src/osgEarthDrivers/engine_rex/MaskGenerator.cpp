@@ -400,8 +400,6 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
         {
             // get model coords
             osg::Vec3d model;
-            //locator->convertLocalToModel(*it, model);
-            //locator->unitToModel(*it, model);
             locator->unitToModel(osg::Vec3d(it->x(), it->y(), 0.0f), model);
             model = model * world2local;
             verts->push_back(model);
@@ -410,14 +408,11 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
             neighbors->push_back( model );
 
             // calc normals
-            osg::Vec3d local_one(*it);
-            local_one.z() += 1.0;
-            osg::Vec3d model_one;
-            locator->convertLocalToModel( local_one, model_one );
-            model_one = (model_one*world2local) - model;
-            model_one.normalize();
-            model_one.z() = 0.0;
-            normals->push_back(model_one);
+            osg::Vec3d modelPlusOne;
+            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 1.0f), modelPlusOne);
+            osg::Vec3d normal = (modelPlusOne*world2local)-model;                
+            normal.normalize();
+            normals->push_back( normal );
 
             // set up text coords
             texCoords->push_back( osg::Vec3f(it->x(), it->y(), 1.0f) );

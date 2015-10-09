@@ -29,6 +29,7 @@
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/MapFrame>
 #include <osgEarth/Progress>
+#include <osgEarth/TerrainEngineNode>
 
 using namespace osgEarth;
 
@@ -45,7 +46,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public:
         EngineContext(
             const Map*                          map,
-            TerrainEngine*                      engine,
+            TerrainEngineNode*                  engine,
             GeometryPool*                       geometryPool,
             Loader*                             loader,
             TileNodeRegistry*                   liveTiles,
@@ -63,7 +64,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const MapFrame& getMapFrame() const { return _frame; }
 
-        TerrainEngine* getEngine() const { return _terrainEngine; }
+        TerrainEngineNode* getEngine() const { return _terrainEngine; }
 
         TileNodeRegistry* liveTiles() const { return _liveTiles.get(); }
 
@@ -94,7 +95,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<TileNodeRegistry>        _deadTiles;
         const RexTerrainEngineOptions&        _options;
         const RenderBindings&                 _renderBindings;
-        TerrainEngine*                        _terrainEngine;
+        TerrainEngineNode*                    _terrainEngine;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
         const LandCoverBins*                  _landCoverBins;

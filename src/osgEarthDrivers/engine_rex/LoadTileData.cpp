@@ -19,6 +19,7 @@
 #include "LoadTileData"
 #include "MPTexture"
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Terrain>
 #include <osg/NodeVisitor>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -201,6 +202,9 @@ LoadTileData::apply()
 
             // Mark as complete. TODO: per-data requests will do something different.
             tilenode->setDirty( false );
+
+            // Notify listeners that we've added a tile.
+            _context->getEngine()->getTerrain()->notifyTileAdded( _key, tilenode );
 
             OE_DEBUG << LC << "apply " << _model->getKey().str() << "\n";
 

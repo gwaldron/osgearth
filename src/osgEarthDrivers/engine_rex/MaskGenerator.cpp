@@ -206,6 +206,9 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
         }
 
 
+        //
+        osg::ref_ptr<osg::Vec3dArray> boundaryVerts = new osg::Vec3dArray;
+
         // Use delaunay triangulation for stitching:
         for (MaskRecordVector::iterator mr = _maskRecords.begin();mr != _maskRecords.end();mr++)
         {
@@ -277,6 +280,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
                     {
                         (*it).z() = (*mit).z();
                         zSet += 2;
+
+                        boundaryVerts->push_back((*it));
                         break;
                     }
                 }
@@ -339,6 +344,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
                             {
                                 (*it).z() = foundZ;
                                 isZSet[count] = 2;
+
+                                boundaryVerts->push_back((*it));
                                 break;
                             }
                             else if (mRatio < closestRatio)
@@ -353,6 +360,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
                     {
                         (*it).z() = closestZ;
                         isZSet[count] = 2;
+
+                        boundaryVerts->push_back((*it));
                     }
                 }
 
@@ -364,7 +373,6 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
 
             alldcs.push_back(newdc);
         }
-
 
         trig->setInputPointArray(coordsArray.get());
 
@@ -398,10 +406,25 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
 
         for (osg::Vec3Array::iterator it = trig->getInputPointArray()->begin(); it != trig->getInputPointArray()->end(); ++it)
         {
+            // check to see if point is a part of the original mask boundary
+            bool isBoundary = false;
+            for (osg::Vec3dArray::iterator bit = boundaryVerts->begin(); bit != boundaryVerts->end(); ++bit)
+            {
+                if (osg::absolute((*bit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*bit).y() - (*it).y()) < MATCH_TOLERANCE)
+                {
+                    isBoundary = true;
+                    break;
+                }
+            }
+
             // get model coords
             osg::Vec3d model;
             locator->unitToModel(osg::Vec3d(it->x(), it->y(), 0.0f), model);
             model = model * world2local;
+
+            if (isBoundary)
+              model.z() = it->z();
+
             verts->push_back(model);
 
             // use same vert for neighbor to prevent morphing
@@ -415,7 +438,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
             normals->push_back( normal );
 
             // set up text coords
-            texCoords->push_back( osg::Vec3f(it->x(), it->y(), 1.0f) );
+            texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? 2.0f : 1.0f) );
         }
 
         // Get triangles from triangulator and add as primative set to the geometry

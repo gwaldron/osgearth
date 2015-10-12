@@ -22,7 +22,7 @@ void oe_rexEngine_gs(void)
         masked = masked * oe_layer_tilec.z;
     }
 
-    if (masked == 1.0)
+    if (masked > 0.0)
     {
         for(int i=0; i < 3; ++i )
         {

@@ -19,6 +19,7 @@
 #include <Triton.h>
 #include "TritonContext"
 #include <osg/GLExtensions>
+#include <osg/Math>
 #include <osgEarth/SpatialReference>
 
 #define LC "[TritonContext] "
@@ -47,6 +48,12 @@ bool
 TritonContext::passHeightMapToTriton() const
 {
     return _options.useHeightMap() == true;
+}
+
+int
+TritonContext::getHeightMapSize() const
+{
+    return osg::clampBetween(_options.heightMapSize().get(), 64, 2048);
 }
 
 void

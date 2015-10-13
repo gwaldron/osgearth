@@ -82,8 +82,8 @@ Horizon::setEye(const osg::Vec3d& eye)
         _VCmag2 = _VCmag*_VCmag;
         _VHmag2 = _VCmag2 - 1.0;  // viewer->horizon line (scaled)
 
-        double VCmag = sqrt(_VCmag2);
-        double VPmag = VCmag - 1.0/VCmag; // viewer->horizon plane dist (scaled)
+        //double VCmag = sqrt(_VCmag2);
+        double VPmag = _VCmag - 1.0/_VCmag; // viewer->horizon plane dist (scaled)
         double VHmag = sqrtf( _VHmag2 );
 
         _coneCos = VPmag / VHmag; // cos of half-angle of horizon cone
@@ -112,7 +112,15 @@ Horizon::isVisible(const osg::Vec3d& target,
     // transform into unit space:
     VT = osg::componentMultiply( VT, _scale );
 
-    // If the point is in front of the horizon plane, it's visible and we're done
+    // eye under the ellipsoid? If so, form a plane that passes through the eye
+    // and check that the target lies outside that plane.
+    if ( _VCmag < 1.0 && VT*_VC < 0.0 )
+    {        
+        return true;
+    }
+
+    // Eye is above the ellipsoid, so there is a valid horizon plane. 
+    // If the point is in front of that horizon plane, it's visible and we're done
     if ( VT*_VC <= _VHmag2 )
     {
         return true;
@@ -149,8 +157,17 @@ Horizon::getPlane(osg::Plane& out_plane) const
     if ( _VCmag2 == 0.0 )
         return false;
 
-    // calculate scaled distance from center to horizon plane:
-    double PCmag = 1.0/_VCmag;
+    double PCmag;
+    if ( _VCmag > 0.0 )
+    {
+        // eyepoint is above ellipsoid? Calculate scaled distance from center to horizon plane
+        PCmag = 1.0/_VCmag;    
+    }
+    else
+    {
+        // eyepoint is below the ellipsoid? plane passes through the eyepoint.
+        PCmag = _VCmag;
+    }
 
     osg::Vec3d pcWorld = osg::componentMultiply(_eyeUnit*PCmag, _scaleInv);
     double dist = pcWorld.length();

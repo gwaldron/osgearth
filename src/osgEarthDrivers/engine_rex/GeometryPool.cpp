@@ -272,29 +272,13 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             int i10 = i00+1;
             int i11 = i01+1;
 
-            // If the quad does not intersect a mask, tessellate it; otherwise skip it
-            // since the mask generator will take care of it.
-            bool addTris = true;
-            if ( maskSet )
-            {
-                addTris =
-                    !maskSet->isMasked( (*texCoords)[i00] ) &&
-                    !maskSet->isMasked( (*texCoords)[i01] ) &&
-                    !maskSet->isMasked( (*texCoords)[i10] ) &&
-                    !maskSet->isMasked( (*texCoords)[i11] ) &&
-                    !maskSet->containedByQuadAtColRow( i, j, _tileSize );
-            }
+            primSet->addElement(i01);
+            primSet->addElement(i00);
+            primSet->addElement(i11);
 
-            if ( addTris )
-            {
-                primSet->addElement(i01);
-                primSet->addElement(i00);
-                primSet->addElement(i11);
-
-                primSet->addElement(i00);
-                primSet->addElement(i10);
-                primSet->addElement(i11);
-            }
+            primSet->addElement(i00);
+            primSet->addElement(i10);
+            primSet->addElement(i11);
         }
     }
 

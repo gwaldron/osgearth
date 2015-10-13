@@ -7,7 +7,7 @@ automatically select an appropriate mode to use.
 
 Since osgEarth relies on shaders, you as a developer may wish to customize
 the rendering or add your own effects and features in GLSL. Anyone who has
-wokred with shaders has run into the same challenges:
+worked with shaders has run into the same challenges:
 
 * Shader programs as monolithic. Adding new shader code requires you to
   copy, modify, and replace the existing code so you don't lose its

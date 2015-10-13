@@ -323,13 +323,23 @@ void TileNode::cull(osg::NodeVisitor& nv)
     // determine whether we can and should subdivide to a higher resolution:
     bool subdivide = shouldSubDivide(nv, selectionInfo, cv->getLODScale());
 
-    // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
-    // because we want only the tiles loaded by the true viewpoint.
     bool canCreateChildren = subdivide;
-    const osg::Camera* cam = cv->getCurrentCamera();
-    if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
+
+    if ( _dirty && context->getOptions().progressive() == true )
     {
+        // Don't create children in progressive mode until content is in place
         canCreateChildren = false;
+    }
+    
+    else
+    {
+        // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
+        // because we want only the tiles loaded by the true viewpoint.
+        const osg::Camera* cam = cv->getCurrentCamera();
+        if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
+        {
+            canCreateChildren = false;
+        }
     }
 
     // If *any* of the children are visible, subdivide.

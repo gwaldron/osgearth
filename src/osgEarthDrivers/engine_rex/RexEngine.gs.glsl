@@ -22,14 +22,14 @@ void oe_rexEngine_gs(void)
         masked = masked * oe_layer_tilec.z;
     }
 
-    //if (masked == 1.0)
-    //{
-        for(int i=0; i < 3 * masked; ++i )
+    if (masked > 0.0)
+    {
+        for(int i=0; i < 3; ++i )
         {
             VP_LoadVertex(i);
             gl_Position = gl_in[i].gl_Position;
             VP_EmitModelVertex();
         }
         EndPrimitive();
-    //}
+    }
 }

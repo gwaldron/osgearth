@@ -226,109 +226,26 @@ namespace
     };
 
 
+    /**
+     * Responds to tile-added events by telling the Triton drawable that it needs to update
+     * its height map.
+     */
     class OceanTerrainChangedCallback : public osgEarth::TerrainCallback
     {
+        TritonDrawable* _drawable;
+
     public:
-        OceanTerrainChangedCallback(TritonContext* triton, osgEarth::MapNode* mapNode, osg::Camera* heightCam, osg::Texture2D* heightMap )
-          : _TRITON(triton),
-            _mapNode(mapNode),
-            _heightCam(heightCam),
-            _heightMap(heightMap)
+        OceanTerrainChangedCallback(TritonDrawable* drawable)
+            : _drawable(drawable) { }
+
+    public: // osgEarth::TerrainCallback
+
+        // Called when the terrain engine loads a new tile (or new tile heightfield data).
+        // When this happens we need to update the Triton height map.
+        void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, osgEarth::TerrainCallbackContext& context)
         {
+            _drawable->dirtyAllContexts();
         }
-
-        virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, osgEarth::TerrainCallbackContext& context)
-        {
-            update();
-        }
-
-        void update()
-        {
-            if ( !_TRITON->ready() )
-                return;
-
-            osg::Vec3d eye, center, up;
-            _viewMatrix.getLookAt(eye, center, up);
-            double fovyDEG=0.0, aspectRatio=0.0, zNear=0.0, zFar=0.0;
-            _projectionMatrix.getPerspective(fovyDEG, aspectRatio,zNear,zFar);
-
-            // aspect_ratio = tan( HFOV/2 ) / tan( VFOV/2 )
-            // tan( HFOV/2 ) = tan( VFOV/2 ) * aspect_ratio
-            // HFOV/2 = atan( tan( VFOV/2 ) * aspect_ratio )
-            // HFOV = 2.0 * atan( tan( VFOV/2 ) * aspect_ratio )
-            double fovxDEG = osg::RadiansToDegrees( 2.0 * atan( tan(osg::DegreesToRadians(fovyDEG))/2.0 * aspectRatio ));
-
-            double eyeLat=0.0, eyeLon=0.0, eyeHeight=0.0;
-            _mapNode->getMap()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(eye.x(), eye.y(), eye.z(), eyeLat, eyeLon, eyeHeight);
-            double clampedEyeX=0.0, clampedEyeY=0.0,clampedEyeZ=0.0;
-            _mapNode->getMap()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(eyeLat, eyeLon, 0.0, clampedEyeX, clampedEyeY, clampedEyeZ);
-            osg::Vec3 mslEye(clampedEyeX,clampedEyeY,clampedEyeZ);
-            double lookAtLat=0.0, lookAtLon=0.0, lookAtHeight=0.0;
-            _mapNode->getMap()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(center.x(), center.y(), center.z(), lookAtLat, lookAtLon, lookAtHeight);
-
-            // Calculate the distance to the horizon from the eyepoint
-            double eyeLen = eye.length();
-            double radE = mslEye.length();
-            double hmax = radE + 8848.0;
-            double hmin = radE - 12262.0;
-            double hasl = osg::maximum(0.1, eyeLen - radE);
-            double radius = eyeLen - hasl;
-            double horizonDistance = osg::minimum(radE, sqrt( 2.0*radius*hasl + hasl*hasl ));
-
-            osg::Vec3d heightCamEye(eye);
-
-            double near = osg::maximum(1.0, heightCamEye.length() - hmax);
-            double far = osg::maximum(10.0, heightCamEye.length() - hmin + radE);
-            //osg::notify( osg::ALWAYS ) << "near = " << near << "; far = " << far << std::endl;
-
-            //horizonDistance *= 0.25;
-
-            _heightCam->setProjectionMatrix(osg::Matrix::ortho(-horizonDistance,horizonDistance,-horizonDistance,horizonDistance,near,far) );
-            _heightCam->setViewMatrixAsLookAt( heightCamEye, osg::Vec3d(0.0,0.0,0.0), osg::Vec3d(0.0,0.0,1.0));
-
-            const osg::Matrixd bias(0.5, 0.0, 0.0, 0.0,
-                                    0.0, 0.5, 0.0, 0.0,
-                                    0.0, 0.0, 0.5, 0.0,
-                                    0.5, 0.5, 0.5, 1.0);
-
-            osg::Matrix hMM = _heightCam->getViewMatrix() * _heightCam->getProjectionMatrix() * bias;
-            ::Triton::Matrix4 heightMapMatrix(hMM(0,0),hMM(0,1),hMM(0,2),hMM(0,3),
-                                              hMM(1,0),hMM(1,1),hMM(1,2),hMM(1,3),
-                                              hMM(2,0),hMM(2,1),hMM(2,2),hMM(2,3),
-                                              hMM(3,0),hMM(3,1),hMM(3,2),hMM(3,3));
-
-            //unsigned int contextID = _viewer->getCamera()->getGraphicsContext()->getState()->getContextID();
-            _texObj = _heightMap->getTextureObject(_contextID);
-            //osg::notify( osg::ALWAYS ) << "_contextID " << _contextID << std::endl;
-
-            if(_texObj)
-            {
-                PassHeightMapToTritonCallback* cb = dynamic_cast<PassHeightMapToTritonCallback*>(_heightCam->getFinalDrawCallback());
-                if( cb )
-                {
-                    cb->_enable = true;
-                    cb->_id = _texObj->id();
-                    cb->_heightMapMatrix = heightMapMatrix;
-                }
-            }
-    #ifdef DEBUG_HEIGHTMAP
-            _mapNode->getParent(0)->removeChild(0 ,1);
-            _mapNode->getParent(0)->insertChild(0, makeFrustumFromCamera(_heightCam));
-    #endif /* DEBUG_HEIGHTMAP */
-        }
-
-        void setViewMatrix(const osg::Matrix& viewMatrix) { _viewMatrix = viewMatrix; };
-        void setProjectionMatrix(const osg::Matrix& projectionMatrix) { _projectionMatrix = projectionMatrix; };
-        void setContextID(unsigned int contextID) {_contextID = contextID;}
-
-    private:
-        osg::observer_ptr<TritonContext> _TRITON;
-        osg::observer_ptr<osgEarth::MapNode> _mapNode;
-        osg::Camera* _heightCam;
-        osg::Texture2D* _heightMap;
-        osg::Texture::TextureObject* _texObj;
-        osg::Matrix _viewMatrix, _projectionMatrix;
-        unsigned int _contextID;
     };
     
 
@@ -384,6 +301,95 @@ _mapNode(mapNode)
     // Place in the depth-sorted bin and set a rendering order.
     // We want Triton to render after the terrain.
     this->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+
+    _contextDirty.resize(64);
+    dirtyAllContexts();
+}
+
+void
+TritonDrawable::dirtyAllContexts()
+{
+    _contextDirty.setAllElementsTo(1);
+}
+
+void
+TritonDrawable::updateHeightMap(osg::RenderInfo& renderInfo) const
+{
+    if ( !_TRITON->ready() )
+        return;
+
+    const osg::Matrix& viewMatrix = renderInfo.getCurrentCamera()->getViewMatrix();
+    const osg::Matrix& projectionMatrix = renderInfo.getCurrentCamera()->getProjectionMatrix();
+
+    osg::Vec3d eye, center, up;
+    viewMatrix.getLookAt(eye, center, up);
+    double fovyDEG=0.0, aspectRatio=0.0, zNear=0.0, zFar=0.0;
+    projectionMatrix.getPerspective(fovyDEG, aspectRatio,zNear,zFar);
+
+    // aspect_ratio = tan( HFOV/2 ) / tan( VFOV/2 )
+    // tan( HFOV/2 ) = tan( VFOV/2 ) * aspect_ratio
+    // HFOV/2 = atan( tan( VFOV/2 ) * aspect_ratio )
+    // HFOV = 2.0 * atan( tan( VFOV/2 ) * aspect_ratio )
+    double fovxDEG = osg::RadiansToDegrees( 2.0 * atan( tan(osg::DegreesToRadians(fovyDEG))/2.0 * aspectRatio ));
+
+    double eyeLat=0.0, eyeLon=0.0, eyeHeight=0.0;
+    _mapNode->getMap()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(eye.x(), eye.y(), eye.z(), eyeLat, eyeLon, eyeHeight);
+    double clampedEyeX=0.0, clampedEyeY=0.0,clampedEyeZ=0.0;
+    _mapNode->getMap()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(eyeLat, eyeLon, 0.0, clampedEyeX, clampedEyeY, clampedEyeZ);
+    osg::Vec3 mslEye(clampedEyeX,clampedEyeY,clampedEyeZ);
+    double lookAtLat=0.0, lookAtLon=0.0, lookAtHeight=0.0;
+    _mapNode->getMap()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(center.x(), center.y(), center.z(), lookAtLat, lookAtLon, lookAtHeight);
+
+    // Calculate the distance to the horizon from the eyepoint
+    double eyeLen = eye.length();
+    double radE = mslEye.length();
+    double hmax = radE + 8848.0;
+    double hmin = radE - 12262.0;
+    double hasl = osg::maximum(0.1, eyeLen - radE);
+    double radius = eyeLen - hasl;
+    double horizonDistance = osg::minimum(radE, sqrt( 2.0*radius*hasl + hasl*hasl ));
+
+    osg::Vec3d heightCamEye(eye);
+
+    double near = osg::maximum(1.0, heightCamEye.length() - hmax);
+    double far = osg::maximum(10.0, heightCamEye.length() - hmin + radE);
+    //osg::notify( osg::ALWAYS ) << "near = " << near << "; far = " << far << std::endl;
+
+    //horizonDistance *= 0.25;
+
+    _heightCamera->setProjectionMatrix(osg::Matrix::ortho(-horizonDistance,horizonDistance,-horizonDistance,horizonDistance,near,far) );
+    _heightCamera->setViewMatrixAsLookAt( heightCamEye, osg::Vec3d(0.0,0.0,0.0), osg::Vec3d(0.0,0.0,1.0));
+
+    const osg::Matrixd bias(0.5, 0.0, 0.0, 0.0,
+        0.0, 0.5, 0.0, 0.0,
+        0.0, 0.0, 0.5, 0.0,
+        0.5, 0.5, 0.5, 1.0);
+
+    osg::Matrix hMM = _heightCamera->getViewMatrix() * _heightCamera->getProjectionMatrix() * bias;
+    ::Triton::Matrix4 heightMapMatrix(hMM(0,0),hMM(0,1),hMM(0,2),hMM(0,3),
+        hMM(1,0),hMM(1,1),hMM(1,2),hMM(1,3),
+        hMM(2,0),hMM(2,1),hMM(2,2),hMM(2,3),
+        hMM(3,0),hMM(3,1),hMM(3,2),hMM(3,3));
+
+    //unsigned int contextID = _viewer->getCamera()->getGraphicsContext()->getState()->getContextID();
+    osg::Texture::TextureObject* texObj = _heightMap->getTextureObject(renderInfo.getContextID());
+    //osg::notify( osg::ALWAYS ) << "_contextID " << _contextID << std::endl;
+
+    if(texObj)
+    {
+        PassHeightMapToTritonCallback* cb = dynamic_cast<PassHeightMapToTritonCallback*>(_heightCamera->getFinalDrawCallback());
+        if( cb )
+        {
+            cb->_enable = true;
+            cb->_id = texObj->id();
+            cb->_heightMapMatrix = heightMapMatrix;
+        }
+    }
+
+#ifdef DEBUG_HEIGHTMAP
+    _mapNode->getParent(0)->removeChild(0 ,1);
+    _mapNode->getParent(0)->insertChild(0, makeFrustumFromCamera(_heightCam));
+#endif /* DEBUG_HEIGHTMAP */
 }
 
 void
@@ -426,10 +432,27 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     if(_terrainChangedCallback.valid())
     {
         OceanTerrainChangedCallback* c = static_cast<OceanTerrainChangedCallback*>(_terrainChangedCallback.get());
-        c->setViewMatrix( renderInfo.getView()->getCamera()->getViewMatrix() );
-        c->setProjectionMatrix(renderInfo.getView()->getCamera()->getProjectionMatrix() );
-        c->setContextID(renderInfo.getView()->getCamera()->getGraphicsContext()->getState()->getContextID() );
-        c->update();
+
+        unsigned cid = renderInfo.getContextID();
+
+        bool dirty =
+            ( _contextDirty[cid] ) ||
+            ( renderInfo.getView()->getCamera()->getViewMatrix()       != _viewMatrix ) ||
+            ( renderInfo.getView()->getCamera()->getProjectionMatrix() != _projMatrix );
+
+        if ( dirty )
+        {
+            updateHeightMap( renderInfo );
+            //c->setViewMatrix( renderInfo.getView()->getCamera()->getViewMatrix() );
+            //c->setProjectionMatrix(renderInfo.getView()->getCamera()->getProjectionMatrix() );
+            //updateHeightMap( renderInfo );
+            _contextDirty[renderInfo.getContextID()] = 0;
+            _viewMatrix = renderInfo.getView()->getCamera()->getViewMatrix();
+            _projMatrix = renderInfo.getView()->getCamera()->getProjectionMatrix();
+        }
+
+        //c->setContextID(renderInfo.getView()->getCamera()->getGraphicsContext()->getState()->getContextID() );
+        //c->update();
     }
 
     state->dirtyAllVertexArrays();
@@ -519,7 +542,8 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
 {
     int textureUnit = 0;
-    int textureSize = 512;
+    int textureSize = _TRITON->getHeightMapSize();
+
     // Create our height map texture
     _heightMap = new osg::Texture2D;
     _heightMap->setTextureSize(textureSize, textureSize);
@@ -557,7 +581,7 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     if( mapNode && _heightCamera )
     {
         _heightCamera->addChild( mapNode->getTerrainEngine() );
-        _terrainChangedCallback = new OceanTerrainChangedCallback( _TRITON.get(), mapNode, _heightCamera.get(), _heightMap.get());
+        _terrainChangedCallback = new OceanTerrainChangedCallback(this); //_TRITON.get(), mapNode, _heightCamera.get(), _heightMap.get());
         mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
     }
 

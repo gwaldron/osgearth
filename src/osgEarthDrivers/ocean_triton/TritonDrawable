@@ -24,6 +24,7 @@
 #include <osg/TextureCubeMap>
 #include <osg/Version>
 #include <osg/Texture2D>
+#include <osg/buffered_value>
 
 #include <osgEarth/MapNode>
 #include <osgEarth/Terrain>
@@ -51,6 +52,10 @@ namespace osgEarth { namespace Triton
         
         void setupHeightMap(osgEarth::MapNode* mapNode);
 
+        void updateHeightMap(osg::RenderInfo& renderInfo) const;
+
+        void dirtyAllContexts();
+
 #if OSG_VERSION_GREATER_THAN(3,3,1)
         osg::BoundingBox computeBoundingBox() const
 #else
@@ -74,6 +79,10 @@ namespace osgEarth { namespace Triton
         
         osg::ref_ptr< osg::Texture2D >       _planarReflectionMap;
         osg::ref_ptr< osg::RefMatrix >       _planarReflectionProjection;
+
+        mutable osg::buffered_object<int>         _contextDirty;
+        mutable osg::Matrix                       _viewMatrix;
+        mutable osg::Matrix                       _projMatrix;
 
         mutable osg::buffered_object<osgEarth::NativeProgramAdapterCollection> _adapters;
         

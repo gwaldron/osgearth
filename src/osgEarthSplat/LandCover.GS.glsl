@@ -1,7 +1,7 @@
 #version 400 compatibility
-#pragma vp_name       "Flora geometry shader"
-#pragma vp_entryPoint "oe_landcover_geom"
-#pragma vp_location   "geometry"
+#pragma vp_name       LandCover geometry shader
+#pragma vp_entryPoint oe_landcover_geom
+#pragma vp_location   geometry
                 
 layout(triangles)        in;        // triangles from the TileDrawable
 layout(triangle_strip)   out;       // output a triangle-strip billboard

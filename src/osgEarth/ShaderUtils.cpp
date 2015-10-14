@@ -302,7 +302,7 @@ ShaderPreProcessor::run(osg::Shader* shader)
                 declPos,
                 i->original,
                 i->definition,
-                Stringify() << "#pragma vp_varying \"" << i->qualifier << i->definition << "\"\n" ))
+                Stringify() << "#pragma vp_varying " << i->qualifier << i->definition << "\n" ))
             {
                 dirty = true;
             }

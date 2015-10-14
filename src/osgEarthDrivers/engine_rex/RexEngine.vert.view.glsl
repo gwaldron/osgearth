@@ -1,9 +1,9 @@
 #version 330 compatibility
 
-#pragma vp_name       "REX Engine - Vertex/View"
-#pragma vp_entryPoint "oe_rex_elevateVertexAndSetTexCoords"
-#pragma vp_location   "vertex_view"
-#pragma vp_order      "0.4"
+#pragma vp_name       REX Engine - Vertex/View
+#pragma vp_entryPoint oe_rex_elevateVertexAndSetTexCoords
+#pragma vp_location   vertex_view
+#pragma vp_order      0.4
 
 // Stage globals
 vec4 oe_layer_tilec;

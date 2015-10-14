@@ -1,10 +1,10 @@
 #version $GLSL_VERSION_STR
 
-#pragma vp_entryPoint "oe_bumpmap_fragment"
-#pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.3"
+#pragma vp_entryPoint oe_bumpmap_fragment
+#pragma vp_location   fragment_coloring
+#pragma vp_order      0.3
 
-#pragma include "BumpMap.frag.common.glsl"
+#pragma include BumpMap.frag.common.glsl
 
 uniform sampler2D oe_bumpmap_tex;
 uniform float     oe_bumpmap_intensity;

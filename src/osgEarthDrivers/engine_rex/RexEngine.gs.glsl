@@ -1,8 +1,8 @@
 #version 330 compatibility
 
-#pragma vp_name       "REX Engine - GS"
-#pragma vp_entryPoint "oe_rexEngine_gs"
-#pragma vp_location   "geometry"
+#pragma vp_name       REX Engine - GS
+#pragma vp_entryPoint oe_rexEngine_gs
+#pragma vp_location   geometry
 
 layout(triangles)      in;
 layout(triangle_strip) out;

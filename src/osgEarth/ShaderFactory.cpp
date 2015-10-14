@@ -166,7 +166,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         osg::Shader* shader = s->data()._shader->getNominalShader();
         if ( shader )
         {
-            ShaderLoader::getAllQuotedPragmaValues(shader->getShaderSource(), "vp_varying", varDefs);
+            ShaderLoader::getAllPragmaValues(shader->getShaderSource(), "vp_varying", varDefs);
         }
     }
 

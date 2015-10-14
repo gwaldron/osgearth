@@ -1,8 +1,8 @@
 #version 330 compatibility
 
-#pragma vp_entryPoint "oe_mp_NormalMap_fragment"
-#pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.2"
+#pragma vp_entryPoint oe_mp_NormalMap_fragment
+#pragma vp_location   fragment_coloring
+#pragma vp_order      0.2
 
 uniform sampler2D oe_tile_normalTex;
 

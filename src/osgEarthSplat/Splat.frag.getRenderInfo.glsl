@@ -1,6 +1,6 @@
 #version 330
 
-#pragma include "Splat.types.glsl"
+#pragma include Splat.types.glsl
 
 // Samples the coverage data and returns main and detail indices.
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env)

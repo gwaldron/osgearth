@@ -38,8 +38,8 @@ namespace
     const char* pickVertexEncode =
         "#version " GLSL_VERSION_STR "\n"
 
-        "#pragma vp_entryPoint \"oe_pick_encodeObjectID\" \n"
-        "#pragma vp_location   \"vertex_clip\" \n"
+        "#pragma vp_entryPoint oe_pick_encodeObjectID\n"
+        "#pragma vp_location   vertex_clip\n"
         
         "uint oe_index_objectid; \n"                        // Vertex stage global containing the Object ID; set in ObjectIndex shader.
 
@@ -62,9 +62,9 @@ namespace
     const char* pickFragment =
         "#version " GLSL_VERSION_STR "\n"
 
-        "#pragma vp_entryPoint \"oe_pick_renderEncodedObjectID\" \n"
-        "#pragma vp_location   \"fragment_output\" \n"
-        "#pragma vp_order      \"last\" \n"
+        "#pragma vp_entryPoint oe_pick_renderEncodedObjectID\n"
+        "#pragma vp_location   fragment_output\n"
+        "#pragma vp_order      last\n"
 
         "flat in vec4 oe_pick_encoded_objectid; \n"
         "flat in int oe_pick_color_contains_objectid; \n"

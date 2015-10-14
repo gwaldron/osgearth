@@ -318,7 +318,9 @@ namespace
                              osg::Program*                            program,
                              ShaderComp::StageMask                    stages)
     {
-        // Remove the pragmas before going to OSG
+#if 0
+        // GW: cannot do this here. It causes constant shader recompiled and frame breaks 
+        // Remove the pragmas before going to OSGdiscardP
         for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
         {
             std::string source = (*i)->getShaderSource();
@@ -327,6 +329,7 @@ namespace
                 (*i)->setShaderSource(source);
             }
         }
+#endif
 
 #ifdef USE_ATTRIB_ALIASES
         // apply any vertex attribute aliases. But first, sort them from longest to shortest 

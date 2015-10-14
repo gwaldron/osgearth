@@ -623,11 +623,26 @@ TileNode::load(osg::NodeVisitor& nv)
         }
     }
 
+#if 0
+    double range0, range1;
+    int lod = getTileKey().getLOD();
+    if ( lod > context->getOptions().firstLOD().get() )
+        range0 = context->getSelectionInfo().visParameters(lod-1)._fVisibility;
+    else
+        range0 = 0.0;
+    double range1 = context->getSelectionInfo().visParameters(lod)._fVisibility;
+
+    priority = 
+#endif
+
     // Prioritize by LOD. (negated because lower order gets priority)
     float priority = - (float)getTileKey().getLOD();
 
     if ( context->getOptions().highResolutionFirst() == true )
-        priority = -priority;
+    {
+        priority = context->getSelectionInfo().numLods() - priority;
+        //priority = -priority;
+    }
 
     // then sort by distance within each LOD.
     float distance = nv.getDistanceToViewPoint( getBound().center(), true );

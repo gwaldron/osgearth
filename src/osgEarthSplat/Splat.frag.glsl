@@ -1,19 +1,19 @@
 #version 330
 
-#pragma vp_entryPoint "oe_splat_complex"
-#pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.4"                 // before terrain image layers
+#pragma vp_entryPoint oe_splat_complex
+#pragma vp_location   fragment_coloring
+#pragma vp_order      0.4
 
 // define to activate 'edit' mode in which uniforms control
 // the splatting parameters.
-#pragma vp_define "SPLAT_EDIT"
+#pragma vp_define SPLAT_EDIT
 
 // define to activate GPU-generated noise instead of a noise texture.
-#pragma vp_define "SPLAT_GPU_NOISE"
+#pragma vp_define SPLAT_GPU_NOISE
 
 // include files
-#pragma include "Splat.types.glsl"
-#pragma include "Splat.frag.common.glsl"
+#pragma include Splat.types.glsl
+#pragma include Splat.frag.common.glsl
 
 // ref: Splat.getRenderInfo.frag.glsl
 oe_SplatRenderInfo oe_splat_getRenderInfo(in float value, in oe_SplatEnv env);

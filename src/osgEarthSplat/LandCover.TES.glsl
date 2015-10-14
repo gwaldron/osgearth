@@ -1,8 +1,8 @@
 #version 410
 
-#pragma vp_name       "Terrain TES Shader"
-#pragma vp_entryPoint "oe_landcover_tessellate"
-#pragma vp_location   "tess_eval"
+#pragma vp_name       LandCover TES Shader
+#pragma vp_entryPoint oe_landcover_tessellate
+#pragma vp_location   tess_eval
 
 // osgEarth terrain is always CCW winding
 layout(triangles, fractional_odd_spacing, ccw) in;

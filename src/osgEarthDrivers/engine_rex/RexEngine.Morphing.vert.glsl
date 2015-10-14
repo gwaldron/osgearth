@@ -1,10 +1,10 @@
 #version 330 compatibility
 
-#pragma vp_name       "REX Engine - Morphing"
-#pragma vp_entryPoint "oe_rexEngine_morph"
-#pragma vp_location   "vertex_model"
-#pragma vp_order      "0.5"
-#pragma vp_define     "OE_REX_VERTEX_MORPHING"
+#pragma vp_name       REX Engine - Morphing
+#pragma vp_entryPoint oe_rexEngine_morph
+#pragma vp_location   vertex_model
+#pragma vp_order      0.5
+#pragma vp_define     OE_REX_VERTEX_MORPHING
 
 // stage
 vec3 vp_Normal; // up vector

@@ -42,9 +42,9 @@ namespace
     const char* indexVertexInit =
         "#version " GLSL_VERSION_STR "\n"
 
-        "#pragma vp_entryPoint \"oe_index_readObjectID\" \n"
-        "#pragma vp_location   \"vertex_model\" \n"
-        "#pragma vp_order      \"first\" \n"
+        "#pragma vp_entryPoint oe_index_readObjectID \n"
+        "#pragma vp_location   vertex_model \n"
+        "#pragma vp_order      first \n"
 
         "uniform uint oe_index_objectid_uniform; \n"   // override objectid if > 0
         "in uint      oe_index_objectid_attr; \n"      // Vertex attribute containing the object ID.

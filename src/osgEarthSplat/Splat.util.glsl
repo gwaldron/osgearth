@@ -1,5 +1,5 @@
 #version 120
-#pragma vp_location "fragment_coloring"
+#pragma vp_location fragment_coloring
 
 uniform vec4 oe_tile_key;  // osgEarth TileKey
 

@@ -1,9 +1,9 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint "oe_overlay_fragment"
-#pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.6"
+#pragma vp_entryPoint oe_overlay_fragment
+#pragma vp_location   fragment_coloring
+#pragma vp_order      0.6
 
 uniform bool      oe_isPickCamera;
 uniform sampler2D oe_overlay_tex;

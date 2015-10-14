@@ -195,6 +195,9 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
 
         std::string filename = Stringify() << request->_uid << "." << _engineUID << ".osgearth_rex_loader";
 
+        // scale from LOD to 0..1 range, more or less
+        float scaledPriority = priority / 20.0f;
+
         nv.getDatabaseRequestHandler()->requestNodeFile(
             filename,
             _myNodePath,

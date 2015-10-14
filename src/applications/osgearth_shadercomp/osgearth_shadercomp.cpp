@@ -388,7 +388,7 @@ namespace TEST_7
 
     const char* geom =
         "#version 330\n"
-        "#pragma name \"ShaderComp Test 7 Geom Shader (Triangle Viewer)\"\n"
+        "#pragma vp_name ShaderComp Test 7 Geom Shader (Triangle Viewer)\n"
 
         "layout(triangles) in; \n"
         "layout(triangle_strip) out; \n"

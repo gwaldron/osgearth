@@ -214,9 +214,9 @@ Here is an example::
 
     #version 110
     
-    #pragma vp_entryPoint  "color_it_red"
-    #pragma vp_location    "fragment_coloring"
-    #pragam vp_order       "1.0"
+    #pragma vp_entryPoint  color_it_red
+    #pragma vp_location    fragment_coloring
+    #pragam vp_order       1.0
     
     void color_it_red(inout vec4 color)
     {
@@ -274,7 +274,7 @@ The ``ShaderPackage`` support the concept if *include files*. Your GLSL code
 can *include* any other shaders in the same package by referencing their file names.
 Use a custom ``#pragma`` to include another file::
 
-    #pragma include "myCode.vertex.glsl"
+    #pragma include myCode.vertex.glsl
 
 Just as in C++, the *include* will load the other file (or source code) directly
 inline. So the file you are including must be structured as if you had placed it right

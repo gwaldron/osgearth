@@ -182,14 +182,6 @@ namespace
                     header = line;
                 }
 
-                else if ( tokens[0] == "#pragma")
-                {
-                    // Discards all pragmas, since the double-quotes in them are illegal in at least
-                    // GLSL ES compiler (on Android). We should consider doing this for all GLSL
-                    // since technically quoting characters are not part of the GLSL grammar at all.
-                    continue;
-                }
-
                 else
                 {
                     body << (*line_iter) << "\n";
@@ -291,25 +283,6 @@ namespace
     }
 
     /**
-     * As mentioned in parseShaderForMerging(), double quotes in pragmas are illegal.  This
-     * eliminates the issue by turning the pragma lines into a comment.
-     */
-    bool discardPragmas(std::string& shaderSource)
-    {
-        bool changed = false;
-        std::string::size_type pos = 0;
-        static const std::string POUND_PRAGMA = "#pragma ";
-        while ((pos = shaderSource.find(POUND_PRAGMA, pos)) != std::string::npos)
-        {
-            // Just replace with a comment
-            shaderSource.insert(pos, "// ");
-            changed = true;
-            pos += POUND_PRAGMA.size();
-        }
-        return changed;
-    }
-
-    /**
     * Populates the specified Program with passed-in shaders.
     */
     void addShadersToProgram(const VirtualProgram::ShaderVector&      shaders, 
@@ -318,19 +291,6 @@ namespace
                              osg::Program*                            program,
                              ShaderComp::StageMask                    stages)
     {
-#if 0
-        // GW: cannot do this here. It causes constant shader recompiled and frame breaks 
-        // Remove the pragmas before going to OSGdiscardP
-        for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
-        {
-            std::string source = (*i)->getShaderSource();
-            if ( discardPragmas( source ) )
-            {
-                (*i)->setShaderSource(source);
-            }
-        }
-#endif
-
 #ifdef USE_ATTRIB_ALIASES
         // apply any vertex attribute aliases. But first, sort them from longest to shortest 
         // so we don't get any overlap and bad replacements.

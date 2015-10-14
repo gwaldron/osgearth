@@ -81,6 +81,7 @@ namespace
         std::string type;        // float, vec4, etc.
         std::string name;        // name without any array specifiers, etc.
         std::string declaration; // name including array specifiers (for decl)
+        int         arraySize;   // 0 if not an array; else array size.
     };
 
     typedef std::vector<Variable> Variables;
@@ -195,10 +196,12 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 if ( p+2 < tokens.size() && tokens[p] == "[" && tokens[p+2] == "]" )
                 {
                     v.declaration = Stringify() << v.type << " " << v.name << tokens[p] << tokens[p+1] << tokens[p+2];
+                    v.arraySize = as<int>(tokens[p+1], 0);
                 }
                 else
                 {
                     v.declaration = Stringify() << v.type << " " << v.name;
+                    v.arraySize = 0;
                 }
             }
 
@@ -550,10 +553,23 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             {
                 if ( i->interp != "flat" )
                 {
-                    buf << INDENT << i->name << " = VP_Interpolate3"
-                        << "( vp_in[0]." << i->name
-                        << ", vp_in[1]." << i->name
-                        << ", vp_in[2]." << i->name << " ); \n";
+                    if ( i->arraySize == 0 )
+                    {
+                        buf << INDENT << i->name << " = VP_Interpolate3"
+                            << "( vp_in[0]." << i->name
+                            << ", vp_in[1]." << i->name
+                            << ", vp_in[2]." << i->name << " ); \n";
+                    }
+                    else
+                    {
+                        for(int n=0; n<i->arraySize; ++n)
+                        {
+                            buf << INDENT << i->name << "[" << n << "] = VP_Interpolate3"
+                                << "( vp_in[0]." << i->name << "[" << n << "]"
+                                << ", vp_in[1]." << i->name << "[" << n << "]"
+                                << ", vp_in[2]." << i->name << "[" << n << "] ); \n";
+                        }
+                    }
                 }
                 else
                 {
@@ -561,33 +577,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 }
             }
             buf << "} \n";
-
-#if 0
-            // Bezier interpolator
-            buf << "\nvoid VP_Interpolate16() \n"
-                << "{ \n";
-            for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
-            {
-                buf << INDENT << i->name << " = VP_Interpolate16"
-                    << "( vp_in[0]." << i->name
-                    << ", vp_in[1]." << i->name
-                    << ", vp_in[2]." << i->name
-                    << ", vp_in[3]." << i->name
-                    << ", vp_in[4]." << i->name
-                    << ", vp_in[5]." << i->name
-                    << ", vp_in[6]." << i->name
-                    << ", vp_in[7]." << i->name
-                    << ", vp_in[8]." << i->name
-                    << ", vp_in[9]." << i->name
-                    << ", vp_in[10]." << i->name
-                    << ", vp_in[11]." << i->name
-                    << ", vp_in[12]." << i->name
-                    << ", vp_in[13]." << i->name
-                    << ", vp_in[14]." << i->name
-                    << ", vp_in[15]." << i->name << " ); \n";
-            }
-            buf << "} \n";
-#endif
 
             buf << "\nvoid VP_EmitVertex() \n"
                 << "{ \n";

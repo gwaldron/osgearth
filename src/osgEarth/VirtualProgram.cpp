@@ -994,47 +994,16 @@ VirtualProgram::setFunction(const std::string&           functionName,
         function._accept = accept;
         ofm.insert( OrderedFunction(ordering, function) );
 
-        // create and add the new shader function.
-        //osg::Shader::Type type;
+        // Remove any quotes in the shader source (illegal)
+        std::string source(shaderSource);
+        osgEarth::replaceIn(source, "\"", " ");
 
         // assemble the poly shader.
         PolyShader* shader = new PolyShader();
         shader->setName( functionName );
         shader->setLocation( location );
-        shader->setShaderSource( shaderSource );
+        shader->setShaderSource( source );
         shader->prepare();
-
-#if 0
-        switch(location)
-        {
-            case LOCATION_VERTEX_MODEL:
-            case LOCATION_VERTEX_VIEW:
-            case LOCATION_VERTEX_CLIP:
-                type = osg::Shader::VERTEX; // depends where it gets inserted.....
-                break;
-                
-            case LOCATION_VERTEX_GEOMETRY:
-                type = osg::Shader::GEOMETRY;
-                break;
-                
-            case LOCATION_VERTEX_TESSCONTROL:
-                type = osg::Shader::TESSCONTROL;
-                break;
-                
-            case LOCATION_VERTEX_TESSEVALUATION:
-                type = osg::Shader::TESSEVALUATION;
-                break;
-
-            default:
-                type = osg::Shader::FRAGMENT;
-        }
-
-        osg::Shader* shader = new osg::Shader(type, shaderSource);
-        shader->setName( functionName );
-
-        // pre-processes the shader's source to include GLES uniforms as necessary
-        ShaderPreProcessor::run( shader );
-#endif
 
         ShaderEntry& entry = _shaderMap[MAKE_SHADER_ID(functionName)];
         entry._shader        = shader;

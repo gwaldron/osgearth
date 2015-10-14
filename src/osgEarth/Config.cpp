@@ -44,13 +44,19 @@ Config::setReferrer( const std::string& referrer )
     if ( referrer.empty() )
         return;
 
-    std::string absReferrer = osgEarth::getAbsolutePath(referrer);
+    std::string absReferrer;
+    if( !osgDB::containsServerAddress( referrer ) ) {
+        absReferrer = osgEarth::getAbsolutePath( referrer );
 
-    if ( osgEarth::isRelativePath(absReferrer) )
-    {
-        OE_WARN << LC << "ILLEGAL: call to setReferrer with relative path:  "
-            "key=" << key() << "; referrer=" << referrer << "\n";
-        return;
+        if( osgEarth::isRelativePath( absReferrer ) )
+        {
+            OE_WARN << LC << "ILLEGAL: call to setReferrer with relative path:  "
+                "key=" << key() << "; referrer=" << referrer << "\n";
+            return;
+        }
+    }
+    else {
+        absReferrer = referrer;
     }
 
     // Don't overwrite an existing referrer:

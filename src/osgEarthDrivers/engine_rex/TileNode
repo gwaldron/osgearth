@@ -30,6 +30,9 @@
 #include <osgEarth/TerrainTileNode>
 #include <vector>
 
+namespace osg {
+    class CullStack;
+}
 namespace osgUtil {
     class CullVisitor;
 }
@@ -68,6 +71,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Whether the tile is expired; i.e. has not been visited in some time. */
         bool isDormant(osg::NodeVisitor& nv) const;
+
+        /** Whether the tile drawables are visible */
+        bool isVisible(osg::CullStack* cs) const;
 
         /** Load (or continue loading) content for the tiles in this quad. */
         void load(osg::NodeVisitor& nv);
@@ -122,7 +128,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     private:
         void cull(osg::NodeVisitor& nv);
-        void cullSurface(osgUtil::CullVisitor* nv);
+
+        // returns true if any surface geometry was added (visible).
+        bool acceptSurface(osgUtil::CullVisitor* nv);
 
         bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
         float getVisibilityRangeHint(unsigned firstLOD) const;

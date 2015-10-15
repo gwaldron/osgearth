@@ -83,12 +83,20 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             enum State {
                 IDLE,
                 RUNNING,
-                MERGING
+                MERGING,
+                FINISHED
             };
-            void setState(State value) { _state = value; }
+
+            void setState(State value) {
+                _state = value;
+                if ( _state == IDLE )
+                    _loadCount = 0;
+            }
+
             bool isIdle() const { return _state == IDLE; }
             bool isRunning() const { return _state == RUNNING; }
             bool isMerging() const { return _state == MERGING; }
+            bool isFinished() const { return _state == FINISHED; }
 
             UID                           _uid;
             std::string                   _name;
@@ -99,6 +107,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             unsigned                      _lastFrameSubmitted;
             osg::Timer_t                  _lastTick;
             osg::ref_ptr<osg::StateSet>   _stateSet;
+            mutable Threading::Mutex      _lock;
+            int                           _loadCount;
+
+            void lock() { _lock.lock(); }
+            void unlock() { _lock.unlock(); }
 
             ChangeSet                     _nodesChanged;
         };
@@ -179,6 +192,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             }
         };
 
+        //typedef std::set<RefRequest, SortRequest> MergeQueue;
         typedef std::multiset<RefRequest, SortRequest> MergeQueue;
 
         UID              _engineUID;

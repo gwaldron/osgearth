@@ -37,7 +37,9 @@ using namespace osgEarth;
 
 #define OSGEARTH_TILE_NODE_PROXY_GEOMETRY_DEBUG 0
 
-#define USE_PROXY_SURFACE 0
+// Whether to check the child nodes for culling before traversing them.
+// This could prevent premature Loader requests, but it increases cull time.
+//#define VISIBILITY_PRECHECK
 
 #define LC "[TileNode] "
 
@@ -300,6 +302,17 @@ TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionIn
     return false;
 }
 
+
+bool
+TileNode::isVisible(osg::CullStack* stack) const
+{
+#ifdef VISIBILITY_PRECHECK
+    return _surface->isVisible( stack );
+#else
+    return true;
+#endif
+}
+
 void TileNode::cull(osg::NodeVisitor& nv)
 {
     if ( nv.getFrameStamp() )
@@ -323,7 +336,16 @@ void TileNode::cull(osg::NodeVisitor& nv)
     // determine whether we can and should subdivide to a higher resolution:
     bool subdivide = shouldSubDivide(nv, selectionInfo, cv->getLODScale());
 
+    // whether it is OK to create child TileNodes is necessary.
     bool canCreateChildren = subdivide;
+
+    // whether it is OK to load data if necessary.
+    bool canLoadData = true;
+
+    // whether the surface is visible and therefore it's OK to load data. This can
+    // only change to false if we traverse the surface node and it gets culled out.
+    bool surfaceVisible = true;
+
 
     if ( _dirty && context->getOptions().progressive() == true )
     {
@@ -339,6 +361,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
         if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
         {
             canCreateChildren = false;
+            canLoadData = false;
         }
     }
 
@@ -357,42 +380,29 @@ void TileNode::cull(osg::NodeVisitor& nv)
             }
         }
 
-        // All 4 children must be ready before we can traverse any of them:
-        unsigned numChildrenReady = 0;
+        // If all are ready, traverse them now.
         if ( getNumChildren() == 4 )
         {
-            for(unsigned i = 0; i < 4; ++i)
-            {                
-                if ( getSubTile(i)->isReadyToTraverse() )
+            for(int i=0; i<4; ++i)
+            {
+                if ( static_cast<TileNode*>(_children[i].get())->isVisible(cv) )
                 {
-                    ++numChildrenReady;
+                    _children[i]->accept( nv );
                 }
             }
-        }
-
-        // If all are ready, traverse them now.
-        if ( numChildrenReady == 4 )
-        {
-            // TODO:
-            // When we do this, we need to quite sure that all 4 children will be accepted into
-            // the draw set. Perhaps isReadyToTraverse() needs to check that.
-            _children[0]->accept( nv );
-            _children[1]->accept( nv );
-            _children[2]->accept( nv );
-            _children[3]->accept( nv );
         }
 
         // If we don't traverse the children, traverse this node's payload.
         else if ( _surface.valid() )
         {
-            cullSurface( cv );
+            acceptSurface( cv );
         }
     }
 
     // If children are outside camera range, draw the payload and expire the children.
     else if ( _surface.valid() )
     {
-        cullSurface( cv );
+        acceptSurface( cv );
 
         if ( getNumChildren() >= 4 && context->maxLiveTilesExceeded() )
         {
@@ -431,18 +441,19 @@ void TileNode::cull(osg::NodeVisitor& nv)
     }
 
     // If this tile is marked dirty, try loading data.
-    if ( _dirty )
+    if ( _dirty && canLoadData && surfaceVisible )
     {
         load( nv );
     }
 }
 
-void
-TileNode::cullSurface(osgUtil::CullVisitor* cv)
+bool
+TileNode::acceptSurface(osgUtil::CullVisitor* cv)
 {
     cv->pushStateSet( _payloadStateSet.get() );
     _surface->accept( *cv );
     cv->popStateSet();
+    return true;
 }
 
 void
@@ -668,7 +679,7 @@ TileNode::expireChildren(osg::NodeVisitor& nv)
         if ( !_expireRequest.valid() )
         {
             _expireRequest = new ExpireTiles(this, context);
-            _expireRequest->setName( "expire" );
+            _expireRequest->setName( getTileKey().str() + " expire" );
             _expireRequest->setTileKey( _key );
         }
     }

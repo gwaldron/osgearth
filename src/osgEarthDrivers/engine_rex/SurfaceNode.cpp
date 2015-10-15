@@ -30,6 +30,7 @@
 #include <osg/Geometry>
 #include <osg/TriangleFunctor>
 #include <osgText/Text>
+#include <osg/CullStack>
 
 #include <numeric>
 
@@ -198,15 +199,21 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
     centroid.createLocalToWorld( local2world );
     setMatrix( local2world );
 
-    //_worldCorners.resize(8);
-    //_childrenCorners.resize(4);
-    //for(size_t i = 0; i < _childrenCorners.size(); ++i)
-    //{
-    //    _childrenCorners[i].resize(8);
-    //}
+    _matrix = new osg::RefMatrix( local2world );
 
     // Initialize the cached bounding box.
     setElevationRaster( 0L, osg::Matrixf::identity() );
+}
+
+bool
+SurfaceNode::isVisible(osg::CullStack* cullStack) const
+{
+    osg::ref_ptr<osg::RefMatrix> mvm = new osg::RefMatrix(*cullStack->getModelViewMatrix());
+    mvm->preMult( getMatrix() );
+    cullStack->pushModelViewMatrix(mvm, osg::Transform::RELATIVE_RF );
+    bool isCulled = cullStack->isCulled( getAlignedBoundingBox() );
+    cullStack->popModelViewMatrix();
+    return !isCulled;
 }
 
 float
@@ -216,10 +223,7 @@ SurfaceNode::minSquaredDistanceFromPoint(const VectorPoints& corners, const osg:
     for(int i=0; i<8; ++i)
     {
         const osg::Vec3& corner = corners[i];
-    //for( VectorPoints::const_iterator i=corners.begin(); i != corners.end(); ++i )
-    //{
         float d2 = (corner-center).length2() * z2;
-        //float d2 = (*i - center).length2()*z2;
         if ( d2 < mind2 ) mind2 = d2;
     }
     return mind2;
@@ -232,9 +236,6 @@ SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radiusSq
     for(int i=0; i<4; ++i)
     {
         const VectorPoints& childCorners = _childrenCorners[i];
-    //for(ChildrenCorners::const_iterator it = _childrenCorners.begin(); it != _childrenCorners.end(); ++it)
-    //{
-    //    const VectorPoints& childCorners = *it;
         float fMinDistanceSquared = minSquaredDistanceFromPoint(childCorners, center, z2);
         if (fMinDistanceSquared <= radiusSquared)
         {

@@ -39,7 +39,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             _skirtRatio             ( 0.01 ),
             _color                  ( Color::White ),
             _quickRelease           ( true ),
-            _expirationThreshold    ( 0 ),
+            _expirationThreshold    ( 300 ),
             _progressive            ( false ),
             _highResolutionFirst    ( true ),
             _normalMaps             ( true ),

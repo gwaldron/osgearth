@@ -23,6 +23,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Registry>
 #include <osgEarth/Horizon>
+#include <osgEarth/TraversalData>
 
 #include <osg/CullStack>
 #include <osg/Geode>
@@ -31,6 +32,7 @@
 #include <osg/TriangleFunctor>
 #include <osgText/Text>
 #include <osg/CullStack>
+#include <osgUtil/CullVisitor>
 
 #include <numeric>
 

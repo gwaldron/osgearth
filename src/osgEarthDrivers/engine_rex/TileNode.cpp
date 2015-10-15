@@ -279,11 +279,9 @@ TileNode::getVisibilityRangeHint(unsigned firstLOD) const
     return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
 
-// 0=off, 1=on
-#define OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL 0
 
 bool
-TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float zoomFactor)
+TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float lodScale)
 {
     unsigned currLOD = _key.getLOD();
     if (   currLOD <  selectionInfo.numLods()
@@ -291,12 +289,8 @@ TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionIn
     {
         osg::Vec3 cameraPos = nv.getViewPoint();
 
-#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
-        OE_INFO << LC <<cameraPos.x()<<" "<<cameraPos.y()<<" "<<cameraPos.z()<<" "<<std::endl;
-        OE_INFO << LC <<"LOD Scale: "<<fZoomFactor<<std::endl;
-#endif  
-        float radius = (float)selectionInfo.visParameters(currLOD+1)._fVisibility;
-        bool anyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, radius*radius, zoomFactor);
+        float radius2 = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
+        bool anyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, radius2, lodScale);
         return anyChildVisible;
     }
     return false;
@@ -322,12 +316,6 @@ void TileNode::cull(osg::NodeVisitor& nv)
 
     unsigned currLOD = getTileKey().getLOD();
 
-#if OSGEARTH_REX_TILE_NODE_DEBUG_TRAVERSAL
-    if (currLOD==0)
-    {
-        OE_INFO << LC <<"Traversing: "<<"\n";    
-    }
-#endif
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
 
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
@@ -638,10 +626,10 @@ TileNode::load(osg::NodeVisitor& nv)
     double range0, range1;
     int lod = getTileKey().getLOD();
     if ( lod > context->getOptions().firstLOD().get() )
-        range0 = context->getSelectionInfo().visParameters(lod-1)._fVisibility;
+        range0 = context->getSelectionInfo().visParameters(lod-1)._visibilityRange;
     else
         range0 = 0.0;
-    double range1 = context->getSelectionInfo().visParameters(lod)._fVisibility;
+    double range1 = context->getSelectionInfo().visParameters(lod)._visibilityRange;
 
     priority = 
 #endif

@@ -86,6 +86,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         int _skirtSize;
 
+        float* _heightCache;
+
     public:
         
         // construct a new TileDrawable that fronts an osg::Geometry
@@ -153,7 +155,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         META_Object(osgEarth, TileDrawable);
         TileDrawable() : osg::Drawable(){}
         TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) : osg::Drawable(rhs, cop) {}
-        virtual ~TileDrawable() {}
+
+        virtual ~TileDrawable();
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

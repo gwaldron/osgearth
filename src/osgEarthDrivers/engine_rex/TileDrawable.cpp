@@ -59,6 +59,15 @@ _skirtSize   ( 0 )
 
     _textureImageUnit       = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR)->unit();
     _textureParentImageUnit = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR_PARENT)->unit();
+    
+    int tileSize2 = tileSize*tileSize;
+    _heightCache = new float[ tileSize2 ];
+    for(int i=0; i<tileSize2; ++i) _heightCache[i] = 0.0f;    
+}
+
+TileDrawable::~TileDrawable()
+{
+    delete [] _heightCache;
 }
 
 void
@@ -261,6 +270,41 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
         OE_WARN << "("<<_key.str()<<") precision error\n";
     }
 
+    if ( _elevationRaster.valid() )
+    {
+        const osg::Vec3Array& verts   = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
+        const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
+
+        //OE_INFO << LC << _key.str() << " - rebuilding height cache" << std::endl;
+
+        ImageUtils::PixelReader elevation(_elevationRaster.get());
+        elevation.setBilinear(true);
+
+        float
+            scaleU = _elevationScaleBias(0,0),
+            scaleV = _elevationScaleBias(1,1),
+            biasU  = _elevationScaleBias(3,0),
+            biasV  = _elevationScaleBias(3,1);
+
+        if ( osg::equivalent(scaleU, 0.0f) || osg::equivalent(scaleV, 0.0f) )
+        {
+            OE_WARN << LC << "Precision loss in tile " << _key.str() << "\n";
+        }
+    
+        for(int t=0; t<_tileSize-1; ++t)
+        {
+            float v = (float)t / (float)(_tileSize-1);
+            v = v*scaleV + biasV;
+
+            for(int s=0; s<_tileSize-1; ++s)
+            {
+                float u = (float)s / (float)(_tileSize-1);
+                u = u*scaleU + biasU;
+                _heightCache[t*_tileSize+s] = elevation(u, v).r();
+            }
+        }
+    }
+
     dirtyBound();
 }
 
@@ -276,178 +320,29 @@ TileDrawable::getElevationMatrix() const
     return _elevationScaleBias;
 }
 
-//#define USE_TRIANGLES
-#ifdef USE_TRIANGLES
-
+// Functor supplies triangles to things like IntersectionVisitor, ComputeBoundsVisitor, etc.
 void
 TileDrawable::accept(osg::PrimitiveFunctor& f) const
 {
-    const osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(_geom->getVertexArray());
-    const osg::Vec3Array* normals = static_cast<osg::Vec3Array*>(_geom->getNormalArray());
-
-    if ( _elevationRaster.valid() )
-    {
-        ImageUtils::PixelReader elevation(_elevationRaster.get());
-        elevation.setBilinear(true);
-
-        float
-            scaleU = _elevationScaleBias(0,0),
-            scaleV = _elevationScaleBias(1,1),
-            biasU  = _elevationScaleBias(3,0),
-            biasV  = _elevationScaleBias(3,1);
-
-        if ( osg::equivalent(scaleU, 0.0f) || osg::equivalent(scaleV, 0.0f) )
-        {
-            OE_WARN << LC << "Precision loss in tile " << _key.str() << "\n";
-        }
+    const osg::Vec3Array& verts   = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
+    const osg::Vec3Array& normals = *static_cast<osg::Vec3Array*>(_geom->getNormalArray());
         
-        f.begin( GL_TRIANGLES );
-    
-        for(int t=0; t<_tileSize-1; ++t)
-        {
-            float v0 = (float)t     / (float)(_tileSize-1);
-            float v1 = (float)(t+1) / (float)(_tileSize-1);
-
-            v0 = v0*scaleV + biasV;
-            v1 = v1*scaleV + biasV;
-
-            for(int s=0; s<_tileSize-1; ++s)
-            {
-                float u0 = (float)s     / (float)(_tileSize-1);                   
-                float u1 = (float)(s+1) / (float)(_tileSize-1);   
-
-                u0 = u0*scaleU + biasU;
-                u1 = u1*scaleU + biasU;
-
-                int i00 = t*_tileSize + s;
-                int i10 = i00 + 1;
-                int i01 = i00 + _tileSize;
-                int i11 = i01 + 1;
-                
-                float h00 = elevation(u0, v0).r();
-                float h10 = elevation(u1, v0).r();
-                float h01 = elevation(u0, v1).r();
-                float h11 = elevation(u1, v1).r();
-
-                // verts start in the SW corner
-
-                f.vertex( (*verts)[i00] + (*normals)[i00]*h00 );
-                f.vertex( (*verts)[i11] + (*normals)[i11]*h11 );
-                f.vertex( (*verts)[i01] + (*normals)[i01]*h01 );
-                
-                f.vertex( (*verts)[i00] + (*normals)[i00]*h00 );
-                f.vertex( (*verts)[i10] + (*normals)[i10]*h10 );
-                f.vertex( (*verts)[i11] + (*normals)[i11]*h11 );
-            }
-        }
-
-        f.end();
-    }
-
-    // no elevation
-    else
+    for(int t=0; t<_tileSize-1; ++t)
     {
-        f.begin( GL_TRIANGLES );
-    
-        for(int t=0; t<_tileSize-1; ++t)
+        f.begin( GL_TRIANGLE_STRIP );
+
+        for(int s=0; s<_tileSize; ++s)
         {
-            for(int s=0; s<_tileSize-1; ++s)
-            {
-                int i00 = t*_tileSize + s;
-                int i10 = i00 + 1;
-                int i01 = i00 + _tileSize;
-                int i11 = i01 + 1;
+            int i = t*_tileSize + s;
+            f.vertex( verts[i] + normals[i] * _heightCache[i] );
 
-                // verts start in the SW corner
-                
-                f.vertex( (*verts)[i00] );
-                f.vertex( (*verts)[i11] );
-                f.vertex( (*verts)[i01] );
-
-                f.vertex( (*verts)[i00] );
-                f.vertex( (*verts)[i10] );
-                f.vertex( (*verts)[i11] );
-            }
+            i += _tileSize;
+            f.vertex( verts[i] + normals[i] * _heightCache[i] );
         }
 
         f.end();
     }
 }
-
-#else // USE triangle strips
-
-void
-TileDrawable::accept(osg::PrimitiveFunctor& f) const
-{
-    const osg::Vec3Array* verts   = static_cast<osg::Vec3Array*>(_geom->getVertexArray());
-    const osg::Vec3Array* normals = static_cast<osg::Vec3Array*>(_geom->getNormalArray());
-
-    if ( _elevationRaster.valid() )
-    {
-        ImageUtils::PixelReader elevation(_elevationRaster.get());
-        elevation.setBilinear(true);
-
-        float
-            scaleU = _elevationScaleBias(0,0),
-            scaleV = _elevationScaleBias(1,1),
-            biasU  = _elevationScaleBias(3,0),
-            biasV  = _elevationScaleBias(3,1);
-
-        if ( osg::equivalent(scaleU, 0.0f) || osg::equivalent(scaleV, 0.0f) )
-        {
-            OE_WARN << LC << "Precision loss in tile " << _key.str() << "\n";
-        }
-        
-        f.begin( GL_TRIANGLES );
-    
-        for(int t=0; t<_tileSize-1; ++t)
-        {
-            float v0 = (float)t     / (float)(_tileSize-1);
-            float v1 = (float)(t+1) / (float)(_tileSize-1);
-
-            v0 = v0*scaleV + biasV;
-            v1 = v1*scaleV + biasV;
-
-            f.begin( GL_TRIANGLE_STRIP );
-
-            for(int s=0; s<_tileSize; ++s)
-            {
-                float u0 = (float)s / (float)(_tileSize-1);                
-                u0 = u0*scaleU + biasU;
-
-                int i = t*_tileSize + s;
-                f.vertex( (*verts)[i] + (*normals)[i] * elevation(u0, v0).r() );
-
-                i += _tileSize;
-                f.vertex( (*verts)[i] + (*normals)[i] * elevation(u0, v1).r() );
-            }
-
-            f.end();
-        }
-    }
-
-    // no elevation
-    else
-    {    
-        for(int t=0; t<_tileSize-1; ++t)
-        {
-            f.begin( GL_TRIANGLE_STRIP );
-
-            for(int s=0; s<_tileSize; ++s)
-            {
-                int i00 = t*_tileSize + s;
-                int i01 = i00 + _tileSize;
-
-                // verts start in the SW corner                
-                f.vertex( (*verts)[i00] );
-                f.vertex( (*verts)[i01] );
-            }
-
-            f.end();
-        }
-    }
-}
-#endif
 
 void 
 TileDrawable::releaseGLObjects(osg::State* state) const

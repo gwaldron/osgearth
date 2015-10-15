@@ -95,8 +95,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<HorizonTileCuller> _horizonCuller;        
 
         typedef osg::Vec3 VectorPoints[8];
-        
-        float minSquaredDistanceFromPoint(const VectorPoints& points, const osg::Vec3& center, float fZoomFactor);
 
 
         void addDebugNode(const osg::BoundingBox& box);

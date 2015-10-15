@@ -218,28 +218,25 @@ SurfaceNode::isVisible(osg::CullStack* cullStack) const
     return !isCulled;
 }
 
-float
-SurfaceNode::minSquaredDistanceFromPoint(const VectorPoints& corners, const osg::Vec3& center, float z2)
-{   
-    float mind2 = FLT_MAX;
-    for(int i=0; i<8; ++i)
-    {
-        const osg::Vec3& corner = corners[i];
-        float d2 = (corner-center).length2() * z2;
-        if ( d2 < mind2 ) mind2 = d2;
-    }
-    return mind2;
-}
-
 bool
-SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radiusSquared, float fZoomFactor)
+SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radius2, float fZoomFactor)
 {
     float z2 = fZoomFactor*fZoomFactor;
+
     for(int i=0; i<4; ++i)
     {
-        const VectorPoints& childCorners = _childrenCorners[i];
-        float fMinDistanceSquared = minSquaredDistanceFromPoint(childCorners, center, z2);
-        if (fMinDistanceSquared <= radiusSquared)
+        // calculate the minimum distance (squared) from the sphere center point:
+        float mind2 = FLT_MAX;
+
+        for(int j=0; j<8; ++j)
+        {
+            float d2 = (_childrenCorners[i][j]-center).length2() * z2;
+            if ( d2 < mind2 )
+                mind2 = d2;
+        }
+
+        // if it's within the radius (squared), success.
+        if ( mind2 < radius2 )
         {
             return true;
         }

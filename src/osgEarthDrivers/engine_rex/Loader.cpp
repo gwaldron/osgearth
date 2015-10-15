@@ -27,7 +27,7 @@
 
 #include <string>
 
-#define REPORT_ACTIVITY false
+#define REPORT_ACTIVITY true
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 
@@ -241,7 +241,7 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
             _dboptions.get() );
 
         // remember the request:
-        if ( addToRequestSet )
+        if ( true ) // addToRequestSet // Not sure whether we need to keep doing this in order keep it sorted -- check it out.
         {
             Threading::ScopedMutexLock lock( _requestsMutex );
             _requests[request->getUID()] = request;
@@ -280,7 +280,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
             }
 
             _mergeQueue.erase( _mergeQueue.begin() );
-       }
+        }
 
         // cull finished requests.
         {
@@ -294,7 +294,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
             for(Requests::iterator i = _requests.begin(); i != _requests.end(); )
             {
                 Request* req = i->second.get();
-                
+
                 if ( req->isFinished() )
                 {
                     //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") finished." << std::endl; 
@@ -304,7 +304,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     _requests.erase( i++ );
                 }
 
-                else if ( fn - req->getLastFrameSubmitted() > 2 )
+                else if ( !req->isMerging() && (fn - req->getLastFrameSubmitted() > 2) )
                 {
                     //OE_INFO << LC << req->getName() << "(" << i->second->getUID() << ") died waiting after " << fn-req->getLastFrameSubmitted() << " frames" << std::endl; 
                     req->setState( Request::IDLE );
@@ -318,7 +318,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                     ++i;
                 }
             }
-            
+
             OE_DEBUG << LC << "PagerLoader: requests = " << _requests.size() << "\n";
         }
     }
@@ -363,7 +363,7 @@ PagerLoader::addChild(osg::Node* node)
 
     else
     {
-        OE_WARN << LC << "Internal error: illegal node type in addchild" << std::endl;
+        //OE_WARN << LC << "Internal error: illegal node type in addchild" << std::endl;
     }
     return true;
 }
@@ -442,7 +442,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
                 // parse the tile key and engine ID:
                 std::string requestdef = osgDB::getNameLessExtension(uri);
                 unsigned requestUID, engineUID;
-                sscanf(requestdef.c_str(), "%d.%d", &requestUID, &engineUID);
+                sscanf(requestdef.c_str(), "%u.%u", &requestUID, &engineUID);
 
                 // find the appropriate engine:
                 osg::ref_ptr<RexTerrainEngineNode> engineNode;

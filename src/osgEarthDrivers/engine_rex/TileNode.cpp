@@ -256,6 +256,8 @@ TileNode::releaseGLObjects(osg::State* state) const
 {
     if ( getStateSet() )
         getStateSet()->releaseGLObjects(state);
+    if ( _payloadStateSet.valid() )
+        _payloadStateSet->releaseGLObjects(state);
     if ( _surface.valid() )
         _surface->releaseGLObjects(state);
     if ( _landCover.valid() )
@@ -290,8 +292,7 @@ TileNode::shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionIn
         osg::Vec3 cameraPos = nv.getViewPoint();
 
         float radius2 = (float)selectionInfo.visParameters(currLOD+1)._visibilityRange2;
-        bool anyChildVisible = _surface->anyChildBoxIntersectsSphere(cameraPos, radius2, lodScale);
-        return anyChildVisible;
+        return _surface->anyChildBoxIntersectsSphere(cameraPos, radius2, lodScale);
     }
     return false;
 }
@@ -329,10 +330,6 @@ void TileNode::cull(osg::NodeVisitor& nv)
 
     // whether it is OK to load data if necessary.
     bool canLoadData = true;
-
-    // whether the surface is visible and therefore it's OK to load data. This can
-    // only change to false if we traverse the surface node and it gets culled out.
-    bool surfaceVisible = true;
 
 
     if ( _dirty && context->getOptions().progressive() == true )
@@ -373,10 +370,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
         {
             for(int i=0; i<4; ++i)
             {
-                if ( static_cast<TileNode*>(_children[i].get())->isVisible(cv) )
-                {
-                    _children[i]->accept( nv );
-                }
+                _children[i]->accept( nv );
             }
         }
 
@@ -429,7 +423,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
     }
 
     // If this tile is marked dirty, try loading data.
-    if ( _dirty && canLoadData && surfaceVisible )
+    if ( _dirty && canLoadData )
     {
         load( nv );
     }

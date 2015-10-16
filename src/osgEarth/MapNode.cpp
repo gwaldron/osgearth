@@ -747,8 +747,17 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
             cullData->_mapNode = this;
 
-            // calculate altitude:
             osg::Vec3d eye = cv->getViewPoint();
+
+            // horizon:
+            if ( !cullData->_horizonInitialized )
+            {
+                cullData->_horizonInitialized = true;
+                cullData->_horizon.setEllipsoid( *getMapSRS()->getEllipsoid() );
+            }
+            cullData->_horizon.setEye( eye );
+
+            // calculate altitude:
             const SpatialReference* srs = getMapSRS();
             if ( srs && !srs->isProjected() )
             {
@@ -756,7 +765,6 @@ MapNode::traverse( osg::NodeVisitor& nv )
                 lla.fromWorld( srs, eye );
                 cullData->_cameraAltitude = lla.alt();
                 cullData->_cameraAltitudeUniform->set( (float)lla.alt() );
-                //OE_INFO << lla.alt() << std::endl;
             }
             else
             {

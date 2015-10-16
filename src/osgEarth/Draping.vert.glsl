@@ -5,7 +5,9 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   vertex_view
 
 uniform mat4 oe_overlay_texmatrix;
-varying vec4 oe_overlay_texcoord;
+uniform float oe_overlay_rttLimitZ;
+
+out vec4 oe_overlay_texcoord;
 
 void oe_overlay_vertex(inout vec4 vertexVIEW)
 {

@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Horizon>
 #include <osg/NodeVisitor>
 #include <osg/observer_ptr>
 #include <map>
@@ -70,6 +71,8 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform>       _windowMatrixUniform;
         double                           _cameraAltitude;
         osg::ref_ptr<osg::Uniform>       _cameraAltitudeUniform;
+        Horizon                          _horizon;
+        bool                             _horizonInitialized;
 
     protected:
         virtual ~MapNodeCullData() { }

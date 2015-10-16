@@ -413,12 +413,13 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ];
     if ( adapters.empty() )
     {
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::GOD_RAYS)) );
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::SPRAY_PARTICLES)) );
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WAKE_SPRAY_PARTICLES)) );
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_DECALS)) );
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE)) );
-        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE_PATCH)) );
+        const char* prefix = "oe_";
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::GOD_RAYS), prefix));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::SPRAY_PARTICLES), prefix));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WAKE_SPRAY_PARTICLES), prefix));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_DECALS), prefix));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE_PATCH), prefix));
+        adapters.push_back( new osgEarth::NativeProgramAdapter(state, (GLint)_TRITON->getOcean()->GetShaderObject(::Triton::WATER_SURFACE), prefix));
     }
     adapters.apply( state );
 

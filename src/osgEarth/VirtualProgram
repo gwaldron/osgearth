@@ -131,26 +131,47 @@ namespace osgEarth
     }
 
 
+    /**
+     * A Shader that can compile into different stages of the program pipeline
+     * depending on which stages are in use. For example, you may designate a
+     * VP component to run in the "VERTEX_CLIP" location. But if a geometry shader
+     * is present, this function must be moved to the end of the GEOMETRY stage
+     * instead. PolyShader supports this. It also preserves the original shader
+     * source in case someone wants to access it via VirtualProgram::getShaders
+     * (for example, to call VP components from an external shader program).
+     */
     class OSGEARTH_EXPORT PolyShader : public osg::Referenced
     {
     public:
+        /** Construct a polyshader */
         PolyShader();
 
+        /** Construct a polyshader */
         PolyShader(osg::Shader* shader);
 
+        /** Name of the polyshader */
         void setName(const std::string& name) { _name = name; }
+        const std::string& getName() const { return _name; }
 
+        /** Nominal stage at which this shader would run */
         void setLocation(ShaderComp::FunctionLocation loc);
         ShaderComp::FunctionLocation getLocation() const { return _location; }
 
+        /** Shader source code (unprocessed) */
         void setShaderSource(const std::string& source);
         const std::string& getShaderSource() const { return _source; }
 
+        /** Given a mask of all available stages, return the shader that will run
+            this polyshader in the appropriate stage. */
         osg::Shader* getShader(ShaderComp::StageMask mask) const;
+
+        /** The shader in its named stage. */
         osg::Shader* getNominalShader() const { return _nominalShader.get(); }
 
+        /** Generates the shaders. */
         void prepare();
 
+        /** Called from the draw context to resize shader buffers as necessary (OSG) */
         virtual void resizeGLObjectBuffers(unsigned maxSize);
 
 
@@ -160,10 +181,22 @@ namespace osgEarth
         std::string                  _name;
         std::string                  _source;
         ShaderComp::FunctionLocation _location;
+
+        // Originally specified stage for this shader
         osg::Shader::Type            _nominalType;
+
+        // The shader built for the nominal program stage (nominalType)
         osg::ref_ptr<osg::Shader>    _nominalShader;
+
+        // Same shader, but set up for injection into a different stage
         osg::ref_ptr<osg::Shader>    _geomShader;
         osg::ref_ptr<osg::Shader>    _tessevalShader;
+
+        // shader source before running thru the preprocessor. Keep this around so that
+        // someone can call VirtualProgram::getShaders and have access to code that has
+        // not been set up for ShaderFactory.
+        //std::string                  _originalSource;
+
         bool                         _dirty;
     };
 
@@ -381,10 +414,20 @@ namespace osgEarth
         /**
          * Populates the output collection with all the osg::Shader objects that
          * are applicable for the given State.
+         * Returns the size of the output collection.
          */
-        static void getShaders(
+        static int getShaders(
+            const osg::State&                         state,
+            std::vector<osg::ref_ptr<osg::Shader> >&  output);
+        
+        /**
+         * Populates the output collection with all the PolyShaders that are applicable
+         * for the given state. Information about the stage mask is not returned (TODO?)
+         * Returns the size of the output collection.
+         */
+        static int getPolyShaders(
             const osg::State&                        state,
-            std::vector<osg::ref_ptr<osg::Shader> >& output);
+            std::vector<osg::ref_ptr<PolyShader> >&  output);
 
     protected:
         // thread-safe functions map getter

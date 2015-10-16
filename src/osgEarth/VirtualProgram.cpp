@@ -918,12 +918,6 @@ VirtualProgram::setShader(osg::Shader*                       shader,
     PolyShader* pshader = new PolyShader(shader);
     pshader->prepare();
 
-#if 0
-    // pre-processes the shader's source to include GLES uniforms as necessary
-    // (no-op on non-GLES)
-    ShaderPreProcessor::run( shader );
-#endif
-
     // lock the data model while changing it.
     {
         _dataModelMutex.lock();
@@ -1611,8 +1605,7 @@ VirtualProgram::addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap,
     _dataModelMutex.unlock();
 }
 
-
-void
+int
 VirtualProgram::getShaders(const osg::State&                        state,
                            std::vector<osg::ref_ptr<osg::Shader> >& output)
 {
@@ -1626,12 +1619,40 @@ VirtualProgram::getShaders(const osg::State&                        state,
 
     // pre-allocate space:
     output.reserve( shaders.size() );
+    output.clear();
 
     // copy to output.
     for(ShaderMap::iterator i = shaders.begin(); i != shaders.end(); ++i)
     {
         output.push_back( i->data()._shader->getNominalShader() );
     }
+
+    return output.size();
+}
+
+int
+VirtualProgram::getPolyShaders(const osg::State&                       state,
+                               std::vector<osg::ref_ptr<PolyShader> >& output)
+{
+    ShaderMap         shaders;
+    AttribBindingList bindings;
+    AttribAliasMap    aliases;
+    bool              acceptCallbacksVary;
+
+    // build the collection:
+    accumulateShaders(state, ~0, shaders, bindings, aliases, acceptCallbacksVary);
+
+    // pre-allocate space:
+    output.reserve( shaders.size() );
+    output.clear();
+
+    // copy to output.
+    for(ShaderMap::iterator i = shaders.begin(); i != shaders.end(); ++i)
+    {
+        output.push_back( i->data()._shader.get() );
+    }
+
+    return output.size();
 }
 
 void VirtualProgram::setShaderLogging( bool log )
@@ -1672,7 +1693,12 @@ _nominalShader( shader )
     if ( shader )
     {
         _name = shader->getName();
-        ShaderPreProcessor::run( shader );
+
+        // extract the source before preprocessing:
+        _source = shader->getShaderSource();
+
+        // then preprocess the shader:
+        //ShaderPreProcessor::run( shader );
     }
 }
 

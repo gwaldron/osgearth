@@ -1,9 +1,9 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint "oe_mp_vertModel"
-#pragma vp_location   "vertex_model"
-#pragma vp_order      "-FLT_MAX"
+#pragma vp_entryPoint oe_mp_vertModel
+#pragma vp_location   vertex_model
+#pragma vp_order      first
 
 varying vec4 oe_layer_texc;
 varying vec4 oe_layer_tilec;

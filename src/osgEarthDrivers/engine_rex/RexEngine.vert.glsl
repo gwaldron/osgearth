@@ -1,10 +1,10 @@
 #version 330 compatibility
 
-#pragma vp_name       "REX Engine - Vertex"
-#pragma vp_entryPoint "oe_rexEngine_vert"
-#pragma vp_location   "vertex_model"
-#pragma vp_order      "0.0"
-#pragma vp_define     "OE_REX_USE_TERRAIN_COLOR"
+#pragma vp_name       REX Engine - Vertex
+#pragma vp_entryPoint oe_rexEngine_vert
+#pragma vp_location   vertex_model
+#pragma vp_order      0.0
+#pragma vp_define     OE_REX_USE_TERRAIN_COLOR
 
 // uniforms
 uniform vec4 oe_terrain_color;

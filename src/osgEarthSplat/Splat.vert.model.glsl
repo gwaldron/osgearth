@@ -1,7 +1,7 @@
 #version 330
-#pragma vp_entryPoint "oe_splat_vertex_model"
-#pragma vp_location   "vertex_model"
-#pragma vp_order      "0.5"
+#pragma vp_entryPoint oe_splat_vertex_model
+#pragma vp_location   vertex_model
+#pragma vp_order      0.5
 
 vec3 vp_Normal; // stage global
 out float oe_splat_slope;

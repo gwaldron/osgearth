@@ -244,7 +244,7 @@ RexTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 {
     static const char* sdk_vertex =
         "#version 330\n"
-        "#pragma vp_name \"oe_terrain_getElevation\"\n"
+        "#pragma vp_name oe_terrain_getElevation\n"
 
         "uniform sampler2D oe_tile_elevationTex; \n"
         "uniform mat4 oe_tile_elevationTexMatrix; \n"
@@ -982,7 +982,11 @@ RexTerrainEngineNode::updateState()
             // Functions that affect the terrain surface only:
             package.load(surfaceVP, package.ENGINE_VERT_VIEW);
             package.load(surfaceVP, package.ENGINE_FRAG);
-            package.load(surfaceVP, package.ENGINE_GEOM);
+
+            if ( _update_mapf->terrainMaskLayers().size() > 0 )
+            {
+                package.load(surfaceVP, package.ENGINE_GEOM);
+            }
 
             // Normal mapping shaders:
             if ( this->normalTexturesRequired() )

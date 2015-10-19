@@ -116,8 +116,8 @@ namespace osgEarth
          * The shader much include #pragma definitions for both its
          * entry point and its location, e.g.:
          *
-         *   #pragma vp_entryPoint "oe_my_shader"
-         *   #pargma vp_location   "VERTEX_VIEW"
+         *   #pragma vp_entryPoint oe_my_shader
+         *   #pargma vp_location   VERTEX_VIEW
          */
         static bool load(
             VirtualProgram*       vp,
@@ -150,15 +150,15 @@ namespace osgEarth
             const osgDB::Options* dbOptions =0L );
 
         /**
-         * Utility function that returns the value of a quoted #pragma; e.g.,
-         * #pragma vp_something "You are here"
-         * returns the string inside the quotes (without the quotes).
+         * Utility function that returns the value of #pragma; e.g.,
+         * #pragma vp_something You are here
+         * returns "You are here" (without the quotes).
          */
-        static std::string getQuotedPragmaValue(
+        static std::string getPragmaValue(
             const std::string& source,
             const std::string& key);
 
-        static void getAllQuotedPragmaValues(
+        static void getAllPragmaValues(
             const std::string&     source,
             const std::string&     key,
             std::set<std::string>& output);

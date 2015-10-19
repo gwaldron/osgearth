@@ -1,5 +1,5 @@
 #version 330
-#pragma vp_name "Rex Terrain SDK"
+#pragma vp_name Rex Terrain SDK
 
 /**
  * SDK functions for the Rex engine.

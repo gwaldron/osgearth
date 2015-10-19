@@ -72,6 +72,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         TileDrawable* getDrawable() const { return _drawable.get(); }
 
+        bool isVisible(class osg::CullStack* cullStack) const;
         
         // A box can have 4 children. 
         // Returns true if any child box intersects the sphere of radius centered around point
@@ -94,8 +95,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<HorizonTileCuller> _horizonCuller;        
 
         typedef osg::Vec3 VectorPoints[8];
-        
-        float minSquaredDistanceFromPoint(const VectorPoints& points, const osg::Vec3& center, float fZoomFactor);
 
 
         void addDebugNode(const osg::BoundingBox& box);
@@ -104,8 +103,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         VectorPoints _worldCorners;
 
         typedef VectorPoints (ChildrenCorners) [4];
-        //typedef std::vector< VectorPoints > ChildrenCorners;
         ChildrenCorners _childrenCorners;
+
+        osg::ref_ptr<osg::RefMatrix> _matrix;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -52,21 +52,6 @@ namespace osgEarth
 
         bool isValid() const;
 
-        /**
-         * Constructs a new map frame and connects it to a map.
-         */
-        //MapFrame(
-        //    const Map*         map, 
-        //    Map::ModelParts    parts =Map::TERRAIN_LAYERS,
-        //    const std::string& name  ="" );
-
-        /**
-         * A copy constructor with a new name (no sync happens)
-         */
-       // MapFrame(
-        //    const MapFrame& frame, 
-        //    const std::string& name ="" );
-
         /** dtor */
         virtual ~MapFrame() { }
 

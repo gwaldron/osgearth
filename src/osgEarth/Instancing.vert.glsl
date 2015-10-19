@@ -2,9 +2,9 @@
 #extension GL_EXT_gpu_shader4 : enable
 #extension GL_ARB_draw_instanced: enable
 
-#pragma vp_entryPoint "oe_di_setInstancePosition"
-#pragma vp_location   "vertex_model"
-#pragma vp_order      "0.0"
+#pragma vp_entryPoint oe_di_setInstancePosition
+#pragma vp_location   vertex_model
+#pragma vp_order      0.0
 
 uniform samplerBuffer oe_di_postex_TBO;
 uniform int			  oe_di_postex_TBO_size;

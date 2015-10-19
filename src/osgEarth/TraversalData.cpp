@@ -31,4 +31,6 @@ MapNodeCullData::MapNodeCullData()
     _cameraAltitude = 0.0;
     _cameraAltitudeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_CameraAltitude");
     _stateSet->addUniform( _cameraAltitudeUniform.get() );
+
+    _horizonInitialized = false;
 }

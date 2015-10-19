@@ -30,9 +30,9 @@ namespace
 {
     const char* billboardGeomShader =
         "#version 330 compatibility\n"
-        "#pragma vp_name       \"Billboard Extension Geometry Shader\"\n"
-        "#pragma vp_entryPoint \"createBillboard\"\n"
-        "#pragma vp_location   \"geometry\"\n"
+        "#pragma vp_name       Billboard Extension Geometry Shader\n"
+        "#pragma vp_entryPoint createBillboard\n"
+        "#pragma vp_location   geometry\n"
         "\n"        
         "in vec3 vp_Normal; \n"
         "in vec4 vp_Color; \n"
@@ -94,9 +94,9 @@ namespace
 
     const char* billboardFragShader =
         "#version 330\n"
-        "#pragma vp_name       \"Billboard Extension Frag Shader\"\n"
-        "#pragma vp_entryPoint \"drawBillboard\"\n"
-        "#pragma vp_location   \"fragment_coloring\"\n"
+        "#pragma vp_name       Billboard Extension Frag Shader\n"
+        "#pragma vp_entryPoint drawBillboard\n"
+        "#pragma vp_location   fragment_coloring\n"
         "\n"
         "uniform sampler2D billboard_tex; \n"
         "\n"

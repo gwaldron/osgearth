@@ -155,12 +155,19 @@ LandCoverLayer::createShader() const
             maxHeight = std::max(maxHeight, bb._height);
         }
 
+        // We multiply the height x 2 below because billboards have their origin
+        // at the bottom center of the image. The GPU culling code considers the
+        // distance from this anchor point. For width, it's in the middle, but for
+        // height, it's at the bottom so we need to double it. It doubles in both
+        // directions, but that's OK since we are rarely if ever going to GPU-cull
+        // a billboard at the top of the viewport. -gw
+
         biomeBuf << "    oe_landcover_Biome(" 
             << firstIndex << ", "
             << biome->getBillboards().size() 
             << ", float(" << getDensity() << ")"
             << ", float(" << getFill() << ")"
-            << ", vec2(float(" << maxWidth << "),float(" << maxHeight << ")))";
+            << ", vec2(float(" << maxWidth << "),float(" << maxHeight*2.0f << ")))";
 
         if ( (i+1) < getBiomes().size() )
             biomeBuf << ",\n";

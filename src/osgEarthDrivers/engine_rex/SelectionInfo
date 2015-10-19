@@ -27,7 +27,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     struct VisParameters
     {
-        double _fVisibility;
+        double _visibilityRange;
+        double _visibilityRange2;
         double _fMorphStart;
         double _fMorphEnd;
     };

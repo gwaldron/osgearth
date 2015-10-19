@@ -63,6 +63,8 @@ namespace osgEarth { namespace Triton
 
         bool passHeightMapToTriton() const;
 
+        int getHeightMapSize() const;
+
     protected:
 
         virtual ~TritonContext();

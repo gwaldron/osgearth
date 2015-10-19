@@ -60,7 +60,12 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             true,
             false );
 
+        // Dirty the state and the program tracking to prevent GL state conflicts.
         renderInfo.getState()->dirtyAllVertexArrays();
+        renderInfo.getState()->dirtyAllAttributes();
+        osg::GL2Extensions* api = osg::GL2Extensions::Get(renderInfo.getState()->getContextID(), true);
+        api->glUseProgram((GLuint)0);
+        renderInfo.getState()->setLastAppliedProgramObject(0L);
     }
 }
 

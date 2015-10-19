@@ -68,13 +68,9 @@ namespace
         }
 
         void traverse(osg::NodeVisitor& nv)
-        {
-            osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
-            if ( cv->getCurrentCamera() == _camera ) {
-                OE_NOTICE << "THey are the same, dummy\n";
-            }
+        {            
             DrapingCullSet& cullSet = DrapingCullSet::get(_camera);
-            cullSet.accept( nv, true );
+            cullSet.accept( nv );
         }
 
     protected:
@@ -139,10 +135,7 @@ namespace
     void optimizeProjectionMatrix(OverlayDecorator::TechRTTParams& params, double maxFarNearRatio)
     {
         LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
-
-        //TODO: add this to the local
-        //local._rttLimitZ->set( 0.0f );
-
+        
         // t0,t1,t2,t3 will form a polygon that tightly fits the
         // main camera's frustum. Texture near the camera will get
         // more resolution then texture far away.
@@ -322,16 +315,6 @@ namespace
 
         // apply the result to the projection matrix.
         params._rttProjMatrix.postMult( M );
-
-        // btw, this new clip matrix distorts the Z coordinate as
-        // y approaches +1. That can cause bleed-through in a geocentric
-        // terrain from the other side of the globe. To prevent that, sample a 
-        // point at the near plane and record that as the Maximum allowable
-        // Z coordinate; a vertex shader in the RTT camera will enforce this.
-        osg::Vec4d sampleFar = osg::Vec4d(0,1,1,1) * M;
-
-        //TODO: add this to the shader.
-        //local._rttLimitZ->set( (float)sampleFar.z() );
     }
 }
 
@@ -472,6 +455,24 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     LocalPerViewData* local = new LocalPerViewData();
     params._techniqueData = local;
     
+    if ( _maxFarNearRatio > 1.0 )
+    {
+        // Custom clipper that accounts for the projection matrix warping.
+        // Without this, you will get geometry beyond the original ortho far plane.
+        // (i.e. geometry from beyond the horizon will show through the earth)
+        // When the projection matrix has been warped, verts with Z=1.0 are no longer
+        // always on the far plane (only when y=-1) because of the perspective divide (w).
+        // So we need to test the Z directly (without w) and clip. NOTE: this seems to work
+        // fine, although I think it would be proper to clip at the fragment level with 
+        // alpha. We shall see.
+        const char* warpClip =
+            "#version 330\n"
+            "void oe_overlay_warpClip(inout vec4 vclip) { \n"
+            "    if (vclip.z > 1.0) vclip.z = vclip.w+1.0; \n"
+            "} \n";
+        VirtualProgram* rtt_vp = VirtualProgram::getOrCreate(rttStateSet);
+        rtt_vp->setFunction( "oe_overlay_warpClip", warpClip, ShaderComp::LOCATION_VERTEX_CLIP );
+    }
 
     // Assemble the terrain shaders that will apply projective texturing.
     VirtualProgram* terrain_vp = VirtualProgram::getOrCreate(params._terrainStateSet);
@@ -548,6 +549,8 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 {
     if ( params._rttCamera.valid() )
     {
+        LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
+
         // this xforms from clip [-1..1] to texture [0..1] space
         static osg::Matrix s_scaleBiasMat = 
             osg::Matrix::translate(1.0,1.0,1.0) * 
@@ -563,8 +566,6 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
         params._rttCamera->setProjectionMatrix( params._rttProjMatrix );
 
         osg::Matrix VPT = params._rttViewMatrix * params._rttProjMatrix * s_scaleBiasMat;
-
-        LocalPerViewData& local = *static_cast<LocalPerViewData*>(params._techniqueData.get());
 
         if ( local._texGenUniform.valid() )
         {
@@ -587,7 +588,6 @@ DrapingTechnique::cullOverlayGroup(OverlayDecorator::TechRTTParams& params,
 
         // traverse the overlay group (via the RTT camera).
         static_cast<DrapingCamera*>(params._rttCamera.get())->accept( *cv, cv->getCurrentCamera() );
-        //params._rttCamera->accept( *cv );
     }
 }
 

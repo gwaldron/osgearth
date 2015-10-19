@@ -42,7 +42,7 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
     if( _SL->ready() )
     {
-        const osg::State* state = renderInfo.getState();
+        osg::State* state = renderInfo.getState();
 
         osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ]; // thread safe.
         if ( adapters.empty() )
@@ -61,7 +61,13 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
         renderInfo.getState()->disableAllVertexArrays();
         _SL->getAtmosphere()->DrawObjects( true, true, true );
-        renderInfo.getState()->dirtyAllVertexArrays();
+
+        // Dirty the state and the program tracking to prevent GL state conflicts.
+        state->dirtyAllVertexArrays();
+        state->dirtyAllAttributes();
+        osg::GL2Extensions* api = osg::GL2Extensions::Get(state->getContextID(), true);
+        api->glUseProgram((GLuint)0);
+        state->setLastAppliedProgramObject(0L);    
     }
 }
 

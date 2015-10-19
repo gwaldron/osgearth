@@ -1,8 +1,8 @@
 #version $GLSL_VERSION_STR
 
-#pragma vp_entryPoint "oe_bumpmap_vertexView"
-#pragma vp_location   "vertex_view"
-#pragma vp_order      "0.5"
+#pragma vp_entryPoint oe_bumpmap_vertexView
+#pragma vp_location   vertex_view
+#pragma vp_order      0.5
 
 uniform vec4 oe_tile_key;
 uniform float oe_bumpmap_scale;

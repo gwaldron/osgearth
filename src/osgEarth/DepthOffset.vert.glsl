@@ -1,9 +1,9 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint "oe_depthOffset_vertex"
-#pragma vp_location   "vertex_view"
-#pragma vp_order      "0.8"
+#pragma vp_entryPoint oe_depthOffset_vertex
+#pragma vp_location   vertex_view
+#pragma vp_order      0.8
 
 uniform float oe_depthOffset_minBias;
 uniform float oe_depthOffset_maxBias;

@@ -1,9 +1,9 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint "atmos_vertex_main"
-#pragma vp_location   "vertex_view"
-#pragma vp_order      "0.5"
+#pragma vp_entryPoint atmos_vertex_main
+#pragma vp_location   vertex_view
+#pragma vp_order      0.5
 
 // Atmospheric Scattering and Sun Shaders
 // Adapted from code that is Copyright (c) 2004 Sean ONeil

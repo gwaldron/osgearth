@@ -1,12 +1,12 @@
 #version 400
-#pragma vp_name "Flora tessellation control shader"
 
 /**
  * TCS that distributes data based on a Land Use code sampler.
  */
  
-#pragma vp_entryPoint "oe_landcover_configureTess"
-#pragma vp_location   "tess_control"
+#pragma vp_name       LandCover tessellation control shader
+#pragma vp_entryPoint oe_landcover_configureTess
+#pragma vp_location   tess_control
 
 layout(vertices=3) out;
 

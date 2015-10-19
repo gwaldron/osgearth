@@ -123,6 +123,9 @@ _requireParentTextures   ( false )
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
+
+    // So we can draw coplanar geometry on flat ground if necessary.
+    this->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 }
 
 TerrainEngineNode::~TerrainEngineNode()

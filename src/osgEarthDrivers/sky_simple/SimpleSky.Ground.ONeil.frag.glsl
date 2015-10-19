@@ -32,14 +32,14 @@ void atmos_fragment_main(inout vec4 color)
 
     const float maxAmbient = 0.5;
     float daytime = max(0.0, dot(U,L));
-    float brightness = clamp(daytime, minAmbient, maxAmbient);
+    float ambientLightLevel = clamp(daytime, minAmbient, maxAmbient);
 
     float NdotL = max(dot(N,L), 0.0);
 
     const float lowAlt  = 1.0;
-    const float highAlt = 4.0;
+    const float highAlt = 14.0;
     float altitudeInfluence = 1.0 - clamp( (atmos_space-lowAlt)/(highAlt-lowAlt), 0.0, 1.0);
-    float useNormals = altitudeInfluence * (1.0-brightness);
+    float useNormals = altitudeInfluence * (1.0-ambientLightLevel);
 
     // try to brighten up surfaces the sun is shining on
     float overExposure = 1.0;

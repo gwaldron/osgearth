@@ -495,9 +495,24 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
                 ::Triton::Vector3( position[0], position[1], position[2] ),
                 ::Triton::Vector3( diffuse[0],  diffuse[1],  diffuse[2] ) );
 
+            // Sun-based ambient value:
+            osg::Vec3d up = osg::Vec3d(0,0,0) * renderInfo.getCurrentCamera()->getInverseViewMatrix();
+            up.normalize();
+            osg::Vec3d pos3 = osg::Vec3d(position.x(), position.y(), position.z());
+            pos3.normalize();
+            float dot = osg::clampAbove(up*pos3, 0.0); dot*=dot;
+            float sunAmbient = (float)osg::clampBetween( dot, 0.0f, 0.88f );            
+            float fa = std::max(sunAmbient, ambient[0]);
+
             // Ambient color based on the zenith color in the cube map
-            environment->SetAmbientLight(
-                ::Triton::Vector3( ambient[0], ambient[1], ambient[2] ) );
+            environment->SetAmbientLight( ::Triton::Vector3(fa, fa, fa) );
+                //::Triton::Vector3( ambient[0], ambient[1], ambient[2] ) );
+        }
+
+        else
+        {
+            environment->SetDirectionalLight( ::Triton::Vector3(0,0,1), ::Triton::Vector3(1,1,1) );
+            environment->SetAmbientLight( ::Triton::Vector3(0.88f, 0.88f, 0.88f) );
         }
 
         // Build transform from our cube map orientation space to native Triton orientation

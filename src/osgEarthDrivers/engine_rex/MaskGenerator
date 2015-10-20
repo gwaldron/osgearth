@@ -24,6 +24,11 @@
 #include <osgEarth/TileKey>
 #include <osg/Geometry>
 
+#define MASK_MARKER_DISCARD  0.0f    // do not draw
+#define MASK_MARKER_NORMAL   1.0f    // normal vertex
+#define MASK_MARKER_SKIRT    2.0f    // not subject to morphing
+#define MASK_MARKER_BOUNDARY 3.0f    // not subject to elevation texture
+
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
@@ -70,7 +75,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /*  1.0 - does not contain                                 */
         /*  2.0 - does not contain but is a tile vert on the outer */
         /*        masking skirt boundary                           */
-        float contains(float nx, float ny) const;
+        float getMarker(float nx, float ny) const;
 
         bool containedByQuadAtColRow(int col, int row, int tileSize) const
         {

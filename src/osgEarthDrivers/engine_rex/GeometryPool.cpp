@@ -231,8 +231,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             if ( populateTexCoords )
             {
                 // if masked then set textCoord z-value to 0.0
-                float masked = maskSet ? maskSet->contains(nx, ny) : 1.0f;
-                texCoords->push_back( osg::Vec3f(nx, ny, masked) );
+                float marker = maskSet ? maskSet->getMarker(nx, ny) : MASK_MARKER_NORMAL;
+                texCoords->push_back( osg::Vec3f(nx, ny, marker) );
             }
 
             osg::Vec3d modelPlusOne;

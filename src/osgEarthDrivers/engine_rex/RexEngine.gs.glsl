@@ -4,6 +4,12 @@
 #pragma vp_entryPoint oe_rexEngine_gs
 #pragma vp_location   geometry
 
+// Vertex Markers:
+#define MASK_MARKER_DISCARD  0.0
+#define MASK_MARKER_NORMAL   1.0
+#define MASK_MARKER_SKIRT    2.0
+#define MASK_MARKER_BOUNDARY 3.0
+
 layout(triangles)      in;
 layout(triangle_strip) out;
 layout(max_vertices=3) out;
@@ -15,21 +21,18 @@ in vec4 oe_layer_tilec;
 
 void oe_rexEngine_gs(void)
 {
-    float masked = 1.0;
     for(int i=0; i < 3; ++i )
     {
         VP_LoadVertex(i);
-        masked = masked * oe_layer_tilec.z;
+        if ( oe_layer_tilec.z == MASK_MARKER_DISCARD )
+            return;
     }
 
-    if (masked > 0.0)
+    for(int i=0; i < 3; ++i )
     {
-        for(int i=0; i < 3; ++i )
-        {
-            VP_LoadVertex(i);
-            gl_Position = gl_in[i].gl_Position;
-            VP_EmitModelVertex();
-        }
-        EndPrimitive();
+        VP_LoadVertex(i);
+        gl_Position = gl_in[i].gl_Position;
+        VP_EmitModelVertex();
     }
+    EndPrimitive();
 }

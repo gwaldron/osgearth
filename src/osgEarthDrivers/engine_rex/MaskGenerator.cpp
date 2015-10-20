@@ -31,7 +31,6 @@ using namespace osgEarth::Symbology;
 #define LC "[MaskGenerator] "
 
 #define MATCH_TOLERANCE 0.000001
-#define MASK_BOUNDARY_MARKER 3.0f
 
 
 MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const MapFrame& mapFrame) :
@@ -439,7 +438,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
             normals->push_back( normal );
 
             // set up text coords
-            texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_BOUNDARY_MARKER : 1.0f) );
+            texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_MARKER_BOUNDARY : MASK_MARKER_SKIRT) );
         }
 
         // Get triangles from triangulator and add as primative set to the geometry
@@ -489,7 +488,7 @@ MaskGenerator::getMinMax(osg::Vec3d& min, osg::Vec3d& max)
 }
 
 float
-MaskGenerator::contains(float nx, float ny) const
+MaskGenerator::getMarker(float nx, float ny) const
 {
     float marker = 1.0f; // 1.0 == does not contain
     for (MaskRecordVector::const_iterator it = _maskRecords.begin(); it != _maskRecords.end(); ++it)
@@ -515,7 +514,7 @@ MaskGenerator::contains(float nx, float ny) const
 
         if ( nx >= it->_ndcMin.x() && nx <= it->_ndcMax.x() && ny >= it->_ndcMin.y() && ny <= it->_ndcMax.y())
         {
-            marker = 0.0f; // contained by mask
+            marker = MASK_MARKER_DISCARD; // contained by mask
             break;
         }
         else if ((i == min_i && j >= min_j && j <= max_j) ||
@@ -523,7 +522,7 @@ MaskGenerator::contains(float nx, float ny) const
                  (j == min_j && i >= min_i && i <= max_i) ||
                  (j == max_j && i >= min_i && i <= max_i))
         {
-          marker = 2.0f; // tile vert on outer mask skirt boundary
+          marker = MASK_MARKER_BOUNDARY; // tile vert on outer mask skirt boundary
           break;
         }
     }

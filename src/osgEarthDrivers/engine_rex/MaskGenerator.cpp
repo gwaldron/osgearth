@@ -422,6 +422,14 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
             locator->unitToModel(osg::Vec3d(it->x(), it->y(), 0.0f), model);
             model = model * world2local;
 
+            // calc normals
+            osg::Vec3d modelPlusOne;
+            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 1.0f), modelPlusOne);
+            osg::Vec3d normal = (modelPlusOne*world2local)-model;                
+            normal.normalize();
+            normals->push_back( normal );
+
+            // set elevation if this is a point along the mask boundary
             if (isBoundary)
                 model.z() = it->z();
 
@@ -429,13 +437,6 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
 
             // use same vert for neighbor to prevent morphing
             neighbors->push_back( model );
-
-            // calc normals
-            osg::Vec3d modelPlusOne;
-            locator->unitToModel(osg::Vec3d(it->x(), it->y(), 1.0f), modelPlusOne);
-            osg::Vec3d normal = (modelPlusOne*world2local)-model;                
-            normal.normalize();
-            normals->push_back( normal );
 
             // set up text coords
             texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_MARKER_BOUNDARY : MASK_MARKER_SKIRT) );

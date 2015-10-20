@@ -231,8 +231,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             if ( populateTexCoords )
             {
                 // if masked then set textCoord z-value to 0.0
-                bool masked = maskSet ? maskSet->contains(nx, ny) : false;
-                texCoords->push_back( osg::Vec3f(nx, ny, masked ? 0.0f : 1.0f) );
+                float masked = maskSet ? maskSet->contains(nx, ny) : 1.0f;
+                texCoords->push_back( osg::Vec3f(nx, ny, masked) );
             }
 
             osg::Vec3d modelPlusOne;
@@ -314,7 +314,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     // create mask geometry
     if (maskSet)
     {
-        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, _tileSize, verts, texCoords, normals, neighbors);
+        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, verts, texCoords, normals, neighbors);
         if (maskPrim)
             geom->addPrimitiveSet( maskPrim );
     }

@@ -310,7 +310,7 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
       {
         val = ai->second.getDouble(0.0);
       }
-      else if (context)
+      else if (context && context->getSession())
       {
         //No attr found, look for script
         ScriptEngine* engine = context->getSession()->getScriptEngine();
@@ -343,7 +343,7 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
       {
         val = ai->second.getString();
       }
-      else if (context)
+      else if (context && context->getSession())
       {
         //No attr found, look for script
         ScriptEngine* engine = context->getSession()->getScriptEngine();

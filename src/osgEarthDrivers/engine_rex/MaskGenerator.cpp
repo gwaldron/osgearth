@@ -423,7 +423,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
             model = model * world2local;
 
             if (isBoundary)
-              model.z() = it->z();
+                model.z() = it->z();
 
             verts->push_back(model);
 

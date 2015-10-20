@@ -31,10 +31,11 @@ using namespace osgEarth::Symbology;
 #define LC "[MaskGenerator] "
 
 #define MATCH_TOLERANCE 0.000001
+#define MASK_BOUNDARY_MARKER 3.0f
 
 
-MaskGenerator::MaskGenerator(const TileKey& key, const MapFrame& mapFrame) :
-_key( key )
+MaskGenerator::MaskGenerator(const TileKey& key, unsigned tileSize, const MapFrame& mapFrame) :
+_key( key ), _tileSize(tileSize)
 {
     const osgEarth::MaskLayerVector maskLayers = mapFrame.terrainMaskLayers();
     for(MaskLayerVector::const_iterator it = maskLayers.begin();
@@ -99,7 +100,7 @@ MaskGenerator::setupMaskRecord(const MapFrame& mapFrame, osg::Vec3dArray* bounda
 }
 
 osg::DrawElementsUInt*
-MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, osg::Vec3Array* verts, osg::Vec3Array* texCoords, osg::Vec3Array* normals, osg::Vec3Array* neighbors)
+MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* verts, osg::Vec3Array* texCoords, osg::Vec3Array* normals, osg::Vec3Array* neighbors)
 {
     if (_maskRecords.size() <= 0)
       return 0L;
@@ -145,21 +146,21 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
         }			
     }
 
-    int min_i = (int)floor(minndcx * (double)(tileSize-1));
+    int min_i = (int)floor(minndcx * (double)(_tileSize-1));
     if (min_i < 0) min_i = 0;
-    if (min_i >= (int)tileSize) min_i = tileSize - 1;
+    if (min_i >= (int)_tileSize) min_i = _tileSize - 1;
 
-    int min_j = (int)floor(minndcy * (double)(tileSize-1));
+    int min_j = (int)floor(minndcy * (double)(_tileSize-1));
     if (min_j < 0) min_j = 0;
-    if (min_j >= (int)tileSize) min_j = tileSize - 1;
+    if (min_j >= (int)_tileSize) min_j = _tileSize - 1;
 
-    int max_i = (int)ceil(maxndcx * (double)(tileSize-1));
+    int max_i = (int)ceil(maxndcx * (double)(_tileSize-1));
     if (max_i < 0) max_i = 0;
-    if (max_i >= (int)tileSize) max_i = tileSize - 1;
+    if (max_i >= (int)_tileSize) max_i = _tileSize - 1;
 
-    int max_j = (int)ceil(maxndcy * (double)(tileSize-1));
+    int max_j = (int)ceil(maxndcy * (double)(_tileSize-1));
     if (max_j < 0) max_j = 0;
-    if (max_j >= (int)tileSize) max_j = tileSize - 1;
+    if (max_j >= (int)_tileSize) max_j = _tileSize - 1;
 
     if (min_i >= 0 && max_i >= 0 && min_j >= 0 && max_j >= 0)
     {
@@ -172,24 +173,24 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
         for (int i = 0; i < num_i; i++)
         {
             {
-                osg::Vec3d ndc( ((double)(i + min_i))/(double)(tileSize-1), ((double)min_j)/(double)(tileSize-1), 0.0);
+                osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)min_j)/(double)(_tileSize-1), 0.0);
                 (*maskSkirtPoly)[i] = ndc;
             }
 
             {
-                osg::Vec3d ndc( ((double)(i + min_i))/(double)(tileSize-1), ((double)max_j)/(double)(tileSize-1), 0.0);
+                osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)max_j)/(double)(_tileSize-1), 0.0);
                 (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
             }
         }
         for (int j = 0; j < num_j - 2; j++)
         {
             {
-                osg::Vec3d ndc( ((double)max_i)/(double)(tileSize-1), ((double)(min_j + j + 1))/(double)(tileSize-1), 0.0);
+                osg::Vec3d ndc( ((double)max_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
                 (*maskSkirtPoly)[j + num_i] = ndc;
             }
 
             {
-                osg::Vec3d ndc( ((double)min_i)/(double)(tileSize-1), ((double)(min_j + j + 1))/(double)(tileSize-1), 0.0);
+                osg::Vec3d ndc( ((double)min_i)/(double)(_tileSize-1), ((double)(min_j + j + 1))/(double)(_tileSize-1), 0.0);
                 (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
             }
         }
@@ -199,7 +200,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
             for (int i = 0; i < num_i; i++)
             {
                 {
-                    osg::Vec3d ndc( ((double)(i + min_i))/(double)(tileSize-1), ((double)(j+min_j))/(double)(tileSize-1), 0.0);
+                    osg::Vec3d ndc( ((double)(i + min_i))/(double)(_tileSize-1), ((double)(j+min_j))/(double)(_tileSize-1), 0.0);
                     coordsArray->push_back(ndc) ;
                 }						
             }
@@ -438,7 +439,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, o
             normals->push_back( normal );
 
             // set up text coords
-            texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? 2.0f : 1.0f) );
+            texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_BOUNDARY_MARKER : 1.0f) );
         }
 
         // Get triangles from triangulator and add as primative set to the geometry
@@ -487,18 +488,45 @@ MaskGenerator::getMinMax(osg::Vec3d& min, osg::Vec3d& max)
     }
 }
 
-bool
+float
 MaskGenerator::contains(float nx, float ny) const
 {
-    bool contained = false;
+    float marker = 1.0f; // 1.0 == does not contain
     for (MaskRecordVector::const_iterator it = _maskRecords.begin(); it != _maskRecords.end(); ++it)
     {
+        int min_i = (int)floor(it->_ndcMin.x() * (double)(_tileSize-1));
+        if (min_i < 0) min_i = 0;
+        if (min_i >= (int)_tileSize) min_i = _tileSize - 1;
+
+        int min_j = (int)floor(it->_ndcMin.y() * (double)(_tileSize-1));
+        if (min_j < 0) min_j = 0;
+        if (min_j >= (int)_tileSize) min_j = _tileSize - 1;
+
+        int max_i = (int)ceil(it->_ndcMax.x() * (double)(_tileSize-1));
+        if (max_i < 0) max_i = 0;
+        if (max_i >= (int)_tileSize) max_i = _tileSize - 1;
+
+        int max_j = (int)ceil(it->_ndcMax.y() * (double)(_tileSize-1));
+        if (max_j < 0) max_j = 0;
+        if (max_j >= (int)_tileSize) max_j = _tileSize - 1;
+
+        int i = nx * (double)(_tileSize-1);
+        int j = ny * (double)(_tileSize-1);
+
         if ( nx >= it->_ndcMin.x() && nx <= it->_ndcMax.x() && ny >= it->_ndcMin.y() && ny <= it->_ndcMax.y())
         {
-            contained = true;
+            marker = 0.0f; // contained by mask
             break;
+        }
+        else if ((i == min_i && j >= min_j && j <= max_j) ||
+                 (i == max_i && j >= min_j && j <= max_j) ||
+                 (j == min_j && i >= min_i && i <= max_i) ||
+                 (j == max_j && i >= min_i && i <= max_i))
+        {
+          marker = 2.0f; // tile vert on outer mask skirt boundary
+          break;
         }
     }
 
-    return contained;
+    return marker;
 }

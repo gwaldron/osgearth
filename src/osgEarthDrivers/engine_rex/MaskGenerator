@@ -51,7 +51,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     class MaskGenerator : public osg::Referenced
     {
     public:
-        MaskGenerator(const TileKey& key, const MapFrame& mapFrame);
+        MaskGenerator(const TileKey& key, unsigned tileSize, const MapFrame& mapFrame);
 
 
         bool hasMasks() const
@@ -66,7 +66,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         }
 
         /** whether the masking geometry contains a unit location. */
-        bool contains(float nx, float ny) const;
+        /*  0.0 - contains                                         */
+        /*  1.0 - does not contain                                 */
+        /*  2.0 - does not contain but is a tile vert on the outer */
+        /*        masking skirt boundary                           */
+        float contains(float nx, float ny) const;
 
         bool containedByQuadAtColRow(int col, int row, int tileSize) const
         {
@@ -76,13 +80,14 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void getMinMax(osg::Vec3d& min, osg::Vec3d& max);
 
-        osg::DrawElementsUInt* createMaskPrimitives(const MapInfo& mapInfo, unsigned tileSize, osg::Vec3Array* verts, osg::Vec3Array* texCoords,  osg::Vec3Array* normals, osg::Vec3Array* neighbors);
+        osg::DrawElementsUInt* createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* verts, osg::Vec3Array* texCoords,  osg::Vec3Array* normals, osg::Vec3Array* neighbors);
 
     protected:
         void setupMaskRecord(const MapFrame& mapFrame, osg::Vec3dArray* boundary);
 
     protected:
         const TileKey    _key;
+        unsigned _tileSize;
         MaskRecordVector _maskRecords;
     };
 

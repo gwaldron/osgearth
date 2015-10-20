@@ -19,7 +19,7 @@ float oe_terrain_getElevation(in vec2 uv);
 
 // marker that indicates the vertex belongs to a masking geometry
 // and has a hard-coded height value
-#define MASK_MARKER 2.0
+#define MASK_MARKER 3.0
 
 
 void oe_rex_elevateVertexAndSetTexCoords(inout vec4 vertexView)

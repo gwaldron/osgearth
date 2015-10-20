@@ -522,7 +522,7 @@ MaskGenerator::getMarker(float nx, float ny) const
                  (j == min_j && i >= min_i && i <= max_i) ||
                  (j == max_j && i >= min_i && i <= max_i))
         {
-          marker = MASK_MARKER_BOUNDARY; // tile vert on outer mask skirt boundary
+          marker = MASK_MARKER_SKIRT; // tile vert on outer mask skirt boundary
           break;
         }
     }

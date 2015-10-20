@@ -238,66 +238,6 @@ RexTerrainEngineNode::~RexTerrainEngineNode()
     destroySelectionInfo();
 }
 
-#if 0
-bool
-RexTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
-{
-    static const char* sdk_vertex =
-        "#version 330\n"
-        "#pragma vp_name oe_terrain_getElevation\n"
-
-        "uniform sampler2D oe_tile_elevationTex; \n"
-        "uniform mat4 oe_tile_elevationTexMatrix; \n"
-        "uniform float oe_tile_elevationSize; \n"
-        "uniform vec4 oe_tile_key; \n"
-        "vec4 oe_layer_tilec; \n"
-
-        "float oe_terrain_getElevation() \n"
-        "{ \n"
-        //"    return texture(oe_tile_elevationTex, (oe_tile_elevationTexMatrix*oe_layer_tilec).st).r; \n"
-
-        "    // Sample elevation data on texel-center. \n"
-        "    float texelScale = (oe_tile_elevationSize-1.0)/oe_tile_elevationSize; \n"
-        "    float texelBias  = 0.5/oe_tile_elevationSize; \n"
-    
-        "    // Apply the scale and bias. \n"
-        "    vec2 elevc = UV \n"
-        "        * texelScale * oe_tile_elevationTexMatrix[0][0] \n"
-        "        + texelScale * oe_tile_elevationTexMatrix[3].st \n"
-        "        + texelBias; \n"
-    
-        "    float elev = texture(oe_tile_elevationTex, elevc).r; \n"
-        "    vert_view.xyz += up*elev; \n"
-        "} \n"
-
-        "vec2 oe_terrain_getCoordsAtLOD(in vec2 tc, in float lod) \n"
-        "{ \n"
-        "    float dL = oe_tile_key.z - floor(lod); \n"
-        "    float factor = exp2(dL); \n"
-        "    float invFactor = 1.0/factor; \n"
-        "    vec2 scale = vec2(invFactor); \n"
-        "    vec2 result = tc * scale; \n"
-        "    if ( factor >= 1.0 ) { \n"
-        "        vec2 a = floor(oe_tile_key.xy * invFactor); \n"
-        "        vec2 b = a * factor; \n"
-        "        vec2 c = (a+1.0) * factor; \n"
-        "        vec2 offset = (oe_tile_key.xy-b)/(c-b); \n"
-        "        result += offset; \n"
-        "    } \n"
-        "    return result; \n"
-        "} \n";
-
-    if ( vp )
-    {
-        osg::Shader* shader = new osg::Shader(osg::Shader::VERTEX, sdk_vertex);
-        shader->setName( "oe_terrain_library_rex" );
-        vp->setShader( shader );
-    }
-
-    return (vp != 0L);
-}
-#endif
-
 void
 RexTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
@@ -1096,9 +1036,6 @@ RexTerrainEngineNode::updateState()
                 {
                     terrainStateSet->addUniform( new osg::Uniform(b->samplerName().c_str(), b->unit()) );
                     OE_DEBUG << LC << " > Bound \"" << b->samplerName() << "\" to unit " << b->unit() << "\n";
-
-                    // Not needed I think
-                    //terrainStateSet->addUniform( new osg::Uniform(b->matrixName().c_str(), osg::Matrixf()) );
                 }
             }
 

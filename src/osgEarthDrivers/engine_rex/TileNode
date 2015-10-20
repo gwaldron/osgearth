@@ -120,7 +120,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<MPTexture>            _mptex;
         osg::ref_ptr<osg::StateSet>        _payloadStateSet;
 
-        TileNode* getSubTile(unsigned i) { return dynamic_cast<TileNode*>(getChild(i)); }
+        TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(getChild(i)); }
 
         void createChildren(EngineContext* context);
 

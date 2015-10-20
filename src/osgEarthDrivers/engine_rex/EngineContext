@@ -84,6 +84,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool maxLiveTilesExceeded() const;
 
+        osg::Uniform* getOrCreateMatrixUniform(const std::string& name, const osg::Matrixf& m);
+
     protected:
 
         virtual ~EngineContext() { }
@@ -102,6 +104,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;
+
+        typedef std::map<osg::Vec4f, osg::ref_ptr<osg::Uniform> > MatrixUniformMap;
+        MatrixUniformMap _matrixUniforms;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -317,7 +317,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
 
     unsigned currLOD = getTileKey().getLOD();
 
-    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
@@ -435,6 +435,7 @@ TileNode::acceptSurface(osgUtil::CullVisitor* cv)
     cv->pushStateSet( _payloadStateSet.get() );
     _surface->accept( *cv );
     cv->popStateSet();
+
     return true;
 }
 
@@ -543,7 +544,7 @@ TileNode::inheritState(EngineContext* context)
                 // Find the parent's matrix and scale/bias it to this quadrant:
                 if ( parent && parent->getStateSet() )
                 {
-                    osg::Uniform* matrixUniform = parent->getStateSet()->getUniform( binding->matrixName() );
+                    const osg::Uniform* matrixUniform = parent->getStateSet()->getUniform( binding->matrixName() );
                     if ( matrixUniform )
                     {
                         matrixUniform->get( matrix );
@@ -552,7 +553,9 @@ TileNode::inheritState(EngineContext* context)
                 }
 
                 // Add a new uniform with the scale/bias'd matrix:
-                getOrCreateStateSet()->addUniform( new osg::Uniform(binding->matrixName().c_str(), matrix) );
+                osg::StateSet* stateSet = getOrCreateStateSet();
+                stateSet->removeUniform( binding->matrixName() );
+                stateSet->addUniform( context->getOrCreateMatrixUniform(binding->matrixName(), matrix) );
                 changesMade = true;
             }
 

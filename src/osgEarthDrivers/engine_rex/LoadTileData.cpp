@@ -123,10 +123,12 @@ LoadTileData::invoke()
                     stateSet->setTextureAttribute(
                         binding->unit(),
                         _model->elevationModel()->getTexture() );
-                
-                    stateSet->addUniform(
-                        new osg::Uniform(binding->matrixName().c_str(),
-                        osg::Matrixf::identity()));                    
+
+                    stateSet->removeUniform(binding->matrixName());
+
+                    stateSet->addUniform( _context->getOrCreateMatrixUniform(
+                        binding->matrixName(),
+                        osg::Matrixf::identity() ) );    
                 }
             }
 
@@ -138,10 +140,12 @@ LoadTileData::invoke()
                     stateSet->setTextureAttribute(
                         binding->unit(),
                         _model->normalModel()->getTexture() );
-                
-                    stateSet->addUniform(
-                        new osg::Uniform(binding->matrixName().c_str(),
-                        osg::Matrixf::identity()));
+
+                    stateSet->removeUniform(binding->matrixName());
+
+                    stateSet->addUniform( _context->getOrCreateMatrixUniform(
+                        binding->matrixName(),
+                        osg::Matrixf::identity() ) );
                 }
             }
 
@@ -160,9 +164,11 @@ LoadTileData::invoke()
                             binding->unit(),
                             layerModel->getTexture() );
 
-                        stateSet->addUniform(
-                            new osg::Uniform(binding->matrixName().c_str(),
-                            osg::Matrixf::identity()));
+                        stateSet->removeUniform(binding->matrixName());
+
+                        stateSet->addUniform( _context->getOrCreateMatrixUniform(
+                            binding->matrixName(),
+                            osg::Matrixf::identity() ) );
                     }
                 }
             }

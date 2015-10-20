@@ -802,7 +802,11 @@ VirtualProgram::removeBindAttribLocation( const std::string& name )
 void
 VirtualProgram::compileGLObjects(osg::State& state) const
 {
-    this->apply(state);
+    // Don't do this here. compileGLObjects() runs from a pre-compilation visitor,
+    // and the state is not complete enough to create fully formed programs; so
+    // this is not only pointless but can result in shader linkage errors 
+    // (albeit harmless)
+    //this->apply(state);
 }
 
 void

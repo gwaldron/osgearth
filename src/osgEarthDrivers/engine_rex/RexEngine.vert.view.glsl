@@ -17,14 +17,17 @@ uniform mat4 oe_layer_texParentMatrix;
 // SDK functions:
 float oe_terrain_getElevation(in vec2 uv);
 
-// marker that indicates the vertex belongs to a masking geometry
-// and has a hard-coded height value
-#define MASK_MARKER 3.0
-
+// Vertex Markers:
+#define MASK_MARKER_DISCARD  0.0
+#define MASK_MARKER_NORMAL   1.0
+#define MASK_MARKER_SKIRT    2.0
+#define MASK_MARKER_BOUNDARY 3.0
 
 void oe_rex_elevateVertexAndSetTexCoords(inout vec4 vertexView)
 {
-    float elev = oe_layer_tilec.z == MASK_MARKER ? 0.0f : oe_terrain_getElevation( oe_layer_tilec.st );
+    float elev = 
+        oe_layer_tilec.z == MASK_MARKER_BOUNDARY || oe_layer_tilec.z == MASK_MARKER_DISCARD ? 0.0f
+        : oe_terrain_getElevation( oe_layer_tilec.st );
 
     vertexView.xyz += oe_UpVectorView * elev;
 

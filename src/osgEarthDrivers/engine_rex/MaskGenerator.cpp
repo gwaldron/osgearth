@@ -431,7 +431,7 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
 
             // set elevation if this is a point along the mask boundary
             if (isBoundary)
-                model.z() = it->z();
+                model += normal*it->z();
 
             verts->push_back(model);
 

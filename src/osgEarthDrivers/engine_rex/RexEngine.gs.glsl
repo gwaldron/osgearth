@@ -1,5 +1,8 @@
 #version 330 compatibility
 
+
+#if 0 // currently unused - triangle discard implemented on CPU instead
+
 #pragma vp_name       REX Engine - GS
 #pragma vp_entryPoint oe_rexEngine_gs
 #pragma vp_location   geometry
@@ -36,3 +39,5 @@ void oe_rexEngine_gs(void)
     }
     EndPrimitive();
 }
+
+#endif

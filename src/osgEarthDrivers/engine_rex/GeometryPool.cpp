@@ -272,13 +272,30 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             int i10 = i00+1;
             int i11 = i01+1;
 
-            primSet->addElement(i01);
-            primSet->addElement(i00);
-            primSet->addElement(i11);
+            // skip any triangles that have a discarded vertex:
+            bool discard = maskSet && (
+                maskSet->isMasked( (*texCoords)[i00] ) ||
+                maskSet->isMasked( (*texCoords)[i11] )
+            );
 
-            primSet->addElement(i00);
-            primSet->addElement(i10);
-            primSet->addElement(i11);
+            if ( !discard )
+            {
+                discard = maskSet && maskSet->isMasked( (*texCoords)[i01] );
+                if ( !discard )
+                {
+                    primSet->addElement(i01);
+                    primSet->addElement(i00);
+                    primSet->addElement(i11);
+                }
+            
+                discard = maskSet && maskSet->isMasked( (*texCoords)[i10] );
+                if ( !discard )
+                {
+                    primSet->addElement(i00);
+                    primSet->addElement(i10);
+                    primSet->addElement(i11);
+                }
+            }
         }
     }
 

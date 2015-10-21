@@ -250,8 +250,15 @@ TileDrawable::drawSurface(osg::RenderInfo& renderInfo, bool renderColor) const
 
         if ( orderLocation >= 0 )
             ext->glUniform1i( orderLocation, (GLint)0 );
+
+        // draw the surface w/o the skirt:
+        const osg::DrawElementsUShort* de = static_cast<osg::DrawElementsUShort*>(_geom->getPrimitiveSet(0));
+        osg::GLBufferObject* ebo = de->getOrCreateGLBufferObject(state.getContextID());
+        state.bindElementBufferObject(ebo);
+        glDrawElements(GL_TRIANGLES, de->size()-_skirtSize, GL_UNSIGNED_SHORT, (const GLvoid *)(ebo->getOffset(de->getBufferIndex())));
         
-        for (int i=0; i < _geom->getNumPrimitiveSets(); i++)
+        // draw the remaining primsets normally
+        for (int i=1; i < _geom->getNumPrimitiveSets(); i++)
             _geom->getPrimitiveSet(i)->draw(state, true);
     }
 

@@ -94,6 +94,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const TileKey    _key;
         unsigned _tileSize;
         MaskRecordVector _maskRecords;
+        osg::Vec3d _ndcMin, _ndcMax;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

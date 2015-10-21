@@ -90,9 +90,19 @@ MaskGenerator::setupMaskRecord(const MapFrame& mapFrame, osg::Vec3dArray* bounda
 
         if (x_match && y_match)
         {
-            //MPGeometry* stitchGeom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
-            //stitchGeom->setName("stitchGeom");
-            //OE_WARN << "min_ndc: " << min_ndc.x() << ", " << min_ndc.y() << ", " << min_ndc.z() << "  max_ndc: " << max_ndc.x() << ", " << max_ndc.y() << ", " << max_ndc.z() << std::endl;
+            if (_maskRecords.size() == 0)
+            {
+                _ndcMin = min_ndc;
+                _ndcMax = max_ndc;
+            }
+            else
+            {
+                if (min_ndc.x() < _ndcMin.x()) _ndcMin.x() = min_ndc.x();
+                if (min_ndc.y() < _ndcMin.y()) _ndcMin.y() = min_ndc.y();
+                if (max_ndc.x() > _ndcMax.x()) _ndcMax.x() = max_ndc.x();
+                if (max_ndc.y() > _ndcMax.y()) _ndcMax.y() = max_ndc.y();
+            }
+
             _maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, 0L) );
         }
     }
@@ -495,45 +505,10 @@ MaskGenerator::getMarker(float nx, float ny) const
 
     if (_maskRecords.size() > 0)
     {
-        double minndcx = _maskRecords[0]._ndcMin.x();
-        double minndcy = _maskRecords[0]._ndcMin.y();
-        double maxndcx = _maskRecords[0]._ndcMax.x();
-        double maxndcy = _maskRecords[0]._ndcMax.y();
-        for (int mrs = 1; mrs < _maskRecords.size(); ++mrs)
-        {
-            if ( _maskRecords[mrs]._ndcMin.x()< minndcx)
-            {
-                minndcx = _maskRecords[mrs]._ndcMin.x();
-            }
-            if ( _maskRecords[mrs]._ndcMin.y()< minndcy)
-            {
-                minndcy = _maskRecords[mrs]._ndcMin.y();
-            }
-            if ( _maskRecords[mrs]._ndcMax.x()> maxndcx)
-            {
-                maxndcx = _maskRecords[mrs]._ndcMax.x();
-            }
-            if ( _maskRecords[mrs]._ndcMax.y()> maxndcy)
-            {
-                maxndcy = _maskRecords[mrs]._ndcMax.y();
-            }			
-        }
-
-        int min_i = (int)floor(minndcx * (double)(_tileSize-1));
-        if (min_i < 0) min_i = 0;
-        if (min_i >= (int)_tileSize) min_i = _tileSize - 1;
-
-        int min_j = (int)floor(minndcy * (double)(_tileSize-1));
-        if (min_j < 0) min_j = 0;
-        if (min_j >= (int)_tileSize) min_j = _tileSize - 1;
-
-        int max_i = (int)ceil(maxndcx * (double)(_tileSize-1));
-        if (max_i < 0) max_i = 0;
-        if (max_i >= (int)_tileSize) max_i = _tileSize - 1;
-
-        int max_j = (int)ceil(maxndcy * (double)(_tileSize-1));
-        if (max_j < 0) max_j = 0;
-        if (max_j >= (int)_tileSize) max_j = _tileSize - 1;
+        int min_i = (int)floor(_ndcMin.x() * (double)(_tileSize-1));
+        int min_j = (int)floor(_ndcMin.y() * (double)(_tileSize-1));
+        int max_i = (int)ceil(_ndcMax.x() * (double)(_tileSize-1));
+        int max_j = (int)ceil(_ndcMax.y() * (double)(_tileSize-1));
 
         int i = nx * (double)(_tileSize-1);
         int j = ny * (double)(_tileSize-1);

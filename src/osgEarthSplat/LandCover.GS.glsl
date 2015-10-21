@@ -208,11 +208,11 @@ oe_landcover_geom()
 	// compute the billboard corners in view space.
     vec4 LL, LR, UL, UR;
     
-    vec3 halfTangentWidth = vec3(0.5*width,0,0); // assuming no roll.
+    vec3 halfWidthTangentVector = normalize(cross(vec3(0,0,-1), up_view)) * 0.5 * width;
     vec3 heightVector = up_view*height;
     
-    LL = vec4(center_view.xyz - halfTangentWidth, 1.0);
-    LR = vec4(center_view.xyz + halfTangentWidth, 1.0);
+    LL = vec4(center_view.xyz - halfWidthTangentVector, 1.0);
+    LR = vec4(center_view.xyz + halfWidthTangentVector, 1.0);
     UL = vec4(LL.xyz + heightVector, 1.0);
     UR = vec4(LR.xyz + heightVector, 1.0);
                       

@@ -405,18 +405,6 @@ RexTerrainEngineNode::getSurfaceStateSet()
 #endif
 }
 
-#if 0
-osg::StateSet*
-RexTerrainEngineNode::getLandCoverStateSet()
-{
-#ifdef USE_RENDER_BINS
-    return _landCoverRenderBinPrototype->getStateSet();
-#else
-    return _terrain ? _terrain->getOrCreateStateSet() : 0L;
-#endif
-}
-#endif
-
 osg::StateSet* 
 RexTerrainEngineNode::addLandCoverGroup(const std::string& name, unsigned lod)
 {
@@ -923,10 +911,11 @@ RexTerrainEngineNode::updateState()
             package.load(surfaceVP, package.ENGINE_VERT_VIEW);
             package.load(surfaceVP, package.ENGINE_FRAG);
 
-            if ( _update_mapf->terrainMaskLayers().size() > 0 )
-            {
-                package.load(surfaceVP, package.ENGINE_GEOM);
-            }
+            // No longer necessary
+            //if ( _update_mapf->terrainMaskLayers().size() > 0 )
+            //{
+            //    package.load(surfaceVP, package.ENGINE_GEOM);
+            //}
 
             // Normal mapping shaders:
             if ( this->normalTexturesRequired() )

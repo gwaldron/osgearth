@@ -492,39 +492,62 @@ float
 MaskGenerator::getMarker(float nx, float ny) const
 {
     float marker = 1.0f; // 1.0 == does not contain
-    for (MaskRecordVector::const_iterator it = _maskRecords.begin(); it != _maskRecords.end(); ++it)
+
+    if (_maskRecords.size() > 0)
     {
-        int min_i = (int)floor(it->_ndcMin.x() * (double)(_tileSize-1));
+        double minndcx = _maskRecords[0]._ndcMin.x();
+        double minndcy = _maskRecords[0]._ndcMin.y();
+        double maxndcx = _maskRecords[0]._ndcMax.x();
+        double maxndcy = _maskRecords[0]._ndcMax.y();
+        for (int mrs = 1; mrs < _maskRecords.size(); ++mrs)
+        {
+            if ( _maskRecords[mrs]._ndcMin.x()< minndcx)
+            {
+                minndcx = _maskRecords[mrs]._ndcMin.x();
+            }
+            if ( _maskRecords[mrs]._ndcMin.y()< minndcy)
+            {
+                minndcy = _maskRecords[mrs]._ndcMin.y();
+            }
+            if ( _maskRecords[mrs]._ndcMax.x()> maxndcx)
+            {
+                maxndcx = _maskRecords[mrs]._ndcMax.x();
+            }
+            if ( _maskRecords[mrs]._ndcMax.y()> maxndcy)
+            {
+                maxndcy = _maskRecords[mrs]._ndcMax.y();
+            }			
+        }
+
+        int min_i = (int)floor(minndcx * (double)(_tileSize-1));
         if (min_i < 0) min_i = 0;
         if (min_i >= (int)_tileSize) min_i = _tileSize - 1;
 
-        int min_j = (int)floor(it->_ndcMin.y() * (double)(_tileSize-1));
+        int min_j = (int)floor(minndcy * (double)(_tileSize-1));
         if (min_j < 0) min_j = 0;
         if (min_j >= (int)_tileSize) min_j = _tileSize - 1;
 
-        int max_i = (int)ceil(it->_ndcMax.x() * (double)(_tileSize-1));
+        int max_i = (int)ceil(maxndcx * (double)(_tileSize-1));
         if (max_i < 0) max_i = 0;
         if (max_i >= (int)_tileSize) max_i = _tileSize - 1;
 
-        int max_j = (int)ceil(it->_ndcMax.y() * (double)(_tileSize-1));
+        int max_j = (int)ceil(maxndcy * (double)(_tileSize-1));
         if (max_j < 0) max_j = 0;
         if (max_j >= (int)_tileSize) max_j = _tileSize - 1;
 
         int i = nx * (double)(_tileSize-1);
         int j = ny * (double)(_tileSize-1);
 
-        if ( nx >= it->_ndcMin.x() && nx <= it->_ndcMax.x() && ny >= it->_ndcMin.y() && ny <= it->_ndcMax.y())
+        if (i > min_i && i < max_i && j > min_j && j < max_j)
         {
             marker = MASK_MARKER_DISCARD; // contained by mask
-            break;
         }
         else if ((i == min_i && j >= min_j && j <= max_j) ||
                  (i == max_i && j >= min_j && j <= max_j) ||
                  (j == min_j && i >= min_i && i <= max_i) ||
                  (j == max_j && i >= min_i && i <= max_i))
         {
-          marker = MASK_MARKER_SKIRT; // tile vert on outer mask skirt boundary
-          break;
+            marker = MASK_MARKER_SKIRT; // tile vert on outer mask skirt boundary
         }
     }
 

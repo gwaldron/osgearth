@@ -80,7 +80,7 @@ SplatExtension::connect(MapNode* mapNode)
         coverage = new Coverage();
         if ( !coverage->configure( _options.coverage().get(), mapNode->getMap(), _dbo.get() ) )
         {
-            OE_WARN << LC << "Coverage is not properly configured; aborting\n";
+            OE_WARN << LC << "Coverage is not properly configured; land cover disabled.\n";
             return false;
         }
     }
@@ -91,8 +91,8 @@ SplatExtension::connect(MapNode* mapNode)
         surface = new Surface();
         if ( !surface->configure( _options.surface().get(), mapNode->getMap(), _dbo.get() ) )
         {
-            OE_WARN << LC << "Surface data is not properly configured; aborting\n";
-            return false;
+            OE_WARN << LC << "Surface data is not properly configured; surface splatting disabled.\n";
+            surface = 0L;
         }
     }
 
@@ -102,8 +102,8 @@ SplatExtension::connect(MapNode* mapNode)
         landCover = new LandCover();
         if ( !landCover->configure( _options.landCover().get(), _dbo.get() ) )
         {
-            OE_WARN << LC << "Land cover is not properly configured; aborting. \n";
-            return false;
+            OE_WARN << LC << "Land cover is not properly configured; land cover disabled.\n";
+            landCover = 0L;
         }
     }
 
@@ -123,7 +123,7 @@ SplatExtension::connect(MapNode* mapNode)
         _landCoverEffect->setDBOptions( _dbo.get() );
         _landCoverEffect->setCoverage( coverage.get() );
         _landCoverEffect->setLandCover( landCover.get() );
-
+        
         mapNode->getTerrainEngine()->addEffect( _landCoverEffect.get() );
     }
 

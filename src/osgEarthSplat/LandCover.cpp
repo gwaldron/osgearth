@@ -31,7 +31,8 @@ LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 
     if ( in.layers().empty() )
     {
-        OE_WARN << LC << "No land cover layers defined; no land cover to render\n";
+        OE_WARN << LC << "No land cover layers defined\n";
+        return false;
     }
     else
     {
@@ -43,6 +44,11 @@ LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
             {
                 _layers.push_back( layer.get() );
                 OE_INFO << LC << "Configured land cover layer \"" << layer->getName() << "\"\n";
+            }
+            else
+            {
+                OE_WARN << LC << "Land cover layer \"" << layer->getName() << "\" is improperly configured\n";
+                return false;
             }
         }
     }
@@ -74,6 +80,12 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
     if ( in.contrast().isSet() )
         setContrast( in.contrast().get() );
 
+    if ( in.biomes().size() == 0 )
+    {
+        OE_WARN << LC << "No biomes defined in layer \"" << getName() << "\"\n";
+        return false;
+    }
+
     for(int i=0; i<in.biomes().size(); ++i)
     {
         osg::ref_ptr<LandCoverBiome> biome = new LandCoverBiome();
@@ -81,6 +93,11 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
         if ( biome->configure( in.biomes().at(i), dbo ) )
         {
             _biomes.push_back( biome.get() );
+        }
+        else
+        {
+            OE_WARN << LC << "One of the biomes in layer \"" << getName() << "\" is improperly configured\n";
+            return false;
         }
     }
 
@@ -329,6 +346,12 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
         {
             OE_WARN << LC << "Unrecognized symbol in land cover biome\n";
         }
+    }
+
+    if ( getBillboards().size() == 0 )
+    {
+        OE_WARN << LC << "A biome failed to install any billboards.\n";
+        return false;
     }
 
     return true;

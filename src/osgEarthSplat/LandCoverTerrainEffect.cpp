@@ -55,6 +55,7 @@ LandCoverTerrainEffect::setDBOptions(const osgDB::Options* dbo)
 void
 LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
 {
+    // First verify that the land cover definition is legal
     if ( !_landCover.valid() )
         return;
 

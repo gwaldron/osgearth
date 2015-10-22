@@ -211,15 +211,9 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
 }
 
 bool
-SurfaceNode::isVisible(const osg::Vec3d& vpWorld) const //osg::CullStack* cullStack) const
+SurfaceNode::isVisible(const osg::Vec3d& vpWorld) const
 {
     return _horizonCuller->isVisible( vpWorld );
-    //osg::ref_ptr<osg::RefMatrix> mvm = new osg::RefMatrix(*cullStack->getModelViewMatrix());
-    //mvm->preMult( getMatrix() );
-    //cullStack->pushModelViewMatrix(mvm, osg::Transform::RELATIVE_RF );
-    //bool isCulled = cullStack->isCulled( getAlignedBoundingBox() );
-    //cullStack->popModelViewMatrix();
-    //return !isCulled;
 }
 
 bool

@@ -37,6 +37,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
 
+    /**
+     * Implemented as a cull callback, but we don't use it as such;
+     * TileNode just calls isVisible directly.
+     */
     struct HorizonTileCuller : public osg::NodeCallback
     {
         double      _radiusPolar, _radiusEquator;
@@ -49,6 +53,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void set(const osg::BoundingBox& bbox);
 
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+        bool isVisible(const osg::Vec3d& vpWorld) const;
     };
 
 
@@ -72,7 +78,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         
         TileDrawable* getDrawable() const { return _drawable.get(); }
 
-        bool isVisible(class osg::CullStack* cullStack) const;
+        bool isVisible(const osg::Vec3d& vpWorld) const;
         
         // A box can have 4 children. 
         // Returns true if any child box intersects the sphere of radius centered around point

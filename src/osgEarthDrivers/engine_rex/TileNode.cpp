@@ -28,6 +28,7 @@
 
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/TraversalData>
 
 #include <osg/Uniform>
 #include <osg/ComputeBoundsVisitor>
@@ -95,6 +96,8 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         surfaceDrawable );
+
+    _surface->setNodeMask( OSGEARTH_MASK_TERRAIN_SURFACE );
     
     // Slot it into the proper render bin:
     osg::StateSet* surfaceSS = _surface->getOrCreateStateSet();
@@ -118,6 +121,8 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
         patchDrawable );
+
+    _landCover->setNodeMask( OSGEARTH_MASK_TERRAIN_LAND_COVER );
 
     // PPP: Better way to do this rather than here?
     // Can't do it at RexTerrainEngineNode level, because the SurfaceNode is not valid yet
@@ -322,6 +327,9 @@ void TileNode::cull(osg::NodeVisitor& nv)
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
 
+    if ( context->progress() )
+        context->progress()->stats()["TileNode::cull"]++;
+
     // determine whether we can and should subdivide to a higher resolution:
     bool subdivide = shouldSubDivide(nv, selectionInfo, cv->getLODScale());
 
@@ -377,14 +385,14 @@ void TileNode::cull(osg::NodeVisitor& nv)
         // If we don't traverse the children, traverse this node's payload.
         else if ( _surface.valid() )
         {
-            acceptSurface( cv );
+            acceptSurface( cv, context );
         }
     }
 
     // If children are outside camera range, draw the payload and expire the children.
     else if ( _surface.valid() )
     {
-        acceptSurface( cv );
+        acceptSurface( cv, context );
 
         if ( getNumChildren() >= 4 && context->maxLiveTilesExceeded() )
         {
@@ -430,13 +438,22 @@ void TileNode::cull(osg::NodeVisitor& nv)
 }
 
 bool
-TileNode::acceptSurface(osgUtil::CullVisitor* cv)
+TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
 {
-    cv->pushStateSet( _payloadStateSet.get() );
-    _surface->accept( *cv );
-    cv->popStateSet();
+    if ( _surface->isVisible(cv->getViewPoint()) )
+    {
+        if ( context->progress() )
+            context->progress()->stats()["TileNode::acceptSurface"]++;
 
-    return true;
+        cv->pushStateSet( _payloadStateSet.get() );
+        _surface->accept( *cv );
+        cv->popStateSet();
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 void

@@ -76,6 +76,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         const RexTerrainEngineOptions& getOptions() const { return _options; }
 
+        ProgressCallback* progress() const { return _progress.get(); }
+
         void startCull();
 
         void endCull();
@@ -104,6 +106,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;
+        osg::ref_ptr<ProgressCallback>        _progress;
 
         typedef std::map<osg::Vec4f, osg::ref_ptr<osg::Uniform> > MatrixUniformMap;
         MatrixUniformMap _matrixUniforms;

@@ -151,26 +151,29 @@ HorizonTileCuller::set(const osg::BoundingBox& bbox)
     }
 }
 
-void
-HorizonTileCuller::operator()(osg::Node* node, osg::NodeVisitor* nv)
+bool
+HorizonTileCuller::isVisible(const osg::Vec3d& eye) const
 {
-    // Clone the horizon object to support multiple cull threads
-    // (since we call setEye with the current node visitor eye point)
     Horizon horizon(_horizonProto);
-
-    // Since each terrain tile has an aboslute reference frame, 
-    // there is no need to transform the eyepoint:
-    osg::Vec3d vpWorld = osg::Vec3d(nv->getViewPoint()) * _local2world;
-    horizon.setEye( vpWorld );
+    horizon.setEye( eye );
 
     for(unsigned i=0; i<4; ++i)
     {                   
         if ( horizon.isVisible(_points[i]) )
         {
-            traverse(node, nv);
-            break;
+            return true;
         }
     }
+
+    return false;
+}
+
+void
+HorizonTileCuller::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osg::Vec3d vpWorld = osg::Vec3d(nv->getViewPoint()) * _local2world;
+    if ( isVisible(vpWorld) )
+        traverse(node, nv);
 }
 
 //..............................................................
@@ -208,14 +211,15 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
 }
 
 bool
-SurfaceNode::isVisible(osg::CullStack* cullStack) const
+SurfaceNode::isVisible(const osg::Vec3d& vpWorld) const //osg::CullStack* cullStack) const
 {
-    osg::ref_ptr<osg::RefMatrix> mvm = new osg::RefMatrix(*cullStack->getModelViewMatrix());
-    mvm->preMult( getMatrix() );
-    cullStack->pushModelViewMatrix(mvm, osg::Transform::RELATIVE_RF );
-    bool isCulled = cullStack->isCulled( getAlignedBoundingBox() );
-    cullStack->popModelViewMatrix();
-    return !isCulled;
+    return _horizonCuller->isVisible( vpWorld );
+    //osg::ref_ptr<osg::RefMatrix> mvm = new osg::RefMatrix(*cullStack->getModelViewMatrix());
+    //mvm->preMult( getMatrix() );
+    //cullStack->pushModelViewMatrix(mvm, osg::Transform::RELATIVE_RF );
+    //bool isCulled = cullStack->isCulled( getAlignedBoundingBox() );
+    //cullStack->popModelViewMatrix();
+    //return !isCulled;
 }
 
 bool
@@ -346,7 +350,9 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
     if ( !_horizonCuller.valid() )
     {
         _horizonCuller = new HorizonTileCuller( _tileKey.getProfile()->getSRS(), getMatrix() );
-        setCullCallback( _horizonCuller.get() );
+
+        // Don't install it; TileNode will call the culler's isVisible method directly instead
+        //setCullCallback( _horizonCuller.get() );
     }
 
     _horizonCuller->set( box );

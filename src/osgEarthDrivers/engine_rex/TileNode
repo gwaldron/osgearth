@@ -130,7 +130,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void cull(osg::NodeVisitor& nv);
 
         // returns true if any surface geometry was added (visible).
-        bool acceptSurface(osgUtil::CullVisitor* nv);
+        bool acceptSurface(osgUtil::CullVisitor* nv, EngineContext*);
 
         bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
         float getVisibilityRangeHint(unsigned firstLOD) const;

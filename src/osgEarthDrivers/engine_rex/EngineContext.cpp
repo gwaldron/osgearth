@@ -23,6 +23,8 @@ using namespace osgEarth;
 
 #define LC "[EngineContext] "
 
+//#define PROFILE 1
+
 //..............................................................
 
 
@@ -55,6 +57,10 @@ EngineContext::startCull()
 {
     _tick = osg::Timer::instance()->tick();
     _tilesLastCull = _liveTiles->size();
+
+#ifdef PROFILE
+    _progress = new ProgressCallback();
+#endif
 }
 
 double
@@ -71,7 +77,16 @@ EngineContext::endCull()
     int tileDelta = _liveTiles->size() - _tilesLastCull;
     if ( tileDelta != 0 )
     {
-        OE_DEBUG << LC << "Cull time = " << tms << " ms" << ", tile delta = " << tileDelta << "; avt = " << tms/(double)tileDelta << " ms\n";
+        OE_DEBUG << LC << "Live tiles = " << _liveTiles->size() << "; cull time = " << tms << " ms" << ", tile delta = " << tileDelta << "; avt = " << tms/(double)tileDelta << " ms\n";
+    }
+
+    if ( progress() )
+    {
+        OE_NOTICE << "Stats:\n";
+        for(ProgressCallback::Stats::const_iterator i = _progress->stats().begin(); i != _progress->stats().end(); ++i)
+        { 
+            OE_NOTICE << "    " << i->first << " = " << i->second << std::endl;
+        }
     }
 }
 

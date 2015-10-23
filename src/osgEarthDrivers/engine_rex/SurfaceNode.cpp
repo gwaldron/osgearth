@@ -152,10 +152,10 @@ HorizonTileCuller::set(const osg::BoundingBox& bbox)
 }
 
 bool
-HorizonTileCuller::isVisible(const osg::Vec3d& eye) const
+HorizonTileCuller::isVisible(const osg::Vec3d& from) const
 {
-    Horizon horizon(_horizonProto);
-    horizon.setEye( eye );
+    Horizon horizon( _horizonProto );
+    horizon.setEye( from );
 
     for(unsigned i=0; i<4; ++i)
     {                   
@@ -168,13 +168,6 @@ HorizonTileCuller::isVisible(const osg::Vec3d& eye) const
     return false;
 }
 
-void
-HorizonTileCuller::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-    osg::Vec3d vpWorld = osg::Vec3d(nv->getViewPoint()) * _local2world;
-    if ( isVisible(vpWorld) )
-        traverse(node, nv);
-}
 
 //..............................................................
 
@@ -211,9 +204,9 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
 }
 
 bool
-SurfaceNode::isVisible(const osg::Vec3d& vpWorld) const
+SurfaceNode::isVisible(osgUtil::CullVisitor* cv) const
 {
-    return _horizonCuller->isVisible( vpWorld );
+    return _horizonCuller->isVisible( cv->getViewPoint() );
 }
 
 bool

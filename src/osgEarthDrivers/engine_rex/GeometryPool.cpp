@@ -113,11 +113,11 @@ namespace
     verts->push_back( (*verts)[INDEX] ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
-    neighbors->push_back( (*neighbors)[INDEX] ); \
+    if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] ); \
     verts->push_back( (*verts)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
-    neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
+    if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
 }
 
 #define addSkirtTriangles(INDEX0, INDEX1) \
@@ -184,10 +184,14 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     geom->setNormalArray( normals );
     geom->setNormalBinding( geom->BIND_PER_VERTEX );
 
-    // neighbor positions (for morphing)
-    osg::Vec3Array* neighbors = new osg::Vec3Array();
-    neighbors->reserve( numVerts );
-    geom->setTexCoordArray( 1, neighbors );
+    osg::Vec3Array* neighbors = 0L;
+    if ( _options.morphTerrain() == true )
+    {
+        // neighbor positions (for morphing)
+        neighbors = new osg::Vec3Array();
+        neighbors->reserve( numVerts );
+        geom->setTexCoordArray( 1, neighbors );
+    }
 
     // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
     // vert is masked: 0=yes, 1=no
@@ -242,8 +246,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             normals->push_back( normal );
 
             // neighbor:
-            osg::Vec3d modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, _tileSize)];
-            neighbors->push_back(modelNeighborLTP);
+            if ( neighbors )
+            {
+                osg::Vec3d modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, _tileSize)];
+                neighbors->push_back(modelNeighborLTP);
+            }
         }
     }
 

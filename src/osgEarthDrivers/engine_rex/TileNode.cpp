@@ -97,7 +97,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getRenderBindings(),
         surfaceDrawable );
 
-    _surface->setNodeMask( OSGEARTH_MASK_TERRAIN_SURFACE );
+    //_surface->setNodeMask( OSGEARTH_MASK_TERRAIN_SURFACE );
     
     // Slot it into the proper render bin:
     osg::StateSet* surfaceSS = _surface->getOrCreateStateSet();
@@ -122,7 +122,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getRenderBindings(),
         patchDrawable );
 
-    _landCover->setNodeMask( OSGEARTH_MASK_TERRAIN_LAND_COVER );
+    //_landCover->setNodeMask( OSGEARTH_MASK_TERRAIN_LAND_COVER );
 
     // PPP: Better way to do this rather than here?
     // Can't do it at RexTerrainEngineNode level, because the SurfaceNode is not valid yet
@@ -331,7 +331,8 @@ void TileNode::cull(osg::NodeVisitor& nv)
         context->progress()->stats()["TileNode::cull"]++;
 
     // determine whether we can and should subdivide to a higher resolution:
-    bool subdivide = shouldSubDivide(nv, selectionInfo, cv->getLODScale());
+    bool subdivide =
+        shouldSubDivide(nv, selectionInfo, cv->getLODScale());
 
     // whether it is OK to create child TileNodes is necessary.
     bool canCreateChildren = subdivide;
@@ -357,6 +358,9 @@ void TileNode::cull(osg::NodeVisitor& nv)
             canLoadData = false;
         }
     }
+
+    optional<bool> surfaceVisible;
+
 
     // If *any* of the children are visible, subdivide.
     if (subdivide)
@@ -385,14 +389,14 @@ void TileNode::cull(osg::NodeVisitor& nv)
         // If we don't traverse the children, traverse this node's payload.
         else if ( _surface.valid() )
         {
-            acceptSurface( cv, context );
+            surfaceVisible = acceptSurface( cv, context );
         }
     }
 
     // If children are outside camera range, draw the payload and expire the children.
     else if ( _surface.valid() )
     {
-        acceptSurface( cv, context );
+        surfaceVisible = acceptSurface( cv, context );
 
         if ( getNumChildren() >= 4 && context->maxLiveTilesExceeded() )
         {
@@ -433,14 +437,27 @@ void TileNode::cull(osg::NodeVisitor& nv)
     // If this tile is marked dirty, try loading data.
     if ( _dirty && canLoadData )
     {
-        load( nv );
+        // Only load data if the surface would be visible to the camera
+        if ( !surfaceVisible.isSet() )
+        {
+            surfaceVisible = _surface->isVisible(cv);
+        }
+
+        if ( surfaceVisible == true )
+        {
+            load( nv );
+        }
+        else
+        {
+            OE_DEBUG << LC << "load skipped for " << _key.str() << std::endl;
+        }
     }
 }
 
 bool
 TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
 {
-    if ( _surface->isVisible(cv->getViewPoint()) )
+    if ( _surface->isVisible(cv))
     {
         if ( context->progress() )
             context->progress()->stats()["TileNode::acceptSurface"]++;

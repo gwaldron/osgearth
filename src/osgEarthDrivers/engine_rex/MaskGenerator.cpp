@@ -406,7 +406,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
         verts->reserve(verts->size() + trig->getInputPointArray()->size());
         texCoords->reserve(texCoords->size() + trig->getInputPointArray()->size());
         normals->reserve(normals->size() + trig->getInputPointArray()->size());
-        neighbors->reserve(neighbors->size() + trig->getInputPointArray()->size());
+        if ( neighbors )
+            neighbors->reserve(neighbors->size() + trig->getInputPointArray()->size()); 
 
         // Iterate through point to convert to model coords, calculate normals, and set up tex coords
         osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( _key, mapInfo );
@@ -446,7 +447,8 @@ MaskGenerator::createMaskPrimitives(const MapInfo& mapInfo, osg::Vec3Array* vert
             verts->push_back(model);
 
             // use same vert for neighbor to prevent morphing
-            neighbors->push_back( model );
+            if ( neighbors )
+                neighbors->push_back( model );  
 
             // set up text coords
             texCoords->push_back( osg::Vec3f(it->x(), it->y(), isBoundary ? MASK_MARKER_BOUNDARY : MASK_MARKER_SKIRT) );

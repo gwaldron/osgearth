@@ -109,14 +109,15 @@ namespace osgEarth
         /**
          * Access user stats
          */
-        fast_map<std::string,double>& stats() { return _stats; }
+        typedef fast_map<std::string,double> Stats;
+        Stats& stats() { return _stats; }
 
     protected:
         volatile unsigned _numStages;
         std::string       _message;
         mutable  bool     _needsRetry;
         mutable  bool     _canceled;
-        mutable  fast_map<std::string, double> _stats;
+        mutable  Stats    _stats;
     };
 
 

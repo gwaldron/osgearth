@@ -29,7 +29,6 @@
 #include <osg/Uniform>
 #include <osg/Light>
 
-
 namespace osgEarth { namespace Util 
 {
     /**
@@ -59,6 +58,13 @@ namespace osgEarth { namespace Util
          * exist elsewhere in the scene graph for rendering.
          */
         osg::Group* getShadowCastingGroup() { return _castingGroup.get(); }
+
+        /**
+         * Sets the traversal mask to use when collecting shadow-casting
+         * geometry. Default is 0xFFFFFFFF (everything)
+         */
+        void setTraversalMask(unsigned mask) { _traversalMask = mask; }
+        unsigned getTraversalMask() const { return _traversalMask; }
 
         /**
          * Slice ranges. Each slice (the space beteen each value in the list)
@@ -119,6 +125,7 @@ namespace osgEarth { namespace Util
         std::vector<float>                      _ranges;
         std::vector<osg::ref_ptr<osg::Camera> > _rttCameras;
         osg::Matrix                             _prevProjMatrix;
+        unsigned                                _traversalMask;
 
         int                         _texImageUnit;
         osg::ref_ptr<osg::StateSet> _renderStateSet;

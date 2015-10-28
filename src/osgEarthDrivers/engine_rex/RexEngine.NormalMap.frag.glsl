@@ -1,8 +1,8 @@
 #version 330 compatibility
 
-#pragma vp_entryPoint "oe_normalMapFragment"
-#pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.2"
+#pragma vp_entryPoint oe_normalMapFragment
+#pragma vp_location   fragment_coloring
+#pragma vp_order      0.2
 
 // import terrain SDK
 vec4 oe_terrain_getNormalAndCurvature(in vec2);

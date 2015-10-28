@@ -22,8 +22,7 @@
 #include <osgEarth/Common>
 #include "Export"
 #include "Coverage"
-#include "Surface"
-#include "LandCover"
+#include "Zone"
 
 namespace osgEarth { namespace Splat
 {
@@ -40,13 +39,9 @@ namespace osgEarth { namespace Splat
         optional<CoverageOptions>& coverage() { return _coverage; }
         const optional<CoverageOptions>& coverage() const { return _coverage; }
 
-        /** Surface rendering options */
-        optional<SurfaceOptions>& surface() { return _surface; }
-        const optional<SurfaceOptions>& surface() const { return _surface; }
-
-        /** Land Cover rendering options */
-        optional<LandCoverOptions>& landCover() { return _landCover; }
-        const optional<LandCoverOptions>& landCover() const { return _landCover; }
+        /** Zone definitions */
+        ZoneOptionsVector& zones() { return _zones; }
+        const ZoneOptionsVector& zones() const { return _zones; }
 
     public:
         SplatOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt ) {
@@ -59,9 +54,15 @@ namespace osgEarth { namespace Splat
     public:
         Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
-            conf.updateObjIfSet( "coverage",   _coverage );
-            conf.updateObjIfSet( "surface",    _surface );
-            conf.updateObjIfSet( "land_cover", _landCover );
+            conf.updateObjIfSet( "coverage", _coverage );
+            Config zones("zones");
+            for(int i=0; i<_zones.size(); ++i) {
+                Config zone = _zones[i].getConfig();
+                if ( !zone.empty() )
+                    zones.add(zone);
+            }
+            if ( !zones.empty() )
+                conf.add(zones);
             return conf;
         }
 
@@ -73,14 +74,19 @@ namespace osgEarth { namespace Splat
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getObjIfSet( "coverage",   _coverage );
-            conf.getObjIfSet( "surface",    _surface );
-            conf.getObjIfSet( "land_cover", _landCover );
+            conf.getObjIfSet( "coverage", _coverage );
+            const Config* zones = conf.child_ptr("zones");
+            if ( zones ) {
+                const ConfigSet& children = zones->children();
+                for(ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i) {
+                    _zones.push_back( ZoneOptions(*i) );
+                }
+            }
         }
 
+        
         optional<CoverageOptions>  _coverage;
-        optional<SurfaceOptions>   _surface;
-        optional<LandCoverOptions> _landCover;
+        ZoneOptionsVector          _zones;
     };
 
 } } // namespace osgEarth::Splat

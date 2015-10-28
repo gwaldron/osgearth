@@ -613,7 +613,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         const osg::BoundingSphere& visibleOverlayBS = cvb._bs;
         OE_WARN << "VBS radius = " << visibleOverlayBS.radius() << std::endl;
 #else
-        const osg::BoundingSphere& visibleOverlayBS = _techniques[t]->getBound(params); //params._group->getBound();
+        const osg::BoundingSphere& visibleOverlayBS = _techniques[t]->getBound(params);
 #endif
         if ( visibleOverlayBS.valid() )
         {

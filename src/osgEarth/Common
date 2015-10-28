@@ -23,6 +23,7 @@
 #include <osgEarth/Export>
 #include <osgEarth/Notify>
 #include <osg/Version>
+#include <osg/ref_ptr>
 
 // define the OSG Version checks for older OSG versions
 
@@ -42,6 +43,14 @@ namespace osgEarth
 {
     // application-wide unique ID.
     typedef int UID;
+
+    // reference counted unique UID.
+    struct OSGEARTH_EXPORT RefUID : public osg::Referenced {
+        RefUID() : _uid(0) { }
+        RefUID(UID uid) : _uid(uid) { }
+        operator UID() const { return _uid; }
+        UID _uid;
+    };
 }
 
 #ifdef _MSC_VER

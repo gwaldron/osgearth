@@ -247,6 +247,13 @@ ShaderPreProcessor::run(osg::Shader* shader)
         // only runs for non-FFP (GLES, GL3+, etc.)
         std::string source = shader->getShaderSource();
 
+        // First replace any quotes with spaces. Quotes are illegal.
+        if ( source.find('\"') != std::string::npos )
+        {
+            osgEarth::replaceIn(source, "\"", " ");
+            dirty = true;
+        }
+
         // find the first legal insertion point for replacement declarations. GLSL requires that nothing
         // precede a "#version" compiler directive, so we must insert new declarations after it.
         std::string::size_type declPos = source.rfind( "#version " );
@@ -302,7 +309,7 @@ ShaderPreProcessor::run(osg::Shader* shader)
                 declPos,
                 i->original,
                 i->definition,
-                Stringify() << "#pragma vp_varying \"" << i->qualifier << i->definition << "\"\n" ))
+                Stringify() << "#pragma vp_varying " << i->qualifier << i->definition << "\n" ))
             {
                 dirty = true;
             }

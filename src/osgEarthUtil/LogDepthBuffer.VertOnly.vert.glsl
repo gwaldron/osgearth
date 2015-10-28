@@ -1,8 +1,8 @@
 #version 110
 
-#pragma vp_entryPoint "oe_logDepth_vert"
-#pragma vp_location   "vertex_clip"
-#pragma vp_order      "0.99"
+#pragma vp_entryPoint oe_logDepth_vert
+#pragma vp_location   vertex_clip
+#pragma vp_order      0.99
 
 uniform float oe_logDepth_FC;
 

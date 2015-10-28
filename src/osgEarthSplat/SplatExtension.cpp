@@ -18,7 +18,7 @@
  */
 #include "SplatExtension"
 #include "SplatCatalog"
-#include "BiomeRegion"
+#include "Zone"
 #include "SplatCoverageLegend"
 #include "SplatTerrainEffect"
 #include "LandCoverTerrainEffect"
@@ -31,12 +31,6 @@ using namespace osgEarth;
 using namespace osgEarth::Splat;
 
 #define LC "[SplatExtension] "
-
-//.........................................................................
-
-namespace
-{
-}
 
 //.........................................................................
 
@@ -80,52 +74,60 @@ SplatExtension::connect(MapNode* mapNode)
         coverage = new Coverage();
         if ( !coverage->configure( _options.coverage().get(), mapNode->getMap(), _dbo.get() ) )
         {
-            OE_WARN << LC << "Coverage is not properly configured; aborting\n";
+            OE_WARN << LC << "Coverage is not properly configured; land cover disabled.\n";
             return false;
         }
     }
 
-    osg::ref_ptr<Surface> surface;
-    if ( _options.surface().isSet() )
+    bool enableSurfaceEffect = false;
+    bool enableLandCoverEffect = false;
+
+    // Zone definitions
+    Zones zones;
+    for(int i=0; i<_options.zones().size(); ++i)
     {
-        surface = new Surface();
-        if ( !surface->configure( _options.surface().get(), mapNode->getMap(), _dbo.get() ) )
+        osg::ref_ptr<Zone> zone = new Zone();
+        if ( zone->configure(_options.zones().at(i), mapNode->getMap(), _dbo.get()) )
         {
-            OE_WARN << LC << "Surface data is not properly configured; aborting\n";
-            return false;
+            zones.push_back( zone.get() );
+
+            if ( zone->getSurface() != 0L )
+            {
+                enableSurfaceEffect = true;
+            }
+
+            if ( zone->getLandCover() != 0L )
+            {
+                enableLandCoverEffect = true;
+            }
         }
     }
 
-    osg::ref_ptr<LandCover> landCover;
-    if ( _options.landCover().isSet() )
+    if ( enableSurfaceEffect )
     {
-        landCover = new LandCover();
-        if ( !landCover->configure( _options.landCover().get(), _dbo.get() ) )
-        {
-            OE_WARN << LC << "Land cover is not properly configured; aborting. \n";
-            return false;
-        }
-    }
-
-    if ( surface.valid() )
-    {
+        OE_INFO << LC << "Enabling the surface splatting effect\n";
         _splatEffect = new SplatTerrainEffect();
         _splatEffect->setDBOptions( _dbo.get() );
+        _splatEffect->setZones( zones );
         _splatEffect->setCoverage( coverage.get() );
-        _splatEffect->setSurface( surface.get() );
 
         mapNode->getTerrainEngine()->addEffect( _splatEffect.get() );
     }
 
-    if ( landCover.valid() )
+    if ( enableLandCoverEffect )
     {
+        OE_INFO << LC << "Enabling the land cover effect\n";
         _landCoverEffect = new LandCoverTerrainEffect();
         _landCoverEffect->setDBOptions( _dbo.get() );
+        _landCoverEffect->setZones( zones );
         _landCoverEffect->setCoverage( coverage.get() );
-        _landCoverEffect->setLandCover( landCover.get() );
-
+        
         mapNode->getTerrainEngine()->addEffect( _landCoverEffect.get() );
     }
+
+    // Install the zone switcher; this will select the best zone based on
+    // the camera position.
+    mapNode->getTerrainEngine()->addCullCallback( new ZoneSwitcher(zones) );
 
     return true;
 }

@@ -1,9 +1,9 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint "oe_fog_vertex"
-#pragma vp_location   "vertex_view"
-#pragma vp_order      "0.5"
+#pragma vp_entryPoint oe_fog_vertex
+#pragma vp_location   vertex_view
+#pragma vp_order      0.5
 
 varying float oe_fog_fogFactor;
 

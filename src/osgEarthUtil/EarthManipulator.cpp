@@ -916,14 +916,9 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
         // ending viewpoint
         _setVP1 = vp;
 
-        // If we're no longer going to be tethering, reset the tethering offset quat.
-        //if ( !_setVP1->nodeIsSet() )
-        {
-            //_tetherRotationOffset.unset();
-            //_tetherRotation = osg::Quat();
-            _tetherRotationVP0 = _tetherRotation;
-            _tetherRotationVP1 = osg::Quat();
-        }
+        // Reset the tethering offset quat.
+        _tetherRotationVP0 = _tetherRotation;
+        _tetherRotationVP1 = osg::Quat();
 
         // Fill in any missing end-point data with defaults matching the current camera setup.
         // Then all fields are guaranteed to contain usable data during transition.
@@ -1985,23 +1980,15 @@ EarthManipulator::updateTether()
             _previousUp = getUpVector( _centerLocalToWorld );
         };
 
-        osg::Quat newTetherRotation;
-
-        bool tetherModeChanged = _settings->getTetherMode() != _lastTetherMode;
-        if ( tetherModeChanged )
-        {
-            _tetherRotationOffset.unset();
-        }
-
-        //Just track the center
         if (_settings->getTetherMode() == TETHER_CENTER)
         {
-            if ( tetherModeChanged )
+            if ( _lastTetherMode == TETHER_CENTER_AND_ROTATION )
             {
-                resetLookAt();
-                //collapseTetherRotationIntoRotation();
+                // level out the camera so we don't leave the camera is weird state.
+                osg::Matrixd localToFrame(L2W*osg::Matrixd::inverse( _centerLocalToWorld ));
+                double azim = atan2(-localToFrame(0,1),localToFrame(0,0));
+                _tetherRotation.makeRotate(-azim, 0.0, 0.0, 1.0);
             }
-            _tetherRotationOffset.unset();
         }
         else
         {
@@ -2017,34 +2004,17 @@ EarthManipulator::updateTether()
                 osg::Matrixd localToFrame(L2W*osg::Matrixd::inverse( _centerLocalToWorld ));
                 double azim = atan2(-localToFrame(0,1),localToFrame(0,0));
 
-                newTetherRotation.makeRotate(-azim, 0.0, 0.0, 1.0);
-                newTetherRotation.slerp(t, _tetherRotationVP0, newTetherRotation);
+                osg::Quat finalTetherRotation;
+                finalTetherRotation.makeRotate(-azim, 0.0, 0.0, 1.0);
+                _tetherRotation.slerp(t, _tetherRotationVP0, finalTetherRotation);
             }
 
             // Track all rotations
             else if (_settings->getTetherMode() == TETHER_CENTER_AND_ROTATION)
             {
-                newTetherRotation = L2W.getRotate() * _centerRotation.inverse();
-
-                // Recalculate rotation to compensate, making for a smooth transition.
-                // In this case the new tether rotation might include roll so we need to
-                // extract that.
-#if 0
-                // TODO: doesn't work properly; for now the eye will "jump" when you activate this mode. 
-                if ( !_tetherRotationOffset.isSet() )
-                {
-                    double azim, pitch;
-                    getEulerAngles( newTetherRotation, &azim, &pitch );
-                    _tetherRotationOffset = getQuaternion(azim, pitch).inverse();
-                }
-#endif
+                _tetherRotation = L2W.getRotate() * _centerRotation.inverse();
             }   
         }
-
-        if ( _tetherRotationOffset.isSet() )
-            _tetherRotation = newTetherRotation * _tetherRotationOffset.get();
-        else
-            _tetherRotation = newTetherRotation;
 
         _lastTetherMode = _settings->getTetherMode();
     }

@@ -35,6 +35,10 @@
 
 #define OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER "OSGEARTH_TERRAIN_ENGINE"
 
+namespace osgUtil {
+    class CullVisitor;
+}
+
 namespace osgEarth
 {
     class TerrainEffect;
@@ -91,6 +95,15 @@ namespace osgEarth
         virtual void notifyOfTerrainTileNodeCreation(
             const TileKey& key,
             osg::Node*     node) =0;
+    };
+
+    /**
+     * Callback for selecting a general UID during the cull traversal
+     */
+    class OSGEARTH_EXPORT LandCoverGroupSelector : public osg::Referenced
+    {
+    public:
+        virtual UID select(osgUtil::CullVisitor*) const = 0;
     };
 
     /**
@@ -151,10 +164,24 @@ namespace osgEarth
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
 
-        virtual osg::StateSet* addLandCoverGroup(const std::string& name, unsigned lod) { return 0L; }
+        /** Creates and adds a new land cover group; returns its unique ID. */
+        virtual UID addLandCoverZone() { return 0; }
+
+        /** Sets a selector function for returning the UID of a land cover group during cull. */
+        //virtual void setLandCoverGroupSelector(LandCoverGroupSelector*) { }
+
+        /** Creates and adds a new land cover layer under the group with the given UID. */
+        virtual osg::StateSet* addLandCoverLayer(UID zoneUID, unsigned lod) { return 0L; }
+
+#if 0
+        /** Adds a new land cover group for the given LOD and bounds. */
+        virtual osg::StateSet* addLandCoverGroup(
+            const std::string& name,
+            const Bounds&      bounds,
+            unsigned           lod)     { return 0L; }
 
         virtual void removeLandCoverGroup(const std::string& name) { }
-
+#endif
 
     public: // TerrainEngine
 

@@ -23,6 +23,7 @@
 #include "TileNode"
 #include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/TerrainEngineNode>
 #include <OpenThreads/Atomic>
 #include <osgUtil/RenderBin>
 #include <map>
@@ -32,17 +33,25 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     using namespace osgEarth;
 
     //TODO: move this to its own include file
-    class LandCoverBin
+    struct LandCoverBin
     {
-    public:
-        std::string _name;
-        unsigned _lod;
+        unsigned                         _lod;
         osg::ref_ptr<osg::StateSet>      _stateSet;
         osg::ref_ptr<osgUtil::RenderBin> _binProto;
     };
-
     typedef std::vector<LandCoverBin> LandCoverBins;
 
+    struct LandCoverZone
+    {
+        LandCoverBins _bins;
+    };
+    typedef std::vector<LandCoverZone> LandCoverZones;
+
+    struct LandCoverData
+    {
+        LandCoverZones     _zones;
+        mutable unsigned   _currentZoneIndex;
+    };
 
 
     /**

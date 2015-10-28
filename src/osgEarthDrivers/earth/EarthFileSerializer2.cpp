@@ -370,6 +370,7 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         mapConf.add( ext );
     }
 
+#if 0 // removed until it can be debugged.
     // Re-write pathnames in the Config so they are relative to the new referrer.
     if ( _rewritePaths && !referrer.empty() )
     {
@@ -377,6 +378,7 @@ EarthFileSerializer2::serialize(const MapNode* input, const std::string& referre
         rewritePaths.setRewriteAbsolutePaths( _rewriteAbsolutePaths );
         rewritePaths.apply( mapConf );
     }
+#endif
 
     return mapConf;
 }

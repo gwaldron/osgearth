@@ -23,6 +23,7 @@
 #include <osgEarth/Config>
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarthSymbology/Symbol>
+#include <osg/BoundingBox>
 #include <osg/Shader>
 
 namespace osgDB {
@@ -68,9 +69,6 @@ namespace osgEarth { namespace Splat
         LandCoverBillboards& getBillboards() { return _billboards; }
         const LandCoverBillboards& getBillboards() const { return _billboards; }
 
-        /** Build a shader that tests against the classes for this biome. */
-        osg::Shader* createPredicateShader(const Coverage* coverage) const;
-
     protected:
         virtual ~LandCoverBiome() { }
 
@@ -96,6 +94,10 @@ namespace osgEarth { namespace Splat
         /** Name of this layer */
         void setName(const std::string& name) { _name = name; }
         const std::string& getName() const { return _name; }
+
+        /** Bounds within which this layer should render (map coordinates) */
+        void setBounds(const Bounds& bounds) { _bounds = bounds; }
+        const Bounds& getBounds() const { return _bounds; }
 
         /** Terrain LOD at which this layer should render */
         void setLOD(unsigned lod) { _lod = lod; }
@@ -141,6 +143,7 @@ namespace osgEarth { namespace Splat
         virtual ~LandCoverLayer() { }
 
         std::string     _name;
+        Bounds          _bounds;
         unsigned        _lod;
         float           _maxDistance;
         float           _density;
@@ -156,7 +159,6 @@ namespace osgEarth { namespace Splat
 
     typedef std::vector< osg::ref_ptr<LandCoverLayer> > LandCoverLayers;
 
-
     /**
      * Describes all land cover for the scene.
      */
@@ -169,7 +171,7 @@ namespace osgEarth { namespace Splat
         void setLibrary(ResourceLibrary* lib) { _lib = lib; }
         const ResourceLibrary* getLibrary() const { return _lib.get(); }
 
-        /** Land cover layers (bins) */
+        /** Land cover layers */
         LandCoverLayers& getLayers() { return _layers; }
         const LandCoverLayers& getLayers() const { return _layers; }
 
@@ -178,7 +180,7 @@ namespace osgEarth { namespace Splat
 
         osg::ref_ptr<ResourceLibrary> _lib;
         LandCoverLayers _layers;
-
+        
     public:
         bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);
     };

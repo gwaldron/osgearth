@@ -41,7 +41,8 @@ DrapingCullSet::get(const osg::Camera* cam)
     return sets.get(cam);
 }
 
-DrapingCullSet::DrapingCullSet()
+DrapingCullSet::DrapingCullSet() :
+_frameCulled( true )
 {
     // nop
 }
@@ -49,6 +50,14 @@ DrapingCullSet::DrapingCullSet()
 void
 DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path)
 {
+    // Reset the set if this is the first push after a cull.
+    if ( _frameCulled )
+    {
+        _frameCulled = false;
+        _entries.clear();
+        _bs.init();
+    }
+
     _entries.push_back( Entry() );
     Entry& entry = _entries.back();
     entry._node = node;
@@ -58,7 +67,7 @@ DrapingCullSet::push(DrapeableNode* node, const osg::NodePath& path)
 }
 
 void
-DrapingCullSet::accept(osg::NodeVisitor& nv, bool remove)
+DrapingCullSet::accept(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
@@ -126,8 +135,15 @@ DrapingCullSet::accept(osg::NodeVisitor& nv, bool remove)
             }
         }
 
-        // reset the cull set for the next frame.
-        _entries.clear();
-        _bs.init();
+        // mark this set so it will reset for the next frame
+        _frameCulled = true;
+    }
+
+    else
+    {
+        for( std::vector<Entry>::iterator entry = _entries.begin(); entry != _entries.end(); ++entry )
+        {
+            
+        }
     }
 }

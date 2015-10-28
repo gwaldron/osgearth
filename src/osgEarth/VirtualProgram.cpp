@@ -182,14 +182,6 @@ namespace
                     header = line;
                 }
 
-                else if ( tokens[0] == "#pragma")
-                {
-                    // Discards all pragmas, since the double-quotes in them are illegal in at least
-                    // GLSL ES compiler (on Android). We should consider doing this for all GLSL
-                    // since technically quoting characters are not part of the GLSL grammar at all.
-                    continue;
-                }
-
                 else
                 {
                     body << (*line_iter) << "\n";
@@ -291,25 +283,6 @@ namespace
     }
 
     /**
-     * As mentioned in parseShaderForMerging(), double quotes in pragmas are illegal.  This
-     * eliminates the issue by turning the pragma lines into a comment.
-     */
-    bool discardPragmas(std::string& shaderSource)
-    {
-        bool changed = false;
-        std::string::size_type pos = 0;
-        static const std::string POUND_PRAGMA = "#pragma ";
-        while ((pos = shaderSource.find(POUND_PRAGMA, pos)) != std::string::npos)
-        {
-            // Just replace with a comment
-            shaderSource.insert(pos, "// ");
-            changed = true;
-            pos += POUND_PRAGMA.size();
-        }
-        return changed;
-    }
-
-    /**
     * Populates the specified Program with passed-in shaders.
     */
     void addShadersToProgram(const VirtualProgram::ShaderVector&      shaders, 
@@ -318,16 +291,6 @@ namespace
                              osg::Program*                            program,
                              ShaderComp::StageMask                    stages)
     {
-        // Remove the pragmas before going to OSG
-        for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
-        {
-            std::string source = (*i)->getShaderSource();
-            if ( discardPragmas( source ) )
-            {
-                (*i)->setShaderSource(source);
-            }
-        }
-
 #ifdef USE_ATTRIB_ALIASES
         // apply any vertex attribute aliases. But first, sort them from longest to shortest 
         // so we don't get any overlap and bad replacements.
@@ -839,7 +802,11 @@ VirtualProgram::removeBindAttribLocation( const std::string& name )
 void
 VirtualProgram::compileGLObjects(osg::State& state) const
 {
-    this->apply(state);
+    // Don't do this here. compileGLObjects() runs from a pre-compilation visitor,
+    // and the state is not complete enough to create fully formed programs; so
+    // this is not only pointless but can result in shader linkage errors 
+    // (albeit harmless)
+    //this->apply(state);
 }
 
 void
@@ -955,12 +922,6 @@ VirtualProgram::setShader(osg::Shader*                       shader,
     PolyShader* pshader = new PolyShader(shader);
     pshader->prepare();
 
-#if 0
-    // pre-processes the shader's source to include GLES uniforms as necessary
-    // (no-op on non-GLES)
-    ShaderPreProcessor::run( shader );
-#endif
-
     // lock the data model while changing it.
     {
         _dataModelMutex.lock();
@@ -1031,47 +992,16 @@ VirtualProgram::setFunction(const std::string&           functionName,
         function._accept = accept;
         ofm.insert( OrderedFunction(ordering, function) );
 
-        // create and add the new shader function.
-        //osg::Shader::Type type;
+        // Remove any quotes in the shader source (illegal)
+        std::string source(shaderSource);
+        osgEarth::replaceIn(source, "\"", " ");
 
         // assemble the poly shader.
         PolyShader* shader = new PolyShader();
         shader->setName( functionName );
         shader->setLocation( location );
-        shader->setShaderSource( shaderSource );
+        shader->setShaderSource( source );
         shader->prepare();
-
-#if 0
-        switch(location)
-        {
-            case LOCATION_VERTEX_MODEL:
-            case LOCATION_VERTEX_VIEW:
-            case LOCATION_VERTEX_CLIP:
-                type = osg::Shader::VERTEX; // depends where it gets inserted.....
-                break;
-                
-            case LOCATION_VERTEX_GEOMETRY:
-                type = osg::Shader::GEOMETRY;
-                break;
-                
-            case LOCATION_VERTEX_TESSCONTROL:
-                type = osg::Shader::TESSCONTROL;
-                break;
-                
-            case LOCATION_VERTEX_TESSEVALUATION:
-                type = osg::Shader::TESSEVALUATION;
-                break;
-
-            default:
-                type = osg::Shader::FRAGMENT;
-        }
-
-        osg::Shader* shader = new osg::Shader(type, shaderSource);
-        shader->setName( functionName );
-
-        // pre-processes the shader's source to include GLES uniforms as necessary
-        ShaderPreProcessor::run( shader );
-#endif
 
         ShaderEntry& entry = _shaderMap[MAKE_SHADER_ID(functionName)];
         entry._shader        = shader;
@@ -1679,8 +1609,7 @@ VirtualProgram::addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap,
     _dataModelMutex.unlock();
 }
 
-
-void
+int
 VirtualProgram::getShaders(const osg::State&                        state,
                            std::vector<osg::ref_ptr<osg::Shader> >& output)
 {
@@ -1694,12 +1623,40 @@ VirtualProgram::getShaders(const osg::State&                        state,
 
     // pre-allocate space:
     output.reserve( shaders.size() );
+    output.clear();
 
     // copy to output.
     for(ShaderMap::iterator i = shaders.begin(); i != shaders.end(); ++i)
     {
         output.push_back( i->data()._shader->getNominalShader() );
     }
+
+    return output.size();
+}
+
+int
+VirtualProgram::getPolyShaders(const osg::State&                       state,
+                               std::vector<osg::ref_ptr<PolyShader> >& output)
+{
+    ShaderMap         shaders;
+    AttribBindingList bindings;
+    AttribAliasMap    aliases;
+    bool              acceptCallbacksVary;
+
+    // build the collection:
+    accumulateShaders(state, ~0, shaders, bindings, aliases, acceptCallbacksVary);
+
+    // pre-allocate space:
+    output.reserve( shaders.size() );
+    output.clear();
+
+    // copy to output.
+    for(ShaderMap::iterator i = shaders.begin(); i != shaders.end(); ++i)
+    {
+        output.push_back( i->data()._shader.get() );
+    }
+
+    return output.size();
 }
 
 void VirtualProgram::setShaderLogging( bool log )
@@ -1740,7 +1697,12 @@ _nominalShader( shader )
     if ( shader )
     {
         _name = shader->getName();
-        ShaderPreProcessor::run( shader );
+
+        // extract the source before preprocessing:
+        _source = shader->getShaderSource();
+
+        // then preprocess the shader:
+        //ShaderPreProcessor::run( shader );
     }
 }
 

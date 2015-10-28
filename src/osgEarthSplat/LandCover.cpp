@@ -13,7 +13,6 @@ using namespace osgEarth::Symbology;
 
 #define LC "[LandCover] "
 
-
 bool
 LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 {
@@ -31,7 +30,8 @@ LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 
     if ( in.layers().empty() )
     {
-        OE_WARN << LC << "No land cover layers defined; no land cover to render\n";
+        OE_WARN << LC << "No land cover layers defined\n";
+        return false;
     }
     else
     {
@@ -44,11 +44,17 @@ LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
                 _layers.push_back( layer.get() );
                 OE_INFO << LC << "Configured land cover layer \"" << layer->getName() << "\"\n";
             }
+            else
+            {
+                OE_WARN << LC << "Land cover layer \"" << layer->getName() << "\" is improperly configured\n";
+                return false;
+            }
         }
     }
 
     return true;
 }
+
 
 //............................................................................
 
@@ -74,6 +80,12 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
     if ( in.contrast().isSet() )
         setContrast( in.contrast().get() );
 
+    if ( in.biomes().size() == 0 )
+    {
+        OE_WARN << LC << "No biomes defined in layer \"" << getName() << "\"\n";
+        return false;
+    }
+
     for(int i=0; i<in.biomes().size(); ++i)
     {
         osg::ref_ptr<LandCoverBiome> biome = new LandCoverBiome();
@@ -81,6 +93,11 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
         if ( biome->configure( in.biomes().at(i), dbo ) )
         {
             _biomes.push_back( biome.get() );
+        }
+        else
+        {
+            OE_WARN << LC << "One of the biomes in layer \"" << getName() << "\" is improperly configured\n";
+            return false;
         }
     }
 
@@ -155,12 +172,19 @@ LandCoverLayer::createShader() const
             maxHeight = std::max(maxHeight, bb._height);
         }
 
+        // We multiply the height x 2 below because billboards have their origin
+        // at the bottom center of the image. The GPU culling code considers the
+        // distance from this anchor point. For width, it's in the middle, but for
+        // height, it's at the bottom so we need to double it. It doubles in both
+        // directions, but that's OK since we are rarely if ever going to GPU-cull
+        // a billboard at the top of the viewport. -gw
+
         biomeBuf << "    oe_landcover_Biome(" 
             << firstIndex << ", "
             << biome->getBillboards().size() 
             << ", float(" << getDensity() << ")"
             << ", float(" << getFill() << ")"
-            << ", vec2(float(" << maxWidth << "),float(" << maxHeight << ")))";
+            << ", vec2(float(" << maxWidth << "),float(" << maxHeight*2.0f << ")))";
 
         if ( (i+1) < getBiomes().size() )
             biomeBuf << ",\n";
@@ -324,106 +348,11 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
         }
     }
 
+    if ( getBillboards().size() == 0 )
+    {
+        OE_WARN << LC << "A biome failed to install any billboards.\n";
+        return false;
+    }
+
     return true;
 }
-
-osg::Shader*
-LandCoverBiome::createPredicateShader(const Coverage* coverage) const
-{
-    const char* defaultCode = "bool oe_landcover_passesCoverage(in vec4 coords) { return true; }\n";
-
-    std::stringstream buf;
-    buf << "#version 330\n";
-    
-    osg::ref_ptr<ImageLayer> layer;
-
-    if ( !coverage )
-    {
-        buf << defaultCode;
-        OE_INFO << LC << "No coverage; generating default coverage predicate\n";
-    }
-    else if ( !coverage->getLegend() )
-    {
-        buf << defaultCode;
-        OE_INFO << LC << "No legend; generating default coverage predicate\n";
-    }
-    else if ( !coverage->lockLayer(layer) )
-    {
-        buf << defaultCode;
-        OE_INFO << LC << "No classification layer; generating default coverage predicate\n";
-    }
-    else
-    {
-        const std::string& sampler = layer->shareTexUniformName().get();
-        const std::string& matrix  = layer->shareTexMatUniformName().get();
-
-        buf << "uniform sampler2D " << sampler << ";\n"
-            << "uniform mat4 " << matrix << ";\n"
-            << "bool oe_landcover_passesCoverage(in vec4 coords) { \n";
-    
-        if ( !getClasses().empty() )
-        {
-            buf << "    float value = textureLod(" << sampler << ", (" << matrix << " * coords).st, 0).r;\n";
-
-            StringVector classes;
-            StringTokenizer(getClasses(), classes, " ", "\"", false);
-
-            for(int i=0; i<classes.size(); ++i)
-            {
-                std::vector<const CoverageValuePredicate*> predicates;
-                if ( coverage->getLegend()->getPredicatesForClass(classes[i], predicates) )
-                {
-                    for(std::vector<const CoverageValuePredicate*>::const_iterator p = predicates.begin();
-                        p != predicates.end(); 
-                        ++p)
-                    {
-                        const CoverageValuePredicate* predicate = *p;
-
-                        if ( predicate->_exactValue.isSet() )
-                        {
-                            buf << "    if (value == " << predicate->_exactValue.get() << ") return true;\n";
-                        }
-                        else if ( predicate->_minValue.isSet() && predicate->_maxValue.isSet() )
-                        {
-                            buf << "    if (value >= " << predicate->_minValue.get() << " && value <= " << predicate->_maxValue.get() << ") return true;\n";
-                        }
-                        else if ( predicate->_minValue.isSet() )
-                        {
-                            buf << "    if (value >= " << predicate->_minValue.get() << ") return true;\n";
-                        }
-                        else if ( predicate->_maxValue.isSet() )
-                        {
-                            buf << "    if (value <= " << predicate->_maxValue.get() << ") return true;\n";
-                        }
-
-                        else 
-                        {
-                            OE_WARN << LC << "Class \"" << classes[i] << "\" found, but no exact/min/max value was set in the legend\n";
-                        }
-                    }
-                }
-                else
-                {
-                    OE_WARN << LC << "Class \"" << classes[i] << "\" not found in the legend!\n";
-                }
-            }
-
-            buf << "    return false; \n";
-        }
-
-        else
-        {
-            // no classes defined; accept all.
-            buf << "    return true;\n";
-        }
-
-        buf << "}\n";
-    }
-    
-    osg::Shader* shader = new osg::Shader();
-    shader->setName("oe Landcover predicate function");
-    shader->setShaderSource( buf.str() );
-
-    return shader;
-}
-

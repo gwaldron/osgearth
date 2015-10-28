@@ -1,8 +1,8 @@
 #version 330 compatibility
 
-#pragma vp_entryPoint "oe_mp_NormalMap_vertex"
-#pragma vp_location   "vertex_view"
-#pragma vp_order      "0.5"
+#pragma vp_entryPoint oe_mp_NormalMap_vertex
+#pragma vp_location   vertex_view
+#pragma vp_order      0.5
 
 uniform mat4 oe_tile_normalTexMatrix;
 

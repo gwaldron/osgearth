@@ -23,6 +23,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Registry>
 #include <osgEarth/Horizon>
+#include <osgEarth/TraversalData>
 
 #include <osg/CullStack>
 #include <osg/Geode>
@@ -30,6 +31,8 @@
 #include <osg/Geometry>
 #include <osg/TriangleFunctor>
 #include <osgText/Text>
+#include <osg/CullStack>
+#include <osgUtil/CullVisitor>
 
 #include <numeric>
 
@@ -148,27 +151,23 @@ HorizonTileCuller::set(const osg::BoundingBox& bbox)
     }
 }
 
-void
-HorizonTileCuller::operator()(osg::Node* node, osg::NodeVisitor* nv)
+bool
+HorizonTileCuller::isVisible(const osg::Vec3d& from) const
 {
-    // Clone the horizon object to support multiple cull threads
-    // (since we call setEye with the current node visitor eye point)
-    Horizon horizon(_horizonProto);
-
-    // Since each terrain tile has an aboslute reference frame, 
-    // there is no need to transform the eyepoint:
-    osg::Vec3d vpWorld = osg::Vec3d(nv->getViewPoint()) * _local2world;
-    horizon.setEye( vpWorld );
+    Horizon horizon( _horizonProto );
+    horizon.setEye( from );
 
     for(unsigned i=0; i<4; ++i)
     {                   
         if ( horizon.isVisible(_points[i]) )
         {
-            traverse(node, nv);
-            break;
+            return true;
         }
     }
+
+    return false;
 }
+
 
 //..............................................................
 
@@ -198,45 +197,37 @@ SurfaceNode::SurfaceNode(const TileKey&        tilekey,
     centroid.createLocalToWorld( local2world );
     setMatrix( local2world );
 
-    //_worldCorners.resize(8);
-    //_childrenCorners.resize(4);
-    //for(size_t i = 0; i < _childrenCorners.size(); ++i)
-    //{
-    //    _childrenCorners[i].resize(8);
-    //}
+    _matrix = new osg::RefMatrix( local2world );
 
     // Initialize the cached bounding box.
     setElevationRaster( 0L, osg::Matrixf::identity() );
 }
 
-float
-SurfaceNode::minSquaredDistanceFromPoint(const VectorPoints& corners, const osg::Vec3& center, float z2)
-{   
-    float mind2 = FLT_MAX;
-    for(int i=0; i<8; ++i)
-    {
-        const osg::Vec3& corner = corners[i];
-    //for( VectorPoints::const_iterator i=corners.begin(); i != corners.end(); ++i )
-    //{
-        float d2 = (corner-center).length2() * z2;
-        //float d2 = (*i - center).length2()*z2;
-        if ( d2 < mind2 ) mind2 = d2;
-    }
-    return mind2;
+bool
+SurfaceNode::isVisible(osgUtil::CullVisitor* cv) const
+{
+    return _horizonCuller->isVisible( cv->getViewPoint() );
 }
 
 bool
-SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radiusSquared, float fZoomFactor)
+SurfaceNode::anyChildBoxIntersectsSphere(const osg::Vec3& center, float radius2, float fZoomFactor)
 {
     float z2 = fZoomFactor*fZoomFactor;
+
     for(int i=0; i<4; ++i)
     {
-        const VectorPoints& childCorners = _childrenCorners[i];
-    //for(ChildrenCorners::const_iterator it = _childrenCorners.begin(); it != _childrenCorners.end(); ++it)
-    //{
-    //    const VectorPoints& childCorners = *it;
-        float fMinDistanceSquared = minSquaredDistanceFromPoint(childCorners, center, z2);
-        if (fMinDistanceSquared <= radiusSquared)
+        // calculate the minimum distance (squared) from the sphere center point:
+        float mind2 = FLT_MAX;
+
+        for(int j=0; j<8; ++j)
+        {
+            float d2 = (_childrenCorners[i][j]-center).length2() * z2;
+            if ( d2 < mind2 )
+                mind2 = d2;
+        }
+
+        // if it's within the radius (squared), success.
+        if ( mind2 < radius2 )
         {
             return true;
         }
@@ -342,11 +333,10 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
         addDebugNode(box);
     }
 
-    // Update the horizon culling callback.
+    // Update the horizon culler.
     if ( !_horizonCuller.valid() )
     {
         _horizonCuller = new HorizonTileCuller( _tileKey.getProfile()->getSRS(), getMatrix() );
-        setCullCallback( _horizonCuller.get() );
     }
 
     _horizonCuller->set( box );

@@ -1,10 +1,10 @@
 #version $GLSL_VERSION_STR
 
-#pragma vp_entryPoint "oe_bumpmap_fragment"
-#pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.3"
+#pragma vp_entryPoint oe_bumpmap_fragment
+#pragma vp_location   fragment_coloring
+#pragma vp_order      0.3
 
-#pragma include "BumpMap.frag.common.glsl"
+#pragma include BumpMap.frag.common.glsl
 
 in vec3 vp_Normal;
 in vec2 oe_bumpmap_coords;

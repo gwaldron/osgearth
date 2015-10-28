@@ -17,11 +17,15 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "EngineContext"
+#include "TileNodeRegistry"
+#include <osgEarth/TraversalData>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
 
 #define LC "[EngineContext] "
+
+//#define PROFILE 1
 
 //..............................................................
 
@@ -32,7 +36,7 @@ EngineContext::EngineContext(const Map*                     map,
                              Loader*                        loader,
                              TileNodeRegistry*              liveTiles,
                              TileNodeRegistry*              deadTiles,
-                             const LandCoverBins*           landCoverBins,
+                             const LandCoverData*           landCoverData,
                              const RenderBindings&          renderBindings,
                              const RexTerrainEngineOptions& options,
                              const SelectionInfo&           selectionInfo) :
@@ -42,7 +46,7 @@ _geometryPool  ( geometryPool ),
 _loader        ( loader ),
 _liveTiles     ( liveTiles ),
 _deadTiles     ( deadTiles ),
-_landCoverBins ( landCoverBins ),
+_landCoverData ( landCoverData ),
 _renderBindings( renderBindings ),
 _options       ( options ),
 _selectionInfo ( selectionInfo )
@@ -51,10 +55,14 @@ _selectionInfo ( selectionInfo )
 }
 
 void
-EngineContext::startCull()
+EngineContext::startCull(osgUtil::CullVisitor* cv)
 {
     _tick = osg::Timer::instance()->tick();
     _tilesLastCull = _liveTiles->size();
+
+#ifdef PROFILE
+    _progress = new ProgressCallback();
+#endif
 }
 
 double
@@ -65,13 +73,22 @@ EngineContext::getElapsedCullTime() const
 }
 
 void
-EngineContext::endCull()
+EngineContext::endCull(osgUtil::CullVisitor* cv)
 {
     double tms = 1000.0 * getElapsedCullTime();
     int tileDelta = _liveTiles->size() - _tilesLastCull;
     if ( tileDelta != 0 )
     {
-        OE_DEBUG << LC << "Cull time = " << tms << " ms" << ", tile delta = " << tileDelta << "; avt = " << tms/(double)tileDelta << " ms\n";
+        OE_DEBUG << LC << "Live tiles = " << _liveTiles->size() << "; cull time = " << tms << " ms" << ", tile delta = " << tileDelta << "; avt = " << tms/(double)tileDelta << " ms\n";
+    }
+
+    if ( progress() )
+    {
+        OE_NOTICE << "Stats:\n";
+        for(ProgressCallback::Stats::const_iterator i = _progress->stats().begin(); i != _progress->stats().end(); ++i)
+        { 
+            OE_NOTICE << "    " << i->first << " = " << i->second << std::endl;
+        }
     }
 }
 
@@ -79,4 +96,22 @@ bool
 EngineContext::maxLiveTilesExceeded() const
 {
     return _liveTiles->size() > _options.expirationThreshold().get();
+}
+
+osg::Uniform*
+EngineContext::getOrCreateMatrixUniform(const std::string& name, const osg::Matrixf& m)
+{
+    // Unique key for this uniform include the scale, the x/y bias, and the name ID.
+    osg::Vec4f key(m(0,0),m(3,0),m(3,1),(float)osg::Uniform::getNameID(name));
+
+    MatrixUniformMap::iterator i = _matrixUniforms.find(key);
+    if ( i != _matrixUniforms.end() )
+    {
+        return i->second.get();
+    }
+    
+    osg::Uniform* u = new osg::Uniform(name.c_str(), m);
+    _matrixUniforms[key] = u;
+
+    return u;
 }

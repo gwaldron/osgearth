@@ -56,7 +56,7 @@ namespace osgEarth
         void push(DrapeableNode* node, const osg::NodePath& path);
 
         /** Runs a node visitor on the cull set, optionally popping as it goes along. */
-        void accept(osg::NodeVisitor& nv, bool remove);
+        void accept(osg::NodeVisitor& nv);
 
         /** Bounds of this set */
         const osg::BoundingSphere& getBound() const { return _bs; }
@@ -67,6 +67,7 @@ namespace osgEarth
     private:
         std::vector<Entry>  _entries;
         osg::BoundingSphere _bs;
+        bool                _frameCulled;
     };
 
 } // namespace osgEarth

@@ -35,7 +35,8 @@ using namespace osgEarth;
 #define OE_TEST OE_NULL
 
 // whether a camera with an ABSOLUTE_RF_INHERIT_VIEWPOINT reference frame can trigger tile subdivision.
-#define INHERIT_VIEWPOINT_CAMERAS_CANNOT_SUBDIVIDE 1
+// NOTE: this causes issues with some of the RTT cameras like GPU clamping and draping.
+//#define INHERIT_VIEWPOINT_CAMERAS_CANNOT_SUBDIVIDE 1
 
 namespace
 {

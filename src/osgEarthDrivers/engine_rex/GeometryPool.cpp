@@ -113,11 +113,11 @@ namespace
     verts->push_back( (*verts)[INDEX] ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
-    neighbors->push_back( (*neighbors)[INDEX] ); \
+    if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] ); \
     verts->push_back( (*verts)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
     normals->push_back( (*normals)[INDEX] ); \
     texCoords->push_back( (*texCoords)[INDEX] ); \
-    neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
+    if ( neighbors ) neighbors->push_back( (*neighbors)[INDEX] - ((*normals)[INDEX])*(HEIGHT) ); \
 }
 
 #define addSkirtTriangles(INDEX0, INDEX1) \
@@ -184,10 +184,14 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     geom->setNormalArray( normals );
     geom->setNormalBinding( geom->BIND_PER_VERTEX );
 
-    // neighbor positions (for morphing)
-    osg::Vec3Array* neighbors = new osg::Vec3Array();
-    neighbors->reserve( numVerts );
-    geom->setTexCoordArray( 1, neighbors );
+    osg::Vec3Array* neighbors = 0L;
+    if ( _options.morphTerrain() == true )
+    {
+        // neighbor positions (for morphing)
+        neighbors = new osg::Vec3Array();
+        neighbors->reserve( numVerts );
+        geom->setTexCoordArray( 1, neighbors );
+    }
 
     // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
     // vert is masked: 0=yes, 1=no
@@ -231,8 +235,8 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             if ( populateTexCoords )
             {
                 // if masked then set textCoord z-value to 0.0
-                bool masked = maskSet ? maskSet->contains(nx, ny) : false;
-                texCoords->push_back( osg::Vec3f(nx, ny, masked ? 0.0f : 1.0f) );
+                float marker = maskSet ? maskSet->getMarker(nx, ny) : MASK_MARKER_NORMAL;
+                texCoords->push_back( osg::Vec3f(nx, ny, marker) );
             }
 
             osg::Vec3d modelPlusOne;
@@ -242,8 +246,11 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             normals->push_back( normal );
 
             // neighbor:
-            osg::Vec3d modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, _tileSize)];
-            neighbors->push_back(modelNeighborLTP);
+            if ( neighbors )
+            {
+                osg::Vec3d modelNeighborLTP = (*verts)[verts->size() - getMorphNeighborIndexOffset(col, row, _tileSize)];
+                neighbors->push_back(modelNeighborLTP);
+            }
         }
     }
 
@@ -272,13 +279,30 @@ GeometryPool::createGeometry(const TileKey& tileKey,
             int i10 = i00+1;
             int i11 = i01+1;
 
-            primSet->addElement(i01);
-            primSet->addElement(i00);
-            primSet->addElement(i11);
+            // skip any triangles that have a discarded vertex:
+            bool discard = maskSet && (
+                maskSet->isMasked( (*texCoords)[i00] ) ||
+                maskSet->isMasked( (*texCoords)[i11] )
+            );
 
-            primSet->addElement(i00);
-            primSet->addElement(i10);
-            primSet->addElement(i11);
+            if ( !discard )
+            {
+                discard = maskSet && maskSet->isMasked( (*texCoords)[i01] );
+                if ( !discard )
+                {
+                    primSet->addElement(i01);
+                    primSet->addElement(i00);
+                    primSet->addElement(i11);
+                }
+            
+                discard = maskSet && maskSet->isMasked( (*texCoords)[i10] );
+                if ( !discard )
+                {
+                    primSet->addElement(i00);
+                    primSet->addElement(i10);
+                    primSet->addElement(i11);
+                }
+            }
         }
     }
 
@@ -314,7 +338,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     // create mask geometry
     if (maskSet)
     {
-        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, _tileSize, verts, texCoords, normals, neighbors);
+        osg::ref_ptr<osg::DrawElementsUInt> maskPrim = maskSet->createMaskPrimitives(mapInfo, verts, texCoords, normals, neighbors);
         if (maskPrim)
             geom->addPrimitiveSet( maskPrim );
     }

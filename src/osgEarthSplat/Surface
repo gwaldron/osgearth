@@ -20,7 +20,8 @@
 #define OSGEARTH_PROCEDURAL_SURFACE 1
 
 #include "Export"
-#include "BiomeRegion"
+#include "Coverage"
+#include "SplatCatalog"
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/URI>
@@ -32,9 +33,6 @@ namespace osgEarth {
 namespace osgEarth { namespace Splat
 {
     using namespace osgEarth;
-
-    class SplatCatalog;
-    class SplatCoverageLegend;
 
     /**
      * Options pertaining to the terrain surface raster splatting.
@@ -51,26 +49,18 @@ namespace osgEarth { namespace Splat
         optional<URI>& catalogURI() { return _catalogURI; }
         const optional<URI>& catalogURI() const { return _catalogURI; }
 
-        /** URI of the optional file defining biome-specific catalogs.
-            Define either this OR catalogURI. */
-        optional<URI>& biomesURI() { return _biomesURI; }
-        const optional<URI>& biomesURI() const { return _biomesURI; }
-
     protected:
         optional<URI> _catalogURI;
-        optional<URI> _biomesURI;
 
     public:
         void fromConfig(const Config& conf) {
             conf.getIfSet("catalog", _catalogURI);
-            conf.getIfSet("biomes",  _biomesURI);
         }
         
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "surface";
             conf.updateIfSet("catalog", _catalogURI);
-            conf.updateIfSet("biomes",  _biomesURI);
             return conf;
         }
 
@@ -91,19 +81,26 @@ namespace osgEarth { namespace Splat
 
     public:
         /** Catalog that maps coverage codes to textures */
-        void setCatalog(SplatCatalog* catalog);
-        SplatCatalog* getCatalog() const;
-        
-        /** List of biome regions, each of which points to a SplatCatalog.
-          * Use this OR the single catalog above. */
-        BiomeRegionVector& getBiomeRegions() { return _biomeRegions; }
-        const BiomeRegionVector& getBiomeRegions() const { return _biomeRegions; }
+        void setCatalog(SplatCatalog* catalog) { _catalog = catalog; }
+        SplatCatalog* getCatalog() const { return _catalog.get(); }
+
+        /**
+         * Loads textures for splatting and generates a sampling function.
+         * Returns false if something goes wrong
+         */
+        bool loadTextures(const Coverage* coverage, const osgDB::Options* dbo);
+
+        /** Gets the texture definition creates by loadTextures */
+        const SplatTextureDef& getTextureDef() const { return _textureDef; }
 
     protected:
         virtual ~Surface() { }
 
     protected:
-        std::vector<BiomeRegion> _biomeRegions;
+        osg::ref_ptr<SplatCatalog> _catalog;
+        SplatTextureDef            _textureDef;
+
+        bool createGLSLSamplingCode(const Coverage* coverage, std::string& output) const;
 
     public:
 

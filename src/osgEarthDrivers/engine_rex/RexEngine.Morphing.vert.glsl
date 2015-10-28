@@ -1,10 +1,10 @@
 #version 330 compatibility
 
-#pragma vp_name       "REX Engine - Morphing"
-#pragma vp_entryPoint "oe_rexEngine_morph"
-#pragma vp_location   "vertex_model"
-#pragma vp_order      "0.5"
-#pragma vp_define     "OE_REX_VERTEX_MORPHING"
+#pragma vp_name       REX Engine - Morphing
+#pragma vp_entryPoint oe_rexEngine_morph
+#pragma vp_location   vertex_model
+#pragma vp_order      0.5
+#pragma vp_define     OE_REX_VERTEX_MORPHING
 
 // stage
 vec3 vp_Normal; // up vector
@@ -23,18 +23,22 @@ uniform vec4	  oe_tile_key;
 // SDK functions:
 float oe_terrain_getElevation(in vec2 uv);
 
+// Vertex Markers:
+#define MASK_MARKER_DISCARD  0.0
+#define MASK_MARKER_NORMAL   1.0
+#define MASK_MARKER_SKIRT    2.0
+#define MASK_MARKER_BOUNDARY 3.0
+
 
 // Morphs a vertex using a neighbor.
 void oe_rex_MorphVertex(inout vec3 position, inout vec2 uv, in vec3 neighborPosition)
 {
-   float halfSize        = (0.5*oe_tile_size)-0.5; //(oe_tile_size-1.0)*0.5;
-   float twoOverHalfSize = 2.0/(oe_tile_size-1.0); 
-
-   //vec2 fFractionalPart = fract(uv * vec2(halfSize)) * vec2(twoOverHalfSize);
+   float halfSize        = (0.5*oe_tile_size)-0.5;
+   float twoOverHalfSize = 2.0/(oe_tile_size-1.0);
    
    vec2 fractionalPart = fract(uv * halfSize) * twoOverHalfSize;
-   uv = uv - (fractionalPart * oe_rex_morphFactor);
-   uv = clamp(uv, 0, 1);
+   uv = clamp(uv - (fractionalPart * oe_rex_morphFactor), 0.0, 1.0);
+   //uv = clamp(uv, 0, 1);
 
    vec3 morphVector = neighborPosition.xyz - position.xyz;
    position.xyz = position.xyz + morphVector*oe_rex_morphFactor;
@@ -50,8 +54,6 @@ float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
 
 	#ifdef OE_REX_VERTEX_MORPHING
         float elev = oe_terrain_getElevation( oe_layer_tilec.st );
-	    //vec4 elevc = oe_tile_elevationTexMatrix * oe_layer_tilec;
-	    //float elev = textureLod(oe_tile_elevationTex, elevc.st,0).r;
 		wouldBePosition.xyz += up*elev;
 	#endif
 
@@ -68,11 +70,18 @@ void oe_rexEngine_morph(inout vec4 vertexModel)
     // compute the morphing factor to send down the pipe.
     // we need this even if vertex-morphing is off since we use it for 
     // other things (like image blending)
-    oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);
-    
+    if (oe_layer_tilec.z == MASK_MARKER_NORMAL)
+    {
+        oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertexModel, vp_Normal);    
+
 #ifdef OE_REX_VERTEX_MORPHING
-    vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;
-    oe_rex_MorphVertex(vertexModel.xyz, oe_layer_tilec.st, neighborVertexModel.xyz);
+        vec3 neighborVertexModel = gl_MultiTexCoord1.xyz;
+        oe_rex_MorphVertex(vertexModel.xyz, oe_layer_tilec.st, neighborVertexModel.xyz);
 #endif
+    }
+    else
+    {
+        oe_rex_morphFactor = 0.0;
+    }
 }
 

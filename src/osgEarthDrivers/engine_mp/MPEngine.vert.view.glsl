@@ -1,9 +1,9 @@
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_entryPoint "oe_mp_vertView"
-#pragma vp_location   "vertex_view"
-#pragma vp_order      "0.5"
+#pragma vp_entryPoint oe_mp_vertView
+#pragma vp_location   vertex_view
+#pragma vp_order      0.5
 
 uniform float oe_layer_minRange;
 uniform float oe_layer_maxRange;

@@ -1,7 +1,7 @@
 #version 400 compatibility
-#pragma vp_name       "Flora geometry shader"
-#pragma vp_entryPoint "oe_landcover_geom"
-#pragma vp_location   "geometry"
+#pragma vp_name       LandCover geometry shader
+#pragma vp_entryPoint oe_landcover_geom
+#pragma vp_location   geometry
                 
 layout(triangles)        in;        // triangles from the TileDrawable
 layout(triangle_strip)   out;       // output a triangle-strip billboard
@@ -27,6 +27,7 @@ uniform float oe_landcover_brightness;
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4      oe_tile_elevationTexMatrix;
 uniform float     oe_tile_elevationSize;
+
 
 // Noise texture:
 uniform sampler2D oe_splat_noiseTex;
@@ -208,11 +209,13 @@ oe_landcover_geom()
 	// compute the billboard corners in view space.
     vec4 LL, LR, UL, UR;
     
-    vec3 halfTangentWidth = vec3(0.5*width,0,0); // assuming no roll.
+#if 1
+
+    vec3 halfWidthTangentVector = normalize(cross(vec3(0,0,-1), up_view)) * 0.5 * width;
     vec3 heightVector = up_view*height;
     
-    LL = vec4(center_view.xyz - halfTangentWidth, 1.0);
-    LR = vec4(center_view.xyz + halfTangentWidth, 1.0);
+    LL = vec4(center_view.xyz - halfWidthTangentVector, 1.0);
+    LR = vec4(center_view.xyz + halfWidthTangentVector, 1.0);
     UL = vec4(LL.xyz + heightVector, 1.0);
     UR = vec4(LR.xyz + heightVector, 1.0);
                       
@@ -230,7 +233,7 @@ oe_landcover_geom()
     normal.xy += vec2(oe_landcover_rangeRand(-0.25, 0.25, vec2(noise[NOISE_CLUMPY])));
     vp_Normal = normalize(gl_NormalMatrix * normal);
     
-    vp_Color = vec4(color*oe_landcover_ao, falloff);
+    vp_Color = vec4(color*oe_landcover_ao, 1); //falloff);
 
     gl_Position = LL;
     oe_landcover_texCoord = vec2(0,0);
@@ -240,7 +243,7 @@ oe_landcover_geom()
     oe_landcover_texCoord = vec2(1,0);
     VP_EmitViewVertex();
 
-    vp_Color = vec4(color,falloff);      
+    vp_Color = vec4(color,1); //falloff);      
 
     gl_Position = UL;
     oe_landcover_texCoord = vec2(0,1);
@@ -251,4 +254,55 @@ oe_landcover_geom()
     VP_EmitViewVertex();
                     
     EndPrimitive();
+
+
+#else
+    // sample code for generating cross-hatch geometry (for shadowing in the future)
+
+    vec3 eastVector = gl_NormalMatrix * vec3(1,0,0);
+    vec3 halfWidthTangentVector = cross(eastVector, up_view) * 0.5 * width;
+    vec3 heightVector = up_view*height;
+
+    vp_Normal = vec3(0,0,1);
+
+    // Color variation, brightness, and contrast:
+    vec3 color = vec3( noise[NOISE_RANDOM_2] );
+    color = ( ((color - 0.5) * oe_landcover_contrast + 0.5) * oe_landcover_brightness);
+
+    vec3 normal = vec3(0,0,1);
+    normal.xy += vec2(oe_landcover_rangeRand(-0.25, 0.25, vec2(noise[NOISE_CLUMPY])));
+    vp_Normal = normalize(gl_NormalMatrix * normal);
+
+    for(int i=0; i<2; ++i)
+    {
+        LL = vec4(center_view.xyz - halfWidthTangentVector, 1.0);
+        LR = vec4(center_view.xyz + halfWidthTangentVector, 1.0);
+        UL = vec4(LL.xyz + heightVector, 1.0);
+        UR = vec4(LR.xyz + heightVector, 1.0);
+
+        vp_Color = vec4(color*oe_landcover_ao, falloff);
+    
+        gl_Position = LL;
+        oe_landcover_texCoord = vec2(0,0);
+        VP_EmitViewVertex();
+    
+        gl_Position = LR;
+        oe_landcover_texCoord = vec2(1,0);
+        VP_EmitViewVertex();
+
+        vp_Color = vec4(color,falloff);      
+
+        gl_Position = UL;
+        oe_landcover_texCoord = vec2(0,1);
+        VP_EmitViewVertex();
+
+        oe_landcover_texCoord = vec2(1,1);
+        gl_Position = UR;
+        VP_EmitViewVertex();
+                    
+        EndPrimitive();
+
+        halfWidthTangentVector = cross(halfWidthTangentVector, up_view);
+    }
+#endif
 }

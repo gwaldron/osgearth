@@ -24,8 +24,9 @@
 
 #include "Export"
 #include "Coverage"
-#include "Surface"
-#include "LandCover"
+//#include "Surface"
+//#include "LandCover"
+#include "Zone"
 
 #include <osgEarth/TerrainEffect>
 #include <osg/Uniform>
@@ -50,18 +51,17 @@ namespace osgEarth { namespace Splat
         void setDBOptions(const osgDB::Options* dbo);
 
         /**
+         * Sets the coverage/surface zones.
+         */
+        void setZones(const Zones& zones) { _zones = zones; }
+        const Zones& getZones() const { return _zones; }
+
+        /**
          * Sets the coverage source. This is optional, if you do not install
          * a coverage source the land cover will render everywhere unconstrained.
          */
         void setCoverage(Coverage* coverage) { _coverage = coverage; }
         Coverage* getCoverage() const { return _coverage.get(); }
-
-        /**
-         * Sets the land cover configuration to use
-         */
-        void setLandCover(LandCover* landCover) { _landCover = landCover; }
-        LandCover* getLandCover() const { return _landCover.get(); }
-
 
     public: // TerrainEffect interface
 
@@ -77,8 +77,8 @@ namespace osgEarth { namespace Splat
 
         osg::ref_ptr<const osgDB::Options> _dbo;
 
-        osg::ref_ptr<Coverage>  _coverage;
-        osg::ref_ptr<LandCover> _landCover;
+        osg::ref_ptr<Coverage> _coverage;
+        Zones _zones;
         int _noiseTexUnit;
     };
 

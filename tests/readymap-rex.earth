@@ -9,8 +9,8 @@ osgEarth Sample - REX Engine.
                  skirt_ratio="0.001"
                  tile_size="33"
                  merges_per_frame="25"
-                 morph_terrain="true"
-                 morph_imagery="true"
+                 morph_terrain="false"
+                 morph_imagery="false"
                  high_resolution_first="true"
                  normal_maps="true">
         </terrain>

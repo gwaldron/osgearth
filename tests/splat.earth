@@ -43,36 +43,39 @@
         <splat>        
             <coverage>
                 <layer> CLASSMAP </layer>
-                <legend> ../data/splat/GLOBCOVER_legend.xml </legend>
+                <legend>../data/splat/GLOBCOVER_legend.xml</legend>
             </coverage>
             
-            <surface>
-                <catalog> ../data/splat/splat_catalog.xml </catalog>
-            </surface>
-
-            <land_cover>
-                
-                <layers>
-                    <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5">
-                        <biomes>
-                            <biome classes="forest forest1 forest2 forest3 forest4">
-                                <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
-                                <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
-                                <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
-                            </biome>
-                        </biomes>
-                    </layer>
-                
-                    <layer name="grass" lod="19" max_distance="150" density="3.8" fill="0.50" wind="0.15">
-                        <biomes>
-                            <biome name="Grass" classes="grassland grassland2 forest forest1 forest2 forest3 forest4">
-                                <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
-                            </biome>
-                        </biomes>
-                    </layer>
-                </layers>
-                
-            </land_cover>            
+            <zones>
+                <zone name="default" doc="Default Climate Zone">            
+                    <surface>
+                        <catalog>../data/splat/splat_catalog.xml</catalog>
+                    </surface>
+            
+                    <land_cover>
+                        <layers>
+                            <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5">
+                                <biomes>
+                                    <biome classes="forest forest1 forest2 forest3 forest4">
+                                        <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>
+                                        <billboard url="../data/splat/pine.png"    width="16.0" height="22.0" />
+                                        <billboard url="../data/splat/pine2.png"   width="15.0" height="18.0"/>
+                                    </biome>
+                                </biomes>
+                            </layer>
+                        
+                            <layer name="grass" lod="19" max_distance="150" density="3.8" fill="0.50" wind="0.15">
+                                <biomes>
+                                    <biome name="Grass" classes="grassland grassland2 forest forest1 forest2 forest3 forest4">
+                                        <billboard url="../data/splat/grass1.png" width="0.85" height="0.4"/>
+                                    </biome>
+                                </biomes>
+                            </layer>
+                        </layers>                    
+                    </land_cover>
+                </zone>                
+            </zones>
+            
         </splat>
             
         <xi:include href="viewpoints.xml"/>

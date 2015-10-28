@@ -1,7 +1,7 @@
 #version $GLSL_VERSION_STR
 
-#pragma vp_entryPoint "oe_clamp_fragment"
-#pragma vp_location   "fragment_coloring"
+#pragma vp_entryPoint oe_clamp_fragment
+#pragma vp_location   fragment_coloring
 
 in float oe_clamp_alpha;
 

@@ -34,10 +34,11 @@ using namespace osgEarth::Util;
 
 
 ShadowCaster::ShadowCaster() :
-_size        ( 2048 ),
-_texImageUnit( 7 ),
-_blurFactor  ( 0.002f ),
-_color       ( osg::Vec4f(.4f, .4f, .4f, 1) )
+_size         ( 2048 ),
+_texImageUnit ( 7 ),
+_blurFactor   ( 0.002f ),
+_color        ( osg::Vec4f(0.4f, 0.4f, 0.4f, 1.0f) ),
+_traversalMask( ~0 )
 {
     _castingGroup = new osg::Group();
 
@@ -304,11 +305,16 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             osg::Vec3d lightVectorWorld( -lp4.x(), -lp4.y(), -lp4.z() );
             lightVectorWorld.normalize();
             osg::Vec3d lightPosWorld = osg::Vec3d(0,0,0) * inverseMV;
+            //osg::Vec3d lightPosWorld( lp4.x(), lp4.y(), lp4.z() ); // jitter..
 
             // construct the view matrix for the light. The up vector doesn't really
             // matter so we'll just use the camera's.
             osg::Matrix lightViewMat;
-            lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, camUp);
+            osg::Vec3d lightUp(0,0,1);
+            osg::Vec3d side = lightVectorWorld ^ lightUp;
+            lightUp = side ^ lightVectorWorld;
+            lightUp.normalize();
+            lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, lightUp);
             
             //int i = nv.getFrameStamp()->getFrameNumber() % (_ranges.size()-1);
             int i;
@@ -362,6 +368,10 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 _shadowMapTexGenUniform->setElement(i, inverseMV * VPS);
             }
 
+            // install the shadow-casting traversal mask:
+            unsigned saveMask = cv->getTraversalMask();
+            cv->setTraversalMask( _traversalMask & saveMask );
+
             // render the shadow maps.
             cv->pushStateSet( _rttStateSet.get() );
             for(i=0; i < (int) _rttCameras.size(); ++i)
@@ -369,6 +379,9 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 _rttCameras[i]->accept( nv );
             }
             cv->popStateSet();
+
+            // restore the previous mask
+            cv->setTraversalMask( saveMask );
             
             // render the shadowed subgraph.
             cv->pushStateSet( _renderStateSet.get() );

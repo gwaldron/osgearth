@@ -79,10 +79,6 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<const osgDB::Options>   _dbo;
         osg::ref_ptr<SplatTerrainEffect>     _splatEffect;
         osg::ref_ptr<LandCoverTerrainEffect> _landCoverEffect;
-
-        //osg::ref_ptr<Coverage>  _coverage;
-        //osg::ref_ptr<Surface>   _surface;
-        //osg::ref_ptr<LandCover> _landCover;
     };
 
 } } // namespace osgEarth::Splat

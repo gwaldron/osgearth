@@ -56,6 +56,11 @@ _screenSpaceRotationRadians( 0.0 )
 void
 PixelAutoTransform::accept( osg::NodeVisitor& nv )
 {
+    // optimization - don't bother with mathing if the node is hidden.
+    // (this occurs in Node::accept, which we override here)
+    if ( !nv.validNodeMask(*this) )
+        return;
+
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         // re-activate culling now that the first cull traversal has taken place.

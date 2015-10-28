@@ -21,7 +21,6 @@
 */
 #include "SplatTerrainEffect"
 #include "SplatOptions"
-#include "BiomeRegion"
 #include "NoiseTextureFactory"
 
 #include <osgEarth/Registry>
@@ -80,20 +79,23 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             return;
         }
 
-        if ( !_surface.valid() )
+        bool splattingOK = false;
+
+        for(Zones::const_iterator z = _zones.begin(); z != _zones.end(); ++z)
         {
-            OE_WARN << LC << "Note: no surface information available\n";
+            Zone* zone = z->get();
+            Surface* surface = zone->getSurface();
+            if ( surface )
+            {
+                if ( surface->loadTextures(_coverage.get(), _dbo.get()) )
+                {
+                    splattingOK = true;
+                }
+            }
         }
 
-        // First, create a surface splatting texture array for each biome region.
-        if ( _coverage.valid() && _surface.valid() )
+        if ( splattingOK )
         {
-            if ( createSplattingTextures(_coverage.get(), _surface.get(), _textureDefs) == false )
-            {
-                OE_WARN << LC << "Failed to create any valid splatting textures\n";
-                return;
-            }
-            
             // First install a shared noise texture.
             if ( _gpuNoise == false )
             {
@@ -113,17 +115,30 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             // Set up surface splatting:
             if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage Data") )
             {
-                osg::StateSet* stateset;
+                // Set up the zone-specific elements:
+                for(Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)
+                {
+                    Zone* zone = z->get();
 
-                if ( _surface->getBiomeRegions().size() == 1 )
-                    stateset = engine->getSurfaceStateSet();
-                else
-                    stateset = new osg::StateSet();
+                    // The texture array for the zone:
+                    const SplatTextureDef& texdef = zone->getSurface()->getTextureDef();
+                    osg::StateSet* zoneStateset = zone->getOrCreateStateSet();
+                    zoneStateset->setTextureAttribute( _splatTexUnit, texdef._texture.get() );
+                    
+                    // The zone's sampling function:
+                    VirtualProgram* vp = VirtualProgram::cloneOrCreate( zoneStateset );
+                    osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, texdef._samplingFunction);
+                    vp->setShader( "oe_splat_getRenderInfo", shader );
 
-                // surface splatting texture array:
-                _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
-                _splatTexUniform->set( _splatTexUnit );
-                stateset->setTextureAttribute( _splatTexUnit, _textureDefs[0]._texture.get() );
+                    OE_INFO << LC << "Installed getRenderInfo for zone \"" << zone->getName() << "\" (uid=" << zone->getUID() << ")\n";
+                }
+
+                // Next set up the elements that apply to all zones:
+                osg::StateSet* stateset = engine->getSurfaceStateSet();
+
+                // Bind the texture image unit:
+                _splatTexUniform = new osg::Uniform(SPLAT_SAMPLER, _splatTexUnit);
+                stateset->addUniform( _splatTexUniform.get() );
 
                 // coverage code sampler:
                 osg::ref_ptr<ImageLayer> coverageLayer;
@@ -173,35 +188,6 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                     osg::Shader* noiseShader = new osg::Shader(osg::Shader::FRAGMENT, noiseShaderSource);
                     vp->setShader( "oe_splat_noiseshaders", noiseShader );
                 }
-
-                // TODO: disabled biome selection temporarily because the callback impl applies the splatting shader
-                // to the land cover bin as well as the surface bin, which we do not want -- find another way
-                if ( _surface->getBiomeRegions().size() == 1 )
-                {
-                    // install his biome's texture set:
-                    stateset->setTextureAttribute(_splatTexUnit, _textureDefs[0]._texture.get());
-
-                    // install this biome's sampling function. Use cloneOrCreate since each
-                    // stateset needs a different shader set in its VP.
-                    VirtualProgram* vp = VirtualProgram::cloneOrCreate( stateset );
-                    osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, _textureDefs[0]._samplingFunction);
-                    vp->setShader( "oe_splat_getRenderInfo", shader );
-                }
-
-                else
-                {
-                    OE_WARN << LC << "Multi-biome setup needs re-implementing (reminder)\n";
-
-                    // install the cull callback that will select the appropriate
-                    // state based on the position of the camera.
-                    _biomeRegionSelector = new BiomeRegionSelector(
-                        _surface->getBiomeRegions(),
-                        _textureDefs,
-                        stateset,
-                        _splatTexUnit );
-
-                    engine->addCullCallback( _biomeRegionSelector.get() );
-                }
             }
         }
     }
@@ -224,236 +210,5 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
             engine->getResources()->releaseTextureImageUnit( _splatTexUnit );
             _splatTexUnit = -1;
         }
-
-        if ( _biomeRegionSelector.valid() )
-        {
-            engine->removeCullCallback( _biomeRegionSelector.get() );
-            _biomeRegionSelector = 0L;
-        }
     }
-}
-
-bool
-SplatTerrainEffect::createSplattingTextures(const Coverage*        coverage,
-                                            const Surface*         surface,
-                                            SplatTextureDefVector& output) const
-{
-    int numValidTextures = 0;
-
-    if ( coverage == 0L || surface == 0L )
-        return false;
-
-    const BiomeRegionVector& biomeRegions = surface->getBiomeRegions();
-
-    OE_INFO << LC << "Creating splatting textures for " << biomeRegions.size() << " biome regions\n";
-
-    // Create a texture def for each biome region.
-    for(unsigned b = 0; b < biomeRegions.size(); ++b)
-    {
-        const BiomeRegion& biomeRegion = biomeRegions[b];
-
-        // Create a texture array and lookup table for this region:
-        SplatTextureDef def;
-
-        if ( biomeRegion.getCatalog() )
-        {
-            if ( biomeRegion.getCatalog()->createSplatTextureDef(_dbo.get(), def) )
-            {
-                // install the sampling function.
-                createSplattingSamplingFunction( coverage, def );
-                numValidTextures++;
-            }
-            else
-            {
-                OE_WARN << LC << "Failed to create a texture for a catalog (" 
-                    << biomeRegion.getCatalog()->name().get() << ")\n";
-            }
-        }
-        else
-        {
-            OE_WARN << LC << "Biome Region \""
-                << biomeRegion.name().get() << "\"" 
-                << " has an empty catalog and will be ignored.\n";
-        }
-
-        // put it on the list either way, since the vector indicies of biomes
-        // and texturedefs need to line up
-        output.push_back( def );
-    }
-
-    return numValidTextures > 0;
-}
-
-#define IND "    "
-
-bool
-SplatTerrainEffect::createSplattingSamplingFunction(const Coverage*  coverage,
-                                                    SplatTextureDef& textureDef) const
-{
-    if ( !coverage || !coverage->getLegend() )
-    {
-        OE_WARN << LC << "Sampling function: illegal state (no coverage or legend); \n";
-        return false;
-    }
-
-    if ( !textureDef._texture.valid() )
-    {
-        OE_WARN << LC << "Internal: texture is not set; cannot create a sampling function\n";
-        return false;
-    }
-
-    std::stringstream
-        weightBuf,
-        primaryBuf,
-        detailBuf,
-        brightnessBuf,
-        contrastBuf,
-        thresholdBuf,
-        slopeBuf;
-
-    unsigned
-        primaryCount    = 0,
-        detailCount     = 0,
-        brightnessCount = 0,
-        contrastCount   = 0,
-        thresholdCount  = 0,
-        slopeCount      = 0;
-
-    const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
-    for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p)
-    {
-        const CoverageValuePredicate* pred = p->get();
-
-        if ( pred->_exactValue.isSet() )
-        {
-            // Look up by class name:
-            const std::string& className = pred->_mappedClassName.get();
-            const SplatLUT::const_iterator i = textureDef._splatLUT.find(className);
-            if ( i != textureDef._splatLUT.end() )
-            {
-                // found it; loop over the range selectors:
-                int selectorCount = 0;
-                const SplatSelectorVector& selectors = i->second;
-
-                OE_DEBUG << LC << "Class " << className << " has " << selectors.size() << " selectors.\n";
-
-                for(SplatSelectorVector::const_iterator selector = selectors.begin();
-                    selector != selectors.end();
-                    ++selector)
-                {
-                    const std::string&    expression = selector->first;
-                    const SplatRangeData& rangeData  = selector->second;
-
-                    std::string val = pred->_exactValue.get();
-
-                    weightBuf
-                        << IND "float w" << val
-                        << " = (1.0-clamp(abs(value-" << val << ".0),0.0,1.0));\n";
-
-                    // Primary texture index:
-                    if ( primaryCount == 0 )
-                        primaryBuf << IND "primary += ";
-                    else
-                        primaryBuf << " + ";
-
-                    // the "+1" is because "primary" starts out at -1.
-                    primaryBuf << "w"<<val << "*" << (rangeData._textureIndex + 1) << ".0";
-                    primaryCount++;
-
-                    // Detail texture index:
-                    if ( rangeData._detail.isSet() )
-                    {
-                        if ( detailCount == 0 )
-                            detailBuf << IND "detail += ";
-                        else
-                            detailBuf << " + ";
-                        // the "+1" is because "detail" starts out at -1.
-                        detailBuf << "w"<<val << "*" << (rangeData._detail->_textureIndex + 1) << ".0";
-                        detailCount++;
-
-                        if ( rangeData._detail->_brightness.isSet() )
-                        {
-                            if ( brightnessCount == 0 )
-                                brightnessBuf << IND "brightness += ";
-                            else
-                                brightnessBuf << " + ";
-                            brightnessBuf << "w"<<val << "*" << rangeData._detail->_brightness.get();
-                            brightnessCount++;
-                        }
-
-                        if ( rangeData._detail->_contrast.isSet() )
-                        {
-                            if ( contrastCount == 0 )
-                                contrastBuf << IND "contrast += ";
-                            else
-                                contrastBuf << " + ";
-                            contrastBuf << "w"<<val << "*" << rangeData._detail->_contrast.get();
-                            contrastCount++;
-                        }
-
-                        if ( rangeData._detail->_threshold.isSet() )
-                        {
-                            if ( thresholdCount == 0 )
-                                thresholdBuf << IND "threshold += ";
-                            else
-                                thresholdBuf << " + ";
-                            thresholdBuf << "w"<<val << "*" << rangeData._detail->_threshold.get();
-                            thresholdCount++;
-                        }
-
-                        if ( rangeData._detail->_slope.isSet() )
-                        {
-                            if ( slopeCount == 0 )
-                                slopeBuf << IND "slope += ";
-                            else
-                                slopeBuf << " + ";
-                            slopeBuf << "w"<<val << "*" << rangeData._detail->_slope.get();
-                            slopeCount++;
-                        }
-                    }                    
-                }
-            }
-        }
-    }
-
-    if ( primaryCount > 0 )
-        primaryBuf << ";\n";
-
-    if ( detailCount > 0 )
-        detailBuf << ";\n";
-
-    if ( brightnessCount > 0 )
-        brightnessBuf << ";\n";
-
-    if ( contrastCount > 0 )
-        contrastBuf << ";\n";
-
-    if ( thresholdCount > 0 )
-        thresholdBuf << ";\n";
-
-    if ( slopeCount > 0 )
-        slopeBuf << ";\n";
-
-    SplattingShaders splatting;
-    std::string code = ShaderLoader::load(
-        splatting.FragGetRenderInfo,
-        splatting);
-
-    std::string codeToInject = Stringify()
-        << IND
-        << weightBuf.str()
-        << primaryBuf.str()
-        << detailBuf.str()
-        << brightnessBuf.str()
-        << contrastBuf.str()
-        << thresholdBuf.str()
-        << slopeBuf.str();
-
-    osgEarth::replaceIn(code, "$COVERAGE_SAMPLING_FUNCTION", codeToInject);
-
-    textureDef._samplingFunction = code;
-
-    OE_DEBUG << LC << "Sampling function = \n" << code << "\n\n";
-
-    return true;
 }

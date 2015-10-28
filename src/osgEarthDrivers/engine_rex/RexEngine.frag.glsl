@@ -1,11 +1,11 @@
 #version 330
 
-#pragma vp_name       "REX Engine - Fragment"
-#pragma vp_entryPoint "oe_rexEngine_frag"
-#pragma vp_location   "fragment_coloring"
-#pragma vp_order      "0.5"
-#pragma vp_define     "OE_REX_GL_BLENDING"
-#pragma vp_define     "OE_REX_MORPH_IMAGERY"
+#pragma vp_name       REX Engine - Fragment
+#pragma vp_entryPoint oe_rexEngine_frag
+#pragma vp_location   fragment_coloring
+#pragma vp_order      0.5
+#pragma vp_define     OE_REX_GL_BLENDING
+#pragma vp_define     OE_REX_MORPH_IMAGERY
 
 uniform bool      oe_isPickCamera;
 uniform sampler2D oe_layer_tex;

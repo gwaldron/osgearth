@@ -36,10 +36,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     {
     public:
         RexTerrainEngineOptions( const ConfigOptions& options =ConfigOptions() ) : TerrainOptions( options ),
-            _skirtRatio             ( 0.01 ),
+            _skirtRatio             ( 0.0f ),
             _color                  ( Color::White ),
             _quickRelease           ( true ),
-            _expirationThreshold    ( 0 ),
+            _expirationThreshold    ( 300 ),
             _progressive            ( false ),
             _highResolutionFirst    ( true ),
             _normalMaps             ( true ),

@@ -31,6 +31,8 @@
 #include <osgEarth/Progress>
 #include <osgEarth/TerrainEngineNode>
 
+#include <osgUtil/CullVisitor>
+
 using namespace osgEarth;
 
 namespace osgEarth {
@@ -51,7 +53,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             Loader*                             loader,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
-            const LandCoverBins*                landCoverBins,
+            const LandCoverData*                landCoverData,
             const RenderBindings&               renderBindings,
             const RexTerrainEngineOptions&      options,
             const SelectionInfo&                selectionInfo);
@@ -70,19 +72,23 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         TileNodeRegistry* deadTiles() const { return _deadTiles.get(); }
 
-        const LandCoverBins* landCoverBins() const { return _landCoverBins; }
+        const LandCoverData* landCoverData() const { return _landCoverData; }
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
         const RexTerrainEngineOptions& getOptions() const { return _options; }
 
-        void startCull();
+        ProgressCallback* progress() const { return _progress.get(); }
 
-        void endCull();
+        void startCull(osgUtil::CullVisitor* cv);
+
+        void endCull(osgUtil::CullVisitor* cv);
 
         double getElapsedCullTime() const;
 
         bool maxLiveTilesExceeded() const;
+
+        osg::Uniform* getOrCreateMatrixUniform(const std::string& name, const osg::Matrixf& m);
 
     protected:
 
@@ -98,10 +104,15 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TerrainEngineNode*                    _terrainEngine;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
-        const LandCoverBins*                  _landCoverBins;
+        const LandCoverData*                  _landCoverData;
+        UID                                   _currentLandCoverGroup;
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;
+        osg::ref_ptr<ProgressCallback>        _progress;
+
+        typedef std::map<osg::Vec4f, osg::ref_ptr<osg::Uniform> > MatrixUniformMap;
+        MatrixUniformMap _matrixUniforms;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -24,6 +24,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/TerrainTileModelFactory>
+#include <osgEarth/TraversalData>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>
@@ -121,8 +122,14 @@ _requireElevationTextures( false ),
 _requireNormalTextures   ( false ),
 _requireParentTextures   ( false )
 {
+    // node mask for osgearth terrain
+    //setNodeMask( OSGEARTH_MASK_TERRAIN );
+
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
+
+    // So we can draw coplanar geometry on flat ground if necessary.
+    this->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
 }
 
 TerrainEngineNode::~TerrainEngineNode()

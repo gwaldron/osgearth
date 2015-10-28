@@ -67,7 +67,6 @@
     
     <extensions>
     
-        <noise/>
         <splat>        
             <coverage>
                 <layer> CLASSMAP </layer>
@@ -90,6 +89,15 @@
                 <long>-71.06130588150768</long>
                 <lat>42.35594985954756</lat>
                 <height>31.36476541217417</height>
+                <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+            </viewpoint>
+            <viewpoint name="Lake">
+                <heading>-9.40528</heading>
+                <pitch>-34.7212</pitch>
+                <range>453747m</range>
+                <long>32.78247923080883</long>
+                <lat>-1.680124158232579</lat>
+                <height>1133.724704638124</height>
                 <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
             </viewpoint>
         </viewpoints>

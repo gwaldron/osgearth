@@ -24,15 +24,11 @@
 
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
-#include "BiomeRegion"
-#include "BiomeRegionSelector"
 #include "SplatShaders"
 #include "Export"
 
 #include "Coverage"
 #include "Zone"
-//#include "Surface"
-//#include "LandCover"
 
 #include <osgEarth/TerrainEffect>
 #include <osg/Image>
@@ -70,20 +66,6 @@ namespace osgEarth { namespace Splat
         void setZones(const Zones& zones) { _zones = zones; }
         const Zones& getZones() const { return _zones; }
 
-#if 0
-        /**
-         * Set the surface rendering configuration
-         */
-        void setSurface(Surface* surface ) { _surface = surface; }
-        Surface* getSurface() const { return _surface; }
-
-        /**
-         * Sets the land cover configuration to use
-         */
-        void setLandCover(LandCover* landCover) { _landCover = landCover; }
-        LandCover* getLandCover() const { return _landCover.get(); }
-#endif
-
 
     public: // TerrainEffect interface
 
@@ -94,15 +76,6 @@ namespace osgEarth { namespace Splat
 
     protected:
         virtual ~SplatTerrainEffect() { }
-
-        bool createSplattingTextures(
-            const Coverage* coverage, 
-            const Surface*  surface, 
-            SplatTextureDefVector& output) const;
-
-        bool createSplattingSamplingFunction(
-            const Coverage*  coverage,
-            SplatTextureDef& textureDef) const;
 
         // index-aligned with the surface biome region vector:
         SplatTextureDefVector               _textureDefs;
@@ -120,18 +93,14 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<osg::Uniform>          _noiseScaleUniform;
         osg::ref_ptr<osg::Uniform>          _useBilinearUniform;
 
-        osg::ref_ptr<BiomeRegionSelector>   _biomeRegionSelector;
-
         bool                                _editMode;
         bool                                _gpuNoise;
 
         osg::ref_ptr<const osgDB::Options>  _dbo;
 
-        osg::ref_ptr<Coverage>  _coverage;
-        //osg::ref_ptr<Surface>   _surface;
-        //osg::ref_ptr<LandCover> _landCover;
+        osg::ref_ptr<Coverage>              _coverage;
 
-        Zones _zones;
+        Zones                               _zones;
 
     };
 

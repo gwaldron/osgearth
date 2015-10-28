@@ -174,10 +174,6 @@ namespace osgEarth { namespace Splat
         void setLibrary(ResourceLibrary* lib) { _lib = lib; }
         const ResourceLibrary* getLibrary() const { return _lib.get(); }
 
-        /** Land cover regions */
-//        LandCoverRegions& getRegions() { return _regions; }
-  //      const LandCoverRegions& getRegions() const { return _regions; }
-
         /** Land cover layers */
         LandCoverLayers& getLayers() { return _layers; }
         const LandCoverLayers& getLayers() const { return _layers; }

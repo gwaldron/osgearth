@@ -49,26 +49,18 @@ namespace osgEarth { namespace Splat
         optional<URI>& catalogURI() { return _catalogURI; }
         const optional<URI>& catalogURI() const { return _catalogURI; }
 
-        /** URI of the optional file defining biome-specific catalogs.
-            Define either this OR catalogURI. */
-        //optional<URI>& biomesURI() { return _biomesURI; }
-        //const optional<URI>& biomesURI() const { return _biomesURI; }
-
     protected:
         optional<URI> _catalogURI;
-        //optional<URI> _biomesURI;
 
     public:
         void fromConfig(const Config& conf) {
             conf.getIfSet("catalog", _catalogURI);
-            //conf.getIfSet("biomes",  _biomesURI);
         }
         
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.key() = "surface";
             conf.updateIfSet("catalog", _catalogURI);
-            //conf.updateIfSet("biomes",  _biomesURI);
             return conf;
         }
 

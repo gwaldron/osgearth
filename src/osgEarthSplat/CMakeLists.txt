@@ -35,8 +35,6 @@ set(TARGET_IN
     SplatShaders.cpp.in)
 
 set(TARGET_SRC
-    BiomeRegion.cpp
-	BiomeRegionSelector.cpp
     Coverage.cpp
     LandCover.cpp
     LandCoverTerrainEffect.cpp
@@ -52,8 +50,6 @@ set(TARGET_SRC
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
-    BiomeRegion
-	BiomeRegionSelector
     Coverage
 	Export
     LandCover

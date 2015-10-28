@@ -19,7 +19,6 @@
 #include "SplatExtension"
 #include "SplatCatalog"
 #include "Zone"
-#include "BiomeRegion"
 #include "SplatCoverageLegend"
 #include "SplatTerrainEffect"
 #include "LandCoverTerrainEffect"
@@ -32,12 +31,6 @@ using namespace osgEarth;
 using namespace osgEarth::Splat;
 
 #define LC "[SplatExtension] "
-
-//.........................................................................
-
-namespace
-{
-}
 
 //.........................................................................
 
@@ -109,30 +102,6 @@ SplatExtension::connect(MapNode* mapNode)
             }
         }
     }
-
-#if 0
-    osg::ref_ptr<Surface> surface;
-    if ( _options.surface().isSet() )
-    {
-        surface = new Surface();
-        if ( !surface->configure( _options.surface().get(), mapNode->getMap(), _dbo.get() ) )
-        {
-            OE_WARN << LC << "Surface data is not properly configured; surface splatting disabled.\n";
-            surface = 0L;
-        }
-    }
-
-    osg::ref_ptr<LandCover> landCover;
-    if ( _options.landCover().isSet() )
-    {
-        landCover = new LandCover();
-        if ( !landCover->configure( _options.landCover().get(), _dbo.get() ) )
-        {
-            OE_WARN << LC << "Land cover is not properly configured; land cover disabled.\n";
-            landCover = 0L;
-        }
-    }
-#endif
 
     if ( enableSurfaceEffect )
     {

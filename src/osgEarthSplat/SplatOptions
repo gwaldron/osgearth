@@ -43,14 +43,6 @@ namespace osgEarth { namespace Splat
         ZoneOptionsVector& zones() { return _zones; }
         const ZoneOptionsVector& zones() const { return _zones; }
 
-        ///** Surface rendering options */
-        //optional<SurfaceOptions>& surface() { return _surface; }
-        //const optional<SurfaceOptions>& surface() const { return _surface; }
-
-        ///** Land Cover rendering options */
-        //optional<LandCoverOptions>& landCover() { return _landCover; }
-        //const optional<LandCoverOptions>& landCover() const { return _landCover; }
-
     public:
         SplatOptions( const ConfigOptions& opt =ConfigOptions() ) : DriverConfigOptions( opt ) {
             setDriver( "splat" );
@@ -71,8 +63,6 @@ namespace osgEarth { namespace Splat
             }
             if ( !zones.empty() )
                 conf.add(zones);
-            //conf.updateObjIfSet( "surface",    _surface );
-            //conf.updateObjIfSet( "land_cover", _landCover );
             return conf;
         }
 
@@ -92,15 +82,11 @@ namespace osgEarth { namespace Splat
                     _zones.push_back( ZoneOptions(*i) );
                 }
             }
-            //conf.getObjIfSet( "surface",    _surface );
-            //conf.getObjIfSet( "land_cover", _landCover );
         }
 
         
         optional<CoverageOptions>  _coverage;
         ZoneOptionsVector          _zones;
-        //optional<SurfaceOptions>   _surface;
-        //optional<LandCoverOptions> _landCover;
     };
 
 } } // namespace osgEarth::Splat

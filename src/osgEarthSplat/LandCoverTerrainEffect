@@ -63,14 +63,6 @@ namespace osgEarth { namespace Splat
         void setCoverage(Coverage* coverage) { _coverage = coverage; }
         Coverage* getCoverage() const { return _coverage.get(); }
 
-#if 0
-        /**
-         * Sets the land cover configuration to use
-         */
-        void setLandCover(LandCover* landCover) { _landCover = landCover; }
-        LandCover* getLandCover() const { return _landCover.get(); }
-#endif
-
     public: // TerrainEffect interface
 
         void onInstall(TerrainEngineNode* engine);
@@ -85,8 +77,7 @@ namespace osgEarth { namespace Splat
 
         osg::ref_ptr<const osgDB::Options> _dbo;
 
-        osg::ref_ptr<Coverage>  _coverage;
-        //osg::ref_ptr<LandCover> _landCover;
+        osg::ref_ptr<Coverage> _coverage;
         Zones _zones;
         int _noiseTexUnit;
     };

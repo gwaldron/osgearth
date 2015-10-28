@@ -73,18 +73,7 @@
                             </layer>
                         </layers>                    
                     </land_cover>
-                </zone>
-                
-                <zone name="au" doc="Australia Climate Zone">
-                    <boundaries>
-                        <boundary xmin="112" xmax="154" ymin="-43.5" ymax="-11.16" zmax="1e6"/>
-                    </boundaries>
-                    
-                    <surface>
-                        <catalog>../data/splat/splat_catalog_au.xml</catalog>
-                    </surface>
-                </zone>
-                
+                </zone>                
             </zones>
             
         </splat>

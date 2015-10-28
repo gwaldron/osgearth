@@ -40,7 +40,7 @@
                 <cache_policy usage="no_cache"/>
             </image>
                     
-            <image name="Boston streets" driver="agglite" coverage="true" min_level="10">
+            <image name="Boston streets" driver="agglite" coverage="true" min_level="10" max_data_level="17">
                 <warp>0</warp>
                 <features driver="ogr" build_spatial_index="true">
                     <url>../data/boston-scl-utm19n-meters.shp</url>
@@ -68,18 +68,31 @@
     <extensions>
     
         <noise/>
-   
         <splat>        
             <coverage>
                 <layer> CLASSMAP </layer>
-                <legend> ../data/splat/GLOBCOVER_legend.xml </legend>
+                <legend>../data/splat/GLOBCOVER_legend.xml</legend>
             </coverage>            
-            <surface>
-                <catalog> ../data/splat/splat_catalog.xml </catalog>
-            </surface>            
+            <zones>
+                <zone name="default" doc="Default Climate Zone">            
+                    <surface>
+                        <catalog>../data/splat/splat_catalog.xml</catalog>
+                    </surface>
+                </zone>                
+            </zones>            
         </splat>
         
-        <xi:include href="viewpoints.xml"/>
+        <viewpoints>
+            <viewpoint name="Roads">
+                <heading>-1.71887</heading>
+                <pitch>-15.3643</pitch>
+                <range>2429.2m</range>
+                <long>-71.06130588150768</long>
+                <lat>42.35594985954756</lat>
+                <height>31.36476541217417</height>
+                <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+            </viewpoint>
+        </viewpoints>
         
     </extensions>
 

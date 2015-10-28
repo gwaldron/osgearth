@@ -26,6 +26,8 @@
 
 namespace osgEarth { namespace Splat
 {
+    // TODO: THIS WILL BECOME THE "SURFACE SELECTOR"
+
     /**
      * Cull callback that applies the approprate stateset based on what
      * it determines to be the active Biome.

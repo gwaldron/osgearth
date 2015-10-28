@@ -22,9 +22,16 @@
 #include <osgEarth/Common>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Horizon>
+#include <osgEarth/Containers>
 #include <osg/NodeVisitor>
 #include <osg/observer_ptr>
 #include <map>
+
+// osgEarth node masks for controlling traversals
+#define OSGEARTH_MASK_TERRAIN_SURFACE    0x01
+#define OSGEARTH_MASK_TERRAIN_LAND_COVER 0x02
+#define OSGEARTH_MASK_TERRAIN            (OSGEARTH_MASK_TERRAIN_SURFACE | OSGEARTH_MASK_TERRAIN_LAND_COVER)
+#define OSGEARTH_MASK_MAP_MODEL_GROUP    0x04
 
 namespace osgEarth
 {
@@ -33,9 +40,10 @@ namespace osgEarth
     class TraversalData : public osg::Referenced
     {
     public:
-        typedef std::map<void*, osg::ref_ptr<osg::Referenced> > UserDataMap;
+        typedef std::string KEY_TYPE;
+        typedef fast_map<KEY_TYPE, osg::ref_ptr<osg::Referenced> > UserDataMap;
 
-        template<typename T> T& getOrCreate(void* key)
+        template<typename T> T& getOrCreate(KEY_TYPE key)
         {
             UserDataMap::iterator i = _userData.find( key );
             if ( i != _userData.end() )

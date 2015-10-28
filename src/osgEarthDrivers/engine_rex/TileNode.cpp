@@ -410,26 +410,32 @@ void TileNode::cull(osg::NodeVisitor& nv)
         }
     }
 
-    // Traverse land cover bins at this LOD.
-    for(int i=0; i<context->landCoverBins()->size(); ++i)
+    // Traverse land cover data at this LOD.
+    int zoneIndex = context->_landCoverData->_currentZoneIndex;
+    if ( zoneIndex < (int)context->_landCoverData->_zones.size() )
     {
-        bool first = true;
-        const LandCoverBin& bin = context->landCoverBins()->at(i);
-        if ( bin._lod == getTileKey().getLOD() )
+        const LandCoverZone& zone = context->_landCoverData->_zones.at(zoneIndex);
+        for(int i=0; i<zone._bins.size(); ++i)
         {
-            if ( first )
+            bool pushedPayloadSS = false;
+
+            const LandCoverBin& bin = zone._bins.at(i);
+            if ( bin._lod == _key.getLOD() )
             {
-                cv->pushStateSet( _payloadStateSet.get() );
+                if ( !pushedPayloadSS )
+                {
+                    cv->pushStateSet( _payloadStateSet.get() );
+                    pushedPayloadSS = true;
+                }
+
+                cv->pushStateSet( bin._stateSet.get() ); // hopefully groups together for rendering.
+                _landCover->accept( nv );
+                cv->popStateSet();
             }
 
-            cv->pushStateSet( bin._stateSet.get() );
-            _landCover->accept( nv );
-            cv->popStateSet();
-
-            if ( first )
+            if ( pushedPayloadSS )
             {
                 cv->popStateSet();
-                first = false;
             }
         }
     }

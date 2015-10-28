@@ -67,12 +67,17 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Get the stateset used to render the terrain surface. */
         osg::StateSet* getSurfaceStateSet();
 
-        /** Get the stateset used to render land cover control patches. */
-        //osg::StateSet* getLandCoverStateSet();
+        UID addLandCoverZone();
 
-        osg::StateSet* addLandCoverGroup(const std::string& name, unsigned lod);
+        void setLandCoverGroupSelector(LandCoverGroupSelector*);
 
-        void removeLandCoverGroup(const std::string& name);
+        osg::StateSet* addLandCoverLayer(UID zoneUID, unsigned lod);
+
+        /** Adds a new land cover group and returns its state set. */
+        //osg::StateSet* addLandCoverGroup(const std::string& name, const Bounds& bounds, unsigned lod);
+
+        /** Removes a land cover group */
+        //void removeLandCoverGroup(const std::string& name);
 
     public: // internal TerrainEngineNode
 
@@ -169,8 +174,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<GeometryPool> _geometryPool;
         osg::ref_ptr<LoaderGroup>  _loader;
         
-        osg::ref_ptr<osg::Group> _surfaceGroup;
-        osg::ref_ptr<osg::Group> _landCoverGroup;
+        //osg::ref_ptr<osg::Group> _surfaceGroup;
+        //osg::ref_ptr<osg::Group> _landCoverGroup;
         osg::ref_ptr<osg::Group> _terrain;
 
         osg::Uniform* _verticalScaleUniform;
@@ -179,7 +184,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;
         osg::ref_ptr<osgUtil::RenderBin> _landCoverRenderBinPrototype;
 
-        LandCoverBins _landCoverBins;
+        LandCoverData   _landCoverData;
+        //LandCoverGroups _landCoverGroups;
+        //LandCoverBins _landCoverBins;
 
         bool _quickReleaseInstalled;
 
@@ -188,6 +195,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         SelectionInfo* _selectionInfo;
         void buildSelectionInfo(void);
         void destroySelectionInfo(void);
+
+        osg::ref_ptr<LandCoverGroupSelector> _landCoverGroupSelector;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

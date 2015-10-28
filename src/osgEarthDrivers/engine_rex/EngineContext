@@ -31,6 +31,8 @@
 #include <osgEarth/Progress>
 #include <osgEarth/TerrainEngineNode>
 
+#include <osgUtil/CullVisitor>
+
 using namespace osgEarth;
 
 namespace osgEarth {
@@ -51,7 +53,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             Loader*                             loader,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
-            const LandCoverBins*                landCoverBins,
+            const LandCoverData*                landCoverData,
             const RenderBindings&               renderBindings,
             const RexTerrainEngineOptions&      options,
             const SelectionInfo&                selectionInfo);
@@ -70,7 +72,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         TileNodeRegistry* deadTiles() const { return _deadTiles.get(); }
 
-        const LandCoverBins* landCoverBins() const { return _landCoverBins; }
+        const LandCoverData* landCoverData() const { return _landCoverData; }
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
@@ -78,9 +80,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         ProgressCallback* progress() const { return _progress.get(); }
 
-        void startCull();
+        void startCull(osgUtil::CullVisitor* cv);
 
-        void endCull();
+        void endCull(osgUtil::CullVisitor* cv);
 
         double getElapsedCullTime() const;
 
@@ -102,7 +104,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TerrainEngineNode*                    _terrainEngine;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
-        const LandCoverBins*                  _landCoverBins;
+        const LandCoverData*                  _landCoverData;
+        UID                                   _currentLandCoverGroup;
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;

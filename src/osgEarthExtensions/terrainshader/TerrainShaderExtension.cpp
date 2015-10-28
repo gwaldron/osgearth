@@ -59,9 +59,8 @@ namespace
 
             if ( _options.landCoverGroup().isSet() )
             {                
-                stateSet = engine->addLandCoverGroup(
-                    _options.landCoverGroup().get(),
-                    _options.landCoverLOD().get() );
+                UID zoneid = engine->addLandCoverZone();
+                engine->addLandCoverLayer(zoneid, _options.landCoverLOD().get());
             }
 
             else
@@ -170,7 +169,8 @@ namespace
             {
                 if ( _options.landCoverGroup().isSet() )
                 {
-                    engine->removeLandCoverGroup( _options.landCoverGroup().get() );
+                    //TODO
+                    //engine->removeLandCoverGroup( _options.landCoverGroup().get() );
                 }
             }
         }

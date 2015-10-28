@@ -333,13 +333,10 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
         addDebugNode(box);
     }
 
-    // Update the horizon culling callback.
+    // Update the horizon culler.
     if ( !_horizonCuller.valid() )
     {
         _horizonCuller = new HorizonTileCuller( _tileKey.getProfile()->getSRS(), getMatrix() );
-
-        // Don't install it; TileNode will call the culler's isVisible method directly instead
-        //setCullCallback( _horizonCuller.get() );
     }
 
     _horizonCuller->set( box );

@@ -80,20 +80,23 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             return;
         }
 
-        if ( !_surface.valid() )
+        bool splattingOK = false;
+
+        for(Zones::const_iterator z = _zones.begin(); z != _zones.end(); ++z)
         {
-            OE_WARN << LC << "Note: no surface information available\n";
+            Zone* zone = z->get();
+            Surface* surface = zone->getSurface();
+            if ( surface )
+            {
+                if ( surface->loadTextures(_coverage.get(), _dbo.get()) )
+                {
+                    splattingOK = true;
+                }
+            }
         }
 
-        // First, create a surface splatting texture array for each biome region.
-        if ( _coverage.valid() && _surface.valid() )
+        if ( splattingOK )
         {
-            if ( createSplattingTextures(_coverage.get(), _surface.get(), _textureDefs) == false )
-            {
-                OE_WARN << LC << "Failed to create any valid splatting textures\n";
-                return;
-            }
-            
             // First install a shared noise texture.
             if ( _gpuNoise == false )
             {
@@ -113,17 +116,30 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
             // Set up surface splatting:
             if ( engine->getResources()->reserveTextureImageUnit(_splatTexUnit, "Splat Coverage Data") )
             {
-                osg::StateSet* stateset;
+                // Set up the zone-specific elements:
+                for(Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)
+                {
+                    Zone* zone = z->get();
 
-                if ( _surface->getBiomeRegions().size() == 1 )
-                    stateset = engine->getSurfaceStateSet();
-                else
-                    stateset = new osg::StateSet();
+                    // The texture array for the zone:
+                    const SplatTextureDef& texdef = zone->getSurface()->getTextureDef();
+                    osg::StateSet* zoneStateset = zone->getOrCreateStateSet();
+                    zoneStateset->setTextureAttribute( _splatTexUnit, texdef._texture.get() );
+                    
+                    // The zone's sampling function:
+                    VirtualProgram* vp = VirtualProgram::cloneOrCreate( zoneStateset );
+                    osg::Shader* shader = new osg::Shader(osg::Shader::FRAGMENT, texdef._samplingFunction);
+                    vp->setShader( "oe_splat_getRenderInfo", shader );
 
-                // surface splatting texture array:
-                _splatTexUniform = stateset->getOrCreateUniform( SPLAT_SAMPLER, osg::Uniform::SAMPLER_2D_ARRAY );
-                _splatTexUniform->set( _splatTexUnit );
-                stateset->setTextureAttribute( _splatTexUnit, _textureDefs[0]._texture.get() );
+                    OE_INFO << LC << "Installed getRenderInfo for zone \"" << zone->getName() << "\" (uid=" << zone->getUID() << ")\n";
+                }
+
+                // Next set up the elements that apply to all zones:
+                osg::StateSet* stateset = engine->getSurfaceStateSet();
+
+                // Bind the texture image unit:
+                _splatTexUniform = new osg::Uniform(SPLAT_SAMPLER, _splatTexUnit);
+                stateset->addUniform( _splatTexUniform.get() );
 
                 // coverage code sampler:
                 osg::ref_ptr<ImageLayer> coverageLayer;
@@ -174,6 +190,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                     vp->setShader( "oe_splat_noiseshaders", noiseShader );
                 }
 
+#if 0
                 // TODO: disabled biome selection temporarily because the callback impl applies the splatting shader
                 // to the land cover bin as well as the surface bin, which we do not want -- find another way
                 if ( _surface->getBiomeRegions().size() == 1 )
@@ -202,6 +219,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
 
                     engine->addCullCallback( _biomeRegionSelector.get() );
                 }
+#endif
             }
         }
     }
@@ -233,6 +251,7 @@ SplatTerrainEffect::onUninstall(TerrainEngineNode* engine)
     }
 }
 
+#if 0
 bool
 SplatTerrainEffect::createSplattingTextures(const Coverage*        coverage,
                                             const Surface*         surface,
@@ -457,3 +476,4 @@ SplatTerrainEffect::createSplattingSamplingFunction(const Coverage*  coverage,
 
     return true;
 }
+#endif

@@ -17,9 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "Surface"
-#include "BiomeRegion"
+#include "SplatCatalog"
+#include "SplatShaders"
 #include <osgEarth/Map>
-#include <osgEarth/XmlUtils>
 #include <osgDB/Options>
 
 using namespace osgEarth;
@@ -32,77 +32,221 @@ Surface::Surface()
     //nop
 }
 
-void
-Surface::setCatalog(SplatCatalog* catalog)
-{
-    _biomeRegions.clear();
-    if ( catalog )
-    {
-        _biomeRegions.push_back( BiomeRegion() );
-        BiomeRegion& br = _biomeRegions.back();
-        br.setCatalog( catalog );
-    }
-}
-
-SplatCatalog*
-Surface::getCatalog() const
-{
-    return _biomeRegions.size() > 0 ? _biomeRegions.front().getCatalog() : 0L;
-}
-
 bool
 Surface::configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo)
 {
     SurfaceOptions in(conf);
 
-    _biomeRegions.clear();
-    
-    if ( in.biomesURI().isSet() )
+    // Read in the catalog.
+    _catalog = SplatCatalog::read( in.catalogURI().get(), dbo );
+    if ( !_catalog.valid() )
     {
-        osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in.biomesURI().get(), dbo );
-        if ( doc.valid() )
+        OE_WARN << LC << "Failed to read catalog for surface\n";
+        return false;
+    }
+    
+    return true;
+}
+
+bool
+Surface::loadTextures(const Coverage* coverage, const osgDB::Options* dbo)
+{
+    int numValidTextures = 0;
+
+    if ( coverage == 0L || !_catalog.valid() )
+        return false;
+
+    if ( _catalog->createSplatTextureDef(dbo, _textureDef) )
+    {
+        // loaded, now create a sampling function.
+        std::string code;
+        if ( !createGLSLSamplingCode(coverage, code) )
         {
-            Config conf = doc->getConfig().child("biomes");
-            if ( !conf.empty() )
+            OE_WARN << LC << "Failed to generate sampling code\n";
+            return false;
+        }
+
+        _textureDef._samplingFunction = code;
+    }
+    else
+    {
+        OE_WARN << LC << "Failed to create a texture for a catalog (" << _catalog->name().get() << ")\n";
+        return false;
+    }
+
+    return true;
+}
+
+#undef  IND
+#define IND "    "
+
+bool
+Surface::createGLSLSamplingCode(const Coverage* coverage, std::string& output) const
+{
+    if ( !coverage )
+    {
+        OE_WARN << LC << "Sampling function: illegal state (no coverage or legend); \n";
+        return false;
+    }
+
+    if ( !_textureDef._texture.valid() )
+    {
+        OE_WARN << LC << "Internal: texture is not set; cannot create a sampling function\n";
+        return false;
+    }
+
+    std::stringstream
+        weightBuf,
+        primaryBuf,
+        detailBuf,
+        brightnessBuf,
+        contrastBuf,
+        thresholdBuf,
+        slopeBuf;
+
+    unsigned
+        primaryCount    = 0,
+        detailCount     = 0,
+        brightnessCount = 0,
+        contrastCount   = 0,
+        thresholdCount  = 0,
+        slopeCount      = 0;
+
+    const SplatCoverageLegend::Predicates& preds = coverage->getLegend()->getPredicates();
+    for(SplatCoverageLegend::Predicates::const_iterator p = preds.begin(); p != preds.end(); ++p)
+    {
+        const CoverageValuePredicate* pred = p->get();
+
+        if ( pred->_exactValue.isSet() )
+        {
+            // Look up by class name:
+            const std::string& className = pred->_mappedClassName.get();
+            const SplatLUT::const_iterator i = _textureDef._splatLUT.find(className);
+            if ( i != _textureDef._splatLUT.end() )
             {
-                for(ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+                // found it; loop over the range selectors:
+                int selectorCount = 0;
+                const SplatSelectorVector& selectors = i->second;
+
+                OE_DEBUG << LC << "Class " << className << " has " << selectors.size() << " selectors.\n";
+
+                for(SplatSelectorVector::const_iterator selector = selectors.begin();
+                    selector != selectors.end();
+                    ++selector)
                 {
-                    BiomeRegion br;
-                    if ( br.configure(*i) )
+                    const std::string&    expression = selector->first;
+                    const SplatRangeData& rangeData  = selector->second;
+
+                    std::string val = pred->_exactValue.get();
+
+                    weightBuf
+                        << IND "float w" << val
+                        << " = (1.0-clamp(abs(value-" << val << ".0),0.0,1.0));\n";
+
+                    // Primary texture index:
+                    if ( primaryCount == 0 )
+                        primaryBuf << IND "primary += ";
+                    else
+                        primaryBuf << " + ";
+
+                    // the "+1" is because "primary" starts out at -1.
+                    primaryBuf << "w"<<val << "*" << (rangeData._textureIndex + 1) << ".0";
+                    primaryCount++;
+
+                    // Detail texture index:
+                    if ( rangeData._detail.isSet() )
                     {
-                        if ( br.catalogURI().isSet() )
+                        if ( detailCount == 0 )
+                            detailBuf << IND "detail += ";
+                        else
+                            detailBuf << " + ";
+                        // the "+1" is because "detail" starts out at -1.
+                        detailBuf << "w"<<val << "*" << (rangeData._detail->_textureIndex + 1) << ".0";
+                        detailCount++;
+
+                        if ( rangeData._detail->_brightness.isSet() )
                         {
-                            SplatCatalog* catalog = SplatCatalog::read( br.catalogURI().get(), dbo );
-                            if ( catalog )
-                            {
-                                br.setCatalog( catalog );
-                                _biomeRegions.push_back( br );
-                            }
+                            if ( brightnessCount == 0 )
+                                brightnessBuf << IND "brightness += ";
+                            else
+                                brightnessBuf << " + ";
+                            brightnessBuf << "w"<<val << "*" << rangeData._detail->_brightness.get();
+                            brightnessCount++;
                         }
-                    }
+
+                        if ( rangeData._detail->_contrast.isSet() )
+                        {
+                            if ( contrastCount == 0 )
+                                contrastBuf << IND "contrast += ";
+                            else
+                                contrastBuf << " + ";
+                            contrastBuf << "w"<<val << "*" << rangeData._detail->_contrast.get();
+                            contrastCount++;
+                        }
+
+                        if ( rangeData._detail->_threshold.isSet() )
+                        {
+                            if ( thresholdCount == 0 )
+                                thresholdBuf << IND "threshold += ";
+                            else
+                                thresholdBuf << " + ";
+                            thresholdBuf << "w"<<val << "*" << rangeData._detail->_threshold.get();
+                            thresholdCount++;
+                        }
+
+                        if ( rangeData._detail->_slope.isSet() )
+                        {
+                            if ( slopeCount == 0 )
+                                slopeBuf << IND "slope += ";
+                            else
+                                slopeBuf << " + ";
+                            slopeBuf << "w"<<val << "*" << rangeData._detail->_slope.get();
+                            slopeCount++;
+                        }
+                    }                    
                 }
             }
         }
     }
 
-    // Otherwise, no biome file, so read a single catalog directly:
-    if ( _biomeRegions.empty() )
-    {
-        // Read in the catalog.
-        SplatCatalog* catalog = SplatCatalog::read( in.catalogURI().get(), dbo );
-        if ( catalog )
-        {
-            _biomeRegions.push_back( BiomeRegion() );
-            _biomeRegions.back().setCatalog( catalog );
+    if ( primaryCount > 0 )
+        primaryBuf << ";\n";
 
-            OE_INFO << LC << "Read biome data from catalog file\n";
-        }
-    }
+    if ( detailCount > 0 )
+        detailBuf << ";\n";
 
-    else
-    {
-        OE_INFO << LC << "Read " << _biomeRegions.size() << " biome regions from biomes file\n";
-    }
-    
+    if ( brightnessCount > 0 )
+        brightnessBuf << ";\n";
+
+    if ( contrastCount > 0 )
+        contrastBuf << ";\n";
+
+    if ( thresholdCount > 0 )
+        thresholdBuf << ";\n";
+
+    if ( slopeCount > 0 )
+        slopeBuf << ";\n";
+
+    SplattingShaders splatting;
+    std::string code = ShaderLoader::load(
+        splatting.FragGetRenderInfo,
+        splatting);
+
+    std::string codeToInject = Stringify()
+        << IND
+        << weightBuf.str()
+        << primaryBuf.str()
+        << detailBuf.str()
+        << brightnessBuf.str()
+        << contrastBuf.str()
+        << thresholdBuf.str()
+        << slopeBuf.str();
+
+    osgEarth::replaceIn(code, "$COVERAGE_SAMPLING_FUNCTION", codeToInject);
+
+    output = code;
+
+    OE_DEBUG << LC << "Sampling function = \n" << code << "\n\n";
+
     return true;
 }

@@ -17,6 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "EngineContext"
+#include "TileNodeRegistry"
+#include <osgEarth/TraversalData>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
@@ -34,7 +36,7 @@ EngineContext::EngineContext(const Map*                     map,
                              Loader*                        loader,
                              TileNodeRegistry*              liveTiles,
                              TileNodeRegistry*              deadTiles,
-                             const LandCoverBins*           landCoverBins,
+                             const LandCoverData*           landCoverData,
                              const RenderBindings&          renderBindings,
                              const RexTerrainEngineOptions& options,
                              const SelectionInfo&           selectionInfo) :
@@ -44,7 +46,7 @@ _geometryPool  ( geometryPool ),
 _loader        ( loader ),
 _liveTiles     ( liveTiles ),
 _deadTiles     ( deadTiles ),
-_landCoverBins ( landCoverBins ),
+_landCoverData ( landCoverData ),
 _renderBindings( renderBindings ),
 _options       ( options ),
 _selectionInfo ( selectionInfo )
@@ -53,7 +55,7 @@ _selectionInfo ( selectionInfo )
 }
 
 void
-EngineContext::startCull()
+EngineContext::startCull(osgUtil::CullVisitor* cv)
 {
     _tick = osg::Timer::instance()->tick();
     _tilesLastCull = _liveTiles->size();
@@ -71,7 +73,7 @@ EngineContext::getElapsedCullTime() const
 }
 
 void
-EngineContext::endCull()
+EngineContext::endCull(osgUtil::CullVisitor* cv)
 {
     double tms = 1000.0 * getElapsedCullTime();
     int tileDelta = _liveTiles->size() - _tilesLastCull;

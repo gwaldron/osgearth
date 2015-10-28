@@ -13,6 +13,50 @@ using namespace osgEarth::Symbology;
 
 #define LC "[LandCover] "
 
+#if 0
+bool
+LandCoverRegion::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
+{
+    LandCoverRegionOptions in( conf );
+    
+    if ( in.library().isSet() )
+    {
+        _lib = new ResourceLibrary( "default", in.library().get() );
+        if ( !_lib->initialize( dbo ) )
+        {
+            OE_WARN << LC << "Failed to load resource library \"" << in.library()->full() << "\"\n";
+            return false;
+        }
+    }
+
+    if ( in.layers().empty() )
+    {
+        OE_WARN << LC << "No land cover layers defined\n";
+        return false;
+    }
+    else
+    {
+        for(int i=0; i<in.layers().size(); ++i)
+        {
+            osg::ref_ptr<LandCoverLayer> layer = new LandCoverLayer();
+
+            if ( layer->configure( in.layers().at(i), dbo ) )
+            {
+                _layers.push_back( layer.get() );
+                OE_INFO << LC << "Configured land cover layer \"" << layer->getName() << "\"\n";
+            }
+            else
+            {
+                OE_WARN << LC << "Land cover layer \"" << layer->getName() << "\" is improperly configured\n";
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+#endif
+//............................................................................
 
 bool
 LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
@@ -55,6 +99,7 @@ LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
 
     return true;
 }
+
 
 //............................................................................
 

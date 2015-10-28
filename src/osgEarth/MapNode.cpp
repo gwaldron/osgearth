@@ -740,6 +740,17 @@ MapNode::traverse( osg::NodeVisitor& nv )
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
         if ( cv )
         {
+#if 1
+            osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
+            
+            TraversalData* data = new TraversalData();
+            cv->setUserData( data );
+            
+            std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
+
+            cv->setUserData( oldUserData.get() );
+#else
+
             // insert traversal data for this camera:
             osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
             MapNodeCullData* cullData = getCullData( cv->getCurrentCamera() );
@@ -782,6 +793,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
             // restore:
             cv->setUserData( oldUserData.get() );
+#endif
         }
     }
 

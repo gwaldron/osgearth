@@ -18,6 +18,7 @@
  */
 #include "SplatExtension"
 #include "SplatCatalog"
+#include "Zone"
 #include "BiomeRegion"
 #include "SplatCoverageLegend"
 #include "SplatTerrainEffect"
@@ -85,6 +86,31 @@ SplatExtension::connect(MapNode* mapNode)
         }
     }
 
+    bool enableSurfaceEffect = false;
+    bool enableLandCoverEffect = false;
+
+    // Zone definitions
+    Zones zones;
+    for(int i=0; i<_options.zones().size(); ++i)
+    {
+        osg::ref_ptr<Zone> zone = new Zone();
+        if ( zone->configure(_options.zones().at(i), mapNode->getMap(), _dbo.get()) )
+        {
+            zones.push_back( zone.get() );
+
+            if ( zone->getSurface() != 0L )
+            {
+                enableSurfaceEffect = true;
+            }
+
+            if ( zone->getLandCover() != 0L )
+            {
+                enableLandCoverEffect = true;
+            }
+        }
+    }
+
+#if 0
     osg::ref_ptr<Surface> surface;
     if ( _options.surface().isSet() )
     {
@@ -106,26 +132,33 @@ SplatExtension::connect(MapNode* mapNode)
             landCover = 0L;
         }
     }
+#endif
 
-    if ( surface.valid() )
+    if ( enableSurfaceEffect )
     {
+        OE_INFO << LC << "Enabling the surface splatting effect\n";
         _splatEffect = new SplatTerrainEffect();
         _splatEffect->setDBOptions( _dbo.get() );
+        _splatEffect->setZones( zones );
         _splatEffect->setCoverage( coverage.get() );
-        _splatEffect->setSurface( surface.get() );
 
         mapNode->getTerrainEngine()->addEffect( _splatEffect.get() );
     }
 
-    if ( landCover.valid() )
+    if ( enableLandCoverEffect )
     {
+        OE_INFO << LC << "Enabling the land cover effect\n";
         _landCoverEffect = new LandCoverTerrainEffect();
         _landCoverEffect->setDBOptions( _dbo.get() );
+        _landCoverEffect->setZones( zones );
         _landCoverEffect->setCoverage( coverage.get() );
-        _landCoverEffect->setLandCover( landCover.get() );
         
         mapNode->getTerrainEngine()->addEffect( _landCoverEffect.get() );
     }
+
+    // Install the zone switcher; this will select the best zone based on
+    // the camera position.
+    mapNode->getTerrainEngine()->addCullCallback( new ZoneSwitcher(zones) );
 
     return true;
 }

@@ -74,9 +74,7 @@ public:
 
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {
-        unsigned w, h;
-        query.tileKey()->getProfile()->getNumTiles( query.tileKey()->getLevelOfDetail(), w, h );      
-        TileKey key = TileKey(query.tileKey()->getLevelOfDetail(), query.tileKey()->getTileX(), h - query.tileKey()->getTileY() -1, query.tileKey()->getProfile() );
+        TileKey key = *query.tileKey();
 
 #if 0
         // Debug

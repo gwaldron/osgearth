@@ -69,9 +69,6 @@ namespace osgEarth { namespace Splat
         LandCoverBillboards& getBillboards() { return _billboards; }
         const LandCoverBillboards& getBillboards() const { return _billboards; }
 
-        /** Build a shader that tests against the classes for this biome. */
-        osg::Shader* createPredicateShader(const Coverage* coverage) const;
-
     protected:
         virtual ~LandCoverBiome() { }
 

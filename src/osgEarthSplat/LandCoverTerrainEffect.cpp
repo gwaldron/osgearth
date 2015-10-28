@@ -116,7 +116,7 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                         const LandCoverLayer* layer = i->get();
                         if ( layer )
                         {
-                            if ( !layer->getBiomes().empty() )
+                            if ( !layer->getBiomes().empty() || layer->getTotalNumBillboards() > 0 )
                             {
                                 osg::StateSet* stateset = engine->addLandCoverLayer( zone->getUID(), layer->getLOD() );
                                 if ( stateset )
@@ -208,7 +208,7 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                             }
                             else
                             {
-                                OE_WARN << LC << "ILLEGAL: land cover layer with no biomes defined\n";
+                                OE_WARN << LC << "ILLEGAL: land cover layer with no biomes or no billboards defined\n";
                             }
                         }
                         else

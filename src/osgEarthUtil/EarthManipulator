@@ -1038,8 +1038,8 @@ namespace osgEarth { namespace Util
             CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }
             virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) { 
                 osg::ref_ptr<EarthManipulator> m;
-                if ( _m.lock(m) ) m->postUpdate();
                 traverse(node,nv);
+                if ( _m.lock(m) ) m->postUpdate();
             }
             osg::observer_ptr<EarthManipulator> _m;
         };

@@ -215,6 +215,13 @@ TMSTileSource::createImage(const TileKey&    key,
                 }
             }
         }
+        
+        if (image.valid() && _options.coverage() == true)
+        {
+            image->setInternalTextureFormat(GL_LUMINANCE32F_ARB);
+            ImageUtils::markAsUnNormalized(image, true);
+        }
+
         return image.release();
     }
     return 0;

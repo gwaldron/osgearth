@@ -1509,11 +1509,12 @@ public:
                     image->allocateImage( tileSize, tileSize, 1, GL_LUMINANCE, glDataType );
                     image->setInternalTextureFormat( internalFormat );
                     ImageUtils::markAsUnNormalized( image, true );
+                    memset(image->data(), 0, image->getImageSizeInBytes());
                     
                     // coverage data; one channel data that is not subject to interpolated values
-                    int xbytes = target_width *  gdalSampleSize;
-                    int ybytes = target_height * gdalSampleSize;
-                    unsigned char* data = new unsigned char[xbytes * ybytes];
+                    unsigned char* data = new unsigned char[target_width * target_height * gdalSampleSize];
+                    memset(data, 0, target_width * target_height * gdalSampleSize);
+
                     osg::Vec4 temp;
 
                     int success;
@@ -1521,7 +1522,7 @@ public:
                     if ( !success )
                         nodata = getOptions().noDataValue().get();
 
-                    CPLErr err = bandGray->RasterIO(GF_Read, off_x, off_y, width, height, data, target_width, target_height, gdalDataType, 1, 0);
+                    CPLErr err = bandGray->RasterIO(GF_Read, off_x, off_y, width, height, data, target_width, target_height, gdalDataType, 0, 0);
                     if ( err == CE_None )
                     {
                         ImageUtils::PixelWriter write(image);

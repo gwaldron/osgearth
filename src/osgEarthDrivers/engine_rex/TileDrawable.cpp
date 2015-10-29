@@ -371,16 +371,16 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
             int i10 = i00 + 1;
             int i01 = i00 + _tileSize;
             int i11 = i01 + 1;
-
-            osg::Vec3d v00 = verts[i00] + normals[i00] * _heightCache[i00];
-            osg::Vec3d v01 = verts[i01] + normals[i01] * _heightCache[i01];
-
-            f.vertex( v00 );
-            f.vertex( v01 );
-            f.vertex( verts[i10] + normals[i10] * _heightCache[i10] );
             
+            osg::Vec3d v01 = verts[i01] + normals[i01] * _heightCache[i01];
+            osg::Vec3d v10 = verts[i00] + normals[i00] * _heightCache[i00];
+
+            f.vertex( verts[i00] + normals[i00] * _heightCache[i00] );
             f.vertex( v01 );
-            f.vertex( v00 );
+            f.vertex( v10 );
+            
+            f.vertex( v10 );
+            f.vertex( v01 );
             f.vertex( verts[i11] + normals[i11] * _heightCache[i11] );
         }
     }

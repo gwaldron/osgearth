@@ -317,12 +317,12 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
             OE_WARN << LC << "Precision loss in tile " << _key.str() << "\n";
         }
     
-        for(int t=0; t<_tileSize-1; ++t)
+        for(int t=0; t<_tileSize; ++t)
         {
             float v = (float)t / (float)(_tileSize-1);
             v = v*scaleV + biasV;
 
-            for(int s=0; s<_tileSize-1; ++s)
+            for(int s=0; s<_tileSize; ++s)
             {
                 float u = (float)s / (float)(_tileSize-1);
                 u = u*scaleU + biasU;

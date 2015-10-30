@@ -789,12 +789,6 @@ EarthManipulator::setNode(osg::Node* node)
         _mapNode = 0L;
         _srs     = 0L;
 
-        if ( _viewCamera.valid() && _cameraUpdateCB.valid() )
-        {
-            _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
-            _cameraUpdateCB = 0L;
-        }
-
         _viewCamera = 0L;
 
         reinitialize();
@@ -1507,47 +1501,22 @@ EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa, bool flushEventStack 
 // support OSG's "ON_DEMAND" frame scheme, which disables itself is there are any
 // update callbacks in the scene graph.
 void
-EarthManipulator::updateCamera( osg::Camera* eventCamera )
+EarthManipulator::updateProjection( osg::Camera* eventCamera )
 {
     // Take a temporary ref to the observer pointers to keep them around.
-    osg::ref_ptr< osg::Camera > viewCamera = _viewCamera.get();
-    osg::ref_ptr< osg::NodeCallback > cameraUpdateCB = _cameraUpdateCB.get();
-    
-
-    // check to see if the camera has changed, and update the callback if necessary
-    if ( _viewCamera.get() != eventCamera )
-    {
-        if ( _cameraUpdateCB.valid() && _viewCamera.valid() )
-            _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
-
-        _viewCamera = eventCamera;
-
-        if ( _cameraUpdateCB.valid() && _viewCamera.valid() )
-            _viewCamera->addUpdateCallback( _cameraUpdateCB.get() );
-    }
+    osg::ref_ptr< osg::Camera > viewCamera;
 
     // check to see if we need to install a new camera callback:
-    if ( _viewCamera.valid() )
+    if ( _viewCamera.lock(viewCamera) )
     {
-        if ( isTethering() && !_cameraUpdateCB.valid() )
-        {
-            _cameraUpdateCB = new CameraPostUpdateCallback(this);
-            _viewCamera->addUpdateCallback( _cameraUpdateCB.get() );
-        }
-        else if ( !isTethering() && _cameraUpdateCB.valid() )
-        {
-            _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
-            _cameraUpdateCB = 0L;
-        }
-
         // check whether a settings change requires an update:
         bool settingsChanged = _settings->outOfSyncWith(_viewCameraSettingsMonitor);
 
         // update the projection matrix if necessary
-        osg::Viewport* vp = _viewCamera->getViewport();
+        osg::Viewport* vp = viewCamera->getViewport();
         if ( vp )
         {
-            const osg::Matrixd& proj = _viewCamera->getProjectionMatrix();
+            const osg::Matrixd& proj = viewCamera->getProjectionMatrix();
             bool isOrtho = osg::equivalent(proj(3,3), 1.0);
 
             // For a perspective camera, remember the last known VFOV. We will need it if we 
@@ -1555,7 +1524,7 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
             if ( !isOrtho )
             {
                 double vfov, ar, zn, zf;
-                if (_viewCamera->getProjectionMatrixAsPerspective(vfov, ar, zn, zf))
+                if (viewCamera->getProjectionMatrixAsPerspective(vfov, ar, zn, zf))
                 {
                     _vfov = vfov;
                 }
@@ -1586,7 +1555,7 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
 #else
                 double ignore, N, F;
                 proj.getOrtho(ignore, ignore, ignore, ignore, N, F);
-                _viewCamera->setProjectionMatrixAsOrtho( -x, +x, -y, +y, N, F );
+                viewCamera->setProjectionMatrixAsOrtho( -x, +x, -y, +y, N, F );
 #endif
 
                 //OE_WARN << "ORTHO: "
@@ -1613,7 +1582,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
     // make sure the camera callback is up to date:
     osg::View* view = aa.asView();
-    updateCamera( view->getCamera() );
+    updateProjection( view->getCamera() );
 
     double time_s_now = osg::Timer::instance()->time_s();
 
@@ -1897,12 +1866,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     }
 
     return handled;
-}
-
-void
-EarthManipulator::postUpdate()
-{
-    updateTether();
 }
 
 namespace
@@ -2344,6 +2307,19 @@ EarthManipulator::getInverseMatrix() const
            osg::Matrixd::rotate   (_tetherRotation.inverse()) *
            osg::Matrixd::rotate   (_rotation.inverse()) *
            osg::Matrixd::translate(-_viewOffset.x(), -_viewOffset.y(), -_distance);
+}
+
+void
+EarthManipulator::updateCamera(osg::Camera& camera)
+{
+    // update the camera to reflect the current tether node
+    if ( isTethering() )
+    {
+        updateTether();
+    }
+
+    // then update the camera as usual.
+    osgGA::CameraManipulator::updateCamera(camera);
 }
 
 void

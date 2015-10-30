@@ -95,10 +95,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const TileKey&        key,
             const RenderBindings& bindings,
             osg::Geometry*        geometry,
-            int                   tileSize);
+            int                   tileSize,
+            int                   skirtSize);
 
         // whether to draw this as a multi-image geometry or as a tesselation patch.
-        void setDrawAsPatches(bool value, int skirtSize =0) { _drawPatch = value; _skirtSize = skirtSize; }
+        void setDrawAsPatches(bool value) { _drawPatch = value; }
 
         /** Sets the multipass texture to use when rendering geometry. */
         void setMPTexture(MPTexture* tex) { _mptex = tex; }

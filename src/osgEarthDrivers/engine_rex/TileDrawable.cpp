@@ -42,14 +42,15 @@ static unsigned s_functors = 0;
 TileDrawable::TileDrawable(const TileKey&        key,
                            const RenderBindings& bindings,
                            osg::Geometry*        geometry,
-                           int                   tileSize) :
+                           int                   tileSize,
+                           int                   skirtSize) :
 osg::Drawable( ),
 _key         ( key ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
 _tileSize    ( tileSize ),
 _drawPatch   ( false ),
-_skirtSize   ( 0 )
+_skirtSize   ( skirtSize )
 {
     setUseVertexBufferObjects( true );
     setUseDisplayList( false );
@@ -89,7 +90,7 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
         const osg::Camera* camera = renderInfo.getCurrentCamera();
 
         bool renderColor =
-            (camera->getRenderOrder() != osg::Camera::PRE_RENDER) ||
+            //(camera->getRenderOrder() != osg::Camera::PRE_RENDER) ||
             ((camera->getClearMask() & GL_COLOR_BUFFER_BIT) != 0L);
 
         drawSurface( renderInfo, renderColor );

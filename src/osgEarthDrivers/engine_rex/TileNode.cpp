@@ -86,7 +86,8 @@ TileNode::create(const TileKey& key, EngineContext* context)
         key, 
         context->getRenderBindings(), 
         geom.get(),
-        context->getOptions().tileSize().get() );
+        context->getOptions().tileSize().get(),
+        context->getGeometryPool()->getNumSkirtElements() );
 
     surfaceDrawable->setDrawAsPatches(false);
 
@@ -110,10 +111,10 @@ TileNode::create(const TileKey& key, EngineContext* context)
         key, 
         context->getRenderBindings(),
         geom.get(),
-        context->getOptions().tileSize().get() );
+        context->getOptions().tileSize().get(),
+        context->getGeometryPool()->getNumSkirtElements() );
     
-    int skirtSize = context->getGeometryPool()->getSkirtSize();
-    patchDrawable->setDrawAsPatches(true, skirtSize);
+    patchDrawable->setDrawAsPatches(true);
 
     // And a node to house that as well:
     _landCover = new SurfaceNode(

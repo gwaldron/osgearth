@@ -58,6 +58,9 @@ namespace osgEarth
         optional<int>& renderOrder() { return _renderOrder; }
         const optional<int>& renderOrder() const { return _renderOrder; }
 
+        optional<std::string>& renderBin() { return _renderBin; }
+        const optional<std::string>& renderBin() const { return _renderBin; }
+
         /** whether to read the depth buffer when rendering */
         optional<bool>& depthTestEnabled() { return _depthTestEnabled; }
         const optional<bool>& depthTestEnabled() const { return _depthTestEnabled; }
@@ -73,6 +76,7 @@ namespace osgEarth
 
         optional<float> _minRange, _maxRange;
         optional<int> _renderOrder;
+        optional<std::string> _renderBin;
         optional<bool> _depthTestEnabled;
         optional<bool> _overlay;
     };

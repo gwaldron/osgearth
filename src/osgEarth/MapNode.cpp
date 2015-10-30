@@ -298,7 +298,7 @@ MapNode::init()
     // model layer will still work OK though.
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
-    //_models->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
+    _models->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
     addChild( _models.get() );
 
     // a decorator for overlay models:

@@ -255,11 +255,17 @@ namespace
         buf << "#pragma vp_varying";
         if ( !prefix.empty() )
             buf << " " << prefix;
-        for(int i=offset; i<tokens.size(); ++i) {
-            if ( tokens[i].back() == ';' )
-                buf << (i==offset&&prefix.empty()?"":" ") << tokens[i].substr(0, tokens[i].length()-1); // strip semicolon
-            else
-                buf << (i==offset&&prefix.empty()?"":" ") << tokens[i];
+
+        for(int i=offset; i<tokens.size(); ++i)
+        {
+            if ( !tokens[i].empty() )
+            {
+                int len = tokens[i].length();
+                if ( tokens[i].at(len-1) == ';' )
+                    buf << (i==offset&&prefix.empty()?"":" ") << tokens[i].substr(0, len-1); // strip semicolon
+                else
+                    buf << (i==offset&&prefix.empty()?"":" ") << tokens[i];
+            }
         }
         
         chunks[index].glsl_chunk_text = buf.str();

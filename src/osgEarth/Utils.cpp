@@ -619,3 +619,36 @@ AllocateAndMergeBufferObjectsVisitor::apply(osg::Geode& geode)
     }
     traverse(geode);
 }
+
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    unsigned getTotalNumRenderLeavesInStateGraph(const osgUtil::StateGraph* sg)
+    {
+        unsigned count = sg->_leaves.size();
+        for(osgUtil::StateGraph::ChildList::const_iterator i = sg->_children.begin(); i != sg->_children.end(); ++i)
+            count += getTotalNumRenderLeavesInStateGraph( i->second.get() );
+        return count;
+    }
+}
+
+unsigned
+RenderBinUtils::getTotalNumRenderLeaves(osgUtil::RenderBin* bin)
+{
+    if ( !bin ) return 0u;
+    unsigned count = bin->getRenderLeafList().size();
+
+    for(osgUtil::RenderBin::StateGraphList::const_iterator i = bin->getStateGraphList().begin(); i != bin->getStateGraphList().end(); ++i)
+    {
+        count += getTotalNumRenderLeavesInStateGraph( *i );
+    }
+
+    for(osgUtil::RenderBin::RenderBinList::const_iterator i = bin->getRenderBinList().begin(); i != bin->getRenderBinList().end(); ++i)
+    {
+        count += getTotalNumRenderLeaves( i->second.get() );
+    }
+
+    return count;
+}

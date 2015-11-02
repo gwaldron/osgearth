@@ -55,7 +55,11 @@ void ElevationQueryCacheReadCallback::pruneUnusedDatabaseCache()
 {
 }
 
+#if defined(OSG_VERSION_GREATER_OR_EQUAL) && OSG_VERSION_GREATER_OR_EQUAL(2,5,0)
+osg::ref_ptr<osg::Node> ElevationQueryCacheReadCallback::readNodeFile(const std::string& filename)
+#else
 osg::Node* ElevationQueryCacheReadCallback::readNodeFile(const std::string& filename)
+#endif
 {
     // first check to see if file is already loaded.
     {
@@ -71,7 +75,7 @@ osg::Node* ElevationQueryCacheReadCallback::readNodeFile(const std::string& file
     }
 
     // now load the file.
-    osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename);
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(filename);
 
     // insert into the cache.
     if (node.valid())
@@ -105,7 +109,11 @@ osg::Node* ElevationQueryCacheReadCallback::readNodeFile(const std::string& file
         }
     }
 
+#if defined(OSG_VERSION_GREATER_OR_EQUAL) && OSG_VERSION_GREATER_OR_EQUAL(2,5,0)
+    return node;
+#else
     return node.release();
+#endif
 }
 
 ElevationQuery::ElevationQuery(const Map* map) :
@@ -513,7 +521,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
             result = geoHF.getElevation( mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), _mapf.getMapInfo().getElevationInterpolation(), mapPoint.getSRS(), elevation);                              
             if (result && elevation != NO_DATA_VALUE)
             {
-                out_elevation = (double)elevation;                
+                out_elevation = (double)elevation;
 
                 // report the actual resolution of the heightfield.
                 if ( out_actualResolution )
@@ -534,7 +542,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
             key = key.createParentKey();
         }
     }
-         
+
 
     osg::Timer_t end = osg::Timer::instance()->tick();
     _queries++;

@@ -54,7 +54,7 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         _SL->setSkyBoxSize( zfar < 100000.0 ? zfar : 100000.0 );
 
         _SL->getAtmosphere()->DrawSky(
-            true, 
+            true,
             _SL->getSRS()->isGeographic(),
             _SL->getSkyBoxSize(),
             true,
@@ -63,7 +63,12 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         // Dirty the state and the program tracking to prevent GL state conflicts.
         renderInfo.getState()->dirtyAllVertexArrays();
         renderInfo.getState()->dirtyAllAttributes();
+
+#if defined(OSG_VERSION_GREATER_OR_EQUAL) && OSG_VERSION_GREATER_OR_EQUAL(2,4,0)
+        osg::GLExtensions* api = renderInfo.getState()->get<osg::GLExtensions>();
+#else
         osg::GL2Extensions* api = osg::GL2Extensions::Get(renderInfo.getState()->getContextID(), true);
+#endif
         api->glUseProgram((GLuint)0);
         renderInfo.getState()->setLastAppliedProgramObject(0L);
     }
@@ -79,12 +84,12 @@ SkyDrawable::computeBound() const
     osg::BoundingBox skyBoundBox;
     if ( !_SL->ready() )
         return skyBoundBox;
-    
+
     ::SilverLining::Atmosphere* atmosphere = _SL->getAtmosphere();
     double skyboxSize = _SL->getSkyBoxSize();
     if ( skyboxSize == 0.0 )
         skyboxSize = 1000.0;
-    
+
     osg::Vec3d radiusVec = osg::Vec3d(skyboxSize, skyboxSize, skyboxSize) * 0.5;
     osg::Vec3d camPos = _SL->getCameraPosition();
     if (_SL->getCamera())
@@ -95,7 +100,7 @@ SkyDrawable::computeBound() const
     }
 
     skyBoundBox.set( camPos-radiusVec, camPos+radiusVec );
-    
+
     // this enables the "blue ring" around the earth when viewing from space.
     bool hasLimb = atmosphere->GetConfigOptionBoolean("enable-atmosphere-from-space");
     if ( hasLimb )
@@ -104,7 +109,7 @@ SkyDrawable::computeBound() const
         double earthRadius = atmosphere->GetConfigOptionDouble("earth-radius-meters");
         double atmosphereHeight = earthRadius + atmosphere->GetConfigOptionDouble("atmosphere-height");
         double atmosphereThickness = atmosphere->GetConfigOptionDouble("atmosphere-scale-height-meters") + earthRadius;
-        
+
         osg::BoundingBox atmosphereBox;
         osg::Vec3d atmMin(-atmosphereThickness, -atmosphereThickness, -atmosphereThickness);
         osg::Vec3d atmMax(atmosphereThickness, atmosphereThickness, atmosphereThickness);

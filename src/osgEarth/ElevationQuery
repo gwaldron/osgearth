@@ -37,7 +37,11 @@ namespace osgEarth
 
             void pruneUnusedDatabaseCache();
 
+#if defined(OSG_VERSION_GREATER_OR_EQUAL) && OSG_VERSION_GREATER_OR_EQUAL(2,5,0)
+            virtual osg::ref_ptr<osg::Node> readNodeFile(const std::string& filename);
+#else
             virtual osg::Node* readNodeFile(const std::string& filename);
+#endif
 
         protected:
 

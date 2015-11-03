@@ -687,14 +687,14 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
     for (int ringIndex = 0; ringIndex < tiles.size(); ringIndex++)
     {
         Ring* geom = dynamic_cast< Ring*>(tiles[ringIndex].get());
-        if (ring)
-        {
+        if (geom)
+        {            
             // temporary target geometry for this cell:
             osg::ref_ptr<osg::Geometry> temp = new osg::Geometry();
             temp->setVertexArray( new osg::Vec3Array() );
 
             // establish a local plane for this cell based on its centroid:
-            GeoPoint cellCenter(featureSRS, ring->getBounds().center());
+            GeoPoint cellCenter(featureSRS, geom->getBounds().center());
             cellCenter.transform(mapSRS, cellCenter);                        
             osg::Matrix world2cell;
             cellCenter.createWorldToLocal( world2cell );

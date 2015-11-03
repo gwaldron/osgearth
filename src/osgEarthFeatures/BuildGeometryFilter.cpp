@@ -602,66 +602,155 @@ bool tesselateGeometry(osg::Geometry* geometry)
 }
 
 /**
- * Tiles a geometry into a grid if it is too big geospatially to have a sensible local tangent plane
+ * Tiles the Geometry into the given number of columns and rows
  */
-void tileGeometry(Geometry* geometry, const SpatialReference* featureSRS, double targetTileSizeDeg, GeometryCollection& out)
+void tileGeometry(Geometry* geometry, const SpatialReference* featureSRS, unsigned int numCols, unsigned int numRows, GeometryCollection& out)
 {
     // Clear the output list.
     out.clear();
 
-    GeoExtent featureExtentDeg = GeoExtent(featureSRS, geometry->getBounds()).transform(SpatialReference::create("wgs84"));
+    Bounds b = geometry->getBounds();
+    double tw = b.width() / (double)numCols;
+    double th = b.height() / (double)numRows;
 
-    if ( featureExtentDeg.width() > targetTileSizeDeg || featureExtentDeg.height() > targetTileSizeDeg)
+    // Get the average Z, since GEOS will set teh Z of new verts to that of the cropping polygon,
+    // which is stupid but that's how it is.
+    double z = 0.0;
+    for(unsigned i=0; i<geometry->size(); ++i)
+        z += geometry->at(i).z();
+    z /= geometry->size();
+
+    osg::ref_ptr<Polygon> poly = new Polygon;
+    poly->resize( 4 );        
+
+    for(int x=0; x<(int)numCols; ++x)
     {
-        double tx = ceil( featureExtentDeg.width() / targetTileSizeDeg );
-        double ty = ceil (featureExtentDeg.height() / targetTileSizeDeg );
-
-        Bounds b = geometry->getBounds();
-        double tw = b.width() / tx;
-        double th = b.height() / ty;
-
-        OE_INFO << "Found " << geometry->size() << " points; tiles to " << tx << " x " << ty << std::endl;
-        OE_INFO << " tilesize=" << tw << " x " << th << std::endl;
-
-        // Get the average Z, since GEOS will set teh Z of new verts to that of the cropping polygon,
-        // which is stupid but that's how it is.
-        double z = 0.0;
-        for(unsigned i=0; i<geometry->size(); ++i)
-            z += geometry->at(i).z();
-        z /= geometry->size();
-
-        osg::ref_ptr<Polygon> poly = new Polygon;
-        poly->resize( 4 );        
-
-        for(int x=0; x<(int)tx; ++x)
+        for(int y=0; y<(int)numRows; ++y)
         {
-            for(int y=0; y<(int)ty; ++y)
-            {
-                (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     z );
-                (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     z );
-                (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), z );
-                (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), z );
+            (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     z );
+            (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     z );
+            (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), z );
+            (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), z );
 
-                osg::ref_ptr<Geometry> ringTile;
-                if ( geometry->crop(poly.get(), ringTile) )
+            osg::ref_ptr<Geometry> ringTile;
+            if ( geometry->crop(poly.get(), ringTile) )
+            {
+                // Use an iterator since crop could return a multi-polygon
+                GeometryIterator gi( ringTile.get(), false );
+                while( gi.hasMore() )
                 {
-                    // Use an iterator since crop could return a multi-polygon
-                    GeometryIterator gi( ringTile.get(), false );
-                    while( gi.hasMore() )
-                    {
-                        Geometry* geom = gi.next();
-                        out.push_back( geom );                                                
-                    }
+                    Geometry* geom = gi.next();
+                    out.push_back( geom );                                                
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Tiles the geometry up until all the cells have less than given number of points.
+ */
+void downsizeGeometry(Geometry* geometry, const SpatialReference* featureSRS, unsigned int maxPoints, GeometryCollection& out)
+{
+    // If the geometyr is greater than the maximum number of points, we need to tile it up further.
+    if (geometry->size() > maxPoints)
+    {
+        OE_NOTICE << "Downsizing geometry of size " << geometry->size() << std::endl;
+        // Tile the geometry.
+        GeometryCollection tmp;
+        tileGeometry(geometry, featureSRS, 2, 2, tmp );
+        
+        for (unsigned int i = 0; i < tmp.size(); i++)
+        {
+            Geometry* g = tmp[i].get();
+
+            // If the generated geometry still has too many points, continue to downsample it recursively.
+            if (g->size() > maxPoints)
+            {
+                // We pass "out" as the destination here since downsizeGeometry will only append tiles that are less than the max size.
+                downsizeGeometry( g, featureSRS, maxPoints, out );
+            }
+            else
+            {
+                // Append the geometry to the output list.
+                out.push_back( g );
             }
         }
     }
     else
     {
-        // The geometry doesn't need modified so just add it to the list.
+        // The geometry is valid, so add it to the output list.
         out.push_back( geometry );
     }
+}
 
+/**
+ * Prepares a geometry into a grid if it is too big geospatially to have a sensible local tangent plane
+ * We will also tile the geometry if it just has too many points to speed up the tesselator.
+ */
+void prepareForTesselation(Geometry* geometry, const SpatialReference* featureSRS, double targetTileSizeDeg, unsigned int maxPointsPerTile, GeometryCollection& out)
+{
+    // Clear the output list.
+    GeometryCollection tiles;
+    
+    unsigned int count = geometry->size();
+
+    unsigned int tx = 1;
+    unsigned int ty = 1;
+
+    // Tile the geometry if it's geospatial size is too large to have a sensible local tangent plane.
+    GeoExtent featureExtentDeg = GeoExtent(featureSRS, geometry->getBounds()).transform(SpatialReference::create("wgs84"));
+
+    // Tile based on the extent
+    if ( featureExtentDeg.width() > targetTileSizeDeg  || featureExtentDeg.height() > targetTileSizeDeg)
+    {
+        // Determine the tile size based on the extent.
+        tx = ceil( featureExtentDeg.width() / targetTileSizeDeg );
+        ty = ceil (featureExtentDeg.height() / targetTileSizeDeg );        
+    }
+    else if (count > maxPointsPerTile)
+    {
+        // Determine the size based on the number of points.
+        unsigned numTiles = ((double)count / (double)maxPointsPerTile) + 1u;
+        tx = ceil(sqrt((double)numTiles));
+        ty = tx;        
+    }
+
+    if (tx == 1 && ty == 1)
+    {
+        // The geometry doesn't need modified so just add it to the list.
+        tiles.push_back( geometry );
+    }
+    else
+    {
+        tileGeometry( geometry, featureSRS, tx, ty, tiles );
+    }
+
+    out.clear();
+
+#if 1
+    // Just copy the output tiles to the output.
+    std::copy(tiles.begin(), tiles.end(), std::back_inserter(out));
+#else
+    // Calling this code will recursively subdivide the cells based on the number of points they have.
+    // This works but it will produces a non-regular grid which doesn't render well in geocentric
+    // due to the curvature of the earth so we disable it for now.
+    //
+    // Reduce the size of the tiles if needed.
+    for (unsigned int i = 0; i < tiles.size(); i++)
+    {
+        if (tiles[i]->size() > maxPointsPerTile)
+        {
+            GeometryCollection tmp;
+            downsizeGeometry(tiles[i].get(), featureSRS, maxPointsPerTile, tmp);
+            std::copy(tmp.begin(), tmp.end(), std::back_inserter(out));
+        }
+        else
+        {
+            out.push_back( tiles[i].get() );
+        }
+    }
+#endif
 }
 
 void
@@ -678,7 +767,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 
     // Tile the incoming polygon if necessary
     GeometryCollection tiles;
-    tileGeometry( ring, featureSRS, TARGET_TILE_SIZE_EXTENT_DEGREES, tiles);
+    prepareForTesselation( ring, featureSRS, TARGET_TILE_SIZE_EXTENT_DEGREES, MAX_POINTS_PER_CROP_TILE, tiles);
     OE_INFO << LC << "Generated " << tiles.size() << " tiles" << std::endl;
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;

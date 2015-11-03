@@ -19,6 +19,7 @@
 #include "NoiseTextureFactory"
 
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Random>
 #include <osgEarthUtil/SimplexNoise>
 #include <osg/Texture2D>
 
@@ -39,12 +40,14 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
     image->allocateImage(dim, dim, 1, type, GL_UNSIGNED_BYTE);
 
     // 0 = rocky mountains
-    // 1 = white noise
-    // 2 = white noise 2
+    // 1 = white noise   (not used)
+    // 2 = white noise 2 (not used)
     // 3 = super-clumpy
-    const float F[4] = { 4.0f, 16.0f, 17.0f, 1.2f };
-    const float P[4] = { 0.8f,  0.6f,  0.7f, 0.9f };
+    const float F[4] = { 4.0f, 64.0f, 33.0f, 1.2f };
+    const float P[4] = { 0.8f,  1.0f,  0.9f, 0.9f };
     const float L[4] = { 2.2f,  1.0f,  1.0f, 4.0f };
+
+    osgEarth::Random random(0, Random::METHOD_FAST);
     
     for(int k=0; k<chans; ++k)
     {
@@ -69,26 +72,37 @@ NoiseTextureFactory::create(unsigned dim, unsigned chans) const
             for(int s=0; s<(int)dim; ++s)
             {
                 double rs = (double)s/(double)dim;
+                osg::Vec4f v = read(s, t);
+                double n;
 
-                double n = noise.getTiledValue(rs, rt);
-
-                n = osg::clampBetween(n, 0.0, 1.0);
+                if ( k == 1 || k == 2 )
+                {
+                    n = (float)random.next();
+                }
+                else
+                {
+                    n = noise.getTiledValue(rs, rt);
+                    n = osg::clampBetween(n, 0.0, 1.0);
+                }
 
                 if ( n < nmin ) nmin = n;
                 if ( n > nmax ) nmax = n;
-                osg::Vec4f v = read(s, t);
+                
                 v[k] = n;
                 write(v, s, t);
             }
         }
    
-        // histogram stretch to [0..1]
-        for(int x=0; x<(int)(dim*dim); ++x)
+        // histogram stretch to [0..1] for simplex noise
+        if ( k != 1 && k != 2 )
         {
-            int s = x%int(dim), t = x/(int)dim;
-            osg::Vec4f v = read(s, t);
-            v[k] = osg::clampBetween((v[k]-nmin)/(nmax-nmin), 0.0f, 1.0f);
-            write(v, s, t);
+            for(int x=0; x<(int)(dim*dim); ++x)
+            {
+                int s = x%int(dim), t = x/(int)dim;
+                osg::Vec4f v = read(s, t);
+                v[k] = osg::clampBetween((v[k]-nmin)/(nmax-nmin), 0.0f, 1.0f);
+                write(v, s, t);
+            }
         }
     }
 

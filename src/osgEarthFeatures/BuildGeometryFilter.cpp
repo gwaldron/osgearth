@@ -26,6 +26,7 @@
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/ResourceCache>
+#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/Tessellator>
 #include <osgEarth/Utils>
 #include <osgEarth/Clamping>
@@ -531,7 +532,137 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
     return geode;
 }
 
-#define CROP_POLYS_BEFORE_TESSELLATING 1
+// Borrowed from MeshConsolidator.cpp
+template<typename FROM, typename TO>
+osg::PrimitiveSet* copy( FROM* src, unsigned offset )
+{
+    TO* newDE = new TO( src->getMode() );
+    newDE->reserve( src->size() );
+    for( typename FROM::const_iterator i = src->begin(); i != src->end(); ++i )
+        newDE->push_back( (*i) + offset );
+    return newDE;
+}
+
+
+/**
+ * Converts an osg::Geometry to use osg::DrawElementsUInt if it doesn't already.
+ * This only works on Geometries that are already using DrawElementsUInt, DrawElementsUByte, or DrawElementsUShort
+ * We do this to normalize the primitive set types so that we can merge multiple geometries 
+ * into one later down the road.
+ */
+void convertToDrawElementsUInt(osg::Geometry* geometry)
+{
+    for (unsigned int i = 0; i < geometry->getNumPrimitiveSets(); i++)
+    {
+        osg::PrimitiveSet* ps = geometry->getPrimitiveSet(i);
+        // See if it's already a DrawElementsUInt and do nothing if it is.
+        osg::DrawElementsUInt* deUint = dynamic_cast<osg::DrawElementsUInt*>(ps);
+        if (!deUint)
+        {
+            // Copy values from the existing primitive set to a new DrawElementsUInt
+            osg::PrimitiveSet* newPS = 0;
+            if (dynamic_cast<osg::DrawElementsUByte*>(ps))
+            {
+                newPS = copy<osg::DrawElementsUByte, osg::DrawElementsUInt>(static_cast<osg::DrawElementsUByte*>(ps), 0);
+            }
+            else if (dynamic_cast<osg::DrawElementsUShort*>(ps))
+            {             
+                newPS = copy<osg::DrawElementsUShort, osg::DrawElementsUInt>(static_cast<osg::DrawElementsUShort*>(ps), 0);
+            }
+
+            // Set the new primitive set
+            if (newPS)
+            {
+                geometry->setPrimitiveSet(i, newPS);
+            }
+        }
+    }
+}
+
+/**
+ * Tesselates an osg::Geometry using the osgEarth tesselator.
+ * If it fails, fall back to the osgUtil tesselator.
+ */
+bool tesselateGeometry(osg::Geometry* geometry)
+{
+    osgEarth::Tessellator oeTess;
+    if ( !oeTess.tessellateGeometry(*geometry) )
+    {
+        osgUtil::Tessellator tess;
+        tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+        tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+        tess.retessellatePolygons( *geometry );
+    }
+
+    // Make sure all of the primitive sets are osg::DrawElementsUInt
+    // The osgEarth tesselator will occassionally fail, and we fall back to the osgUtil::Tesselator which can produce a mix
+    // of DrawElementsUInt, DrawElementsUByte and DrawElementsUShort depending on the number of vertices.
+    convertToDrawElementsUInt(geometry);
+    return true;
+}
+
+/**
+ * Tiles a geometry into a grid if it is too big geospatially to have a sensible local tangent plane
+ */
+void tileGeometry(Geometry* geometry, const SpatialReference* featureSRS, double targetTileSizeDeg, GeometryCollection& out)
+{
+    // Clear the output list.
+    out.clear();
+
+    GeoExtent featureExtentDeg = GeoExtent(featureSRS, geometry->getBounds()).transform(SpatialReference::create("wgs84"));
+
+    if ( featureExtentDeg.width() > targetTileSizeDeg || featureExtentDeg.height() > targetTileSizeDeg)
+    {
+        double tx = ceil( featureExtentDeg.width() / targetTileSizeDeg );
+        double ty = ceil (featureExtentDeg.height() / targetTileSizeDeg );
+
+        Bounds b = geometry->getBounds();
+        double tw = b.width() / tx;
+        double th = b.height() / ty;
+
+        OE_INFO << "Found " << geometry->size() << " points; tiles to " << tx << " x " << ty << std::endl;
+        OE_INFO << " tilesize=" << tw << " x " << th << std::endl;
+
+        // Get the average Z, since GEOS will set teh Z of new verts to that of the cropping polygon,
+        // which is stupid but that's how it is.
+        double z = 0.0;
+        for(unsigned i=0; i<geometry->size(); ++i)
+            z += geometry->at(i).z();
+        z /= geometry->size();
+
+        osg::ref_ptr<Polygon> poly = new Polygon;
+        poly->resize( 4 );        
+
+        for(int x=0; x<(int)tx; ++x)
+        {
+            for(int y=0; y<(int)ty; ++y)
+            {
+                (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     z );
+                (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     z );
+                (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), z );
+                (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), z );
+
+                osg::ref_ptr<Geometry> ringTile;
+                if ( geometry->crop(poly.get(), ringTile) )
+                {
+                    // Use an iterator since crop could return a multi-polygon
+                    GeometryIterator gi( ringTile.get(), false );
+                    while( gi.hasMore() )
+                    {
+                        Geometry* geom = gi.next();
+                        out.push_back( geom );                                                
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        // The geometry doesn't need modified so just add it to the list.
+        out.push_back( geometry );
+    }
+
+}
 
 void
 BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
@@ -542,121 +673,97 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
                                          osg::Geometry*          osgGeom,
                                          const osg::Matrixd      &world2local)
 {
-#ifdef CROP_POLYS_BEFORE_TESSELLATING
-
 #define MAX_POINTS_PER_CROP_TILE 1024
+#define TARGET_TILE_SIZE_EXTENT_DEGREES 5.0
 
-    bool built = false;
-    unsigned count = ring->getTotalPointCount();
-    if ( count > MAX_POINTS_PER_CROP_TILE )
+    // Tile the incoming polygon if necessary
+    GeometryCollection tiles;
+    tileGeometry( ring, featureSRS, TARGET_TILE_SIZE_EXTENT_DEGREES, tiles);
+    OE_INFO << LC << "Generated " << tiles.size() << " tiles" << std::endl;
+
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+
+    // Process each ring independently
+    for (int ringIndex = 0; ringIndex < tiles.size(); ringIndex++)
     {
-        unsigned tiles = (count / MAX_POINTS_PER_CROP_TILE) + 1u;
-        double tx = ceil(sqrt((double)tiles));
-        double ty = tx;
-        Bounds b = ring->getBounds();
-        double tw = b.width() / tx;
-        double th = b.height() / ty;
-
-        OE_DEBUG << "Found " << count << " points; cropping to " << tx << " x " << ty << std::endl;
-
-        // Get the average Z, since GEOS will set teh Z of new verts to that of the cropping polygon,
-        // which is stupid but that's how it is.
-        double z = 0.0;
-        for(unsigned i=0; i<ring->size(); ++i)
-            z += ring->at(i).z();
-        z /= ring->size();
-
-        osg::ref_ptr<Polygon> poly = new Polygon;
-        poly->resize( 4 );
-
-        built = true;
-        for(int x=0; x<(int)tx; ++x)
+        Ring* geom = dynamic_cast< Ring*>(tiles[ringIndex].get());
+        if (ring)
         {
-            for(int y=0; y<(int)ty; ++y)
+            // temporary target geometry for this cell:
+            osg::ref_ptr<osg::Geometry> temp = new osg::Geometry();
+            temp->setVertexArray( new osg::Vec3Array() );
+
+            // establish a local plane for this cell based on its centroid:
+            GeoPoint cellCenter(featureSRS, ring->getBounds().center());
+            cellCenter.transform(mapSRS, cellCenter);                        
+            osg::Matrix world2cell;
+            cellCenter.createWorldToLocal( world2cell );
+
+            // build the localized polygon:
+            buildPolygon(geom, featureSRS, mapSRS, makeECEF, tessellate, temp.get(), world2cell);
+
+            // if successful, transform the verts back into our master LTP:
+            if ( temp->getNumPrimitiveSets() > 0 )
             {
-                (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     z );
-                (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     z );
-                (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), z );
-                (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), z );
-                
-                osg::ref_ptr<Geometry> ringTile;
-                if ( ring->crop(poly.get(), ringTile) )
+                // Tesselate the polygon while the coordinates are still in the LTP
+                if (tesselateGeometry( temp.get() ))
                 {
-                    // Use an iterator since crop could return a multi-polygon
-                    GeometryIterator gi( ringTile.get(), false );
-                    while( gi.hasMore() )
+                    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(temp->getVertexArray());
+                    if ( verts->getNumElements() > 0 )
                     {
-                        Geometry* geom = gi.next();
-                        buildPolygon(geom, featureSRS, mapSRS, makeECEF, tessellate, osgGeom, world2local);
-                    }
-                }
-                else 
-                {
-                    // If crop resulted in empty geometry (valid case) ringTile will still be valid,
-                    // otherwise we need to process the entire polygon without tiling.
-                    if (!ringTile.valid())
-                    {
-                        //clean up geometry
-                        osgGeom->setVertexArray(0L);
-                        if (osgGeom->getNumPrimitiveSets())
-                            osgGeom->removePrimitiveSet(0, osgGeom->getNumPrimitiveSets());
+                        // Convert the coordinates back to the master LTP.
+                        // This is ok, but you will probably run into precision errors if the tile size is very large.
+                        osg::Matrix cell2world;
+                        cell2world.invert( world2cell );
+                        osg::Matrix cell2local = cell2world * world2local; // pre-multiply to avoid precision loss
 
-                        OE_NOTICE << LC << "GEOS crop failed, tessellating feature without tiling." << std::endl;
-
-                        built = false;
-                        break;
+                        for(int i=0; i<verts->size(); ++i)
+                        {
+                            (*verts)[i] = (*verts)[i] * cell2local;
+                        }
+                        geode->addDrawable(temp.get());
                     }
                 }
             }
-
-            // GEOS failed 
-            if (!built)
-                break;
         }
     }
 
-    if ( !built )
-    {
-        buildPolygon(ring, featureSRS, mapSRS, makeECEF, tessellate, osgGeom, world2local);
-    }
-    
+    // The geode is going to contain all of our polygons now, so merge them into one.
+    osgUtil::Optimizer optimizer;
+    osgUtil::Optimizer::MergeGeometryVisitor mgv;
+    // We only want one Geometry, so don't limit the number of vertices.
+    mgv.setTargetMaximumNumberOfVertices(UINT_MAX);
+    mgv.apply( *geode.get() );
 
-    if ( tessellate )
+    // and copy them into the output geometry.
+    if ( geode->getNumDrawables() > 0 )
     {
-        osgEarth::Tessellator oeTess;
-        if (!oeTess.tessellateGeometry(*osgGeom))
+        // If we have more than one drawable after the MergeGeometryVisitor ran, we have a problem so
+        // dump out some info to help debug.
+        if (geode->getNumDrawables() != 1)
         {
-            //fallback to osg tessellator
-            OE_DEBUG << LC << "Falling back on OSG tessellator (" << osgGeom->getName() << ")" << std::endl;
-
-            osgUtil::Tessellator tess;
-            tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-            tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-            tess.retessellatePolygons( *osgGeom );
+            OE_WARN << LC << "MergeGeometryVisitor failed to merge geometries into a single one.  Num drawables " << geode->getNumDrawables() << std::endl;            
+            for (unsigned int i = 0; i < geode->getNumDrawables(); i++)
+            {
+                osg::Geometry* g = geode->getDrawable(i)->asGeometry();
+                if (g)
+                {
+                    osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(g->getVertexArray());
+                    OE_WARN << "Geometry " << i << " has " << verts->size() << " verts" << std::endl;
+                    OE_WARN << "Geometry " << i << " has " << g->getNumPrimitiveSets() << " primitive sets" << std::endl;
+                    for (unsigned int j = 0; j < g->getNumPrimitiveSets(); j++)
+                    {
+                        osg::PrimitiveSet* ps = g->getPrimitiveSet(j);
+                        OE_WARN << "PrimitiveSet " << j << ps->className() << std::endl;
+                    }
+                }
+            }
         }
-    }    
-    
+        osgGeom->setVertexArray( geode->getDrawable(0)->asGeometry()->getVertexArray() );
+        osgGeom->setPrimitiveSetList( geode->getDrawable(0)->asGeometry()->getPrimitiveSetList() );
+    }
+
     osgUtil::SmoothingVisitor::smooth( *osgGeom );
-
-#else
-
-    // non-cropped way
-    buildPolygon(ring, featureSRS, mapSRS, makeECEF, tessellate, osgGeom, world2local);
-    if ( tessellate )
-    {
-        osgEarth::Tessellator oeTess;
-        if (!oeTess.tessellateGeometry(*osgGeom))
-        {
-            //fallback to osg tessellator
-            OE_INFO << LC << "OE Tessellation failed! Using OSG tessellator. (" << osgGeom->getName() << ")" << std::endl;
-
-            osgUtil::Tessellator tess;
-            tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-            tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-            tess.retessellatePolygons( *osgGeom );
-        }
-    }
-#endif
 }
 
 // builds and tessellates a polygon (with or without holes)

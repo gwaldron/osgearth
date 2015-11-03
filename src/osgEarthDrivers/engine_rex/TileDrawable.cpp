@@ -42,14 +42,15 @@ static unsigned s_functors = 0;
 TileDrawable::TileDrawable(const TileKey&        key,
                            const RenderBindings& bindings,
                            osg::Geometry*        geometry,
-                           int                   tileSize) :
+                           int                   tileSize,
+                           int                   skirtSize) :
 osg::Drawable( ),
 _key         ( key ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
 _tileSize    ( tileSize ),
 _drawPatch   ( false ),
-_skirtSize   ( 0 )
+_skirtSize   ( skirtSize )
 {
     setUseVertexBufferObjects( true );
     setUseDisplayList( false );
@@ -89,7 +90,7 @@ TileDrawable::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
         const osg::Camera* camera = renderInfo.getCurrentCamera();
 
         bool renderColor =
-            (camera->getRenderOrder() != osg::Camera::PRE_RENDER) ||
+            //(camera->getRenderOrder() != osg::Camera::PRE_RENDER) ||
             ((camera->getClearMask() & GL_COLOR_BUFFER_BIT) != 0L);
 
         drawSurface( renderInfo, renderColor );
@@ -317,12 +318,12 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
             OE_WARN << LC << "Precision loss in tile " << _key.str() << "\n";
         }
     
-        for(int t=0; t<_tileSize-1; ++t)
+        for(int t=0; t<_tileSize; ++t)
         {
             float v = (float)t / (float)(_tileSize-1);
             v = v*scaleV + biasV;
 
-            for(int s=0; s<_tileSize-1; ++s)
+            for(int s=0; s<_tileSize; ++s)
             {
                 float u = (float)s / (float)(_tileSize-1);
                 u = u*scaleU + biasU;
@@ -371,16 +372,16 @@ TileDrawable::accept(osg::PrimitiveFunctor& f) const
             int i10 = i00 + 1;
             int i01 = i00 + _tileSize;
             int i11 = i01 + 1;
-
-            osg::Vec3d v00 = verts[i00] + normals[i00] * _heightCache[i00];
-            osg::Vec3d v01 = verts[i01] + normals[i01] * _heightCache[i01];
-
-            f.vertex( v00 );
-            f.vertex( v01 );
-            f.vertex( verts[i10] + normals[i10] * _heightCache[i10] );
             
+            osg::Vec3d v01 = verts[i01] + normals[i01] * _heightCache[i01];
+            osg::Vec3d v10 = verts[i10] + normals[i10] * _heightCache[i10];
+
+            f.vertex( verts[i00] + normals[i00] * _heightCache[i00] );
             f.vertex( v01 );
-            f.vertex( v00 );
+            f.vertex( v10 );
+            
+            f.vertex( v10 );
+            f.vertex( v01 );
             f.vertex( verts[i11] + normals[i11] * _heightCache[i11] );
         }
     }

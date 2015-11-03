@@ -91,6 +91,8 @@ to extruded buildings.
                     stroke-width:                 7.5m;
                     altitude-clamping:            terrain;
                     render-depth-offset-min-bias: 3.6;
+                    render-order:                 11;
+                    render-bin:                   DepthSortedBin;
                 }
             </style>
         </styles>        

@@ -92,7 +92,7 @@ GeometryPool::createKeyForTileKey(const TileKey&             tileKey,
 }
 
 int
-GeometryPool::getSkirtSize() const
+GeometryPool::getNumSkirtElements() const
 {
     return _options.heightFieldSkirtRatio().get() > 0.0 ? (_tileSize-1) * 4 * 6 : 0;
 }
@@ -155,7 +155,7 @@ GeometryPool::createGeometry(const TileKey& tileKey,
     unsigned numVertsInSkirt      = createSkirt ? _tileSize*4u - 4u : 0;
     unsigned numVerts             = numVertsInSurface + numVertsInSkirt;    
     unsigned numIndiciesInSurface = (_tileSize-1) * (_tileSize-1) * 6;
-    unsigned numIncidesInSkirt    = getSkirtSize();
+    unsigned numIncidesInSkirt    = getNumSkirtElements();
     
     GLenum mode = (_options.gpuTessellation() == true) ? GL_PATCHES : GL_TRIANGLES;
 

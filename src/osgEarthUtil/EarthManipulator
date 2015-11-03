@@ -748,6 +748,10 @@ namespace osgEarth { namespace Util
         /** get the position of the manipulator as a inverse matrix of the manipulator, typically used as a model view matrix.*/
         virtual osg::Matrixd getInverseMatrix() const;
 
+        /** update the camera with the current values from this manipulator. Overloaded to support tethering, this method is
+            called by Viewer or ComppositeViewer at the end of the udpate traversal. */
+        virtual void updateCamera(osg::Camera& camera);
+
         // Gets the stereo convergance mode.
         virtual osgUtil::SceneView::FusionDistanceMode getFusionDistanceMode() const { return osgUtil::SceneView::USE_FUSION_DISTANCE_VALUE; }
 
@@ -1033,22 +1037,10 @@ namespace osgEarth { namespace Util
         double _tanHalfVFOV;
         optional<osg::CullSettings::ComputeNearFarMode> _savedCNFMode;
         Revision _viewCameraSettingsMonitor;
-        
-        struct CameraPostUpdateCallback : public osg::NodeCallback {
-            CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }
-            virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) { 
-                osg::ref_ptr<EarthManipulator> m;
-                if ( _m.lock(m) ) m->postUpdate();
-                traverse(node,nv);
-            }
-            osg::observer_ptr<EarthManipulator> _m;
-        };
-        void postUpdate();
-        friend struct CameraUpdateCallback;
 
-        osg::observer_ptr<CameraPostUpdateCallback> _cameraUpdateCB;
+        /** updates a camera to switch between prospective and ortho. */
+        void updateProjection( osg::Camera* eventCamera );
 
-        void updateCamera( osg::Camera* eventCamera );
         // Support snappy transition when the pointer leaves and
         // returns to earth during a drag
         osg::Vec3d               _lastPointOnEarth;

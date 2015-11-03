@@ -221,6 +221,20 @@ namespace osgEarth
         void install(osg::StateSet* ss, float minAlpha) const;
         void uninstall(osg::StateSet* ss) const;
     };
+
+    struct GLSLChunk {
+        std::string glsl_chunk_text;
+        enum GLSL_CHUNK_TYPE { STATEMENT, DIRECTIVE, FUNCTION, COMMENT };
+        GLSL_CHUNK_TYPE glsl_chunk_type;
+    };
+    typedef std::vector<GLSLChunk> GLSLChunks;
+
+    class OSGEARTH_EXPORT GLSLChunker
+    {
+    public:
+        void read(const std::string& input, GLSLChunks& output) const;
+        void write(const GLSLChunks& input, std::string& output) const;
+    };
 }
 
 #endif // OSGEARTH_SHADER_UTILS_H

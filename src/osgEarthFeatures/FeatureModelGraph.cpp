@@ -1452,17 +1452,20 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
             _depthOffsetAdapter.setDepthOffsetOptions( *render->depthOffset() );
         }
 
-        // apply render order when draping:
-        //if ( _drapeable && render && render->order().isSet() )
-        //{
-        //    //_drapeable->setRenderOrder( render->order()->eval() );
-        //    OE_WARN << LC << "DrapableNode::setRenderOrder is temporarily unimplemented\n";
-        //}
-
         if ( render && render->renderBin().isSet() )
         {
             osg::StateSet* ss = getOrCreateStateSet();
-            ss->setRenderBinDetails(ss->getBinNumber(), render->renderBin().get());
+            ss->setRenderBinDetails(
+                ss->getBinNumber(),
+                render->renderBin().get() );
+        }
+
+        if ( render && render->order().isSet() )
+        {
+            osg::StateSet* ss = getOrCreateStateSet();
+            ss->setRenderBinDetails(
+                (int)render->order()->eval(),
+                ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName() );
         }
     }
 }

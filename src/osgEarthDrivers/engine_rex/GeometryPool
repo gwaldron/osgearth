@@ -89,7 +89,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /**
          * The number of elements (incides) in the terrain skirt, if applicable
          */
-        int getSkirtSize() const;
+        int getNumSkirtElements() const;
 
     protected:
         virtual ~GeometryPool() { }

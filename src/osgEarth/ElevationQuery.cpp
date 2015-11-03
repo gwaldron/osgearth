@@ -55,7 +55,7 @@ void ElevationQueryCacheReadCallback::pruneUnusedDatabaseCache()
 {
 }
 
-#if defined(OSG_VERSION_GREATER_OR_EQUAL) && OSG_VERSION_GREATER_OR_EQUAL(2,5,0)
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
 osg::ref_ptr<osg::Node> ElevationQueryCacheReadCallback::readNodeFile(const std::string& filename)
 #else
 osg::Node* ElevationQueryCacheReadCallback::readNodeFile(const std::string& filename)
@@ -109,7 +109,7 @@ osg::Node* ElevationQueryCacheReadCallback::readNodeFile(const std::string& file
         }
     }
 
-#if defined(OSG_VERSION_GREATER_OR_EQUAL) && OSG_VERSION_GREATER_OR_EQUAL(2,5,0)
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
     return node;
 #else
     return node.release();
@@ -200,7 +200,7 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
                     srs->transform(tsCoord, tsSRS, tsCoord);
                 else
                     tsSRS = srs;
-                
+
                 for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
                 {
                     if (j->maxLevel().isSet() &&
@@ -209,7 +209,7 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
                     {
                         layerMaxLevel = j->maxLevel().value();
                     }
-                }            
+                }
             }
             else
             {
@@ -242,7 +242,7 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
 			//        The following block attempts to compute a higher resolution to undo the resolution
 			//        mapping that populateHeightField will eventually do.  So for example, you might compute a maximum level of
 			//        10 here, and this will adjust it to 14 with the knowledge that populateHeightField will adjust the 14 back to 10.
-			//        The use of populateHeightField needs to be replaced by code that just works with the native resolution of the 
+			//        The use of populateHeightField needs to be replaced by code that just works with the native resolution of the
 			//        layers instead.
 #if 1
             int layerTileSize = layer->getTileSize();
@@ -271,15 +271,15 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs, co
 void
 ElevationQuery::setMaxTilesToCache( int value )
 {
-    _cache.setMaxSize( value );   
+    _cache.setMaxSize( value );
 }
 
 int
 ElevationQuery::getMaxTilesToCache() const
 {
-    return _cache.getMaxSize();    
+    return _cache.getMaxSize();
 }
-        
+
 void
 ElevationQuery::setMaxLevelOverride(int maxLevelOverride)
 {
@@ -396,7 +396,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
 
                     osg::Vec3d start( surface + nvector*5e5 );
                     osg::Vec3d end  ( surface - nvector*5e5 );
-                
+
                     // first time through, set up the intersector on demand
                     if ( !_patchLayersLSI.valid() )
                     {
@@ -441,10 +441,10 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
     {
         // this means there are no heightfields.
         out_elevation = 0.0;
-        return true;        
+        return true;
     }
 
-    // tile size (resolution of elevation tiles) 
+    // tile size (resolution of elevation tiles)
     unsigned tileSize = 33; // ???
 
     // This is the max resolution that we actually have data at this point
@@ -477,7 +477,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
             OE_WARN << LC << "Fail: coord transform failed" << std::endl;
             return false;
         }
-    }    
+    }
 
     // get the tilekey corresponding to the tile we need:
     TileKey key = _mapf.getProfile()->createTileKey( mapPoint.x(), mapPoint.y(), bestAvailLevel );
@@ -486,22 +486,22 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
         OE_WARN << LC << "Fail: coords fall outside map" << std::endl;
         return false;
     }
-        
-    bool result = false; 
+
+    bool result = false;
 
     while ( !result && key.valid() )
     {
         GeoHeightField geoHF;
-        
+
         // Try to get the hf from the cache
         TileCache::Record record;
         if ( _cache.get( key, record ) )
-        {                        
+        {
             geoHF = record.value();
         }
         else
         {
-            // Create it            
+            // Create it
             osg::ref_ptr<osg::HeightField> hf = new osg::HeightField();
             hf->allocate( tileSize, tileSize );
 
@@ -509,16 +509,16 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
             hf->getFloatArray()->assign( hf->getFloatArray()->size(), NO_DATA_VALUE );
 
             if (_mapf.populateHeightField(hf, key, false /*heightsAsHAE*/, 0L))
-            {                
+            {
                 geoHF = GeoHeightField( hf.get(), key.getExtent() );
                 _cache.insert( key, geoHF );
             }
         }
 
         if (geoHF.valid())
-        {            
-            float elevation = 0.0f;                 
-            result = geoHF.getElevation( mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), _mapf.getMapInfo().getElevationInterpolation(), mapPoint.getSRS(), elevation);                              
+        {
+            float elevation = 0.0f;
+            result = geoHF.getElevation( mapPoint.getSRS(), mapPoint.x(), mapPoint.y(), _mapf.getMapInfo().getElevationInterpolation(), mapPoint.getSRS(), elevation);
             if (result && elevation != NO_DATA_VALUE)
             {
                 out_elevation = (double)elevation;
@@ -528,7 +528,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point, /* abs */
                     *out_actualResolution = geoHF.getXInterval();
             }
             else
-            {                               
+            {
                 result = false;
             }
         }

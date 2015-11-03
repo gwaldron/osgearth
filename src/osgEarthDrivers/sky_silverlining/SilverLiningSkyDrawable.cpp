@@ -64,7 +64,7 @@ SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         renderInfo.getState()->dirtyAllVertexArrays();
         renderInfo.getState()->dirtyAllAttributes();
 
-#if defined(OSG_VERSION_GREATER_OR_EQUAL) && OSG_VERSION_GREATER_OR_EQUAL(2,4,0)
+#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
         osg::GLExtensions* api = renderInfo.getState()->get<osg::GLExtensions>();
 #else
         osg::GL2Extensions* api = osg::GL2Extensions::Get(renderInfo.getState()->getContextID(), true);

@@ -229,6 +229,15 @@ _selectionInfo        ( 0L )
 
     // install an elevation callback so we can update elevation data
     _elevationCallback = new ElevationChangedCallback( this );
+
+    // static shaders.
+    if ( Registry::capabilities().supportsGLSL() )
+    {
+        osg::StateSet* stateset = getOrCreateStateSet();
+        VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+        Shaders package;
+        package.load(vp, package.SDK);
+    }
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
@@ -957,7 +966,9 @@ RexTerrainEngineNode::updateState()
             VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
             terrainVP->setName( "Rex Terrain" );
             package.load(terrainVP, package.ENGINE_VERT_MODEL);
-            package.load(terrainVP, package.SDK);
+
+            //moved to CTOR so it's always available
+            //package.load(terrainVP, package.SDK);
             
             bool useTerrainColor = _terrainOptions.color().isSet();
             package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);

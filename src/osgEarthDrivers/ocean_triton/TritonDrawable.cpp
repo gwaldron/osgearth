@@ -385,7 +385,8 @@ TritonDrawable::updateHeightMap(osg::RenderInfo& renderInfo) const
     }
     else
     {
-        OE_WARN << LC << "Texture object is NULL (Internal error)" << std::endl;
+        // may happen on the first frame; ignore
+        //OE_WARN << LC << "Texture object is NULL (Internal error)" << std::endl;
     }
 
 #ifdef DEBUG_HEIGHTMAP

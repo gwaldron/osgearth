@@ -20,6 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osg/Version>
+#include <osg/Notify>
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
 
@@ -418,6 +419,7 @@ main(int argc, char** argv)
 #else
 int main(int argc, char** argv)
 {
+    OSG_WARN << "Sorry, but XFB requires at least OSG 3.4.0." << std::endl;
     return -1;
 }
 #endif

@@ -199,7 +199,7 @@ StyleSheet::getConfig() const
             scriptConf.set( "name", _script->name );
         if ( !_script->language.empty() )
             scriptConf.set( "language", _script->language );
-        if ( !_script->uri.isSet() )
+        if ( _script->uri.isSet() )
             scriptConf.set( "url", _script->uri->base() );
         else if ( !_script->code.empty() )
             scriptConf.value() = _script->code;

@@ -89,7 +89,7 @@ namespace osgEarth { namespace Splat
     class OSGEARTHSPLAT_EXPORT LandCoverLayer : public osg::Referenced
     {
     public:
-        LandCoverLayer() : _lod(14), _maxDistance(1000.0f), _density(1.0f), _fill(1.0f), _wind(0.0f), _brightness(1.0f), _contrast(0.5f) { }
+        LandCoverLayer() : _lod(14), _castShadows(false), _maxDistance(1000.0f), _density(1.0f), _fill(1.0f), _wind(0.0f), _brightness(1.0f), _contrast(0.5f) { }
 
         /** Name of this layer */
         void setName(const std::string& name) { _name = name; }
@@ -102,6 +102,10 @@ namespace osgEarth { namespace Splat
         /** Terrain LOD at which this layer should render */
         void setLOD(unsigned lod) { _lod = lod; }
         unsigned getLOD() const { return _lod; }
+
+        /** Whether this layer should cast shadows when enabled */
+        void setCastShadows(bool value) { _castShadows = value; }
+        bool getCastShadows() const { return _castShadows; }
 
         /** Maximum visibility distance from camera */
         void setMaxDistance(float value) { _maxDistance = value; }
@@ -145,6 +149,7 @@ namespace osgEarth { namespace Splat
         std::string     _name;
         Bounds          _bounds;
         unsigned        _lod;
+        bool            _castShadows;
         float           _maxDistance;
         float           _density;
         float           _fill;
@@ -262,6 +267,10 @@ namespace osgEarth { namespace Splat
         optional<unsigned>& lod() { return _lod; }
         const optional<unsigned>& lod() const { return _lod; }
 
+        /** Whether objects in this layer should cast shadows. */
+        optional<bool>& castShadows() { return _castShadows; }
+        const optional<bool>& castShadows() const { return _castShadows; }
+
         /** Maximum viewing distance from camera */
         optional<float>& maxDistance() { return _maxDistance; }
         const optional<float>& maxDistance() const { return _maxDistance; }
@@ -295,6 +304,7 @@ namespace osgEarth { namespace Splat
     protected:
         optional<std::string>              _name;
         optional<unsigned>                 _lod;
+        optional<bool>                     _castShadows;
         optional<float>                    _maxDistance;
         optional<float>                    _density;
         optional<float>                    _fill;
@@ -307,6 +317,7 @@ namespace osgEarth { namespace Splat
         void fromConfig(const Config& conf) {
             conf.getIfSet( "name", _name );
             conf.getIfSet( "lod",  _lod  );
+            conf.getIfSet( "cast_shadows", _castShadows );
             conf.getIfSet( "max_distance", _maxDistance );
             conf.getIfSet( "density", _density );
             conf.getIfSet( "fill", _fill );
@@ -327,6 +338,7 @@ namespace osgEarth { namespace Splat
             conf.key() = "layer";
             conf.updateIfSet( "name", _name );
             conf.updateIfSet( "lod",  _lod );
+            conf.updateIfSet( "cast_shadows", _castShadows );
             conf.updateIfSet( "max_distance", _maxDistance );
             conf.updateIfSet( "density", _density );
             conf.updateIfSet( "fill", _fill );

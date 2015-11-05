@@ -67,6 +67,8 @@ LandCoverLayer::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
         setName( in.name().get() );
     if ( in.lod().isSet() )
         setLOD( in.lod().get() );
+    if ( in.castShadows().isSet() )
+        setCastShadows( in.castShadows().get() );
     if ( in.maxDistance().isSet() )
         setMaxDistance( in.maxDistance().get() );
     if ( in.density().isSet() )

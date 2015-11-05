@@ -118,9 +118,11 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                         {
                             if ( !layer->getBiomes().empty() || layer->getTotalNumBillboards() > 0 )
                             {
-                                osg::StateSet* stateset = engine->addLandCoverLayer( zone->getUID(), layer->getLOD() );
-                                if ( stateset )
+                                osgUtil::RenderBin* bin = engine->addLandCoverLayer( zone->getUID(), layer->getLOD(), layer->getCastShadows() );
+                                if ( bin )
                                 {
+                                    osg::StateSet* stateset = bin->getStateSet();
+
                                     // Install the land cover shaders on the state set
                                     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
                                     LandCoverShaders shaders;

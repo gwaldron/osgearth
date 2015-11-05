@@ -79,7 +79,6 @@ namespace
         }
     };
 
-
     // Render bin for terrain surface geometry
     class SurfaceBin : public osgUtil::RenderBin
     {
@@ -101,35 +100,6 @@ namespace
         {
         }
     };
-
-#if 0
-    // Render bin for terrain control surface
-    class LandCoverRenderBin : public osgUtil::RenderBin
-    {
-    public:
-        LandCoverRenderBin()
-        {
-            this->setName( "oe.LandCoverRenderBin" );
-            this->setStateSet( new osg::StateSet() );
-            //this->setSortMode(SORT_BACK_TO_FRONT);
-        }
-
-        osg::Object* clone(const osg::CopyOp& copyop) const
-        {
-            return new LandCoverRenderBin(*this, copyop);
-        }
-
-        LandCoverBin(const LandCoverBin& rhs, const osg::CopyOp& copy) :
-            osgUtil::RenderBin(rhs, copy)
-        {
-        }
-
-        bool contains(const TileKey& key) const
-        {
-            
-        }
-    };
-#endif
 }
 
 //---------------------------------------------------------------------------
@@ -429,16 +399,8 @@ RexTerrainEngineNode::addLandCoverZone()
     return index;
 }
 
-#if 0
-void
-RexTerrainEngineNode::setLandCoverGroupSelector(LandCoverGroupSelector* selector)
-{
-    _landCoverData._selector = selector;
-}
-#endif
-
-osg::StateSet*
-RexTerrainEngineNode::addLandCoverLayer(UID zoneID, unsigned lod)
+osgUtil::RenderBin*
+RexTerrainEngineNode::addLandCoverLayer(UID zoneID, unsigned lod, bool castShadows)
 {
     if ( zoneID >= _landCoverData._zones.size() )
         return 0L;
@@ -447,6 +409,7 @@ RexTerrainEngineNode::addLandCoverLayer(UID zoneID, unsigned lod)
     bins.push_back(LandCoverBin());
     LandCoverBin& bin = bins.back();
     bin._lod = lod;
+    bin._castShadows = castShadows;
 
     // create a stateset that we'll use to place things in this bin.
     // each layer has a unique name so that OSG will place everything in the same
@@ -467,45 +430,8 @@ RexTerrainEngineNode::addLandCoverLayer(UID zoneID, unsigned lod)
 
     updateState();
 
-    return bin._binProto->getStateSet();
+    return bin._binProto.get();
 }
-
-#if 0
-osg::StateSet* 
-RexTerrainEngineNode::addLandCoverGroup(const std::string& name,
-                                        const Bounds&      bounds,
-                                        unsigned           lod)
-{
-    _landCoverBins.push_back(LandCoverBin());
-    LandCoverBin& bin = _landCoverBins.back();
-    bin._name   = name;
-    bin._lod    = lod;
-
-    // create a stateset that we'll use to place things in this bin.
-    bin._stateSet = new osg::StateSet();
-    bin._stateSet->setRenderBinDetails(_landCoverBins.size(), name);
-    bin._stateSet->setNestRenderBins(false);
-
-    // create and register the bin prototype itself.
-    bin._binProto = new osgUtil::RenderBin();
-    bin._binProto->setStateSet( new osg::StateSet() );
-    bin._binProto->setName( name );
-
-    OE_INFO << LC << "Added land cover group \"" << name << "\" at LOD " << lod << "\n";
-
-    osgUtil::RenderBin::addRenderBinPrototype(name, bin._binProto.get());
-
-    updateState();
-
-    return bin._binProto->getStateSet();
-}
-
-void 
-RexTerrainEngineNode::removeLandCoverGroup(const std::string& name)
-{
-    //TODO
-}
-#endif
 
 void
 RexTerrainEngineNode::setupRenderBindings()

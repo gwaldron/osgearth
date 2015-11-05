@@ -71,13 +71,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void setLandCoverGroupSelector(LandCoverGroupSelector*);
 
-        osg::StateSet* addLandCoverLayer(UID zoneUID, unsigned lod);
-
-        /** Adds a new land cover group and returns its state set. */
-        //osg::StateSet* addLandCoverGroup(const std::string& name, const Bounds& bounds, unsigned lod);
-
-        /** Removes a land cover group */
-        //void removeLandCoverGroup(const std::string& name);
+        osgUtil::RenderBin* addLandCoverLayer(UID zoneUID, unsigned lod, bool castShadows);
 
     public: // internal TerrainEngineNode
 

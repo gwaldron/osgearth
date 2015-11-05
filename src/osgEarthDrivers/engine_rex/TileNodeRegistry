@@ -36,6 +36,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     struct LandCoverBin
     {
         unsigned                         _lod;
+        bool                             _castShadows;
         osg::ref_ptr<osg::StateSet>      _stateSet;
         osg::ref_ptr<osgUtil::RenderBin> _binProto;
     };

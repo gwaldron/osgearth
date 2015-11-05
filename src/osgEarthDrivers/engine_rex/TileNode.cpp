@@ -29,6 +29,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TraversalData>
+#include <osgEarth/Shadowing>
 
 #include <osg/Uniform>
 #include <osg/ComputeBoundsVisitor>
@@ -415,13 +416,15 @@ void TileNode::cull(osg::NodeVisitor& nv)
     int zoneIndex = context->_landCoverData->_currentZoneIndex;
     if ( zoneIndex < (int)context->_landCoverData->_zones.size() )
     {
+        bool isShadowCamera = osgEarth::Shadowing::isShadowCamera(cv->getCurrentCamera());
+
         const LandCoverZone& zone = context->_landCoverData->_zones.at(zoneIndex);
         for(int i=0; i<zone._bins.size(); ++i)
         {
             bool pushedPayloadSS = false;
 
-            const LandCoverBin& bin = zone._bins.at(i);
-            if ( bin._lod == _key.getLOD() )
+            const LandCoverBin& bin = zone._bins.at(i);            
+            if ( bin._lod == _key.getLOD() && (!isShadowCamera || bin._castShadows) )
             {
                 if ( !pushedPayloadSS )
                 {

@@ -123,4 +123,8 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if ( match(c.key(), "stroke-script") ) {
         style.getOrCreate<LineSymbol>()->script() = StringExpression(c.value());
     }
+    else if ( match(c.key(), "stroke-texture") ) {
+        style.getOrCreate<LineSymbol>()->stroke()->texture() = StringExpression(c.value());
+
+    }
 }

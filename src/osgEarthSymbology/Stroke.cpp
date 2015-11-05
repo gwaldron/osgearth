@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/Stroke>
-
+#include <osgEarthSymbology/Expression>
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
@@ -44,6 +44,7 @@ Stroke::Stroke(const Config& conf)
 {
     init();
     mergeConfig( conf );
+    _uriContext = URIContext(conf.referrer());
 }
 
 Stroke::Stroke(const Stroke& rhs)
@@ -64,6 +65,7 @@ Stroke::init()
     _minPixels.init     ( 0.0f );
     _stipplePattern.init( 0xFFFF );
     _stippleFactor.init ( 1u );
+    //
 }
 
 Config 
@@ -82,6 +84,7 @@ Stroke::getConfig() const {
     if ( _widthUnits.isSet() )
         conf.add( "width_units", _widthUnits->getAbbr() );
     conf.addIfSet("min_pixels", _minPixels );
+    conf.addObjIfSet("texture", _texture );
     return conf;
 }
 
@@ -102,4 +105,17 @@ Stroke::mergeConfig( const Config& conf ) {
     if ( conf.hasValue("width_units" ) )
         Units::parse( conf.value("width_units"), _widthUnits.mutable_value() );
     conf.getIfSet("min_pixels", _minPixels );
+    conf.getObjIfSet("texture", _texture );
+    if (_texture.isSet())
+    {
+        URI imageURI=  _texture->evalURI();
+        ReadResult result1= imageURI.readImage();
+        if ( result1.succeeded() )
+        {
+            _stroke_tex = new osg::Texture2D(result1.getImage());
+            _stroke_tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
+            _stroke_tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+            _stroke_tex->setUnRefImageDataAfterApply(true);
+        }
+    }
 }

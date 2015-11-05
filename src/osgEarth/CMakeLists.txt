@@ -135,6 +135,7 @@ SET(LIB_PUBLIC_HEADERS
     ShaderGenerator
     ShaderLoader
     ShaderUtils
+    Shadowing
 	SharedSARepo
     SpatialReference
     StateSetCache
@@ -285,6 +286,7 @@ set(TARGET_SRC
     ShaderGenerator.cpp
     ShaderLoader.cpp
     ShaderUtils.cpp
+    Shadowing.cpp
     SpatialReference.cpp
     StateSetCache.cpp
 	StateSetLOD.cpp

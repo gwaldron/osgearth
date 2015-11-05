@@ -122,9 +122,6 @@ _requireElevationTextures( false ),
 _requireNormalTextures   ( false ),
 _requireParentTextures   ( false )
 {
-    // node mask for osgearth terrain
-    //setNodeMask( OSGEARTH_MASK_TERRAIN );
-
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT( this, 1 );
 

@@ -400,7 +400,7 @@ MapNode::init()
 
     // install the default rendermode uniform:
     stateset->addUniform( new osg::Uniform("oe_isPickCamera", false) );
-    stateset->addUniform( new osg::Uniform("oe_isDepthCamera", false) );
+    stateset->addUniform( new osg::Uniform("oe_isShadowCamera", false) );
 
     dirtyBound();
 

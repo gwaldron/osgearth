@@ -32,6 +32,7 @@
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
+#include <osgUtil/RenderBin>
 
 #define OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER "OSGEARTH_TERRAIN_ENGINE"
 
@@ -167,21 +168,9 @@ namespace osgEarth
         /** Creates and adds a new land cover group; returns its unique ID. */
         virtual UID addLandCoverZone() { return 0; }
 
-        /** Sets a selector function for returning the UID of a land cover group during cull. */
-        //virtual void setLandCoverGroupSelector(LandCoverGroupSelector*) { }
-
         /** Creates and adds a new land cover layer under the group with the given UID. */
-        virtual osg::StateSet* addLandCoverLayer(UID zoneUID, unsigned lod) { return 0L; }
+        virtual osgUtil::RenderBin* addLandCoverLayer(UID zoneUID, unsigned lod, bool castShadows) { return 0L; }
 
-#if 0
-        /** Adds a new land cover group for the given LOD and bounds. */
-        virtual osg::StateSet* addLandCoverGroup(
-            const std::string& name,
-            const Bounds&      bounds,
-            unsigned           lod)     { return 0L; }
-
-        virtual void removeLandCoverGroup(const std::string& name) { }
-#endif
 
     public: // TerrainEngine
 

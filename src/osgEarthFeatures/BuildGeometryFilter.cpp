@@ -767,8 +767,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 
     // Tile the incoming polygon if necessary
     GeometryCollection tiles;
-    prepareForTesselation( ring, featureSRS, TARGET_TILE_SIZE_EXTENT_DEGREES, MAX_POINTS_PER_CROP_TILE, tiles);
-    OE_INFO << LC << "Generated " << tiles.size() << " tiles" << std::endl;
+    prepareForTesselation( ring, featureSRS, TARGET_TILE_SIZE_EXTENT_DEGREES, MAX_POINTS_PER_CROP_TILE, tiles);    
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 

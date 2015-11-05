@@ -37,7 +37,11 @@ namespace osgEarth
 
             void pruneUnusedDatabaseCache();
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
+            virtual osg::ref_ptr<osg::Node> readNodeFile(const std::string& filename);
+#else
             virtual osg::Node* readNodeFile(const std::string& filename);
+#endif
 
         protected:
 
@@ -51,7 +55,7 @@ namespace osgEarth
 
     /**
      * ElevationQuery (EQ) lets you query the elevation at any point on a map.
-     * 
+     *
      * Rather than intersecting with a loaded scene graph, EQ uses the osgEarth
      * engine to directly access the best terrain tile for elevation query. You
      * give it the DEM resolution at which you want an elevation point, and it will
@@ -74,7 +78,7 @@ namespace osgEarth
          *      Map against which to perform elevation queries.
          */
         ElevationQuery( const Map* map );
-        
+
         /**
          * Constructs a new elevation manager.
          *
@@ -98,16 +102,16 @@ namespace osgEarth
          *      Pass in 0 (zero) to use the best available resolution.
          * @param out_resolution
          *      Resolution of the resulting elevation value (if the method returns true).
-         * 
+         *
          * @return True if the query succeeded, false upon failure.
          */
         bool getElevation(
             const GeoPoint& point,
             double&         out_elevation,
             double          desiredResolution    =0.0,
-            double*         out_actualResolution =0L );      
+            double*         out_actualResolution =0L );
 
-        /** 
+        /**
          * Gets elevations for a whole array of points, storing the result in the
          * "z" element. If "ignoreZ" is false, the new Z value will be offset by
          * the original Z value.
@@ -144,7 +148,7 @@ namespace osgEarth
          * Gets the maximum cache size for elevation tiles.
          */
         int getMaxTilesToCache() const;
-        
+
         /**
         * Sets the maximum level override for elevation queries.
         * A value of -1 turns off the override.
@@ -183,7 +187,7 @@ namespace osgEarth
     private:
         MapFrame     _mapf;
         unsigned     _maxCacheSize;
-        int          _tileSize;        
+        int          _tileSize;
         int          _maxLevelOverride;
         bool         _fallBackOnNoData;
 
@@ -201,7 +205,7 @@ namespace osgEarth
         void sync();
         void gatherPatchLayers();
 
-        bool getElevationImpl(            
+        bool getElevationImpl(
             const GeoPoint& point,
             double&         out_elevation,
             double          desiredResolution,

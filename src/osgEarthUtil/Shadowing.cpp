@@ -24,13 +24,16 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Shadowing>
 #include <osg/Texture2D>
 #include <osg/CullFace>
+#include <osg/ValueObject>
 #include <osgShadow/ConvexPolyhedron>
 
 #define LC "[ShadowCaster] "
 
 using namespace osgEarth::Util;
+
 
 
 ShadowCaster::ShadowCaster() :
@@ -127,6 +130,7 @@ ShadowCaster::reinitialize()
     for(int i=0; i<numSlices; ++i)
     {
         osg::Camera* rtt = new osg::Camera();
+        Shadowing::setIsShadowCamera(rtt);
         rtt->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
         rtt->setClearDepth( 1.0 );
         rtt->setClearMask( GL_DEPTH_BUFFER_BIT );
@@ -146,6 +150,9 @@ ShadowCaster::reinitialize()
     _rttStateSet->setAttributeAndModes( 
         new osg::CullFace(osg::CullFace::FRONT),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+
+    _rttStateSet->addUniform(new osg::Uniform("oe_isShadowCamera", true), osg::StateAttribute::OVERRIDE);
+
 
     _renderStateSet = new osg::StateSet();
     

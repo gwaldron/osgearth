@@ -162,6 +162,26 @@ MapNode::load(osg::ArgumentParser& args)
     return 0L;
 }
 
+MapNode*
+MapNode::load(osg::ArgumentParser& args, const MapNodeOptions& defaults)
+{
+    for( int i=1; i<args.argc(); ++i )
+    {
+        if ( args[i] && endsWith(args[i], ".earth") )
+        {
+            osg::ref_ptr<osgDB::Options> dbo = new osgDB::Options();
+            std::string optionsJSON = defaults.getConfig().toJSON();
+            dbo->setPluginStringData( "osgEarth.defaultOptions", optionsJSON );
+            ReadResult r = URI(args[i]).readNode( dbo.get() );
+            if ( r.succeeded() )
+            {
+                return r.release<MapNode>();
+            }
+        }
+    }    
+    return 0L;
+}
+
 //---------------------------------------------------------------------------
 
 MapNode::MapNode() :
@@ -380,6 +400,7 @@ MapNode::init()
 
     // install the default rendermode uniform:
     stateset->addUniform( new osg::Uniform("oe_isPickCamera", false) );
+    stateset->addUniform( new osg::Uniform("oe_isDepthCamera", false) );
 
     dirtyBound();
 

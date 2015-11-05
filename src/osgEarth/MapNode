@@ -44,9 +44,18 @@ namespace osgEarth
     {
     public:
         /**
-         * Attempts to load a MapNOde from a ".earth" file in the arguments list
+         * Attempts to load a MapNode from a ".earth" file in the arguments list
          */
-        static MapNode* load( class osg::ArgumentParser& arguments );
+        static MapNode* load(
+            class osg::ArgumentParser& arguments);
+
+        /**
+         * Attempts to load a MapNode from an ".earth" file, with a set of default
+         * map and terrain options.
+         */
+        static MapNode* load(
+            class osg::ArgumentParser& arguments,
+            const MapNodeOptions&      defaultOptions);
 
     public:
         /**

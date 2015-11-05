@@ -54,7 +54,7 @@
             
                     <land_cover>
                         <layers>
-                            <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5">
+                            <layer name="trees" lod="13" max_distance="6400" density="3.4" fill="0.45" brightness="2.0" contrast="0.5" cast_shadows="true">
                                 <biomes>
                                     <biome classes="forest forest1 forest2 forest3 forest4">
                                         <billboard url="../data/splat/cypress.png" width="12.0" height="14.0"/>

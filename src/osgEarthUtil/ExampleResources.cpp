@@ -608,17 +608,22 @@ MapNodeHelper::parse(MapNode*             mapNode,
     // Shadowing.
     if ( useShadows )
     {
-        ShadowCaster* caster = new ShadowCaster();
-        caster->setLight( view->getLight() );
-        caster->getShadowCastingGroup()->addChild( mapNode->getModelLayerGroup() );
-        if ( mapNode->getNumParents() > 0 )
+        int unit;
+        if ( mapNode->getTerrainEngine()->getResources()->reserveTextureImageUnit(unit, "ShadowCaster") )
         {
-            insertGroup(caster, mapNode->getParent(0));
-        }
-        else
-        {
-            caster->addChild(mapNode);
-            root = caster;
+            ShadowCaster* caster = new ShadowCaster();
+            caster->setTextureImageUnit( unit );
+            caster->setLight( view->getLight() );
+            caster->getShadowCastingGroup()->addChild( mapNode ); //->getModelLayerGroup() );
+            if ( mapNode->getNumParents() > 0 )
+            {
+                insertGroup(caster, mapNode->getParent(0));
+            }
+            else
+            {
+                caster->addChild(mapNode);
+                root = caster;
+            }
         }
     }
 

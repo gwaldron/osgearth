@@ -69,7 +69,7 @@ Zone::configure(const ConfigOptions& options, const Map* map, const osgDB::Optio
     if ( in.landCover().isSet() )
     {
         _landCover = new LandCover();
-        if ( !_landCover->configure(in.landCover().get(), dbo) )
+        if ( !_landCover->configure(in.landCover().get(), map, dbo) )
         {
             OE_WARN << LC << "Land cover is not properly configured; land cover disabled.\n";
             _landCover = 0L;

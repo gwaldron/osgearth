@@ -46,7 +46,7 @@ in vec4 oe_layer_tilec;
 out vec2 oe_landcover_texCoord;
 
 // Input from the TCS that 
-flat in int oe_landcover_biomeIndex;
+//flat in int oe_landcover_biomeIndex;
 
 
 // Output that selects the land cover texture from the texture array (non interpolated)
@@ -79,6 +79,12 @@ in vec3 oe_UpVectorView;
 // SDK import
 float oe_terrain_getElevation(in vec2);
 
+// Generated in code
+int oe_landcover_getBiomeIndex(in vec4);
+
+uniform bool oe_landcover_useMask;
+uniform sampler2D MASK_SAMPLER;
+uniform mat4 MASK_TEXTURE;
 
 
 // Sample the elevation texture and move the vertex accordingly.
@@ -120,9 +126,6 @@ oe_landcover_getRandomBarycentricPoint(vec2 seed)
     return b;
 }
 
-uniform float oe_landcover_noise;
-uniform float shmoo;
-
 // MAIN ENTRY POINT  
 void
 oe_landcover_geom()
@@ -145,7 +148,30 @@ oe_landcover_geom()
         
         tileUV.x += b[i] * oe_layer_tilec.x;
         tileUV.y += b[i] * oe_layer_tilec.y;
-    } 
+    }
+    
+#if 1
+    // Look up the biome at this point:
+    int biomeIndex = oe_landcover_getBiomeIndex(vec4(tileUV,0,1));
+    if ( biomeIndex < 0 )
+    {
+        // No biome defined; bail out without emitting any geometry.
+        return;
+    }
+#else
+    int biomeIndex = oe_landcover_biomeIndex;
+#endif
+    
+    // If we're using a mask texture, sample it now:
+    if ( oe_landcover_useMask )
+    {
+        float mask = texture(MASK_SAMPLER, (MASK_TEXTURE*vec4(tileUV,0,1)).st).a;
+        if ( mask > 0.0 )
+        {
+            // Failed to pass the mask; no geometry emitted.
+            return;
+        }
+    }
     
     // Transform to view space.
     vec4 center_view = gl_ModelViewMatrix * center;
@@ -163,7 +189,7 @@ oe_landcover_geom()
 
     // look up biome:
     oe_landcover_Biome biome;
-    oe_landcover_getBiome(oe_landcover_biomeIndex, biome);
+    oe_landcover_getBiome(biomeIndex, biome);
     
     // Viewpoint culling:
     // TODO: remove hard-coded max width/height and replace with a vp_define or a uniform.
@@ -173,11 +199,11 @@ oe_landcover_geom()
     cullPoint.xy -= sign(cullPoint.xy) * min(biome.maxWidthHeight, abs(cullPoint.xy));
     cullPoint = gl_ProjectionMatrix * cullPoint;
     float absw = abs(cullPoint.w);
-    if ( abs(cullPoint.x) > absw || abs(cullPoint.y) > absw ) // || cullPoint.z > absw )
+    if ( abs(cullPoint.x) > absw || abs(cullPoint.y) > absw )// || abs(cullPoint.z) > absw )
         return;
 
     // sample the noise texture.
-    vec4 noise = mix( vec4(0,0,0,0), texture(oe_splat_noiseTex, tileUV), oe_landcover_noise );
+    vec4 noise = texture(oe_splat_noiseTex, tileUV);
 
     // discard instances based on noise value threshold (coverage). If it passes,
     // scale the noise value back up to [0..1]
@@ -234,6 +260,7 @@ oe_landcover_geom()
 
         vp_Color = vec4(color*oe_landcover_ao, falloff);
 
+        // calculates normals:
         vec3 faceNormalVector = normalize(cross(tangentVector, heightVector));
         float blend = 0.25 + (noise[NOISE_RANDOM_2]*0.25);
         vec3 Lnormal = mix(-tangentVector, faceNormalVector, blend);
@@ -265,7 +292,7 @@ oe_landcover_geom()
     }
     else
     {
-        // sample code for generating cross-hatch geometry (for shadowing)
+        // generating cross-hatch geometry (for shadowing)
 
         vec3 eastVector = gl_NormalMatrix * vec3(1,0,0);
         vec3 halfWidthTangentVector = cross(eastVector, up_view) * 0.5 * width;

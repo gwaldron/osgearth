@@ -3,6 +3,7 @@
 #include "SplatCatalog"
 #include "SplatCoverageLegend"
 
+#include <osgEarth/Map>
 #include <osgEarth/ImageLayer>
 #include <osgEarthSymbology/BillboardSymbol>
 #include <osgEarthSymbology/BillboardResource>
@@ -14,7 +15,7 @@ using namespace osgEarth::Symbology;
 #define LC "[LandCover] "
 
 bool
-LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
+LandCover::configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo)
 {
     LandCoverOptions in( conf );
     
@@ -49,6 +50,20 @@ LandCover::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
                 OE_WARN << LC << "Land cover layer \"" << layer->getName() << "\" is improperly configured\n";
                 return false;
             }
+        }
+    }
+
+    if ( in.maskLayerName().isSet() )
+    {
+        ImageLayer* layer = map->getImageLayerByName( in.maskLayerName().get() );
+        if ( layer )
+        {
+            setMaskLayer( layer );
+        }
+        else
+        {
+            OE_WARN << LC << "Masking layer \"" << in.maskLayerName().get() << "\" not found in the map." << std::endl;
+            return false;
         }
     }
 

@@ -163,7 +163,7 @@ SplatTerrainEffect::onInstall(TerrainEngineNode* engine)
                 splatting.define( "SPLAT_GPU_NOISE",   _gpuNoise );
                 splatting.define( "OE_USE_NORMAL_MAP", engine->normalTexturesRequired() );
 
-                splatting.replace( "$COVERAGE_TEXTURE_MATRIX", coverageLayer->shareTexMatUniformName().get() );
+                splatting.replace( "COVERAGE_TEXTURE_MATRIX", coverageLayer->shareTexMatUniformName().get() );
             
                 VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
                 splatting.load( vp, splatting.VertModel );

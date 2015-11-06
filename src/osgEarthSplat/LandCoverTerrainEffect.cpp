@@ -123,14 +123,22 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                                 {
                                     osg::StateSet* stateset = bin->getStateSet();
 
+                                    bool useMask = (landCover->getMaskLayer() != 0L);
+
                                     // Install the land cover shaders on the state set
                                     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
                                     LandCoverShaders shaders;
+                                    if ( useMask )
+                                    {
+                                        shaders.replace("MASK_SAMPLER", landCover->getMaskLayer()->shareTexUniformName().get());
+                                        shaders.replace("MASK_TEXTURE", landCover->getMaskLayer()->shareTexMatUniformName().get());
+                                    }
                                     shaders.loadAll( vp, _dbo.get() );
 
                                     // Generate the coverage acceptor shader
                                     osg::Shader* covTest = layer->createPredicateShader( getCoverage() );
-                                    covTest->setType( osg::Shader::TESSCONTROL );
+                                    //covTest->setType( osg::Shader::TESSCONTROL );
+                                    covTest->setType( osg::Shader::GEOMETRY );
                                     vp->setShader( covTest );
 
                                     osg::ref_ptr<osg::Shader> layerShader = layer->createShader();
@@ -152,7 +160,7 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                                     stateset->addUniform( new osg::Uniform("oe_landcover_brightness",  layer->getBrightness()) );
                                     stateset->addUniform( new osg::Uniform("oe_landcover_contrast",    layer->getContrast()) );
 
-                                    stateset->addUniform( new osg::Uniform("oe_landcover_noise", 0.75f) );
+                                    stateset->addUniform( new osg::Uniform("oe_landcover_useMask", useMask) );
 
                                     // Build the texture array!
                                     int s=-1, t=-1;

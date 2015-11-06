@@ -21,6 +21,7 @@
 
 #include "Export"
 #include <osgEarth/Config>
+#include <osgEarth/ImageLayer>
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarthSymbology/Symbol>
 #include <osg/BoundingBox>
@@ -180,14 +181,20 @@ namespace osgEarth { namespace Splat
         LandCoverLayers& getLayers() { return _layers; }
         const LandCoverLayers& getLayers() const { return _layers; }
 
+        /** Layer that will mask out land cover */
+        void setMaskLayer(ImageLayer* layer) { _maskLayer = layer; }
+        ImageLayer* getMaskLayer() { return _maskLayer.get(); }
+        const ImageLayer* getMaskLayer() const { return _maskLayer.get(); }
+
     protected:
         virtual ~LandCover() { }
 
         osg::ref_ptr<ResourceLibrary> _lib;
-        LandCoverLayers _layers;
+        LandCoverLayers               _layers;
+        osg::ref_ptr<ImageLayer>      _maskLayer;
         
     public:
-        bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);
+        bool configure(const ConfigOptions& conf, const Map* map, const osgDB::Options* dbo);
     };
 
     typedef std::vector< osg::ref_ptr<LandCover> > LandCovers;
@@ -380,13 +387,19 @@ namespace osgEarth { namespace Splat
         std::vector<LandCoverLayerOptions>& layers() { return _layers; }
         const std::vector<LandCoverLayerOptions>& layers() const { return _layers; }
 
+        /** Name of a map layer to use for masking out land cover. */
+        optional<std::string>& maskLayerName() { return _maskLayerName; }
+        const optional<std::string>& maskLayerName() const { return _maskLayerName; }
+
     protected:        
-        optional<URI>                      _resourceLibURI;        
+        optional<URI>                      _resourceLibURI; 
+        optional<std::string>              _maskLayerName;
         std::vector<LandCoverLayerOptions> _layers;
 
     public:
         void fromConfig(const Config& conf) {
             conf.getIfSet( "library", _resourceLibURI );
+            conf.getIfSet( "mask_layer", _maskLayerName );
             const Config* layers = conf.child_ptr("layers");
             if ( layers ) {
                 const ConfigSet& layerVec = layers->children();
@@ -400,6 +413,7 @@ namespace osgEarth { namespace Splat
             Config conf = ConfigOptions::getConfig();
             conf.key() = "land_cover";
             conf.updateIfSet( "library", _resourceLibURI );
+            conf.updateIfSet( "mask_layer", _maskLayerName );
             if ( !_layers.empty() ) {
                 Config layers("layers");
                 for(int i=0; i<_layers.size(); ++i) {

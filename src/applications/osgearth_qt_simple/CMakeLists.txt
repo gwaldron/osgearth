@@ -35,6 +35,7 @@ SET(TARGET_ADDED_LIBRARIES
     ${QT_QTCORE_LIBRARY}
     ${QT_QTGUI_LIBRARY}
     ${QT_QTOPENGL_LIBRARY}
+    X11
 )
 
 #### end var setup  ###

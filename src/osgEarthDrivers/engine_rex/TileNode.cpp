@@ -416,30 +416,36 @@ void TileNode::cull(osg::NodeVisitor& nv)
     int zoneIndex = context->_landCoverData->_currentZoneIndex;
     if ( zoneIndex < (int)context->_landCoverData->_zones.size() )
     {
+        unsigned clearMask = cv->getCurrentCamera()->getClearMask();
+        bool isDepthCamera = ((clearMask & GL_COLOR_BUFFER_BIT) == 0u) && ((clearMask & GL_DEPTH_BUFFER_BIT) != 0u);
         bool isShadowCamera = osgEarth::Shadowing::isShadowCamera(cv->getCurrentCamera());
 
-        const LandCoverZone& zone = context->_landCoverData->_zones.at(zoneIndex);
-        for(int i=0; i<zone._bins.size(); ++i)
+        // only consider land cover if we are capturing color OR shadow.
+        if ( isShadowCamera || !isDepthCamera )
         {
-            bool pushedPayloadSS = false;
-
-            const LandCoverBin& bin = zone._bins.at(i);            
-            if ( bin._lod == _key.getLOD() && (!isShadowCamera || bin._castShadows) )
+            const LandCoverZone& zone = context->_landCoverData->_zones.at(zoneIndex);
+            for(int i=0; i<zone._bins.size(); ++i)
             {
-                if ( !pushedPayloadSS )
+                bool pushedPayloadSS = false;
+
+                const LandCoverBin& bin = zone._bins.at(i);            
+                if ( bin._lod == _key.getLOD() && (!isShadowCamera || bin._castShadows) )
                 {
-                    cv->pushStateSet( _payloadStateSet.get() );
-                    pushedPayloadSS = true;
+                    if ( !pushedPayloadSS )
+                    {
+                        cv->pushStateSet( _payloadStateSet.get() );
+                        pushedPayloadSS = true;
+                    }
+
+                    cv->pushStateSet( bin._stateSet.get() ); // hopefully groups together for rendering.
+                    _landCover->accept( nv );
+                    cv->popStateSet();
                 }
 
-                cv->pushStateSet( bin._stateSet.get() ); // hopefully groups together for rendering.
-                _landCover->accept( nv );
-                cv->popStateSet();
-            }
-
-            if ( pushedPayloadSS )
-            {
-                cv->popStateSet();
+                if ( pushedPayloadSS )
+                {
+                    cv->popStateSet();
+                }
             }
         }
     }

@@ -44,7 +44,7 @@ void oe_rexEngine_frag(inout vec4 color)
     float firstLayer = oe_layer_order == 0 ? 1.0 : 0.0;
 
 #ifdef OE_REX_GL_BLENDING
-    color = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer);
+    color.rgb = mix(texel, texel*texel.a + color*(1.0-texel.a), firstLayer).rgb;
 #else
     color = texel;
 #endif

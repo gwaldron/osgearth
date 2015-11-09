@@ -53,7 +53,7 @@ _traversalMask( ~0 )
         _ranges.push_back(100.0f);
         _ranges.push_back(500.0f);
         _ranges.push_back(1750.0f);
-        _ranges.push_back(5000.0f);
+        //_ranges.push_back(5000.0f);
 
         reinitialize();
     }

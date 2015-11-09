@@ -49,7 +49,7 @@ namespace osgEarth { namespace Drivers { namespace Duktape
           if ( !acceptsExtension(osgDB::getLowerCaseFileExtension(filename)) )
                 return ReadResult::FILE_NOT_HANDLED;
 
-          OE_INFO << LC << "Loaded duktape JavaScript engine" << std::endl;
+          OE_DEBUG << LC << "Loaded duktape JavaScript engine" << std::endl;
           return ReadResult( new DuktapeEngine(getScriptEngineOptions(dbOptions)) );
         }
     };

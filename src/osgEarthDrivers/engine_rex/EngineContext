@@ -89,6 +89,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool maxLiveTilesExceeded() const;
 
         osg::Uniform* getOrCreateMatrixUniform(const std::string& name, const osg::Matrixf& m);
+        
+        osg::ref_ptr<osg::StateSet>           _surfaceSS;
+
 
     protected:
 

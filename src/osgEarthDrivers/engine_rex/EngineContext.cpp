@@ -89,7 +89,7 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
         { 
             OE_NOTICE << "    " << i->first << " = " << i->second << std::endl;
         }
-    }
+    }    
 }
 
 bool

@@ -169,7 +169,7 @@ namespace osgEarth
         virtual UID addLandCoverZone() { return 0; }
 
         /** Creates and adds a new land cover layer under the group with the given UID. */
-        virtual osgUtil::RenderBin* addLandCoverLayer(UID zoneUID, unsigned lod, bool castShadows) { return 0L; }
+        virtual osg::StateSet* addLandCoverLayer(UID zoneUID, unsigned lod, bool castShadows) { return 0L; }
 
 
     public: // TerrainEngine

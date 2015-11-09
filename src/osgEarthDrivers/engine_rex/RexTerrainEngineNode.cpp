@@ -35,9 +35,8 @@
 #include <osgEarth/TraversalData>
 
 #include <osg/Version>
-#include <osg/Depth>
 #include <osg/BlendFunc>
-#include <osg/Multisample>
+#include <osg/Depth>
 #include <osgUtil/RenderBin>
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,1,8)
@@ -79,6 +78,7 @@ namespace
         }
     };
 
+#if 0
     // Render bin for terrain surface geometry
     class SurfaceBin : public osgUtil::RenderBin
     {
@@ -100,6 +100,7 @@ namespace
         {
         }
     };
+#endif
 }
 
 //---------------------------------------------------------------------------
@@ -193,8 +194,8 @@ _selectionInfo        ( 0L )
         Threading::ScopedMutexLock lock(_renderBinMutex);
 
         // generate uniquely named render bin prototypes for this engine:
-        _surfaceRenderBinPrototype = new SurfaceBin();
-        osgUtil::RenderBin::addRenderBinPrototype( _surfaceRenderBinPrototype->getName(), _surfaceRenderBinPrototype.get() );
+        //_surfaceRenderBinPrototype = new SurfaceBin();
+        //osgUtil::RenderBin::addRenderBinPrototype( _surfaceRenderBinPrototype->getName(), _surfaceRenderBinPrototype.get() );
     }
 
     // install an elevation callback so we can update elevation data
@@ -208,6 +209,8 @@ _selectionInfo        ( 0L )
         Shaders package;
         package.load(vp, package.SDK);
     }
+
+    _surfaceSS = new osg::StateSet();
 }
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
@@ -384,11 +387,12 @@ RexTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 osg::StateSet*
 RexTerrainEngineNode::getSurfaceStateSet()
 {
-#ifdef USE_RENDER_BINS
-    return _surfaceRenderBinPrototype->getStateSet();
-#else
-    return _terrain ? _terrain->getOrCreateStateSet() : 0L;
-#endif
+    return _surfaceSS.get();
+//#ifdef USE_RENDER_BINS
+//    return _surfaceRenderBinPrototype->getStateSet();
+//#else
+//    return _terrain ? _terrain->getOrCreateStateSet() : 0L;
+//#endif
 }
 
 UID
@@ -399,7 +403,7 @@ RexTerrainEngineNode::addLandCoverZone()
     return index;
 }
 
-osgUtil::RenderBin*
+osg::StateSet*
 RexTerrainEngineNode::addLandCoverLayer(UID zoneID, unsigned lod, bool castShadows)
 {
     if ( zoneID >= _landCoverData._zones.size() )
@@ -410,27 +414,11 @@ RexTerrainEngineNode::addLandCoverLayer(UID zoneID, unsigned lod, bool castShado
     LandCoverBin& bin = bins.back();
     bin._lod = lod;
     bin._castShadows = castShadows;
-
-    // create a stateset that we'll use to place things in this bin.
-    // each layer has a unique name so that OSG will place everything in the same
-    // layer in the same RenderBin, which is important for shader program sorting.
-    std::string binProtoName = Stringify() << "oe.LandCoverBin." << zoneID << "." << bins.size();
     bin._stateSet = new osg::StateSet();
-    bin._stateSet->setRenderBinDetails(bins.size(), binProtoName);
-    bin._stateSet->setNestRenderBins(false);
-
-    // create and register the bin prototype itself.
-    bin._binProto = new osgUtil::RenderBin();
-    bin._binProto->setStateSet( new osg::StateSet() );
-    bin._binProto->setName( binProtoName );
-
-    //OE_INFO << LC << "Added land cover layer \"" << binProtoName << "\" at LOD " << lod << "\n";
-
-    osgUtil::RenderBin::addRenderBinPrototype(binProtoName, bin._binProto.get());
 
     updateState();
 
-    return bin._binProto.get();
+    return bin._stateSet.get();
 }
 
 void
@@ -630,6 +618,8 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
         nv.setUserData( this->getEngineContext() );
 
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+
+        this->getEngineContext()->_surfaceSS = _surfaceSS.get();
 
         this->getEngineContext()->startCull( cv );
         TerrainEngineNode::traverse( nv );
@@ -936,19 +926,7 @@ RexTerrainEngineNode::updateState()
             {
                 for(LandCoverBins::iterator bin = zone->_bins.begin(); bin != zone->_bins.end(); ++bin)
                 {
-                    osg::StateSet* landCoverStateSet = bin->_binProto->getStateSet();
-
-                    // enable alpha-to-coverage multisampling for vegetation.
-                    landCoverStateSet->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-
-                    // uniform that communicates the availability of multisampling.
-                    landCoverStateSet->addUniform( new osg::Uniform(
-                        "oe_terrain_hasMultiSamples",
-                        osg::DisplaySettings::instance()->getMultiSamples()) );
-
-                    landCoverStateSet->setAttributeAndModes(
-                        new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
-                        osg::StateAttribute::OVERRIDE );
+                    osg::StateSet* landCoverStateSet = bin->_stateSet.get();
 
                     #ifdef HAVE_OSG_PATCH_PARAMETER
                         landCoverStateSet->setAttributeAndModes( new osg::PatchParameter(3) );

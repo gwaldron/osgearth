@@ -60,9 +60,7 @@ namespace
             if ( _options.landCoverGroup().isSet() )
             {                
                 UID zoneid = engine->addLandCoverZone();
-                osgUtil::RenderBin* bin = engine->addLandCoverLayer(zoneid, _options.landCoverLOD().get(), true);
-                if ( bin )
-                    stateSet = bin->getStateSet();
+                stateSet = engine->addLandCoverLayer(zoneid, _options.landCoverLOD().get(), true);
             }
 
             else

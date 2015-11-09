@@ -71,7 +71,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void setLandCoverGroupSelector(LandCoverGroupSelector*);
 
-        osgUtil::RenderBin* addLandCoverLayer(UID zoneUID, unsigned lod, bool castShadows);
+        osg::StateSet* addLandCoverLayer(UID zoneUID, unsigned lod, bool castShadows);
 
     public: // internal TerrainEngineNode
 
@@ -191,6 +191,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void destroySelectionInfo(void);
 
         osg::ref_ptr<LandCoverGroupSelector> _landCoverGroupSelector;
+
+        osg::ref_ptr<osg::StateSet> _surfaceSS;
     };
 
 } } } // namespace osgEarth::Drivers::RexTerrainEngine

@@ -133,7 +133,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool acceptSurface(osgUtil::CullVisitor* nv, EngineContext*);
 
         bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
-        float getVisibilityRangeHint(unsigned firstLOD) const;
+        float getVisibilityRangeHint(EngineContext*) const;
 
         void updateTileUniforms(const SelectionInfo& selectionInfo);
         void createTileUniforms();

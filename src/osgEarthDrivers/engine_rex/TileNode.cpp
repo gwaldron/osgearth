@@ -102,9 +102,9 @@ TileNode::create(const TileKey& key, EngineContext* context)
     //_surface->setNodeMask( OSGEARTH_MASK_TERRAIN_SURFACE );
     
     // Slot it into the proper render bin:
-    osg::StateSet* surfaceSS = _surface->getOrCreateStateSet();
-    surfaceSS->setRenderBinDetails(0, "oe.SurfaceBin");
-    surfaceSS->setNestRenderBins(false);
+    //osg::StateSet* surfaceSS = _surface->getOrCreateStateSet();
+    //surfaceSS->setRenderBinDetails(0, "oe.SurfaceBin");
+    //surfaceSS->setNestRenderBins(false);
 
     // Create a drawable for land cover geometry.
     // Land cover will be rendered as patch data instead of triangles.
@@ -140,7 +140,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
             unsigned uiMaxLod   = std::min( context->_options.maxLOD().get(), 19u ); // beyond LOD 19 or 20, morphing starts to lose precision.
             unsigned uiTileSize = *(context->_options.tileSize());
 
-            selectionInfo.initialize(uiFirstLOD, uiMaxLod, uiTileSize, getVisibilityRangeHint(uiFirstLOD));
+            selectionInfo.initialize(uiFirstLOD, uiMaxLod, uiTileSize, getVisibilityRangeHint(context)); //uiFirstLOD));
         }
     }
 
@@ -274,8 +274,11 @@ TileNode::releaseGLObjects(osg::State* state) const
 }
 
 float
-TileNode::getVisibilityRangeHint(unsigned firstLOD) const
+TileNode::getVisibilityRangeHint(EngineContext* context) const
 {    
+    unsigned firstLOD = context->_options.firstLOD().get();
+    float mtrf = context->_options.minTileRangeFactor().get();
+
     if (getTileKey().getLOD()!=firstLOD)
     {
         OE_INFO << LC <<"Error: Visibility Range hint can be computed only using the first LOD"<<std::endl;
@@ -283,7 +286,7 @@ TileNode::getVisibilityRangeHint(unsigned firstLOD) const
     }
     // The motivation here is to use the extents of the tile at lowest resolution
     // along with a factor as an estimate of the visibility range
-    const float factor = 6.0f * 2.5f;
+    const float factor = mtrf * 2.5f;
     const osg::BoundingBox& box = _surface->getAlignedBoundingBox();
     return factor * 0.5*std::max( box.xMax()-box.xMin(), box.yMax()-box.yMin() );
 }
@@ -438,7 +441,9 @@ void TileNode::cull(osg::NodeVisitor& nv)
                     }
 
                     cv->pushStateSet( bin._stateSet.get() ); // hopefully groups together for rendering.
+
                     _landCover->accept( nv );
+
                     cv->popStateSet();
                 }
 
@@ -478,9 +483,14 @@ TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
         if ( context->progress() )
             context->progress()->stats()["TileNode::acceptSurface"]++;
 
+        cv->pushStateSet(context->_surfaceSS.get());
+
         cv->pushStateSet( _payloadStateSet.get() );
         _surface->accept( *cv );
         cv->popStateSet();
+
+        cv->popStateSet();
+
         return true;
     }
     else

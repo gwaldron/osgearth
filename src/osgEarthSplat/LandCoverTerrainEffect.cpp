@@ -32,6 +32,8 @@
 #include <osgEarth/ImageUtils>
 
 #include <osg/Texture2D>
+#include <osg/BlendFunc>
+#include <osg/Multisample>
 #include <osgUtil/Optimizer>
 
 #include "SplatShaders"
@@ -118,15 +120,14 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                         {
                             if ( !layer->getBiomes().empty() || layer->getTotalNumBillboards() > 0 )
                             {
-                                osgUtil::RenderBin* bin = engine->addLandCoverLayer( zone->getUID(), layer->getLOD(), layer->getCastShadows() );
-                                if ( bin )
+                                osg::StateSet* stateset = engine->addLandCoverLayer( zone->getUID(), layer->getLOD(), layer->getCastShadows() );
+                                if ( stateset )
                                 {
-                                    osg::StateSet* stateset = bin->getStateSet();
-
                                     bool useMask = (landCover->getMaskLayer() != 0L);
 
                                     // Install the land cover shaders on the state set
                                     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+                                    vp->setName("Land Cover (" + layer->getName() + ")");
                                     LandCoverShaders shaders;
                                     if ( useMask )
                                     {
@@ -161,6 +162,20 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                                     stateset->addUniform( new osg::Uniform("oe_landcover_contrast",    layer->getContrast()) );
 
                                     stateset->addUniform( new osg::Uniform("oe_landcover_useMask", useMask) );
+
+                                    // enable alpha-to-coverage multisampling for vegetation.
+                                    stateset->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+
+                                    // uniform that communicates the availability of multisampling.
+                                    stateset->addUniform( new osg::Uniform(
+                                        "oe_terrain_hasMultiSamples",
+                                        osg::DisplaySettings::instance()->getMultiSamples()) );
+
+                                    stateset->setAttributeAndModes(
+                                        new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO),
+                                        osg::StateAttribute::OVERRIDE );
+
+                                    stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 
                                     // Build the texture array!
                                     int s=-1, t=-1;

@@ -278,6 +278,12 @@ namespace osgEarth
         Horizon                           _horizon;
         osg::observer_ptr<osg::ClipPlane> _clipPlane;
     };
+
+
+    struct OSGEARTH_EXPORT CullDebugger
+    {
+        Config dumpRenderBin(osgUtil::RenderBin* bin) const;
+    };
 }
 
 #endif // OSGEARTH_CULLING_UTILS_H

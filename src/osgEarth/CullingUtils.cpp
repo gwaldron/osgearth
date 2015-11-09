@@ -1080,3 +1080,53 @@ ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
     }
     traverse(node, nv);
 }
+
+//......................................................................
+
+namespace
+{
+    Config dumpStateGraph(osgUtil::StateGraph* sg)
+    {
+        Config conf("StateGraph");
+        conf.add("Name", sg->getStateSet()->getName());
+        conf.add("NumLeaves", sg->_leaves.size());
+        Config kids("_children");
+        for(osgUtil::StateGraph::ChildList::const_iterator i = sg->_children.begin(); i != sg->_children.end(); ++i)
+        {
+            kids.add( dumpStateGraph(i->second.get()) );
+        }
+        if ( !kids.children().empty() )
+            conf.add(kids);
+
+        return conf;
+    }
+}
+
+Config
+CullDebugger::dumpRenderBin(osgUtil::RenderBin* bin) const
+{
+    Config conf("RenderBin");
+    if ( !bin->getName().empty() )
+        conf.set("Name", bin->getName());
+    conf.set("BinNum", bin->getBinNum());
+    
+    Config sg("StateGraphList");
+    sg.add("NumChildren", bin->getStateGraphList().size());
+    //for(osgUtil::RenderBin::StateGraphList::const_iterator i = bin->getStateGraphList().begin(); i != bin->getStateGraphList().end(); ++i)
+    //{
+    //    sg.add( dumpStateGraph(*i) );
+    //}
+    if ( !sg.children().empty() )
+        conf.add(sg);
+
+    Config rb("_children");
+    for(osgUtil::RenderBin::RenderBinList::const_iterator i = bin->getRenderBinList().begin(); i != bin->getRenderBinList().end(); ++i)
+    {
+        osgUtil::RenderBin* childBin = i->second.get();
+        rb.add( dumpRenderBin(childBin) );
+    }
+    if ( !rb.children().empty() )
+        conf.add(rb);
+
+    return conf;
+}

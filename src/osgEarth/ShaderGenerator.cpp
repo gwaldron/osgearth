@@ -778,7 +778,7 @@ ShaderGenerator::processText(const osg::StateSet* ss, osg::ref_ptr<osg::StateSet
         INDENT "color.a *= texel.a; \n"
         "}\n";
 
-    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
+    vp->setFunction( VERTEX_FUNCTION,   vertSrc, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f );
     vp->setFunction( FRAGMENT_FUNCTION, fragSrc, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
     replacement->getOrCreateUniform( SAMPLER_TEXT, osg::Uniform::SAMPLER_2D )->set( 0 );
 

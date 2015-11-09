@@ -86,6 +86,8 @@ namespace osgEarth { namespace Features
 
         Feature* getFeature(ObjectID oid) const;
 
+        ObjectID getObjectID(FeatureID fid) const;
+
         int size() const { return _fids.size(); }
 
     public: // Functions called by FeatureSourceIndexNode

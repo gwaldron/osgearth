@@ -292,3 +292,14 @@ FeatureSourceIndex::getFeature(ObjectID oid) const
     }
     return feature;
 }
+
+ObjectID
+FeatureSourceIndex::getObjectID(FeatureID fid) const
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    FIDMap::const_iterator i = _fids.find(fid);
+    if ( i != _fids.end() )
+        return i->second->_oid;
+    else
+        return OSGEARTH_OBJECTID_EMPTY;
+}

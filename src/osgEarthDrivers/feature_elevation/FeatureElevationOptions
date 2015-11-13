@@ -37,6 +37,10 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& attr() { return _attr; }
         const optional<std::string>& attr() const { return _attr; }
 
+        /** vertical offset for flattening from the elevation value in the feature source */
+        optional<double>& offset() { return _offset; }
+        const optional<double>& offset() const { return _offset; }
+
         /** Feature source from which to read the feature data */
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
@@ -45,7 +49,8 @@ namespace osgEarth { namespace Drivers
 
         FeatureElevationOptions( const TileSourceOptions& options =TileSourceOptions() ) :
             TileSourceOptions( options ),
-            _attr( "ELEVATION" )
+            _attr( "ELEVATION" ),
+            _offset( -0.1 )
         {
             setDriver( "feature_elevation" );
             fromConfig( _conf );
@@ -60,6 +65,7 @@ namespace osgEarth { namespace Drivers
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet( "attr", _attr );
             conf.updateObjIfSet( "features", _featureOptions );
+            conf.updateIfSet( "offset", _offset );
 
             return conf;
         }
@@ -71,6 +77,7 @@ namespace osgEarth { namespace Drivers
 
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "attr", _attr );
+            conf.getIfSet( "offset", _offset );
 
             if ( conf.hasChild("features") )
                 _featureOptions->merge( conf.child("features") );
@@ -78,6 +85,7 @@ namespace osgEarth { namespace Drivers
 
         optional<FeatureSourceOptions>  _featureOptions;
         optional<std::string>           _attr;
+        optional<double>                _offset;
     };
 
 } } // namespace osgEarth::Drivers

@@ -33,7 +33,8 @@ _backfaceCulling(rhs._backfaceCulling),
 _order(rhs._order),
 _clipPlane(rhs._clipPlane),
 _minAlpha(rhs._minAlpha),
-_renderBin(rhs._renderBin)
+_renderBin(rhs._renderBin),
+_transparent(rhs._transparent)
 {
 }
 
@@ -44,7 +45,8 @@ _lighting       ( true ),
 _backfaceCulling( true ),
 _order          ( 0 ),
 _clipPlane      ( 0 ),
-_minAlpha       ( 0.0f )
+_minAlpha       ( 0.0f ),
+_transparent    ( false )
 {
     mergeConfig(conf);
 }
@@ -62,6 +64,7 @@ RenderSymbol::getConfig() const
     conf.addIfSet   ( "clip_plane",       _clipPlane );
     conf.addIfSet   ( "min_alpha",        _minAlpha );
     conf.addIfSet   ( "render_bin",       _renderBin );
+    conf.addIfSet   ( "transparent",      _transparent );
     return conf;
 }
 
@@ -76,6 +79,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.getIfSet   ( "clip_plane",       _clipPlane );
     conf.getIfSet   ( "min_alpha",        _minAlpha );
     conf.getIfSet   ( "render_bin",       _renderBin );
+    conf.getIfSet   ( "transparent",      _transparent );
 }
 
 void
@@ -122,5 +126,8 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "render-bin") ) {
         style.getOrCreate<RenderSymbol>()->renderBin() = c.value();
+    }
+    else if ( match(c.key(), "render-transparent") ) {
+        style.getOrCreate<RenderSymbol>()->transparent() = as<bool>(c.value(), *defaults.transparent() );
     }
 }

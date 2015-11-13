@@ -124,7 +124,8 @@ namespace
 HorizonTileCuller::HorizonTileCuller(const SpatialReference* srs, 
                                      const osg::Matrix&      local2world)
 {
-    _horizonProto.setEllipsoid(*srs->getEllipsoid());
+    _horizonProto = new Horizon();
+    _horizonProto->setEllipsoid(*srs->getEllipsoid());
     _radiusPolar = srs->getEllipsoid()->getRadiusPolar();
     _radiusEquator = srs->getEllipsoid()->getRadiusEquator();
     _local2world = local2world;
@@ -140,7 +141,7 @@ HorizonTileCuller::set(const osg::BoundingBox& bbox)
     double zMin = bbox.corner(0).z();
     if ( zMin < 0.0 )
     {
-        _horizonProto.setEllipsoid( osg::EllipsoidModel(_radiusEquator + zMin, _radiusPolar + zMin) );
+        _horizonProto->setEllipsoid( osg::EllipsoidModel(_radiusEquator + zMin, _radiusPolar + zMin) );
     }            
 
     // consider the uppermost 4 points of the tile-aligned bounding box.
@@ -154,12 +155,12 @@ HorizonTileCuller::set(const osg::BoundingBox& bbox)
 bool
 HorizonTileCuller::isVisible(const osg::Vec3d& from) const
 {
-    Horizon horizon( _horizonProto );
-    horizon.setEye( from );
+    osg::ref_ptr<Horizon> horizon = osg::clone(_horizonProto.get());
+    horizon->setEye( from );
 
     for(unsigned i=0; i<4; ++i)
     {                   
-        if ( horizon.isVisible(_points[i]) )
+        if ( horizon->isVisible(_points[i]) )
         {
             return true;
         }

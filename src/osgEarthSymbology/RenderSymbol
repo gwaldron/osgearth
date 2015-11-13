@@ -69,6 +69,10 @@ namespace osgEarth { namespace Symbology
         optional<float>& minAlpha() { return _minAlpha; }
         const optional<float>& minAlpha() const { return _minAlpha; }
 
+        /** hint to render in the transparent (depth-sorted) bin */
+        optional<bool>& transparent() { return _transparent; }
+        const optional<bool>& transparent() const { return _transparent; }
+
         /** render bin to use for sorting */
         optional<std::string>& renderBin() { return _renderBin; }
         const optional<std::string>& renderBin() const { return _renderBin; }
@@ -87,6 +91,7 @@ namespace osgEarth { namespace Symbology
         optional<unsigned>           _clipPlane;
         optional<float>              _minAlpha;
         optional<std::string>        _renderBin;
+        optional<bool>               _transparent;
         
         /** dtor */
         virtual ~RenderSymbol() { }

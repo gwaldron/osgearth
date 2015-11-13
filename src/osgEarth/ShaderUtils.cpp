@@ -185,76 +185,12 @@ namespace
         return yes;
     }
 
-#if 0
-    // each output pair is "qualifier", "declaration".
-    struct Varying {
-        std::string original;
-        std::string qualifier;
-        std::string definition;
-        Varying(const std::string& a, const std::string& b, const std::string& c) : original(a), qualifier(b), definition(c) { }
-    };
-
-    void collectVaryings(osg::Shader::Type type, const std::string& source, std::vector<Varying>& out)
-    {
-        //OE_NOTICE << "\n\n\n\nShader\n\n\n\n";
-        std::string::size_type pos = 0;
-        while( pos != std::string::npos && pos < source.length() )
-        {
-            std::string::size_type end = source.find_first_of("\n;", pos);
-            if ( end == std::string::npos )
-                break;
-
-            std::string statement(source, pos, end-pos);
-            trim2(statement);
-
-            //OE_NOTICE << "Statement: " << statement << "\n";
-
-            //osgEarth::collapseWhitespace(line);
-
-            if ( startsWith(statement, "out ") && type != osg::Shader::FRAGMENT ) {
-                out.push_back( Varying(statement, "", std::string(statement, 4)) );
-            }
-            else if ( startsWith(statement, "in ") && type != osg::Shader::VERTEX ) {
-                out.push_back( Varying(statement, "", std::string(statement, 3)) );
-            }
-            else if ( startsWith(statement, "varying out ") && type != osg::Shader::FRAGMENT) {
-                out.push_back( Varying(statement, "", std::string(statement, 12)) );
-            }
-            else if ( startsWith(statement, "varying in ") && type != osg::Shader::VERTEX ) {
-                out.push_back( Varying(statement, "", std::string(statement, 11)) );
-            }
-            else if ( startsWith(statement, "flat out ") && type != osg::Shader::FRAGMENT ) {
-                out.push_back( Varying(statement, "flat ", std::string(statement, 9)) );
-            }
-            else if ( startsWith(statement, "flat in ") && type != osg::Shader::VERTEX ) {
-                out.push_back( Varying(statement, "flat ", std::string(statement, 8)) );
-            }
-            else if ( startsWith(statement, "varying ") ) {
-                out.push_back( Varying(statement, "", std::string(statement, 8)) );
-            }
-
-            pos = end+1;
-        }
-    }
-
-    void makeVaryingPragma(const StringVector& tokens, int offset, const std::string& prefix, std::string& output)
-    {
-        std::stringstream buf;
-        buf << "#pragma vp_varying";
-        if ( !prefix.empty() )
-            buf << " " << prefix;
-        for(int i=offset; i<tokens.size(); ++i)
-            buf << " " << tokens[i];
-        output = buf.str();
-    }
-#endif
-
     int replaceVarying(GLSLChunks& chunks, int index, const StringVector& tokens, int offset, const std::string& prefix)
     {
         std::stringstream buf;
-        buf << "#pragma vp_varying";
+        buf << "#pragma vp_varying ";
         if ( !prefix.empty() )
-            buf << " " << prefix;
+            buf << prefix << " ";
 
         for(int i=offset; i<tokens.size(); ++i)
         {

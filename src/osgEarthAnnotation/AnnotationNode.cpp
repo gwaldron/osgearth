@@ -450,5 +450,12 @@ AnnotationNode::applyGeneralSymbology(const Style& style)
         {
             DiscardAlphaFragments().install( getOrCreateStateSet(), render->minAlpha().value() );
         }
+        
+
+        if ( render->transparent() == true )
+        {
+            osg::StateSet* ss = getOrCreateStateSet();
+            ss->setRenderingHint( ss->TRANSPARENT_BIN );
+        }
     }
 }

@@ -177,7 +177,7 @@ OrthoNode::setMapNode( MapNode* mapNode )
         }
 
         // same goes for the horizon culler:
-        _horizonCuller->setHorizon( Horizon(*mapNode->getMapSRS()->getEllipsoid()) );
+        _horizonCuller->setHorizon( new Horizon(*mapNode->getMapSRS()->getEllipsoid()) );
         setHorizonCulling( _horizonCullingRequested );
 
         // re-apply the position since the map has changed

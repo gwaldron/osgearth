@@ -1467,6 +1467,12 @@ FeatureModelGraph::checkForGlobalStyles( const Style& style )
                 (int)render->order()->eval(),
                 ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName() );
         }
+
+        if ( render && render->transparent() == true )
+        {
+            osg::StateSet* ss = getOrCreateStateSet();
+            ss->setRenderingHint( ss->TRANSPARENT_BIN );
+        }
     }
 }
 

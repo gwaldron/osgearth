@@ -20,14 +20,17 @@
 #include <osgUtil/CullVisitor>
 #include <osg/Transform>
 #include <osgEarth/Registry>
+#include <osg/ValueObject>
 
 #define LC "[Horizon] "
 
+#define OSGEARTH_HORIZON_UDC_NAME "osgEarth.Horizon"
 
 using namespace osgEarth;
 
 Horizon::Horizon()
 {
+    setName(OSGEARTH_HORIZON_UDC_NAME);
     setEllipsoid(osg::EllipsoidModel());
 }
 
@@ -36,7 +39,8 @@ Horizon::Horizon(const osg::EllipsoidModel& e)
     setEllipsoid( e );
 }
 
-Horizon::Horizon(const Horizon& rhs) :
+Horizon::Horizon(const Horizon& rhs, const osg::CopyOp& op) :
+osg::Object( rhs, op ),
 _scale   ( rhs._scale ),
 _scaleInv( rhs._scaleInv ),
 _eye     ( rhs._eye ),
@@ -50,6 +54,27 @@ _coneTan ( rhs._coneTan )
 {
     // nop
 }
+
+#ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
+
+void
+Horizon::put(osg::NodeVisitor& nv)
+{
+    osg::UserDataContainer* udc = nv.getOrCreateUserDataContainer();
+    unsigned i = udc->getUserObjectIndex(OSGEARTH_HORIZON_UDC_NAME);
+    if (i < udc->getNumUserObjects()) udc->setUserObject( i, this );
+    else udc->addUserObject(this);
+}
+
+Horizon* Horizon::get(osg::NodeVisitor& nv)
+{
+    osg::UserDataContainer* udc = nv.getUserDataContainer();
+    if ( !udc ) return 0L;
+    unsigned i = udc->getUserObjectIndex(OSGEARTH_HORIZON_UDC_NAME);
+    if ( i < udc->getNumUserObjects() ) return static_cast<Horizon*>(udc->getUserObject(i));
+    else return 0L;
+}
+#endif
 
 void
 Horizon::setEllipsoid(const osg::EllipsoidModel& e)
@@ -112,16 +137,25 @@ Horizon::isVisible(const osg::Vec3d& target,
     // transform into unit space:
     VT = osg::componentMultiply( VT, _scale );
 
-    // eye under the ellipsoid? If so, form a plane that passes through the eye
-    // and check that the target lies outside that plane.
-    if ( _VCmag < 1.0 && VT*_VC < 0.0 )
+    // If the target is above the eye, it's visible
+    double VTdotVC = VT*_VC;
+    if ( VTdotVC <= 0.0 )
     {        
         return true;
     }
+    
+    // If the eye is below the ellipsoid, but the target is below the eye
+    // (since the above test failed) the target is occluded. 
+    // NOTE: it might be better instead to check for a maximum distance from
+    // the eyepoint instead. 
+    if ( _VCmag < 0.0 )
+    {
+        return false;
+    }
 
-    // Eye is above the ellipsoid, so there is a valid horizon plane. 
+    // Now we know that the eye is above the ellipsoid, so there is a valid horizon plane. 
     // If the point is in front of that horizon plane, it's visible and we're done
-    if ( VT*_VC <= _VHmag2 )
+    if ( VTdotVC <= _VHmag2 )
     {
         return true;
     }
@@ -186,35 +220,74 @@ _centerOnly( false )
     //nop
 }
 
-void
-HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+
+bool
+HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
 {
-    bool visible = true;
+    osg::NodePath np = nv->getNodePath();
+    osg::Matrix local2world;
+    Horizon* horizon = 0L;
 
-    if ( _enabled && node && nv && nv->getVisitorType() == nv->CULL_VISITOR )
+#ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
+    horizon = Horizon::get(*nv);
+#endif
+
+    if ( horizon )
     {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
-        
-        osg::NodePath np = nv->getNodePath();
-        osg::Matrix local2world = osg::computeLocalToWorld(np);
+        // pop the last node in the path (which is the node this callback is on)
+        // to prevent double-transforming the bounding sphere's center point
+        np.pop_back();
+        local2world = osg::computeLocalToWorld(np);
 
+        const osg::BoundingSphere& bs = node->getBound();
+        double radius = _centerOnly ? 0.0 : bs.radius();
+        return horizon->isVisible( bs.center()*local2world, radius );
+    }
+    else
+    {
         // make a local copy to support multi-threaded cull
+        local2world  = osg::computeLocalToWorld(np);
         osg::Vec3d eye = osg::Vec3d(nv->getViewPoint()) * local2world;
-        Horizon horizon(_horizon);
-        horizon.setEye( eye );
 
         // pop the last node in the path (which is the node this callback is on)
         // to prevent double-transforming the bounding sphere's center point
         np.pop_back();
         local2world = osg::computeLocalToWorld(np);
+
+        osg::ref_ptr<Horizon> horizonCopy = osg::clone(_horizon.get());
+        horizonCopy->setEye( eye );
+
         const osg::BoundingSphere& bs = node->getBound();
-
         double radius = _centerOnly ? 0.0 : bs.radius();
+        return horizonCopy->isVisible( bs.center()*local2world, radius );
+    }
+}
 
-        visible = horizon.isVisible( bs.center()*local2world, radius );
+void
+HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{    
+    if ( _enabled )
+    {
+        if ( _proxy.valid() )
+        {
+            osg::ref_ptr<osg::Node> proxy;
+            if ( _proxy.lock(proxy) )
+            {
+                if ( isVisible(proxy.get(), nv) )
+                {
+                    traverse(node, nv);
+                    return;
+                }
+            }
+        }
+
+        if ( isVisible(node, nv) )
+        {
+            traverse(node, nv);
+        }
     }
 
-    if ( visible )
+    else
     {
         traverse(node, nv);
     }

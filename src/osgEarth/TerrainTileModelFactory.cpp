@@ -330,6 +330,24 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
         true, // convertToHAE
         progress );
 
+    // check for all zeros, which is the same as "empty".
+    if ( populated )
+    {
+        bool isEmpty = true;
+        for(osg::FloatArray::const_iterator f = out_hf->getFloatArray()->begin(); f != out_hf->getFloatArray()->end(); ++f)
+        {
+            if ( (*f) != 0.0f )
+            {
+                isEmpty = false;
+                break;
+            }
+        }
+        if ( isEmpty )
+        {
+            populated = false;
+        }
+    }
+
     if ( populated )
     {
         // Treat Plate Carre specially by scaling the height values. (There is no need

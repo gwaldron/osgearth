@@ -330,7 +330,8 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
         true, // convertToHAE
         progress );
 
-    // check for all zeros, which is the same as "empty".
+#ifdef TREAT_ALL_ZEROS_AS_MISSING_TILE
+    // check for a real tile with all zeros and treat it the same as non-existant data.
     if ( populated )
     {
         bool isEmpty = true;
@@ -347,6 +348,7 @@ TerrainTileModelFactory::getOrCreateHeightField(const MapFrame&                 
             populated = false;
         }
     }
+#endif
 
     if ( populated )
     {

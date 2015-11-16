@@ -57,11 +57,11 @@ main(int argc, char** argv)
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
-    viewer.setLightingMode( osg::View::NO_LIGHT );
 
     // Tell the database pager to not modify the unref settings
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
+    // thread-safe initialization of the OSG wrapper manager
     osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
 
     // install our default manipulator (do this before calling load)
@@ -69,9 +69,6 @@ main(int argc, char** argv)
 
     // disable the small-feature culling
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
-    // configure the near/far so we don't clip things that are up close
-    viewer.getCamera()->setNearFarRatio(0.00002);
 
     if ( vfov > 0.0 )
     {

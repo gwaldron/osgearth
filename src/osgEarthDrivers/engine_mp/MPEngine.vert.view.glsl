@@ -9,7 +9,7 @@ uniform float oe_layer_minRange;
 uniform float oe_layer_maxRange;
 uniform float oe_layer_attenuationRange;
 
-varying float oe_layer_rangeOpacity;
+out float oe_layer_rangeOpacity;
 
 void oe_mp_vertView(inout vec4 vertexView)
 {

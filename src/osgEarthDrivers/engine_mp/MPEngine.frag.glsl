@@ -13,8 +13,8 @@ uniform int oe_layer_uid;
 uniform int oe_layer_order;
 uniform float oe_layer_opacity;
 
-varying vec4 oe_layer_texc;
-varying float oe_layer_rangeOpacity;
+in vec4 oe_layer_texc;
+in float oe_layer_rangeOpacity;
 
 void oe_mp_apply_coloring(inout vec4 color)
 {

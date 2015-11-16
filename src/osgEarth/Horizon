@@ -43,10 +43,13 @@ namespace osgEarth
     public:
         META_Object(osgEarth, Horizon);
 
-#ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
+        // Retrieve a Horizon object from the NodeVisitor. Returns NULL
+        // if this operation is not supported.
         static Horizon* get(osg::NodeVisitor& nv);
-        void put(osg::NodeVisitor& nv);
-#endif
+
+        // Stores this object in the NodeVisitor. Returns false if the
+        // operation is not supported.
+        bool put(osg::NodeVisitor& nv);
 
     public:
         /** Construct a horizon using a default WGS84 ellipsoid model. */
@@ -151,9 +154,9 @@ namespace osgEarth
         /**
          * Horizon to cull againts
          */
-        void setHorizon(Horizon* horizon) { _horizon = horizon; }
-        Horizon* getHorizon() { return _horizon.get(); }
-        const Horizon* getHorizon() const { return _horizon.get(); }
+        void setHorizon(Horizon* horizon) { _horizonProto = horizon; }
+        Horizon* getHorizon() { return _horizonProto.get(); }
+        const Horizon* getHorizon() const { return _horizonProto.get(); }
 
     public: // osg::NodeCallback
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
@@ -166,7 +169,7 @@ namespace osgEarth
     private:
         bool _centerOnly;
         bool _enabled;
-        osg::ref_ptr<Horizon> _horizon;
+        osg::ref_ptr<Horizon> _horizonProto;
         osg::observer_ptr<osg::Node> _proxy;
     };
 

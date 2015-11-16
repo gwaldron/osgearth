@@ -33,6 +33,7 @@
 
 #include <osg/Shape>
 #include <osg/ShapeDrawable>
+#include <osg/NodeCallback>
 
 #define LC "[viewer] "
 
@@ -60,8 +61,20 @@ struct StupidGeode : public osg::Geode
     }
 };
 
+struct SetHorizonCallback : public osg::NodeCallback
+{
+    osg::ref_ptr<Horizon> _horizonProto;
+    void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        osg::ref_ptr<Horizon> horizon = osg::clone(_horizonProto.get(), osg::CopyOp::DEEP_COPY_ALL);
+        horizon->setEye( nv->getViewPoint() );
+        horizon->put( *nv );        
+        traverse(node, nv);
+    }
+};
+
 osg::Node*
-installGeometry(const SpatialReference* srs)
+installGeometry1(const SpatialReference* srs)
 {
     osg::Geode* geode = new StupidGeode();
     geode->addDrawable( new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), RADIUS) ) );
@@ -69,6 +82,19 @@ installGeometry(const SpatialReference* srs)
     OE_INFO << geode->getBound().radius() << "\n";
     GeoTransform* xform = new GeoTransform();
     xform->setPosition( GeoPoint(srs, 0.0, 0.0, 0.0, ALTMODE_ABSOLUTE) );
+    xform->addChild( geode );
+    return xform;
+}
+
+osg::Node*
+installGeometry2(const SpatialReference* srs)
+{
+    osg::Geode* geode = new StupidGeode();
+    geode->addDrawable( new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), RADIUS) ) );
+    osg::Vec3f center = geode->getBound().center();
+    OE_INFO << geode->getBound().radius() << "\n";
+    GeoTransform* xform = new GeoTransform();
+    xform->setPosition( GeoPoint(srs, 180.0, 0.0, 0.0, ALTMODE_ABSOLUTE) );
     xform->addChild( geode );
     return xform;
 }
@@ -114,11 +140,20 @@ main(int argc, char** argv)
         root->addChild( node );
 
         const SpatialReference* srs = MapNode::get(node)->getMapSRS();
+        SetHorizonCallback* set = new SetHorizonCallback();
+        set->_horizonProto = new Horizon(srs);
+        root->addCullCallback( set );
 
-        osg::Node* item = installGeometry(srs);
-        root->addChild( item );
+        osg::Node* item1 = installGeometry1(srs);
+        root->addChild( item1 );
+
+        osg::Node* item2 = installGeometry2(srs);
+        root->addChild( item2 );
 
         osg::ref_ptr<Horizon> horizon = new Horizon(srs);
+
+        HorizonCullCallback* callback = new HorizonCullCallback();
+        item2->addCullCallback( callback );
 
         while (!viewer.done())
         {
@@ -126,10 +161,9 @@ main(int argc, char** argv)
 
             osg::Vec3d eye, center, up;
             viewer.getCamera()->getViewMatrixAsLookAt(eye, center, up);
-
             horizon->setEye( eye );
 
-            if ( horizon->isVisible( item->getBound() ) )
+            if ( horizon->isVisible( item1->getBound() ) )
             {
                 Registry::instance()->endActivity( "horizon" );
                 Registry::instance()->startActivity( "horizon", "VISIBLE" );

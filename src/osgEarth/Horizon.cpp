@@ -28,19 +28,24 @@
 
 using namespace osgEarth;
 
-Horizon::Horizon()
+Horizon::Horizon() :
+_valid( false )
 {
     setName(OSGEARTH_HORIZON_UDC_NAME);
     setEllipsoid(osg::EllipsoidModel());
 }
 
-Horizon::Horizon(const osg::EllipsoidModel& e)
+Horizon::Horizon(const osg::EllipsoidModel& e) :
+_valid( false )
 {
+    setName(OSGEARTH_HORIZON_UDC_NAME);
     setEllipsoid( e );
 }
 
-Horizon::Horizon(const SpatialReference* srs)
+Horizon::Horizon(const SpatialReference* srs) :
+_valid( false )
 {
+    setName(OSGEARTH_HORIZON_UDC_NAME);
     if ( srs && !srs->isProjected() )
     {
         setEllipsoid( *srs->getEllipsoid() );
@@ -64,25 +69,30 @@ _coneTan ( rhs._coneTan )
     // nop
 }
 
-#ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
-void
+bool
 Horizon::put(osg::NodeVisitor& nv)
 {
+#ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
     osg::UserDataContainer* udc = nv.getOrCreateUserDataContainer();
     unsigned i = udc->getUserObjectIndex(OSGEARTH_HORIZON_UDC_NAME);
     if (i < udc->getNumUserObjects()) udc->setUserObject( i, this );
     else udc->addUserObject(this);
+    return true;
+#else
+    return false;
+#endif
 }
 
 Horizon* Horizon::get(osg::NodeVisitor& nv)
 {
+#ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
     osg::UserDataContainer* udc = nv.getUserDataContainer();
     if ( !udc ) return 0L;
     unsigned i = udc->getUserObjectIndex(OSGEARTH_HORIZON_UDC_NAME);
     if ( i < udc->getNumUserObjects() ) return static_cast<Horizon*>(udc->getUserObject(i));
-    else return 0L;
-}
 #endif
+    return 0L;
+}
 
 void
 Horizon::setEllipsoid(const osg::EllipsoidModel& e)
@@ -236,12 +246,9 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
 {
     osg::NodePath np = nv->getNodePath();
     osg::Matrix local2world;
-    Horizon* horizon = 0L;
+    Horizon* horizon = Horizon::get(*nv);
 
-#ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
-    horizon = Horizon::get(*nv);
-#endif
-
+    // If we fetched the Horizon from the nodevisitor...
     if ( horizon )
     {
         // pop the last node in the path (which is the node this callback is on)
@@ -253,7 +260,9 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
         double radius = _centerOnly ? 0.0 : bs.radius();
         return horizon->isVisible( bs.center()*local2world, radius );
     }
-    else
+
+    // If we are cloning the horizon from a prototype...
+    else if ( _horizonProto.valid() )
     {
         // make a local copy to support multi-threaded cull
         local2world  = osg::computeLocalToWorld(np);
@@ -264,12 +273,20 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
         np.pop_back();
         local2world = osg::computeLocalToWorld(np);
 
-        osg::ref_ptr<Horizon> horizonCopy = osg::clone(_horizon.get());
+        osg::ref_ptr<Horizon> horizonCopy = osg::clone(_horizonProto.get(), osg::CopyOp::DEEP_COPY_ALL);
         horizonCopy->setEye( eye );
 
         const osg::BoundingSphere& bs = node->getBound();
         double radius = _centerOnly ? 0.0 : bs.radius();
         return horizonCopy->isVisible( bs.center()*local2world, radius );
+    }
+
+    // If the user forgot to install a horizon at all...
+    else
+    {
+        // No horizon data... just assume visibility
+        OE_WARN << LC << "No horizon info installed in callback\n";
+        return true;
     }
 }
 

@@ -103,7 +103,7 @@ namespace
         textDrawable->setFont( osgEarth::Registry::instance()->getDefaultFont() );
         textDrawable->setCharacterSizeMode(textDrawable->SCREEN_COORDS);
         textDrawable->setCharacterSize(32.0f);
-        textDrawable->setAlignment(textDrawable->CENTER_CENTER);
+        textDrawable->setAlignment(textDrawable->CENTER_BOTTOM);
         textDrawable->setColor(osg::Vec4(1,1,1,1));
         textDrawable->setBackdropColor(osg::Vec4(0,0,0,1));
         textDrawable->setBackdropType(textDrawable->OUTLINE);

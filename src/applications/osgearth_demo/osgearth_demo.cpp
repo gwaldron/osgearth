@@ -65,6 +65,9 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
+    // Qt+OSG only works in single-threaded mode.
+    viewer.setThreadingModel(viewer.SingleThreaded);
+
     // set up the motion model.
     viewer.setCameraManipulator( new EarthManipulator() );
 

@@ -387,6 +387,14 @@ Config::fromJSON( const std::string& input )
 }
 
 Config
+Config::readJSON(const std::string& json)
+{
+    Config conf;
+    conf.fromJSON(json);
+    return conf;
+}
+
+Config
 Config::operator - ( const Config& rhs ) const
 {
     Config result( *this );

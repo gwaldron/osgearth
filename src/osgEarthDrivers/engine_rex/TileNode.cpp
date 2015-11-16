@@ -99,13 +99,6 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getRenderBindings(),
         surfaceDrawable );
 
-    //_surface->setNodeMask( OSGEARTH_MASK_TERRAIN_SURFACE );
-    
-    // Slot it into the proper render bin:
-    //osg::StateSet* surfaceSS = _surface->getOrCreateStateSet();
-    //surfaceSS->setRenderBinDetails(0, "oe.SurfaceBin");
-    //surfaceSS->setNestRenderBins(false);
-
     // Create a drawable for land cover geometry.
     // Land cover will be rendered as patch data instead of triangles.
     TileDrawable* patchDrawable = new TileDrawable(
@@ -124,8 +117,6 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getRenderBindings(),
         patchDrawable );
 
-    //_landCover->setNodeMask( OSGEARTH_MASK_TERRAIN_LAND_COVER );
-
     // PPP: Better way to do this rather than here?
     // Can't do it at RexTerrainEngineNode level, because the SurfaceNode is not valid yet
     if (context->getSelectionInfo().initialized()==false)
@@ -140,7 +131,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
             unsigned uiMaxLod   = std::min( context->_options.maxLOD().get(), 19u ); // beyond LOD 19 or 20, morphing starts to lose precision.
             unsigned uiTileSize = *(context->_options.tileSize());
 
-            selectionInfo.initialize(uiFirstLOD, uiMaxLod, uiTileSize, getVisibilityRangeHint(context)); //uiFirstLOD));
+            selectionInfo.initialize(uiFirstLOD, uiMaxLod, uiTileSize, getVisibilityRangeHint(context));
         }
     }
 

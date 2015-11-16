@@ -70,12 +70,14 @@ _context(context)
 }
 
 
+// invoke runs in the background pager thread.
 void
 LoadTileData::invoke()
 {
     osg::ref_ptr<TileNode> tilenode;
     if ( _tilenode.lock(tilenode) )
     {
+        // Assemble all the components necessary to display this tile
         _model = _context->getEngine()->createTileModel(
             _context->getMapFrame(),
             tilenode->getTileKey(),
@@ -88,6 +90,8 @@ LoadTileData::invoke()
 
             osg::StateSet* stateSet = getStateSet();
 
+            // Insert all the color layers into a new MPTexture state attribute,
+            // which exists to facilitate GL pre-compilation.
             if ( _model->colorLayers().size() > 0 )
             {
                 const SamplerBinding* colorBinding = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
@@ -115,6 +119,7 @@ LoadTileData::invoke()
                 }
             }
 
+            // Insert the elevation texture and an identity matrix:
             if ( _model->elevationModel().valid() && _model->elevationModel()->getTexture())
             {
                 const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
@@ -131,7 +136,8 @@ LoadTileData::invoke()
                         osg::Matrixf::identity() ) );    
                 }
             }
-
+            
+            // Insert the normal texture and an identity matrix:
             if ( _model->normalModel().valid() && _model->normalModel()->getTexture() )
             {
                 const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::NORMAL);
@@ -149,7 +155,8 @@ LoadTileData::invoke()
                 }
             }
 
-            // Shared layers:
+            // Process any shared image layers, each of which should have its
+            // own sampler binding point
             for(TerrainTileImageLayerModelVector::iterator i = _model->sharedLayers().begin();
                 i != _model->sharedLayers().end();
                 ++i)
@@ -176,6 +183,8 @@ LoadTileData::invoke()
     }
 }
 
+
+// apply() runs in the update traversal and can safely alter the scene graph
 void
 LoadTileData::apply()
 {
@@ -186,7 +195,7 @@ LoadTileData::apply()
         {
             const RenderBindings& bindings      = _context->getRenderBindings();
             const SelectionInfo&  selectionInfo = _context->getSelectionInfo();
-            const MapInfo&  mapInfo             = _context->getMapFrame().getMapInfo();
+            const MapInfo&        mapInfo       = _context->getMapFrame().getMapInfo();
 
             const SamplerBinding* color = SamplerBinding::findUsage(bindings, SamplerBinding::COLOR);
 

@@ -133,7 +133,7 @@ ContourMap::onInstall(TerrainEngineNode* engine)
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
 
         Shaders pkg;
-        pkg.load(vp, pkg.ContourMap_Vertex);
+        //pkg.load(vp, pkg.ContourMap_Vertex);
         pkg.load(vp, pkg.ContourMap_Fragment);
 
         // Install some uniforms that tell the shader the height range of the color map.

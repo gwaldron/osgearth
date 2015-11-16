@@ -58,8 +58,9 @@ public:
       TileSource( options ),
       _options(options),
       _maxDataLevel(23),
-      _offset(-0.05)
+      _offset(-0.1)
     {
+        _offset = _options.offset().getOrUse(_offset);
     }
 
     virtual ~FeatureElevationTileSource() { }
@@ -276,7 +277,7 @@ public:
 							}
 						}
 
-						hf->setHeight(c, r, h-0.1);
+						hf->setHeight(c, r, h + _offset);
 					}
 				}
 			}	

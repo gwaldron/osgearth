@@ -348,6 +348,17 @@ MPTerrainEngineNode::includeShaderLibrary(VirtualProgram* vp)
 
         "uniform vec4 oe_tile_key; \n"
         "vec3 vp_Normal; \n"
+        "in float oe_mp_terrainElev; // internal variable \n"
+
+        "float oe_terrain_getElevation(in vec2 uv) \n"
+        "{ \n"
+        "    return oe_mp_terrainElev; \n"
+        "} \n"
+
+        "float oe_terrain_getElevation() \n"
+        "{ \n"
+        "    return oe_mp_terrainElev; \n"
+        "} \n"
 
         "vec4 oe_terrain_getNormalAndCurvature(in vec2 uv) \n"
         "{ \n"

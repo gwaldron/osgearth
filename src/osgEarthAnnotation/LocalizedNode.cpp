@@ -216,7 +216,7 @@ LocalizedNode::setHorizonCulling( bool value )
         if ( getMapNode() )
         {
             _horizonCuller->setHorizon(
-                Horizon(*getMapNode()->getMapSRS()->getEllipsoid()) );
+                new Horizon(*getMapNode()->getMapSRS()->getEllipsoid()) );
         }
 
         _horizonCuller->setEnabled(

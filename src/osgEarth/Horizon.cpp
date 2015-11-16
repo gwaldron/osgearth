@@ -39,8 +39,17 @@ Horizon::Horizon(const osg::EllipsoidModel& e)
     setEllipsoid( e );
 }
 
+Horizon::Horizon(const SpatialReference* srs)
+{
+    if ( srs && !srs->isProjected() )
+    {
+        setEllipsoid( *srs->getEllipsoid() );
+    }
+}
+
 Horizon::Horizon(const Horizon& rhs, const osg::CopyOp& op) :
 osg::Object( rhs, op ),
+_valid   ( rhs._valid ),
 _scale   ( rhs._scale ),
 _scaleInv( rhs._scaleInv ),
 _eye     ( rhs._eye ),
@@ -56,7 +65,6 @@ _coneTan ( rhs._coneTan )
 }
 
 #ifdef OSGEARTH_HORIZON_SUPPORTS_NODEVISITOR
-
 void
 Horizon::put(osg::NodeVisitor& nv)
 {
@@ -91,6 +99,8 @@ Horizon::setEllipsoid(const osg::EllipsoidModel& e)
 
     // just so we don't have gargabe values
     setEye( osg::Vec3d(1e7, 0, 0) );
+
+    _valid = true;
 }
 
 void
@@ -120,7 +130,7 @@ bool
 Horizon::isVisible(const osg::Vec3d& target,
                    double            radius) const
 {
-    if ( radius >= _scaleInv.x() || radius >= _scaleInv.y() || radius >= _scaleInv.z() )
+    if ( _valid == false || radius >= _scaleInv.x() || radius >= _scaleInv.y() || radius >= _scaleInv.z() )
         return true;
     
     // First check the object against the horizon plane, a plane that intersects the 
@@ -188,7 +198,7 @@ bool
 Horizon::getPlane(osg::Plane& out_plane) const
 {
     // calculate scaled distance from center to viewer:
-    if ( _VCmag2 == 0.0 )
+    if ( _valid == false || _VCmag2 == 0.0 )
         return false;
 
     double PCmag;

@@ -275,7 +275,7 @@ namespace osgEarth
         void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
     protected:
-        Horizon                           _horizon;
+        osg::ref_ptr<Horizon>             _horizon;
         osg::observer_ptr<osg::ClipPlane> _clipPlane;
     };
 

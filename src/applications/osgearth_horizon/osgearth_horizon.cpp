@@ -118,8 +118,7 @@ main(int argc, char** argv)
         osg::Node* item = installGeometry(srs);
         root->addChild( item );
 
-        Horizon horizon;
-        horizon.setEllipsoid( *srs->getEllipsoid() );
+        osg::ref_ptr<Horizon> horizon = new Horizon(srs);
 
         while (!viewer.done())
         {
@@ -128,9 +127,9 @@ main(int argc, char** argv)
             osg::Vec3d eye, center, up;
             viewer.getCamera()->getViewMatrixAsLookAt(eye, center, up);
 
-            horizon.setEye( eye );
+            horizon->setEye( eye );
 
-            if ( horizon.isVisible( item->getBound() ) )
+            if ( horizon->isVisible( item->getBound() ) )
             {
                 Registry::instance()->endActivity( "horizon" );
                 Registry::instance()->startActivity( "horizon", "VISIBLE" );

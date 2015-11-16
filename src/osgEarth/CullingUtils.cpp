@@ -1059,7 +1059,10 @@ ClipToGeocentricHorizon::ClipToGeocentricHorizon(const osgEarth::SpatialReferenc
                                                  osg::ClipPlane*                   clipPlane)
 {
     if ( srs )
-        _horizon.setEllipsoid( *srs->getEllipsoid() );
+    {
+        _horizon = new Horizon();
+        _horizon->setEllipsoid( *srs->getEllipsoid() );
+    }
 
     _clipPlane = clipPlane;
 }
@@ -1070,11 +1073,15 @@ ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
     osg::ref_ptr<osg::ClipPlane> clipPlane;
     if ( _clipPlane.lock(clipPlane) )
     {
-        Horizon horizon(_horizon);
-        horizon.setEye( nv->getViewPoint() );
+        osg::ref_ptr<Horizon> horizon = Horizon::get(*nv);
+        if ( !horizon.valid() ) 
+        {
+            horizon = new Horizon(*_horizon.get());
+            horizon->setEye( nv->getViewPoint() );
+        }
 
         osg::Plane horizonPlane;
-        horizon.getPlane( horizonPlane );
+        horizon->getPlane( horizonPlane );
 
         _clipPlane->setClipPlane( horizonPlane );
     }

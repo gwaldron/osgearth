@@ -55,6 +55,9 @@ namespace osgEarth
         /** Construct a horizon providing the ellipsoid model. */
         Horizon(const osg::EllipsoidModel& ellipsoid);
 
+        /** Construct a horizon from a spatial reference. */
+        Horizon(const SpatialReference* srs);
+
         /** Copy */
         Horizon(const Horizon& rhs, const osg::CopyOp& op = osg::CopyOp::DEEP_COPY_ALL);
 
@@ -98,6 +101,7 @@ namespace osgEarth
 
         virtual ~Horizon() { }
 
+        bool       _valid;
         osg::Vec3d _eye;
         osg::Vec3d _eyeUnit;
         osg::Vec3d _VC;       

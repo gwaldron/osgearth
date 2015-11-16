@@ -1,0 +1,18 @@
+<!--
+ | osgEarth Sample - Render elevation data as a contour map
+ |-->
+ 
+<map>
+
+    <options>
+        <terrain driver="rex"/>
+    </options>
+
+    <elevation name="ReadyMap.org - Elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </elevation>
+
+    <extensions>
+        <contour_map/>
+    </extensions>
+</map>

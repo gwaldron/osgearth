@@ -86,6 +86,8 @@ OrthoNode::init()
 
     // Callback to cull ortho nodes that are not visible over the geocentric horizon
     _horizonCuller = new HorizonCullCallback();
+    if ( getMapNode() )
+        _horizonCuller->setHorizon( new Horizon(getMapNode()->getMapSRS()) );
     setHorizonCulling( _horizonCullingRequested );
 
     _attachPoint->addCullCallback( _horizonCuller.get() );

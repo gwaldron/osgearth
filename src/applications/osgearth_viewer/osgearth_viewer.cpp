@@ -27,6 +27,7 @@
 
 #include <osgEarth/Units>
 #include <osgEarth/Viewpoint>
+#include <osgEarth/Horizon>
 
 #define LC "[viewer] "
 
@@ -61,7 +62,8 @@ main(int argc, char** argv)
     // Tell the database pager to not modify the unref settings
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( false, false );
 
-    // thread-safe initialization of the OSG wrapper manager
+    // thread-safe initialization of the OSG wrapper manager. Calling this here
+    // prevents the "unsupported wrapper" messages from OSG
     osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
 
     // install our default manipulator (do this before calling load)
@@ -69,6 +71,10 @@ main(int argc, char** argv)
 
     // disable the small-feature culling
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
+
+    // set a near/far ratio that is smaller than the default. This allows us to get
+    // closer to the ground without near clipping. If you need more, use --logdepth
+    viewer.getCamera()->setNearFarRatio(0.0001);
 
     if ( vfov > 0.0 )
     {
@@ -83,8 +89,10 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-
-        return viewer.run();
+        while(!viewer.done())
+        {
+            viewer.frame();
+        }
     }
     else
     {

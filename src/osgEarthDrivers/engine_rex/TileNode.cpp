@@ -33,6 +33,7 @@
 
 #include <osg/Uniform>
 #include <osg/ComputeBoundsVisitor>
+#include <osg/ValueObject>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
@@ -311,14 +312,22 @@ TileNode::isVisible(osg::CullStack* stack) const
 
 void TileNode::cull(osg::NodeVisitor& nv)
 {
-    if ( nv.getFrameStamp() )
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+    const osg::Camera* cam = cv->getCurrentCamera();
+    
+    // "Stealth mode" will allow a camera to look at the scene graph without
+    // affecting it, so you can debug the view from a secondary camera.
+    // Use the osgearth_3pv utility for this.
+    bool stealth = false;
+    if ( cam )
+        cam->getUserValue("osgEarth.Stealth", stealth);
+
+    if ( nv.getFrameStamp() && !stealth )
     {
         _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
     }
 
     unsigned currLOD = getTileKey().getLOD();
-
-    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
@@ -328,6 +337,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
 
     // determine whether we can and should subdivide to a higher resolution:
     bool subdivide =
+        stealth ||
         shouldSubDivide(nv, selectionInfo, cv->getLODScale());
 
     // whether it is OK to create child TileNodes is necessary.
@@ -343,16 +353,18 @@ void TileNode::cull(osg::NodeVisitor& nv)
         canCreateChildren = false;
     }
     
-    else
+    // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
+    // because we want only the tiles loaded by the true viewpoint.
+    if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
     {
-        // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
-        // because we want only the tiles loaded by the true viewpoint.
-        const osg::Camera* cam = cv->getCurrentCamera();
-        if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
-        {
-            canCreateChildren = false;
-            canLoadData = false;
-        }
+        canCreateChildren = false;
+        canLoadData = false;
+    }
+
+    if ( stealth )
+    {
+        canCreateChildren = false;
+        canLoadData = false;
     }
 
     optional<bool> surfaceVisible;
@@ -361,31 +373,41 @@ void TileNode::cull(osg::NodeVisitor& nv)
     // If *any* of the children are visible, subdivide.
     if (subdivide)
     {
-        // We are in range of the child nodes. Either draw them or load them.
-
-        // If the children don't exist, create them and inherit the parent's data.
-        if ( getNumChildren() == 0 && canCreateChildren )
+        // if stealth-mode, check for expiration first.
+        if (stealth && shouldExpireChildren(nv, context))
         {
-            Threading::ScopedMutexLock exclusive(_mutex);
-            if ( getNumChildren() == 0 )
-            {
-                createChildren( context );
-            }
-        }
-
-        // If all are ready, traverse them now.
-        if ( getNumChildren() == 4 )
-        {
-            for(int i=0; i<4; ++i)
-            {
-                _children[i]->accept( nv );
-            }
-        }
-
-        // If we don't traverse the children, traverse this node's payload.
-        else if ( _surface.valid() )
-        {
+            expireChildren(nv);
             surfaceVisible = acceptSurface( cv, context );
+        }
+
+        else
+        {
+            // We are in range of the child nodes. Either draw them or load them.
+
+            // If the children don't exist, create them and inherit the parent's data.
+            if ( getNumChildren() == 0 && canCreateChildren )
+            {
+                Threading::ScopedMutexLock exclusive(_mutex);
+                if ( getNumChildren() == 0 )
+                {
+                    createChildren( context );
+                }
+            }
+
+            // If all are ready, traverse them now.
+            if ( getNumChildren() == 4 )
+            {
+                for(int i=0; i<4; ++i)
+                {
+                    _children[i]->accept( nv );
+                }
+            }
+
+            // If we don't traverse the children, traverse this node's payload.
+            else if ( _surface.valid() )
+            {
+                surfaceVisible = acceptSurface( cv, context );
+            }
         }
     }
 
@@ -394,15 +416,9 @@ void TileNode::cull(osg::NodeVisitor& nv)
     {
         surfaceVisible = acceptSurface( cv, context );
 
-        if ( getNumChildren() >= 4 && context->maxLiveTilesExceeded() )
+        if ( shouldExpireChildren(nv, context) )
         {
-            if (getSubTile(0)->isDormant( nv ) &&
-                getSubTile(1)->isDormant( nv ) &&
-                getSubTile(2)->isDormant( nv ) &&
-                getSubTile(3)->isDormant( nv ))
-            {
-                expireChildren( nv );
-            }
+            expireChildren( nv );
         }
     }
 
@@ -701,6 +717,18 @@ TileNode::load(osg::NodeVisitor& nv)
 
     // Submit to the loader.
     context->getLoader()->load( _loadRequest.get(), priority, nv );
+}
+
+bool
+TileNode::shouldExpireChildren(osg::NodeVisitor& nv, EngineContext* context)
+{
+    return
+        getNumChildren() >= 4           &&
+        context->maxLiveTilesExceeded() &&
+        getSubTile(0)->isDormant( nv )  &&
+        getSubTile(1)->isDormant( nv )  &&
+        getSubTile(2)->isDormant( nv )  &&
+        getSubTile(3)->isDormant( nv );
 }
 
 void

@@ -134,6 +134,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         bool  shouldSubDivide(osg::NodeVisitor& nv, const SelectionInfo& selectionInfo, float fZoomFactor);
         float getVisibilityRangeHint(EngineContext*) const;
+        bool  shouldExpireChildren(osg::NodeVisitor& nv, EngineContext*);
 
         void updateTileUniforms(const SelectionInfo& selectionInfo);
         void createTileUniforms();

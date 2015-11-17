@@ -75,6 +75,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Uniform>            _opacityUniform;
 
         optional<float> _opacity;
+        optional<bool>  _grayscale;
     };
 
 } } // namespace osgEarth::Util

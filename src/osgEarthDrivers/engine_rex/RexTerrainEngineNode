@@ -32,6 +32,7 @@
 #include "RenderBindings"
 #include "GeometryPool"
 #include "Loader"
+#include "Unloader"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -167,9 +168,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         RenderBindings _renderBindings;
         osg::ref_ptr<GeometryPool> _geometryPool;
         osg::ref_ptr<LoaderGroup>  _loader;
+        osg::ref_ptr<UnloaderGroup> _unloader;
         
-        //osg::ref_ptr<osg::Group> _surfaceGroup;
-        //osg::ref_ptr<osg::Group> _landCoverGroup;
         osg::ref_ptr<osg::Group> _terrain;
 
         osg::Uniform* _verticalScaleUniform;

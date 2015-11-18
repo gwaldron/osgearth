@@ -38,7 +38,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         void invoke();
 
         /** Applies the fetched data to the tile node (scene-graph safe) */
-        void apply();
+        void apply(const osg::FrameStamp*);
 
     protected:
         osg::observer_ptr<TileNode>    _tilenode;

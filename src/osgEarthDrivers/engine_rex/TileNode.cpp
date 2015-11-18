@@ -22,7 +22,6 @@
 #include "EngineContext"
 #include "Loader"
 #include "LoadTileData"
-#include "ExpireTiles"
 #include "SelectionInfo"
 #include "ElevationTextureUtils"
 
@@ -161,11 +160,9 @@ TileNode::computeBound() const
 }
 
 bool
-TileNode::isDormant(osg::NodeVisitor& nv) const
+TileNode::isDormant(const osg::FrameStamp* fs) const
 {
-    return
-        nv.getFrameStamp() &&
-        nv.getFrameStamp()->getFrameNumber() - _lastTraversalFrame > 2u;
+    return fs && fs->getFrameNumber() - _lastTraversalFrame > 2u;
 }
 
 void
@@ -321,11 +318,11 @@ void TileNode::cull(osg::NodeVisitor& nv)
     bool stealth = false;
     if ( cam )
         cam->getUserValue("osgEarth.Stealth", stealth);
-
-    if ( nv.getFrameStamp() && !stealth )
-    {
-        _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
-    }
+    
+    // In Stealth mode, do not render dormat tiles
+    unsigned fn = nv.getFrameStamp()->getFrameNumber();
+    if ( stealth && (fn-_lastTraversalFrame > 1u) )
+        return;
 
     unsigned currLOD = getTileKey().getLOD();
 
@@ -336,9 +333,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
         context->progress()->stats()["TileNode::cull"]++;
 
     // determine whether we can and should subdivide to a higher resolution:
-    bool subdivide =
-        stealth ||
-        shouldSubDivide(nv, selectionInfo, cv->getLODScale());
+    bool subdivide = shouldSubDivide(nv, selectionInfo, cv->getLODScale());
 
     // whether it is OK to create child TileNodes is necessary.
     bool canCreateChildren = subdivide;
@@ -361,10 +356,12 @@ void TileNode::cull(osg::NodeVisitor& nv)
         canLoadData = false;
     }
 
+    // In "stealth mode", always subdivide and never create anything.
     if ( stealth )
     {
         canCreateChildren = false;
         canLoadData = false;
+        subdivide = true;
     }
 
     optional<bool> surfaceVisible;
@@ -374,40 +371,37 @@ void TileNode::cull(osg::NodeVisitor& nv)
     if (subdivide)
     {
         // if stealth-mode, check for expiration first.
-        if (stealth && shouldExpireChildren(nv, context))
+        if (stealth && areSubTilesDormant(nv.getFrameStamp()))
         {
-            expireChildren(nv);
-            surfaceVisible = acceptSurface( cv, context );
+            context->getUnloader()->unloadChildren(getTileKey());
+            //surfaceVisible = acceptSurface( cv, context );
         }
 
-        else
+        // We are in range of the child nodes. Either draw them or load them.
+
+        // If the children don't exist, create them and inherit the parent's data.
+        if ( getNumChildren() == 0 && canCreateChildren )
         {
-            // We are in range of the child nodes. Either draw them or load them.
-
-            // If the children don't exist, create them and inherit the parent's data.
-            if ( getNumChildren() == 0 && canCreateChildren )
+            Threading::ScopedMutexLock exclusive(_mutex);
+            if ( getNumChildren() == 0 )
             {
-                Threading::ScopedMutexLock exclusive(_mutex);
-                if ( getNumChildren() == 0 )
-                {
-                    createChildren( context );
-                }
+                createChildren( context );
             }
+        }
 
-            // If all are ready, traverse them now.
-            if ( getNumChildren() == 4 )
+        // If all are ready, traverse them now.
+        if ( getNumChildren() == 4 )
+        {
+            for(int i=0; i<4; ++i)
             {
-                for(int i=0; i<4; ++i)
-                {
-                    _children[i]->accept( nv );
-                }
+                _children[i]->accept( nv );
             }
+        }
 
-            // If we don't traverse the children, traverse this node's payload.
-            else if ( _surface.valid() )
-            {
-                surfaceVisible = acceptSurface( cv, context );
-            }
+        // If we don't traverse the children, traverse this node's payload.
+        else if ( _surface.valid() )
+        {
+            surfaceVisible = acceptSurface( cv, context );
         }
     }
 
@@ -416,9 +410,9 @@ void TileNode::cull(osg::NodeVisitor& nv)
     {
         surfaceVisible = acceptSurface( cv, context );
 
-        if ( shouldExpireChildren(nv, context) )
+        if ( areSubTilesDormant(nv.getFrameStamp()) )
         {
-            expireChildren( nv );
+            context->getUnloader()->unloadChildren( this->getTileKey() );
         }
     }
 
@@ -479,6 +473,11 @@ void TileNode::cull(osg::NodeVisitor& nv)
         {
             OE_DEBUG << LC << "load skipped for " << _key.str() << std::endl;
         }
+    }
+    
+    if ( !stealth && (surfaceVisible.isSetTo(true) || subdivide) )
+    {
+        _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
     }
 }
 
@@ -720,35 +719,18 @@ TileNode::load(osg::NodeVisitor& nv)
 }
 
 bool
-TileNode::shouldExpireChildren(osg::NodeVisitor& nv, EngineContext* context)
+TileNode::areSubTilesDormant(const osg::FrameStamp* fs) const
 {
     return
         getNumChildren() >= 4           &&
-        context->maxLiveTilesExceeded() &&
-        getSubTile(0)->isDormant( nv )  &&
-        getSubTile(1)->isDormant( nv )  &&
-        getSubTile(2)->isDormant( nv )  &&
-        getSubTile(3)->isDormant( nv );
+        getSubTile(0)->isDormant( fs )  &&
+        getSubTile(1)->isDormant( fs )  &&
+        getSubTile(2)->isDormant( fs )  &&
+        getSubTile(3)->isDormant( fs );
 }
 
 void
-TileNode::expireChildren(osg::NodeVisitor& nv)
+TileNode::removeSubTiles()
 {
-    OE_DEBUG << LC << "Expiring children of " << getTileKey().str() << "\n";
-
-    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
-    if ( !_expireRequest.valid() )
-    {
-        Threading::ScopedMutexLock lock(_mutex);
-        if ( !_expireRequest.valid() )
-        {
-            _expireRequest = new ExpireTiles(this, context);
-            _expireRequest->setName( getTileKey().str() + " expire" );
-            _expireRequest->setTileKey( _key );
-        }
-    }
-       
-    // Low priority for expiry requests.
-    const float lowPriority = -100.0f;
-    context->getLoader()->load( _expireRequest.get(), lowPriority, nv );
+    this->removeChildren(0, this->getNumChildren());
 }

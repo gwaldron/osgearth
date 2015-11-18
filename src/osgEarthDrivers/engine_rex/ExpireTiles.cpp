@@ -30,12 +30,14 @@ namespace
     // registry to the DEAD registry.
     struct ExpirationCollector : public osg::NodeVisitor
     {
-        TileNodeRegistry* _live;
-        TileNodeRegistry* _dead;
-        unsigned          _count;
+        TileNodeRegistry*      _live;
+        TileNodeRegistry*      _dead;
+        const osg::FrameStamp* _stamp;
+        unsigned               _count;
+        bool                   _cancel;
 
-        ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead)
-            : _live(live), _dead(dead), _count(0)
+        ExpirationCollector(TileNodeRegistry* live, TileNodeRegistry* dead, const osg::FrameStamp* stamp)
+            : _live(live), _dead(dead), _stamp(stamp), _count(0), _cancel(false)
         {
             // set up to traverse the entire subgraph, ignoring node masks.
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
@@ -44,13 +46,18 @@ namespace
 
         void apply(osg::Node& node)
         {
-            // TODO: perhaps check again that the tile is still dormant, so we don't expire
-            // a tile that will immediately be recreated. For this we will need a valid framestamp
-            TileNode* tn = dynamic_cast<TileNode*>( &node );
-            if ( tn && _live )
+            if ( _live )
             {
-                _live->move( tn, _dead );
-                _count++;
+                // Make sure the tile is still dormat before releasing it
+                TileNode* tn = dynamic_cast<TileNode*>( &node );
+                if ( tn )
+                {
+                    if ( tn->isDormant(_stamp) )
+                    {
+                        _live->move( tn, _dead );
+                        _count++;
+                    }
+                }
             }
             traverse(node);
         }
@@ -68,14 +75,14 @@ _context(context)
 }
 
 void
-ExpireTiles::apply()
+ExpireTiles::apply(const osg::FrameStamp* stamp)
 {
     osg::ref_ptr<TileNode> tilenode;
     if ( _tilenode.lock(tilenode) )
     {
         // Collect and report all the expired tiles:
         unsigned count = 0;
-        ExpirationCollector collector( _context->liveTiles(), _context->deadTiles() );
+        ExpirationCollector collector( _context->liveTiles(), _context->deadTiles(), stamp );
         for(unsigned i=0; i<tilenode->getNumChildren(); ++i)
         {
             tilenode->getChild(i)->accept( collector );
@@ -85,7 +92,7 @@ ExpireTiles::apply()
         // Remove them from the node.
         tilenode->removeChildren( 0, tilenode->getNumChildren() );
 
-        OE_DEBUG << LC << "Expired " << count << " children under " << tilenode->getTileKey().str() << "; live = "
+        OE_NOTICE << LC << "Expired " << count << " children under " << tilenode->getTileKey().str() << "; live = "
             << _context->liveTiles()->size()
             << "\n";
     }

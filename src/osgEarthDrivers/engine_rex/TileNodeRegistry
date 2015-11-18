@@ -159,11 +159,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Take an arbitrary node from the registry. */
         TileNode* takeAny();
 
-    public: // TileKeyDataStore<const TerrainTileModel>
-
-        /** Finds a tile in the registry */
-        //bool get(const TileKey& key, osg::ref_ptr<const TerrainTileModel>& out_tile) const;
-
     protected:
 
         bool                              _revisioningEnabled;

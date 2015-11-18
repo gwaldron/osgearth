@@ -297,10 +297,13 @@ RexTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // Make a tile loader
     PagerLoader* loader = new PagerLoader( this );
     loader->setMergesPerFrame( _terrainOptions.mergesPerFrame().get() );
-
     _loader = loader;
-    //_loader = new SimpleLoader();
     this->addChild( _loader.get() );
+
+    // Make a tile unloader
+    _unloader = new UnloaderGroup( _liveTiles.get(), _deadTiles.get() );
+    _unloader->setThreshold( _terrainOptions.expirationThreshold().get() );
+    this->addChild( _unloader.get() );
     
     // handle an already-established map profile:
     MapInfo mapInfo( map );
@@ -648,6 +651,7 @@ RexTerrainEngineNode::getEngineContext()
             this, // engine
             _geometryPool.get(),
             _loader.get(),
+            _unloader.get(),
             _liveTiles.get(),
             _deadTiles.get(),
             &_landCoverData,

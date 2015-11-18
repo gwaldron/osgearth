@@ -20,12 +20,15 @@
 #define OSGEARTH_REX_LOADER 1
 
 #include "Common"
-#include <osg/ref_ptr>
-#include <osg/Group>
-#include <osgDB/Options>
+
 #include <osgEarth/IOTypes>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TileKey>
+
+#include <osg/ref_ptr>
+#include <osg/Group>
+
+#include <osgDB/Options>
 #include <set>
 
 namespace osgEarth {
@@ -34,6 +37,9 @@ namespace osgEarth {
 
 namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
+    class TileNodeRegistry; // for UnloaderGroup
+
+
     /** Interface for a utility to satifies loading requests. */
     class Loader
     {
@@ -60,7 +66,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             virtual void invoke() { }
 
             /** Apply the results of the invoke operation - runs safely in update stage */
-            virtual void apply() { }
+            virtual void apply(const osg::FrameStamp*) { }
 
             /** Request apply() should call this to mark a node as "changed" */
             void addToChangeSet(osg::Node* Node);
@@ -132,6 +138,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
     class LoaderGroup : public osg::Group, public Loader
     {
+    public: // Loader
+        void setFrameStamp(const osg::FrameStamp* fs) { _frameStamp = fs; }
+        const osg::FrameStamp* getFrameStamp() const { return _frameStamp.get(); }
+
+    protected:
+        osg::ref_ptr<const osg::FrameStamp> _frameStamp;
     };
 
 
@@ -166,17 +178,19 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** Cancel all pending requests. */
         void clear();
 
-        /** Internal method to invoke a request that was previously queued with load(). */
-        Request* invokeAndRelease(UID requestUID);
-
-        /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
-        TileKey getTileKeyForRequest(UID requestUID) const;
-
     public: // osg::Group
 
         bool addChild(osg::Node*);
 
         void traverse(osg::NodeVisitor& nv);
+
+    public:
+
+        /** Internal method to invoke a request that was previously queued with load(). */
+        Request* invokeAndRelease(UID requestUID);
+
+        /** Returns the tilekey associated with the request (or TileKey::INVALID if none) */
+        TileKey getTileKeyForRequest(UID requestUID) const;
 
     protected:
         
@@ -201,6 +215,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         MergeQueue       _mergeQueue;  
         osg::Timer_t     _checkpoint;
         int              _mergesPerFrame;
+        unsigned         _frameNumber;
 
         osg::ref_ptr<osgDB::Options> _dboptions;
         mutable Threading::Mutex     _requestsMutex;

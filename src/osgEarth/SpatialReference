@@ -410,6 +410,10 @@ namespace osgEarth
             const std::string& proj4,
             const std::string& name = "" );
 
+		static SpatialReference* createFromUserInput(
+		    const std::string& input,
+            const std::string& name = "" );
+
         static SpatialReference* createCube();
 
 

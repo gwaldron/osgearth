@@ -307,24 +307,37 @@ TileNode::isVisible(osg::CullStack* stack) const
 #endif
 }
 
+void
+TileNode::cull_stealth(osg::NodeVisitor& nv)
+{
+    // skip if dormant:
+    unsigned fn = nv.getFrameStamp()->getFrameNumber();
+    if ( fn-_lastTraversalFrame > 0u )
+        return;
+    
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
+    
+    // If all are ready, traverse them now.
+    if ( getNumChildren() == 4 )
+    {
+        for(int i=0; i<4; ++i)
+        {
+            _children[i]->accept( nv );
+        }
+    }
+
+    // If we don't traverse the children, traverse this node's payload.
+    else if ( _surface.valid() )
+    {
+        acceptSurface( cv, context );
+    }
+}
+
+
 void TileNode::cull(osg::NodeVisitor& nv)
 {
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
-    const osg::Camera* cam = cv->getCurrentCamera();
-    
-    // "Stealth mode" will allow a camera to look at the scene graph without
-    // affecting it, so you can debug the view from a secondary camera.
-    // Use the osgearth_3pv utility for this.
-    bool stealth = false;
-    if ( cam )
-        cam->getUserValue("osgEarth.Stealth", stealth);
-    
-    // In Stealth mode, do not render dormat tiles
-    unsigned fn = nv.getFrameStamp()->getFrameNumber();
-    if ( stealth && (fn-_lastTraversalFrame > 1u) )
-        return;
-
-    unsigned currLOD = getTileKey().getLOD();
 
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
@@ -350,18 +363,11 @@ void TileNode::cull(osg::NodeVisitor& nv)
     
     // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
     // because we want only the tiles loaded by the true viewpoint.
+    const osg::Camera* cam = cv->getCurrentCamera();
     if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
     {
         canCreateChildren = false;
         canLoadData = false;
-    }
-
-    // In "stealth mode", always subdivide and never create anything.
-    if ( stealth )
-    {
-        canCreateChildren = false;
-        canLoadData = false;
-        subdivide = true;
     }
 
     optional<bool> surfaceVisible;
@@ -370,13 +376,6 @@ void TileNode::cull(osg::NodeVisitor& nv)
     // If *any* of the children are visible, subdivide.
     if (subdivide)
     {
-        // if stealth-mode, check for expiration first.
-        if (stealth && areSubTilesDormant(nv.getFrameStamp()))
-        {
-            context->getUnloader()->unloadChildren(getTileKey());
-            //surfaceVisible = acceptSurface( cv, context );
-        }
-
         // We are in range of the child nodes. Either draw them or load them.
 
         // If the children don't exist, create them and inherit the parent's data.
@@ -475,7 +474,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
         }
     }
     
-    if ( !stealth && (surfaceVisible.isSetTo(true) || subdivide) )
+    if ( surfaceVisible.isSetTo(true) || subdivide )
     {
         _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
     }
@@ -511,7 +510,14 @@ TileNode::traverse(osg::NodeVisitor& nv)
     // Cull only:
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        cull(nv);
+        if ( VisitorData::isTrue(nv, "osgEarth.Stealth"))
+        {
+            cull_stealth( nv );
+        }
+        else
+        {
+            cull(nv);
+        }
     }
 
     // Everything else: update, GL compile, intersection, compute bound, etc.

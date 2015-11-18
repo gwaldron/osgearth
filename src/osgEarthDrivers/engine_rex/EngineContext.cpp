@@ -19,6 +19,7 @@
 #include "EngineContext"
 #include "TileNodeRegistry"
 #include <osgEarth/TraversalData>
+#include <osgEarth/CullingUtils>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
@@ -91,7 +92,12 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
         { 
             OE_NOTICE << "    " << i->first << " = " << i->second << std::endl;
         }
-    }    
+    }  
+
+#if 0 // render bin printout
+    Config c = CullDebugger().dumpRenderBin(cv->getCurrentRenderBin());
+    OE_NOTICE << c.toJSON(true) << std::endl << std::endl;
+#endif
 }
 
 bool

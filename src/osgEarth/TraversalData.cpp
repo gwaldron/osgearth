@@ -17,8 +17,46 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TraversalData>
+#include <osg/ValueObject>
 
 using namespace osgEarth;
+
+bool
+VisitorData::set(osg::NodeVisitor& nv, const std::string& key)
+{
+#ifdef OSGEARTH_HAS_VISITOR_DATA
+    nv.setUserValue(key, true);
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool
+VisitorData::isTrue(osg::NodeVisitor& nv, const std::string& key)
+{
+#ifdef OSGEARTH_HAS_VISITOR_DATA
+    bool value;
+    return nv.getUserValue(key, value) && value;
+#else
+    return false;
+#endif
+}
+
+bool
+VisitorData::clear(osg::NodeVisitor& nv, const std::string& key)
+{
+#ifdef OSGEARTH_HAS_VISITOR_DATA
+    osg::UserDataContainer* udc = nv.getUserDataContainer();
+    if ( udc )
+    {
+        unsigned i = udc->getUserObjectIndex( key );
+        if ( i < udc->getNumUserObjects() )
+            udc->removeUserObject( i );
+    }
+#endif
+    return true;
+}
 
 MapNodeCullData::MapNodeCullData()
 {

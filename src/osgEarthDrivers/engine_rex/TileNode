@@ -136,6 +136,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         void cull(osg::NodeVisitor& nv);
 
+        void cull_stealth(osg::NodeVisitor& nv);
+
         // returns true if any surface geometry was added (visible).
         bool acceptSurface(osgUtil::CullVisitor* nv, EngineContext*);
 

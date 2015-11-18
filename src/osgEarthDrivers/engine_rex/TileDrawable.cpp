@@ -52,6 +52,8 @@ _tileSize    ( tileSize ),
 _drawPatch   ( false ),
 _skirtSize   ( skirtSize )
 {
+    this->setName( key.str() );
+
     setUseVertexBufferObjects( true );
     setUseDisplayList( false );
 

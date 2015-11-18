@@ -1095,9 +1095,19 @@ namespace
     Config dumpStateGraph(osgUtil::StateGraph* sg)
     {
         Config conf("StateGraph");
-        conf.add("Name", sg->getStateSet()->getName());
-        conf.add("NumLeaves", sg->_leaves.size());
-        Config kids("_children");
+
+        Config leaves("Leaves");
+        for(osgUtil::StateGraph::LeafList::const_iterator i = sg->_leaves.begin(); i != sg->_leaves.end(); ++i)
+        {
+            Config leaf("Leaf");
+            leaf.add("Name", i->get()->getDrawable()->getName());
+            leaf.add("Depth", i->get()->_depth);
+            leaves.add( leaf );
+        }
+        if ( !leaves.empty() )
+            conf.add(leaves);
+
+        Config kids("Children");
         for(osgUtil::StateGraph::ChildList::const_iterator i = sg->_children.begin(); i != sg->_children.end(); ++i)
         {
             kids.add( dumpStateGraph(i->second.get()) );
@@ -1119,10 +1129,12 @@ CullDebugger::dumpRenderBin(osgUtil::RenderBin* bin) const
     
     Config sg("StateGraphList");
     sg.add("NumChildren", bin->getStateGraphList().size());
-    //for(osgUtil::RenderBin::StateGraphList::const_iterator i = bin->getStateGraphList().begin(); i != bin->getStateGraphList().end(); ++i)
-    //{
-    //    sg.add( dumpStateGraph(*i) );
-    //}
+
+    for(osgUtil::RenderBin::StateGraphList::const_iterator i = bin->getStateGraphList().begin(); i != bin->getStateGraphList().end(); ++i)
+    {
+        sg.add( dumpStateGraph(*i) );
+    }
+
     if ( !sg.children().empty() )
         conf.add(sg);
 

@@ -23,6 +23,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Horizon>
 #include <osgEarth/Containers>
+#include <osg/Version>
 #include <osg/NodeVisitor>
 #include <osg/observer_ptr>
 #include <map>
@@ -33,9 +34,32 @@
 #define OSGEARTH_MASK_TERRAIN            (OSGEARTH_MASK_TERRAIN_SURFACE | OSGEARTH_MASK_TERRAIN_LAND_COVER)
 #define OSGEARTH_MASK_MAP_MODEL_GROUP    0x04
 
+#if OSG_VERSION_GREATER_OR_EQUAL(3,4,0)
+#    define OSGEARTH_HAS_VISITOR_DATA
+#endif
+
 namespace osgEarth
 {
     class MapNode;
+
+    struct OSGEARTH_EXPORT VisitorData
+    {
+        static bool set  (osg::NodeVisitor& nv, const std::string& key);
+        static bool clear(osg::NodeVisitor& nv, const std::string& key);
+        static bool isTrue(osg::NodeVisitor& nv, const std::string& key);
+
+        struct Set : public osg::NodeCallback
+        {
+            std::string _key;
+            Set(const std::string& key) : _key(key) { }
+            void operator()(osg::Node* node, osg::NodeVisitor* nv)
+            {
+                VisitorData::set(*nv, _key);
+                traverse(node, nv);
+                VisitorData::clear(*nv, _key);
+            }
+        };
+    };
 
     class TraversalData : public osg::Referenced
     {

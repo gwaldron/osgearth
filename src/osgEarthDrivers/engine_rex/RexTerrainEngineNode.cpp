@@ -607,7 +607,7 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     }
 #endif
     
-    if ( _loader.valid() ) // ensures that postInitialize has run
+    if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() ) // ensures that postInitialize has run
     {
         TraversalData* tdata = TraversalData::get(nv);
         if ( tdata )

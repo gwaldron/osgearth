@@ -29,6 +29,7 @@
 #include <osgEarth/Units>
 #include <osgEarth/Viewpoint>
 #include <osgEarth/Horizon>
+#include <osgEarth/TraversalData>
 
 #include <osgEarthAnnotation/PlaceNode>
 
@@ -243,7 +244,7 @@ main( int argc, char** argv )
     mct->addCallback( new PlacerCallback(place, viewer.getView(0)) );
     viewer.getView(1)->addEventHandler( mct );
 
-    viewer.getView(1)->getCamera()->setUserValue("osgEarth.Stealth", true);
+    viewer.getView(1)->getCamera()->addCullCallback( new VisitorData::Set("osgEarth.Stealth") );
 
     while (!viewer.done())
     {

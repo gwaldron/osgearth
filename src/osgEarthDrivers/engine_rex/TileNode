@@ -70,7 +70,13 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool isReadyToTraverse() const;
 
         /** Whether the tile is expired; i.e. has not been visited in some time. */
-        bool isDormant(osg::NodeVisitor& nv) const;
+        bool isDormant(const osg::FrameStamp*) const;
+
+        /** Whether all the subtiles are this tile are dormant (have not been visited recently) */
+        bool areSubTilesDormant(const osg::FrameStamp*) const;
+
+        /** Removed any sub tiles from the scene graph. Please call from a safe thread only (update) */
+        void removeSubTiles();
 
         /** Whether the tile drawables are visible */
         bool isVisible(osg::CullStack* cs) const;
@@ -98,6 +104,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         const osg::Image* getElevationRaster() const;
         const osg::Matrixf& getElevationMatrix() const;
 
+        // access to subtiles
+        TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(_children[i].get()); }
+        const TileNode* getSubTile(unsigned i) const { return static_cast<TileNode*>(_children[i].get()); }
+
     public: // osg::Node
 
         osg::BoundingSphere computeBound() const;
@@ -120,13 +130,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<MPTexture>            _mptex;
         osg::ref_ptr<osg::StateSet>        _payloadStateSet;
 
-        TileNode* getSubTile(unsigned i) { return static_cast<TileNode*>(getChild(i)); }
+    private:
 
         void createChildren(EngineContext* context);
 
-        void expireChildren(osg::NodeVisitor& nv);
-
-    private:
         void cull(osg::NodeVisitor& nv);
 
         // returns true if any surface geometry was added (visible).
@@ -141,7 +148,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         osg::ref_ptr<osg::Uniform> _tileKeyUniform;
         osg::ref_ptr<osg::Uniform> _tileMorphUniform;
         osg::ref_ptr<osg::Uniform> _tileGridDimsUniform;
-        //osg::ref_ptr<osg::Uniform> _tileExtentsUniform;
     };
 
     typedef std::vector< osg::ref_ptr<TileNode> > TileNodeVector;

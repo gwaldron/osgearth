@@ -91,8 +91,7 @@ to extruded buildings.
                     stroke-width:                 7.5m;
                     altitude-clamping:            terrain;
                     render-depth-offset-min-bias: 3.6;
-                    render-order:                 11;
-                    render-bin:                   DepthSortedBin;
+                    render-transparent:           true;
                 }
             </style>
         </styles>        
@@ -150,6 +149,7 @@ to extruded buildings.
                    model-density:          3000;
 				   model-heading:          Math.random() * 360.0;
                    altitude-clamping:      terrain;
+                   render-transparent:     true;
 				   render-min-alpha:       0.15;
                 }
             </style>

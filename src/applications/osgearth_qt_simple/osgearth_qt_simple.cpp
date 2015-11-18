@@ -61,6 +61,7 @@ main(int argc, char** argv)
 
 
     osgViewer::Viewer viewer(arguments);
+    viewer.setThreadingModel( viewer.SingleThreaded );
     viewer.setRunFrameScheme( viewer.ON_DEMAND );
     viewer.setCameraManipulator( new EarthManipulator() );
 

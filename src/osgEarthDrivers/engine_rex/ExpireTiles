@@ -35,7 +35,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     public: // Loader::Request
 
         /** Collects and deletes tiles. */
-        void apply();
+        void apply(const osg::FrameStamp* stamp);
 
     protected:
         osg::observer_ptr<TileNode> _tilenode;

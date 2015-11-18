@@ -79,8 +79,6 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform>       _windowMatrixUniform;
         double                           _cameraAltitude;
         osg::ref_ptr<osg::Uniform>       _cameraAltitudeUniform;
-        Horizon                          _horizon;
-        bool                             _horizonInitialized;
 
     protected:
         virtual ~MapNodeCullData() { }

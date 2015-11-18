@@ -579,6 +579,7 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     _heightCamera->setViewport(0, 0, textureSize, textureSize);
     _heightCamera->setRenderOrder(osg::Camera::PRE_RENDER);
     _heightCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+    _heightCamera->setImplicitBufferAttachmentMask(0, 0);
     _heightCamera->attach(osg::Camera::COLOR_BUFFER, _heightMap);
     _heightCamera->setCullMask( ~TRITON_OCEAN_MASK );
     _heightCamera->setAllowEventFocus(false);
@@ -592,7 +593,7 @@ void TritonDrawable::setupHeightMap(osgEarth::MapNode* mapNode)
     heightProgram->setFunction( "colorContour", fragmentShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_OUTPUT);
     
     _heightCamera->addChild( mapNode->getTerrainEngine() );
-    _terrainChangedCallback = new OceanTerrainChangedCallback(this); //_TRITON.get(), mapNode, _heightCamera.get(), _heightMap.get());
+    _terrainChangedCallback = new OceanTerrainChangedCallback(this);
     mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );
 
     osg::Group* root = osgEarth::findTopMostNodeOfType<osg::Group>(mapNode);

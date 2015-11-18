@@ -24,7 +24,7 @@ SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 PROJECT(OSGEARTH)
 
 SET(OSGEARTH_MAJOR_VERSION 2)
-SET(OSGEARTH_MINOR_VERSION 6)
+SET(OSGEARTH_MINOR_VERSION 9)
 SET(OSGEARTH_PATCH_VERSION 0)
 SET(OSGEARTH_SOVERSION     0)
 
@@ -124,14 +124,14 @@ FIND_PACKAGE(ZLIB)
 
 FIND_PACKAGE(LevelDB)
 
-FIND_PACKAGE(SilverLining)
-FIND_PACKAGE(Triton)
-FIND_PACKAGE(Protobuf)
+FIND_PACKAGE(SilverLining QUIET)
+FIND_PACKAGE(Triton QUIET)
+
+FIND_PACKAGE(Protobuf QUIET)
 
 # JavaScript Engines:
 SET(V8_DIR "" CACHE PATH "set to base V8 install path")
 FIND_PACKAGE(V8)
-FIND_PACKAGE(JavaScriptCore)
 
 SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")
 IF (WITH_EXTERNAL_DUKTAPE)
@@ -155,7 +155,8 @@ ELSE()
     ENDIF (QT4_FOUND)
 ENDIF ()
 
-OPTION(OSGEARTH_USE_QT "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" ON)
+OPTION(OSGEARTH_USE_QT "Enable to use Qt (build Qt-dependent libraries, plugins and examples)" OFF)
+OPTION(OSGEARTH_QT_BUILD_LEGACY_WIDGETS "Build the legacy Qt widgets" OFF)
 
 # option to install shaders:
 OPTION(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when doing a Make INSTALL" OFF)

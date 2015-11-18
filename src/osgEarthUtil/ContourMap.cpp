@@ -33,7 +33,7 @@ using namespace osgEarth::Util;
 
 
 ContourMap::ContourMap() :
-TerrainEffect()
+TerrainEffect(), _grayscale(false)
 {
     init();
 }
@@ -70,15 +70,29 @@ ContourMap::init()
     // TODO: think about scale/bias controls.
     osg::TransferFunction1D* xfer = new osg::TransferFunction1D();
     float s = 2500.0f;
-    xfer->setColor( -1.0000 * s, osg::Vec4f(0, 0, 0.5, 1), false);
-    xfer->setColor( -0.2500 * s, osg::Vec4f(0, 0, 1, 1), false);
-    xfer->setColor(  0.0000 * s, osg::Vec4f(0, .5, 1, 1), false);
-    xfer->setColor(  0.0062 * s, osg::Vec4f(.84,.84,.25,1), false);
-    //xfer->setColor(  0.0625 * s, osg::Vec4f(.94,.94,.25,1), false);
-    xfer->setColor(  0.1250 * s, osg::Vec4f(.125,.62,0,1), false);
-    xfer->setColor(  0.3250 * s, osg::Vec4f(.80,.70,.47,1), false);
-    xfer->setColor(  0.7500 * s, osg::Vec4f(.5,.5,.5,1), false);
-    xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
+
+    if ( _grayscale == true )
+    {
+        xfer->setColor( -1.0000 * s, osg::Vec4f(.125,.125,.125, 1), false);
+        xfer->setColor( -0.2500 * s, osg::Vec4f(.25,.25,.25, 1), false);
+        xfer->setColor(  0.0000 * s, osg::Vec4f(.375,.375,.375, 1), false);
+        xfer->setColor(  0.0062 * s, osg::Vec4f(.5,.5,.5,1), false);
+        xfer->setColor(  0.1250 * s, osg::Vec4f(.625,.625,.625,1), false);
+        xfer->setColor(  0.3250 * s, osg::Vec4f(.75,.75,.75,1), false);
+        xfer->setColor(  0.7500 * s, osg::Vec4f(.875,.875,.875,1), false);
+        xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
+    }
+    else
+    {
+        xfer->setColor( -1.0000 * s, osg::Vec4f(0, 0, 0.5, 1), false);
+        xfer->setColor( -0.2500 * s, osg::Vec4f(0, 0, 1, 1), false);
+        xfer->setColor(  0.0000 * s, osg::Vec4f(0, .5, 1, 1), false);
+        xfer->setColor(  0.0062 * s, osg::Vec4f(.84,.84,.25,1), false);
+        xfer->setColor(  0.1250 * s, osg::Vec4f(.125,.62,0,1), false);
+        xfer->setColor(  0.3250 * s, osg::Vec4f(.80,.70,.47,1), false);
+        xfer->setColor(  0.7500 * s, osg::Vec4f(.5,.5,.5,1), false);
+        xfer->setColor(  1.0000 * s, osg::Vec4f(1,1,1,1), false);
+    }
     xfer->updateImage();
     this->setTransferFunction( xfer );
 }
@@ -187,6 +201,7 @@ void
 ContourMap::mergeConfig(const Config& conf)
 {
     conf.getIfSet("opacity", _opacity);
+    conf.getIfSet("grayscale", _grayscale);
 }
 
 Config
@@ -194,5 +209,6 @@ ContourMap::getConfig() const
 {
     Config conf("contour_map");
     conf.addIfSet("opacity", _opacity);
+    conf.addIfSet("grayscale", _grayscale);
     return conf;
 }

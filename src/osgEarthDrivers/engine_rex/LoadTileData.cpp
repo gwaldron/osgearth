@@ -186,7 +186,7 @@ LoadTileData::invoke()
 
 // apply() runs in the update traversal and can safely alter the scene graph
 void
-LoadTileData::apply()
+LoadTileData::apply(const osg::FrameStamp* stamp)
 {
     if ( _model.valid() )
     {

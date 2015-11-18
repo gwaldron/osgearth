@@ -102,6 +102,7 @@ namespace osgEarth
 
         /** Populate this object from a JSON string. */
         bool fromJSON( const std::string& json );
+        static Config readJSON(const std::string& json);
 
         /** True if this object contains no data. */
         bool empty() const {

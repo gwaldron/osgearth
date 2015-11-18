@@ -22,7 +22,6 @@
 #include "EngineContext"
 #include "Loader"
 #include "LoadTileData"
-#include "ExpireTiles"
 #include "SelectionInfo"
 #include "ElevationTextureUtils"
 
@@ -33,6 +32,7 @@
 
 #include <osg/Uniform>
 #include <osg/ComputeBoundsVisitor>
+#include <osg/ValueObject>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
 using namespace osgEarth;
@@ -160,11 +160,9 @@ TileNode::computeBound() const
 }
 
 bool
-TileNode::isDormant(osg::NodeVisitor& nv) const
+TileNode::isDormant(const osg::FrameStamp* fs) const
 {
-    return
-        nv.getFrameStamp() &&
-        nv.getFrameStamp()->getFrameNumber() - _lastTraversalFrame > 2u;
+    return fs && fs->getFrameNumber() - _lastTraversalFrame > 2u;
 }
 
 void
@@ -311,14 +309,22 @@ TileNode::isVisible(osg::CullStack* stack) const
 
 void TileNode::cull(osg::NodeVisitor& nv)
 {
-    if ( nv.getFrameStamp() )
-    {
-        _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
-    }
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+    const osg::Camera* cam = cv->getCurrentCamera();
+    
+    // "Stealth mode" will allow a camera to look at the scene graph without
+    // affecting it, so you can debug the view from a secondary camera.
+    // Use the osgearth_3pv utility for this.
+    bool stealth = false;
+    if ( cam )
+        cam->getUserValue("osgEarth.Stealth", stealth);
+    
+    // In Stealth mode, do not render dormat tiles
+    unsigned fn = nv.getFrameStamp()->getFrameNumber();
+    if ( stealth && (fn-_lastTraversalFrame > 1u) )
+        return;
 
     unsigned currLOD = getTileKey().getLOD();
-
-    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
@@ -327,8 +333,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
         context->progress()->stats()["TileNode::cull"]++;
 
     // determine whether we can and should subdivide to a higher resolution:
-    bool subdivide =
-        shouldSubDivide(nv, selectionInfo, cv->getLODScale());
+    bool subdivide = shouldSubDivide(nv, selectionInfo, cv->getLODScale());
 
     // whether it is OK to create child TileNodes is necessary.
     bool canCreateChildren = subdivide;
@@ -343,16 +348,20 @@ void TileNode::cull(osg::NodeVisitor& nv)
         canCreateChildren = false;
     }
     
-    else
+    // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
+    // because we want only the tiles loaded by the true viewpoint.
+    if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
     {
-        // If this is an inherit-viewpoint camera, we don't need it to invoke subdivision
-        // because we want only the tiles loaded by the true viewpoint.
-        const osg::Camera* cam = cv->getCurrentCamera();
-        if ( cam && cam->getReferenceFrame() == osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT )
-        {
-            canCreateChildren = false;
-            canLoadData = false;
-        }
+        canCreateChildren = false;
+        canLoadData = false;
+    }
+
+    // In "stealth mode", always subdivide and never create anything.
+    if ( stealth )
+    {
+        canCreateChildren = false;
+        canLoadData = false;
+        subdivide = true;
     }
 
     optional<bool> surfaceVisible;
@@ -361,6 +370,13 @@ void TileNode::cull(osg::NodeVisitor& nv)
     // If *any* of the children are visible, subdivide.
     if (subdivide)
     {
+        // if stealth-mode, check for expiration first.
+        if (stealth && areSubTilesDormant(nv.getFrameStamp()))
+        {
+            context->getUnloader()->unloadChildren(getTileKey());
+            //surfaceVisible = acceptSurface( cv, context );
+        }
+
         // We are in range of the child nodes. Either draw them or load them.
 
         // If the children don't exist, create them and inherit the parent's data.
@@ -394,15 +410,9 @@ void TileNode::cull(osg::NodeVisitor& nv)
     {
         surfaceVisible = acceptSurface( cv, context );
 
-        if ( getNumChildren() >= 4 && context->maxLiveTilesExceeded() )
+        if ( areSubTilesDormant(nv.getFrameStamp()) )
         {
-            if (getSubTile(0)->isDormant( nv ) &&
-                getSubTile(1)->isDormant( nv ) &&
-                getSubTile(2)->isDormant( nv ) &&
-                getSubTile(3)->isDormant( nv ))
-            {
-                expireChildren( nv );
-            }
+            context->getUnloader()->unloadChildren( this->getTileKey() );
         }
     }
 
@@ -463,6 +473,11 @@ void TileNode::cull(osg::NodeVisitor& nv)
         {
             OE_DEBUG << LC << "load skipped for " << _key.str() << std::endl;
         }
+    }
+    
+    if ( !stealth && (surfaceVisible.isSetTo(true) || subdivide) )
+    {
+        _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
     }
 }
 
@@ -703,24 +718,19 @@ TileNode::load(osg::NodeVisitor& nv)
     context->getLoader()->load( _loadRequest.get(), priority, nv );
 }
 
-void
-TileNode::expireChildren(osg::NodeVisitor& nv)
+bool
+TileNode::areSubTilesDormant(const osg::FrameStamp* fs) const
 {
-    OE_DEBUG << LC << "Expiring children of " << getTileKey().str() << "\n";
+    return
+        getNumChildren() >= 4           &&
+        getSubTile(0)->isDormant( fs )  &&
+        getSubTile(1)->isDormant( fs )  &&
+        getSubTile(2)->isDormant( fs )  &&
+        getSubTile(3)->isDormant( fs );
+}
 
-    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
-    if ( !_expireRequest.valid() )
-    {
-        Threading::ScopedMutexLock lock(_mutex);
-        if ( !_expireRequest.valid() )
-        {
-            _expireRequest = new ExpireTiles(this, context);
-            _expireRequest->setName( getTileKey().str() + " expire" );
-            _expireRequest->setTileKey( _key );
-        }
-    }
-       
-    // Low priority for expiry requests.
-    const float lowPriority = -100.0f;
-    context->getLoader()->load( _expireRequest.get(), lowPriority, nv );
+void
+TileNode::removeSubTiles()
+{
+    this->removeChildren(0, this->getNumChildren());
 }

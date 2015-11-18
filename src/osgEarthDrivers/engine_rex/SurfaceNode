@@ -44,9 +44,9 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     struct HorizonTileCuller : public osg::Referenced
     {
         double      _radiusPolar, _radiusEquator;
-        Horizon     _horizonProto;
         osg::Vec3d  _points[4];
         osg::Matrix _local2world;
+        osg::ref_ptr<Horizon> _horizonProto;
 
         HorizonTileCuller(const SpatialReference* srs, const osg::Matrix& local2world);
 

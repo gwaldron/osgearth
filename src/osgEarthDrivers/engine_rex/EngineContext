@@ -21,6 +21,8 @@
 
 #include "Common"
 #include "GeometryPool"
+#include "Loader"
+#include "Unloader"
 #include "TileNode"
 #include "TileNodeRegistry"
 #include "RexTerrainEngineOptions"
@@ -51,6 +53,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             TerrainEngineNode*                  engine,
             GeometryPool*                       geometryPool,
             Loader*                             loader,
+            Unloader*                           unloader,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
             const LandCoverData*                landCoverData,
@@ -59,6 +62,8 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             const SelectionInfo&                selectionInfo);
         
         Loader* getLoader() const { return _loader; }
+
+        Unloader* getUnloader() const { return _unloader; }
 
         const RenderBindings& getRenderBindings() const { return _renderBindings; }
 
@@ -107,6 +112,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         TerrainEngineNode*                    _terrainEngine;
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
+        Unloader*                             _unloader;
         const LandCoverData*                  _landCoverData;
         UID                                   _currentLandCoverGroup;
         const SelectionInfo&                  _selectionInfo;

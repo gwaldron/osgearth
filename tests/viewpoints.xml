@@ -53,15 +53,13 @@
     <long>-149.9001345817515</long>
     <lat>61.16407743963008</lat>
     <height>30.04646527767181</height>
-  </viewpoint>
-  
-  <viewpoint>
-  <heading>31.67</heading>
-  <pitch>-9.51417</pitch>
-  <range>2460.19m</range>
-  <long>-121.7977775959159</long>
-  <lat>46.76551729042171</lat>
-  <height>962.2480870252475</height>
+  </viewpoint><viewpoint>
+  <heading>-8.94964</heading>
+  <pitch>-13.5817</pitch>
+  <range>19603.8m</range>
+  <long>-77.04215876852379</long>
+  <lat>38.920338291329</lat>
+  <height>51.8928721062839</height>
   <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
 </viewpoint>
 </viewpoints>

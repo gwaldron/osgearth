@@ -188,9 +188,9 @@ namespace
     int replaceVarying(GLSLChunks& chunks, int index, const StringVector& tokens, int offset, const std::string& prefix)
     {
         std::stringstream buf;
-        buf << "#pragma vp_varying ";
+        buf << "#pragma vp_varying";
         if ( !prefix.empty() )
-            buf << prefix << " ";
+            buf << " " << prefix;
 
         for(int i=offset; i<tokens.size(); ++i)
         {
@@ -198,9 +198,9 @@ namespace
             {
                 int len = tokens[i].length();
                 if ( tokens[i].at(len-1) == ';' )
-                    buf << (i==offset&&prefix.empty()?"":" ") << tokens[i].substr(0, len-1); // strip semicolon
+                    buf << " " << tokens[i].substr(0, len-1); // strip semicolon
                 else
-                    buf << (i==offset&&prefix.empty()?"":" ") << tokens[i];
+                    buf << " " << tokens[i];
             }
         }
         

@@ -318,9 +318,15 @@ TileNode::cull_stealth(osg::NodeVisitor& nv)
        
         if ( getNumChildren() == 4 )
         {
+            unsigned before = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
             for(int i=0; i<4; ++i)
             {
                 _children[i]->accept( nv );
+            }
+            unsigned after = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
+            if ( after == before )
+            {
+                acceptSurface( cv, context );
             }
         }
 
@@ -422,7 +428,6 @@ void TileNode::cull(osg::NodeVisitor& nv)
     {
         // update the timestamp so this tile doesn't become dormant.
         _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
-//    }
 
         // Traverse land cover data at this LOD.
         int zoneIndex = context->_landCoverData->_currentZoneIndex;

@@ -25,6 +25,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ExampleResources>
 #include <osgEarthUtil/MouseCoordsTool>
+#include <osgEarthUtil/Controls>
 
 #include <osgEarth/Units>
 #include <osgEarth/Viewpoint>
@@ -38,6 +39,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
+namespace ui = osgEarth::Util::Controls;
 
 
 #include <osg/Geometry>
@@ -205,7 +207,7 @@ main( int argc, char** argv )
         osgViewer::View* view = new osgViewer::View;
         viewer.addView( view );
 
-        view->setUpViewInWindow( 10, 10, 640, 480 );
+        view->setUpViewInWindow( 20, 20, 800, 800 );
         view->setSceneData( scene );
         view->setCameraManipulator( new EarthManipulator() );
     }
@@ -215,9 +217,9 @@ main( int argc, char** argv )
         osgViewer::View* view = new osgViewer::View;
         viewer.addView( view );
 
-        view->setUpViewInWindow( 10, 510, 640, 480 );
+        view->setUpViewInWindow( 850, 20, 800, 800 );
         view->setSceneData( root.get() );
-        view->setCameraManipulator( new EarthManipulator() );        
+        view->setCameraManipulator( new EarthManipulator() );
     }
 
     MapNodeHelper helper;

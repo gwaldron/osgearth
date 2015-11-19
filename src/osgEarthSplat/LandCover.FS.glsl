@@ -14,7 +14,7 @@ uniform float oe_landcover_exposure;
 in vec2 oe_landcover_texCoord;
 in vec4 oe_layer_tilec;
 
-flat in float oe_landcover_arrayIndex; // from GS
+flat in float oe_landcover_arrayIndex; // from LandCover.GS.glsl
 
 void oe_landcover_fragment(inout vec4 color)
 {    

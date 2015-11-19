@@ -48,7 +48,6 @@ out vec2 oe_landcover_texCoord;
 // Input from the TCS that 
 //flat in int oe_landcover_biomeIndex;
 
-
 // Output that selects the land cover texture from the texture array (non interpolated)
 flat out float oe_landcover_arrayIndex;
 

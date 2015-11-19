@@ -82,6 +82,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
     {
         if ( _parentKeys.size() > _threshold )
         {
+            unsigned count = 0;
             Threading::ScopedMutexLock lock( _mutex );
             for(std::set<TileKey>::const_iterator parentKey = _parentKeys.begin(); parentKey != _parentKeys.end(); ++parentKey)
             {
@@ -97,12 +98,14 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                             ExpirationCollector collector( _live, _dead );
                             for(unsigned i=0; i<parentNode->getNumChildren(); ++i)
                                 parentNode->getSubTile(i)->accept( collector );
+                            count += collector._count;
                         }
                         parentNode->removeSubTiles();
                     }
                 }
             }
 
+            //OE_NOTICE << "Unloaded " << count << " tiles" << std::endl;
             _parentKeys.clear();
         }
     }

@@ -29,6 +29,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TraversalData>
 #include <osgEarth/Shadowing>
+#include <osgEarth/Utils>
 
 #include <osg/Uniform>
 #include <osg/ComputeBoundsVisitor>
@@ -310,27 +311,23 @@ TileNode::isVisible(osg::CullStack* stack) const
 void
 TileNode::cull_stealth(osg::NodeVisitor& nv)
 {
-    // skip if dormant:
-    unsigned fn = nv.getFrameStamp()->getFrameNumber();
-    if ( fn-_lastTraversalFrame > 0u )
-        return;
-    
-    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
-    EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
-    
-    // If all are ready, traverse them now.
-    if ( getNumChildren() == 4 )
+    if ( !isDormant(nv.getFrameStamp()) )
     {
-        for(int i=0; i<4; ++i)
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+        EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
+       
+        if ( getNumChildren() == 4 )
         {
-            _children[i]->accept( nv );
+            for(int i=0; i<4; ++i)
+            {
+                _children[i]->accept( nv );
+            }
         }
-    }
 
-    // If we don't traverse the children, traverse this node's payload.
-    else if ( _surface.valid() )
-    {
-        acceptSurface( cv, context );
+        else if ( _surface.valid() )
+        {
+            acceptSurface( cv, context );
+        }
     }
 }
 
@@ -341,6 +338,9 @@ void TileNode::cull(osg::NodeVisitor& nv)
 
     EngineContext* context = static_cast<EngineContext*>( nv.getUserData() );
     const SelectionInfo& selectionInfo = context->getSelectionInfo();
+
+    // record the number of drawables before culling this node:
+    unsigned before = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
 
     if ( context->progress() )
         context->progress()->stats()["TileNode::cull"]++;
@@ -370,10 +370,8 @@ void TileNode::cull(osg::NodeVisitor& nv)
         canLoadData = false;
     }
 
-    optional<bool> surfaceVisible;
+    optional<bool> surfaceVisible( false );
 
-
-    // If *any* of the children are visible, subdivide.
     if (subdivide)
     {
         // We are in range of the child nodes. Either draw them or load them.
@@ -415,75 +413,83 @@ void TileNode::cull(osg::NodeVisitor& nv)
         }
     }
 
-    // Traverse land cover data at this LOD.
-    int zoneIndex = context->_landCoverData->_currentZoneIndex;
-    if ( zoneIndex < (int)context->_landCoverData->_zones.size() )
+    // See whether we actually added any drawables.
+    unsigned after = RenderBinUtils::getTotalNumRenderLeaves( cv->getRenderStage() );
+    bool addedDrawables = (after > before);
+    
+    // Only continue if we accepted at least one surface drawable.
+    if ( addedDrawables )
     {
-        unsigned clearMask = cv->getCurrentCamera()->getClearMask();
-        bool isDepthCamera = ((clearMask & GL_COLOR_BUFFER_BIT) == 0u) && ((clearMask & GL_DEPTH_BUFFER_BIT) != 0u);
-        bool isShadowCamera = osgEarth::Shadowing::isShadowCamera(cv->getCurrentCamera());
+        // update the timestamp so this tile doesn't become dormant.
+        _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
+//    }
 
-        // only consider land cover if we are capturing color OR shadow.
-        if ( isShadowCamera || !isDepthCamera )
+        // Traverse land cover data at this LOD.
+        int zoneIndex = context->_landCoverData->_currentZoneIndex;
+        if ( zoneIndex < (int)context->_landCoverData->_zones.size() )
         {
-            const LandCoverZone& zone = context->_landCoverData->_zones.at(zoneIndex);
-            for(int i=0; i<zone._bins.size(); ++i)
-            {
-                bool pushedPayloadSS = false;
+            unsigned clearMask = cv->getCurrentCamera()->getClearMask();
+            bool isDepthCamera = ((clearMask & GL_COLOR_BUFFER_BIT) == 0u) && ((clearMask & GL_DEPTH_BUFFER_BIT) != 0u);
+            bool isShadowCamera = osgEarth::Shadowing::isShadowCamera(cv->getCurrentCamera());
 
-                const LandCoverBin& bin = zone._bins.at(i);            
-                if ( bin._lod == _key.getLOD() && (!isShadowCamera || bin._castShadows) )
+            // only consider land cover if we are capturing color OR shadow.
+            if ( isShadowCamera || !isDepthCamera )
+            {
+                const LandCoverZone& zone = context->_landCoverData->_zones.at(zoneIndex);
+                for(int i=0; i<zone._bins.size(); ++i)
                 {
-                    if ( !pushedPayloadSS )
+                    bool pushedPayloadSS = false;
+
+                    const LandCoverBin& bin = zone._bins.at(i);            
+                    if ( bin._lod == _key.getLOD() && (!isShadowCamera || bin._castShadows) )
                     {
-                        cv->pushStateSet( _payloadStateSet.get() );
-                        pushedPayloadSS = true;
+                        if ( !pushedPayloadSS )
+                        {
+                            cv->pushStateSet( _payloadStateSet.get() );
+                            pushedPayloadSS = true;
+                        }
+
+                        cv->pushStateSet( bin._stateSet.get() ); // hopefully groups together for rendering.
+
+                        _landCover->accept( nv );
+
+                        cv->popStateSet();
                     }
 
-                    cv->pushStateSet( bin._stateSet.get() ); // hopefully groups together for rendering.
-
-                    _landCover->accept( nv );
-
-                    cv->popStateSet();
-                }
-
-                if ( pushedPayloadSS )
-                {
-                    cv->popStateSet();
+                    if ( pushedPayloadSS )
+                    {
+                        cv->popStateSet();
+                    }
                 }
             }
         }
-    }
 
-    // If this tile is marked dirty, try loading data.
-    if ( _dirty && canLoadData )
-    {
-        // Only load data if the surface would be visible to the camera
-        if ( !surfaceVisible.isSet() )
+        // If this tile is marked dirty, try loading data.
+        if ( _dirty && canLoadData )
         {
-            surfaceVisible = _surface->isVisible(cv);
-        }
+            // Only load data if the surface would be visible to the camera
+            if ( !surfaceVisible.isSet() )
+            {
+                surfaceVisible = _surface->isVisible(cv);
+            }
 
-        if ( surfaceVisible == true )
-        {
-            load( nv );
+            if ( surfaceVisible == true )
+            {
+                load( nv );
+            }
+            else
+            {
+                OE_DEBUG << LC << "load skipped for " << _key.str() << std::endl;
+            }
         }
-        else
-        {
-            OE_DEBUG << LC << "load skipped for " << _key.str() << std::endl;
-        }
-    }
-    
-    if ( surfaceVisible.isSetTo(true) || subdivide )
-    {
-        _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
     }
 }
 
 bool
 TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
 {
-    if ( _surface->isVisible(cv))
+    bool visible = _surface->isVisible(cv);
+    if ( visible )
     {
         if ( context->progress() )
             context->progress()->stats()["TileNode::acceptSurface"]++;
@@ -495,13 +501,8 @@ TileNode::acceptSurface(osgUtil::CullVisitor* cv, EngineContext* context)
         cv->popStateSet();
 
         cv->popStateSet();
-
-        return true;
     }
-    else
-    {
-        return false;
-    }
+    return visible;
 }
 
 void
@@ -560,7 +561,7 @@ TileNode::createChildren(EngineContext* context)
         node->inheritState( context );
     }
     
-    OE_DEBUG << LC << "Creating children of: " << getTileKey().str() << "; count = " << (++_count) << "\n";
+    //OE_NOTICE << LC << "Creating children of: " << getTileKey().str() << "; count = " << (++_count) << "\n";
 }
 
 bool

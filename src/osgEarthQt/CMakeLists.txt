@@ -58,6 +58,7 @@ SET(LIB_PUBLIC_HEADERS
     AnnotationDialogs
     AnnotationListWidget
     AnnotationToolbar
+    CaptureToClipboardOperation
     CollapsiblePairWidget
     Common
     DataManager
@@ -84,6 +85,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     AnnotationDialogs.cpp
     AnnotationListWidget.cpp
     AnnotationToolbar.cpp
+    CaptureToClipboardOperation.cpp
     CollapsiblePairWidget.cpp
     DataManager.cpp
     LayerManagerWidget.cpp

@@ -38,10 +38,10 @@ EngineContext::EngineContext(const Map*                     map,
                              Unloader*                      unloader,
                              TileNodeRegistry*              liveTiles,
                              TileNodeRegistry*              deadTiles,
-                             const LandCoverData*           landCoverData,
                              const RenderBindings&          renderBindings,
                              const RexTerrainEngineOptions& options,
-                             const SelectionInfo&           selectionInfo) :
+                             const SelectionInfo&           selectionInfo,
+                             TilePatchCallbacks&            tilePatchCallbacks) :
 _frame         ( map ),
 _terrainEngine ( terrainEngine ),
 _geometryPool  ( geometryPool ),
@@ -49,10 +49,10 @@ _loader        ( loader ),
 _unloader      ( unloader ),
 _liveTiles     ( liveTiles ),
 _deadTiles     ( deadTiles ),
-_landCoverData ( landCoverData ),
 _renderBindings( renderBindings ),
 _options       ( options ),
-_selectionInfo ( selectionInfo )
+_selectionInfo ( selectionInfo ),
+_tilePatchCallbacks( tilePatchCallbacks )
 {
     //NOP
 }
@@ -122,4 +122,18 @@ EngineContext::getOrCreateMatrixUniform(const std::string& name, const osg::Matr
     _matrixUniforms[key] = u;
 
     return u;
+}
+
+void
+EngineContext::invokeTilePatchCallbacks(osgUtil::CullVisitor* cv,
+                                        const TileKey&        tileKey,
+                                        osg::StateSet*        tileStateSet,
+                                        osg::Node*            tilePatch)
+{
+    for(TilePatchCallbacks::iterator i = _tilePatchCallbacks.begin();
+        i != _tilePatchCallbacks.end();
+        ++i)
+    {
+        i->get()->cull(cv, tileKey, tileStateSet, tilePatch);
+    }
 }

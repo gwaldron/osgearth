@@ -24,9 +24,8 @@
 
 #include "Export"
 #include "Coverage"
-//#include "Surface"
-//#include "LandCover"
 #include "Zone"
+#include "LandCoverTilePatchCallback"
 
 #include <osgEarth/TerrainEffect>
 #include <osg/Uniform>
@@ -80,6 +79,9 @@ namespace osgEarth { namespace Splat
         osg::ref_ptr<Coverage> _coverage;
         Zones _zones;
         int _noiseTexUnit;
+        int _landCoverTexUnit;
+
+        osg::ref_ptr<LandCoverTilePatchCallback> _tilePatchCallback;
     };
 
 } } // namespace osgEarth::Splat

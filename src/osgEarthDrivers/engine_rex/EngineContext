@@ -56,10 +56,10 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
             Unloader*                           unloader,
             TileNodeRegistry*                   liveTiles,
             TileNodeRegistry*                   deadTiles,
-            const LandCoverData*                landCoverData,
             const RenderBindings&               renderBindings,
             const RexTerrainEngineOptions&      options,
-            const SelectionInfo&                selectionInfo);
+            const SelectionInfo&                selectionInfo,
+            TilePatchCallbacks&                 tilePatchCallbacks);
         
         Loader* getLoader() const { return _loader; }
 
@@ -77,8 +77,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         TileNodeRegistry* deadTiles() const { return _deadTiles.get(); }
 
-        const LandCoverData* landCoverData() const { return _landCoverData; }
-
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
         const RexTerrainEngineOptions& getOptions() const { return _options; }
@@ -94,6 +92,12 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         bool maxLiveTilesExceeded() const;
 
         osg::Uniform* getOrCreateMatrixUniform(const std::string& name, const osg::Matrixf& m);
+
+        void invokeTilePatchCallbacks(
+            osgUtil::CullVisitor* cv,
+            const TileKey&        tileKey,
+            osg::StateSet*        tileStateSet,
+            osg::Node*            tilePatch);
         
         osg::ref_ptr<osg::StateSet>           _surfaceSS;
 
@@ -113,12 +117,11 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         GeometryPool*                         _geometryPool;
         Loader*                               _loader;
         Unloader*                             _unloader;
-        const LandCoverData*                  _landCoverData;
-        UID                                   _currentLandCoverGroup;
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;
         osg::ref_ptr<ProgressCallback>        _progress;
+        TilePatchCallbacks&                   _tilePatchCallbacks;
 
         typedef std::map<osg::Vec4f, osg::ref_ptr<osg::Uniform> > MatrixUniformMap;
         MatrixUniformMap _matrixUniforms;

@@ -182,7 +182,8 @@ ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
             finalZoneIndex = 0;
         }                
         
-        VisitorData::store(*nv, "osgEarth.LandCover.Zone", new RefUID(finalZoneIndex));
+        // Relays the zone index to the Patch callback.
+        VisitorData::store(*nv, "oe.LandCover.zoneIndex", new RefUID(finalZoneIndex));
     }
 
     if ( stateset )

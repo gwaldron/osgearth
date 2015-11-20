@@ -430,6 +430,9 @@ void TileNode::cull(osg::NodeVisitor& nv)
         _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
     }
 
+    context->invokeTilePatchCallbacks( cv, getTileKey(), _payloadStateSet.get(), _landCover.get() );
+
+#if 0
     // Traverse land cover data at this LOD.
     int zoneIndex = context->_landCoverData->_currentZoneIndex;
     if ( zoneIndex < (int)context->_landCoverData->_zones.size() )
@@ -469,6 +472,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
             }
         }
     }
+#endif
 
     // If this tile is marked dirty, try loading data.
     if ( addedDrawables && _dirty && canLoadData )

@@ -188,16 +188,6 @@ _selectionInfo        ( 0L )
     // always require elevation.
     _requireElevationTextures = true;
 
-    // Register our render bins protos.
-    {
-        // Mutex because addRenderBinPrototype isn't thread-safe.
-        Threading::ScopedMutexLock lock(_renderBinMutex);
-
-        // generate uniquely named render bin prototypes for this engine:
-        //_surfaceRenderBinPrototype = new SurfaceBin();
-        //osgUtil::RenderBin::addRenderBinPrototype( _surfaceRenderBinPrototype->getName(), _surfaceRenderBinPrototype.get() );
-    }
-
     // install an elevation callback so we can update elevation data
     _elevationCallback = new ElevationChangedCallback( this );
 
@@ -216,9 +206,6 @@ _selectionInfo        ( 0L )
 RexTerrainEngineNode::~RexTerrainEngineNode()
 {
     unregisterEngine( _uid );
-
-    osgUtil::RenderBin::removeRenderBinPrototype( _surfaceRenderBinPrototype.get() );
-    osgUtil::RenderBin::removeRenderBinPrototype( _landCoverRenderBinPrototype.get() );
 
     if ( _update_mapf )
     {
@@ -391,37 +378,6 @@ osg::StateSet*
 RexTerrainEngineNode::getSurfaceStateSet()
 {
     return _surfaceSS.get();
-//#ifdef USE_RENDER_BINS
-//    return _surfaceRenderBinPrototype->getStateSet();
-//#else
-//    return _terrain ? _terrain->getOrCreateStateSet() : 0L;
-//#endif
-}
-
-UID
-RexTerrainEngineNode::addLandCoverZone()
-{
-    int index = _landCoverData._zones.size();
-    _landCoverData._zones.push_back(LandCoverZone());
-    return index;
-}
-
-osg::StateSet*
-RexTerrainEngineNode::addLandCoverLayer(UID zoneID, unsigned lod, bool castShadows)
-{
-    if ( zoneID >= _landCoverData._zones.size() )
-        return 0L;
-
-    LandCoverBins& bins = _landCoverData._zones[zoneID]._bins;
-    bins.push_back(LandCoverBin());
-    LandCoverBin& bin = bins.back();
-    bin._lod = lod;
-    bin._castShadows = castShadows;
-    bin._stateSet = new osg::StateSet();
-
-    updateState();
-
-    return bin._stateSet.get();
 }
 
 void
@@ -609,9 +565,6 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     
     if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() ) // ensures that postInitialize has run
     {
-        RefUID* uid = VisitorData::fetch<RefUID>( nv, "osgEarth.LandCover.Zone" );
-        getEngineContext()->_landCoverData->_currentZoneIndex = uid ? *uid : 0;
-
         // Pass the tile creation context to the traversal.
         osg::ref_ptr<osg::Referenced> data = nv.getUserData();
         nv.setUserData( this->getEngineContext() );
@@ -650,10 +603,10 @@ RexTerrainEngineNode::getEngineContext()
             _unloader.get(),
             _liveTiles.get(),
             _deadTiles.get(),
-            &_landCoverData,
             _renderBindings,
             _terrainOptions,
-            *_selectionInfo);
+            *_selectionInfo,
+            _tilePatchCallbacks);
     }
 
     return context.get();
@@ -882,9 +835,6 @@ RexTerrainEngineNode::updateState()
             VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
             terrainVP->setName( "Rex Terrain" );
             package.load(terrainVP, package.ENGINE_VERT_MODEL);
-
-            //moved to CTOR so it's always available
-            //package.load(terrainVP, package.SDK);
             
             bool useTerrainColor = _terrainOptions.color().isSet();
             package.define("OE_REX_USE_TERRAIN_COLOR", useTerrainColor);
@@ -920,18 +870,6 @@ RexTerrainEngineNode::updateState()
             {
                 package.define("OE_REX_VERTEX_MORPHING", (_terrainOptions.morphTerrain() == true));
                 package.load(surfaceVP, package.MORPHING_VERT);
-            }
-
-            for(LandCoverZones::iterator zone = _landCoverData._zones.begin(); zone != _landCoverData._zones.end(); ++zone)
-            {
-                for(LandCoverBins::iterator bin = zone->_bins.begin(); bin != zone->_bins.end(); ++bin)
-                {
-                    osg::StateSet* landCoverStateSet = bin->_stateSet.get();
-
-                    #ifdef HAVE_OSG_PATCH_PARAMETER
-                        landCoverStateSet->setAttributeAndModes( new osg::PatchParameter(3) );
-                    #endif
-                }
             }
 
             // assemble color filter code snippets.

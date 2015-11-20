@@ -32,29 +32,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 {
     using namespace osgEarth;
 
-    //TODO: move this to its own include file
-    struct LandCoverBin
-    {
-        unsigned                         _lod;
-        bool                             _castShadows;
-        osg::ref_ptr<osg::StateSet>      _stateSet;
-        osg::ref_ptr<osgUtil::RenderBin> _binProto;
-    };
-    typedef std::vector<LandCoverBin> LandCoverBins;
-
-    struct LandCoverZone
-    {
-        LandCoverBins _bins;
-    };
-    typedef std::vector<LandCoverZone> LandCoverZones;
-
-    struct LandCoverData
-    {
-        LandCoverZones     _zones;
-        mutable unsigned   _currentZoneIndex;
-    };
-
-
     /**
      * Holds a reference to each tile created by the driver.
      */

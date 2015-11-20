@@ -396,30 +396,6 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     osg::CoordinateSystemNode::traverse( nv );
 }
 
-#if 0
-void
-TerrainEngineNode::addTileNodeCallback(TerrainEngine::NodeCallback* cb)
-{
-    Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
-    _tileNodeCallbacks.push_back( cb );
-    notifyExistingNodes( cb );
-}
-
-void
-TerrainEngineNode::removeTileNodeCallback(TerrainEngine::NodeCallback* cb)
-{
-    Threading::ScopedMutexLock lock(_tileNodeCallbacksMutex);
-    for(NodeCallbackVector::iterator i = _tileNodeCallbacks.begin(); i != _tileNodeCallbacks.end(); ++i)
-    {
-        if ( i->get() == cb )
-        {
-            _tileNodeCallbacks.erase( i );
-            break;
-        }
-    }
-}
-#endif
-
 //todo: remove?
 void
 TerrainEngineNode::notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node* node)
@@ -431,6 +407,17 @@ TerrainEngineNode::notifyOfTerrainTileNodeCreation(const TileKey& key, osg::Node
     }
 }
 
+void
+TerrainEngineNode::addTilePatchCallback(TilePatchCallback* cb)
+{
+    _tilePatchCallbacks.push_back( cb );
+}
+
+void
+TerrainEngineNode::removeTilePatchCallback(TilePatchCallback* cb)
+{
+    std::remove(_tilePatchCallbacks.begin(), _tilePatchCallbacks.end(), cb);
+}
 
 //------------------------------------------------------------------------
 

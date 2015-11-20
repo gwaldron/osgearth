@@ -98,14 +98,28 @@ namespace osgEarth
             osg::Node*     node) =0;
     };
 
+
     /**
-     * Callback for selecting a general UID during the cull traversal
+     * A "Tile Patch" is a patch of surface geometry that corresponds to a terrain tile.
+     * For an engine that supports patches, this callback will let you install custom
+     * rendering state for a tile patch.
      */
-    class OSGEARTH_EXPORT LandCoverGroupSelector : public osg::Referenced
+    class OSGEARTH_EXPORT TilePatchCallback : public osg::Referenced
     {
     public:
-        virtual UID select(osgUtil::CullVisitor*) const = 0;
+        /**
+         * Cull the patch for a given tile. You must push the passed-in stateset, traverse
+         * the patch, and then pop the stateset yourself. You can of course push any additional
+         * state or cull any additional drawables that you want to.
+         */
+        virtual void cull(osgUtil::CullVisitor* nv, const TileKey& key, osg::StateSet* stateSet, osg::Node* patch) =0;
+
+    protected:
+        virtual ~TilePatchCallback() { }
     };
+
+    typedef std::vector< osg::ref_ptr<TilePatchCallback> > TilePatchCallbacks;
+
 
     /**
      * TerrainEngineNode is the base class and interface for map engine implementations.
@@ -165,11 +179,11 @@ namespace osgEarth
         /** Access the stateset used to render the terrain. */
         virtual osg::StateSet* getSurfaceStateSet() { return getOrCreateStateSet(); }
 
-        /** Creates and adds a new land cover group; returns its unique ID. */
-        virtual UID addLandCoverZone() { return 0; }
+        /** Adds a tile patch callback. */
+        virtual void addTilePatchCallback(TilePatchCallback*);
 
-        /** Creates and adds a new land cover layer under the group with the given UID. */
-        virtual osg::StateSet* addLandCoverLayer(UID zoneUID, unsigned lod, bool castShadows) { return 0L; }
+        /** Removes a tile patch callback. */
+        virtual void removeTilePatchCallback(TilePatchCallback*);
 
 
     public: // TerrainEngine
@@ -209,12 +223,6 @@ namespace osgEarth
         bool normalTexturesRequired() const { return _requireNormalTextures; }
         bool elevationTexturesRequired() const { return _requireElevationTextures; }
         bool parentTexturesRequired() const { return _requireParentTextures; }
-
-    public:
-        // adds a callback that will be fired while the terrain engine is building
-        // a tile node in a background thread.
-        //void addTileNodeCallback(TerrainEngine::NodeCallback* cb);
-        //void removeTileNodeCallback(TerrainEngine::NodeCallback* cb);
             
 
     public: // Runtime properties
@@ -336,6 +344,10 @@ namespace osgEarth
         mutable Threading::ReadWriteMutex _createTileModelCallbacksMutex;
 
         osg::ref_ptr<TerrainTileModelFactory> _tileModelFactory;
+
+    protected:
+
+        TilePatchCallbacks _tilePatchCallbacks;
 
     public:
 

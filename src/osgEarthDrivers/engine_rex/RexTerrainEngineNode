@@ -38,7 +38,6 @@
 #include <osg/NodeCallback>
 #include <osg/Uniform>
 #include <osg/Timer>
-#include <osgUtil/RenderBin>
 
 using namespace osgEarth;
 
@@ -67,12 +66,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         /** Get the stateset used to render the terrain surface. */
         osg::StateSet* getSurfaceStateSet();
-
-        UID addLandCoverZone();
-
-        void setLandCoverGroupSelector(LandCoverGroupSelector*);
-
-        osg::StateSet* addLandCoverLayer(UID zoneUID, unsigned lod, bool castShadows);
 
     public: // internal TerrainEngineNode
 
@@ -176,11 +169,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
 
         Threading::Mutex _renderBinMutex;
         osg::ref_ptr<osgUtil::RenderBin> _surfaceRenderBinPrototype;
-        osg::ref_ptr<osgUtil::RenderBin> _landCoverRenderBinPrototype;
-
-        LandCoverData   _landCoverData;
-        //LandCoverGroups _landCoverGroups;
-        //LandCoverBins _landCoverBins;
 
         bool _quickReleaseInstalled;
 
@@ -189,8 +177,6 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         SelectionInfo* _selectionInfo;
         void buildSelectionInfo(void);
         void destroySelectionInfo(void);
-
-        osg::ref_ptr<LandCoverGroupSelector> _landCoverGroupSelector;
 
         osg::ref_ptr<osg::StateSet> _surfaceSS;
     };

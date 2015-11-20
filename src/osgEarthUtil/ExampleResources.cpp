@@ -387,7 +387,7 @@ MapNodeHelper::load(osg::ArgumentParser& args,
     osg::ref_ptr<MapNode> mapNode;
     if ( !node )
     {
-        if ( !args.find("--images") )
+        if ( args.find("--images") < 0 )
         {
             OE_WARN << LC << "No earth file." << std::endl;
             return 0L;

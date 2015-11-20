@@ -428,64 +428,64 @@ void TileNode::cull(osg::NodeVisitor& nv)
     {
         // update the timestamp so this tile doesn't become dormant.
         _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
+    }
 
-        // Traverse land cover data at this LOD.
-        int zoneIndex = context->_landCoverData->_currentZoneIndex;
-        if ( zoneIndex < (int)context->_landCoverData->_zones.size() )
+    // Traverse land cover data at this LOD.
+    int zoneIndex = context->_landCoverData->_currentZoneIndex;
+    if ( zoneIndex < (int)context->_landCoverData->_zones.size() )
+    {
+        unsigned clearMask = cv->getCurrentCamera()->getClearMask();
+        bool isDepthCamera = ((clearMask & GL_COLOR_BUFFER_BIT) == 0u) && ((clearMask & GL_DEPTH_BUFFER_BIT) != 0u);
+        bool isShadowCamera = osgEarth::Shadowing::isShadowCamera(cv->getCurrentCamera());
+
+        // only consider land cover if we are capturing color OR shadow.
+        if ( isShadowCamera || !isDepthCamera )
         {
-            unsigned clearMask = cv->getCurrentCamera()->getClearMask();
-            bool isDepthCamera = ((clearMask & GL_COLOR_BUFFER_BIT) == 0u) && ((clearMask & GL_DEPTH_BUFFER_BIT) != 0u);
-            bool isShadowCamera = osgEarth::Shadowing::isShadowCamera(cv->getCurrentCamera());
-
-            // only consider land cover if we are capturing color OR shadow.
-            if ( isShadowCamera || !isDepthCamera )
+            const LandCoverZone& zone = context->_landCoverData->_zones.at(zoneIndex);
+            for(int i=0; i<zone._bins.size(); ++i)
             {
-                const LandCoverZone& zone = context->_landCoverData->_zones.at(zoneIndex);
-                for(int i=0; i<zone._bins.size(); ++i)
+                bool pushedPayloadSS = false;
+
+                const LandCoverBin& bin = zone._bins.at(i);            
+                if ( bin._lod == _key.getLOD() && (!isShadowCamera || bin._castShadows) )
                 {
-                    bool pushedPayloadSS = false;
-
-                    const LandCoverBin& bin = zone._bins.at(i);            
-                    if ( bin._lod == _key.getLOD() && (!isShadowCamera || bin._castShadows) )
+                    if ( !pushedPayloadSS )
                     {
-                        if ( !pushedPayloadSS )
-                        {
-                            cv->pushStateSet( _payloadStateSet.get() );
-                            pushedPayloadSS = true;
-                        }
-
-                        cv->pushStateSet( bin._stateSet.get() ); // hopefully groups together for rendering.
-
-                        _landCover->accept( nv );
-
-                        cv->popStateSet();
+                        cv->pushStateSet( _payloadStateSet.get() );
+                        pushedPayloadSS = true;
                     }
 
-                    if ( pushedPayloadSS )
-                    {
-                        cv->popStateSet();
-                    }
+                    cv->pushStateSet( bin._stateSet.get() ); // hopefully groups together for rendering.
+
+                    _landCover->accept( nv );
+
+                    cv->popStateSet();
+                }
+
+                if ( pushedPayloadSS )
+                {
+                    cv->popStateSet();
                 }
             }
         }
+    }
 
-        // If this tile is marked dirty, try loading data.
-        if ( _dirty && canLoadData )
+    // If this tile is marked dirty, try loading data.
+    if ( addedDrawables && _dirty && canLoadData )
+    {
+        // Only load data if the surface would be visible to the camera
+        if ( !surfaceVisible.isSet() )
         {
-            // Only load data if the surface would be visible to the camera
-            if ( !surfaceVisible.isSet() )
-            {
-                surfaceVisible = _surface->isVisible(cv);
-            }
+            surfaceVisible = _surface->isVisible(cv);
+        }
 
-            if ( surfaceVisible == true )
-            {
-                load( nv );
-            }
-            else
-            {
-                OE_DEBUG << LC << "load skipped for " << _key.str() << std::endl;
-            }
+        if ( surfaceVisible == true )
+        {
+            load( nv );
+        }
+        else
+        {
+            OE_DEBUG << LC << "load skipped for " << _key.str() << std::endl;
         }
     }
 }

@@ -51,13 +51,16 @@ usage(const char* name)
     return 0;
 }
 
-#define RADIUS 500000.0f
+#define RADIUS  500000.0f
+#define RADIUS2 200000.0f
 
-struct StupidGeode : public osg::Geode
+struct MyComputeBoundCallback : public osg::Node::ComputeBoundingSphereCallback
 {
-    osg::BoundingSphere computeBound() const
+    double _radius;
+    MyComputeBoundCallback(float radius) : _radius(radius) { }
+    osg::BoundingSphere computeBound(const osg::Node&) const
     {
-        return osg::BoundingSphere(osg::Vec3f(0,0,0), RADIUS);
+        return osg::BoundingSphere(osg::Vec3f(0,0,0), _radius);
     }
 };
 
@@ -76,10 +79,10 @@ struct SetHorizonCallback : public osg::NodeCallback
 osg::Node*
 installGeometry1(const SpatialReference* srs)
 {
-    osg::Geode* geode = new StupidGeode();
+    osg::Geode* geode = new osg::Geode();
+    geode->setComputeBoundingSphereCallback( new MyComputeBoundCallback(RADIUS) );
     geode->addDrawable( new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), RADIUS) ) );
     osg::Vec3f center = geode->getBound().center();
-    OE_INFO << geode->getBound().radius() << "\n";
     GeoTransform* xform = new GeoTransform();
     xform->setPosition( GeoPoint(srs, 0.0, 0.0, 0.0, ALTMODE_ABSOLUTE) );
     xform->addChild( geode );
@@ -89,10 +92,10 @@ installGeometry1(const SpatialReference* srs)
 osg::Node*
 installGeometry2(const SpatialReference* srs)
 {
-    osg::Geode* geode = new StupidGeode();
-    geode->addDrawable( new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), RADIUS) ) );
+    osg::Geode* geode = new osg::Geode();
+    geode->setComputeBoundingSphereCallback( new MyComputeBoundCallback(RADIUS2) );
+    geode->addDrawable( new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), RADIUS2) ) );
     osg::Vec3f center = geode->getBound().center();
-    OE_INFO << geode->getBound().radius() << "\n";
     GeoTransform* xform = new GeoTransform();
     xform->setPosition( GeoPoint(srs, 180.0, 0.0, 0.0, ALTMODE_ABSOLUTE) );
     xform->addChild( geode );
@@ -108,9 +111,6 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
-    float vfov = -1.0f;
-    arguments.read("--vfov", vfov);
-
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
 
@@ -119,16 +119,6 @@ main(int argc, char** argv)
 
     // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator( new EarthManipulator(arguments) );
-
-    // disable the small-feature culling
-    viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
-
-    if ( vfov > 0.0 )
-    {
-        double fov, ar, n, f;
-        viewer.getCamera()->getProjectionMatrixAsPerspective(fov, ar, n, f);
-        viewer.getCamera()->setProjectionMatrixAsPerspective(vfov, ar, n, f);
-    }
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
@@ -165,13 +155,13 @@ main(int argc, char** argv)
 
             if ( horizon->isVisible( item1->getBound() ) )
             {
-                Registry::instance()->endActivity( "horizon" );
-                Registry::instance()->startActivity( "horizon", "VISIBLE" );
+                Registry::instance()->endActivity( "large sphere" );
+                Registry::instance()->startActivity( "large sphere", "VISIBLE" );
             }
             else
             {
-                Registry::instance()->endActivity( "horizon" );
-                Registry::instance()->startActivity( "horizon", "occluded" );
+                Registry::instance()->endActivity( "large sphere" );
+                Registry::instance()->startActivity( "large sphere", "occluded" );
             }
         }
     }

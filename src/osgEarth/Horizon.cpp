@@ -64,7 +64,9 @@ _VCmag   ( rhs._VCmag ),
 _VCmag2  ( rhs._VCmag2 ),
 _VHmag2  ( rhs._VHmag2 ),
 _coneCos ( rhs._coneCos ),
-_coneTan ( rhs._coneTan )
+_coneTan ( rhs._coneTan ),
+_minVCmag( rhs._minVCmag ),
+_minHAE  ( rhs._minHAE )
 {
     // nop
 }
@@ -107,10 +109,20 @@ Horizon::setEllipsoid(const osg::EllipsoidModel& e)
         1.0 / e.getRadiusEquator(),
         1.0 / e.getRadiusPolar() );
 
+    _minHAE = 500.0;
+    _minVCmag = 1.0 + (_scale*_minHAE).length();
+
     // just so we don't have gargabe values
     setEye( osg::Vec3d(1e7, 0, 0) );
 
     _valid = true;
+}
+
+void
+Horizon::setMinHAE(double value)
+{
+    _minHAE = value;
+    _minVCmag = 1.0 + (_scale*_minHAE).length();
 }
 
 void
@@ -123,11 +135,10 @@ Horizon::setEye(const osg::Vec3d& eye)
         _eyeUnit.normalize();
 
         _VC     = osg::componentMultiply( -_eye, _scale );  // viewer->center (scaled)
-        _VCmag  = _VC.length();
+        _VCmag  = std::max( _VC.length(), _minVCmag );      // clamped to the min HAE
         _VCmag2 = _VCmag*_VCmag;
         _VHmag2 = _VCmag2 - 1.0;  // viewer->horizon line (scaled)
 
-        //double VCmag = sqrt(_VCmag2);
         double VPmag = _VCmag - 1.0/_VCmag; // viewer->horizon plane dist (scaled)
         double VHmag = sqrtf( _VHmag2 );
 
@@ -163,7 +174,7 @@ Horizon::isVisible(const osg::Vec3d& target,
     {        
         return true;
     }
-    
+
     // If the eye is below the ellipsoid, but the target is below the eye
     // (since the above test failed) the target is occluded. 
     // NOTE: it might be better instead to check for a maximum distance from
@@ -233,6 +244,7 @@ Horizon::getPlane(osg::Plane& out_plane) const
 
 //........................................................................
 
+
 HorizonCullCallback::HorizonCullCallback() :
 _enabled   ( true ),
 _centerOnly( false )
@@ -240,10 +252,12 @@ _centerOnly( false )
     //nop
 }
 
-
 bool
 HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
 {
+    if ( !node )
+        return false;
+
     osg::NodePath np = nv->getNodePath();
     osg::Matrix local2world;
     Horizon* horizon = Horizon::get(*nv);

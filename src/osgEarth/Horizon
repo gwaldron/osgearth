@@ -70,6 +70,13 @@ namespace osgEarth
         void setEllipsoid(const osg::EllipsoidModel& ellipsoid);
 
         /**
+         * Set the minimum allowable height-above-ellipsoid to consider when doing
+         * horizon visibility testing.
+         */
+        void setMinHAE(double meters);
+        double getMinHAE() const { return _minHAE; }
+
+        /**
          * Sets the eye position to use when testing for occlusion.
          */
         void setEye(const osg::Vec3d& eyeECEF);
@@ -116,7 +123,8 @@ namespace osgEarth
 
         osg::Vec3d _scale;
         osg::Vec3d _scaleInv;
-        osg::Vec3d _scaleToMinHAE;
+        double     _minVCmag;
+        double     _minHAE;
     };
 
 

@@ -390,11 +390,7 @@ TerrainTileModelFactory::createImageTexture(osg::Image*       image,
     if (!ImageUtils::isPowerOfTwo( image ) || (!image->isMipmap() && ImageUtils::isCompressed(image)))
     {
         tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-    }    
-
-    const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
-    if ( unRefPolicy.isSet() )
-        tex->setUnRefImageDataAfterApply( unRefPolicy.get() );
+    }
 
     return tex;
 }
@@ -413,10 +409,6 @@ TerrainTileModelFactory::createCoverageTexture(osg::Image*       image,
     tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
 
     tex->setMaxAnisotropy( 1.0f );
-
-    const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
-    if ( unRefPolicy.isSet() )
-        tex->setUnRefImageDataAfterApply( unRefPolicy.get() );
 
     return tex;
 }

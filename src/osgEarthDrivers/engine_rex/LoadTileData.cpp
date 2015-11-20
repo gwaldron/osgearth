@@ -20,6 +20,7 @@
 #include "MPTexture"
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Terrain>
+#include <osgEarth/Registry>
 #include <osg/NodeVisitor>
 
 using namespace osgEarth::Drivers::RexTerrainEngine;
@@ -69,6 +70,15 @@ _context(context)
     //nop
 }
 
+namespace
+{
+    void applyDefaultUnRefPolicy(osg::Texture* tex)
+    {
+        const optional<bool>& unRefPolicy = Registry::instance()->unRefImageDataAfterApply();
+        tex->setUnRefImageDataAfterApply( unRefPolicy.get() );
+    }
+}
+
 
 // invoke runs in the background pager thread.
 void
@@ -106,6 +116,7 @@ LoadTileData::invoke()
                         TerrainTileImageLayerModel* layerModel = i->get();
                         if ( layerModel && layerModel->getTexture() )
                         {
+                            applyDefaultUnRefPolicy( layerModel->getTexture() );
                             mptex->setLayer( layerModel->getImageLayer(), layerModel->getTexture(), layerModel->getOrder() );
                         }
                     }
@@ -125,6 +136,8 @@ LoadTileData::invoke()
                 const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::ELEVATION);
                 if ( binding )
                 {                
+                    applyDefaultUnRefPolicy( _model->elevationModel()->getTexture() );
+
                     stateSet->setTextureAttribute(
                         binding->unit(),
                         _model->elevationModel()->getTexture() );
@@ -143,6 +156,9 @@ LoadTileData::invoke()
                 const SamplerBinding* binding = SamplerBinding::findUsage(bindings, SamplerBinding::NORMAL);
                 if ( binding )
                 {
+                    //TODO: if we subload the normal texture later on, we will need to change unref to false.
+                    applyDefaultUnRefPolicy( _model->normalModel()->getTexture() );
+
                     stateSet->setTextureAttribute(
                         binding->unit(),
                         _model->normalModel()->getTexture() );
@@ -167,6 +183,8 @@ LoadTileData::invoke()
                     const SamplerBinding* binding = SamplerBinding::findUID(bindings, layerModel->getImageLayer()->getUID());
                     if ( binding )
                     {
+                        applyDefaultUnRefPolicy( layerModel->getTexture() );
+
                         stateSet->setTextureAttribute(
                             binding->unit(),
                             layerModel->getTexture() );

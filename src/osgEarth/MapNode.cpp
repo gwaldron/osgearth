@@ -557,12 +557,11 @@ MapNode::findMapNode( osg::Node* graph, unsigned travmask )
     return findRelativeNodeOfType<MapNode>( graph, travmask );
 }
 
-MapNode*
-MapNode::get(osg::NodeVisitor& nv)
-{
-    MapNode* mapNode = dynamic_cast<MapNode*>(nv.getUserData());
-    return mapNode;
-}
+//MapNode*
+//MapNode::get(osg::NodeVisitor& nv)
+//{
+//    return VisitorData::fetch<MapNode>(nv, "osgEarth.MapNode");
+//}
 
 bool
 MapNode::isGeocentric() const
@@ -765,94 +764,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
         nv.setUserData( oldUserData.get() );
     }
 
-    else if ( nv.getVisitorType() == nv.CULL_VISITOR )
-    {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
-        if ( cv )
-        {
-#if 1
-            osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
-            
-            TraversalData* data = new TraversalData();
-            cv->setUserData( data );
-            
-            std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
-
-            cv->setUserData( oldUserData.get() );
-#else
-
-            // insert traversal data for this camera:
-            osg::ref_ptr<osg::Referenced> oldUserData = cv->getUserData();
-            MapNodeCullData* cullData = getCullData( cv->getCurrentCamera() );
-            cv->setUserData( cullData );
-
-            cullData->_mapNode = this;
-
-            osg::Vec3d eye = cv->getViewPoint();
-
-            // horizon:
-            if ( !cullData->_horizonInitialized )
-            {
-                cullData->_horizonInitialized = true;
-                cullData->_horizon.setEllipsoid( *getMapSRS()->getEllipsoid() );
-            }
-            cullData->_horizon.setEye( eye );
-
-            // calculate altitude:
-            const SpatialReference* srs = getMapSRS();
-            if ( srs && !srs->isProjected() )
-            {
-                GeoPoint lla;
-                lla.fromWorld( srs, eye );
-                cullData->_cameraAltitude = lla.alt();
-                cullData->_cameraAltitudeUniform->set( (float)lla.alt() );
-            }
-            else
-            {
-                cullData->_cameraAltitude = eye.z();
-                cullData->_cameraAltitudeUniform->set( (float)eye.z() );
-            }
-
-            // window matrix:
-            cullData->_windowMatrixUniform->set( cv->getWindowMatrix() );
-
-            // traverse:
-            cv->pushStateSet( cullData->_stateSet.get() );
-            std::for_each( _children.begin(), _children.end(), osg::NodeAcceptOp(nv) );
-            cv->popStateSet();
-
-            // restore:
-            cv->setUserData( oldUserData.get() );
-#endif
-        }
-    }
-
     else
     {
         osg::Group::traverse( nv );
-    }
-}
-
-MapNodeCullData*
-MapNode::getCullData(osg::Camera* key) const
-{
-    // first look it up:
-    {
-        Threading::ScopedReadLock shared( _cullDataMutex );
-        CullDataMap::const_iterator i = _cullData.find( key );
-        if ( i != _cullData.end() )
-            return i->second.get();
-    }
-    // if it's not there, make it, but double-check.
-    {
-        Threading::ScopedWriteLock exclusive( _cullDataMutex );
-        
-        CullDataMap::const_iterator i = _cullData.find( key );
-        if ( i != _cullData.end() )
-            return i->second.get();
-
-        MapNodeCullData* cullData = new MapNodeCullData();
-        _cullData[key] = cullData;
-        return cullData;
     }
 }

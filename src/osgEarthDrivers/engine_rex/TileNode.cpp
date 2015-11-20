@@ -516,7 +516,7 @@ TileNode::traverse(osg::NodeVisitor& nv)
     // Cull only:
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        if ( VisitorData::isTrue(nv, "osgEarth.Stealth"))
+        if (VisitorData::isSet(nv, "osgEarth.Stealth"))
         {
             cull_stealth( nv );
         }

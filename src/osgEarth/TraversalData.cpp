@@ -17,56 +17,83 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TraversalData>
+#include <osgEarth/Registry>
 #include <osg/ValueObject>
 
 using namespace osgEarth;
 
-bool
-VisitorData::set(osg::NodeVisitor& nv, const std::string& key)
+void
+TransientUserDataStore::store(osg::Object* owner, const std::string& key, osg::Referenced* data)
 {
-#ifdef OSGEARTH_HAS_VISITOR_DATA
-    nv.setUserValue(key, true);
-    return true;
-#else
-    return false;
-#endif
-}
+    if ( !owner ) return;
 
-bool
-VisitorData::isTrue(osg::NodeVisitor& nv, const std::string& key)
-{
-#ifdef OSGEARTH_HAS_VISITOR_DATA
-    bool value;
-    return nv.getUserValue(key, value) && value;
-#else
-    return false;
-#endif
-}
+    _mutex.lock();
 
-bool
-VisitorData::clear(osg::NodeVisitor& nv, const std::string& key)
-{
-#ifdef OSGEARTH_HAS_VISITOR_DATA
-    osg::UserDataContainer* udc = nv.getUserDataContainer();
-    if ( udc )
+    // clear out orphaned data:
+    for(Table::iterator i = _table.begin(); i != _table.end(); )
     {
-        unsigned i = udc->getUserObjectIndex( key );
-        if ( i < udc->getNumUserObjects() )
-            udc->removeUserObject( i );
+        if ( !i->second._owner.valid() )
+            _table.erase(i++);
+        else
+            ++i;
     }
-#endif
+
+    // insert new data:
+    DataPair& p = _table[owner];
+    p._owner = owner;
+    p._data[key] = data;
+
+    _mutex.unlock();
+}
+
+osg::Referenced*
+TransientUserDataStore::fetch(osg::Object* owner, const std::string& key) const
+{
+    if ( !owner )
+        return 0L;
+
+    Threading::ScopedMutexLock lock(_mutex);
+    Table::const_iterator i = _table.find(owner);
+    if ( i == _table.end() || i->second._owner.valid() == false )
+        return 0L;
+
+    StringTable::const_iterator j = i->second._data.find(key);
+    if ( j == i->second._data.end() )
+        return 0L;
+
+    return j->second.get();
+}
+
+bool
+TransientUserDataStore::exists(osg::Object* owner, const std::string& key) const
+{
+    if ( !owner )
+        return false;
+
+    Threading::ScopedMutexLock lock(_mutex);
+    Table::const_iterator i = _table.find(owner);
+    if ( i == _table.end() || i->second._owner.valid() == false )
+        return false;
+
+    StringTable::const_iterator j = i->second._data.find(key);
+    return ( j != i->second._data.end() );
+}
+
+bool
+VisitorData::store(osg::NodeVisitor& nv, const std::string& key, osg::Referenced* data)
+{
+    Registry::instance()->dataStore().store( &nv, key, data );
     return true;
 }
 
-MapNodeCullData::MapNodeCullData()
+osg::Referenced*
+VisitorData::_fetch(osg::NodeVisitor& nv, const std::string& key)
 {
-    _stateSet = new osg::StateSet();
+    return Registry::instance()->dataStore().fetch( &nv, key );
+}
 
-    _windowMatrixUniform = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "oe_WindowMatrix");
-    _windowMatrixUniform->set( osg::Matrix::identity() );
-    _stateSet->addUniform( _windowMatrixUniform.get() );
-
-    _cameraAltitude = 0.0;
-    _cameraAltitudeUniform = new osg::Uniform(osg::Uniform::FLOAT, "oe_CameraAltitude");
-    _stateSet->addUniform( _cameraAltitudeUniform.get() );
+bool
+VisitorData::isSet(osg::NodeVisitor& nv, const std::string& key)
+{
+    return Registry::instance()->dataStore().exists( &nv, key );
 }

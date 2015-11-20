@@ -157,38 +157,32 @@ ZoneSwitcher::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
     if ( _zones.size() > 0 )
     {
-        TraversalData* td = TraversalData::get(*nv);
-        if ( td )
+        osg::Vec3d vp = nv->getViewPoint();
+        double z2 = vp.length2();
+
+        unsigned zoneIndex = 0;
+        unsigned finalZoneIndex = ~0;
+
+        for(unsigned z=0; z<_zones.size() && !stateset; ++z)
         {
-            RefUID& uid = td->getOrCreate<RefUID>("landcover.zone");
-            osg::Vec3d vp = nv->getViewPoint();
-            double z2 = vp.length2();
-
-            int lcZoneIndex = 0;
-
-            for(unsigned z=0; z<_zones.size() && !stateset; ++z)
+            if ( _zones[z]->contains(vp) )
             {
-                if ( _zones[z]->contains(vp) )
-                {
-                    stateset = _zones[z]->getStateSet();
-                    uid      = lcZoneIndex; //_zones[z]->getUID();
-                }
-                if ( _zones[z]->getLandCover() )
-                {
-                    lcZoneIndex++;
-                }
+                stateset = _zones[z]->getStateSet();
+                finalZoneIndex      = zoneIndex;
             }
-
-            if ( !stateset )
+            if ( _zones[z]->getLandCover() )
             {
-                stateset = _zones[0]->getStateSet();
-                uid      = 0; //_zones[0]->getUID();
+                zoneIndex++;
             }
         }
-        else
+
+        if ( !stateset )
         {
-            OE_WARN << LC << "No traversal data found in the visitor." << std::endl;
-        }
+            stateset = _zones[0]->getStateSet();
+            finalZoneIndex = 0;
+        }                
+        
+        VisitorData::store(*nv, "osgEarth.LandCover.Zone", new RefUID(finalZoneIndex));
     }
 
     if ( stateset )

@@ -24,6 +24,7 @@
 #include <osgEarth/CachePolicy>
 #include <osgEarth/SharedSARepo>
 #include <osgEarth/Containers>
+#include <osgEarth/TraversalData>
 #include <osgEarth/ShaderGenerator>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
@@ -252,6 +253,10 @@ namespace osgEarth
         void setTextureImageUnitOffLimits(int unit);
         const std::set<int> getOffLimitsTextureImageUnits() const;
 
+        /** General purpose transient data store to support VisitorData in pre-osg 3.4 */
+        TransientUserDataStore& dataStore() { return _dataStore; }
+        const TransientUserDataStore& dataStore() const { return _dataStore; }
+
     protected:
         virtual ~Registry();
         Registry();
@@ -321,6 +326,8 @@ namespace osgEarth
         osg::ref_ptr<ObjectIndex> _objectIndex;
 
         std::set<int> _offLimitsTextureImageUnits;
+
+        TransientUserDataStore _dataStore;
     };
 }
 

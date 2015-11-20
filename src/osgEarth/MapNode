@@ -128,7 +128,7 @@ namespace osgEarth
          * Accesses the MapNode that is active in a NodeVisitor, if available. It is usually only
          * available during an update traversal.
          */
-        static MapNode* get(osg::NodeVisitor& nv);
+        //static MapNode* get(osg::NodeVisitor& nv);
 
         /**
          * Returns true if the realized terrain model is geocentric, false if
@@ -262,10 +262,12 @@ namespace osgEarth
     
         void init();
 
+#if 0
         MapNodeCullData* getCullData(osg::Camera* camera) const;
         typedef std::map<osg::Camera*, osg::ref_ptr<MapNodeCullData> > CullDataMap;
         mutable CullDataMap _cullData;
         mutable Threading::ReadWriteMutex _cullDataMutex;
+#endif
     };
 
 } // namespace osgEarth

@@ -23,7 +23,6 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Registry>
 #include <osgEarth/Horizon>
-#include <osgEarth/TraversalData>
 
 #include <osg/CullStack>
 #include <osg/Geode>

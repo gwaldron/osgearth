@@ -609,12 +609,8 @@ RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
     
     if ( nv.getVisitorType() == nv.CULL_VISITOR && _loader.valid() ) // ensures that postInitialize has run
     {
-        TraversalData* tdata = TraversalData::get(nv);
-        if ( tdata )
-        {
-            RefUID& uid = tdata->getOrCreate<RefUID>("landcover.zone");
-            getEngineContext()->_landCoverData->_currentZoneIndex = uid;
-        }
+        RefUID* uid = VisitorData::fetch<RefUID>( nv, "osgEarth.LandCover.Zone" );
+        getEngineContext()->_landCoverData->_currentZoneIndex = uid ? *uid : 0;
 
         // Pass the tile creation context to the traversal.
         osg::ref_ptr<osg::Referenced> data = nv.getUserData();

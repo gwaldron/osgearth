@@ -137,28 +137,19 @@ void ElevationLOD::traverse( osg::NodeVisitor& nv)
                 double alt;
 
                 // first see if we have a precalculated elevation:
-                osgUtil::CullVisitor*  cv = Culling::asCullVisitor(nv);
-                Culling::CullUserData* ud = Culling::getCullUserData(cv);
-                if ( ud && ud->_cameraAltitude.isSet() )
+                osgUtil::CullVisitor* cv = Culling::asCullVisitor(nv);
+
+                osg::Vec3d eye = cv->getViewPoint();
+
+                if ( _srs && !_srs->isProjected() )
                 {
-                    // yes; use it
-                    alt = ud->_cameraAltitude.get();
+                    GeoPoint mapPoint;
+                    mapPoint.fromWorld( _srs.get(), eye );
+                    alt = mapPoint.z();
                 }
                 else
                 {
-                    // no; need to calculate elevation here:
-                    osg::Vec3d eye = cv->getViewPoint();
-
-                    if ( _srs && !_srs->isProjected() )
-                    {
-                        GeoPoint mapPoint;
-                        mapPoint.fromWorld( _srs.get(), eye );
-                        alt = mapPoint.z();
-                    }
-                    else
-                    {
-                        alt = eye.z();
-                    }
+                    alt = eye.z();
                 }
 
                 // account for the LOD scale

@@ -172,15 +172,6 @@ namespace osgEarth
     {
         static osgUtil::CullVisitor* asCullVisitor(osg::NodeVisitor* nv);
         static osgUtil::CullVisitor* asCullVisitor(osg::NodeVisitor& nv) { return asCullVisitor(&nv); }
-
-        /** General user data to calculate once and pass down with a CullVisitor. */
-        struct CullUserData : public osg::Referenced
-        {
-            optional<double> _cameraAltitude;
-        };
-
-        static CullUserData* getCullUserData(osgUtil::CullVisitor* cv) {
-            return cv ? dynamic_cast<CullUserData*>(cv->getUserData()) : 0L; }
     };
 
     /**

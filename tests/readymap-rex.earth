@@ -1,18 +1,18 @@
 <!--
-osgEarth Sample - REX Engine.
--->
+ !  osgEarth Sample - REX Engine.
+ !-->
 
-<map name="readymap.org" type="geocentric">
+<map name="rex test">
     
     <options>        
-        <terrain driver="rex"
-                 skirt_ratio="0.0"
-                 tile_size="33"
-                 merges_per_frame="25"
-                 morph_terrain="true"
-                 morph_imagery="true"
-                 high_resolution_first="true"
-                 normal_maps="true">
+        <terrain driver                = "rex"
+                 tile_size             = "17"
+                 merges_per_frame      = "20"
+                 morph_terrain         = "true"
+                 morph_imagery         = "true"
+                 high_resolution_first = "true"
+                 skirt_ratio           = "0.0"
+                 normal_maps           = "true">
         </terrain>
     </options>
     

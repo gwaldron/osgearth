@@ -223,7 +223,7 @@ namespace osgEarth
             _data.clear();
         }
         
-        iterator erase(iterator& i) {
+        iterator erase(iterator i) {
             return _data.erase( i );
         }
 

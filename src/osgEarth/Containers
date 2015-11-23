@@ -37,13 +37,13 @@ namespace osgEarth
     template<typename DATA>
     struct fast_set
     {
-        typedef DATA               entry_t;
-        typedef std::list<entry_t> list_t;
+        typedef DATA                 entry_t;
+        typedef std::vector<entry_t> container_t;
 
-        list_t _data;
+        container_t _data;
 
-        typedef typename list_t::iterator       iterator;
-        typedef typename list_t::const_iterator const_iterator;
+        typedef typename container_t::iterator       iterator;
+        typedef typename container_t::const_iterator const_iterator;
 
         iterator find(const DATA& value) {
             for( iterator i = _data.begin(); i != _data.end(); ++i ) {
@@ -97,7 +97,7 @@ namespace osgEarth
             inline const KEY&  key()  const { return _key; }
             inline const DATA& data() const { return _data; }
             inline DATA&       data()       { return _data; }
-            KEY   _key;
+            KEY  _key;
             DATA _data;
         };
         typedef std::vector<ENTRY> container_t;
@@ -117,7 +117,6 @@ namespace osgEarth
                 }
             }
             _container.resize(_container.size()+1);
-            //_container.push_back(ENTRY());
             _container.back()._key = key;
             return _container.back()._data;
         }
@@ -148,13 +147,6 @@ namespace osgEarth
         inline bool empty() const { return _container.empty(); }
 
         inline void clear() { _container.clear(); }
-        
-        //iterator erase(iterator& i) {
-        //    iterator j = i; ++j;
-        //    *i = _data.at(_data.size()-1);
-        //    _data.resize(_data.size()-1);
-        //    return j;
-        //}
 
         inline void erase(const KEY& key) {
             for(unsigned i=0; i<_container.size(); ++i) {
@@ -183,27 +175,19 @@ namespace osgEarth
     template<typename KEY, typename DATA>
     struct fast_map
     {
-        typedef std::pair<KEY,DATA> entry_t;
-        typedef std::list<entry_t>  list_t;
+        typedef std::pair<KEY,DATA>  entry_t;
+        typedef std::vector<entry_t> container_t;
 
-        typedef typename list_t::iterator       iterator;
-        typedef typename list_t::const_iterator const_iterator;
+        typedef typename container_t::iterator       iterator;
+        typedef typename container_t::const_iterator const_iterator;
 
-        list_t _data;
-        KEY    _lastKey;
+        container_t _data;
+        KEY         _lastKey;
 
         DATA& operator[] (const KEY& key) {
             for( iterator i = _data.begin(); i != _data.end(); ++i ) {
                 if ( i->first == key ) {
-                    if ( _lastKey == key && i != _data.begin() ) {
-                        _data.insert(begin(), *i);
-                        _data.erase(i);
-                        return _data.front().second;
-                    }
-                    else {
-                        _lastKey = key;
-                        return i->second;
-                    }
+                    return i->second;
                 }
             }
             _data.push_back(entry_t(key,DATA()));
@@ -235,9 +219,13 @@ namespace osgEarth
 
         bool empty() const { return _data.empty(); }
 
-        void clear() { _data.clear(); }
+        void clear() {
+            _data.clear();
+        }
         
-        iterator erase(iterator& i) { return _data.erase( i ); }
+        iterator erase(iterator& i) {
+            return _data.erase( i );
+        }
 
         void erase(const KEY& key) {
             iterator i = find(key);

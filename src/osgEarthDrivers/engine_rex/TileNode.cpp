@@ -259,6 +259,8 @@ TileNode::releaseGLObjects(osg::State* state) const
         _surface->releaseGLObjects(state);
     if ( _landCover.valid() )
         _landCover->releaseGLObjects(state);
+    if ( _mptex.valid() )
+        _mptex->releaseGLObjects(state);
 
     osg::Group::releaseGLObjects(state);
 }
@@ -397,7 +399,18 @@ void TileNode::cull(osg::NodeVisitor& nv)
         {
             for(int i=0; i<4; ++i)
             {
-                _children[i]->accept( nv );
+                // pre-check each child for simple bounding sphere culling, and if the check 
+                // fails, unload it's children if them exist. This lets us unload dormant
+                // tiles from memory as we go. If those children are visible from another
+                // camera, no worries, the unload attempt will fail gracefully.
+                if (!cv->isCulled(*_children[i].get()))
+                {
+                    _children[i]->accept( nv );
+                }
+                else
+                {
+                    context->getUnloader()->unloadChildren(getSubTile(i)->getTileKey());
+                }
             }
         }
 
@@ -413,7 +426,8 @@ void TileNode::cull(osg::NodeVisitor& nv)
     {
         surfaceVisible = acceptSurface( cv, context );
 
-        if ( areSubTilesDormant(nv.getFrameStamp()) )
+        // if children exists, and are not in the process of loading, unload them now.
+        if ( !_dirty && _children.size() > 0 )
         {
             context->getUnloader()->unloadChildren( this->getTileKey() );
         }
@@ -431,48 +445,6 @@ void TileNode::cull(osg::NodeVisitor& nv)
     }
 
     context->invokeTilePatchCallbacks( cv, getTileKey(), _payloadStateSet.get(), _landCover.get() );
-
-#if 0
-    // Traverse land cover data at this LOD.
-    int zoneIndex = context->_landCoverData->_currentZoneIndex;
-    if ( zoneIndex < (int)context->_landCoverData->_zones.size() )
-    {
-        unsigned clearMask = cv->getCurrentCamera()->getClearMask();
-        bool isDepthCamera = ((clearMask & GL_COLOR_BUFFER_BIT) == 0u) && ((clearMask & GL_DEPTH_BUFFER_BIT) != 0u);
-        bool isShadowCamera = osgEarth::Shadowing::isShadowCamera(cv->getCurrentCamera());
-
-        // only consider land cover if we are capturing color OR shadow.
-        if ( isShadowCamera || !isDepthCamera )
-        {
-            const LandCoverZone& zone = context->_landCoverData->_zones.at(zoneIndex);
-            for(int i=0; i<zone._bins.size(); ++i)
-            {
-                bool pushedPayloadSS = false;
-
-                const LandCoverBin& bin = zone._bins.at(i);            
-                if ( bin._lod == _key.getLOD() && (!isShadowCamera || bin._castShadows) )
-                {
-                    if ( !pushedPayloadSS )
-                    {
-                        cv->pushStateSet( _payloadStateSet.get() );
-                        pushedPayloadSS = true;
-                    }
-
-                    cv->pushStateSet( bin._stateSet.get() ); // hopefully groups together for rendering.
-
-                    _landCover->accept( nv );
-
-                    cv->popStateSet();
-                }
-
-                if ( pushedPayloadSS )
-                {
-                    cv->popStateSet();
-                }
-            }
-        }
-    }
-#endif
 
     // If this tile is marked dirty, try loading data.
     if ( addedDrawables && _dirty && canLoadData )

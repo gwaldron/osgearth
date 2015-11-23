@@ -75,6 +75,22 @@ EngineContext::getElapsedCullTime() const
     return osg::Timer::instance()->delta_s(_tick, now);
 }
 
+namespace {
+    struct UnloadDormantTiles : public TileNodeRegistry::Operation {
+        const osg::FrameStamp* _fs;
+        Unloader* _unloader;
+        UnloadDormantTiles(const osg::FrameStamp* fs, Unloader* unloader) : _fs(fs), _unloader(unloader) { }
+        void operator()(TileNodeRegistry::TileNodeMap& tiles) {
+            for(TileNodeRegistry::TileNodeMap::iterator i = tiles.begin(); i != tiles.end(); ++i) {
+                TileNode* tile = i->second.get();
+                if ( tile->areSubTilesDormant(_fs) ) {
+                    _unloader->unloadChildren(tile->getTileKey());
+                }
+            }
+        }
+    };
+}
+
 void
 EngineContext::endCull(osgUtil::CullVisitor* cv)
 {
@@ -98,6 +114,11 @@ EngineContext::endCull(osgUtil::CullVisitor* cv)
     Config c = CullDebugger().dumpRenderBin(cv->getCurrentRenderBin());
     OE_NOTICE << c.toJSON(true) << std::endl << std::endl;
 #endif
+
+    //Forceably unload all dormat tiles -- this works, but it too slow to run
+    // every frame.
+    //UnloadDormantTiles op(cv->getFrameStamp(), _unloader);
+    //_liveTiles->run(op);
 }
 
 bool

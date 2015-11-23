@@ -182,7 +182,7 @@ void
 PagerLoader::setMergesPerFrame(int value)
 {
     _mergesPerFrame = std::max(value, 0);
-    this->setNumChildrenRequiringUpdateTraversal( _mergesPerFrame > 0 ? 1 : 0 );
+    this->setNumChildrenRequiringUpdateTraversal( 1 );
 }
 
 bool
@@ -246,7 +246,6 @@ PagerLoader::load(Loader::Request* request, float priority, osg::NodeVisitor& nv
         {
             Threading::ScopedMutexLock lock( _requestsMutex );
             _requests[request->getUID()] = request;
-            OE_DEBUG << LC << "PagerLoader: requests = " << _requests.size() << "\n";
         }
 
         return true;
@@ -325,7 +324,7 @@ PagerLoader::traverse(osg::NodeVisitor& nv)
                 }
             }
 
-            OE_DEBUG << LC << "PagerLoader: requests = " << _requests.size() << "\n";
+            //OE_NOTICE << LC << "PagerLoader: requests=" << _requests.size() << "; mergeQueue=" << _mergeQueue.size() << std::endl;
         }
     }
 

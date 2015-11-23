@@ -119,7 +119,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
     protected:
         TileKey                            _key;
         osg::ref_ptr<SurfaceNode>          _surface;
-        osg::ref_ptr<SurfaceNode>          _landCover;
+        osg::ref_ptr<SurfaceNode>          _patch;
         osg::ref_ptr<Loader::Request>      _loadRequest;
         osg::ref_ptr<Loader::Request>      _expireRequest;
         Threading::Mutex                   _mutex;

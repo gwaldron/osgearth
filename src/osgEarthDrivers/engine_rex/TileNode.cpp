@@ -100,8 +100,8 @@ TileNode::create(const TileKey& key, EngineContext* context)
         context->getRenderBindings(),
         surfaceDrawable );
 
-    // Create a drawable for land cover geometry.
-    // Land cover will be rendered as patch data instead of triangles.
+    // Create a drawable for "patch" geometry, which is rendered as GL patches, not triangles.
+    // Patch geometry can be used to place land cover or render other tile-specific data.
     TileDrawable* patchDrawable = new TileDrawable(
         key, 
         context->getRenderBindings(),
@@ -112,7 +112,7 @@ TileNode::create(const TileKey& key, EngineContext* context)
     patchDrawable->setDrawAsPatches(true);
 
     // And a node to house that as well:
-    _landCover = new SurfaceNode(
+    _patch = new SurfaceNode(
         key,
         context->getMapFrame().getMapInfo(),
         context->getRenderBindings(),
@@ -172,8 +172,8 @@ TileNode::setElevationRaster(const osg::Image* image, const osg::Matrixf& matrix
     if ( _surface.valid() )
         _surface->setElevationRaster( image, matrix );
 
-    if ( _landCover.valid() )
-        _landCover->setElevationRaster( image, matrix );
+    if ( _patch.valid() )
+        _patch->setElevationRaster( image, matrix );
 }
 
 const osg::Image*
@@ -257,10 +257,10 @@ TileNode::releaseGLObjects(osg::State* state) const
         _payloadStateSet->releaseGLObjects(state);
     if ( _surface.valid() )
         _surface->releaseGLObjects(state);
-    if ( _landCover.valid() )
-        _landCover->releaseGLObjects(state);
-    if ( _mptex.valid() )
-        _mptex->releaseGLObjects(state);
+    if ( _patch.valid() )
+        _patch->releaseGLObjects(state);
+    //if ( _mptex.valid() )
+    //    _mptex->releaseGLObjects(state);
 
     osg::Group::releaseGLObjects(state);
 }
@@ -444,7 +444,7 @@ void TileNode::cull(osg::NodeVisitor& nv)
         _lastTraversalFrame.exchange( nv.getFrameStamp()->getFrameNumber() );
     }
 
-    context->invokeTilePatchCallbacks( cv, getTileKey(), _payloadStateSet.get(), _landCover.get() );
+    context->invokeTilePatchCallbacks( cv, getTileKey(), _payloadStateSet.get(), _patch.get() );
 
     // If this tile is marked dirty, try loading data.
     if ( addedDrawables && _dirty && canLoadData )

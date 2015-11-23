@@ -30,7 +30,23 @@
 namespace osgEarth
 {
     /**
-     * Cache for optimizing state set sharing.
+     * Cache for optimizing state set sharing. Running a sharing pass on a node
+     * (with the optimize method, or one of the consolidate methods) will reduce
+     * any duplicate state attribute or state sets down to a single instance.
+     * This can help reduce the number of state changes that occur when the node
+     * is rendered, though this is not guanranteed.
+     *
+     * This class is not thread safe. That means:
+     *
+     * You should ONLY use it on a node that contains nothing in the LIVE scene
+     * graph. It will replace state attributes and state sets on nodes that it finds;
+     * this is illegal if those objects are in use in another thread. So the typical
+     * use case is to run this on a newly-loaded model or on a newly-created node 
+     * graph before adding it to the live graph.
+     *
+     * It's OK for the contents of the cache itself to be present elsewhere, even
+     * in the live scene graph. These will not altered. So for example, you can re-use
+     * the same StateSetCache instance to optimize more than one new graph.
      */
     class OSGEARTH_EXPORT StateSetCache : public osg::Referenced
     {

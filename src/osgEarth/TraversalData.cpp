@@ -23,7 +23,7 @@
 using namespace osgEarth;
 
 void
-TransientUserDataStore::store(osg::Object* owner, const std::string& key, osg::Referenced* data)
+TransientUserDataStore::store(osg::Referenced* owner, const std::string& key, osg::Referenced* data)
 {
     if ( !owner ) return;
 
@@ -47,7 +47,7 @@ TransientUserDataStore::store(osg::Object* owner, const std::string& key, osg::R
 }
 
 osg::Referenced*
-TransientUserDataStore::fetch(osg::Object* owner, const std::string& key) const
+TransientUserDataStore::fetch(osg::Referenced* owner, const std::string& key) const
 {
     if ( !owner )
         return 0L;
@@ -65,7 +65,7 @@ TransientUserDataStore::fetch(osg::Object* owner, const std::string& key) const
 }
 
 bool
-TransientUserDataStore::exists(osg::Object* owner, const std::string& key) const
+TransientUserDataStore::exists(osg::Referenced* owner, const std::string& key) const
 {
     if ( !owner )
         return false;

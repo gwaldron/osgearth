@@ -60,7 +60,7 @@ CacheEstimator::getNumTiles() const
         }
         else
         {
-            for (std::vector< GeoExtent >::const_iterator itr = _extents.begin(); itr != _extents.end(); itr++)
+            for (std::vector< GeoExtent >::const_iterator itr = _extents.begin(); itr != _extents.end(); ++itr)
             {
                 const GeoExtent& extent = *itr;
                 double boundsArea = extent.area();

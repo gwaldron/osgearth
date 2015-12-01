@@ -87,11 +87,11 @@ public:
     };
 
     TerrainProfileGraph( TerrainProfileCalculator* profileCalculator, double graphWidth = 200, double graphHeight = 200 ):
-    _profileCalculator( profileCalculator ),
-        _graphWidth( graphWidth ),
-        _graphHeight( graphHeight ),
-        _color( 1.0f, 1.0f, 0.0f, 1.0f),
-        _backcolor(0.0f,0.0f,0.0f,0.5f)
+      _backcolor(0.0f,0.0f,0.0f,0.5f),
+      _color( 1.0f, 1.0f, 0.0f, 1.0f),
+      _profileCalculator( profileCalculator ),
+      _graphWidth( graphWidth ),
+      _graphHeight( graphHeight )
     {
         _graphChangedCallback = new GraphChangedCallback( this );
         _profileCalculator->addChangedCallback( _graphChangedCallback.get() );
@@ -248,9 +248,9 @@ class DrawProfileEventHandler : public osgGA::GUIEventHandler
 public:
     DrawProfileEventHandler(osgEarth::MapNode* mapNode, osg::Group* root, TerrainProfileCalculator* profileCalculator):
       _mapNode( mapNode ),
-          _root( root ),
-          _startValid( false ),
-          _profileCalculator( profileCalculator )
+      _root( root ),
+      _profileCalculator( profileCalculator ),
+      _startValid( false )
       {
           _start = profileCalculator->getStart().vec3d();
           _end = profileCalculator->getEnd().vec3d();

@@ -39,8 +39,8 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      Geometry*    geom,
                                      const Style& style) :
 LocalizedNode( mapNode ),
-_geom        ( geom ),
-_style       ( style )
+_style       ( style ),
+_geom        ( geom )
 {
     _xform = new osg::MatrixTransform();
     init( 0L );
@@ -51,8 +51,8 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      osg::Node*   node,
                                      const Style& style) :
 LocalizedNode( mapNode ),
-_node        ( node ),
-_style       ( style )
+_style       ( style ),
+_node        ( node )
 {
     _xform = new osg::MatrixTransform();
     init( 0L );

@@ -55,8 +55,6 @@ _valid( false )
 Horizon::Horizon(const Horizon& rhs, const osg::CopyOp& op) :
 osg::Object( rhs, op ),
 _valid   ( rhs._valid ),
-_scale   ( rhs._scale ),
-_scaleInv( rhs._scaleInv ),
 _eye     ( rhs._eye ),
 _eyeUnit ( rhs._eyeUnit ),
 _VC      ( rhs._VC ),
@@ -65,6 +63,8 @@ _VCmag2  ( rhs._VCmag2 ),
 _VHmag2  ( rhs._VHmag2 ),
 _coneCos ( rhs._coneCos ),
 _coneTan ( rhs._coneTan ),
+_scale   ( rhs._scale ),
+_scaleInv( rhs._scaleInv ),
 _minVCmag( rhs._minVCmag ),
 _minHAE  ( rhs._minHAE )
 {
@@ -248,8 +248,8 @@ Horizon::getPlane(osg::Plane& out_plane) const
 
 
 HorizonCullCallback::HorizonCullCallback() :
-_enabled   ( true ),
-_centerOnly( false )
+_centerOnly( false ),
+_enabled   ( true )
 {
     //nop
 }

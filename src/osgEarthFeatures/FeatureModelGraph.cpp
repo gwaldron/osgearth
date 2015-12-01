@@ -239,19 +239,19 @@ FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      ModelSource*                     modelSource,
                                      RefNodeOperationVector*          preMergeOperations,
                                      RefNodeOperationVector*          postMergeOperations) :
-_session            ( session ),
 _options            ( options ),
 _factory            ( factory ),
-_modelSource        ( modelSource ),
-_preMergeOperations ( preMergeOperations ),
-_postMergeOperations( postMergeOperations ),
+_session            ( session ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
 _overlayInstalled   ( 0L ),
 _overlayPlaceholder ( 0L ),
 _clampable          ( 0L ),
 _drapeable          ( 0L ),
-_overlayChange      ( OVERLAY_NO_CHANGE )
+_overlayChange      ( OVERLAY_NO_CHANGE ),
+_preMergeOperations ( preMergeOperations ),
+_postMergeOperations( postMergeOperations ),
+_modelSource        ( modelSource )
 {
     ctor();
 }
@@ -261,19 +261,19 @@ FeatureModelGraph::FeatureModelGraph(Session*                         session,
                                      FeatureNodeFactory*              factory,
                                      RefNodeOperationVector*          preMergeOperations,
                                      RefNodeOperationVector*          postMergeOperations) :
-_session            ( session ),
 _options            ( options ),
 _factory            ( factory ),
-_modelSource        ( 0L ),
-_preMergeOperations ( preMergeOperations ),
-_postMergeOperations( postMergeOperations ),
+_session            ( session ),
 _dirty              ( false ),
 _pendingUpdate      ( false ),
 _overlayInstalled   ( 0L ),
 _overlayPlaceholder ( 0L ),
 _clampable          ( 0L ),
 _drapeable          ( 0L ),
-_overlayChange      ( OVERLAY_NO_CHANGE )
+_overlayChange      ( OVERLAY_NO_CHANGE ),
+_preMergeOperations ( preMergeOperations ),
+_postMergeOperations( postMergeOperations ),
+_modelSource        ( 0L )
 {
     ctor();
 }

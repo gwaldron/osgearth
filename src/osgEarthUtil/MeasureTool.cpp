@@ -35,13 +35,13 @@ using namespace osgEarth::Annotation;
 
 
 MeasureToolHandler::MeasureToolHandler( osg::Group* group, osgEarth::MapNode* mapNode ):
-_mouseDown         (false),
-_group             (group),
-_gotFirstLocation  (false),
-_lastPointTemporary(false),
-_finished          (false),
 _geoInterpolation  (GEOINTERP_GREAT_CIRCLE),
+_lastPointTemporary(false),
+_gotFirstLocation  (false),
+_finished          (false),
+_mouseDown         (false),
 _mouseButton       (osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
+_group             (group),
 _isPath            (false),
 _intersectionMask  (0xffffffff)
 {

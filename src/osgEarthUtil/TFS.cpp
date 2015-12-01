@@ -29,9 +29,9 @@ using namespace std;
 
 
 TFSLayer::TFSLayer():
-_firstLevel(0),
-_maxLevel(8),
 _title("layer"),
+_maxLevel(8),
+_firstLevel(0),
 _srs( SpatialReference::create("EPSG:4326") )
 {
 }

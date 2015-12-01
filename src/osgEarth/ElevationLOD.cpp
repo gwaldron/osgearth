@@ -34,32 +34,32 @@ _maxRange    ( FLT_MAX )
 }
 
 ElevationLOD::ElevationLOD( const ElevationLOD& rhs, const osg::CopyOp& op) :
+_srs         ( rhs._srs.get() ),
 _minElevation( rhs._minElevation ),
 _maxElevation( rhs._maxElevation ),
 _minRange    ( rhs._minRange ),
-_maxRange    ( rhs._maxRange ),
-_srs         ( rhs._srs.get() )
+_maxRange    ( rhs._maxRange )
 {
     //nop
 }
 
 ElevationLOD::ElevationLOD(const SpatialReference* srs):
+_srs         ( srs ),
 _minElevation( -DBL_MAX ),
 _maxElevation( DBL_MAX ),
 _minRange    ( 0.0f ),
-_maxRange    ( FLT_MAX ),
-_srs         ( srs )
+_maxRange    ( FLT_MAX )
 {
     //nop
 }
 
 ElevationLOD::ElevationLOD(const SpatialReference* srs, double minElevation, double maxElevation):
+_srs         ( srs ),
+_minElevation( minElevation ),
+_maxElevation( maxElevation ),
 _minRange    ( 0.0f ),
-_maxRange    ( FLT_MAX ),
-_srs         ( srs )
+_maxRange    ( FLT_MAX )
 {
-    _minElevation = minElevation;
-    _maxElevation = maxElevation;
 }
 
 ElevationLOD::~ElevationLOD()

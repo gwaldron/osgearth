@@ -42,8 +42,8 @@ _initialized( false )
 
 ResourceLibrary::ResourceLibrary(const std::string&    name,
                                  const URI&            uri) :
-_name       ( name ),
 _uri        ( uri, uri ),
+_name       ( name ),
 _initialized( false )
 {
     //nop

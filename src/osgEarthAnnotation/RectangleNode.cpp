@@ -41,9 +41,9 @@ RectangleNode::RectangleNode(MapNode*          mapNode,
                              const Linear&     height,
                              const Style&      style) :
 LocalizedNode( mapNode, position ),
+_style       ( style ),
 _width       ( width ),
-_height      ( height ),
-_style       ( style )
+_height      ( height )
 {
     _xform = new osg::MatrixTransform();
     rebuild();

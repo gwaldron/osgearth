@@ -38,9 +38,9 @@ LocalizedNode::LocalizedNode(MapNode*        mapNode,
                              const GeoPoint& position) :
 PositionedAnnotationNode( mapNode ),
 _initComplete           ( false ),
-_horizonCullingRequested( true ),
+_mapPosition            ( position ),
 _scale                  ( 1.0f, 1.0f, 1.0f ),
-_mapPosition            ( position )
+_horizonCullingRequested( true )
 {
     init();
 }
@@ -285,8 +285,8 @@ LocalizedNode::applyAltitudePolicy(osg::Node* node, const Style& style)
 LocalizedNode::LocalizedNode(MapNode* mapNode, const Config& conf) :
 PositionedAnnotationNode( mapNode, conf ),
 _initComplete           ( false ),
-_horizonCullingRequested( true ),
-_scale                  ( 1.0f, 1.0f, 1.0f )
+_scale                  ( 1.0f, 1.0f, 1.0f ),
+_horizonCullingRequested( true )
 {
     if ( conf.hasChild( "position" ) )
         setPosition( GeoPoint(conf.child("position")) );

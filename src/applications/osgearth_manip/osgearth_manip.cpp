@@ -489,7 +489,7 @@ namespace
     struct Simulator : public osgGA::GUIEventHandler
     {
         Simulator( osg::Group* root, EarthManipulator* manip, MapNode* mapnode, osg::Node* model, const char* name, char key)
-            : _manip(manip), _mapnode(mapnode), _model(model), _name(name), _key(key)
+            : _name(name), _key(key), _mapnode(mapnode), _manip(manip), _model(model)
         {
             if ( !model )
             { 

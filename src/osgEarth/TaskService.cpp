@@ -279,9 +279,9 @@ TaskThread::cancel()
 
 TaskService::TaskService( const std::string& name, int numThreads, unsigned int maxSize ):
 osg::Referenced( true ),
+_numThreads( 0 ),
 _lastRemoveFinishedThreadsStamp(0),
-_name(name),
-_numThreads( 0 )
+_name(name)
 {
     _queue = new TaskRequestQueue( maxSize );
     setNumThreads( numThreads );

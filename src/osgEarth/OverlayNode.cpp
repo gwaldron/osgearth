@@ -138,9 +138,9 @@ namespace
 //------------------------------------------------------------------------
 
 OverlayNode::OverlayNode( MapNode* mapNode, bool active, OverlayNode::TechniqueProvider provider ) :
-_newActive( active ),
 _active   ( false ),
 _dirty    ( false ),
+_newActive( active ),
 _getGroup ( provider )
 {
     // create a container group that will house the culler. This culler

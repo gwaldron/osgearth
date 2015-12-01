@@ -192,15 +192,15 @@ std::string WriteTMSTileHandler::getProcessString() const
 /*****************************************************************************************************/
 
 TMSPackager::TMSPackager():
-_visitor(new TileVisitor()),
-    _extension(""),
-    _destination("out"),
-    _elevationPixelDepth(32),
-    _width(0),
-    _height(0),
-    _overwrite(false),
-    _keepEmpties(false),
-    _applyAlphaMask(false)
+_destination("out"),
+_extension(""),
+_elevationPixelDepth(32),
+_overwrite(false),
+_width(0),
+_height(0),
+_keepEmpties(false),
+_applyAlphaMask(false),
+_visitor(new TileVisitor())
 {
 }
 

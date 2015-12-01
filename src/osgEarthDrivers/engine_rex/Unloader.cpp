@@ -60,9 +60,9 @@ namespace
 //........................................................................
 
 UnloaderGroup::UnloaderGroup(TileNodeRegistry* live, TileNodeRegistry* dead) :
+_threshold( INT_MAX ),
 _live     ( live ),
-_dead     ( dead ),
-_threshold( INT_MAX )
+_dead     ( dead )
 {
     this->setNumChildrenRequiringUpdateTraversal( 1u );
 }

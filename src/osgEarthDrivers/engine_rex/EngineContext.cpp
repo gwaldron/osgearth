@@ -43,14 +43,14 @@ EngineContext::EngineContext(const Map*                     map,
                              const SelectionInfo&           selectionInfo,
                              TilePatchCallbacks&            tilePatchCallbacks) :
 _frame         ( map ),
+_liveTiles     ( liveTiles ),
+_deadTiles     ( deadTiles ),
+_options       ( options ),
+_renderBindings( renderBindings ),
 _terrainEngine ( terrainEngine ),
 _geometryPool  ( geometryPool ),
 _loader        ( loader ),
 _unloader      ( unloader ),
-_liveTiles     ( liveTiles ),
-_deadTiles     ( deadTiles ),
-_renderBindings( renderBindings ),
-_options       ( options ),
 _selectionInfo ( selectionInfo ),
 _tilePatchCallbacks( tilePatchCallbacks )
 {

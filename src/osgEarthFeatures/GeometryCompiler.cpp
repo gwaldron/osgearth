@@ -61,14 +61,14 @@ GeometryCompilerOptions::setDefaults(const GeometryCompilerOptions& defaults)
 // defaults.
 GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
 _maxGranularity_deg    ( 10.0 ),
+_geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
 _mergeGeometry         ( true ),
 _clustering            ( false ),
 _instancing            ( false ),
 _ignoreAlt             ( false ),
 _useVertexBufferObjects( true ),
-_useTextureArrays      ( true ),
 _shaderPolicy          ( SHADERPOLICY_GENERATE ),
-_geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
+_useTextureArrays      ( true ),
 _optimizeStateSharing  ( true ),
 _optimize              ( false ),
 _validate              ( false )
@@ -81,14 +81,14 @@ _validate              ( false )
 GeometryCompilerOptions::GeometryCompilerOptions(const ConfigOptions& conf) :
 ConfigOptions          ( conf ),
 _maxGranularity_deg    ( s_defaults.maxGranularity().value() ),
+_geoInterp             ( s_defaults.geoInterp().value() ),
 _mergeGeometry         ( s_defaults.mergeGeometry().value() ),
 _clustering            ( s_defaults.clustering().value() ),
 _instancing            ( s_defaults.instancing().value() ),
 _ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
 _useVertexBufferObjects( s_defaults.useVertexBufferObjects().value() ),
-_useTextureArrays      ( s_defaults.useTextureArrays().value() ),
 _shaderPolicy          ( s_defaults.shaderPolicy().value() ),
-_geoInterp             ( s_defaults.geoInterp().value() ),
+_useTextureArrays      ( s_defaults.useTextureArrays().value() ),
 _optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
 _optimize              ( s_defaults.optimize().value() ),
 _validate              ( s_defaults.validate().value() )

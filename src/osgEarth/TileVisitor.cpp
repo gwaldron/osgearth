@@ -23,20 +23,20 @@
 using namespace osgEarth;
 
 TileVisitor::TileVisitor():
-_total(0),
-_processed(0),
 _minLevel(0),
-_maxLevel(5)
+_maxLevel(5),
+_total(0),
+_processed(0)
 {
 }
 
 
 TileVisitor::TileVisitor(TileHandler* handler):
+_minLevel(0),
+_maxLevel(5),
 _tileHandler( handler ),
 _total(0),
-_processed(0),
-_minLevel(0),
-_maxLevel(5)
+_processed(0)
 {
 }
 
@@ -197,8 +197,8 @@ class HandleTileTask : public TaskRequest
 public:
     HandleTileTask( TileHandler* handler, TileVisitor* visitor, const TileKey& key ):      
       _handler( handler ),
-          _visitor(visitor),
-          _key( key )
+      _key( key ),
+      _visitor(visitor)
       {
 
       }
@@ -323,16 +323,16 @@ const TileKeyList& TaskList::getKeys() const
 
 /*****************************************************************************************/
 MultiprocessTileVisitor::MultiprocessTileVisitor():
-    _numProcesses( OpenThreads::GetNumberOfProcessors() ),
-    _batchSize(100)
+    _batchSize(100),
+    _numProcesses( OpenThreads::GetNumberOfProcessors() )
 {
     osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
 }
 
 MultiprocessTileVisitor::MultiprocessTileVisitor( TileHandler* handler ):
 TileVisitor( handler ),
-    _numProcesses( OpenThreads::GetNumberOfProcessors() ),
-    _batchSize(100)
+    _batchSize(100),
+    _numProcesses( OpenThreads::GetNumberOfProcessors() )
 {
 }
 

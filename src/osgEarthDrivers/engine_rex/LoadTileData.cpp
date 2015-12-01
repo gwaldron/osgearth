@@ -55,8 +55,8 @@ namespace
             traverse(node);
         }
 
-        Loader::Request::ChangeSet& _changeSet;
         EngineContext*              _context;
+        Loader::Request::ChangeSet& _changeSet;
     };
 }
 

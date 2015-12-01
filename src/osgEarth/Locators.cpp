@@ -26,8 +26,8 @@ using namespace osgEarth;
 
 GeoLocator::GeoLocator() :
 _inverseCalculated(false),
-_x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0)
+_x0(0.0), _y0(0.0),
+_x1(1.0), _y1(1.0)
 {
     this->setThreadSafeRefUnref(true);
 }
@@ -35,8 +35,8 @@ _y0(0.0), _y1(1.0)
 GeoLocator::GeoLocator( const GeoExtent& dataExtent ) :
 _inverseCalculated(false),
 _dataExtent( dataExtent ),
-_x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0)
+_x0(0.0), _y0(0.0),
+_x1(1.0), _y1(1.0)
 {
     this->setThreadSafeRefUnref(true);
 }
@@ -45,16 +45,16 @@ GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& d
 osgTerrain::Locator( prototype ),
 _inverseCalculated(false),
 _dataExtent( dataExtent ),
-_x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0)
+_x0(0.0), _y0(0.0),
+_x1(1.0), _y1(1.0)
 {
     //nop
 }
 
 GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& displayExtent ) :
 osgTerrain::Locator( prototype ),
-_dataExtent( dataExtent ),
-_inverseCalculated(false)
+_inverseCalculated(false),
+_dataExtent( dataExtent )
 {
     // assume they are the same SRS
     _x0 = osg::clampBetween( (displayExtent.xMin()-dataExtent.xMin())/dataExtent.width(), 0.0, 1.0 );

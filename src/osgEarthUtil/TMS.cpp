@@ -68,6 +68,8 @@ _order(0)
 }
 
 TileMap::TileMap():
+_tileMapService("http://tms.osgeo.org/1.0.0"),
+_version("1.0"),
 _originX(0),
 _originY(0),
 _minX(0.0),
@@ -76,11 +78,9 @@ _maxX(0.0),
 _maxY(0.0),
 _minLevel(0),
 _maxLevel(0),
-_numTilesHigh(-1),
 _numTilesWide(-1),
-_timestamp(0),
-_version("1.0"),
-_tileMapService("http://tms.osgeo.org/1.0.0")
+_numTilesHigh(-1),
+_timestamp(0)
 {   
 }
 

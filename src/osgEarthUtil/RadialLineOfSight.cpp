@@ -79,16 +79,16 @@ namespace
 
 
 RadialLineOfSightNode::RadialLineOfSightNode( MapNode* mapNode):
-_mapNode( mapNode ),
 _numSpokes(20),
 _radius(500),
+_displayMode( LineOfSight::MODE_SPLIT ),
+_fill(false),
 //_center(0,0,0),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _outlineColor( 1.0f, 1.0f, 1.0f, 1.0f),
-_displayMode( LineOfSight::MODE_SPLIT ),
 //_altitudeMode( ALTMODE_ABSOLUTE ),
-_fill(false),
+_mapNode( mapNode ),
 _terrainOnly( false )
 {
     //compute(getNode());

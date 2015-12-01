@@ -123,8 +123,8 @@ namespace
              const MaskLayerVector& in_maskLayers,
              const ModelLayerVector& in_modelLayers)
 
-            : model     ( in_model ), 
-              frame     ( in_frame ),
+            : frame     ( in_frame ),
+              model     ( in_model ),
               maskLayers( in_maskLayers ),
               modelLayers( in_modelLayers )
         {
@@ -2075,9 +2075,9 @@ TileModelCompiler::TileModelCompiler(const MaskLayerVector&              maskLay
                                      const MPTerrainEngineOptions& options) :
 _maskLayers            ( maskLayers ),
 _modelLayers           ( modelLayers ),
+_textureImageUnit      ( texImageUnit ),
 _optimizeTriOrientation( optimizeTriOrientation ),
-_options               ( options ),
-_textureImageUnit      ( texImageUnit )
+_options               ( options )
 {
     _debug =
         _options.debug() == true || 

@@ -29,8 +29,8 @@ FilterContext::FilterContext(Session*               session,
                              FeatureIndexBuilder*   index ) :
 _session     ( session ),
 _profile     ( profile ),
-_extent      ( workingExtent, workingExtent ),
 _isGeocentric( false ),
+_extent      ( workingExtent, workingExtent ),
 _index       ( index ),
 _shaderPolicy( osgEarth::SHADERPOLICY_GENERATE )
 {
@@ -70,8 +70,8 @@ _shaderPolicy( osgEarth::SHADERPOLICY_GENERATE )
 }
 
 FilterContext::FilterContext( const FilterContext& rhs ) :
-_profile              ( rhs._profile.get() ),
 _session              ( rhs._session.get() ),
+_profile              ( rhs._profile.get() ),
 _isGeocentric         ( rhs._isGeocentric ),
 _extent               ( rhs._extent ),
 _referenceFrame       ( rhs._referenceFrame ),

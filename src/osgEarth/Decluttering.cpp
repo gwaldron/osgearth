@@ -169,8 +169,8 @@ DeclutteringOptions::getConfig() const
  */
 struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 {
-    DeclutterSortFunctor* _customSortFunctor;
     DeclutterContext*     _context;
+    DeclutterSortFunctor* _customSortFunctor;
 
     PerObjectFastMap<osg::Camera*, PerCamInfo> _perCam;
 

@@ -36,11 +36,11 @@ _proxySettings         ( ProxySettings() ),
 _cacheOnly             ( false ),
 _enableLighting        ( true ),
 _overlayBlending       ( true ),
-_overlayMipMapping     ( false ),
 _overlayTextureSize    ( 4096 ),
-_terrainOptions        ( 0L ),
+_overlayMipMapping     ( false ),
 _overlayAttachStencil  ( false ),
-_overlayResolutionRatio( 3.0f )
+_overlayResolutionRatio( 3.0f ),
+_terrainOptions        ( 0L )
 {
     mergeConfig( conf );
 }

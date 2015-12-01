@@ -478,10 +478,10 @@ HTMNode::computeBound() const
 
 HTMGroup::HTMGroup() :
 _dataCount     ( 0 ),
-_splitThreshold( 48 ),
-_mergeThreshold( 48 ),
 _debug         ( false ),
-_cluster       ( false )
+_cluster       ( false ),
+_splitThreshold( 48 ),
+_mergeThreshold( 48 )
 {
     // hopefully prevent the OSG optimizer from altering this graph:
     setDataVariance( osg::Object::DYNAMIC );

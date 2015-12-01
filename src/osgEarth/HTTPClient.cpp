@@ -271,8 +271,8 @@ HTTPResponse::HTTPResponse( long _code )
 }
 
 HTTPResponse::HTTPResponse( const HTTPResponse& rhs ) :
-_response_code( rhs._response_code ),
 _parts( rhs._parts ),
+_response_code( rhs._response_code ),
 _mimeType( rhs._mimeType ),
 _cancelled( rhs._cancelled )
 {
@@ -379,8 +379,8 @@ HTTPClient::getClient()
 }
 
 HTTPClient::HTTPClient() :
-_initialized    ( false ),
 _curl_handle    ( 0L ),
+_initialized    ( false ),
 _simResponseCode( -1L )
 {
     //nop

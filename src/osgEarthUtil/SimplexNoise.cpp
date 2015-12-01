@@ -127,12 +127,12 @@ const bool     SimplexNoise::DefaultNormalize    =  true;
 
 
 SimplexNoise::SimplexNoise() :
-_octaves   ( DefaultOctaves ),
 _freq      ( DefaultFrequency ),
 _pers      ( DefaultPersistence ),
 _lacunarity( DefaultLacunarity ),
 _low       ( DefaultRangeLow ),
 _high      ( DefaultRangeHigh ),
+_octaves   ( DefaultOctaves ),
 _normalize ( DefaultNormalize )
 {
     for(unsigned int i=0; i<512; i++)

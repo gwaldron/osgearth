@@ -106,9 +106,9 @@ TilePagedLOD::TilePagedLOD(const UID&        engineUID,
                            TileNodeRegistry* live,
                            TileNodeRegistry* dead) :
 osg::PagedLOD(),
-_engineUID( engineUID ),
 _live     ( live ),
 _dead     ( dead ),
+_engineUID( engineUID ),
 _debug    ( false )
 {
     if ( live )

@@ -30,8 +30,8 @@ _clamping          ( CLAMP_NONE ),
 _technique         ( TECHNIQUE_MAP ),
 _binding           ( BINDING_VERTEX ),
 _resolution        ( 0.0 ), //0.001f ),
-_verticalScale     ( NumericExpression(1.0) ),
-_verticalOffset    ( NumericExpression(0.0) )
+_verticalOffset    ( NumericExpression(0.0) ),
+_verticalScale     ( NumericExpression(1.0) )
 {
     mergeConfig( conf );
 }

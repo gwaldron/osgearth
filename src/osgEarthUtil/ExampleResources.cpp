@@ -185,9 +185,9 @@ namespace
         * @param rate    The time multipler from real time.  Default of 1440 means 1 minute real time will equal 1 day simulation time.
         */
         AnimateSkyUpdateCallback( double rate = 1440 ):
-            _rate( rate ),
+            _accumTime( 0.0 ),
             _prevTime( -1 ),
-            _accumTime( 0.0 )
+            _rate( rate )
         {
         }
 

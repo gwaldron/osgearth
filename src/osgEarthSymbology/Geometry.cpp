@@ -1006,8 +1006,8 @@ ConstGeometryIterator::fetchNext()
 
 ConstSegmentIterator::ConstSegmentIterator( const Geometry* verts, bool forceClosedLoop ) :
 _verts(&verts->asVector()),
-_closeLoop(forceClosedLoop),
-_iter(verts->begin())
+_iter(verts->begin()),
+_closeLoop(forceClosedLoop)
 {
     _done = _verts->size() < 2;
 

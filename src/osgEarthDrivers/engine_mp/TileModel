@@ -261,7 +261,7 @@ namespace osgEarth { namespace Drivers { namespace MPTerrainEngine
 
     public:
         TileModel( const osgEarth::Revision& mapModelRevision, const MapInfo& mapInfo )
-            : _revision(mapModelRevision), _mapInfo(mapInfo), _useParentData(false) { }
+            : _mapInfo(mapInfo), _revision(mapModelRevision), _useParentData(false) { }
         TileModel(const TileModel& rhs);
         virtual ~TileModel() { }
 

@@ -45,11 +45,11 @@ TileDrawable::TileDrawable(const TileKey&        key,
                            int                   tileSize,
                            int                   skirtSize) :
 osg::Drawable( ),
-_key         ( key ),
 _bindings    ( bindings ),
 _geom        ( geometry ),
 _tileSize    ( tileSize ),
 _drawPatch   ( false ),
+_key         ( key ),
 _skirtSize   ( skirtSize )
 {
     this->setName( key.str() );

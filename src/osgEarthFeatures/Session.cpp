@@ -40,8 +40,8 @@ Session::Session( const Map* map, StyleSheet* styles, FeatureSource* source, con
 osg::Referenced( true ),
 _map           ( map ),
 _mapInfo       ( map ),
-_featureSource ( source ),
-_dbOptions     ( dbOptions )
+_dbOptions     ( dbOptions ),
+_featureSource ( source )
 {
     if ( styles )
         setStyles( styles );

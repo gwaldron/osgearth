@@ -405,24 +405,24 @@ SpatialReference::fixWKT()
 /****************************************************************************/
 
 
-SpatialReference::SpatialReference(void*              handle, 
+SpatialReference::SpatialReference(void*              handle,
                                    const std::string& init_type) :
 osg::Referenced ( true ),
 _initialized    ( false ),
 _handle         ( handle ),
 _owns_handle    ( true ),
-_init_type      ( init_type ),
 _is_geographic  ( false ),
-_is_ecef        ( false ),
 _is_mercator    ( false ),
-_is_north_polar ( false ), 
+_is_spherical_mercator( false ),
+_is_north_polar ( false ),
 _is_south_polar ( false ),
 _is_cube        ( false ),
 _is_contiguous  ( false ),
 _is_user_defined( false ),
 _is_ltp         ( false ),
 _is_plate_carre ( false ),
-_is_spherical_mercator( false )
+_is_ecef        ( false ),
+_init_type      ( init_type )
 {
     // nop
 }

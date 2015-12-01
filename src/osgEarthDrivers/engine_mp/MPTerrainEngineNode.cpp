@@ -245,15 +245,15 @@ MPTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* l
 MPTerrainEngineNode::MPTerrainEngineNode() :
 TerrainEngineNode     ( ),
 _terrain              ( 0L ),
+_batchUpdateInProgress( false ),
+_refreshRequired      ( false ),
+_stateUpdateRequired  ( false ),
 _update_mapf          ( 0L ),
 _tileCount            ( 0 ),
 _tileCreationTime     ( 0.0 ),
 _primaryUnit          ( -1 ),
 _secondaryUnit        ( -1 ),
-_elevationTextureUnit ( -1 ),
-_batchUpdateInProgress( false ),
-_refreshRequired      ( false ),
-_stateUpdateRequired  ( false )
+_elevationTextureUnit ( -1 )
 {
     // unique ID for this engine:
     _uid = Registry::instance()->createUID();

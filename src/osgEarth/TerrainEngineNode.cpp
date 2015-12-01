@@ -115,12 +115,12 @@ TerrainEngineNode::ImageLayerController::onColorFiltersChanged( ImageLayer* laye
 
 
 TerrainEngineNode::TerrainEngineNode() :
-_verticalScale           ( 1.0f ),
-_initStage               ( INIT_NONE ),
-_dirtyCount              ( 0 ),
 _requireElevationTextures( false ),
 _requireNormalTextures   ( false ),
-_requireParentTextures   ( false )
+_requireParentTextures   ( false ),
+_verticalScale           ( 1.0f ),
+_dirtyCount              ( 0 ),
+_initStage               ( INIT_NONE )
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT( this, 1 );

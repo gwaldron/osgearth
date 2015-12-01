@@ -126,8 +126,8 @@ struct EditHandler : public ControlEventHandler
 struct ChangeImageHandler : public ControlEventHandler
 {
     ChangeImageHandler( osg::Image* image, ImageOverlay* overlay, ImageControl* preview) :
-      _image(image),
       _overlay(overlay),
+      _image(image),
       _preview(preview){ }
 
     void onClick( Control* control, int mouseButtonMask ) {

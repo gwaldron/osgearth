@@ -68,8 +68,8 @@ struct ToggleGraticuleHandler : public ControlEventHandler
 struct OffsetGraticuleHandler : public ControlEventHandler
 {
     OffsetGraticuleHandler( GraticuleNode* graticule, const osg::Vec2f& offset ) :
-        _graticule( graticule ),
-        _offset(offset)
+        _offset(offset),
+        _graticule( graticule )
     {
         //nop
     }

@@ -696,14 +696,14 @@ _acceptCallbacksVaryPerFrame( false )
 
 VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
 osg::StateAttribute( rhs, copyop ),
-_shaderMap         ( rhs._shaderMap ),
+_template          ( osg::clone(rhs._template.get()) ),
 _mask              ( rhs._mask ),
 _functions         ( rhs._functions ),
+_shaderMap         ( rhs._shaderMap ),
 _inherit           ( rhs._inherit ),
 _inheritSet        ( rhs._inheritSet ),
 _logShaders        ( rhs._logShaders ),
-_logPath           ( rhs._logPath ),
-_template          ( osg::clone(rhs._template.get()) )
+_logPath           ( rhs._logPath )
 {    
     // Attribute bindings.
     const osg::Program::AttribBindingList &abl = rhs.getAttribBindingList();
@@ -1683,8 +1683,8 @@ void VirtualProgram::setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerF
 //.........................................................................
 
 PolyShader::PolyShader() :
-_dirty( true ),
-_location( ShaderComp::LOCATION_UNDEFINED )
+_location( ShaderComp::LOCATION_UNDEFINED ),
+_dirty( true )
 {
     //nop
 }

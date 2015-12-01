@@ -157,7 +157,7 @@ struct InstanceGroup : public osg::Group
 
     struct Setup : public osg::NodeVisitor 
     {
-        Setup(InstanceGroup* ig) : _ig(ig), osg::NodeVisitor()
+        Setup(InstanceGroup* ig) : osg::NodeVisitor(), _ig(ig)
         {
             setTraversalMode( TRAVERSE_ALL_CHILDREN );
             this->setNodeMaskOverride( ~0 );

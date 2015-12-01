@@ -24,8 +24,8 @@ using namespace osgEarth;
 
 MapFrame::MapFrame() :
 _initialized    ( false ),
-_highestMinLevel( 0 ),
-_mapInfo       ( 0L )
+_mapInfo       ( 0L ),
+_highestMinLevel( 0 )
 {
     //nop
 }
@@ -35,12 +35,12 @@ _initialized         ( rhs._initialized ),
 _map                 ( rhs._map.get() ),
 _mapInfo             ( rhs._mapInfo ),
 _parts               ( rhs._parts ),
-_highestMinLevel     ( rhs._highestMinLevel ),
 _mapDataModelRevision( rhs._mapDataModelRevision ),
 _imageLayers         ( rhs._imageLayers ),
 _elevationLayers     ( rhs._elevationLayers ),
 _modelLayers         ( rhs._modelLayers ),
-_maskLayers          ( rhs._maskLayers )
+_maskLayers          ( rhs._maskLayers ),
+_highestMinLevel     ( rhs._highestMinLevel )
 {
     //no sync required here; we copied the arrays etc
 }

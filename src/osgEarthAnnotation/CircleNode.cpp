@@ -45,12 +45,12 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        const bool         pie):
 
 LocalizedNode( mapNode, position ),
-_radius      ( radius ),
 _style       ( style ),
+_numSegments ( 0 ),
+_radius      ( radius ),
 _arcStart    ( arcStart ),
 _arcEnd      ( arcEnd ),
-_pie         ( pie ),
-_numSegments ( 0 )
+_pie         ( pie )
 {
     _xform = new osg::MatrixTransform();
     rebuild();
@@ -191,8 +191,8 @@ CircleNode::CircleNode(MapNode*              mapNode,
                        const Config&         conf,
                        const osgDB::Options* dbOptions) :
 LocalizedNode( mapNode, conf ),
-_radius      ( 1.0, Units::KILOMETERS ),
-_numSegments ( 0 )
+_numSegments ( 0 ),
+_radius      ( 1.0, Units::KILOMETERS )
 {
     _xform = new osg::MatrixTransform();
 

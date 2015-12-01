@@ -1090,6 +1090,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         {
             switch( f->getGeometry()->getComponentType() )
             {
+            default:
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
                 f->style()->add( new LineSymbol() );

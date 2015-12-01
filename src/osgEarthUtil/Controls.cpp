@@ -2879,6 +2879,7 @@ ControlCanvas::traverse(osg::NodeVisitor& nv)
         }
         break;
 
+    default:
     case osg::NodeVisitor::CULL_VISITOR:
         {
         }

@@ -810,8 +810,10 @@ public:
 
                             if (vrtDriver)
                             {
-                                vrtDriver->CreateCopy(vrtFile.c_str(), _srcDS, 0, 0, 0, 0 );
-
+                                if ( vrtDriver->CreateCopy(vrtFile.c_str(), _srcDS, 0, 0, 0, 0 ) == NULL )
+                                {
+                                    OE_WARN << LC << INDENT << "Faile to create copy" << std::endl;
+                                }
 
                                 //We created the temp file, now read the contents back
                                 std::ifstream input( vrtFile.c_str() );
@@ -1045,7 +1047,10 @@ public:
             _warpedDS->GetGeoTransform(_geotransform);
         }
 
-        GDALInvGeoTransform(_geotransform, _invtransform);
+        if ( GDALInvGeoTransform(_geotransform, _invtransform) == 0 )
+        {
+            OE_WARN << LC << INDENT << "_geotransform not invertible" << std::endl;
+        }
 
         double minX, minY, maxX, maxY;
 

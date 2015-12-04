@@ -77,6 +77,10 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         _altitude.valid() &&
         _altitude->technique() == _altitude->TECHNIQUE_GPU;
 
+    bool gpuClampingRelativeToTerrain =
+        gpuClamping &&
+        _altitude->clamping() == _altitude->CLAMP_RELATIVE_TO_TERRAIN;
+
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
@@ -95,9 +99,9 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         if ( _altitude.valid() && _altitude->verticalScale().isSet() )
             scaleZ = feature->eval( scaleExpr, &cx );
 
-        double offsetZ = 0.0;
+        optional<double> offsetZ( 0.0 );
         if ( _altitude.valid() && _altitude->verticalOffset().isSet() )
-            offsetZ = feature->eval( offsetExpr, &cx );
+            offsetZ = feature->eval( offsetExpr, &cx );       
         
         GeometryIterator gi( feature->getGeometry() );
         while( gi.hasMore() )
@@ -105,10 +109,17 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
             Geometry* geom = gi.next();
             for( Geometry::iterator g = geom->begin(); g != geom->end(); ++g )
             {
+                // GPU clamping requires a vertical offset. So if the symbology doesn't
+                // specify one, get it instead from the first point.
+                if ( gpuClampingRelativeToTerrain && !offsetZ.isSet() )
+                {
+                    offsetZ = g->z();
+                }
+
                 if ( !gpuClamping )
                 {
                     g->z() *= scaleZ;
-                    g->z() += offsetZ;
+                    g->z() += offsetZ.get();
                 }
 
                 if ( g->z() < minHAT )
@@ -128,7 +139,7 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         if ( gpuClamping )
         {
             feature->set("__oe_verticalScale",  scaleZ);
-            feature->set("__oe_verticalOffset", offsetZ);
+            feature->set("__oe_verticalOffset", offsetZ.get());
         }
     }
 }

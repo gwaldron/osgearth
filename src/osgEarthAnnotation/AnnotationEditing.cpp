@@ -124,8 +124,8 @@ public:
 
 CircleNodeEditor::CircleNodeEditor( CircleNode* node ):
 LocalizedNodeEditor( node ),
-_radiusDragger( 0 ),
-_bearing( osg::DegreesToRadians( 90.0 ) )
+_bearing( osg::DegreesToRadians( 90.0 ) ),
+_radiusDragger( 0 )
 {
     _radiusDragger  = new SphereDragger(_node->getMapNode());
     _radiusDragger->addPositionChangedCallback(new SetRadiusCallback( node,this ) );        
@@ -257,8 +257,8 @@ public:
 
 EllipseNodeEditor::EllipseNodeEditor( EllipseNode* node ):
 LocalizedNodeEditor( node ),
-_minorDragger( 0 ),
-_majorDragger( 0 )
+_majorDragger( 0 ),
+_minorDragger( 0 )
 {
     _minorDragger  = new SphereDragger( _node->getMapNode());
     _minorDragger->addPositionChangedCallback(new SetEllipseRadiusCallback( node, this, false ) );        

@@ -161,16 +161,16 @@ namespace
 //--------------------------------------------------------------------------
 
 AutoClipPlaneCullCallback::AutoClipPlaneCullCallback( MapNode* mapNode ) :
-_mapNode             ( mapNode ),
 _active              ( false ),
 //_minNearFarRatio     ( 0.00001 ),
 //_maxNearFarRatio     ( 0.0005 ),
 _minNearFarRatio     ( 0.00001  ),
 _maxNearFarRatio     ( 0.00005 ),
 _haeThreshold        ( 250.0 ),
-_rp                  ( -1 ),
 _rp2                 ( -1 ),
-_autoFarPlaneClamping( true )
+_rp                  ( -1 ),
+_autoFarPlaneClamping( true ),
+_mapNode             ( mapNode )
 {
     if ( mapNode )
     {

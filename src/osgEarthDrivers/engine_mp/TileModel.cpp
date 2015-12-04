@@ -154,9 +154,9 @@ TileModel::ColorData::ColorData(const osgEarth::ImageLayer* layer,
                                 GeoLocator*                 locator,
                                 bool                        fallbackData) :
 _layer       ( layer ),
-_order       ( order ),
 _locator     ( locator ),
-_fallbackData( fallbackData )
+_fallbackData( fallbackData ),
+_order       ( order )
 {
     osg::Texture::FilterMode minFilter = layer->getImageLayerOptions().minFilter().get();
     osg::Texture::FilterMode magFilter = layer->getImageLayerOptions().magFilter().get();
@@ -283,8 +283,8 @@ _tileLocator     ( rhs._tileLocator.get() ),
 _colorData       ( rhs._colorData ),
 _elevationData   ( rhs._elevationData ),
 _sampleRatio     ( rhs._sampleRatio ),
-_parentStateSet  ( rhs._parentStateSet ),
-_useParentData   ( rhs._useParentData )
+_useParentData   ( rhs._useParentData ),
+_parentStateSet  ( rhs._parentStateSet )
 {
     //nop
 }

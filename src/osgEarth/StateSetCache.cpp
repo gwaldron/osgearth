@@ -247,8 +247,8 @@ namespace
 //------------------------------------------------------------------------
 
 StateSetCache::StateSetCache() :
-_pruneCount       ( 0 ),
 _maxSize          ( DEFAULT_PRUNE_ACCESS_COUNT ),
+_pruneCount       ( 0 ),
 _attrShareAttempts( 0 ),
 _attrsIneligible  ( 0 ),
 _attrShareHits    ( 0 ),

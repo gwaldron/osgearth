@@ -40,13 +40,13 @@ TerrainLayerOptions::TerrainLayerOptions( const ConfigOptions& options ) :
 ConfigOptions       ( options ),
 _minLevel           ( 0 ),
 _maxLevel           ( 23 ),
-_cachePolicy        ( CachePolicy::DEFAULT ),
 _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
 _enabled            ( true ),
 _visible            ( true ),
 _reprojectedTileSize( 256 ),
-_maxDataLevel       ( 99 )
+_maxDataLevel       ( 99 ),
+_cachePolicy        ( CachePolicy::DEFAULT )
 {
     setDefaults();
     fromConfig( _conf ); 

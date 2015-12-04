@@ -59,11 +59,11 @@ Style AnnotationNode::s_emptyStyle;
 //-------------------------------------------------------------------
 
 AnnotationNode::AnnotationNode(MapNode* mapNode) :
-_mapNode    ( mapNode ),
 _dynamic    ( false ),
 _autoclamp  ( false ),
 _depthAdj   ( false ),
-_activeDs   ( 0L )
+_activeDs   ( 0L ),
+_mapNode    ( mapNode )
 {
     //Note: Cannot call setMapNode() here because it's a virtual function.
     //      Each subclass will be separately responsible at ctor time.
@@ -75,11 +75,11 @@ _activeDs   ( 0L )
 }
 
 AnnotationNode::AnnotationNode(MapNode* mapNode, const Config& conf) :
-_mapNode    ( mapNode ),
 _dynamic    ( false ),
 _autoclamp  ( false ),
 _depthAdj   ( false ),
-_activeDs   ( 0L )
+_activeDs   ( 0L ),
+_mapNode    ( mapNode )
 {
     this->setName( conf.value("name") );
 

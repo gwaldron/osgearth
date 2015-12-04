@@ -67,8 +67,8 @@ OceanOptions::getConfig() const
 #define LC "[OceanNode] "
 
 OceanNode::OceanNode(const OceanOptions& options) :
-_options ( options ),
-_seaLevel( 0.0f )
+_seaLevel( 0.0f ),
+_options ( options )
 {
     //NOP
 }

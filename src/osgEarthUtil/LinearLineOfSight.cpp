@@ -80,9 +80,9 @@ LinearLineOfSightNode::LinearLineOfSightNode(osgEarth::MapNode *mapNode):
 LineOfSightNode(),
 _mapNode(mapNode),
 _hasLOS( true ),
+_displayMode( LineOfSight::MODE_SPLIT ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
-_displayMode( LineOfSight::MODE_SPLIT ),
 _terrainOnly( false )
 {
     compute(getNode());
@@ -95,12 +95,12 @@ LinearLineOfSightNode::LinearLineOfSightNode(osgEarth::MapNode* mapNode,
                                              const GeoPoint&    end ) :
 LineOfSightNode(),
 _mapNode(mapNode),
-_start(start),
-_end(end),
 _hasLOS( true ),
+_displayMode( LineOfSight::MODE_SPLIT ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
-_displayMode( LineOfSight::MODE_SPLIT ),
+_start(start),
+_end(end),
 _terrainOnly( false )
 {
     compute(getNode());    

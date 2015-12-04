@@ -44,8 +44,8 @@ TileNode::TileNode(const TileKey& key, TileModel* model, const osg::Matrixd& mat
 _key               ( key ),
 _model             ( model ),
 _lastTraversalFrame( 0 ),
-_dirty             ( false ),
-_outOfDate         ( false )
+_outOfDate         ( false ),
+_dirty             ( false )
 {
     this->setName( key.str() );
     this->setMatrix( matrix );

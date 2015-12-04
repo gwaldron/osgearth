@@ -289,7 +289,7 @@ namespace
     struct TopologyGraph
     {
         TopologyGraph()
-          : _minY( _verts.end() ), _totalVerts(0), _srs(0L) { }
+          : _totalVerts(0), _minY( _verts.end() ), _srs(0L) { }
 
         unsigned     _totalVerts;  // total number of verts encountered
         VertexSet    _vertsWorld;  // 

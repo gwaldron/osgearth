@@ -52,8 +52,8 @@ class LoadImageOperation : public osg::Operation
 {
 public:
     LoadImageOperation(const std::string& filename):
-      _filename(filename),
-          _done(false)
+      _done(false),
+      _filename(filename)
       {
       }
 
@@ -86,10 +86,10 @@ class RefreshImage : public osg::ImageStream
 public:
 
     RefreshImage(const std::string& filename, double time):
+      osg::ImageStream(),
       _filename(filename),
-          _time(time),
-          _lastUpdateTime(0),
-          osg::ImageStream()
+      _time(time),
+      _lastUpdateTime(0)
       {                    
           osg::ref_ptr< osg::Image > image = osgDB::readImageFile( filename );
           if (image.valid()) copyImage( image.get() );

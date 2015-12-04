@@ -81,8 +81,8 @@ namespace
 //---------------------------------------------------------------------------
 
 Terrain::Terrain(osg::Node* graph, const Profile* mapProfile, bool geocentric, const TerrainOptions& terrainOptions ) :
-_graph         ( graph ),
 _profile       ( mapProfile ),
+_graph         ( graph ),
 _geocentric    ( geocentric ),
 _terrainOptions( terrainOptions )
 {

@@ -71,11 +71,11 @@ class SimplePager : public osg::Group
 {
 public:
     SimplePager(const osgEarth::Profile* profile):
-      _profile( profile ),
-          _rangeFactor( 6.0 ),
-          _additive(false),
-          _minLevel(0),
-          _maxLevel(30)
+      _additive(false),
+      _rangeFactor( 6.0 ),
+      _minLevel(0),
+      _maxLevel(30),
+      _profile( profile )
       {
           _options = new osgDB::Options;
           _options->setUserData( this );          

@@ -59,9 +59,9 @@ Dragger::Dragger( MapNode* mapNode, int modKeyMask, const DragMode& defaultMode 
 _position( mapNode->getMapSRS(), 0,0,0, ALTMODE_RELATIVE),
 _dragging(false),
 _hovered(false),
+_elevationDragging(false),
 _modKeyMask(modKeyMask),
 _defaultMode(defaultMode),
-_elevationDragging(false),
 _verticalMinimum(0.0)
 {    
     setNumChildrenRequiringEventTraversal( 1 );

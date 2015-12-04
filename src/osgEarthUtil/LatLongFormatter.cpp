@@ -29,8 +29,8 @@ using namespace osgEarth::Util;
 
 LatLongFormatter::LatLongFormatter(const AngularFormat& defaultFormat,
                                    unsigned             options ) :
-_defaultFormat( defaultFormat ),
 _options      ( options ),
+_defaultFormat( defaultFormat ),
 _prec         ( 5 )
 {
     if ( _defaultFormat == FORMAT_DEFAULT )

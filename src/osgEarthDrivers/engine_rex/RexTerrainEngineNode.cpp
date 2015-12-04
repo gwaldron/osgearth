@@ -173,13 +173,13 @@ RexTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* 
 
 RexTerrainEngineNode::RexTerrainEngineNode() :
 TerrainEngineNode     ( ),
-_terrain              ( 0L ),
-_update_mapf          ( 0L ),
-_tileCount            ( 0 ),
-_tileCreationTime     ( 0.0 ),
 _batchUpdateInProgress( false ),
 _refreshRequired      ( false ),
 _stateUpdateRequired  ( false ),
+_update_mapf          ( 0L ),
+_tileCount            ( 0 ),
+_tileCreationTime     ( 0.0 ),
+_terrain              ( 0L ),
 _selectionInfo        ( 0L )
 {
     // unique ID for this engine:

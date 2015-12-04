@@ -74,8 +74,8 @@ TileGroup::TileGroup(const TileKey&    key,
                      const UID&        engineUID,
                      TileNodeRegistry* live,
                      TileNodeRegistry* dead) :
-_key      ( key ),
 _engineUID( engineUID ),
+_key      ( key ),
 _live     ( live ),
 _dead     ( dead )
 {

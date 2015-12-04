@@ -68,10 +68,10 @@ _lowerRight   (20, 10),
 _upperRight   (20, 20),
 _upperLeft    (10, 20),
 _dirty        (false),
+_texture      (0),
 _alpha        (1.0f),
 _minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
-_magFilter    (osg::Texture::LINEAR),
-_texture      (0)
+_magFilter    (osg::Texture::LINEAR)
 {
     conf.getIfSet( "url",   _imageURI );
     if ( _imageURI.isSet() )
@@ -175,10 +175,10 @@ _upperRight   (20, 20),
 _upperLeft    (10, 20),
 _image        (image),
 _dirty        (false),
+_texture      (0),
 _alpha        (1.0f),
 _minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
-_magFilter    (osg::Texture::LINEAR),
-_texture      (0)
+_magFilter    (osg::Texture::LINEAR)
 {        
     postCTOR();
 }

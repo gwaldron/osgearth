@@ -30,13 +30,13 @@ using namespace osgEarth::Util;
 
 GraticuleNode::GraticuleNode(MapNode* mapNode, const GraticuleOptions& options):
 _mapNode(mapNode),
-    _resolution(10.0/180.0),
-    _options(options),
-    _lat(0.0),
-    _lon(0.0),
-    _viewExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90),
-    _visible(true),
-    _metersPerPixel(0.0)
+_resolution(10.0/180.0),
+_lon(0.0),
+_lat(0.0),
+_viewExtent(osgEarth::SpatialReference::create("wgs84"), -180, -90, 180, 90),
+_options(options),
+_visible(true),
+_metersPerPixel(0.0)
 {
     setNumChildrenRequiringUpdateTraversal(1);
 

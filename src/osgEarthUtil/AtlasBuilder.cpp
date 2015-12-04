@@ -67,9 +67,9 @@ namespace
 
 
 AtlasBuilder::AtlasBuilder(const osgDB::Options* options) :
-_options( options ),
 _width  ( 1024 ),
 _height ( 1024 ),
+_options( options ),
 _debug  ( false ),
 _rgb    ( false )
 {

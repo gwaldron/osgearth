@@ -28,7 +28,8 @@
 #include <osg/Transform>
 
 VertexCollectionVisitor::VertexCollectionVisitor(bool geocentric, TraversalMode traversalMode):
-  _geocentric(geocentric), osg::NodeVisitor(traversalMode)
+  osg::NodeVisitor(traversalMode),
+  _geocentric(geocentric)
 {
   _vertices = new osg::Vec3dArray();
   _ellipsoidModel = new osg::EllipsoidModel();

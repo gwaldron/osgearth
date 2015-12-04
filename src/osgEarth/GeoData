@@ -507,7 +507,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const SpatialReference> _srs;
-        double _west, _east, _south, _north;
+        double _east, _west, _south, _north;
         GeoCircle _circle;
 
         void recomputeCircle();

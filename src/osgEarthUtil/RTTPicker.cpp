@@ -320,7 +320,7 @@ namespace
         unsigned _count;
 
         SpiralIterator(int w, int h, int maxDist, float u, float v) : 
-            _w(w), _h(h), _maxRing(maxDist), _count(0), _ring(1), _leg(0), _x(0), _y(0)
+            _ring(1), _maxRing(maxDist), _leg(0), _x(0), _y(0), _w(w), _h(h), _count(0)
         {
             _offsetX = (int)(u * (float)w);
             _offsetY = (int)(v * (float)h);

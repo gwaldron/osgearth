@@ -41,7 +41,7 @@ namespace osgEarth { namespace Drivers { namespace RexTerrainEngine
         /** A single color layer pass. */
         struct Pass
         {
-            Pass() : _ownsTexture(false), _order(0) { }
+            Pass() : _order(0), _ownsTexture(false) { }
 
             Pass(const Pass& rhs) {
                 _layer = rhs._layer.get();

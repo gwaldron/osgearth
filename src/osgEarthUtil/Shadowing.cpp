@@ -38,10 +38,10 @@ using namespace osgEarth::Util;
 
 ShadowCaster::ShadowCaster() :
 _size         ( 2048 ),
-_texImageUnit ( 7 ),
 _blurFactor   ( 0.002f ),
 _color        ( osg::Vec4f(0.4f, 0.4f, 0.4f, 1.0f) ),
-_traversalMask( ~0 )
+_traversalMask( ~0 ),
+_texImageUnit ( 7 )
 {
     _castingGroup = new osg::Group();
 

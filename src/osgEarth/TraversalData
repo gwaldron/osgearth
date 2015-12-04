@@ -70,8 +70,8 @@ namespace osgEarth
 
         struct Install : public osg::NodeCallback
         {
-            osg::ref_ptr<osg::Referenced> _data;
             std::string _key;
+            osg::ref_ptr<osg::Referenced> _data;
 
             Install(const std::string& key) : _key(key) { }
             Install(const std::string& key, osg::Referenced* data) : _key(key), _data(data) { }

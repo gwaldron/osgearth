@@ -233,9 +233,9 @@ Revisioned                      (),
 _single_axis_rotation           ( false ),
 _lock_azim_while_panning        ( true ),
 _mouse_sens                     ( 1.0 ),
-_touch_sens                     ( 0.005 ),
 _keyboard_sens                  ( 1.0 ),
 _scroll_sens                    ( 1.0 ),
+_touch_sens                     ( 0.005 ),
 _min_pitch                      ( -89.9 ),
 _max_pitch                      ( -1.0 ),
 _max_x_offset                   ( 0.0 ),
@@ -248,8 +248,8 @@ _auto_vp_duration               ( false ),
 _min_vp_duration_s              ( 3.0 ),
 _max_vp_duration_s              ( 8.0 ),
 _orthoTracksPerspective         ( true ),
-_throwingEnabled                ( false ),
 _terrainAvoidanceEnabled        ( true ),
+_throwingEnabled                ( false ),
 _throwDecayRate                 ( 0.05 )
 {
     //NOP
@@ -262,9 +262,9 @@ _bindings( rhs._bindings ),
 _single_axis_rotation( rhs._single_axis_rotation ),
 _lock_azim_while_panning( rhs._lock_azim_while_panning ),
 _mouse_sens( rhs._mouse_sens ),
-_touch_sens( rhs._touch_sens),
 _keyboard_sens( rhs._keyboard_sens ),
 _scroll_sens( rhs._scroll_sens ),
+_touch_sens( rhs._touch_sens),
 _min_pitch( rhs._min_pitch ),
 _max_pitch( rhs._max_pitch ),
 _max_x_offset( rhs._max_x_offset ),
@@ -272,12 +272,12 @@ _max_y_offset( rhs._max_y_offset ),
 _min_distance( rhs._min_distance ),
 _max_distance( rhs._max_distance ),
 _tether_mode( rhs._tether_mode ),
+_breakTetherActions( rhs._breakTetherActions ),
 _arc_viewpoints( rhs._arc_viewpoints ),
 _auto_vp_duration( rhs._auto_vp_duration ),
 _min_vp_duration_s( rhs._min_vp_duration_s ),
 _max_vp_duration_s( rhs._max_vp_duration_s ),
 _orthoTracksPerspective( rhs._orthoTracksPerspective ),
-_breakTetherActions( rhs._breakTetherActions ),
 _terrainAvoidanceEnabled( rhs._terrainAvoidanceEnabled ),
 _throwingEnabled( rhs._throwingEnabled ),
 _throwDecayRate( rhs._throwDecayRate )
@@ -490,10 +490,10 @@ EarthManipulator::Settings::setAutoViewpointDurationLimits( double minSeconds, d
 
 EarthManipulator::EarthManipulator() :
 osgGA::CameraManipulator(),
+_frameCount            ( 0 ),
 _last_action           ( ACTION_NULL ),
 _last_event            ( EVENT_MOUSE_DOUBLE_CLICK ),
 _time_s_last_event     ( 0.0 ),
-_frameCount            ( 0 ),
 _findNodeTraversalMask ( 0x01 )
 {
     reinitialize();
@@ -503,10 +503,10 @@ _findNodeTraversalMask ( 0x01 )
 
 EarthManipulator::EarthManipulator(osg::ArgumentParser& args) :
 osgGA::CameraManipulator(),
+_frameCount            ( 0 ),
 _last_action           ( ACTION_NULL ),
 _last_event            ( EVENT_MOUSE_DOUBLE_CLICK ),
 _time_s_last_event     ( 0.0 ),
-_frameCount            ( 0 ),
 _findNodeTraversalMask ( 0x01 )
 {
     reinitialize();
@@ -518,11 +518,11 @@ _findNodeTraversalMask ( 0x01 )
 
 EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
 osgGA::CameraManipulator( rhs ),
+_frameCount             ( 0 ),
+_settings               ( new Settings(*rhs.getSettings()) ),
 _last_action            ( ACTION_NULL ),
 _last_event             ( EVENT_MOUSE_DOUBLE_CLICK ),
 _time_s_last_event      (0.0),
-_frameCount             ( 0 ),
-_settings               ( new Settings(*rhs.getSettings()) ),
 _findNodeTraversalMask  ( rhs._findNodeTraversalMask )
 {
     reinitialize();

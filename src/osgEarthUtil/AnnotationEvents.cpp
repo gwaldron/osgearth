@@ -31,8 +31,8 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
 
 AnnotationEventCallback::AnnotationEventCallback( AnnotationEventHandler* handler ) :
-_hoverEnabled( true ),
-_mouseDown   ( false )
+_mouseDown   ( false ),
+_hoverEnabled( true )
 {
     if ( handler )
         addHandler( handler );

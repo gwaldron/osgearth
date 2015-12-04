@@ -118,14 +118,14 @@ class AddFeatureVisitor : public FeatureTileVisitor
 {
 public:
     AddFeatureVisitor( Feature* feature, int maxFeatures, int firstLevel, int maxLevel, CropFilter::Method cropMethod):
-      _feature( feature ),
-          _maxFeatures( maxFeatures ),      
-          _maxLevel( maxLevel ),
-          _firstLevel( firstLevel ),
-          _added(false),
-          _numAdded( 0 ),
-          _levelAdded(-1),
-          _cropMethod( cropMethod )
+      _levelAdded(-1),
+      _added(false),
+      _maxFeatures( maxFeatures ),
+      _firstLevel( firstLevel ),
+      _maxLevel( maxLevel ),
+      _numAdded( 0 ),
+      _cropMethod( cropMethod ),
+      _feature( feature )
       {
 
       }
@@ -215,10 +215,10 @@ class WriteFeaturesVisitor : public FeatureTileVisitor
 {
 public:
     WriteFeaturesVisitor(FeatureSource* features, const std::string& dest, CropFilter::Method cropMethod, const SpatialReference* srs):
+      _features( features ),
       _dest( dest ),
-          _features( features ),
-          _cropMethod( cropMethod ),
-          _srs( srs )
+      _cropMethod( cropMethod ),
+      _srs( srs )
       {
 
       }

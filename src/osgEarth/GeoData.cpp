@@ -621,8 +621,8 @@ GeoExtent GeoExtent::INVALID = GeoExtent();
 
 
 GeoExtent::GeoExtent():
-_west   ( DBL_MAX ),
 _east   ( DBL_MAX ),
+_west   ( DBL_MAX ),
 _south  ( DBL_MAX ),
 _north  ( DBL_MAX )
 {
@@ -631,8 +631,8 @@ _north  ( DBL_MAX )
 
 GeoExtent::GeoExtent(const SpatialReference* srs) :
 _srs    ( srs ),
-_west   ( DBL_MAX ),
 _east   ( DBL_MAX ),
+_west   ( DBL_MAX ),
 _south  ( DBL_MAX ),
 _north  ( DBL_MAX )
 {
@@ -642,8 +642,8 @@ _north  ( DBL_MAX )
 GeoExtent::GeoExtent(const SpatialReference* srs,
                      double west, double south, double east, double north ) :
 _srs    ( srs ),
-_west   ( west ),
 _east   ( east ),
+_west   ( west ),
 _south  ( south ),
 _north  ( north )
 {
@@ -654,8 +654,8 @@ _north  ( north )
 
 GeoExtent::GeoExtent( const SpatialReference* srs, const Bounds& bounds ) :
 _srs    ( srs ),
-_west   ( bounds.xMin() ),
 _east   ( bounds.xMax() ),
+_west   ( bounds.xMin() ),
 _south  ( bounds.yMin() ),
 _north  ( bounds.yMax() )
 {    

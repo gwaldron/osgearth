@@ -2351,8 +2351,8 @@ ControlNode::traverse( osg::NodeVisitor& nv )
 
 ControlNode::TravSpecificData::TravSpecificData() :
 _obscured   ( true ),
-_visibleTime( 0.0 ),
-_screenPos  ( 0.0, 0.0, 0.0 )
+_screenPos  ( 0.0, 0.0, 0.0 ),
+_visibleTime( 0.0 )
 {
     //nop
 }
@@ -2382,9 +2382,9 @@ static osgEarthRegisterRenderBinProxy<osgEarthControlsRenderBin> s_regbin( OSGEA
 // ---------------------------------------------------------------------------
 
 ControlNodeBin::ControlNodeBin() :
-_sortingEnabled( true ),
 _sortByDistance( true ),
-_fading        ( true )
+_fading        ( true ),
+  _sortingEnabled( true )
 {
     _group = new Group();
 

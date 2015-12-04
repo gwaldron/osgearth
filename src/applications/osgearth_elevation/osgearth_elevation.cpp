@@ -53,8 +53,8 @@ static LabelControl*  s_resLabel    = 0L;
 struct QueryElevationHandler : public osgGA::GUIEventHandler 
 {
     QueryElevationHandler()
-        : _mouseDown( false ),
-          _terrain  ( s_mapNode->getTerrain() ),
+        : _terrain  ( s_mapNode->getTerrain() ),
+          _mouseDown( false ),
           _query    ( s_mapNode->getMap() )
     {
         _map = s_mapNode->getMap();

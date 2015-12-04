@@ -580,9 +580,9 @@ DisableSubgraphCulling::operator()(osg::Node* n, osg::NodeVisitor* v)
 double OcclusionCullingCallback::_maxFrameTime = 10.0;
 
 OcclusionCullingCallback::OcclusionCullingCallback(const osgEarth::SpatialReference *srs, const osg::Vec3d& world, osg::Node* node):
+_node       ( node ),
 _srs        ( srs ),
 _world      ( world ),
-_node       ( node ),
 _visible    ( true ),
 _maxAltitude( 200000 )
 {

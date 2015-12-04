@@ -24,10 +24,10 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 InstanceSymbol::InstanceSymbol( const Config& conf ) :
+_scale     ( NumericExpression(1.0) ),
 _placement ( PLACEMENT_VERTEX ),
 _density   ( 25.0f ),
-_randomSeed( 0 ),
-_scale     ( NumericExpression(1.0) )
+_randomSeed( 0 )
 {
     mergeConfig( conf );
 }

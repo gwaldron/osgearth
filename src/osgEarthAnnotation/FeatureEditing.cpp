@@ -30,10 +30,10 @@ using namespace osgEarth::Features;
 
 /****************************************************************/
 AddPointHandler::AddPointHandler( FeatureNode* featureNode):
-_featureNode( featureNode ),
+_mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON ),
 _mouseDown( false ),
 _firstMove( false ),
-_mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON ),
+_featureNode( featureNode ),
 _intersectionMask( 0xffffffff )
 {
 }
@@ -138,10 +138,10 @@ public:
 
 /****************************************************************/
 FeatureEditor::FeatureEditor( FeatureNode* featureNode):
-_featureNode( featureNode ),
-_color(osg::Vec4(0.0f, 1.0f, 0.0f, 1.0f)),
 _pickColor(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f)),
-_size( 5.0f )
+_color(osg::Vec4(0.0f, 1.0f, 0.0f, 1.0f)),
+_size( 5.0f ),
+_featureNode( featureNode )
 {
     init();
 }

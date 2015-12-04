@@ -34,18 +34,18 @@ namespace
 ObjectLocator::ObjectLocator(const osgEarth::Map* map) :
 _map                ( map ),
 _componentsToInherit( COMP_ALL ),
+_rotOrder           ( HPR ),
 _timestamp          ( 0.0 ),
-_isEmpty            ( true ),
-_rotOrder           ( HPR )
+_isEmpty            ( true )
 {
     if ( !_map.valid() )
         OE_WARN << LC << "Illegal: cannot create an ObjectLocator with a NULL Map." << std::endl;
 }
 
 ObjectLocator::ObjectLocator(ObjectLocator* parentLoc, unsigned int inheritMask ) :
+_rotOrder ( HPR ),
 _timestamp( 0.0 ),
-_isEmpty  ( false ),
-_rotOrder ( HPR )
+_isEmpty  ( false )
 {
     setParentLocator( parentLoc, inheritMask );
     _map = parentLoc->_map.get();
@@ -233,8 +233,8 @@ ObjectLocatorNode::ObjectLocatorNode()
 
 ObjectLocatorNode::ObjectLocatorNode( const ObjectLocatorNode& rhs, const osg::CopyOp& op ) :
 osg::MatrixTransform( rhs, op ),
-_matrixRevision( rhs._matrixRevision ),
-_locator( rhs._locator.get() )
+_locator( rhs._locator.get() ),
+_matrixRevision( rhs._matrixRevision )
 {
     setNumChildrenRequiringUpdateTraversal( 1 );
     setLocator( _locator.get() ); // to update the trav count

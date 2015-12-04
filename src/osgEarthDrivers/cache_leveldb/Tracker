@@ -41,8 +41,8 @@ namespace osgEarth { namespace Drivers { namespace LevelDBCache
     public:
         Tracker(const LevelDBCacheOptions& options,
                 const std::string&         path ) : 
-            _options(options),                 
             _path(path),
+            _options(options),
             _seed(0)
         {
             _maxBytes = (off_t)(options.maxSizeMB().get() * 1048576);

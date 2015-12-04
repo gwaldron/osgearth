@@ -90,7 +90,7 @@ namespace osgEarth
         unsigned int getNumTiles() const;
 
         /**
-         * Get the estimated size of the output cache in MB.  
+         * Get the estimated size of the output cache in MB.
          * This is a ROUGH estimate based on the _sizeInMBPerTile setting.
          */
         double getSizeInMB() const;
@@ -106,7 +106,7 @@ namespace osgEarth
 
         osg::ref_ptr< const osgEarth::Profile > _profile;
         unsigned int _minLevel;
-        unsigned int _maxLevel;        
+        unsigned int _maxLevel;
         std::vector< GeoExtent > _extents;
         double _sizeInMBPerTile;
         double _timeInSecondsPerTile;

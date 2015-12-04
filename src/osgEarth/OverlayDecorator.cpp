@@ -282,10 +282,10 @@ namespace
 
 OverlayDecorator::OverlayDecorator() :
 _useShaders          ( true ),
-_dumpRequested       ( false ),
 _rttTraversalMask    ( ~0 ),
 _maxHorizonDistance  ( DBL_MAX ),
-_totalOverlayChildren( 0 )
+_totalOverlayChildren( 0 ),
+_dumpRequested       ( false )
 {
     //nop.
 }

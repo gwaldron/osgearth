@@ -43,8 +43,8 @@ using namespace osgEarth::Drivers::LevelDBCache;
 
 LevelDBCacheImpl::LevelDBCacheImpl( const CacheOptions& options ) :
 osgEarth::Cache( options ),
-_options       ( options ),
-_active        ( true )
+_active        ( true ),
+_options       ( options )
 {
     // Force OSG to initialize the image wrapper. Failure to do this can result
     // in a race condition within OSG when the cache is accessed from multiple threads.

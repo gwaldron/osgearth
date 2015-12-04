@@ -23,8 +23,8 @@
 #define OSGEARTH_SPLAT_LANDCOVER_TILE_PATCH_CALLBACK_H
 
 #include "Export"
-#include "LandCover"
-#include <osgEarth/TerrainEngineNode>
+#include "Zone"
+#include <osgEarth/TilePatchCallback>
 
 using namespace osgEarth;
 
@@ -39,17 +39,7 @@ namespace osgEarth { namespace Splat
         /** constructor */
         LandCoverTilePatchCallback() { }
 
-    public:
-        struct LayerData {
-            osg::ref_ptr<const LandCoverLayer> _layer;
-            osg::ref_ptr<osg::StateSet>        _stateSet;
-        };
-
-        struct ZoneData {
-            std::vector<LayerData> _layers;
-        };
-
-        std::vector<ZoneData> _zones;
+        Zones _zones;
 
     public: // TilePatchCallback
 
@@ -58,6 +48,9 @@ namespace osgEarth { namespace Splat
             const TileKey&        key,
             osg::StateSet*        stateSet,
             osg::Node*            tilePatch);
+
+        void release(
+            const TileKey& key);
     };
 
 } } // namespace osgEarth::Splat

@@ -157,7 +157,7 @@ osgEarth::Features::GeometryUtils::getGeometryArea( const Geometry* geometry )
     double result = 0.0;
     if (g)
     {
-        result = OGR_G_GetArea( g );
+        result = OGR_G_Area( g );
         OGR_G_DestroyGeometry( g );
     }
     return result;

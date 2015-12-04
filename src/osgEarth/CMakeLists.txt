@@ -10,7 +10,9 @@ MARK_AS_ADVANCED(CURL_IS_STATIC)
 ADD_DEFINITIONS(-DTIXML_USE_STL)
 
 IF(WIN32)
-    SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
+    IF(MSVC)
+        SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
+    ENDIF(MSVC)
     IF(CURL_IS_STATIC)
         ADD_DEFINITIONS(-DCURL_STATICLIB)
         SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm wldap32)
@@ -152,6 +154,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileModelFactory
     TerrainTileNode
     TileKeyDataStore
+    TilePatchCallback
     Tessellator
     TextureCompositor
     TileKey
@@ -302,6 +305,7 @@ set(TARGET_SRC
     TextureCompositor.cpp
     TileKey.cpp
     TileHandler.cpp
+    TilePatchCallback.cpp
     TileVisitor.cpp
     TileSource.cpp
     TimeControl.cpp

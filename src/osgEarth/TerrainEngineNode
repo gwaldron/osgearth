@@ -28,6 +28,7 @@
 #include <osgEarth/TerrainEngineRequirements>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/TilePatchCallback>
 #include <osgEarth/Progress>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
@@ -97,28 +98,6 @@ namespace osgEarth
             const TileKey& key,
             osg::Node*     node) =0;
     };
-
-
-    /**
-     * A "Tile Patch" is a patch of surface geometry that corresponds to a terrain tile.
-     * For an engine that supports patches, this callback will let you install custom
-     * rendering state for a tile patch.
-     */
-    class OSGEARTH_EXPORT TilePatchCallback : public osg::Referenced
-    {
-    public:
-        /**
-         * Cull the patch for a given tile. You must push the passed-in stateset, traverse
-         * the patch, and then pop the stateset yourself. You can of course push any additional
-         * state or cull any additional drawables that you want to.
-         */
-        virtual void cull(osgUtil::CullVisitor* nv, const TileKey& key, osg::StateSet* stateSet, osg::Node* patch) =0;
-
-    protected:
-        virtual ~TilePatchCallback() { }
-    };
-
-    typedef std::vector< osg::ref_ptr<TilePatchCallback> > TilePatchCallbacks;
 
 
     /**

@@ -140,9 +140,18 @@ namespace osgEarth { namespace Splat
 
         int getTotalNumBillboards() const;
 
+        /** Creates the shader that contains the GLSL APOI for accessing this layer's information */
         osg::Shader* createShader() const;
 
+        /** Creates the shader that resolves land cover information into billboard data. */
         osg::Shader* createPredicateShader(const Coverage*) const;
+
+        /** Builds the texture object containing all the data for this layer. */
+        osg::Texture* createTexture() const;
+
+        /** The stateset containing the shaders and state for rendering this layer. */
+        osg::StateSet* getOrCreateStateSet();
+        osg::StateSet* getStateSet() const { return _stateSet.get(); }
 
     protected:
         virtual ~LandCoverLayer() { }
@@ -158,6 +167,8 @@ namespace osgEarth { namespace Splat
         float           _brightness;
         float           _contrast;
         LandCoverBiomes _biomes;
+
+        osg::ref_ptr<osg::StateSet> _stateSet;
 
     public:
         bool configure(const ConfigOptions& conf, const osgDB::Options* dbo);

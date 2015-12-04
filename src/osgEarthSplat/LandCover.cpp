@@ -5,8 +5,11 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/ImageUtils>
 #include <osgEarthSymbology/BillboardSymbol>
 #include <osgEarthSymbology/BillboardResource>
+
+#include <osg/Texture2DArray>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;
@@ -130,6 +133,14 @@ LandCoverLayer::getTotalNumBillboards() const
         count += getBiomes().at(i)->getBillboards().size();
     }
     return count;
+}
+
+osg::StateSet*
+LandCoverLayer::getOrCreateStateSet()
+{
+    if ( !_stateSet.valid() )
+        _stateSet = new osg::StateSet();
+    return _stateSet.get();
 }
 
 osg::Shader*
@@ -372,4 +383,56 @@ LandCoverBiome::configure(const ConfigOptions& conf, const osgDB::Options* dbo)
     }
 
     return true;
+}
+
+osg::Texture*
+LandCoverLayer::createTexture() const
+{
+    osg::Texture2DArray* tex = new osg::Texture2DArray();
+
+    int arrayIndex = 0;
+    float s = -1.0f, t = -1.0f;
+
+    for(int b=0; b<getBiomes().size(); ++b)
+    {
+        const LandCoverBiome* biome = getBiomes().at(b);
+
+        for(int i=0; i<biome->getBillboards().size(); ++i, ++arrayIndex)
+        {
+            const LandCoverBillboard& bb = biome->getBillboards().at(i);
+
+            osg::ref_ptr<osg::Image> im;
+
+            if ( s < 0 )
+            {
+                s  = bb._image->s();
+                t  = bb._image->t();
+                im = bb._image.get();
+                tex->setTextureSize(s, t, getTotalNumBillboards());                              
+            }
+            else
+            {
+                if ( bb._image->s() != s || bb._image->t() != t )
+                {
+                    ImageUtils::resizeImage( bb._image.get(), s, t, im );
+                }
+                else
+                {
+                    im = bb._image.get();
+                }
+            }
+
+            tex->setImage( arrayIndex, im.get() );
+        }
+    }
+
+    tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
+    tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
+    tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
+    tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
+    tex->setUnRefImageDataAfterApply( true );
+    tex->setMaxAnisotropy( 4.0 );
+    tex->setResizeNonPowerOfTwoHint( false );
+
+    return tex;
 }

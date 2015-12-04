@@ -154,6 +154,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileModelFactory
     TerrainTileNode
     TileKeyDataStore
+    TilePatchCallback
     Tessellator
     TextureCompositor
     TileKey
@@ -304,6 +305,7 @@ set(TARGET_SRC
     TextureCompositor.cpp
     TileKey.cpp
     TileHandler.cpp
+    TilePatchCallback.cpp
     TileVisitor.cpp
     TileSource.cpp
     TimeControl.cpp

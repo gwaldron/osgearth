@@ -107,6 +107,8 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
 
             // The patch callback that will render the land cover:
             _tilePatchCallback = new LandCoverTilePatchCallback();
+            _tilePatchCallback->_zones = _zones;
+
             engine->addTilePatchCallback( _tilePatchCallback.get() );
 
             for(Zones::iterator z = _zones.begin(); z != _zones.end(); ++z)
@@ -115,25 +117,16 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
                 LandCover* landCover = zone->getLandCover();
                 if ( landCover )
                 {
-                    _tilePatchCallback->_zones.push_back(LandCoverTilePatchCallback::ZoneData());
-                    LandCoverTilePatchCallback::ZoneData& zoneData = _tilePatchCallback->_zones.back();
-
-                    for(LandCoverLayers::const_iterator i = landCover->getLayers().begin();
+                    for(LandCoverLayers::iterator i = landCover->getLayers().begin();
                         i != landCover->getLayers().end();
                         ++i)
                     {
-                        const LandCoverLayer* layer = i->get();
+                        LandCoverLayer* layer = i->get();
                         if ( layer )
                         {
                             if ( !layer->getBiomes().empty() || layer->getTotalNumBillboards() > 0 )
                             {
-                                zoneData._layers.push_back(LandCoverTilePatchCallback::LayerData());
-                                LandCoverTilePatchCallback::LayerData& layerData = zoneData._layers.back();
-                                
-                                layerData._layer = layer;
-
-                                osg::StateSet* stateset = new osg::StateSet();
-                                layerData._stateSet = stateset;
+                                osg::StateSet* stateset = layer->getOrCreateStateSet();
 
                                 bool useMask = (landCover->getMaskLayer() != 0L);
 
@@ -189,51 +182,7 @@ LandCoverTerrainEffect::onInstall(TerrainEngineNode* engine)
 
                                 stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 
-                                // Build the texture array!
-                                int s=-1, t=-1;
-                                osg::Texture2DArray* tex = new osg::Texture2DArray();
-                            
-                                int arrayIndex = 0;
-                                for(int b=0; b<layer->getBiomes().size(); ++b)
-                                {
-                                    const LandCoverBiome* biome = layer->getBiomes().at(b);
-                                
-                                    for(int i=0; i<biome->getBillboards().size(); ++i, ++arrayIndex)
-                                    {
-                                        const LandCoverBillboard& bb = biome->getBillboards().at(i);
-
-                                        osg::ref_ptr<osg::Image> im;
-
-                                        if ( s < 0 )
-                                        {
-                                            s  = bb._image->s();
-                                            t  = bb._image->t();
-                                            im = bb._image.get();
-                                            tex->setTextureSize(s, t, layer->getTotalNumBillboards());                              
-                                        }
-                                        else
-                                        {
-                                            if ( bb._image->s() != s || bb._image->t() != t )
-                                            {
-                                                ImageUtils::resizeImage( bb._image.get(), s, t, im );
-                                            }
-                                            else
-                                            {
-                                                im = bb._image.get();
-                                            }
-                                        }
-
-                                        tex->setImage( arrayIndex, im.get() );
-                                    }
-                                }
-                                    
-                                tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
-                                tex->setFilter(tex->MAG_FILTER, tex->LINEAR);
-                                tex->setWrap  (tex->WRAP_S, tex->CLAMP_TO_EDGE);
-                                tex->setWrap  (tex->WRAP_T, tex->CLAMP_TO_EDGE);
-                                tex->setUnRefImageDataAfterApply( true );
-                                tex->setMaxAnisotropy( 4.0 );
-                                tex->setResizeNonPowerOfTwoHint( false );
+                                osg::Texture* tex = layer->createTexture();
 
                                 stateset->setTextureAttribute(_landCoverTexUnit, tex);
                                 stateset->addUniform(new osg::Uniform("oe_landcover_texArray", _landCoverTexUnit) );

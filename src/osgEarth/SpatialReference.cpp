@@ -294,7 +294,7 @@ SpatialReference::create( const Key& key, bool useCache )
     else if (key.horizLower.find( "epsg:" )  == 0 ||
              key.horizLower.find( "osgeo:" ) == 0 )
     {
-        srs = createFromPROJ4( std::string("+init=") + key.horiz, key.horiz );
+        srs = createFromPROJ4( std::string("+init=") + key.horizLower, key.horiz );
     }
     else if (key.horizLower.find( "projcs" ) == 0 || 
              key.horizLower.find( "geogcs" ) == 0 )

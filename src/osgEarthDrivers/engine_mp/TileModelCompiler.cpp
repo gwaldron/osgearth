@@ -168,12 +168,12 @@ namespace
         osg::ref_ptr<osg::Vec2Array> stitchTileCoords;
 
         // surface data:
-        osg::Geode*                   surfaceGeode;
-        MPGeometry*                   surface;
-        osg::Vec3Array*               surfaceVerts;
-        osg::Vec3Array*               normals;
-        osg::Vec4Array*               surfaceAttribs;
-        osg::Vec4Array*               surfaceAttribs2;
+        osg::ref_ptr<osg::Geode>      surfaceGeode;
+        osg::ref_ptr<MPGeometry>      surface;
+        osg::ref_ptr<osg::Vec3Array>  surfaceVerts;
+        osg::ref_ptr<osg::Vec3Array>  normals;
+        osg::ref_ptr<osg::Vec4Array>  surfaceAttribs;
+        osg::ref_ptr<osg::Vec4Array>  surfaceAttribs2;
         unsigned                      numVerticesInSurface;
         osg::ref_ptr<osg::FloatArray> elevations;
         Indices                       indices;
@@ -251,7 +251,7 @@ namespace
 
             if (x_match && y_match)
             {
-                MPGeometry* stitchGeom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
+                osg::ref_ptr<MPGeometry> stitchGeom = new MPGeometry( d.model->_tileKey, d.frame, d.textureImageUnit );
                 stitchGeom->setName("stitchGeom");
                 d.maskRecords.push_back( MaskRecord(boundary, min_ndc, max_ndc, stitchGeom) );
             }
@@ -873,8 +873,8 @@ namespace
                 // Add mask bounds as a triangulation constraint
 
                 osg::ref_ptr<osgUtil::DelaunayConstraint> newdc=new osgUtil::DelaunayConstraint;
-                osg::Vec3Array* maskConstraint = new osg::Vec3Array();
-                newdc->setVertexArray(maskConstraint);
+                osg::ref_ptr<osg::Vec3Array> maskConstraint = new osg::Vec3Array();
+                newdc->setVertexArray(maskConstraint.get());
 
                 //Crop the mask to the stitching poly (for case where mask crosses tile edge)
                 osg::ref_ptr<Geometry> maskCrop;
@@ -889,7 +889,7 @@ namespace
 
                     if (part->getType() == Geometry::TYPE_POLYGON)
                     {
-                        osg::Vec3Array* partVerts = part->toVec3Array();
+                        osg::ref_ptr<osg::Vec3Array> partVerts = part->toVec3Array();
                         maskConstraint->insert(maskConstraint->end(), partVerts->begin(), partVerts->end());
                         newdc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - partVerts->size(), partVerts->size()));
                     }
@@ -1029,8 +1029,8 @@ namespace
             }
 
             // Create array to hold vertex normals
-            osg::Vec3Array *norms=new osg::Vec3Array;
-            trig->setOutputNormalArray(norms);
+            osg::ref_ptr<osg::Vec3Array> norms = new osg::Vec3Array;
+            trig->setOutputNormalArray(norms.get());
 
 
             // Triangulate vertices and remove triangles that lie within the contraint loop
@@ -1044,11 +1044,13 @@ namespace
 
             MaskRecordVector::iterator mr = d.maskRecords.begin();
             // Set up new arrays to hold final vertices and normals
-            osg::Geometry* stitch_geom = (*mr)._geom;
-            osg::Vec3Array* stitch_verts = new osg::Vec3Array();
+            osg::ref_ptr<osg::Geometry> stitch_geom = (*mr)._geom;
+
+            osg::ref_ptr<osg::Vec3Array> stitch_verts = new osg::Vec3Array();
             stitch_verts->reserve(trig->getInputPointArray()->size());
             stitch_geom->setVertexArray(stitch_verts);
-            osg::Vec3Array* stitch_norms = new osg::Vec3Array(trig->getInputPointArray()->size());
+
+            osg::ref_ptr<osg::Vec3Array> stitch_norms = new osg::Vec3Array(trig->getInputPointArray()->size());
             stitch_geom->setNormalArray( stitch_norms );
             stitch_geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
@@ -1105,7 +1107,7 @@ namespace
 
 
             // Get triangles from triangulator and add as primative set to the geometry
-            osg::DrawElementsUInt* tris = trig->getTriangles();
+            osg::ref_ptr<osg::DrawElementsUInt> tris = trig->getTriangles();
             if ( tris && tris->getNumIndices() >= 3 )
             {
                 stitch_geom->addPrimitiveSet(tris);
@@ -1396,7 +1398,7 @@ namespace
         unsigned numSurfaceNormals = d.numRows * d.numCols;
 
         GLenum mode = d.usePatches ? GL_PATCHES : GL_TRIANGLES;
-        osg::DrawElements* elements = d.newDrawElements(mode);
+        osg::ref_ptr<osg::DrawElements> elements = d.newDrawElements(mode);
         elements->reserveElements((d.numRows-1) * (d.numCols-1) * 6);
 
         if ( recalcNormals )
